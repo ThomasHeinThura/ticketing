@@ -1,9 +1,13 @@
+import { createHash } from "node:crypto";
 import { BUILT_IN_ROLES, defaultRolePayloads } from "@taskdesk/permissions";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
-import { identityAccountId } from "../../../apps/api/src/identity/oidc-login";
+import {
+  createOidcAuthorizationStart,
+  identityAccountId,
+} from "../../../apps/api/src/identity/oidc-login";
 import { validateEntraIdToken } from "../../../apps/api/src/identity/oidc-token";
 import { createApp } from "../../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../../apps/api/src/utils/seed-internal-organisation";
@@ -93,6 +97,13 @@ beforeEach(async () => {
   resetEntraTokenValidatorMock();
   await resetTestDatabase();
   await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db
+    .insert(schema.instanceFeatureFlagTable)
+    .values({ featureKey: "feature.customer_portal", enabled: true })
+    .onConflictDoUpdate({
+      target: schema.instanceFeatureFlagTable.featureKey,
+      set: { enabled: true },
+    });
   process.env.TASKDESK_ENCRYPTION_KEY = ENCRYPTION_KEY;
   delete process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS;
 });
@@ -261,31 +272,68 @@ async function seedCustomer(connectionId: string, suffix?: string) {
   };
 }
 
-async function signIn(connectionId: string, portal: "agent" | "customer") {
+async function beginSignIn(connectionId: string, portal: "agent" | "customer") {
   const app = createApp().app;
   const base = portal === "agent" ? "" : `http://${PORTAL_HOST}`;
   const headers: Record<string, string> =
     portal === "agent" ? {} : { host: PORTAL_HOST };
-  const start = await app.request(
-    `${base}/api/auth/identity/${connectionId}/start`,
-    { method: "GET", headers, redirect: "manual" },
-  );
-  expect(start.status).toBe(302);
-  const state = new URL(start.headers.get("location") ?? "").searchParams.get(
-    "state",
-  );
-  const stateCookie = start.headers
-    .get("set-cookie")
-    ?.match(/(?:^|;\s*)tdk_oidc_state=([^;]+)/u)?.[1];
+  let location: string | null;
+  let stateCookie: string | undefined;
+  if (portal === "agent") {
+    const start = await app.request(
+      `${base}/api/auth/identity/${connectionId}/start`,
+      { method: "GET", headers, redirect: "manual" },
+    );
+    expect(start.status).toBe(302);
+    location = start.headers.get("location");
+    stateCookie = start.headers
+      .get("set-cookie")
+      ?.match(/(?:^|;\s*)tdk_oidc_state=([^;]+)/u)?.[1];
+  } else {
+    // The portal has no direct connection start (P3-R1-02): the typed-domain home-realm flow
+    // begins authorisation server-side through the shared initiator, which this reproduces.
+    const [connection] = await db
+      .select()
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, connectionId));
+    const start = connection
+      ? await createOidcAuthorizationStart({ connection, portal })
+      : null;
+    expect(start).not.toBeNull();
+    location = start?.authorizationUrl ?? null;
+    stateCookie = start?.state;
+  }
+  const state = new URL(location ?? "").searchParams.get("state");
   expect(state).toBeTruthy();
-  return app.request(
-    `${base}/api/auth/identity/${connectionId}/callback?code=single-use-test-code&state=${encodeURIComponent(state ?? "")}`,
+  expect(stateCookie).toBeTruthy();
+  return {
+    app,
+    base,
+    headers,
+    connectionId,
+    state: state ?? "",
+    stateCookie: stateCookie ?? "",
+  };
+}
+
+async function finishSignIn(
+  flow: Awaited<ReturnType<typeof beginSignIn>>,
+  cookie = flow.stateCookie,
+  state = flow.state,
+) {
+  return flow.app.request(
+    `${flow.base}/api/auth/identity/${flow.connectionId}/callback?code=single-use-test-code&state=${encodeURIComponent(state)}`,
     {
       method: "GET",
-      headers: { ...headers, cookie: `tdk_oidc_state=${stateCookie}` },
+      headers: { ...flow.headers, cookie: `tdk_oidc_state=${cookie}` },
       redirect: "manual",
     },
   );
+}
+
+async function signIn(connectionId: string, portal: "agent" | "customer") {
+  const flow = await beginSignIn(connectionId, portal);
+  return finishSignIn(flow);
 }
 
 async function expectJitIdentity(
@@ -317,6 +365,26 @@ async function expectJitIdentity(
     active: true,
     isPlaceholder: false,
     userId: identity?.userId,
+  });
+  const provisioningEvents = await db
+    .select({ payload: schema.outboxTable.payload })
+    .from(schema.outboxTable)
+    .where(eq(schema.outboxTable.kind, "identity.provisioned"));
+  const matchingProvisioningEvents = provisioningEvents.filter(
+    (row) =>
+      (row.payload as { payload?: { personId?: string } }).payload?.personId ===
+      person?.id,
+  );
+  expect(matchingProvisioningEvents).toHaveLength(1);
+  expect(matchingProvisioningEvents[0]?.payload).toMatchObject({
+    kind: "identity.provisioned",
+    scope: portal === "agent" ? { workspaceId: target.scopeId } : {},
+    payload: {
+      identityConnectionId: connectionId,
+      personId: person?.id,
+      via: "jit",
+      organisationId: person?.organisationId,
+    },
   });
   const [account] = await db
     .select()
@@ -381,6 +449,393 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
         .getSetCookie()
         .some((cookie) => cookie.startsWith("__Host-tdk_portal_session=")),
     ).toBe(true);
+  });
+
+  it("refuses the by-id start on the portal host while the callback stays admitted (P3-R1-02)", async () => {
+    await seedCustomer("jit-customer-no-start-connection");
+    const app = createApp().app;
+    const start = await app.request(
+      "/api/auth/identity/jit-customer-no-start-connection/start",
+      { method: "GET", headers: { host: PORTAL_HOST }, redirect: "manual" },
+    );
+    expect([403, 404]).toContain(start.status);
+    expect(start.headers.get("location")).toBeNull();
+    expect(start.headers.get("set-cookie") ?? "").not.toContain(
+      "tdk_oidc_state",
+    );
+    const states = await db
+      .select({ id: schema.verificationTable.id })
+      .from(schema.verificationTable);
+    expect(states).toHaveLength(0);
+
+    // The provider's redirect back is still admitted: a stateless callback fails safely.
+    const callback = await app.request(
+      "/api/auth/identity/jit-customer-no-start-connection/callback?code=x&state=y",
+      { method: "GET", headers: { host: PORTAL_HOST }, redirect: "manual" },
+    );
+    expect(callback.status).toBe(302);
+    expect(callback.headers.get("location")).toBe(
+      "/sign-in?identity_error=sign_in_failed",
+    );
+  });
+
+  it("never routes a customer SSO sign-in to the agent-only two-factor challenge (P3-R1-04)", async () => {
+    const target = await seedCustomer("jit-customer-no-factor-connection");
+    const first = await signIn("jit-customer-no-factor-connection", "customer");
+    expect(first.status).toBe(302);
+    await expectJitIdentity(
+      "jit-customer-no-factor-connection",
+      "customer",
+      target,
+    );
+    const [identity] = await db
+      .select({ personId: schema.externalIdentityTable.personId })
+      .from(schema.externalIdentityTable)
+      .where(
+        eq(
+          schema.externalIdentityTable.identityConnectionId,
+          "jit-customer-no-factor-connection",
+        ),
+      );
+    const [person] = await db
+      .select({ userId: schema.personTable.userId })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.id, identity?.personId ?? ""));
+    expect(person?.userId).toBeTruthy();
+    await db
+      .update(schema.userTable)
+      .set({ twoFactorEnabled: true })
+      .where(eq(schema.userTable.id, person?.userId ?? ""));
+
+    const second = await signIn(
+      "jit-customer-no-factor-connection",
+      "customer",
+    );
+    expect(second.status).toBe(302);
+    expect(second.headers.get("location")).toBe("/");
+    expect(
+      second.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("__Host-tdk_portal_session=")),
+    ).toBe(true);
+  });
+
+  it("binds the customer organisation snapshot to single-use state and denies a changed connection scope", async () => {
+    const connectionId = "jit-customer-scope-snapshot-connection";
+    const target = await seedCustomer(connectionId);
+    const otherOrganisationId = "jit-customer-scope-changed-org";
+    await db.insert(schema.organisationTable).values({
+      id: otherOrganisationId,
+      key: "jit-customer-scope-changed-org",
+      name: "JIT Customer Changed Scope",
+      isInternal: false,
+      portalAccess: true,
+    });
+    const { app, state, stateCookie } = await beginSignIn(
+      connectionId,
+      "customer",
+    );
+    const [flow] = await db
+      .select()
+      .from(schema.verificationTable)
+      .where(
+        eq(
+          schema.verificationTable.identifier,
+          `oidc-state:${createHash("sha256")
+            .update(state ?? "", "utf8")
+            .digest("hex")}`,
+        ),
+      );
+    expect(JSON.parse(flow?.value ?? "{}")).toMatchObject({
+      connectionId,
+      portal: "customer",
+      organisationId: target.scopeId,
+    });
+
+    await db
+      .update(schema.identityConnectionTable)
+      .set({ organisationId: otherOrganisationId })
+      .where(eq(schema.identityConnectionTable.id, connectionId));
+    const callback = await app.request(
+      `/api/auth/identity/${connectionId}/callback?code=single-use-test-code&state=${encodeURIComponent(state ?? "")}`,
+      {
+        method: "GET",
+        headers: {
+          host: PORTAL_HOST,
+          cookie: `tdk_oidc_state=${stateCookie}`,
+        },
+        redirect: "manual",
+      },
+    );
+    expect(callback.headers.get("location")).toBe(
+      "/sign-in?identity_error=sign_in_failed",
+    );
+    expect(
+      await db.query.externalIdentityTable.findFirst({
+        where: eq(
+          schema.externalIdentityTable.identityConnectionId,
+          connectionId,
+        ),
+      }),
+    ).toBeUndefined();
+    const [denial] = await db
+      .select()
+      .from(schema.provisioningEventTable)
+      .where(
+        and(
+          eq(schema.provisioningEventTable.identityConnectionId, connectionId),
+          eq(schema.provisioningEventTable.kind, "request.denied"),
+        ),
+      );
+    expect(denial?.detail).toEqual({ reason: "connection_unavailable" });
+  });
+
+  it("records a bounded auth failure when an ID token is invalid", async () => {
+    await seedCustomer("jit-customer-invalid-token-connection");
+    vi.mocked(validateEntraIdToken).mockReturnValue({
+      ok: false,
+      reason: "nonce_mismatch",
+    });
+    const response = await signIn(
+      "jit-customer-invalid-token-connection",
+      "customer",
+    );
+    expect(response.headers.get("location")).toBe(
+      "/sign-in?identity_error=sign_in_failed",
+    );
+    const [failure] = await db
+      .select()
+      .from(schema.provisioningEventTable)
+      .where(
+        and(
+          eq(
+            schema.provisioningEventTable.identityConnectionId,
+            "jit-customer-invalid-token-connection",
+          ),
+          eq(schema.provisioningEventTable.kind, "auth.failed"),
+        ),
+      );
+    expect(failure?.detail).toEqual({ reason: "token_invalid" });
+  });
+
+  it("audits replayed, missing and browser-mismatched callback state generically", async () => {
+    await seedCustomer("jit-customer-replayed-state", "replayed-state");
+    const replayed = await beginSignIn(
+      "jit-customer-replayed-state",
+      "customer",
+    );
+    expect((await finishSignIn(replayed)).headers.get("location")).toBe("/");
+    expect((await finishSignIn(replayed)).headers.get("location")).toBe(
+      "/sign-in?identity_error=sign_in_failed",
+    );
+
+    await seedCustomer("jit-customer-mismatched-state", "mismatched-state");
+    const mismatched = await beginSignIn(
+      "jit-customer-mismatched-state",
+      "customer",
+    );
+    expect(
+      (await finishSignIn(mismatched, "wrong-browser-cookie")).headers.get(
+        "location",
+      ),
+    ).toBe("/sign-in?identity_error=sign_in_failed");
+
+    await seedCustomer("jit-customer-missing-state", "missing-state");
+    const missing = await beginSignIn("jit-customer-missing-state", "customer");
+    const missingCallback = await missing.app.request(
+      `${missing.base}/api/auth/identity/${missing.connectionId}/callback`,
+      {
+        method: "GET",
+        headers: {
+          ...missing.headers,
+          cookie: `tdk_oidc_state=${missing.stateCookie}`,
+        },
+        redirect: "manual",
+      },
+    );
+    expect(missingCallback.headers.get("location")).toBe(
+      "/sign-in?identity_error=sign_in_failed",
+    );
+    const failures = await db
+      .select({
+        identityConnectionId:
+          schema.provisioningEventTable.identityConnectionId,
+        kind: schema.provisioningEventTable.kind,
+        detail: schema.provisioningEventTable.detail,
+      })
+      .from(schema.provisioningEventTable)
+      .where(
+        and(
+          isNull(schema.provisioningEventTable.identityConnectionId),
+          eq(schema.provisioningEventTable.kind, "auth.failed"),
+        ),
+      );
+    expect(failures).toHaveLength(3);
+    expect(
+      failures.every((failure) => failure.identityConnectionId === null),
+    ).toBe(true);
+    expect(failures.map((failure) => failure.detail)).toEqual(
+      expect.arrayContaining([
+        { reason: "state_invalid" },
+        { reason: "state_invalid" },
+        { reason: "callback_invalid" },
+      ]),
+    );
+  });
+
+  it("audits expired state and a disabled selected connection", async () => {
+    await seedCustomer("jit-customer-expired-state", "expired-state");
+    const expired = await beginSignIn("jit-customer-expired-state", "customer");
+    const identifier = `oidc-state:${createHash("sha256").update(expired.state, "utf8").digest("hex")}`;
+    await db
+      .update(schema.verificationTable)
+      .set({ expiresAt: new Date(Date.now() - 1_000) })
+      .where(eq(schema.verificationTable.identifier, identifier));
+    expect((await finishSignIn(expired)).headers.get("location")).toBe(
+      "/sign-in?identity_error=sign_in_failed",
+    );
+
+    await seedCustomer(
+      "jit-customer-disabled-connection",
+      "disabled-connection",
+    );
+    const disabled = await beginSignIn(
+      "jit-customer-disabled-connection",
+      "customer",
+    );
+    await db
+      .update(schema.identityConnectionTable)
+      .set({ enabled: false })
+      .where(
+        eq(
+          schema.identityConnectionTable.id,
+          "jit-customer-disabled-connection",
+        ),
+      );
+    expect((await finishSignIn(disabled)).headers.get("location")).toBe(
+      "/sign-in?identity_error=sign_in_failed",
+    );
+    const events = await db
+      .select({
+        identityConnectionId:
+          schema.provisioningEventTable.identityConnectionId,
+        kind: schema.provisioningEventTable.kind,
+        detail: schema.provisioningEventTable.detail,
+      })
+      .from(schema.provisioningEventTable)
+      .where(
+        and(
+          isNull(schema.provisioningEventTable.identityConnectionId),
+          eq(schema.provisioningEventTable.kind, "auth.failed"),
+        ),
+      );
+    const disabledEvents = await db
+      .select({
+        identityConnectionId:
+          schema.provisioningEventTable.identityConnectionId,
+        kind: schema.provisioningEventTable.kind,
+        detail: schema.provisioningEventTable.detail,
+      })
+      .from(schema.provisioningEventTable)
+      .where(
+        eq(
+          schema.provisioningEventTable.identityConnectionId,
+          "jit-customer-disabled-connection",
+        ),
+      );
+    expect(events).toHaveLength(1);
+    expect(events.every((event) => event.identityConnectionId === null)).toBe(
+      true,
+    );
+    expect(events.map((event) => event.detail)).toEqual([
+      { reason: "state_invalid" },
+    ]);
+    expect(disabledEvents).toEqual([
+      {
+        identityConnectionId: "jit-customer-disabled-connection",
+        kind: "request.denied",
+        detail: { reason: "connection_unavailable" },
+      },
+    ]);
+  });
+
+  it("retains every unattributable OIDC callback failure beyond ten attempts", async () => {
+    await seedCustomer(
+      "jit-customer-unattributed-budget",
+      "unattributed-budget",
+    );
+    const attempt = await beginSignIn(
+      "jit-customer-unattributed-budget",
+      "customer",
+    );
+    for (let index = 0; index < 12; index += 1) {
+      const response = await attempt.app.request(
+        `${attempt.base}/api/auth/identity/${attempt.connectionId}/callback?code=code&state=untrusted-${index}`,
+        {
+          method: "GET",
+          headers: {
+            ...attempt.headers,
+            cookie: `tdk_oidc_state=${attempt.stateCookie}`,
+          },
+          redirect: "manual",
+        },
+      );
+      expect(response.headers.get("location")).toBe(
+        "/sign-in?identity_error=sign_in_failed",
+      );
+    }
+    const events = await db
+      .select({
+        identityConnectionId:
+          schema.provisioningEventTable.identityConnectionId,
+        detail: schema.provisioningEventTable.detail,
+      })
+      .from(schema.provisioningEventTable)
+      .where(
+        and(
+          isNull(schema.provisioningEventTable.identityConnectionId),
+          eq(schema.provisioningEventTable.kind, "auth.failed"),
+        ),
+      );
+    expect(events).toHaveLength(12);
+    expect(
+      events.every(
+        (event) =>
+          (event.detail as { reason?: string } | null)?.reason ===
+          "state_invalid",
+      ),
+    ).toBe(true);
+  });
+
+  it("records domain ownership collisions as bounded request denials", async () => {
+    await seedCustomer("jit-customer-domain-collision", "domain-collision");
+    await seedCustomer("jit-customer-domain-owner", "domain-owner");
+    await db
+      .update(schema.identityConnectionTable)
+      .set({ domainBindings: ["example.test"] })
+      .where(
+        inArray(schema.identityConnectionTable.id, [
+          "jit-customer-domain-collision",
+          "jit-customer-domain-owner",
+        ]),
+      );
+    const response = await signIn("jit-customer-domain-collision", "customer");
+    expect(response.headers.get("location")).toBe(
+      "/sign-in?identity_error=sign_in_failed",
+    );
+    const [denial] = await db
+      .select()
+      .from(schema.provisioningEventTable)
+      .where(
+        and(
+          eq(
+            schema.provisioningEventTable.identityConnectionId,
+            "jit-customer-domain-collision",
+          ),
+          eq(schema.provisioningEventTable.kind, "request.denied"),
+        ),
+      );
+    expect(denial?.detail).toEqual({ reason: "identity_denied" });
   });
 
   it("refuses JIT customer admission when its configured customer role is tampered", async () => {
@@ -914,6 +1369,17 @@ describe("first OIDC login of a SCIM-provisioned identity (IP-19, IP-30)", () =>
         .from(schema.accountTable)
         .where(eq(schema.accountTable.userId, user?.id ?? "")),
     ).toHaveLength(1);
+    const provisioningEvents = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "identity.provisioned"));
+    expect(
+      provisioningEvents.filter(
+        (row) =>
+          (row.payload as { payload?: { personId?: string } }).payload
+            ?.personId === person.id,
+      ),
+    ).toHaveLength(0);
   });
 
   it("does not link or claim anything when the same subject exists only on a different connection", async () => {
@@ -1026,6 +1492,17 @@ describe("first OIDC login of a SCIM-provisioned identity (IP-19, IP-30)", () =>
     const stillRefused = await signIn("scim-inactive-connection", "agent");
     expect(stillRefused.headers.get("location")).toContain("identity_error");
     expect(await db.select().from(schema.userTable)).toHaveLength(1);
+    const provisioningEvents = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "identity.provisioned"));
+    expect(
+      provisioningEvents.filter(
+        (row) =>
+          (row.payload as { payload?: { personId?: string } }).payload
+            ?.personId === deprovisioned.person.id,
+      ),
+    ).toHaveLength(0);
   });
 
   it("links a SCIM-provisioned customer identity through the customer portal", async () => {

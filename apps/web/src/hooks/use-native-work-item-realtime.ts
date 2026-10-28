@@ -1,7 +1,8 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { type Query, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { getApiUrl, toWebSocketBase } from "@/fetchers/get-api-url";
 import { authClient } from "@/lib/auth-client";
+import { HttpError } from "@/lib/http-error";
 
 type NativeFrame = {
   type?: string;
@@ -18,6 +19,26 @@ export type WorkItemRealtimeStatus =
   | "available"
   | "unavailable"
   | "idle";
+
+/** The server's close for a person's connection limit (native-work-item-realtime.ts). */
+const CONNECTION_LIMIT_CLOSE_CODE = 1008;
+const CONNECTION_LIMIT_CLOSE_REASON = "connection limit";
+
+/**
+ * Whether a connection (re)start should refresh this work-item query. A request the server
+ * refused as invalid, with no data to keep (a 422 for a filter field that is not available, a
+ * 400 for a malformed one), is refused the same way again, so refetching it would only put the
+ * screen's error state back to loading. Every other query is refreshed to catch changes missed
+ * while disconnected, including a denied or missing read (403, 404), which can change.
+ */
+function refreshOnConnect(query: Query) {
+  const { error, data } = query.state;
+  return !(
+    data === undefined &&
+    error instanceof HttpError &&
+    (error.status === 400 || error.status === 422)
+  );
+}
 
 function realtimeUrl() {
   return toWebSocketBase(getApiUrl("ws"));
@@ -167,7 +188,10 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
             nextSocket.send(JSON.stringify({ type: "ping" }));
           }
         }, 30_000);
-        void queryClient.invalidateQueries({ queryKey: ["work-items"] });
+        void queryClient.invalidateQueries({
+          queryKey: ["work-items"],
+          predicate: refreshOnConnect,
+        });
       };
 
       nextSocket.onmessage = (event) => {
@@ -189,7 +213,10 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         if (frame.type === "subscription_denied") {
           hasOutage = true;
           setStatus("unavailable");
-          void queryClient.invalidateQueries({ queryKey: ["work-items"] });
+          void queryClient.invalidateQueries({
+            queryKey: ["work-items"],
+            predicate: refreshOnConnect,
+          });
           return;
         }
         if (!frame.eventId) return;
@@ -219,13 +246,21 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         hasOutage = true;
         setStatus("unavailable");
       };
-      nextSocket.onclose = () => {
+      nextSocket.onclose = (event) => {
         if (socketRef.current !== nextSocket) return;
         stopPing();
         socketRef.current = null;
         if (isDisposed) return;
         hasOutage = true;
         setStatus("unavailable");
+        // The per-person connection limit is terminal for this tab, as for the legacy project
+        // socket (#751): the server accepts each upgrade and closes it again, so reconnecting
+        // would only repeat that while the other tabs stay open. The page keeps polling.
+        if (
+          event?.code === CONNECTION_LIMIT_CLOSE_CODE &&
+          event?.reason === CONNECTION_LIMIT_CLOSE_REASON
+        )
+          return;
         const ceiling = Math.min(30_000, 1_000 * 2 ** retriesRef.current);
         retriesRef.current += 1;
         const delay = Math.floor(ceiling * (0.5 + Math.random() * 0.5));

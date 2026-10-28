@@ -1,4 +1,7 @@
-export type { NotificationEmailSendOptions } from "./send-email";
+export type {
+  NotificationEmailSendOptions,
+  WorkspaceInvitationSendOptions,
+} from "./send-email";
 export {
   sendMagicLinkEmail,
   sendNotificationEmail,
@@ -8,3 +11,16 @@ export {
   sendWorkspaceInvitationEmail,
 } from "./send-email";
 export { isSmtpConfigured } from "./smtp-config";
+export type {
+  RuntimeSmtpResolver,
+  SmtpConfiguration,
+  SmtpSocket,
+} from "./smtp-runtime";
+export {
+  bootstrapSmtpConfiguration,
+  executeSmtp,
+  openSmtpSocket,
+  resolveSmtpConfiguration,
+  SmtpAttemptError,
+  setRuntimeSmtpResolver,
+} from "./smtp-runtime";

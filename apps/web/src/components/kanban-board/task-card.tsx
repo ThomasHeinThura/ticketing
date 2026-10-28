@@ -2,6 +2,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   Button,
+  Fieldset,
+  FieldsetLegend,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -16,7 +18,7 @@ import {
   GitPullRequest,
   SquareCheck,
 } from "lucide-react";
-import { type CSSProperties, memo } from "react";
+import { type CSSProperties, memo, type ReactNode, useId } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { cn } from "@/lib/cn";
@@ -34,6 +36,8 @@ export type TaskCardWorkspaceUser = NonNullable<
 
 export type TaskCardProps = {
   task: Task;
+  /** DnD-only id when one task card appears in more than one board group. */
+  sortableId?: string;
   disableDragDrop?: boolean;
   workspaceId?: string;
   assignee?: TaskCardWorkspaceUser;
@@ -45,6 +49,13 @@ export type TaskCardProps = {
   isFocused: boolean;
   onOpenTask: (taskId: string) => void;
   t: TFunction;
+  taskHref?: string;
+  /** Route-owned sheet opening while modifier clicks retain the real href. */
+  openTaskOnLinkClick?: boolean;
+  selectionEnabled?: boolean;
+  onToggleSelection?: () => void;
+  /** Extra metadata-row badges (`SLA-18`'s compact SLA badge). */
+  badges?: ReactNode;
 };
 
 export type TaskCardDisplayPreferences = {
@@ -61,8 +72,71 @@ const EMPTY_PULL_REQUESTS: NonNullable<Task["externalLinks"]> = [];
 const DEFAULT_DRAG_TRANSITION =
   "transform 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94)";
 
+const deferredKeyboardSensorEvents = new WeakSet<KeyboardEvent>();
+
+export function isDeferredKeyboardSensorEvent(event: KeyboardEvent): boolean {
+  return deferredKeyboardSensorEvents.has(event);
+}
+
+/**
+ * dnd-kit attaches KeyboardSensor's document listener on the task after Space
+ * activates it. Replay an unhandled movement/end/cancel key only while this
+ * same card remains connected and marked active; handled, stale, and replayed
+ * events are ignored.
+ */
+export function deferKeyboardSensorKey(
+  card: HTMLElement,
+  event: KeyboardEvent,
+): void {
+  if (
+    isDeferredKeyboardSensorEvent(event) ||
+    ![
+      "Space",
+      "Enter",
+      "Escape",
+      "ArrowUp",
+      "ArrowDown",
+      "ArrowLeft",
+      "ArrowRight",
+    ].includes(event.code)
+  )
+    return;
+
+  window.setTimeout(() => {
+    if (
+      event.defaultPrevented ||
+      !card.isConnected ||
+      card.dataset.taskDragging !== "true"
+    )
+      return;
+
+    const deferredEvent = new KeyboardEvent("keydown", {
+      key: event.key,
+      code: event.code,
+      bubbles: true,
+      cancelable: true,
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+      repeat: event.repeat,
+    });
+    deferredKeyboardSensorEvents.add(deferredEvent);
+    card.dispatchEvent(deferredEvent);
+  });
+}
+
+/** @deprecated Use deferKeyboardSensorKey; retained for existing callers/tests. */
+export function deferKeyboardSensorEndKey(
+  card: HTMLElement,
+  event: KeyboardEvent,
+): void {
+  deferKeyboardSensorKey(card, event);
+}
+
 function TaskCard({
   task,
+  sortableId,
   disableDragDrop = false,
   workspaceId,
   assignee,
@@ -73,6 +147,11 @@ function TaskCard({
   isSelected,
   isFocused,
   onOpenTask,
+  taskHref,
+  openTaskOnLinkClick = false,
+  selectionEnabled = true,
+  onToggleSelection,
+  badges,
   t,
 }: TaskCardProps) {
   const {
@@ -82,7 +161,23 @@ function TaskCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id, disabled: disableDragDrop });
+  } = useSortable({ id: sortableId ?? task.id, disabled: disableDragDrop });
+  // Sortable's disabled attributes describe a disabled drag activator, not a disabled task.
+  const dragListeners = disableDragDrop ? undefined : listeners;
+  const {
+    role: _sortableRole,
+    "aria-pressed": _sortablePressed,
+    "aria-describedby": sortableDescription,
+    ...sortableAttributes
+  } = attributes;
+  const cardAttributes = disableDragDrop ? { tabIndex: 0 } : sortableAttributes;
+  const keyboardHintId = useId();
+  const describedBy = [
+    disableDragDrop ? undefined : sortableDescription,
+    keyboardHintId,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const {
     showAssignees,
     showPriority,
@@ -92,9 +187,11 @@ function TaskCard({
   } = displayPreferences;
   const taskItemStats = !displayPreferences.showTaskItemCounts
     ? null
-    : task.description
-      ? getTaskItemStats(task.description)
-      : EMPTY_TASK_ITEM_STATS;
+    : task.taskItemStats !== undefined
+      ? task.taskItemStats
+      : task.description
+        ? getTaskItemStats(task.description)
+        : EMPTY_TASK_ITEM_STATS;
   const pullRequests = task.externalLinks?.length
     ? task.externalLinks.filter((link) => link.resourceType === "pull_request")
     : EMPTY_PULL_REQUESTS;
@@ -145,15 +242,27 @@ function TaskCard({
     showPriority ||
     Boolean(taskItemStats?.total) ||
     Boolean(dueDateStatus) ||
+    Boolean(badges) ||
     pullRequests.length > 0;
 
   function handleTaskCardClick(
-    e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>,
+    e: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>,
   ) {
-    if (!workspaceId) return;
+    if (!workspaceId && !taskHref) return;
+    // A click React bubbled up from portalled content (a popover or menu opened from the
+    // card) is not a click on the card.
+    if (
+      e.target instanceof Node &&
+      e.currentTarget instanceof Node &&
+      !e.currentTarget.contains(e.target)
+    )
+      return;
 
     if ((e as React.MouseEvent).metaKey || (e as React.KeyboardEvent).ctrlKey) {
-      useBulkSelectionStore.getState().toggleSelection(task.id);
+      if (selectionEnabled) {
+        if (onToggleSelection) onToggleSelection();
+        else useBulkSelectionStore.getState().toggleSelection(task.id);
+      }
       return;
     }
 
@@ -162,31 +271,56 @@ function TaskCard({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
-      useBulkSelectionStore.getState().toggleSelection(task.id);
+      if (selectionEnabled) {
+        if (onToggleSelection) onToggleSelection();
+        else useBulkSelectionStore.getState().toggleSelection(task.id);
+      }
     }
   };
 
-  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    listeners?.onKeyDown?.(e);
+  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    // Native links/actions inside the card keep their own keyboard activation.
+    if (e.target !== e.currentTarget) return;
+    if (isDeferredKeyboardSensorEvent(e.nativeEvent)) return;
+    dragListeners?.onKeyDown?.(e);
     if (e.key === "Enter") {
-      handleTaskCardClick(e);
+      // Enter opens an idle card. While dnd-kit owns an active keyboard drag,
+      // its sensor uses Enter to drop the card.
+      if (!isDragging) {
+        handleTaskCardClick(e);
+      } else {
+        deferKeyboardSensorEndKey(e.currentTarget, e.nativeEvent);
+      }
     } else if (e.key === "Escape") {
-      handleKeyDown(e);
+      if (!isDragging) {
+        handleKeyDown(e);
+      } else {
+        deferKeyboardSensorEndKey(e.currentTarget, e.nativeEvent);
+      }
+    } else if (e.code === "Space" && isDragging) {
+      deferKeyboardSensorEndKey(e.currentTarget, e.nativeEvent);
+    } else if (
+      isDragging &&
+      ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)
+    ) {
+      deferKeyboardSensorKey(e.currentTarget, e.nativeEvent);
     } else if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
       e.preventDefault();
       onContextMenuTask(task.id);
+    } else if (disableDragDrop && e.key === " ") {
+      e.preventDefault();
+      handleTaskCardClick(e);
     }
   };
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: dnd-kit spreads the button role and tab index from the sortable attributes
-    <div
+    <Fieldset
       data-task-id={task.id}
       ref={setNodeRef}
       style={style}
-      {...listeners}
+      {...dragListeners}
       onClick={handleTaskCardClick}
-      className={`kanban-board-task-card group relative rounded-lg border bg-background p-3 shadow-xs/5 [contain:layout_style] transition-[background-color,border-color,box-shadow,scale] duration-150 ease-out active:scale-[0.98] ${
+      className={`kanban-board-task-card group relative m-0 block w-full min-w-0 max-w-none gap-0 rounded-lg border bg-background p-3 shadow-xs/5 [contain:layout_style] transition-[background-color,border-color,box-shadow,scale] duration-150 ease-out active:scale-[0.98] ${
         disableDragDrop ? "cursor-default" : "cursor-move"
       } ${
         isDragging
@@ -199,9 +333,24 @@ function TaskCard({
       } ${isFocused ? "ring-2 ring-inset ring-ring/50" : ""}`}
       data-task-dragging={isDragging ? "true" : undefined}
       data-task-selected={isSelected ? "true" : undefined}
-      {...attributes}
+      {...cardAttributes}
+      tabIndex={0}
+      aria-describedby={describedBy}
       onKeyDown={handleCardKeyDown}
     >
+      <FieldsetLegend className="sr-only">
+        {t("common:a11y.taskContainerLabel", {
+          key: `${projectSlug}-${task.number}`,
+          title: task.title,
+        })}
+      </FieldsetLegend>
+      <span id={keyboardHintId} className="sr-only">
+        {t(
+          disableDragDrop
+            ? "common:a11y.taskOpenHint"
+            : "common:a11y.taskOpenAndDragHint",
+        )}
+      </span>
       {showTaskNumbers && (
         <div className="mb-2 text-[10px] font-mono text-muted-foreground">
           {projectSlug}-{task.number}
@@ -210,14 +359,14 @@ function TaskCard({
 
       {showAssignees && (
         <div className="absolute top-3 right-3">
-          {task.userId ? (
+          {task.userId || task.assigneeId ? (
             <Avatar className="h-5 w-5">
               <AvatarImage
                 src={assignee?.user?.image ?? ""}
-                alt={assignee?.user?.name || ""}
+                alt={assignee?.user?.name ?? task.assigneeName ?? ""}
               />
               <AvatarFallback className="text-xs font-medium border border-border/30">
-                {getInitials(assignee?.user?.name)}
+                {getInitials(assignee?.user?.name ?? task.assigneeName)}
               </AvatarFallback>
             </Avatar>
           ) : (
@@ -234,7 +383,30 @@ function TaskCard({
       )}
 
       <div className="mb-2.5 pr-6 overflow-hidden break-words leading-5 font-medium text-foreground text-[15px] line-clamp-3 hyphens-auto">
-        {task.title}
+        {taskHref ? (
+          <a
+            href={taskHref}
+            aria-label={`${projectSlug}-${task.number} ${task.title}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (
+                openTaskOnLinkClick &&
+                event.button === 0 &&
+                !event.metaKey &&
+                !event.ctrlKey &&
+                !event.shiftKey &&
+                !event.altKey
+              ) {
+                event.preventDefault();
+                onOpenTask(task.id);
+              }
+            }}
+          >
+            {task.title}
+          </a>
+        ) : (
+          task.title
+        )}
       </div>
 
       {showLabels && task.labels && task.labels.length > 0 && (
@@ -281,6 +453,8 @@ function TaskCard({
               <span>{format(dueDate, "MMM d")}</span>
             </div>
           )}
+
+          {badges}
 
           {pullRequests.length === 1 && (
             <HoverCard openDelay={200} closeDelay={100}>
@@ -392,7 +566,7 @@ function TaskCard({
             })()}
         </div>
       )}
-    </div>
+    </Fieldset>
   );
 }
 

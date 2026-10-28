@@ -1,0 +1,399 @@
+{
+	"generatedAt": "2026-10-24T20:52:34.237Z",
+	"environment": "HTTPS ticketing.localhost against the isolated persisted audit copy; Chromium host resolver mapped ticketing.localhost and portal.localhost to 127.0.0.1; ignoreHTTPSErrors enabled for the private certificate.",
+	"accountState": "private admin-state.json loaded as Playwright storageState; contents not logged or copied.",
+	"scope": "P4 persisted settings journeys only. No mock data, API seeding, source changes, builds or generators.",
+	"results": [
+		{
+			"area": "teams create, capacity, roster lead, reload",
+			"status": "pass",
+			"detail": "focus=true; persisted=true"
+		},
+		{
+			"area": "second CAB team returns 409",
+			"status": "pass",
+			"detail": "409 observed; error shown"
+		},
+		{
+			"area": "custom field section and field reload",
+			"status": "pass"
+		},
+		{
+			"area": "automation create disabled and reload",
+			"status": "pass"
+		},
+		{
+			"area": "API key create, copy once without reading, revoke",
+			"status": "pass"
+		},
+		{
+			"area": "role creation with fresh TOTP and reload",
+			"status": "pass"
+		},
+		{
+			"area": "visual teams-list light mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-teams-list-light-mobile.png"
+		},
+		{
+			"area": "visual custom-fields light mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-custom-fields-light-mobile.png"
+		},
+		{
+			"area": "visual automations light mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-automations-light-mobile.png"
+		},
+		{
+			"area": "visual developer-settings light mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-developer-settings-light-mobile.png"
+		},
+		{
+			"area": "visual roles-list light mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-roles-list-light-mobile.png"
+		},
+		{
+			"area": "visual webhooks-list light mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-webhooks-list-light-mobile.png"
+		},
+		{
+			"area": "visual god-mode-general light mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-general-light-mobile.png"
+		},
+		{
+			"area": "visual god-mode-features light mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-features-light-mobile.png"
+		},
+		{
+			"area": "visual teams-list dark mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-teams-list-dark-mobile.png"
+		},
+		{
+			"area": "visual custom-fields dark mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-custom-fields-dark-mobile.png"
+		},
+		{
+			"area": "visual automations dark mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-automations-dark-mobile.png"
+		},
+		{
+			"area": "visual developer-settings dark mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-developer-settings-dark-mobile.png"
+		},
+		{
+			"area": "visual roles-list dark mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-roles-list-dark-mobile.png"
+		},
+		{
+			"area": "visual webhooks-list dark mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-webhooks-list-dark-mobile.png"
+		},
+		{
+			"area": "visual god-mode-general dark mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-general-dark-mobile.png"
+		},
+		{
+			"area": "visual god-mode-features dark mobile",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-features-dark-mobile.png"
+		},
+		{
+			"area": "webhook creation with fresh owner TOTP and reload",
+			"status": "blocked",
+			"detail": "Private SIT step-up challenge returned HTTP 429; no create request or persisted webhook row; no automatic retry."
+		},
+		{
+			"area": "visual teams-list light desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-teams-list-light-desktop.png"
+		},
+		{
+			"area": "visual custom-fields light desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-custom-fields-light-desktop.png"
+		},
+		{
+			"area": "visual automations light desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-automations-light-desktop.png"
+		},
+		{
+			"area": "visual developer-settings light desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-developer-settings-light-desktop.png"
+		},
+		{
+			"area": "visual roles-list light desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-roles-list-light-desktop.png"
+		},
+		{
+			"area": "visual webhooks-list light desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-webhooks-list-light-desktop.png"
+		},
+		{
+			"area": "visual god-mode-general light desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-general-light-desktop.png"
+		},
+		{
+			"area": "visual god-mode-features light desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-features-light-desktop.png"
+		},
+		{
+			"area": "visual teams-list light tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-teams-list-light-tablet.png"
+		},
+		{
+			"area": "visual custom-fields light tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-custom-fields-light-tablet.png"
+		},
+		{
+			"area": "visual automations light tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-automations-light-tablet.png"
+		},
+		{
+			"area": "visual developer-settings light tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-developer-settings-light-tablet.png"
+		},
+		{
+			"area": "visual roles-list light tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-roles-list-light-tablet.png"
+		},
+		{
+			"area": "visual webhooks-list light tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-webhooks-list-light-tablet.png"
+		},
+		{
+			"area": "visual god-mode-general light tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-general-light-tablet.png"
+		},
+		{
+			"area": "visual god-mode-features light tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-features-light-tablet.png"
+		},
+		{
+			"area": "visual teams-list dark desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-teams-list-dark-desktop.png"
+		},
+		{
+			"area": "visual custom-fields dark desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-custom-fields-dark-desktop.png"
+		},
+		{
+			"area": "visual automations dark desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-automations-dark-desktop.png"
+		},
+		{
+			"area": "visual developer-settings dark desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-developer-settings-dark-desktop.png"
+		},
+		{
+			"area": "visual roles-list dark desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-roles-list-dark-desktop.png"
+		},
+		{
+			"area": "visual webhooks-list dark desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-webhooks-list-dark-desktop.png"
+		},
+		{
+			"area": "visual god-mode-general dark desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-general-dark-desktop.png"
+		},
+		{
+			"area": "visual god-mode-features dark desktop",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-features-dark-desktop.png"
+		},
+		{
+			"area": "visual teams-list dark tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-teams-list-dark-tablet.png"
+		},
+		{
+			"area": "visual custom-fields dark tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-custom-fields-dark-tablet.png"
+		},
+		{
+			"area": "visual automations dark tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-automations-dark-tablet.png"
+		},
+		{
+			"area": "visual developer-settings dark tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-developer-settings-dark-tablet.png"
+		},
+		{
+			"area": "visual roles-list dark tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-roles-list-dark-tablet.png"
+		},
+		{
+			"area": "visual webhooks-list dark tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-webhooks-list-dark-tablet.png"
+		},
+		{
+			"area": "visual god-mode-general dark tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-general-dark-tablet.png"
+		},
+		{
+			"area": "visual god-mode-features dark tablet",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-p4-settings-god-mode-features-dark-tablet.png"
+		}
+	],
+	"diagnostics": {
+		"pageErrors": [],
+		"httpFailures": [
+			{
+				"path": "/api/teams/fuxiuu72j9370bhxqo0cghn4",
+				"status": 409
+			},
+			{
+				"path": "/api/me/step-up/challenges",
+				"status": 429
+			},
+			{
+				"path": "/api/me/step-up/challenges",
+				"status": 429
+			}
+		]
+	},
+	"limitations": [
+		"SMTP, existing feature flags/general settings and existing user records were inspected only and left unchanged.",
+		"Workspace service key lifecycle, MCP actions, and related items marked not testable in docs/screen-test-cases.md were not exercised.",
+		"Screenshots provide responsive/theme evidence for the listed settings routes; no full Kaneo visual parity review is claimed.",
+		"Webhook outbound test delivery, failure/retry and replay were not sent to an external endpoint.",
+		"Webhook creation remained blocked after the private SIT step-up challenge returned HTTP 429; no create request was sent. Outbound test delivery, failure/retry and replay were not sent to an external endpoint."
+	]
+}

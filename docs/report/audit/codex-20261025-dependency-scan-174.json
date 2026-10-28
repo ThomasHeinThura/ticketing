@@ -1,0 +1,21 @@
+{
+	"scope": "Git-eligible source/lockfiles checkpoint174",
+	"counts": {
+		"LOW": 1
+	},
+	"fixable": {
+		"LOW": 1
+	},
+	"findings": [
+		{
+			"id": "CVE-2026-103923",
+			"package": "katex",
+			"version": "0.16.47",
+			"fixed": "0.18.2",
+			"severity": "LOW"
+		}
+	],
+	"triage": "Assessed open LOW; existing strict Mermaid configuration and sanitized SVG reduce exposure, but vulnerable transitive package remains. No waiver or clean scan claimed.",
+	"assessmentEvidence": "docs/report/audit/codex-20261025-scanners.json#dependencyScan",
+	"vendorAdvisory": "https://github.com/KaTeX/KaTeX/security/advisories/GHSA-238p-pmpm-9mq7"
+}

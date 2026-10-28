@@ -1,6 +1,8 @@
 import { client } from "@taskdesk/libs";
 import type { InferRequestType, InferResponseType } from "hono/client";
+import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import { HttpError } from "@/lib/http-error";
+import { recordServerDate } from "@/lib/server-clock";
 
 export type ServiceCalendar = InferResponseType<
   (typeof client)["service-calendars"]["$get"],
@@ -14,6 +16,8 @@ export type HolidayImportResponse = {
   calendar: ServiceCalendar;
   importedCount: number;
   duplicateCount: number;
+  /** CAL-13: open work items whose deadlines a past holiday in this import moves later. */
+  affectedWorkItemCount: number;
 };
 export type ServiceCalendarPreview = InferResponseType<
   (typeof client)["service-calendars"][":id"]["preview"]["$get"],
@@ -23,15 +27,14 @@ export type ServiceCalendarUsage = InferResponseType<
   (typeof client)["service-calendars"][":id"]["usage"]["$get"],
   200
 >;
-export type ServiceCalendarDeletionRequest = InferResponseType<
-  (typeof client)["service-calendars"][":id"]["$delete"],
-  202
->;
+/** The pending action the requester approves in place; see `readPendingDeletion`. */
+export type ServiceCalendarDeletionRequest = { pendingActionId: string };
 export type ServiceCalendarInput = Omit<
   ServiceCalendar,
-  "id" | "workspaceId" | "createdAt" | "updatedAt" | "version"
+  "id" | "workspaceId" | "createdAt" | "updatedAt" | "version" | "key"
 >;
 export type CreateServiceCalendarRequest = ServiceCalendarInput & {
+  key: string;
   workspaceId: string;
 };
 export type UpdateServiceCalendarRequest = {
@@ -63,6 +66,7 @@ export async function getServiceCalendars(
   const response = await client["service-calendars"].$get({
     query: { workspaceId, cursor, limit: "50" },
   });
+  recordServerDate(response);
 
   if (!response.ok) {
     throw new HttpError(response.status, "Failed to load service calendars");
@@ -75,6 +79,7 @@ export async function getServiceCalendar(id: string): Promise<ServiceCalendar> {
   const response = await client["service-calendars"][":id"].$get({
     param: { id },
   });
+  recordServerDate(response);
 
   if (!response.ok) {
     throw new HttpError(response.status, "Failed to load service calendar");
@@ -128,21 +133,7 @@ export async function requestServiceCalendarDeletion(
     param: { id },
   });
 
-  if (response.status === 202) {
-    return (await response.json()) as ServiceCalendarDeletionRequest;
-  }
-  const detail = await response.text();
-  let message = detail;
-  try {
-    const problem = JSON.parse(detail) as { message?: unknown };
-    if (typeof problem.message === "string") message = problem.message;
-  } catch {
-    // Keep a plain-text response when the server did not return JSON.
-  }
-  throw new HttpError(
-    response.status,
-    message || "Failed to request calendar deletion",
-  );
+  return readPendingDeletion(response, "Failed to request calendar deletion");
 }
 
 export async function createServiceCalendar(
@@ -162,7 +153,9 @@ export async function updateServiceCalendar({
   id,
   version,
   data,
-}: UpdateServiceCalendarRequest): Promise<ServiceCalendar> {
+}: UpdateServiceCalendarRequest): Promise<
+  ServiceCalendar & { affectedWorkItemCount: number }
+> {
   const response = await client["service-calendars"][":id"].$patch({
     param: { id },
     header: { "if-match": `"${version}"` },

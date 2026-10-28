@@ -19,7 +19,6 @@ describe("toEngagementValues", () => {
     ).toEqual({
       kind: "managed_service",
       supportLevel: "L2",
-      serviceCalendarId: "cal-1",
     });
   });
 
@@ -30,11 +29,10 @@ describe("toEngagementValues", () => {
         supportLevel: "L9",
         serviceCalendarId: "",
       }),
-    ).toEqual({ kind: "project", supportLevel: null, serviceCalendarId: null });
+    ).toEqual({ kind: "project", supportLevel: null });
     expect(toEngagementValues({})).toEqual({
       kind: "project",
       supportLevel: null,
-      serviceCalendarId: null,
     });
   });
 });
@@ -45,21 +43,16 @@ describe("validateEngagement (PR-9, mirrors the server)", () => {
       validateEngagement({
         kind: "project",
         supportLevel: null,
-        serviceCalendarId: null,
       }),
     ).toEqual({});
   });
 
-  it("requires both support level and calendar for a managed service", () => {
+  it("requires a support level while calendar configuration is handled separately", () => {
     const errors = validateEngagement({
       kind: "managed_service",
       supportLevel: null,
-      serviceCalendarId: null,
     });
-    expect(errors).toEqual({
-      supportLevel: "required",
-      serviceCalendarId: "required",
-    });
+    expect(errors).toEqual({ supportLevel: "required" });
     expect(hasEngagementErrors(errors)).toBe(true);
   });
 
@@ -68,15 +61,10 @@ describe("validateEngagement (PR-9, mirrors the server)", () => {
       validateEngagement({
         kind: "managed_service",
         supportLevel: "L1",
-        serviceCalendarId: null,
       }),
-    ).toEqual({ serviceCalendarId: "required" });
+    ).toEqual({});
     expect(
-      validateEngagement({
-        kind: "managed_service",
-        supportLevel: null,
-        serviceCalendarId: "cal-1",
-      }),
+      validateEngagement({ kind: "managed_service", supportLevel: null }),
     ).toEqual({ supportLevel: "required" });
   });
 
@@ -86,7 +74,6 @@ describe("validateEngagement (PR-9, mirrors the server)", () => {
         validateEngagement({
           kind: "managed_service",
           supportLevel: "L3",
-          serviceCalendarId: "cal-1",
         }),
       ),
     ).toBe(false);
@@ -97,7 +84,6 @@ describe("isEngagementDirty and buildEngagementPayload", () => {
   const base = {
     kind: "project" as const,
     supportLevel: null,
-    serviceCalendarId: null,
   };
 
   it("detects a change in any one field", () => {
@@ -106,9 +92,6 @@ describe("isEngagementDirty and buildEngagementPayload", () => {
       true,
     );
     expect(isEngagementDirty(base, { ...base, supportLevel: "L1" })).toBe(true);
-    expect(isEngagementDirty(base, { ...base, serviceCalendarId: "c" })).toBe(
-      true,
-    );
   });
 
   it("sends a cleared field as an explicit null, never undefined", () => {
@@ -116,7 +99,6 @@ describe("isEngagementDirty and buildEngagementPayload", () => {
     expect(payload).toStrictEqual({
       kind: "project",
       supportLevel: null,
-      serviceCalendarId: null,
     });
   });
 });

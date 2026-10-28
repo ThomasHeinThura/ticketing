@@ -18,6 +18,7 @@ import {
   SelectValue,
   Textarea,
 } from "@taskdesk/ui";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
@@ -28,6 +29,11 @@ import {
   saveRequestType,
   unpublishRequestType,
 } from "@/fetchers/intake";
+import {
+  getRequestTypeGroupOrder,
+  replaceRequestTypeGroupOrder,
+} from "@/fetchers/intake-group-order";
+import { useCustomFields } from "@/hooks/queries/custom-field/use-custom-fields";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { resolveIntakeVisibility } from "@/lib/intake-visibility";
@@ -136,9 +142,19 @@ function RequestTypesPage() {
     queryFn: () => getRequestTypes(workspace.data?.id ?? ""),
     enabled: Boolean(workspace.data?.id),
   });
+  const groupOrder = useQuery({
+    queryKey: ["request-type-group-order", workspace.data?.id],
+    queryFn: () => getRequestTypeGroupOrder(workspace.data?.id ?? ""),
+    enabled: Boolean(workspace.data?.id),
+  });
   const workItemTypes = useGetWorkItemTypes({
     workspaceId: workspace.data?.id,
   });
+  // CF-11: a form field may be mapped to a customer-visible custom field (`cf.<key>`).
+  const customFields = useCustomFields(workspace.data?.id ?? "");
+  const collectableFields = (customFields.data?.data ?? []).filter(
+    (field) => field.customerVisible,
+  );
   const [draft, setDraft] = useState<
     Omit<RequestType, "id" | "version" | "published" | "key">
   >(blank());
@@ -153,6 +169,10 @@ function RequestTypesPage() {
   const [previewValues, setPreviewValues] = useState<Record<string, unknown>>(
     {},
   );
+  const [groupOrderDraft, setGroupOrderDraft] = useState<string[]>([]);
+  useEffect(() => {
+    if (groupOrder.data) setGroupOrderDraft(groupOrder.data.groups);
+  }, [groupOrder.data]);
   const detail = useQuery({
     queryKey: ["request-type", selected],
     queryFn: () => getRequestType(selected ?? ""),
@@ -189,6 +209,9 @@ function RequestTypesPage() {
       setSelected(saved.id);
       await queryClient.invalidateQueries({ queryKey: ["request-types"] });
       await queryClient.invalidateQueries({
+        queryKey: ["request-type-group-order", workspace.data?.id],
+      });
+      await queryClient.invalidateQueries({
         queryKey: ["request-type", saved.id],
       });
     },
@@ -205,6 +228,21 @@ function RequestTypesPage() {
         await queryClient.invalidateQueries({
           queryKey: ["request-type", selected],
         });
+    },
+  });
+  const saveGroupOrder = useMutation({
+    mutationFn: () =>
+      replaceRequestTypeGroupOrder({
+        workspaceId: workspace.data?.id ?? "",
+        groups: groupOrderDraft,
+        version: groupOrder.data?.version ?? 1,
+      }),
+    onSuccess: async (saved) => {
+      queryClient.setQueryData(
+        ["request-type-group-order", workspace.data?.id],
+        saved,
+      );
+      setGroupOrderDraft(saved.groups);
     },
   });
   const choose = (id: string | null) => {
@@ -244,7 +282,29 @@ function RequestTypesPage() {
       return { ...current, formSchema: { fields: next } };
     });
   };
-  const loading = types.isLoading || workItemTypes.isLoading;
+  const loading =
+    types.isLoading || groupOrder.isLoading || workItemTypes.isLoading;
+  const groupOrderChanged =
+    groupOrder.data !== undefined &&
+    (groupOrder.data.groups.length !== groupOrderDraft.length ||
+      groupOrder.data.groups.some(
+        (group, index) => group !== groupOrderDraft[index],
+      ));
+  const moveGroup = (index: number, delta: -1 | 1) => {
+    setGroupOrderDraft((current) => {
+      const target = index + delta;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      const sourceGroup = next[index];
+      const targetGroup = next[target];
+      if (sourceGroup === undefined || targetGroup === undefined)
+        return current;
+      next[index] = targetGroup;
+      next[target] = sourceGroup;
+      return next;
+    });
+    saveGroupOrder.reset();
+  };
   const selectedType = (
     types.data as unknown as { requestTypes: RequestType[] } | undefined
   )?.requestTypes.find((item) => item.id === selected);
@@ -281,17 +341,22 @@ function RequestTypesPage() {
         <Button onClick={() => void choose(null)}>{t("new")}</Button>
       </header>
       {(types.isError ||
+        groupOrder.isError ||
         detail.isError ||
         save.isError ||
         action.isError ||
         workItemTypes.isError) && (
         <Alert variant="error">
           <AlertDescription>{t("loadError")}</AlertDescription>
-          {(types.isError || detail.isError || workItemTypes.isError) && (
+          {(types.isError ||
+            groupOrder.isError ||
+            detail.isError ||
+            workItemTypes.isError) && (
             <Button
               variant="outline"
               onClick={() => {
                 if (types.isError) void types.refetch();
+                if (groupOrder.isError) void groupOrder.refetch();
                 if (detail.isError) void detail.refetch();
                 if (workItemTypes.isError) void workItemTypes.refetch();
               }}
@@ -305,38 +370,154 @@ function RequestTypesPage() {
         <p role="status">{t("loading")}</p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(16rem,1fr)_2fr]">
-          <nav aria-label={t("list")} className="flex flex-col gap-2">
-            {(
-              (
-                types.data as unknown as
-                  | { requestTypes: RequestType[] }
-                  | undefined
-              )?.requestTypes ?? []
-            ).map((item) => (
-              <Button
-                key={item.id}
-                variant={selected === item.id ? "secondary" : "outline"}
-                className="h-auto justify-between"
-                onClick={() => void choose(item.id)}
+          <div className="flex min-w-0 flex-col gap-4">
+            {groupOrder.data ? (
+              <section
+                aria-label="Catalogue group order"
+                className="flex flex-col gap-3 rounded-md border p-4"
               >
-                <span>{item.name}</span>
-                <span className="text-xs">
-                  {item.published ? t("published") : t("draft")} · v
-                  {item.version}
-                </span>
-              </Button>
-            ))}
-            {!types.data ||
-            !(types.data as unknown as { requestTypes: RequestType[] })
-              .requestTypes.length ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>{t("emptyTitle")}</EmptyTitle>
-                  <EmptyDescription>{t("emptyDescription")}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
+                <div>
+                  <h2 className="font-semibold">
+                    {t("groupOrderTitle", {
+                      defaultValue: "Catalogue group order",
+                    })}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {t("groupOrderDescription", {
+                      defaultValue:
+                        "Move groups independently from request type order.",
+                    })}
+                  </p>
+                </div>
+                {groupOrderDraft.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {t("groupOrderEmpty", {
+                      defaultValue:
+                        "Create a request type to add its catalogue group.",
+                    })}
+                  </p>
+                ) : (
+                  <ol className="flex flex-col gap-2">
+                    {groupOrderDraft.map((group, index) => (
+                      <li
+                        className="flex min-w-0 items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+                        key={group}
+                      >
+                        <span className="min-w-0 truncate">{group}</span>
+                        {groupOrderDraft.length > 1 ? (
+                          <span className="flex shrink-0 gap-1">
+                            <Button
+                              aria-label={t("moveGroupUp", {
+                                group,
+                                defaultValue: `Move ${group} up`,
+                              })}
+                              disabled={index === 0 || saveGroupOrder.isPending}
+                              onClick={() => moveGroup(index, -1)}
+                              size="icon-sm"
+                              type="button"
+                              variant="ghost"
+                            >
+                              <ArrowUp aria-hidden="true" className="size-4" />
+                            </Button>
+                            <Button
+                              aria-label={t("moveGroupDown", {
+                                group,
+                                defaultValue: `Move ${group} down`,
+                              })}
+                              disabled={
+                                index === groupOrderDraft.length - 1 ||
+                                saveGroupOrder.isPending
+                              }
+                              onClick={() => moveGroup(index, 1)}
+                              size="icon-sm"
+                              type="button"
+                              variant="ghost"
+                            >
+                              <ArrowDown
+                                aria-hidden="true"
+                                className="size-4"
+                              />
+                            </Button>
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                {saveGroupOrder.isError ? (
+                  <Alert variant="error" role="alert">
+                    <AlertDescription>
+                      {t("groupOrderSaveFailed", {
+                        defaultValue:
+                          "Group order could not be saved. Reload the groups and try again.",
+                      })}
+                    </AlertDescription>
+                    <Button
+                      onClick={() => void groupOrder.refetch()}
+                      type="button"
+                      variant="outline"
+                    >
+                      {t("groupOrderReload", { defaultValue: "Reload groups" })}
+                    </Button>
+                  </Alert>
+                ) : null}
+                {saveGroupOrder.isSuccess ? (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    {t("groupOrderSaved", {
+                      defaultValue: "Group order saved.",
+                    })}
+                  </p>
+                ) : null}
+                {groupOrderDraft.length > 1 ? (
+                  <Button
+                    disabled={!groupOrderChanged || saveGroupOrder.isPending}
+                    onClick={() => void saveGroupOrder.mutate()}
+                    type="button"
+                  >
+                    {saveGroupOrder.isPending
+                      ? t("savingGroupOrder", {
+                          defaultValue: "Saving group order…",
+                        })
+                      : t("saveGroupOrder", {
+                          defaultValue: "Save group order",
+                        })}
+                  </Button>
+                ) : null}
+              </section>
             ) : null}
-          </nav>
+            <nav aria-label={t("list")} className="flex flex-col gap-2">
+              {(
+                (
+                  types.data as unknown as
+                    | { requestTypes: RequestType[] }
+                    | undefined
+                )?.requestTypes ?? []
+              ).map((item) => (
+                <Button
+                  key={item.id}
+                  variant={selected === item.id ? "secondary" : "outline"}
+                  className="h-auto justify-between"
+                  onClick={() => void choose(item.id)}
+                >
+                  <span>{item.name}</span>
+                  <span className="text-xs">
+                    {item.published ? t("published") : t("draft")} · v
+                    {item.version}
+                  </span>
+                </Button>
+              ))}
+              {!types.data ||
+              !(types.data as unknown as { requestTypes: RequestType[] })
+                .requestTypes.length ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>{t("emptyTitle")}</EmptyTitle>
+                    <EmptyDescription>{t("emptyDescription")}</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : null}
+            </nav>
+          </div>
           <section
             className="flex flex-col gap-4 rounded-md border p-4"
             aria-label={t("title")}
@@ -431,7 +612,9 @@ function RequestTypesPage() {
                 className="flex flex-col gap-1"
                 htmlFor="request-type-position"
               >
-                Catalogue order
+                {t("catalogueOrder", {
+                  defaultValue: "Catalogue order within group",
+                })}
                 <Input
                   id="request-type-position"
                   type="number"
@@ -645,7 +828,12 @@ function RequestTypesPage() {
                       <SelectTrigger id={`field-maps-to-${index}`}>
                         <SelectValue placeholder="Keep in request data">
                           {field.mapsTo?.field
-                            ? mapsToLabels[field.mapsTo.field]
+                            ? (mapsToLabels[field.mapsTo.field] ??
+                              collectableFields.find(
+                                (candidate) =>
+                                  `cf.${candidate.key}` === field.mapsTo?.field,
+                              )?.name ??
+                              field.mapsTo.field)
                             : undefined}
                         </SelectValue>
                       </SelectTrigger>
@@ -657,6 +845,14 @@ function RequestTypesPage() {
                         <SelectItem value="priority">
                           Work item priority
                         </SelectItem>
+                        {collectableFields.map((candidate) => (
+                          <SelectItem
+                            key={candidate.id}
+                            value={`cf.${candidate.key}`}
+                          >
+                            {candidate.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </label>

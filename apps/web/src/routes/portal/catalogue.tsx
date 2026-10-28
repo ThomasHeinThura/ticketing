@@ -16,10 +16,16 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  PortalKbSuggestions,
+  usePortalKbDeflection,
+} from "@/components/kb/portal/portal-kb-deflection";
+import {
   getPortalCatalogue,
   getPortalRequestType,
   submitPortalRequest,
 } from "@/fetchers/intake";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 import { missingRequiredIntakeFields } from "@/lib/intake-validation";
 import { resolveIntakeVisibility } from "@/lib/intake-visibility";
 import { parsePortalCatalogueSearch, routes } from "@/lib/routes";
@@ -42,11 +48,26 @@ export const Route = createFileRoute("/catalogue")({
 });
 
 function PortalCatalogue() {
-  const { t } = useTranslation();
+  const { i18n } = useTranslation();
+  const { key } = Route.useSearch();
+  return (
+    <TerminologyProvider
+      audience="customer"
+      locale={i18n.resolvedLanguage ?? i18n.language}
+      portalSelector={key ? { requestTypeKey: key } : undefined}
+    >
+      <PortalCatalogueContent />
+    </TerminologyProvider>
+  );
+}
+
+function PortalCatalogueContent() {
+  const { t } = usePortalTranslation();
   const { q, key } = Route.useSearch();
+  const { portalUserId } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
   const catalogue = useQuery({
-    queryKey: ["portal", "catalogue", q],
+    queryKey: ["portal", portalUserId, "catalogue", q],
     queryFn: () => getPortalCatalogue(q),
   });
   const filteredEntries = (catalogue.data?.requestTypes ??
@@ -57,12 +78,12 @@ function PortalCatalogue() {
       !filteredEntries.some((entry) => entry.key === key),
   );
   const selectionMetadata = useQuery({
-    queryKey: ["portal", "catalogue-selection-metadata", key],
+    queryKey: ["portal", portalUserId, "catalogue-selection-metadata", key],
     queryFn: () => getPortalCatalogue(),
     enabled: needsSelectionMetadata,
   });
   const selectedType = useQuery({
-    queryKey: ["portal", "catalogue", "type", key],
+    queryKey: ["portal", portalUserId, "catalogue", "type", key],
     queryFn: () => getPortalRequestType(key ?? ""),
     enabled: Boolean(key),
   });
@@ -93,10 +114,13 @@ function PortalCatalogue() {
     catalogue.isLoading ||
     (needsSelectionMetadata && selectionMetadata.isLoading) ||
     (Boolean(key) && selectedType.isLoading);
-  const storageKey = selected
-    ? `taskdesk:intake-draft:${selected.key}:${selected.version}`
-    : null;
-  const [answers, setAnswers] = useState<Record<string, unknown>>({});
+  const storageKey =
+    selected && portalUserId
+      ? `taskdesk:intake-draft:${encodeURIComponent(portalUserId)}:${encodeURIComponent(selected.key)}:${selected.version}`
+      : null;
+  const [storedAnswers, setAnswers] = useState<Record<string, unknown>>({});
+  const [answersKey, setAnswersKey] = useState<string | null>(null);
+  const answers = answersKey === storageKey ? storedAnswers : {};
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<{
     key: string;
@@ -117,6 +141,8 @@ function PortalCatalogue() {
       defaultValue: "People in my organisation",
     },
   );
+  // KB-10: articles opened from this form are deflections only if the form is then abandoned.
+  const kbDeflection = usePortalKbDeflection(selected?.key);
   const submit = useMutation({
     mutationFn: () =>
       submitPortalRequest({
@@ -127,6 +153,7 @@ function PortalCatalogue() {
           : effectiveVisibility,
       }),
     onSuccess: async (result) => {
+      kbDeflection.markSubmitted();
       if (storageKey) localStorage.removeItem(storageKey);
       await navigate({
         to: routes.portalSubmission.path,
@@ -136,6 +163,7 @@ function PortalCatalogue() {
   });
   useEffect(() => {
     setFieldErrors({});
+    setAnswersKey(storageKey);
     if (!storageKey) {
       setAnswers({});
       return;
@@ -148,9 +176,9 @@ function PortalCatalogue() {
     }
   }, [storageKey]);
   useEffect(() => {
-    if (storageKey && Object.keys(answers).length)
+    if (storageKey && answersKey === storageKey && Object.keys(answers).length)
       localStorage.setItem(storageKey, JSON.stringify(answers));
-  }, [storageKey, answers]);
+  }, [storageKey, answersKey, answers]);
   const formReady = Boolean(selected);
   useEffect(() => {
     if (focusTarget.current === "form" && formReady) {
@@ -177,21 +205,17 @@ function PortalCatalogue() {
   const visible = (field: FormSchema["fields"][number]) =>
     fieldVisibility.get(field.key) ?? true;
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-6">
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <header>
         <h1
           className="font-semibold text-2xl outline-none"
           ref={listHeadingRef}
           tabIndex={-1}
         >
-          {t("portal:intake.catalogueTitle", {
-            defaultValue: "Request catalogue",
-          })}
+          {t("portal:intake.catalogueTitle")}
         </h1>
         <p className="text-muted-foreground">
-          {t("portal:intake.catalogueDescription", {
-            defaultValue: "Choose a request type and tell us what you need.",
-          })}
+          {t("portal:intake.catalogueDescription")}
         </p>
       </header>
       {primaryError && (
@@ -440,6 +464,13 @@ function PortalCatalogue() {
                     {fieldErrors[field.key]}
                   </p>
                 )}
+                {field.mapsTo?.field === "title" ? (
+                  <PortalKbSuggestions
+                    query={String(answers[field.key] ?? "")}
+                    scope={portalUserId}
+                    onOpen={kbDeflection.recordOpened}
+                  />
+                ) : null}
               </div>
             ))}
             {!selected.forcePrivate && (
@@ -491,7 +522,7 @@ function PortalCatalogue() {
             <Button type="submit" disabled={submit.isPending}>
               {submit.isPending
                 ? t("common:empty.loading", { defaultValue: "Submitting…" })
-                : t("portal:intake.submit", { defaultValue: "Submit request" })}
+                : t("portal:intake.submit")}
             </Button>
           </form>
         </section>

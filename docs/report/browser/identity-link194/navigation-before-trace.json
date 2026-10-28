@@ -1,0 +1,26 @@
+{
+	"recordedAt": "2026-10-26T06:08:54.033Z",
+	"scope": "Explicit account linking between two local signed-provider connections on isolatedSSOcopy; real Entra remains pending Thomas",
+	"strictTls": true,
+	"checks": [
+		{
+			"name": "Saved normal SSO session readable",
+			"pass": true
+		},
+		{
+			"name": "Own synthetic SSO user",
+			"pass": true
+		},
+		{
+			"name": "Current session authenticated through source A",
+			"pass": true
+		},
+		{
+			"name": "One existing person and no target identity/account",
+			"pass": true
+		}
+	],
+	"screenshots": [],
+	"outcome": "failed",
+	"failurePhase": "start target proof"
+}

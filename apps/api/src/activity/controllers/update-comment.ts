@@ -3,7 +3,8 @@ import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { publishEvent } from "../../events";
-import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
+import { syncInlineAssetReferences } from "../../storage/cleanup-assets";
 import {
   findOwnComment,
   findProjectWorkspaceId,
@@ -16,6 +17,7 @@ async function updateComment(
   userId: string,
   id: string,
   content: string,
+  apiKeyId?: string | null,
 ) {
   const existing = await findOwnComment(identity, userId, id);
   if (!existing)
@@ -41,10 +43,25 @@ async function updateComment(
         message: "Comment not found or you are not the author",
       });
 
+    if (!project) throw new HTTPException(404, { message: "Task not found" });
+    // P0R1-01: detach (never delete) removed inline images in this transaction.
+    await syncInlineAssetReferences(tx, identity, existing.content, content, {
+      taskId: existing.taskId,
+    });
+    await recordLegacyTaskCompatibilityEvent(tx, {
+      kind: "comment.updated",
+      taskId: task.id,
+      projectId: task.projectId,
+      workspaceId: project.workspaceId,
+      identity,
+      apiKeyId,
+      payload: { commentId: updated.id, userId, type: "comment.updated" },
+    });
+
     await appendAuditLog(tx, {
       actorId: userId,
       actorType: identity.credential === "api_key" ? "api_key" : "person",
-      workspaceId: project?.workspaceId ?? null,
+      workspaceId: project.workspaceId,
       projectId: task.projectId,
       action: "comment.updated",
       entityType: "comment",
@@ -60,12 +77,6 @@ async function updateComment(
     projectId: result.projectId,
     userId,
   });
-  db.transaction(async (tx) => {
-    await lockTaskAndAssertProjectLive(tx, identity, existing.taskId);
-    await deleteOrphanedAssets(tx, identity, existing.content, content, {
-      taskId: existing.taskId,
-    });
-  }).catch(() => {});
   return result.updated;
 }
 

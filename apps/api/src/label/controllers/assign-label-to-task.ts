@@ -2,6 +2,7 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
 import {
   lockLegacyTaskRow,
   lockProjectsAndAssertLive,
@@ -24,6 +25,7 @@ async function assignLabelToTask(
   id: string,
   taskId: string,
   userId: string,
+  apiKeyId?: string | null,
 ) {
   // #290 S4 sweep: `taskId` is a body field on `attachLabelToTaskRoute`, not covered
   // by `workspaceAccess.fromLabel()` (which only guards `id`) -- a NUL byte here
@@ -153,6 +155,21 @@ async function assignLabelToTask(
     const previousTaskId = currentLabel.taskId;
     if (previousTaskId) {
       await deleteLabelById(tx, identity, id);
+      const previousTask = lockedTasks.get(previousTaskId);
+      if (!previousTask) {
+        throw new HTTPException(409, {
+          message: "Label assignment changed; retry the request",
+        });
+      }
+      await recordLegacyTaskCompatibilityEvent(tx, {
+        kind: "task.label_unassigned",
+        taskId: previousTask.id,
+        projectId: previousTask.projectId,
+        workspaceId: label.workspaceId,
+        identity,
+        apiKeyId,
+        payload: { type: "label_unassigned" },
+      });
     }
 
     const insertedRow = await insertTaskLabelOnConflictDoNothing(tx, identity, {
@@ -171,6 +188,15 @@ async function assignLabelToTask(
       });
     }
     if (insertedRow) {
+      await recordLegacyTaskCompatibilityEvent(tx, {
+        kind: "task.label_assigned",
+        taskId: task.id,
+        projectId: task.projectId,
+        workspaceId: task.workspaceId,
+        identity,
+        apiKeyId,
+        payload: { type: "label_assigned" },
+      });
       return {
         taskLabel: existing,
         inserted: true,

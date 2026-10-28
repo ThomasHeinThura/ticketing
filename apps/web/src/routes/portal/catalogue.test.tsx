@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/en-translation";
 import { Route } from "./catalogue";
 
 const mocks = vi.hoisted(() => ({
@@ -22,6 +23,7 @@ vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
     useSearch: () => mocks.search,
+    useRouteContext: () => ({ portalUserId: "customer-a" }),
   }),
   useNavigate: () => mocks.navigate,
 }));
@@ -32,8 +34,17 @@ vi.mock("@/fetchers/intake", () => ({
   submitPortalRequest: mocks.submit,
 }));
 
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async () => ({
+  ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
   useTranslation: () => ({
+    i18n: {
+      language: "en-US",
+      resolvedLanguage: "en-US",
+      t: (_key: string, options?: { count?: number }) =>
+        translate(
+          `term:customer.request_${options?.count === 1 ? "one" : "other"}`,
+        ),
+    },
     t: (
       _key: string,
       options?: { defaultValue?: string; [key: string]: unknown },
@@ -131,7 +142,7 @@ describe("portal catalogue route", () => {
       query === "does-not-match" ? emptyCatalogue : catalogue,
     );
     localStorage.setItem(
-      "taskdesk:intake-draft:access:3",
+      "taskdesk:intake-draft:customer-a:access:3",
       JSON.stringify({ title: "Draft answer" }),
     );
     const view = renderCatalogue();

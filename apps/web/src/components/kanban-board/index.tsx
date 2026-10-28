@@ -35,6 +35,7 @@ import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useRequestTaskDeletion } from "@/hooks/use-request-task-deletion";
 import { isTaskCompleted } from "@/lib/due-date-status";
 import type { ProjectBoardSearch } from "@/lib/project-board-search";
 import { withProjectBoardTask } from "@/lib/project-board-search-state";
@@ -53,10 +54,6 @@ import TaskCard from "./task-card";
 const BulkToolbar = lazy(() => import("../bulk-selection/bulk-toolbar"));
 const TaskCardContextMenuContent = lazy(
   () => import("./task-card-context-menu/task-card-context-menu-content"),
-);
-
-const TaskCardDeleteConfirmation = lazy(
-  () => import("./task-card-delete-confirmation"),
 );
 
 const boardAnnouncements = {
@@ -121,7 +118,7 @@ function KanbanBoard({
     null,
   );
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
-  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+  const requestTaskDeletion = useRequestTaskDeletion(project?.slug);
   const [createTaskStatus, setCreateTaskStatus] = useState<string | null>(null);
   const createTaskTriggerRef = useRef<HTMLButtonElement | null>(null);
   const workspaceUsersById = useMemo(() => {
@@ -253,6 +250,11 @@ function KanbanBoard({
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: {
+        start: ["Space"],
+        end: ["Space", "Enter"],
+        cancel: ["Escape"],
+      },
     }),
   );
 
@@ -456,7 +458,7 @@ function KanbanBoard({
                 worskpaceId: workspaceId,
               }}
               onDeleteClick={() => {
-                setDeleteTaskId(contextMenuTask.id);
+                void requestTaskDeletion(contextMenuTask);
                 setIsContextMenuOpen(false);
               }}
             />
@@ -503,22 +505,6 @@ function KanbanBoard({
         status={createTaskStatus}
         trigger={createTaskTriggerRef.current}
       />
-      {deleteTaskId ? (
-        <Suspense
-          fallback={
-            <div role="status" aria-live="polite">
-              {t("common:empty.loading")}
-            </div>
-          }
-        >
-          <TaskCardDeleteConfirmation
-            taskId={deleteTaskId}
-            onOpenChange={(open) => {
-              if (!open) setDeleteTaskId(null);
-            }}
-          />
-        </Suspense>
-      ) : null}
     </DndContext>
   );
 }

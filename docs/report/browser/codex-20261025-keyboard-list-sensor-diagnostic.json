@@ -1,0 +1,455 @@
+{
+	"artifact": "codex-20261025-keyboard-list-sensor-diagnostic",
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"errors": [],
+	"coreBundle": {
+		"path": "/assets/core.esm-CnQ60ENR.js",
+		"injected": true,
+		"originalSha256": "b16969f452c13aae4cf502afa61cd172d89d48a868678c4c9a66c75825ca2adf",
+		"debugSha256": "9d074cc556c621deb16cf57868fd5f21f9a341195fd9f07663eda17816eff2cb"
+	},
+	"loadedBundles": [
+		{
+			"path": "/assets/work-item-sla-badge-D3XPPcGN.js",
+			"status": 200,
+			"sha256": "4db80e7b289d78ade27152e20656f82cce11d751797b3008052c3bc4621a0fe8"
+		},
+		{
+			"path": "/assets/core.esm-CnQ60ENR.js",
+			"status": 200,
+			"sha256": "9d074cc556c621deb16cf57868fd5f21f9a341195fd9f07663eda17816eff2cb"
+		},
+		{
+			"path": "/assets/work-item-kaneo-list-Chn_Qamu.js",
+			"status": 200,
+			"sha256": "cc413832bda33be9c25a8259d8b22c6ced45c86f8f6c04170adf002cf75ccc24"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		}
+	],
+	"fixtureKey": "PERF-7972",
+	"fixtureId": "a03oizj1k8xx8cnnaxa09dva",
+	"originalTopThree": ["PERF-7972", "PERF-1863", "PERF-6219"],
+	"ownerSessionMatched": true,
+	"steps": [
+		{
+			"code": "ArrowDown",
+			"activeId": "a03oizj1k8xx8cnnaxa09dva",
+			"currentCoordinates": {
+				"x": 241,
+				"y": 375
+			},
+			"newCoordinates": {
+				"x": 241,
+				"y": 431
+			},
+			"referenceCoordinates": {
+				"x": 241,
+				"y": 375
+			},
+			"scrollDelta": {
+				"x": 0,
+				"y": 0
+			},
+			"move": {
+				"x": 0,
+				"y": 56
+			},
+			"collisionRect": {
+				"left": 241,
+				"top": 375,
+				"width": 200,
+				"height": 34
+			},
+			"draggingNodeRect": {
+				"left": 241,
+				"top": 375,
+				"width": 200,
+				"height": 34
+			},
+			"collisionIds": [
+				"a03oizj1k8xx8cnnaxa09dva",
+				"a03fohihmsd74wy8dcaiifa8",
+				"a07nduomdh0ox0zm921an8bh"
+			],
+			"overId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeNodeRect": null,
+			"activeRowRect": {
+				"left": 245,
+				"top": 375,
+				"width": 1186,
+				"height": 45
+			},
+			"fieldsetRect": {
+				"left": 245,
+				"top": 375,
+				"width": 1186,
+				"height": 44
+			},
+			"activeTransform": "",
+			"draggingNodeElementRect": {
+				"left": 245,
+				"top": 375,
+				"width": 1186,
+				"height": 44
+			},
+			"overlayRect": {
+				"left": 241,
+				"top": 375,
+				"width": 200,
+				"height": 34
+			}
+		},
+		{
+			"code": "ArrowUp",
+			"activeId": "a03oizj1k8xx8cnnaxa09dva",
+			"currentCoordinates": {
+				"x": 241,
+				"y": 431
+			},
+			"newCoordinates": {
+				"x": 241,
+				"y": 375
+			},
+			"referenceCoordinates": {
+				"x": 241,
+				"y": 375
+			},
+			"scrollDelta": {
+				"x": 0,
+				"y": 0
+			},
+			"move": {
+				"x": 0,
+				"y": 0
+			},
+			"collisionRect": {
+				"left": 241,
+				"top": 431,
+				"width": 200,
+				"height": 34
+			},
+			"draggingNodeRect": {
+				"left": 241,
+				"top": 375,
+				"width": 200,
+				"height": 34
+			},
+			"collisionIds": [
+				"a03fohihmsd74wy8dcaiifa8",
+				"a07nduomdh0ox0zm921an8bh",
+				"a03oizj1k8xx8cnnaxa09dva"
+			],
+			"overId": "a03fohihmsd74wy8dcaiifa8",
+			"activeNodeRect": null,
+			"activeRowRect": {
+				"left": 245,
+				"top": 375,
+				"width": 1186,
+				"height": 45
+			},
+			"fieldsetRect": {
+				"left": 245,
+				"top": 375,
+				"width": 1186,
+				"height": 44
+			},
+			"activeTransform": "",
+			"draggingNodeElementRect": {
+				"left": 245,
+				"top": 375,
+				"width": 1186,
+				"height": 44
+			},
+			"overlayRect": {
+				"left": 241,
+				"top": 375,
+				"width": 200,
+				"height": 34
+			}
+		}
+	],
+	"requests": [],
+	"escapeCancelled": true,
+	"loadedRows": 22,
+	"productionRow": {
+		"tag": "FIELDSET",
+		"disabled": false,
+		"tabIndex": 0,
+		"rowHeight": 45,
+		"fieldsetHeight": 44,
+		"virtualized": true,
+		"inlineContentHeight": 44
+	},
+	"scrollSteps": [
+		{
+			"code": "ArrowDown",
+			"currentCoordinates": false,
+			"newCoordinates": {
+				"x": 241,
+				"y": 476
+			},
+			"referenceCoordinates": {
+				"x": 241,
+				"y": 375
+			},
+			"coordinatesDelta": {
+				"x": 0,
+				"y": 45
+			},
+			"scrollDelta": {
+				"x": 0,
+				"y": 0
+			},
+			"scrollTarget": 45,
+			"canScrollToTarget": true,
+			"scrollTop": 0,
+			"scrollLeft": 0,
+			"scrollHeight": 9871,
+			"clientHeight": 838,
+			"scrollRect": {
+				"top": 53,
+				"bottom": 891,
+				"left": 241,
+				"right": 1431
+			},
+			"maxScroll": {
+				"x": 0,
+				"y": 9033
+			},
+			"minScroll": {
+				"x": 0,
+				"y": 0
+			},
+			"scrollableTag": "DIV",
+			"scrollableClass": "flex h-full min-h-0 min-w-0 w-full flex-col overflow-y-auto",
+			"collisionRect": {
+				"left": 241,
+				"top": 431,
+				"width": 200,
+				"height": 34
+			},
+			"collisionIds": [
+				"a03fohihmsd74wy8dcaiifa8",
+				"a07nduomdh0ox0zm921an8bh",
+				"a03oizj1k8xx8cnnaxa09dva"
+			],
+			"overId": "a03fohihmsd74wy8dcaiifa8"
+		}
+	],
+	"getterSteps": [
+		{
+			"code": "ArrowDown",
+			"activeId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeIndex": 0,
+			"collisionIds": [
+				"a03oizj1k8xx8cnnaxa09dva",
+				"a03fohihmsd74wy8dcaiifa8",
+				"a07nduomdh0ox0zm921an8bh"
+			],
+			"overId": "a03oizj1k8xx8cnnaxa09dva",
+			"currentIndex": 0,
+			"currentContainer": "Sortable-2",
+			"targetId": "a03fohihmsd74wy8dcaiifa8",
+			"targetPresent": true,
+			"targetDisabled": false,
+			"targetNode": true,
+			"targetRect": {
+				"left": 241,
+				"top": 420,
+				"width": 1190,
+				"height": 45
+			},
+			"collisionRect": {
+				"left": 241,
+				"top": 375,
+				"width": 200,
+				"height": 34
+			},
+			"result": {
+				"x": 241,
+				"y": 431
+			}
+		},
+		{
+			"code": "ArrowDown",
+			"activeId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeIndex": 0,
+			"collisionIds": [
+				"a03fohihmsd74wy8dcaiifa8",
+				"a07nduomdh0ox0zm921an8bh",
+				"a03oizj1k8xx8cnnaxa09dva"
+			],
+			"overId": "a03fohihmsd74wy8dcaiifa8",
+			"currentIndex": 1,
+			"currentContainer": "Sortable-2",
+			"targetId": "a07nduomdh0ox0zm921an8bh",
+			"targetPresent": true,
+			"targetDisabled": false,
+			"targetNode": true,
+			"targetRect": {
+				"left": 241,
+				"top": 465,
+				"width": 1190,
+				"height": 45
+			},
+			"collisionRect": {
+				"left": 241,
+				"top": 431,
+				"width": 200,
+				"height": 34
+			},
+			"result": {
+				"x": 241,
+				"y": 476
+			}
+		},
+		{
+			"code": "ArrowUp",
+			"activeId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeIndex": 0,
+			"collisionIds": [
+				"a03fohihmsd74wy8dcaiifa8",
+				"a07nduomdh0ox0zm921an8bh",
+				"a03oizj1k8xx8cnnaxa09dva"
+			],
+			"overId": "a03fohihmsd74wy8dcaiifa8",
+			"currentIndex": 1,
+			"currentContainer": "Sortable-2",
+			"targetId": "a03oizj1k8xx8cnnaxa09dva",
+			"targetPresent": true,
+			"targetDisabled": false,
+			"targetNode": true,
+			"targetRect": {
+				"left": 241,
+				"top": 375,
+				"width": 1190,
+				"height": 45
+			},
+			"collisionRect": {
+				"left": 241,
+				"top": 431,
+				"width": 200,
+				"height": 34
+			},
+			"result": {
+				"x": 241,
+				"y": 375
+			}
+		}
+	],
+	"keyEvents": [
+		{
+			"phase": "document-capture",
+			"code": "Space",
+			"key": " ",
+			"target": "FIELDSET",
+			"targetTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"defaultPrevented": false,
+			"timeStamp": 2046.800000011921
+		},
+		{
+			"phase": "window-bubble",
+			"code": "Space",
+			"key": " ",
+			"target": "FIELDSET",
+			"targetTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"defaultPrevented": true,
+			"timeStamp": 2046.800000011921
+		},
+		{
+			"phase": "document-capture",
+			"code": "ArrowDown",
+			"key": "ArrowDown",
+			"target": "FIELDSET",
+			"targetTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"defaultPrevented": false,
+			"timeStamp": 2175.699999988079
+		},
+		{
+			"phase": "window-bubble",
+			"code": "ArrowDown",
+			"key": "ArrowDown",
+			"target": "FIELDSET",
+			"targetTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"defaultPrevented": true,
+			"timeStamp": 2175.699999988079
+		},
+		{
+			"phase": "document-capture",
+			"code": "ArrowDown",
+			"key": "ArrowDown",
+			"target": "FIELDSET",
+			"targetTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"defaultPrevented": false,
+			"timeStamp": 2185.199999988079
+		},
+		{
+			"phase": "window-bubble",
+			"code": "ArrowDown",
+			"key": "ArrowDown",
+			"target": "FIELDSET",
+			"targetTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"defaultPrevented": true,
+			"timeStamp": 2185.199999988079
+		},
+		{
+			"phase": "document-capture",
+			"code": "ArrowUp",
+			"key": "ArrowUp",
+			"target": "FIELDSET",
+			"targetTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"defaultPrevented": false,
+			"timeStamp": 2186
+		},
+		{
+			"phase": "window-bubble",
+			"code": "ArrowUp",
+			"key": "ArrowUp",
+			"target": "FIELDSET",
+			"targetTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeTaskId": "a03oizj1k8xx8cnnaxa09dva",
+			"defaultPrevented": true,
+			"timeStamp": 2186
+		}
+	],
+	"afterTopThree": ["PERF-7972", "PERF-1863", "PERF-6219"],
+	"fixtureUnchanged": true,
+	"checks": [
+		{
+			"name": "instrumented original dnd-kit sensor loaded",
+			"pass": true,
+			"path": "/assets/core.esm-CnQ60ENR.js"
+		},
+		{
+			"name": "production virtualized list row and overlay geometry recorded",
+			"pass": false,
+			"steps": 2
+		},
+		{
+			"name": "Escape cancelled without rank writes",
+			"pass": true
+		},
+		{
+			"name": "fixture ordering unchanged",
+			"pass": true,
+			"before": ["PERF-7972", "PERF-1863", "PERF-6219"],
+			"after": ["PERF-7972", "PERF-1863", "PERF-6219"]
+		}
+	]
+}

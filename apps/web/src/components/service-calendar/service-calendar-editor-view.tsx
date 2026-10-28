@@ -131,6 +131,17 @@ export function ServiceCalendarEditorView({
           </Button>
         </div>
 
+        {state.retroactiveImpact > 0 ? (
+          <Alert variant="warning" role="status">
+            <AlertTitle>{t("editor.retroactiveTitle")}</AlertTitle>
+            <AlertDescription>
+              {t("editor.retroactiveDescription", {
+                count: state.retroactiveImpact,
+              })}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         {state.calendarConflict ? (
           <Alert variant="error" role="alert">
             <AlertTitle>{t("editor.conflictTitle")}</AlertTitle>
@@ -198,7 +209,7 @@ export function ServiceCalendarEditorView({
           >
             <legend className="sr-only">{t("editor.editableLegend")}</legend>
             <div className="space-y-6">
-              <CalendarDetailsCard form={form} />
+              <CalendarDetailsCard form={form} isNew={isNew} />
               <WeeklyCoverCard
                 windows={state.windows}
                 windowIds={state.windowIds}

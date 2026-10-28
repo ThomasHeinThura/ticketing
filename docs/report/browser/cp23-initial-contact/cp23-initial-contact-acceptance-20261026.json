@@ -1,0 +1,46 @@
+{
+	"schemaVersion": 1,
+	"journey": "single-owned-initial-contact-invitation",
+	"mailpitMessageCount": 1,
+	"invitationAccepted": true,
+	"freshLoginSucceeded": true,
+	"catalogueContainsAssignedType": true,
+	"noUnassignedTypeVisible": true,
+	"requestsPath": "/requests",
+	"requestsPageLoaded": true,
+	"catalogueReadStatus": 200,
+	"portalApiStatuses": [
+		{
+			"path": "/api/portal/sign-in/home-realm",
+			"status": 200
+		},
+		{
+			"path": "/api/portal/catalogue",
+			"status": 200
+		},
+		{
+			"path": "/api/portal/releases",
+			"status": 200
+		},
+		{
+			"path": "/api/portal/kb",
+			"status": 200
+		},
+		{
+			"path": "/api/portal/submissions",
+			"status": 200
+		},
+		{
+			"path": "/api/portal/releases",
+			"status": 200
+		},
+		{
+			"path": "/api/portal/kb",
+			"status": 200
+		}
+	],
+	"inviteLinkStoredPrivately": true,
+	"passwordStoredPrivately": true,
+	"tokenOrCredentialsRecorded": false,
+	"noVisibleRequests": true
+}

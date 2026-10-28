@@ -55,6 +55,18 @@ const ROUTES: ReadRoute[] = [
     call: (a, c) => get(a, `/api/work-items/${c.key}/activity`),
   },
   {
+    matrixKey: "GET /api/work-items/{key}/reconstruct",
+    call: (a, c) =>
+      get(
+        a,
+        `/api/work-items/${c.key}/reconstruct?at=${encodeURIComponent(new Date().toISOString())}`,
+      ),
+  },
+  {
+    matrixKey: "GET /api/audit/entity/{type}/{id}",
+    call: (a, c) => get(a, `/api/audit/entity/work_item/${c.key}`),
+  },
+  {
     matrixKey: "GET /api/work-items/{key}/tree",
     call: (a, c) => get(a, `/api/work-items/${c.key}/tree`),
   },

@@ -1,15 +1,37 @@
-import type { authClient } from "@/lib/auth-client";
+/** `/api/me/api-keys` shapes (apps/api/src/api-key/schema.ts). */
+export type ApiKey = {
+  id: string;
+  name: string | null;
+  kind: "personal" | "service";
+  prefix: string | null;
+  start: string | null;
+  enabled: boolean;
+  isMcp: boolean;
+  capabilities: string[];
+  writesEnabled: boolean;
+  ipAllowlist: string[] | null;
+  rateLimitPerMinute: number | null;
+  expiresAt: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+  lastUsedIp: string | null;
+  disabledAt: string | null;
+  disabledReason: string | null;
+  workspaceId: string | null;
+  createdByFormerMember: boolean;
+  ownedByWorkspaceAdmins: boolean;
+  requiresReattestation: boolean;
+  accountabilityVersion: number;
+};
 
-export type ApiKey = NonNullable<
-  Awaited<ReturnType<typeof authClient.apiKey.list>>["data"]
->;
+export type CreateApiKeyClientRequest = {
+  name: string;
+  /** Seconds until expiry; null for none. */
+  expiresIn: number | null;
+  /** Omitted means the read-only default (AK-9). */
+  capabilities?: string[];
+  isMcp?: boolean;
+  ipAllowlist?: string[];
+};
 
-export type CreateApiKeyRequest = NonNullable<
-  Parameters<typeof authClient.apiKey.create>[0]
->;
-
-export type CreateApiKeyClientRequest = Omit<CreateApiKeyRequest, "userId">;
-
-export type CreateApiKeyResponse = NonNullable<
-  Awaited<ReturnType<typeof authClient.apiKey.create>>["data"]
->;
+export type CreateApiKeyResponse = ApiKey & { key: string };

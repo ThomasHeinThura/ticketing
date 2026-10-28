@@ -28,6 +28,11 @@ async function installCatalogue(page: Page, manageLabels = true) {
     writes: 0,
     failRead: false,
     holdCreate: undefined as undefined | (() => Promise<void>),
+    deletions: [] as string[],
+    pendingId: "",
+    pendingState: "pending",
+    approvals: 0,
+    cancels: 0,
   };
   await page.route(
     "**/api/label/project/project-g11/catalogue**",
@@ -57,8 +62,62 @@ async function installCatalogue(page: Page, manageLabels = true) {
         state.rows[index] = { ...state.rows[index], ...request.postDataJSON() };
         return route.fulfill({ json: state.rows[index] });
       }
-      const [removed] = state.rows.splice(index, 1);
-      return route.fulfill({ json: removed });
+      // DELETE only requests the deletion (202); approval removes the row.
+      state.deletions.push(id ?? "");
+      state.pendingId = `pending-label-delete-${state.deletions.length}`;
+      state.pendingState = "pending";
+      return route.fulfill({
+        status: 202,
+        json: {
+          pendingActionId: state.pendingId,
+          action: "delete",
+          summary: { name: state.rows[index]?.name },
+          confirmation: "click",
+          expiresAt: "2026-10-30T00:00:00.000Z",
+          approveUrl: `/api/me/pending-actions/${state.pendingId}/approve`,
+        },
+      });
+    },
+  );
+  await page.route(
+    "**/api/me/pending-actions/pending-label-delete-**",
+    (route) => {
+      const url = route.request().url();
+      const target = state.deletions.at(-1) ?? "";
+      if (url.endsWith("/cancel")) {
+        state.cancels++;
+        state.pendingState = "cancelled";
+        return route.fulfill({ json: {} });
+      }
+      if (url.endsWith("/approve")) {
+        state.approvals++;
+        state.pendingState = "executed";
+        state.rows = state.rows.filter((row) => row.id !== target);
+        return route.fulfill({
+          json: { id: state.pendingId, state: state.pendingState },
+        });
+      }
+      return route.fulfill({
+        json: {
+          id: state.pendingId,
+          action: "delete",
+          origin: "web",
+          targetType: "project_label",
+          targetIds: [target],
+          summary: {
+            name: state.rows.find((row) => row.id === target)?.name,
+          },
+          confirmation: "click",
+          approvalSupported: true,
+          state: state.pendingState,
+          createdAt: "2026-10-06T00:00:00.000Z",
+          expiresAt: "2026-10-30T00:00:00.000Z",
+          invalidationReason: null,
+          decidedAt: null,
+          executedAt: null,
+          requestingKeyName: null,
+        },
+      });
     },
   );
   return state;
@@ -101,25 +160,49 @@ test("project catalogue preserves Kaneo settings and CRUD across URL reloads", a
   await page.screenshot({
     path: "test-results/kaneo-project-label-catalogue.png",
   });
-  await page.getByRole("button", { name: "Delete", exact: true }).click();
-  await expect(page).toHaveURL(/action=delete/);
-  await page
-    .getByRole("alertdialog")
-    .getByRole("button", { name: "Cancel", exact: true })
-    .click();
-  await expect(page.getByRole("alertdialog")).not.toBeVisible();
+  // A `?action=delete&label=` link keeps its own confirmation; cancelling requests nothing.
+  await page.goto(`${CANONICAL}?action=delete&label=label-1`);
+  const confirm = page.getByRole("alertdialog");
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(confirm).not.toBeVisible();
+  await expect(page).not.toHaveURL(/action=delete/);
+  expect(state.deletions).toEqual([]);
   expect(state.rows).toHaveLength(1);
+  // The row button requests deletion directly; the in-place approval is the one
+  // confirmation, and cancelling it keeps the label.
   await page.getByRole("button", { name: "Delete", exact: true }).click();
-  await page
-    .getByRole("alertdialog")
-    .getByRole("button", { name: "Delete", exact: true })
-    .click();
-  await expect(page.getByRole("alertdialog")).not.toBeVisible();
+  const approval = page
+    .getByRole("dialog")
+    .filter({ hasText: "Delete project label" });
+  await expect(approval).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`${CANONICAL}$`));
+  expect(state.deletions).toEqual(["label-1"]);
+  expect(state.rows).toHaveLength(1);
+  await approval.getByRole("button", { name: "Cancel request" }).click();
+  await expect(page.getByText("Deletion request cancelled.")).toBeVisible();
+  await expect(approval).not.toBeVisible();
+  expect(state.cancels).toBe(1);
+  await expect(
+    page.getByText("Project urgency", { exact: true }),
+  ).toBeVisible();
+  // Confirming through the URL-addressed dialog requests, then approval deletes it.
+  await page.goto(`${CANONICAL}?action=delete&label=label-1`);
+  await confirm.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(confirm).not.toBeVisible();
+  await expect(approval).toBeVisible();
+  expect(state.deletions).toEqual(["label-1", "label-1"]);
+  expect(state.rows).toHaveLength(1);
+  await approval.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page.getByText("Deletion approved.")).toBeVisible();
+  await expect(approval).not.toBeVisible();
   await expect(
     page.getByText("Project urgency", { exact: true }),
   ).not.toBeVisible();
+  expect(state.approvals).toBe(1);
   expect(state.rows).toHaveLength(0);
-  expect(state.writes).toBe(3);
+  // Create, edit and two deletion requests; only approval removed the label.
+  expect(state.writes).toBe(4);
 });
 
 test("legacy label grants do not expose project management controls", async ({

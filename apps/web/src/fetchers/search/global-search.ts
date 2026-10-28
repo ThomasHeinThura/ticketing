@@ -5,6 +5,10 @@ type SearchParams = {
   type?:
     | "all"
     | "tasks"
+    | "work_items"
+    | "people"
+    | "views"
+    | "kb_articles"
     | "projects"
     | "workspaces"
     | "comments"
@@ -14,15 +18,16 @@ type SearchParams = {
   limit?: number;
 };
 
-async function globalSearch(params: SearchParams) {
+async function globalSearch(params: SearchParams, signal?: AbortSignal) {
   const queryParams = {
     ...params,
     limit: params.limit?.toString(),
   };
 
-  const response = await client.search.$get({
-    query: queryParams,
-  });
+  const response = await client.search.$get(
+    { query: queryParams },
+    signal ? { init: { signal } } : undefined,
+  );
 
   if (!response.ok) {
     const error = await response.text();

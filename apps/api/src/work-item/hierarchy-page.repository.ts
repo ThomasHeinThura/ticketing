@@ -4,10 +4,13 @@ import { alias } from "drizzle-orm/pg-core";
 import type { Executor } from "../database/executor";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
 import {
+  personTable,
   projectTable,
   stateTable,
   stateTemplateTable,
+  userTable,
   workItemTable,
+  workspaceUserTable,
 } from "../database/schema";
 
 export type HierarchyScope = {
@@ -15,20 +18,41 @@ export type HierarchyScope = {
   projectId: string;
   parentId: string;
 };
-const visibleItem = () =>
-  and(isNull(workItemTable.deletedAt), isNull(workItemTable.archivedAt));
+const visibleItem = (allowArchivedForRead = false) =>
+  and(
+    isNull(workItemTable.deletedAt),
+    ...(allowArchivedForRead ? [] : [isNull(workItemTable.archivedAt)]),
+  );
+
+// Match canonical list/detail privacy: a linked user's name is exposed only on this workspace's roster.
+function scopedAssigneeName(executor: Executor) {
+  return sql<string | null>`CASE WHEN ${exists(
+    executor
+      .select({ one: sql`1` })
+      .from(workspaceUserTable)
+      .where(
+        and(
+          eq(workspaceUserTable.workspaceId, workItemTable.workspaceId),
+          eq(workspaceUserTable.userId, personTable.userId),
+        ),
+      ),
+  )} THEN ${userTable.name} ELSE NULL END`;
+}
 
 export async function findHierarchyPageParentQuery(
   executor: Executor,
   identity: ResolvedIdentity,
   key: string,
   workspaceId: string,
+  options: { allowArchivedForRead?: true } = {},
 ) {
   const [row] = await executor
     .select({
       id: workItemTable.id,
       key: workItemTable.key,
       title: workItemTable.title,
+      assigneeId: workItemTable.assigneeId,
+      assigneeName: scopedAssigneeName(executor),
       parentId: workItemTable.parentId,
       projectId: workItemTable.projectId,
       workspaceId: workItemTable.workspaceId,
@@ -36,6 +60,8 @@ export async function findHierarchyPageParentQuery(
       stateCategory: stateTemplateTable.group,
     })
     .from(workItemTable)
+    .leftJoin(personTable, eq(personTable.id, workItemTable.assigneeId))
+    .leftJoin(userTable, eq(userTable.id, personTable.userId))
     .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
     .innerJoin(stateTable, eq(stateTable.id, workItemTable.stateId))
     .innerJoin(
@@ -46,7 +72,7 @@ export async function findHierarchyPageParentQuery(
       and(
         eq(workItemTable.key, key),
         eq(workItemTable.workspaceId, workspaceId),
-        visibleItem(),
+        visibleItem(options.allowArchivedForRead),
         isNull(projectTable.deletedAt),
         currentProjectReachPredicate(
           identity,
@@ -65,17 +91,22 @@ export async function findHierarchyAncestorQuery(
   executor: Executor,
   scope: HierarchyScope,
   id: string,
+  allowArchivedForRead = false,
 ) {
   const [row] = await executor
     .select({
       id: workItemTable.id,
       key: workItemTable.key,
       title: workItemTable.title,
+      assigneeId: workItemTable.assigneeId,
+      assigneeName: scopedAssigneeName(executor),
       parentId: workItemTable.parentId,
       stateName: stateTemplateTable.name,
       stateCategory: stateTemplateTable.group,
     })
     .from(workItemTable)
+    .leftJoin(personTable, eq(personTable.id, workItemTable.assigneeId))
+    .leftJoin(userTable, eq(userTable.id, personTable.userId))
     .innerJoin(stateTable, eq(stateTable.id, workItemTable.stateId))
     .innerJoin(
       stateTemplateTable,
@@ -86,7 +117,7 @@ export async function findHierarchyAncestorQuery(
         eq(workItemTable.id, id),
         eq(workItemTable.workspaceId, scope.workspaceId),
         eq(workItemTable.projectId, scope.projectId),
-        visibleItem(),
+        visibleItem(allowArchivedForRead),
       ),
     )
     .limit(1);
@@ -105,6 +136,8 @@ export async function listHierarchyChildrenQuery(
       id: workItemTable.id,
       key: workItemTable.key,
       title: workItemTable.title,
+      assigneeId: workItemTable.assigneeId,
+      assigneeName: scopedAssigneeName(executor),
       position: workItemTable.position,
       stateName: stateTemplateTable.name,
       stateCategory: stateTemplateTable.group,
@@ -124,6 +157,8 @@ export async function listHierarchyChildrenQuery(
       )}`,
     })
     .from(workItemTable)
+    .leftJoin(personTable, eq(personTable.id, workItemTable.assigneeId))
+    .leftJoin(userTable, eq(userTable.id, personTable.userId))
     .innerJoin(stateTable, eq(stateTable.id, workItemTable.stateId))
     .innerJoin(
       stateTemplateTable,

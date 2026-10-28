@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { customFieldTable } from "../../apps/api/src/database/migration-schema";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -11,6 +12,7 @@ import {
   createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
+import { makeCustomField, workItemWorld } from "./helpers/p4-closeout";
 
 type App = ReturnType<typeof createApp>["app"];
 
@@ -197,6 +199,142 @@ describe("API integration: GET/PATCH /api/me/settings (settings-hierarchy.md ST-
     });
   });
 
+  it("persists approved column widths per person and project, validates bounds and clears them", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await grantProjectRole(owner.user.id, project.id, ["work_item:read"]);
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const key = `columnWidths.${project.id}`;
+    expect(
+      (await patch(app, { [key]: { title: 320, priority: 96 } })).status,
+    ).toBe(200);
+    expect(await get(app)).toEqual({
+      settings: { [key]: { title: 320, priority: 96 } },
+    });
+    const row = (await rowsFor(owner.user.id)).find(
+      (entry) => entry.key === "columnWidths",
+    );
+    expect(row).toMatchObject({
+      scope: "project",
+      scopeId: project.id,
+      value: { title: 320, priority: 96 },
+    });
+    for (const bad of [
+      { title: 63 },
+      { title: 801 },
+      { title: 200.5 },
+      { unknown: 120 },
+    ]) {
+      expect((await patch(app, { [key]: bad })).status).toBe(422);
+    }
+    const outsider = await createWorkspaceMember();
+    mockAuthenticatedSession(outsider.user);
+    expect(await get(app)).toEqual({ settings: {} });
+    expect((await patch(app, { [key]: { title: 240 } })).status).toBe(404);
+    mockAuthenticatedSession(owner.user);
+    expect((await patch(app, { [key]: null })).status).toBe(200);
+    expect(await get(app)).toEqual({ settings: {} });
+  });
+
+  it("stores listGroups and columns beside layout as separate project rows and rejects bad values (VW-15, VW-19)", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await grantProjectRole(owner.user.id, project.id, ["work_item:read"]);
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+
+    const saved = await patch(app, {
+      [`layout.${project.id}`]: "table",
+      [`listGroups.${project.id}`]: ["state-a", "state-b"],
+      [`columns.${project.id}`]: ["key", "title", "dueDate"],
+    });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toEqual({
+      settings: {
+        [`layout.${project.id}`]: "table",
+        [`listGroups.${project.id}`]: ["state-a", "state-b"],
+        [`columns.${project.id}`]: ["key", "title", "dueDate"],
+      },
+    });
+    const rows = (await rowsFor(owner.user.id)).filter(
+      (row) => row.scopeId === project.id,
+    );
+    expect(rows.map((row) => row.key).sort()).toEqual([
+      "columns",
+      "layout",
+      "listGroups",
+    ]);
+
+    for (const bad of [
+      { [`columns.${project.id}`]: [] },
+      { [`columns.${project.id}`]: ["title", "title"] },
+      { [`columns.${project.id}`]: ["cf.severity"] },
+      { [`listGroups.${project.id}`]: ["a", "a"] },
+      { [`listGroups.${project.id}`]: "a" },
+    ]) {
+      expect((await patch(app, bad)).status).toBe(422);
+    }
+
+    // Clearing one key leaves the others.
+    await patch(app, { [`listGroups.${project.id}`]: null });
+    expect(await get(app)).toEqual({
+      settings: {
+        [`layout.${project.id}`]: "table",
+        [`columns.${project.id}`]: ["key", "title", "dueDate"],
+      },
+    });
+  });
+
+  it("persists only live custom-field columns for a reached project", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await grantProjectRole(owner.user.id, project.id, ["work_item:read"]);
+    const rows = await workItemWorld(owner.workspace.id, project.id);
+    const field = await makeCustomField(owner.workspace.id, rows.type.id, {
+      key: "severity",
+      format: "text",
+    });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const columnsKey = `columns.${project.id}`;
+    const widthsKey = `columnWidths.${project.id}`;
+
+    const saved = await patch(app, {
+      [columnsKey]: ["key", "cf.severity"],
+      [widthsKey]: { "cf.severity": 220 },
+    });
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    expect(await saved.json()).toMatchObject({
+      settings: {
+        [columnsKey]: ["key", "cf.severity"],
+        [widthsKey]: { "cf.severity": 220 },
+      },
+    });
+
+    const unknown = await patch(app, {
+      [columnsKey]: ["key", "cf.unknown_field"],
+    });
+    expect(unknown.status).toBe(422);
+
+    await db
+      .update(customFieldTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(customFieldTable.id, field.id));
+    expect(await get(app)).toEqual({
+      settings: {
+        [columnsKey]: ["key"],
+        [widthsKey]: {},
+      },
+    });
+  });
+
   it.each([
     ["unknown key", { accent: "red" }],
     ["theme (no specified value domain)", { theme: "dark" }],
@@ -331,7 +469,9 @@ describe("API integration: GET/PATCH /api/me/settings (settings-hierarchy.md ST-
     mockAuthenticatedSession(member.user, { impersonatedBy: "admin-user" });
     const impersonated = await patch(app, { density: "compact" });
     expect(impersonated.status).toBe(403);
-    expect(await impersonated.text()).toContain("session_required");
+    // GM-9: the default-deny impersonation guard answers first and names impersonation.
+    expect(await impersonated.text()).toContain("impersonation");
+    expect(await rowsFor(member.user.id)).toHaveLength(0);
 
     const rawKey = `taskdesk_mcp_${randomUUID()}`;
     const now = new Date();

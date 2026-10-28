@@ -1,12 +1,21 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { PropsWithChildren } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
+import type { ChangeEventHandler, PropsWithChildren } from "react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
 import CommandPaletteLauncher from "./command-palette-launcher";
 
 const mocks = vi.hoisted(() => ({
   projectsPageModule: vi.fn(),
   preloadRoute: vi.fn().mockResolvedValue(undefined),
+  search: vi.fn((_params: { q: string }) => ({
+    data: { results: [] as Array<Record<string, string>> },
+  })),
 }));
 
 /**
@@ -51,6 +60,10 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "w1" } }),
 }));
 
+vi.mock("@/hooks/queries/search/use-global-search", () => ({
+  default: (params: { q: string }) => mocks.search(params),
+}));
+
 vi.mock("@/store/user-preferences", () => ({
   useUserPreferencesStore: () => ({ setTheme: vi.fn() }),
 }));
@@ -70,20 +83,23 @@ vi.mock("@/components/shared/modals/create-project-modal", () => ({
 // out so the test isn't coupled to unrelated rendering, same approach the
 // #294 regression test (command-palette/index.test.tsx on that branch)
 // uses.
-vi.mock("@taskdesk/ui", () => {
+vi.mock("@taskdesk/ui", async () => {
+  const { Button, Input } =
+    await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const Null = ({ children }: PropsWithChildren) => <>{children}</>;
   return {
     Command: ({
       children,
       onItemHighlighted,
+      items,
     }: PropsWithChildren<{
       onItemHighlighted?: (value: unknown, details: { reason: string }) => void;
+      items?: Array<{ items: Array<{ value: string; label: string }> }>;
     }>) => (
       <>
         {(() => {
           return (
-            // ui-exempt: this test control triggers the command palette's keyboard callback.
-            <button
+            <Button
               type="button"
               data-testid="highlight-project-command"
               onClick={() =>
@@ -94,9 +110,16 @@ vi.mock("@taskdesk/ui", () => {
               }
             >
               Highlight Projects with keyboard
-            </button>
+            </Button>
           );
         })()}
+        <div data-testid="palette-items">
+          {items?.flatMap((group) =>
+            group.items.map((item) => (
+              <span key={item.value}>{item.label}</span>
+            )),
+          )}
+        </div>
         {children}
       </>
     ),
@@ -111,7 +134,10 @@ vi.mock("@taskdesk/ui", () => {
     CommandFooter: Null,
     CommandGroup: Null,
     CommandGroupLabel: Null,
-    CommandInput: () => null,
+    CommandInput: (props: {
+      value?: string;
+      onChange?: ChangeEventHandler<HTMLInputElement>;
+    }) => <Input aria-label="palette search query" {...props} />,
     CommandItem: Null,
     CommandList: () => null,
     CommandPanel: Null,
@@ -122,6 +148,13 @@ vi.mock("@taskdesk/ui", () => {
   };
 });
 
+beforeAll(async () => {
+  // Warm the public library entry outside the first keyboard interaction's
+  // five-second guard. The launcher imports its palette lazily, so its static
+  // import above does not invoke this mock factory before this hook.
+  await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -129,6 +162,51 @@ afterEach(() => {
 });
 
 describe("CommandPalette (#407)", () => {
+  it("searches from Cmd+K while keeping the navigation and action commands available", async () => {
+    mocks.search.mockImplementation(({ q }) => ({
+      data: {
+        results: q
+          ? [
+              {
+                id: "item-1",
+                type: "work_item",
+                key: "PERF-1",
+                title: "性能測試項目",
+              },
+            ]
+          : [],
+      },
+    }));
+    render(
+      <KeyboardShortcutsProvider>
+        <CommandPaletteLauncher />
+      </KeyboardShortcutsProvider>,
+    );
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+      await vi.dynamicImportSettled();
+    });
+    expect(screen.getByTestId("command-dialog")).toBeInTheDocument();
+    expect(
+      screen.getByText("navigation:commandPalette.projects"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("navigation:commandPalette.search"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("palette search query"), {
+      target: { value: "性能" },
+    });
+
+    await vi.waitFor(() =>
+      expect(mocks.search).toHaveBeenLastCalledWith(
+        expect.objectContaining({ q: "性能", workspaceId: "w1" }),
+      ),
+    );
+    expect(screen.getByText("PERF-1 性能測試項目")).toBeInTheDocument();
+  });
+
   it("mounts inside the real KeyboardShortcutsProvider without hanging or OOMing", () => {
     render(
       <KeyboardShortcutsProvider>

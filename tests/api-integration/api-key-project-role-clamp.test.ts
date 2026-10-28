@@ -18,6 +18,7 @@ import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { grantProjectRole } from "./helpers/fixtures";
+import { ensureAgentSession } from "./helpers/pending-deletion";
 import {
   addMember,
   createItem,
@@ -36,6 +37,8 @@ const FULL_SCOPE = {
   project: ["read", "update", "delete", "manage_settings"],
   work_item: [
     "read",
+    // Move needs work_item:create on the target project as well as update on the source.
+    "create",
     "update",
     "delete",
     "assign",
@@ -167,6 +170,8 @@ describe("API integration: API key authority is clamped by the owner's project r
     it("bulk delete and bulk assign with that key refuse every item like the session and delete nothing", async () => {
       const { world, app, item } = await arrange();
       const before = await snapshot();
+      // Bulk deletion records a pending action bound to a live session row.
+      await ensureAgentSession(world.readerLead.user.id);
       const bodies = [
         { operation: "delete" },
         { operation: "assign", assigneeId: world.projectMember.personId },
@@ -217,8 +222,14 @@ describe("API integration: API key authority is clamped by the owner's project r
         operation: "delete",
       });
       setAmbientHeaders({});
-      expect(response.status, await response.clone().text()).toBe(200);
-      expect(await response.text()).not.toContain("forbidden");
+      // Bulk delete is durable: the capable member's key is accepted as a request (202).
+      expect(response.status, await response.clone().text()).toBe(202);
+      const pending = (await response.json()) as {
+        action: string;
+        pendingActionId: string;
+      };
+      expect(pending.action).toBe("bulk_delete");
+      expect(JSON.stringify(pending)).not.toContain("forbidden");
     });
 
     it("an owner or admin with no project role override is unaffected", async () => {
@@ -307,6 +318,7 @@ describe("API integration: API key authority is clamped by the owner's project r
   describe("project-level writes (the key capability is left to a downstream gate)", () => {
     const PROJECT_WRITES: Array<{
       name: string;
+      sessionOnly?: boolean;
       call: (
         app: ReturnType<typeof createApp>["app"],
         projectId: string,
@@ -341,6 +353,8 @@ describe("API integration: API key authority is clamped by the owner's project r
       },
       {
         name: "DELETE /api/project/{id}",
+        // Session-only: every API key is refused (403), outsiders included.
+        sessionOnly: true,
         call: (app, id) => json(app, "DELETE", `/api/project/${id}`),
       },
     ];
@@ -376,13 +390,16 @@ describe("API integration: API key authority is clamped by the owner's project r
         setAmbientHeaders({
           "x-api-key": await makeApiKey(world.outsiderLead.user.id, FULL_SCOPE),
         });
-        expect((await write.call(app, world.project.id)).status).toBe(404);
+        expect((await write.call(app, world.project.id)).status).toBe(
+          write.sessionOnly ? 403 : 404,
+        );
         setAmbientHeaders({});
 
         // The member's key and session are compared on separate fresh worlds so a
         // destructive write by one cannot colour the other.
         const sessionWorld = await setupWorld();
         mockAuthenticatedSession(sessionWorld.projectMember.user);
+        await ensureAgentSession(sessionWorld.projectMember.user.id);
         const sessionStatus = (await write.call(app, sessionWorld.project.id))
           .status;
 
@@ -396,6 +413,9 @@ describe("API integration: API key authority is clamped by the owner's project r
         });
         const keyStatus = (await write.call(app, keyWorld.project.id)).status;
         setAmbientHeaders({});
+        // The member's session and key are compared like every other write; a session-only
+        // route additionally refuses the key outright (403).
+        if (write.sessionOnly) expect(keyStatus).toBe(403);
         expect(keyStatus).toBe(sessionStatus);
       });
     }
@@ -497,7 +517,7 @@ describe("API integration: API key authority is clamped by the owner's project r
       expect(await relationRows()).toBe(before);
     });
 
-    it("a capable project member's key still creates and deletes relations", async () => {
+    it("a capable project member's key still creates relations, and the legacy delete route is gone (410)", async () => {
       const world = await setupWorld();
       const { app } = createApp();
       const seed = await seedLegacy(world, world.projectMember.user.id);
@@ -510,13 +530,19 @@ describe("API integration: API key authority is clamped by the owner's project r
         "DELETE",
         `/api/task-relation/${seed.relationId}`,
       );
-      expect(removed.status, await removed.text()).toBe(200);
+      expect(removed.status, await removed.text()).toBe(410);
+      expect(
+        await db
+          .select()
+          .from(schema.taskRelationTable)
+          .where(eq(schema.taskRelationTable.id, seed.relationId)),
+      ).toHaveLength(1);
       setAmbientHeaders({});
     });
   });
 
-  describe("owner authority is not narrowed by a key's CANONICAL subset on a deferred-scope route", () => {
-    it("DELETE /api/attachments/{id}: the route's policy capability (attachment:delete_own) is not in the key scope, but the legacy statement the route checks (work_item:update) is, and the owner holds both: allowed", async () => {
+  describe("a key's CANONICAL subset bounds a durable attachment deletion request", () => {
+    it("DELETE /api/attachments/{id}: the request is a pending action evaluated against the key's own ceiling, so a key without attachment:delete_own is refused and one holding it is accepted (202)", async () => {
       const world = await setupWorld();
       const { app } = createApp();
       const target = await createItem(app, world, TITLE);
@@ -538,13 +564,27 @@ describe("API integration: API key authority is clamped by the owner's project r
           work_item: ["read", "update"],
         }),
       });
-      const response = await json(
+      const refused = await json(
+        app,
+        "DELETE",
+        `/api/attachments/${attachmentId}`,
+      );
+      expect(refused.status, await refused.text()).toBe(403);
+
+      setAmbientHeaders({
+        "x-api-key": await makeApiKey(world.projectMember.user.id, {
+          project: ["read"],
+          work_item: ["read", "update"],
+          attachment: ["delete_own"],
+        }),
+      });
+      const accepted = await json(
         app,
         "DELETE",
         `/api/attachments/${attachmentId}`,
       );
       setAmbientHeaders({});
-      expect(response.status, await response.text()).toBe(200);
+      expect(accepted.status, await accepted.text()).toBe(202);
     });
   });
 

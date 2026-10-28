@@ -1,14 +1,3 @@
-import { and, eq } from "drizzle-orm";
-import db, { schema } from "../../database";
-import { lockWorkspaceRoleAssignment } from "../workspace-role-assignment.repository";
-import { WorkspaceRoleNotFoundError } from "./workspace-membership-errors";
-import {
-  RoleAssignedToMembersError,
-  RoleNameReservedError,
-} from "./workspace-role-errors";
-
-export type DeletedWorkspaceRole = { id: string; role: string };
-
 /**
  * Is `roleName` currently referenced by any of these `workspace_member.role` values?
  *
@@ -58,63 +47,3 @@ export function roleIsReferencedBy(
       .includes(target),
   );
 }
-
-/**
- * Delete a custom role. Native replacement for `authClient.organization.deleteRole()`.
- *
- * Refuses `"owner"` (defensive — see the comment below) and refuses a role still assigned to
- * any member. Role-definition writes use 4_003. This deletion also acquires the shared
- * membership→role lock pair from `workspace-role-assignment-lock.ts`, which serializes it
- * against native membership and invitation-acceptance paths that assign a role. Both sides
- * re-read under the pair, so a concurrent assignment either makes deletion refuse or sees
- * the committed deletion and refuses to assign.
- */
-async function deleteWorkspaceRole(
-  workspaceId: string,
-  roleId: string,
-): Promise<DeletedWorkspaceRole> {
-  return db.transaction(async (tx) => {
-    await lockWorkspaceRoleAssignment(tx, workspaceId);
-
-    const [existing] = await tx
-      .select()
-      .from(schema.workspaceRoleTable)
-      .where(
-        and(
-          eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-          eq(schema.workspaceRoleTable.id, roleId),
-        ),
-      )
-      .limit(1);
-    if (!existing) {
-      throw new WorkspaceRoleNotFoundError(roleId);
-    }
-    // Defensive only — see update-workspace-role.ts's identical comment: `owner` is never a
-    // DB row, so this can never be reached through any known write path today.
-    if (existing.role === "owner") {
-      throw new RoleNameReservedError();
-    }
-
-    const memberRows = await tx
-      .select({ role: schema.workspaceUserTable.role })
-      .from(schema.workspaceUserTable)
-      .where(eq(schema.workspaceUserTable.workspaceId, workspaceId));
-
-    if (
-      roleIsReferencedBy(
-        memberRows.map((row) => row.role),
-        existing.role,
-      )
-    ) {
-      throw new RoleAssignedToMembersError(existing.role);
-    }
-
-    await tx
-      .delete(schema.workspaceRoleTable)
-      .where(eq(schema.workspaceRoleTable.id, roleId));
-
-    return { id: existing.id, role: existing.role };
-  });
-}
-
-export default deleteWorkspaceRole;

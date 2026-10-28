@@ -1,58 +1,27 @@
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@taskdesk/ui";
+import { Button, DropdownMenu, DropdownMenuTrigger } from "@taskdesk/ui";
 import { ArrowDownAZ, ArrowUpAZ } from "lucide-react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { SortConfig, SortDirection, SortField } from "@/lib/sort-tasks";
+import type { SortConfig, SortField } from "@/lib/sort-tasks";
+
+const loadSortControlMenu = () => import("./sort-control-menu");
+const SortControlMenu = lazy(loadSortControlMenu);
 
 type SortControlProps = {
   sort: SortConfig;
   onSortChange: (sort: SortConfig) => void;
+  fields?: readonly SortField[];
 };
 
-function CheckSlot({ checked }: { checked: boolean }) {
-  return (
-    <span
-      className={`inline-flex size-4 shrink-0 items-center justify-center rounded-[4px] border ${
-        checked
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-input bg-background"
-      }`}
-    >
-      {checked ? "\u2713" : null}
-    </span>
-  );
-}
-
-export default function SortControl({ sort, onSortChange }: SortControlProps) {
+export default function SortControl({
+  sort,
+  onSortChange,
+  fields,
+}: SortControlProps) {
   const { t } = useTranslation();
-  const sortFields: { field: SortField; label: string }[] = [
-    { field: "position", label: t("tasks:sort.fields.position") },
-    { field: "createdAt", label: t("tasks:sort.fields.createdAt") },
-    { field: "priority", label: t("tasks:sort.fields.priority") },
-    { field: "dueDate", label: t("tasks:sort.fields.dueDate") },
-    { field: "title", label: t("tasks:sort.fields.title") },
-    { field: "number", label: t("tasks:sort.fields.number") },
-  ];
+  const [open, setOpen] = useState(false);
+  const [contentRequested, setContentRequested] = useState(false);
   const isActive = sort.field !== "position";
-  const activeLabel = sortFields.find((f) => f.field === sort.field)?.label;
-
-  const handleFieldChange = (field: SortField) => {
-    if (field === "position" || field === sort.field) {
-      onSortChange({ field: "position", direction: "asc" });
-    } else {
-      const defaultDirection: SortDirection =
-        field === "priority" ? "desc" : "asc";
-      onSortChange({ field, direction: defaultDirection });
-    }
-  };
 
   const toggleDirection = () => {
     onSortChange({
@@ -61,10 +30,20 @@ export default function SortControl({ sort, onSortChange }: SortControlProps) {
     });
   };
 
+  const preloadMenuContent = () => {
+    void loadSortControlMenu().catch(() => {});
+  };
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen) setContentRequested(true);
+  };
+
   return (
     <div className="inline-flex items-center gap-1">
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
+          onFocus={preloadMenuContent}
+          onPointerEnter={preloadMenuContent}
           render={
             <Button
               variant="ghost"
@@ -82,51 +61,19 @@ export default function SortControl({ sort, onSortChange }: SortControlProps) {
           ) : (
             <ArrowDownAZ className="h-3 w-3" />
           )}
-          {isActive ? activeLabel : t("tasks:sort.label")}
+          {isActive
+            ? t(`tasks:sort.fields.${sort.field}`)
+            : t("tasks:sort.label")}
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-48" align="start">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel className="text-[11px] uppercase tracking-wide">
-              {t("tasks:sort.by")}
-            </DropdownMenuLabel>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          {sortFields.map(({ field, label }) => (
-            <DropdownMenuItem
-              key={field}
-              onClick={() => handleFieldChange(field)}
-              className="h-8 rounded-md text-sm"
-            >
-              <CheckSlot checked={sort.field === field} />
-              {label}
-            </DropdownMenuItem>
-          ))}
-
-          {isActive && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="text-[11px] uppercase tracking-wide">
-                  {t("tasks:sort.direction")}
-                </DropdownMenuLabel>
-              </DropdownMenuGroup>
-              <DropdownMenuItem
-                onClick={() => onSortChange({ ...sort, direction: "asc" })}
-                className="h-8 rounded-md text-sm"
-              >
-                <CheckSlot checked={sort.direction === "asc"} />
-                {t("tasks:sort.ascending")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onSortChange({ ...sort, direction: "desc" })}
-                className="h-8 rounded-md text-sm"
-              >
-                <CheckSlot checked={sort.direction === "desc"} />
-                {t("tasks:sort.descending")}
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
+        {contentRequested ? (
+          <Suspense fallback={null}>
+            <SortControlMenu
+              sort={sort}
+              fields={fields}
+              onSortChange={onSortChange}
+            />
+          </Suspense>
+        ) : null}
       </DropdownMenu>
 
       {isActive && (

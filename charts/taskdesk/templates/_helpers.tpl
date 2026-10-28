@@ -210,3 +210,8 @@ which of the two happened -- never a silent success as the owner.
   {{- end }}
 {{- end }}
 {{- end }}
+
+{{/* The attachment claim name must remain a valid DNS label for long releases. */}}
+{{- define "taskdesk.attachmentsClaimName" -}}
+{{- default (printf "%s-attachments" (include "taskdesk.fullname" .) | trunc 63 | trimSuffix "-") .Values.taskdesk.persistence.existingClaim -}}
+{{- end }}

@@ -1,0 +1,7 @@
+{
+	"method": "Real portal UI on additive audit customer only; save/reload/restore; no mocked API",
+	"saveHttp": 200,
+	"screenshot": "docs/report/screens/codex-20261025-portal-preferences-saved-hourly.png",
+	"restoreHttp": 200,
+	"outcome": "passed"
+}

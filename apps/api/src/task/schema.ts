@@ -43,7 +43,7 @@ export const bulkUpdateBody = z.object({
   ]),
   value: z.string().nullable().optional().openapi({
     description:
-      "The new value for the chosen operation. Unused by `delete`; null clears an assignee or due date.",
+      "The new value for the chosen operation; null clears an assignee or due date. `delete` is retired and answers 410 Gone (use POST /api/work-items/bulk).",
   }),
 });
 

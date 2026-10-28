@@ -1,4 +1,6 @@
+import { canonicalPreferenceResponseSchema } from "../notification/canonical-preferences";
 import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
+import { quietHoursSchema } from "./quiet-hours";
 
 // Secrets are never returned: each is a *Configured boolean plus a masked preview.
 export const workspaceRuleSchema = z
@@ -25,6 +27,11 @@ export const workspaceRuleSchema = z
 
 export const notificationPreferenceSchema = z
   .object({
+    canonicalPreferences: z.array(canonicalPreferenceResponseSchema).optional(),
+    quietHours: quietHoursSchema.nullable().optional().openapi({
+      description:
+        "NO-3: the caller's quiet-hours window; null when none is set.",
+    }),
     emailAddress: z.string().nullable(),
     emailEnabled: z.boolean(),
     ntfyEnabled: z.boolean(),

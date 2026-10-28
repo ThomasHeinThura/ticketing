@@ -12,15 +12,44 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
 import {
   listReachOf,
   requireReachContext,
   requireReachFilteredList,
 } from "../utils/reach-filtered-list";
-import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
+import {
+  apiKeyScopeSatisfies,
+  requireApiKeyPermissionScope,
+} from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
+import { intakeAuditContext } from "./audit";
+import {
+  REQUEST_TYPE_DELETION_ROUTE,
+  requestTypeDeletionBlockers,
+  requestTypeDeletionRefusal,
+} from "./deletion-target";
+import { suggestDuplicatesForQueueRows } from "./duplicate-suggestions";
+import { parseSubmissionListFilters } from "./list-filters";
+import {
+  escalatePortalPriority,
+  ratePortalSubmission,
+  reopenPortalSubmission,
+} from "./portal-actions";
+import {
+  listPortalBacklog,
+  portalBacklogPageSchema,
+  portalBacklogQuerySchema,
+  rankPortalBacklog,
+  rankPortalBacklogBodySchema,
+  rankPortalBacklogResponseSchema,
+} from "./portal-backlog";
+import { PORTAL_CUSTOMER_STATUSES } from "./portal-status";
 import {
   acceptSubmission,
   claimSubmission,
@@ -29,6 +58,7 @@ import {
   declineSubmission,
   findPortalSubmission,
   findSubmission,
+  findSubmissionSatisfaction,
   getRequestType,
   listOwnSubmissions,
   listRequestTypes,
@@ -62,9 +92,11 @@ import {
   createRequestTypeBody,
   declineBody,
   duplicateBody,
+  escalatePriorityBody,
   messageBody,
   requestTypeIdParam,
   requestTypeKeyParam,
+  satisfactionBody,
   submissionBody,
   submissionRefParam,
   updateRequestTypeBody,
@@ -109,7 +141,22 @@ const submissionResponseSchema = z.object({
   version: requestTypeVersionSchema,
   messages: z.array(submissionMessageSchema),
   ref: z.string(),
+  /** CP-9: the requester's rating of the resolution, for staff; null until rated. */
+  satisfaction: z
+    .object({
+      rating: z.number().int(),
+      comment: z.string().nullable(),
+      ratedAt: z.string().datetime(),
+    })
+    .nullable(),
 });
+const portalSlaSchema = z.object({
+  state: z.enum(["on_track", "at_risk", "breached", "met", "missed"]),
+  dueAt: z.string().datetime().nullable(),
+  /** Which target `dueAt` describes: a first staff response, or the resolution. */
+  metric: z.enum(["first_response", "resolution"]),
+});
+const portalCustomerStatusSchema = z.enum(PORTAL_CUSTOMER_STATUSES);
 const portalSubmissionResponseSchema = z.object({
   ref: z.string(),
   submission: z.object({
@@ -118,7 +165,27 @@ const portalSubmissionResponseSchema = z.object({
     customerVisibility: z.string(),
     createdAt: z.string().datetime(),
   }),
+  /** CP-5: the customer-safe status; the only status the portal renders. */
+  customerStatus: portalCustomerStatusSchema,
+  /** CP-16: true for the requester; a colleague or participant has a read-only view. */
+  isRequester: z.boolean(),
+  /** CP-16: attachments stay requester-only (list, download, upload); other readers get false so the UI hides them. */
+  canViewAttachments: z.boolean(),
+  canUpload: z.boolean(),
   canWithdraw: z.boolean(),
+  /** CP-7: the requester may still raise the priority (open request, a higher priority exists). */
+  canEscalate: z.boolean(),
+  /** CP-8 / IQ-15: reopen is available (auto-declined submission, or resolved inside the window). */
+  canReopen: z.boolean(),
+  /** CP-9: a rating can be given (resolved) or changed (inside the window). */
+  canRate: z.boolean(),
+  satisfaction: z
+    .object({
+      rating: z.number().int().min(1).max(5),
+      comment: z.string().nullable(),
+      ratedAt: z.string().datetime(),
+    })
+    .nullable(),
   requestType: z.object({
     name: z.string(),
     description: z.string().nullable(),
@@ -142,15 +209,38 @@ const portalSubmissionResponseSchema = z.object({
     .object({
       title: z.string(),
       description: z.string(),
-      state: z.string(),
       priority: z.string().nullable(),
+      resolvedAt: z.string().datetime().nullable(),
+      /** SLA-21: customer-safe projection; null when no SLA applies. */
+      sla: portalSlaSchema.nullable(),
     })
     .nullable(),
+  /**
+   * CF-11: the customer-visible custom fields of the linked work item that currently hold a
+   * value. A label and a value only: no ids, options, conditions or staff people.
+   */
+  customFields: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      format: z.string(),
+      helpText: z.string().nullable(),
+      value: z.unknown(),
+    }),
+  ),
   messages: z.array(
     z.object({
       id: z.string(),
-      actorType: z.string(),
+      /** `customer`, `triager` (staff) or `system` (IQ-15 auto-decline); never a person id. */
+      actorType: z.enum(["customer", "triager", "system"]),
+      /** CP-4: only staff who act publicly are named; always null for a customer. */
+      authorName: z.string().nullable(),
+      /** True for the viewer's own message. */
+      mine: z.boolean(),
       body: z.string(),
+      /** A system message's stable reason (`P2R1-05`), rendered in the customer's locale. */
+      reasonCode: z.string().nullable(),
+      reasonParams: z.record(z.string(), z.unknown()).nullable(),
       createdAt: z.string().datetime(),
     }),
   ),
@@ -164,6 +254,12 @@ const portalSubmissionListResponseSchema = z.object({
       createdAt: z.string().datetime(),
       customerVisibility: z.string(),
       requestTypeName: z.string(),
+      /** CP-16: false for an organisation colleague's request. */
+      isRequester: z.boolean(),
+      /** CP-5: the customer-safe status. */
+      customerStatus: portalCustomerStatusSchema,
+      /** CP-6: customer-safe due time and plain state; null with no work item or no SLA. */
+      sla: portalSlaSchema.nullable(),
     }),
   ),
   page: z.object({ nextCursor: z.string().nullable(), hasMore: z.boolean() }),
@@ -187,6 +283,10 @@ const queryList = workspaceQuery.extend({
       "withdrawn",
     ])
     .optional(),
+  // IQ-21: server-side queue filters (see ./list-filters).
+  requestTypeKey: z.string().max(200).optional(),
+  assignee: z.string().max(200).optional(),
+  olderThanDays: z.string().max(4).optional(),
   cursor: z.string().max(2048).optional(),
   limit: z.string().optional(),
 });
@@ -345,6 +445,26 @@ async function portalOwnSubmission(c: IntakeContext, next: Next) {
   await next();
 }
 
+/**
+ * `CP-16`: read access. The requester, a participant, or (for an organisation-visible request)
+ * a customer of the same organisation; every other caller gets the constant 404. Write actions
+ * keep `portalOwnSubmission` (requester only).
+ */
+async function portalReadableSubmission(c: IntakeContext, next: Next) {
+  const identity = await portalIdentity(c.get("userId"));
+  const ref = c.req.param("ref");
+  if (!ref) return notFound("Submission not found");
+  const row = await findSubmission(ref, undefined, undefined, undefined, {
+    personId: identity.personId,
+    organisationId: identity.organisationId,
+  });
+  await requireIntakeEnabled(row.workspaceId);
+  c.set("portalPredicateSatisfied", true);
+  c.set("policyOrganisationId", identity.organisationId);
+  c.set("policyOrganisationIdSource", "row");
+  await next();
+}
+
 const listRoute = createRoute({
   method: "get",
   operationId: "listRequestTypes",
@@ -372,6 +492,8 @@ const createRouteDef = createRoute({
   tags: ["Request types"],
   summary: "Create a request type",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     requestTypeCollectionScope,
     requireApiKeyPermissionScope({ request_type: ["manage"] }),
     requireWorkspaceCapability("request_type:manage"),
@@ -418,6 +540,8 @@ const patchRoute = createRoute({
   tags: ["Request types"],
   summary: "Update a request type draft",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     requestTypeReach,
     requireApiKeyPermissionScope({ request_type: ["manage"] }),
     requireWorkspaceCapability("request_type:manage"),
@@ -442,6 +566,8 @@ const publishRoute = createRoute({
   tags: ["Request types"],
   summary: "Publish an immutable form version",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     requestTypeReach,
     requireApiKeyPermissionScope({ request_type: ["manage"] }),
     requireWorkspaceCapability("request_type:manage"),
@@ -466,6 +592,8 @@ const unpublishRoute = createRoute({
   tags: ["Request types"],
   summary: "Unpublish a request type",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     requestTypeReach,
     requireApiKeyPermissionScope({ request_type: ["manage"] }),
     requireWorkspaceCapability("request_type:manage"),
@@ -474,6 +602,29 @@ const unpublishRoute = createRoute({
   responses: {
     200: jsonResponse("Unpublished request type", savedRequestTypeSchema),
     404: errorResponse("Request type not found"),
+  },
+});
+const deleteRequestTypeRoute = createRoute({
+  method: "delete",
+  operationId: "deleteRequestType",
+  path: "/request-types/{id}",
+  tags: ["Request types"],
+  summary: "Delete an unpublished, unused request type",
+  description:
+    "Request deletion (202 pending action, click approval). Refused while the request type is published or has any submission.",
+  middleware: [
+    requestTypeReach,
+    requireApiKeyPermissionScope({ request_type: ["manage"] }),
+    requireWorkspaceCapability("request_type:manage"),
+  ] as const,
+  request: { params: requestTypeIdParam },
+  responses: {
+    202: jsonResponse(
+      "Deletion awaiting approval",
+      registeredDeletionRequestSchema,
+    ),
+    404: errorResponse("Request type not found"),
+    409: errorResponse("Request type is published or has submissions"),
   },
 });
 const portalCatalogueResponseSchema = z.object({
@@ -534,7 +685,7 @@ const createSubmissionRoute = createRoute({
   path: "/portal/submissions",
   tags: ["Portal submissions"],
   summary: "Submit a request",
-  middleware: [portalOrganisation] as const,
+  middleware: [intakeAuditContext, portalOrganisation] as const,
   request: {
     body: {
       required: true,
@@ -549,6 +700,31 @@ const createSubmissionRoute = createRoute({
     422: errorResponse("Form answers do not match the published form"),
   },
 });
+async function duplicateReadableProjectIds(c: Context): Promise<string[]> {
+  if (!apiKeyScopeSatisfies(c.get("apiKey"), { work_item: ["read"] }))
+    return [];
+  const workspaceId = c.get("workspaceId");
+  const reach = listReachOf(c);
+  const reachable = new Set(await reach.reachableProjectIds([workspaceId]));
+  const candidates = (await reach.projectFactsFor([workspaceId])).filter(
+    (project) =>
+      reachable.has(project.id) && !project.deleted && !project.archived,
+  );
+  return (
+    await Promise.all(
+      candidates.map(async (project) =>
+        (await reach.can("work_item:read", {
+          projectId: project.id,
+          workspaceId,
+          organisationId: project.organisationId,
+        }))
+          ? project.id
+          : null,
+      ),
+    )
+  ).filter((id): id is string => id !== null);
+}
+
 const listSubmissionsRoute = createRoute({
   method: "get",
   operationId: "listSubmissions",
@@ -557,6 +733,7 @@ const listSubmissionsRoute = createRoute({
   summary: "List submissions for triage",
   middleware: [
     requestTypeCollectionScope,
+    requireReachFilteredList,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
   ] as const,
@@ -601,6 +778,8 @@ const claimRoute = createRoute({
   tags: ["Intake"],
   summary: "Claim a submission for triage",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
@@ -627,6 +806,8 @@ const acceptRoute = createRoute({
   tags: ["Intake"],
   summary: "Convert a submission into a work item",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
@@ -659,6 +840,8 @@ const duplicateRoute = createRoute({
   tags: ["Intake"],
   summary: "Link a submission to an existing work item",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
@@ -721,6 +904,8 @@ const declineRoute = createRoute({
   tags: ["Intake"],
   summary: "Decline with a customer-visible reason",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
@@ -752,6 +937,8 @@ const staffMessageRoute = createRoute({
   tags: ["Intake"],
   summary: "Ask for clarification",
   middleware: [
+    // AU-14: audit rows carry the request context and never fail the action.
+    intakeAuditContext,
     submissionReach,
     requireApiKeyPermissionScope({ intake: ["triage"] }),
     requireWorkspaceCapability("intake:triage"),
@@ -777,6 +964,40 @@ const staffMessageRoute = createRoute({
     409: errorResponse("Submission cannot receive a message"),
   },
 });
+const portalBacklogRoute = createRoute({
+  method: "get",
+  operationId: "listPortalOrganisationBacklog",
+  path: "/portal/requests/backlog",
+  tags: ["Portal submissions"],
+  summary: "List visible backlog items in the caller's organisation",
+  middleware: [portalOrganisation] as const,
+  request: { query: portalBacklogQuerySchema },
+  responses: {
+    200: jsonResponse("Organisation backlog", portalBacklogPageSchema),
+    400: errorResponse("Invalid backlog cursor"),
+    404: errorResponse("Backlog not found"),
+  },
+});
+const portalBacklogRankRoute = createRoute({
+  method: "post",
+  operationId: "rankPortalOrganisationBacklog",
+  path: "/portal/requests/rank",
+  tags: ["Portal submissions"],
+  summary: "Reorder a visible item within its organisation backlog partition",
+  middleware: [portalOrganisation] as const,
+  request: {
+    body: {
+      required: true,
+      content: { "application/json": { schema: rankPortalBacklogBodySchema } },
+    },
+  },
+  responses: {
+    200: jsonResponse("Backlog rank", rankPortalBacklogResponseSchema),
+    400: errorResponse("Invalid rank neighbours"),
+    404: errorResponse("Backlog item not found"),
+    409: errorResponse("Backlog changed"),
+  },
+});
 const portalListRoute = createRoute({
   method: "get",
   operationId: "listOwnPortalSubmissions",
@@ -795,7 +1016,7 @@ const portalDetailRoute = createRoute({
   path: "/portal/submissions/{ref}",
   tags: ["Portal submissions"],
   summary: "Get the caller's durable submission page",
-  middleware: [portalOwnSubmission] as const,
+  middleware: [portalReadableSubmission] as const,
   request: { params: submissionRefParam },
   responses: {
     200: jsonResponse("Submission page", portalSubmissionResponseSchema),
@@ -808,7 +1029,7 @@ const portalMessageRoute = createRoute({
   path: "/portal/submissions/{ref}/messages",
   tags: ["Portal submissions"],
   summary: "Reply to a clarification",
-  middleware: [portalOwnSubmission] as const,
+  middleware: [intakeAuditContext, portalOwnSubmission] as const,
   request: {
     params: submissionRefParam,
     body: {
@@ -835,7 +1056,7 @@ const withdrawRoute = createRoute({
   path: "/portal/submissions/{ref}/withdraw",
   tags: ["Portal submissions"],
   summary: "Withdraw an unclaimed submission",
-  middleware: [portalOwnSubmission] as const,
+  middleware: [intakeAuditContext, portalOwnSubmission] as const,
   request: { params: submissionRefParam },
   responses: {
     200: jsonResponse(
@@ -843,6 +1064,77 @@ const withdrawRoute = createRoute({
       z.object({ ref: z.string(), state: z.string(), version: z.number() }),
     ),
     409: errorResponse("Triage has already started"),
+  },
+});
+
+const portalEscalateRoute = createRoute({
+  method: "post",
+  operationId: "escalatePortalSubmissionPriority",
+  path: "/portal/submissions/{ref}/escalate-priority",
+  tags: ["Portal submissions"],
+  summary: "Raise the priority of the caller's request (never lower it)",
+  middleware: [intakeAuditContext, portalOwnSubmission] as const,
+  request: {
+    params: submissionRefParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: escalatePriorityBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "Updated submission page",
+      portalSubmissionResponseSchema,
+    ),
+    403: errorResponse("cannot_deescalate: a decrease is refused"),
+    404: errorResponse("Submission not found"),
+    409: errorResponse(
+      "not_escalatable, no_change or conflict: the request cannot be escalated now",
+    ),
+  },
+});
+const portalReopenRoute = createRoute({
+  method: "post",
+  operationId: "reopenPortalSubmission",
+  path: "/portal/submissions/{ref}/reopen",
+  tags: ["Portal submissions"],
+  summary: "Reopen the caller's resolved or auto-declined request",
+  middleware: [intakeAuditContext, portalOwnSubmission] as const,
+  request: { params: submissionRefParam },
+  responses: {
+    200: jsonResponse(
+      "Updated submission page",
+      portalSubmissionResponseSchema,
+    ),
+    404: errorResponse("Submission not found"),
+    409: errorResponse(
+      "not_reopenable, reopen_pending_review or conflict: the request was not reopened",
+    ),
+  },
+});
+const portalSatisfactionRoute = createRoute({
+  method: "post",
+  operationId: "ratePortalSubmission",
+  path: "/portal/submissions/{ref}/satisfaction",
+  tags: ["Portal submissions"],
+  summary: "Rate (or change the rating of) a resolved request",
+  middleware: [intakeAuditContext, portalOwnSubmission] as const,
+  request: {
+    params: submissionRefParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: satisfactionBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "Updated submission page",
+      portalSubmissionResponseSchema,
+    ),
+    404: errorResponse("Submission not found"),
+    409: errorResponse(
+      "not_rateable or rating_locked: the request cannot be rated now",
+    ),
   },
 });
 
@@ -920,6 +1212,18 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
       200,
     ),
   )
+  .openapi(deleteRequestTypeRoute, async (c) => {
+    const id = c.req.valid("param").id;
+    const blockers = await requestTypeDeletionBlockers(db, id);
+    if (blockers.length > 0) throw requestTypeDeletionRefusal(blockers);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: REQUEST_TYPE_DELETION_ROUTE,
+      targetType: "request_type",
+      id,
+      workspaceId: c.get("workspaceId"),
+    });
+    return c.json(pending, 202);
+  })
   .openapi(catalogueRoute, async (c) => {
     const identity = await portalIdentity(c.get("userId"));
     const rows = await portalCatalogue(
@@ -995,12 +1299,23 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
       query.state ? [query.state] : undefined,
       query.cursor,
       parseCollectionLimit(query.limit),
+      parseSubmissionListFilters(query),
+    );
+    const duplicates = await suggestDuplicatesForQueueRows(
+      query.workspaceId,
+      result.submissions.map((row) => ({
+        ref: row.ref,
+        summary: row.summary,
+        organisationId: row.organisation.id,
+      })),
+      await duplicateReadableProjectIds(c),
     );
     return c.json(
       {
         submissions: result.submissions.map((row) => ({
           ref: row.ref,
           summary: row.summary,
+          suggestedDuplicates: duplicates.get(row.ref) ?? [],
           submission: {
             id: row.submission.id,
             number: row.submission.number,
@@ -1042,6 +1357,10 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
         requestType: toStaffRequestTypeRef(detail.requestType),
         version: toRequestTypeVersion(detail.version),
         messages: detail.messages.map(toSubmissionMessage),
+        // `workItemId` is already null when the caller cannot reach the linked work item.
+        satisfaction: await findSubmissionSatisfaction(
+          detail.submission.workItemId,
+        ),
       },
       200,
     );
@@ -1119,7 +1438,7 @@ const triageActionRouter = apiRouter<IntakeVariables>()
         suggestions: await suggestDuplicateWorkItems(
           c.req.valid("param").ref,
           c.get("workspaceId"),
-          await listReachOf(c).reachableProjectIds([c.get("workspaceId")]),
+          await duplicateReadableProjectIds(c),
         ),
       },
       200,
@@ -1161,6 +1480,22 @@ const triageActionRouter = apiRouter<IntakeVariables>()
     );
   });
 
+const portalBacklogRouter = apiRouter<IntakeVariables>()
+  .openapi(portalBacklogRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    return c.json(
+      await listPortalBacklog(identity.personId, c.req.valid("query").cursor),
+      200,
+    );
+  })
+  .openapi(portalBacklogRankRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    return c.json(
+      await rankPortalBacklog(identity.personId, c.req.valid("json")),
+      200,
+    );
+  });
+
 const portalSubmissionRouter = apiRouter<IntakeVariables>().openapi(
   portalListRoute,
   async (c) => {
@@ -1174,12 +1509,22 @@ const portalSubmissionRouter = apiRouter<IntakeVariables>().openapi(
       {
         ...result,
         submissions: result.submissions.map(
-          ({ submission, requestType, ref }) => ({
+          ({
+            submission,
+            requestType,
+            ref,
+            isRequester,
+            sla,
+            customerStatus,
+          }) => ({
             ref,
             state: submission.state,
             createdAt: submission.createdAt.toISOString(),
             customerVisibility: submission.customerVisibility,
             requestTypeName: requestType.name,
+            isRequester,
+            customerStatus,
+            sla,
           }),
         ),
       },
@@ -1188,23 +1533,28 @@ const portalSubmissionRouter = apiRouter<IntakeVariables>().openapi(
   },
 );
 
+async function portalProjection(
+  userId: string,
+  ref: string,
+): Promise<PortalSubmissionResponse> {
+  const identity = await portalIdentity(userId);
+  const detail = await findPortalSubmission(ref, identity.personId);
+  return {
+    ...detail,
+    submission: {
+      ...detail.submission,
+      formData: detail.submission.formData as Record<string, unknown>,
+    },
+  };
+}
+
 const portalDetailRouter = apiRouter<IntakeVariables>().openapi(
   portalDetailRoute,
-  async (c) => {
-    const identity = await portalIdentity(c.get("userId"));
-    const detail = await findPortalSubmission(
-      c.req.valid("param").ref,
-      identity.personId,
-    );
-    const response: PortalSubmissionResponse = {
-      ...detail,
-      submission: {
-        ...detail.submission,
-        formData: detail.submission.formData as Record<string, unknown>,
-      },
-    };
-    return c.json(response, 200);
-  },
+  async (c) =>
+    c.json(
+      await portalProjection(c.get("userId"), c.req.valid("param").ref),
+      200,
+    ),
 );
 
 const portalMessageRouter = apiRouter<IntakeVariables>().openapi(
@@ -1241,12 +1591,46 @@ const portalWithdrawRouter = apiRouter<IntakeVariables>().openapi(
   },
 );
 
+// CP-7 / CP-8 / CP-9: requester-only lifecycle actions; each answers with the updated projection.
+const portalLifecycleRouter = apiRouter<IntakeVariables>()
+  .openapi(portalEscalateRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    const { ref } = c.req.valid("param");
+    await escalatePortalPriority({
+      ref,
+      personId: identity.personId,
+      userId: c.get("userId"),
+      priority: c.req.valid("json").priority,
+    });
+    return c.json(await portalProjection(c.get("userId"), ref), 200);
+  })
+  .openapi(portalReopenRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    const { ref } = c.req.valid("param");
+    await reopenPortalSubmission({ ref, personId: identity.personId });
+    return c.json(await portalProjection(c.get("userId"), ref), 200);
+  })
+  .openapi(portalSatisfactionRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    const { ref } = c.req.valid("param");
+    const { rating, comment } = c.req.valid("json");
+    await ratePortalSubmission({
+      ref,
+      personId: identity.personId,
+      rating,
+      ...(comment === undefined ? {} : { comment }),
+    });
+    return c.json(await portalProjection(c.get("userId"), ref), 200);
+  });
+
 const router = requestTypeRouter
   .route("/", intakeSubmissionRouter)
   .route("/", triageActionRouter)
   .route("/", portalSubmissionRouter)
+  .route("/", portalBacklogRouter)
   .route("/", portalDetailRouter)
   .route("/", portalMessageRouter)
-  .route("/", portalWithdrawRouter);
+  .route("/", portalWithdrawRouter)
+  .route("/", portalLifecycleRouter);
 
 export default router;

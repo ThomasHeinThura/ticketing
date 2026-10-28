@@ -14,6 +14,7 @@ import { Route as LayoutRouteImport } from './routes/agent/_layout'
 import { Route as AuthRouteImport } from './routes/agent/auth'
 import { Route as TestErrorRouteImport } from './routes/agent/test-error'
 import { Route as LayoutAuthenticatedRouteImport } from './routes/agent/_layout/_authenticated'
+import { Route as AgentSignInRouteImport } from './routes/agent/agent/sign-in'
 import { Route as AuthCheckEmailRouteImport } from './routes/agent/auth/check-email'
 import { Route as AuthSignInRouteImport } from './routes/agent/auth/sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/agent/auth/sign-up'
@@ -25,28 +26,63 @@ import { Route as LayoutAuthenticatedInvitationsRouteImport } from './routes/age
 import { Route as LayoutAuthenticatedOnboardingRouteImport } from './routes/agent/_layout/_authenticated/onboarding'
 import { Route as LayoutAuthenticatedProfileSetupRouteImport } from './routes/agent/_layout/_authenticated/profile-setup'
 import { Route as InvitationAcceptInviteIdRouteImport } from './routes/agent/invitation/accept.$inviteId'
+import { Route as LayoutAuthenticatedAgentDashboardRouteImport } from './routes/agent/_layout/_authenticated/agent/dashboard'
+import { Route as LayoutAuthenticatedAgentGodModeRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode'
 import { Route as LayoutAuthenticatedAgentInboxRouteImport } from './routes/agent/_layout/_authenticated/agent/inbox'
+import { Route as LayoutAuthenticatedAgentKbRouteImport } from './routes/agent/_layout/_authenticated/agent/kb'
 import { Route as LayoutAuthenticatedAgentMyWorkRouteImport } from './routes/agent/_layout/_authenticated/agent/my-work'
+import { Route as LayoutAuthenticatedAgentReportsRouteImport } from './routes/agent/_layout/_authenticated/agent/reports'
 import { Route as LayoutAuthenticatedAgentSearchRouteImport } from './routes/agent/_layout/_authenticated/agent/search'
 import { Route as LayoutAuthenticatedAgentSettingsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings'
+import { Route as LayoutAuthenticatedAgentTimesheetRouteImport } from './routes/agent/_layout/_authenticated/agent/timesheet'
 import { Route as LayoutAuthenticatedAgentTriageRouteImport } from './routes/agent/_layout/_authenticated/agent/triage'
 import { Route as LayoutAuthenticatedAgentViewsRouteImport } from './routes/agent/_layout/_authenticated/agent/views'
 import { Route as LayoutAuthenticatedDashboardIndexRouteImport } from './routes/agent/_layout/_authenticated/dashboard/index'
 import { Route as LayoutAuthenticatedDashboardInvitationsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/invitations'
 import { Route as LayoutAuthenticatedDashboardSettingsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings'
 import { Route as LayoutAuthenticatedGodModeObservabilityRouteImport } from './routes/agent/_layout/_authenticated/god-mode/observability'
+import { Route as LayoutAuthenticatedAgentDashboardEditRouteImport } from './routes/agent/_layout/_authenticated/agent/dashboard_.edit'
+import { Route as LayoutAuthenticatedAgentGodModeIndexRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/index'
+import { Route as LayoutAuthenticatedAgentGodModeApiKeysRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/api-keys'
+import { Route as LayoutAuthenticatedAgentGodModeAuditRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/audit'
 import { Route as LayoutAuthenticatedAgentGodModeAuthenticationRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/authentication'
+import { Route as LayoutAuthenticatedAgentGodModeDeliveriesRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/deliveries'
+import { Route as LayoutAuthenticatedAgentGodModeFeaturesRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/features'
+import { Route as LayoutAuthenticatedAgentGodModeGeneralRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/general'
+import { Route as LayoutAuthenticatedAgentGodModeImportsRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/imports'
+import { Route as LayoutAuthenticatedAgentGodModeJobsRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/jobs'
+import { Route as LayoutAuthenticatedAgentGodModeMcpRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/mcp'
+import { Route as LayoutAuthenticatedAgentGodModeNotificationsRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/notifications'
+import { Route as LayoutAuthenticatedAgentGodModePluginsRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/plugins'
+import { Route as LayoutAuthenticatedAgentGodModeStorageRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/storage'
 import { Route as LayoutAuthenticatedAgentGodModeUsersRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/users'
+import { Route as LayoutAuthenticatedAgentGodModeWebhooksRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/webhooks'
+import { Route as LayoutAuthenticatedAgentKbIdRouteImport } from './routes/agent/_layout/_authenticated/agent/kb_.$id'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey'
+import { Route as LayoutAuthenticatedAgentReportsKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/reports_.$key'
+import { Route as LayoutAuthenticatedAgentReportsNewRouteImport } from './routes/agent/_layout/_authenticated/agent/reports_.new'
+import { Route as LayoutAuthenticatedAgentServiceManagementChangesRouteImport } from './routes/agent/_layout/_authenticated/agent/service-management/changes'
+import { Route as LayoutAuthenticatedAgentServiceManagementReleasesRouteImport } from './routes/agent/_layout/_authenticated/agent/service-management/releases'
+import { Route as LayoutAuthenticatedAgentServiceManagementServicesRouteImport } from './routes/agent/_layout/_authenticated/agent/service-management/services'
+import { Route as LayoutAuthenticatedAgentSettingsAutomationsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/automations'
 import { Route as LayoutAuthenticatedAgentSettingsCalendarsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/calendars'
 import { Route as LayoutAuthenticatedAgentSettingsCannedResponsesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/canned-responses'
+import { Route as LayoutAuthenticatedAgentSettingsCustomFieldsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/custom-fields'
+import { Route as LayoutAuthenticatedAgentSettingsCustomerInvitationsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/customer-invitations'
 import { Route as LayoutAuthenticatedAgentSettingsDangerRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/danger'
 import { Route as LayoutAuthenticatedAgentSettingsLabelsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/labels'
 import { Route as LayoutAuthenticatedAgentSettingsMembersRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/members'
 import { Route as LayoutAuthenticatedAgentSettingsProfileRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/profile'
+import { Route as LayoutAuthenticatedAgentSettingsRatesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/rates'
 import { Route as LayoutAuthenticatedAgentSettingsRequestTypesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/request-types'
+import { Route as LayoutAuthenticatedAgentSettingsRolesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/roles'
 import { Route as LayoutAuthenticatedAgentSettingsSlaPoliciesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/sla-policies'
 import { Route as LayoutAuthenticatedAgentSettingsStatesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/states'
+import { Route as LayoutAuthenticatedAgentSettingsTeamsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/teams'
+import { Route as LayoutAuthenticatedAgentSettingsTimeActivitiesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/time-activities'
+import { Route as LayoutAuthenticatedAgentSettingsWebhooksRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/webhooks'
+import { Route as LayoutAuthenticatedAgentSettingsWorkItemTemplatesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/work-item-templates'
+import { Route as LayoutAuthenticatedAgentSettingsWorkflowsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/workflows'
 import { Route as LayoutAuthenticatedAgentViewsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/views/$id'
 import { Route as LayoutAuthenticatedAgentWorkItemsKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/work-items/$key'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account'
@@ -55,31 +91,61 @@ import { Route as LayoutAuthenticatedDashboardSettingsWorkspaceRouteImport } fro
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId'
 import { Route as LayoutAuthenticatedDashboardWorkspaceCreateRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/create'
 import { Route as LayoutAuthenticatedAgentGodModeAuthenticationIdRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/authentication/$id'
+import { Route as LayoutAuthenticatedAgentGodModeImportsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/imports/$id'
+import { Route as LayoutAuthenticatedAgentGodModeOrganisationsIndexRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/organisations/index'
+import { Route as LayoutAuthenticatedAgentKbIdEditRouteImport } from './routes/agent/_layout/_authenticated/agent/kb_.$id_.edit'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/backlog'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyCyclesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyModulesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyPagesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/pages'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyWorkRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/work'
+import { Route as LayoutAuthenticatedAgentReportsExportsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/reports_.exports.$id'
+import { Route as LayoutAuthenticatedAgentServiceManagementReleasesIdRouteImport } from './routes/agent/_layout/_authenticated/agent/service-management/releases/$id'
+import { Route as LayoutAuthenticatedAgentServiceManagementServicesIdRouteImport } from './routes/agent/_layout/_authenticated/agent/service-management/services/$id'
 import { Route as LayoutAuthenticatedAgentSettingsCalendarsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/calendars/$id'
+import { Route as LayoutAuthenticatedAgentSettingsCustomFieldsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/custom-fields/$id'
 import { Route as LayoutAuthenticatedAgentSettingsProfileAppearanceRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/profile/appearance'
+import { Route as LayoutAuthenticatedAgentSettingsProfileNotificationsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/profile/notifications'
 import { Route as LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions'
+import { Route as LayoutAuthenticatedAgentSettingsRolesIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/roles/$id'
 import { Route as LayoutAuthenticatedAgentSettingsSlaPoliciesIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/sla-policies/$id'
+import { Route as LayoutAuthenticatedAgentSettingsTeamsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/teams/$id'
+import { Route as LayoutAuthenticatedAgentSettingsWebhooksIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/webhooks/$id'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountDeveloperRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account/developer'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountInformationRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account/information'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountNotificationsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account/notifications'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountPreferencesRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account/preferences'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountSecurityRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account/security'
+import { Route as LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/workspace/features'
 import { Route as LayoutAuthenticatedDashboardSettingsWorkspaceGeneralRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/workspace/general'
 import { Route as LayoutAuthenticatedDashboardSettingsWorkspaceLabelsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/workspace/labels'
 import { Route as LayoutAuthenticatedDashboardSettingsWorkspaceRolesRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles'
+import { Route as LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/workspace/terminology'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdIndexRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/index'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdMembersRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/members'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search'
+import { Route as LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRouteImport } from './routes/agent/_layout/_authenticated/agent/god-mode/organisations/$id/identity'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/pages_.$pageId'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/automations'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/budget'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/danger'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/estimates'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/features'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/labels'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/members'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings/states'
 import { Route as LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id'
+import { Route as LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRouteImport } from './routes/agent/_layout/_authenticated/agent/settings/webhooks/$id/deliveries'
+import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/automations'
+import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/budget'
+import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/estimates'
+import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/features'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/labels'
+import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/members'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdIndexRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/index'
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRouteImport } from './routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog'
@@ -110,6 +176,11 @@ const TestErrorRoute = TestErrorRouteImport.update({
 const LayoutAuthenticatedRoute = LayoutAuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => LayoutRoute,
+} as any)
+const AgentSignInRoute = AgentSignInRouteImport.update({
+  id: '/agent/sign-in',
+  path: '/agent/sign-in',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCheckEmailRoute = AuthCheckEmailRouteImport.update({
   id: '/check-email',
@@ -172,16 +243,40 @@ const InvitationAcceptInviteIdRoute =
     path: '/invitation/accept/$inviteId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const LayoutAuthenticatedAgentDashboardRoute =
+  LayoutAuthenticatedAgentDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeRoute =
+  LayoutAuthenticatedAgentGodModeRouteImport.update({
+    id: '/god-mode',
+    path: '/god-mode',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
 const LayoutAuthenticatedAgentInboxRoute =
   LayoutAuthenticatedAgentInboxRouteImport.update({
     id: '/inbox',
     path: '/inbox',
     getParentRoute: () => LayoutAuthenticatedAgentRoute,
   } as any)
+const LayoutAuthenticatedAgentKbRoute =
+  LayoutAuthenticatedAgentKbRouteImport.update({
+    id: '/kb',
+    path: '/kb',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
 const LayoutAuthenticatedAgentMyWorkRoute =
   LayoutAuthenticatedAgentMyWorkRouteImport.update({
     id: '/my-work',
     path: '/my-work',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentReportsRoute =
+  LayoutAuthenticatedAgentReportsRouteImport.update({
+    id: '/reports',
+    path: '/reports',
     getParentRoute: () => LayoutAuthenticatedAgentRoute,
   } as any)
 const LayoutAuthenticatedAgentSearchRoute =
@@ -194,6 +289,12 @@ const LayoutAuthenticatedAgentSettingsRoute =
   LayoutAuthenticatedAgentSettingsRouteImport.update({
     id: '/settings',
     path: '/settings',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentTimesheetRoute =
+  LayoutAuthenticatedAgentTimesheetRouteImport.update({
+    id: '/timesheet',
+    path: '/timesheet',
     getParentRoute: () => LayoutAuthenticatedAgentRoute,
   } as any)
 const LayoutAuthenticatedAgentTriageRoute =
@@ -232,16 +333,106 @@ const LayoutAuthenticatedGodModeObservabilityRoute =
     path: '/god-mode/observability',
     getParentRoute: () => LayoutAuthenticatedRoute,
   } as any)
+const LayoutAuthenticatedAgentDashboardEditRoute =
+  LayoutAuthenticatedAgentDashboardEditRouteImport.update({
+    id: '/dashboard_/edit',
+    path: '/dashboard/edit',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeIndexRoute =
+  LayoutAuthenticatedAgentGodModeIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeApiKeysRoute =
+  LayoutAuthenticatedAgentGodModeApiKeysRouteImport.update({
+    id: '/api-keys',
+    path: '/api-keys',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeAuditRoute =
+  LayoutAuthenticatedAgentGodModeAuditRouteImport.update({
+    id: '/audit',
+    path: '/audit',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
 const LayoutAuthenticatedAgentGodModeAuthenticationRoute =
   LayoutAuthenticatedAgentGodModeAuthenticationRouteImport.update({
-    id: '/god-mode/authentication',
-    path: '/god-mode/authentication',
-    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+    id: '/authentication',
+    path: '/authentication',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeDeliveriesRoute =
+  LayoutAuthenticatedAgentGodModeDeliveriesRouteImport.update({
+    id: '/deliveries',
+    path: '/deliveries',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeFeaturesRoute =
+  LayoutAuthenticatedAgentGodModeFeaturesRouteImport.update({
+    id: '/features',
+    path: '/features',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeGeneralRoute =
+  LayoutAuthenticatedAgentGodModeGeneralRouteImport.update({
+    id: '/general',
+    path: '/general',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeImportsRoute =
+  LayoutAuthenticatedAgentGodModeImportsRouteImport.update({
+    id: '/imports',
+    path: '/imports',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeJobsRoute =
+  LayoutAuthenticatedAgentGodModeJobsRouteImport.update({
+    id: '/jobs',
+    path: '/jobs',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeMcpRoute =
+  LayoutAuthenticatedAgentGodModeMcpRouteImport.update({
+    id: '/mcp',
+    path: '/mcp',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeNotificationsRoute =
+  LayoutAuthenticatedAgentGodModeNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModePluginsRoute =
+  LayoutAuthenticatedAgentGodModePluginsRouteImport.update({
+    id: '/plugins',
+    path: '/plugins',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeStorageRoute =
+  LayoutAuthenticatedAgentGodModeStorageRouteImport.update({
+    id: '/storage',
+    path: '/storage',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
   } as any)
 const LayoutAuthenticatedAgentGodModeUsersRoute =
   LayoutAuthenticatedAgentGodModeUsersRouteImport.update({
-    id: '/god-mode/users',
-    path: '/god-mode/users',
+    id: '/users',
+    path: '/users',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeWebhooksRoute =
+  LayoutAuthenticatedAgentGodModeWebhooksRouteImport.update({
+    id: '/webhooks',
+    path: '/webhooks',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentKbIdRoute =
+  LayoutAuthenticatedAgentKbIdRouteImport.update({
+    id: '/kb_/$id',
+    path: '/kb/$id',
     getParentRoute: () => LayoutAuthenticatedAgentRoute,
   } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeyRoute =
@@ -249,6 +440,42 @@ const LayoutAuthenticatedAgentProjectsProjectKeyRoute =
     id: '/projects/$projectKey',
     path: '/projects/$projectKey',
     getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentReportsKeyRoute =
+  LayoutAuthenticatedAgentReportsKeyRouteImport.update({
+    id: '/reports_/$key',
+    path: '/reports/$key',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentReportsNewRoute =
+  LayoutAuthenticatedAgentReportsNewRouteImport.update({
+    id: '/reports_/new',
+    path: '/reports/new',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentServiceManagementChangesRoute =
+  LayoutAuthenticatedAgentServiceManagementChangesRouteImport.update({
+    id: '/service-management/changes',
+    path: '/service-management/changes',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentServiceManagementReleasesRoute =
+  LayoutAuthenticatedAgentServiceManagementReleasesRouteImport.update({
+    id: '/service-management/releases',
+    path: '/service-management/releases',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentServiceManagementServicesRoute =
+  LayoutAuthenticatedAgentServiceManagementServicesRouteImport.update({
+    id: '/service-management/services',
+    path: '/service-management/services',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsAutomationsRoute =
+  LayoutAuthenticatedAgentSettingsAutomationsRouteImport.update({
+    id: '/automations',
+    path: '/automations',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
   } as any)
 const LayoutAuthenticatedAgentSettingsCalendarsRoute =
   LayoutAuthenticatedAgentSettingsCalendarsRouteImport.update({
@@ -260,6 +487,18 @@ const LayoutAuthenticatedAgentSettingsCannedResponsesRoute =
   LayoutAuthenticatedAgentSettingsCannedResponsesRouteImport.update({
     id: '/canned-responses',
     path: '/canned-responses',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsCustomFieldsRoute =
+  LayoutAuthenticatedAgentSettingsCustomFieldsRouteImport.update({
+    id: '/custom-fields',
+    path: '/custom-fields',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsCustomerInvitationsRoute =
+  LayoutAuthenticatedAgentSettingsCustomerInvitationsRouteImport.update({
+    id: '/customer-invitations',
+    path: '/customer-invitations',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
   } as any)
 const LayoutAuthenticatedAgentSettingsDangerRoute =
@@ -286,10 +525,22 @@ const LayoutAuthenticatedAgentSettingsProfileRoute =
     path: '/profile',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
   } as any)
+const LayoutAuthenticatedAgentSettingsRatesRoute =
+  LayoutAuthenticatedAgentSettingsRatesRouteImport.update({
+    id: '/rates',
+    path: '/rates',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
 const LayoutAuthenticatedAgentSettingsRequestTypesRoute =
   LayoutAuthenticatedAgentSettingsRequestTypesRouteImport.update({
     id: '/request-types',
     path: '/request-types',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsRolesRoute =
+  LayoutAuthenticatedAgentSettingsRolesRouteImport.update({
+    id: '/roles',
+    path: '/roles',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
   } as any)
 const LayoutAuthenticatedAgentSettingsSlaPoliciesRoute =
@@ -302,6 +553,36 @@ const LayoutAuthenticatedAgentSettingsStatesRoute =
   LayoutAuthenticatedAgentSettingsStatesRouteImport.update({
     id: '/states',
     path: '/states',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsTeamsRoute =
+  LayoutAuthenticatedAgentSettingsTeamsRouteImport.update({
+    id: '/teams',
+    path: '/teams',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsTimeActivitiesRoute =
+  LayoutAuthenticatedAgentSettingsTimeActivitiesRouteImport.update({
+    id: '/time-activities',
+    path: '/time-activities',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsWebhooksRoute =
+  LayoutAuthenticatedAgentSettingsWebhooksRouteImport.update({
+    id: '/webhooks',
+    path: '/webhooks',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute =
+  LayoutAuthenticatedAgentSettingsWorkItemTemplatesRouteImport.update({
+    id: '/work-item-templates',
+    path: '/work-item-templates',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsWorkflowsRoute =
+  LayoutAuthenticatedAgentSettingsWorkflowsRouteImport.update({
+    id: '/workflows',
+    path: '/workflows',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsRoute,
   } as any)
 const LayoutAuthenticatedAgentViewsIdRoute =
@@ -352,10 +633,46 @@ const LayoutAuthenticatedAgentGodModeAuthenticationIdRoute =
     path: '/$id',
     getParentRoute: () => LayoutAuthenticatedAgentGodModeAuthenticationRoute,
   } as any)
+const LayoutAuthenticatedAgentGodModeImportsIdRoute =
+  LayoutAuthenticatedAgentGodModeImportsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeImportsRoute,
+  } as any)
+const LayoutAuthenticatedAgentGodModeOrganisationsIndexRoute =
+  LayoutAuthenticatedAgentGodModeOrganisationsIndexRouteImport.update({
+    id: '/organisations/',
+    path: '/organisations/',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentKbIdEditRoute =
+  LayoutAuthenticatedAgentKbIdEditRouteImport.update({
+    id: '/kb_/$id_/edit',
+    path: '/kb/$id/edit',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute =
   LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport.update({
     id: '/backlog',
     path: '/backlog',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyCyclesRouteImport.update({
+    id: '/cycles',
+    path: '/cycles',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyModulesRouteImport.update({
+    id: '/modules',
+    path: '/modules',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyPagesRouteImport.update({
+    id: '/pages',
+    path: '/pages',
     getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
   } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute =
@@ -370,16 +687,48 @@ const LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute =
     path: '/work',
     getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
   } as any)
+const LayoutAuthenticatedAgentReportsExportsIdRoute =
+  LayoutAuthenticatedAgentReportsExportsIdRouteImport.update({
+    id: '/reports_/exports/$id',
+    path: '/reports/exports/$id',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentServiceManagementReleasesIdRoute =
+  LayoutAuthenticatedAgentServiceManagementReleasesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () =>
+      LayoutAuthenticatedAgentServiceManagementReleasesRoute,
+  } as any)
+const LayoutAuthenticatedAgentServiceManagementServicesIdRoute =
+  LayoutAuthenticatedAgentServiceManagementServicesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () =>
+      LayoutAuthenticatedAgentServiceManagementServicesRoute,
+  } as any)
 const LayoutAuthenticatedAgentSettingsCalendarsIdRoute =
   LayoutAuthenticatedAgentSettingsCalendarsIdRouteImport.update({
     id: '/$id',
     path: '/$id',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsCalendarsRoute,
   } as any)
+const LayoutAuthenticatedAgentSettingsCustomFieldsIdRoute =
+  LayoutAuthenticatedAgentSettingsCustomFieldsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsCustomFieldsRoute,
+  } as any)
 const LayoutAuthenticatedAgentSettingsProfileAppearanceRoute =
   LayoutAuthenticatedAgentSettingsProfileAppearanceRouteImport.update({
     id: '/appearance',
     path: '/appearance',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsProfileRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsProfileNotificationsRoute =
+  LayoutAuthenticatedAgentSettingsProfileNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsProfileRoute,
   } as any)
 const LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute =
@@ -388,11 +737,29 @@ const LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute =
     path: '/pending-actions',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsProfileRoute,
   } as any)
+const LayoutAuthenticatedAgentSettingsRolesIdRoute =
+  LayoutAuthenticatedAgentSettingsRolesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsRolesRoute,
+  } as any)
 const LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute =
   LayoutAuthenticatedAgentSettingsSlaPoliciesIdRouteImport.update({
     id: '/$id',
     path: '/$id',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsSlaPoliciesRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsTeamsIdRoute =
+  LayoutAuthenticatedAgentSettingsTeamsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsTeamsRoute,
+  } as any)
+const LayoutAuthenticatedAgentSettingsWebhooksIdRoute =
+  LayoutAuthenticatedAgentSettingsWebhooksIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsWebhooksRoute,
   } as any)
 const LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute =
   LayoutAuthenticatedDashboardSettingsAccountDeveloperRouteImport.update({
@@ -424,6 +791,12 @@ const LayoutAuthenticatedDashboardSettingsAccountSecurityRoute =
     path: '/security',
     getParentRoute: () => LayoutAuthenticatedDashboardSettingsAccountRoute,
   } as any)
+const LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRoute =
+  LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRouteImport.update({
+    id: '/features',
+    path: '/features',
+    getParentRoute: () => LayoutAuthenticatedDashboardSettingsWorkspaceRoute,
+  } as any)
 const LayoutAuthenticatedDashboardSettingsWorkspaceGeneralRoute =
   LayoutAuthenticatedDashboardSettingsWorkspaceGeneralRouteImport.update({
     id: '/general',
@@ -440,6 +813,12 @@ const LayoutAuthenticatedDashboardSettingsWorkspaceRolesRoute =
   LayoutAuthenticatedDashboardSettingsWorkspaceRolesRouteImport.update({
     id: '/roles',
     path: '/roles',
+    getParentRoute: () => LayoutAuthenticatedDashboardSettingsWorkspaceRoute,
+  } as any)
+const LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRoute =
+  LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRouteImport.update({
+    id: '/terminology',
+    path: '/terminology',
     getParentRoute: () => LayoutAuthenticatedDashboardSettingsWorkspaceRoute,
   } as any)
 const LayoutAuthenticatedDashboardWorkspaceWorkspaceIdIndexRoute =
@@ -460,10 +839,66 @@ const LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRoute =
     path: '/search',
     getParentRoute: () => LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRoute,
   } as any)
+const LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute =
+  LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRouteImport.update({
+    id: '/organisations/$id/identity',
+    path: '/organisations/$id/identity',
+    getParentRoute: () => LayoutAuthenticatedAgentGodModeRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRouteImport.update({
+    id: '/cycles_/$cycleId',
+    path: '/cycles/$cycleId',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRouteImport.update({
+    id: '/modules_/$moduleId',
+    path: '/modules/$moduleId',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRouteImport.update({
+    id: '/pages_/$pageId',
+    path: '/pages/$pageId',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRouteImport.update(
+    {
+      id: '/automations',
+      path: '/automations',
+      getParentRoute: () =>
+        LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute,
+    } as any,
+  )
+const LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRouteImport.update({
+    id: '/budget',
+    path: '/budget',
+    getParentRoute: () =>
+      LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute,
+  } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute =
   LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRouteImport.update({
     id: '/danger',
     path: '/danger',
+    getParentRoute: () =>
+      LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRouteImport.update(
+    {
+      id: '/estimates',
+      path: '/estimates',
+      getParentRoute: () =>
+        LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute,
+    } as any,
+  )
+const LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRouteImport.update({
+    id: '/features',
+    path: '/features',
     getParentRoute: () =>
       LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute,
   } as any)
@@ -495,6 +930,44 @@ const LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute =
     getParentRoute: () =>
       LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute,
   } as any)
+const LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRoute =
+  LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRouteImport.update({
+    id: '/deliveries',
+    path: '/deliveries',
+    getParentRoute: () => LayoutAuthenticatedAgentSettingsWebhooksIdRoute,
+  } as any)
+const LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRoute =
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRouteImport.update(
+    {
+      id: '/$projectId/automations',
+      path: '/$projectId/automations',
+      getParentRoute: () => LayoutAuthenticatedDashboardSettingsProjectsRoute,
+    } as any,
+  )
+const LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRoute =
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRouteImport.update(
+    {
+      id: '/$projectId/budget',
+      path: '/$projectId/budget',
+      getParentRoute: () => LayoutAuthenticatedDashboardSettingsProjectsRoute,
+    } as any,
+  )
+const LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRoute =
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRouteImport.update(
+    {
+      id: '/$projectId/estimates',
+      path: '/$projectId/estimates',
+      getParentRoute: () => LayoutAuthenticatedDashboardSettingsProjectsRoute,
+    } as any,
+  )
+const LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRoute =
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRouteImport.update(
+    {
+      id: '/$projectId/features',
+      path: '/$projectId/features',
+      getParentRoute: () => LayoutAuthenticatedDashboardSettingsProjectsRoute,
+    } as any,
+  )
 const LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute =
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRouteImport.update(
     {
@@ -508,6 +981,14 @@ const LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute =
     {
       id: '/$projectId/labels',
       path: '/$projectId/labels',
+      getParentRoute: () => LayoutAuthenticatedDashboardSettingsProjectsRoute,
+    } as any,
+  )
+const LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute =
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRouteImport.update(
+    {
+      id: '/$projectId/members',
+      path: '/$projectId/members',
       getParentRoute: () => LayoutAuthenticatedDashboardSettingsProjectsRoute,
     } as any,
   )
@@ -578,6 +1059,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/test-error': typeof TestErrorRoute
+  '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
@@ -589,28 +1071,62 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof LayoutAuthenticatedOnboardingRoute
   '/profile-setup': typeof LayoutAuthenticatedProfileSetupRoute
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
+  '/agent/dashboard': typeof LayoutAuthenticatedAgentDashboardRoute
+  '/agent/god-mode': typeof LayoutAuthenticatedAgentGodModeRouteWithChildren
   '/agent/inbox': typeof LayoutAuthenticatedAgentInboxRoute
+  '/agent/kb': typeof LayoutAuthenticatedAgentKbRoute
   '/agent/my-work': typeof LayoutAuthenticatedAgentMyWorkRoute
+  '/agent/reports': typeof LayoutAuthenticatedAgentReportsRoute
   '/agent/search': typeof LayoutAuthenticatedAgentSearchRoute
   '/agent/settings': typeof LayoutAuthenticatedAgentSettingsRouteWithChildren
+  '/agent/timesheet': typeof LayoutAuthenticatedAgentTimesheetRoute
   '/agent/triage': typeof LayoutAuthenticatedAgentTriageRoute
   '/agent/views': typeof LayoutAuthenticatedAgentViewsRouteWithChildren
   '/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
+  '/agent/dashboard/edit': typeof LayoutAuthenticatedAgentDashboardEditRoute
+  '/agent/god-mode/api-keys': typeof LayoutAuthenticatedAgentGodModeApiKeysRoute
+  '/agent/god-mode/audit': typeof LayoutAuthenticatedAgentGodModeAuditRoute
   '/agent/god-mode/authentication': typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
+  '/agent/god-mode/deliveries': typeof LayoutAuthenticatedAgentGodModeDeliveriesRoute
+  '/agent/god-mode/features': typeof LayoutAuthenticatedAgentGodModeFeaturesRoute
+  '/agent/god-mode/general': typeof LayoutAuthenticatedAgentGodModeGeneralRoute
+  '/agent/god-mode/imports': typeof LayoutAuthenticatedAgentGodModeImportsRouteWithChildren
+  '/agent/god-mode/jobs': typeof LayoutAuthenticatedAgentGodModeJobsRoute
+  '/agent/god-mode/mcp': typeof LayoutAuthenticatedAgentGodModeMcpRoute
+  '/agent/god-mode/notifications': typeof LayoutAuthenticatedAgentGodModeNotificationsRoute
+  '/agent/god-mode/plugins': typeof LayoutAuthenticatedAgentGodModePluginsRoute
+  '/agent/god-mode/storage': typeof LayoutAuthenticatedAgentGodModeStorageRoute
   '/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
+  '/agent/god-mode/webhooks': typeof LayoutAuthenticatedAgentGodModeWebhooksRoute
+  '/agent/kb/$id': typeof LayoutAuthenticatedAgentKbIdRoute
   '/agent/projects/$projectKey': typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
+  '/agent/reports/$key': typeof LayoutAuthenticatedAgentReportsKeyRoute
+  '/agent/reports/new': typeof LayoutAuthenticatedAgentReportsNewRoute
+  '/agent/service-management/changes': typeof LayoutAuthenticatedAgentServiceManagementChangesRoute
+  '/agent/service-management/releases': typeof LayoutAuthenticatedAgentServiceManagementReleasesRouteWithChildren
+  '/agent/service-management/services': typeof LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren
+  '/agent/settings/automations': typeof LayoutAuthenticatedAgentSettingsAutomationsRoute
   '/agent/settings/calendars': typeof LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren
   '/agent/settings/canned-responses': typeof LayoutAuthenticatedAgentSettingsCannedResponsesRoute
+  '/agent/settings/custom-fields': typeof LayoutAuthenticatedAgentSettingsCustomFieldsRouteWithChildren
+  '/agent/settings/customer-invitations': typeof LayoutAuthenticatedAgentSettingsCustomerInvitationsRoute
   '/agent/settings/danger': typeof LayoutAuthenticatedAgentSettingsDangerRoute
   '/agent/settings/labels': typeof LayoutAuthenticatedAgentSettingsLabelsRoute
   '/agent/settings/members': typeof LayoutAuthenticatedAgentSettingsMembersRoute
   '/agent/settings/profile': typeof LayoutAuthenticatedAgentSettingsProfileRouteWithChildren
+  '/agent/settings/rates': typeof LayoutAuthenticatedAgentSettingsRatesRoute
   '/agent/settings/request-types': typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
+  '/agent/settings/roles': typeof LayoutAuthenticatedAgentSettingsRolesRouteWithChildren
   '/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/agent/settings/states': typeof LayoutAuthenticatedAgentSettingsStatesRoute
+  '/agent/settings/teams': typeof LayoutAuthenticatedAgentSettingsTeamsRouteWithChildren
+  '/agent/settings/time-activities': typeof LayoutAuthenticatedAgentSettingsTimeActivitiesRoute
+  '/agent/settings/webhooks': typeof LayoutAuthenticatedAgentSettingsWebhooksRouteWithChildren
+  '/agent/settings/work-item-templates': typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
+  '/agent/settings/workflows': typeof LayoutAuthenticatedAgentSettingsWorkflowsRoute
   '/agent/views/$id': typeof LayoutAuthenticatedAgentViewsIdRoute
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -618,32 +1134,63 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings/workspace': typeof LayoutAuthenticatedDashboardSettingsWorkspaceRouteWithChildren
   '/dashboard/workspace/$workspaceId': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteWithChildren
   '/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
+  '/agent/god-mode/': typeof LayoutAuthenticatedAgentGodModeIndexRoute
   '/agent/god-mode/authentication/$id': typeof LayoutAuthenticatedAgentGodModeAuthenticationIdRoute
+  '/agent/god-mode/imports/$id': typeof LayoutAuthenticatedAgentGodModeImportsIdRoute
+  '/agent/kb/$id/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  '/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
+  '/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
+  '/agent/projects/$projectKey/pages': typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute
   '/agent/projects/$projectKey/settings': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren
   '/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
+  '/agent/reports/exports/$id': typeof LayoutAuthenticatedAgentReportsExportsIdRoute
+  '/agent/service-management/releases/$id': typeof LayoutAuthenticatedAgentServiceManagementReleasesIdRoute
+  '/agent/service-management/services/$id': typeof LayoutAuthenticatedAgentServiceManagementServicesIdRoute
   '/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
+  '/agent/settings/custom-fields/$id': typeof LayoutAuthenticatedAgentSettingsCustomFieldsIdRoute
   '/agent/settings/profile/appearance': typeof LayoutAuthenticatedAgentSettingsProfileAppearanceRoute
+  '/agent/settings/profile/notifications': typeof LayoutAuthenticatedAgentSettingsProfileNotificationsRoute
   '/agent/settings/profile/pending-actions': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
+  '/agent/settings/roles/$id': typeof LayoutAuthenticatedAgentSettingsRolesIdRoute
   '/agent/settings/sla-policies/$id': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute
+  '/agent/settings/teams/$id': typeof LayoutAuthenticatedAgentSettingsTeamsIdRoute
+  '/agent/settings/webhooks/$id': typeof LayoutAuthenticatedAgentSettingsWebhooksIdRouteWithChildren
   '/dashboard/settings/account/developer': typeof LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute
   '/dashboard/settings/account/information': typeof LayoutAuthenticatedDashboardSettingsAccountInformationRoute
   '/dashboard/settings/account/notifications': typeof LayoutAuthenticatedDashboardSettingsAccountNotificationsRoute
   '/dashboard/settings/account/preferences': typeof LayoutAuthenticatedDashboardSettingsAccountPreferencesRoute
   '/dashboard/settings/account/security': typeof LayoutAuthenticatedDashboardSettingsAccountSecurityRoute
+  '/dashboard/settings/workspace/features': typeof LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRoute
   '/dashboard/settings/workspace/general': typeof LayoutAuthenticatedDashboardSettingsWorkspaceGeneralRoute
   '/dashboard/settings/workspace/labels': typeof LayoutAuthenticatedDashboardSettingsWorkspaceLabelsRoute
   '/dashboard/settings/workspace/roles': typeof LayoutAuthenticatedDashboardSettingsWorkspaceRolesRoute
+  '/dashboard/settings/workspace/terminology': typeof LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRoute
   '/dashboard/workspace/$workspaceId/members': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdMembersRoute
   '/dashboard/workspace/$workspaceId/search': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRoute
+  '/agent/god-mode/organisations/': typeof LayoutAuthenticatedAgentGodModeOrganisationsIndexRoute
   '/dashboard/workspace/$workspaceId/': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdIndexRoute
+  '/agent/god-mode/organisations/$id/identity': typeof LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute
+  '/agent/projects/$projectKey/cycles/$cycleId': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute
+  '/agent/projects/$projectKey/modules/$moduleId': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRoute
+  '/agent/projects/$projectKey/pages/$pageId': typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRoute
+  '/agent/projects/$projectKey/settings/automations': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRoute
+  '/agent/projects/$projectKey/settings/budget': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRoute
   '/agent/projects/$projectKey/settings/danger': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute
+  '/agent/projects/$projectKey/settings/estimates': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRoute
+  '/agent/projects/$projectKey/settings/features': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRoute
   '/agent/projects/$projectKey/settings/labels': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRoute
   '/agent/projects/$projectKey/settings/members': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRoute
   '/agent/projects/$projectKey/settings/states': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRoute
   '/agent/settings/profile/pending-actions/$id': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute
+  '/agent/settings/webhooks/$id/deliveries': typeof LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRoute
+  '/dashboard/settings/projects/$projectId/automations': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRoute
+  '/dashboard/settings/projects/$projectId/budget': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRoute
+  '/dashboard/settings/projects/$projectId/estimates': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRoute
+  '/dashboard/settings/projects/$projectId/features': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRoute
   '/dashboard/settings/projects/$projectId/general': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
   '/dashboard/settings/projects/$projectId/labels': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
+  '/dashboard/settings/projects/$projectId/members': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute
   '/dashboard/settings/projects/$projectId/workflow': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/backlog': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/board': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBoardRoute
@@ -656,6 +1203,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/test-error': typeof TestErrorRoute
+  '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
@@ -666,60 +1214,124 @@ export interface FileRoutesByTo {
   '/onboarding': typeof LayoutAuthenticatedOnboardingRoute
   '/profile-setup': typeof LayoutAuthenticatedProfileSetupRoute
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
+  '/agent/dashboard': typeof LayoutAuthenticatedAgentDashboardRoute
   '/agent/inbox': typeof LayoutAuthenticatedAgentInboxRoute
+  '/agent/kb': typeof LayoutAuthenticatedAgentKbRoute
   '/agent/my-work': typeof LayoutAuthenticatedAgentMyWorkRoute
+  '/agent/reports': typeof LayoutAuthenticatedAgentReportsRoute
   '/agent/search': typeof LayoutAuthenticatedAgentSearchRoute
   '/agent/settings': typeof LayoutAuthenticatedAgentSettingsRouteWithChildren
+  '/agent/timesheet': typeof LayoutAuthenticatedAgentTimesheetRoute
   '/agent/triage': typeof LayoutAuthenticatedAgentTriageRoute
   '/agent/views': typeof LayoutAuthenticatedAgentViewsRouteWithChildren
   '/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/dashboard': typeof LayoutAuthenticatedDashboardIndexRoute
+  '/agent/dashboard/edit': typeof LayoutAuthenticatedAgentDashboardEditRoute
+  '/agent/god-mode/api-keys': typeof LayoutAuthenticatedAgentGodModeApiKeysRoute
+  '/agent/god-mode/audit': typeof LayoutAuthenticatedAgentGodModeAuditRoute
   '/agent/god-mode/authentication': typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
+  '/agent/god-mode/deliveries': typeof LayoutAuthenticatedAgentGodModeDeliveriesRoute
+  '/agent/god-mode/features': typeof LayoutAuthenticatedAgentGodModeFeaturesRoute
+  '/agent/god-mode/general': typeof LayoutAuthenticatedAgentGodModeGeneralRoute
+  '/agent/god-mode/imports': typeof LayoutAuthenticatedAgentGodModeImportsRouteWithChildren
+  '/agent/god-mode/jobs': typeof LayoutAuthenticatedAgentGodModeJobsRoute
+  '/agent/god-mode/mcp': typeof LayoutAuthenticatedAgentGodModeMcpRoute
+  '/agent/god-mode/notifications': typeof LayoutAuthenticatedAgentGodModeNotificationsRoute
+  '/agent/god-mode/plugins': typeof LayoutAuthenticatedAgentGodModePluginsRoute
+  '/agent/god-mode/storage': typeof LayoutAuthenticatedAgentGodModeStorageRoute
   '/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
+  '/agent/god-mode/webhooks': typeof LayoutAuthenticatedAgentGodModeWebhooksRoute
+  '/agent/kb/$id': typeof LayoutAuthenticatedAgentKbIdRoute
   '/agent/projects/$projectKey': typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
+  '/agent/reports/$key': typeof LayoutAuthenticatedAgentReportsKeyRoute
+  '/agent/reports/new': typeof LayoutAuthenticatedAgentReportsNewRoute
+  '/agent/service-management/changes': typeof LayoutAuthenticatedAgentServiceManagementChangesRoute
+  '/agent/service-management/releases': typeof LayoutAuthenticatedAgentServiceManagementReleasesRouteWithChildren
+  '/agent/service-management/services': typeof LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren
+  '/agent/settings/automations': typeof LayoutAuthenticatedAgentSettingsAutomationsRoute
   '/agent/settings/calendars': typeof LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren
   '/agent/settings/canned-responses': typeof LayoutAuthenticatedAgentSettingsCannedResponsesRoute
+  '/agent/settings/custom-fields': typeof LayoutAuthenticatedAgentSettingsCustomFieldsRouteWithChildren
+  '/agent/settings/customer-invitations': typeof LayoutAuthenticatedAgentSettingsCustomerInvitationsRoute
   '/agent/settings/danger': typeof LayoutAuthenticatedAgentSettingsDangerRoute
   '/agent/settings/labels': typeof LayoutAuthenticatedAgentSettingsLabelsRoute
   '/agent/settings/members': typeof LayoutAuthenticatedAgentSettingsMembersRoute
   '/agent/settings/profile': typeof LayoutAuthenticatedAgentSettingsProfileRouteWithChildren
+  '/agent/settings/rates': typeof LayoutAuthenticatedAgentSettingsRatesRoute
   '/agent/settings/request-types': typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
+  '/agent/settings/roles': typeof LayoutAuthenticatedAgentSettingsRolesRouteWithChildren
   '/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/agent/settings/states': typeof LayoutAuthenticatedAgentSettingsStatesRoute
+  '/agent/settings/teams': typeof LayoutAuthenticatedAgentSettingsTeamsRouteWithChildren
+  '/agent/settings/time-activities': typeof LayoutAuthenticatedAgentSettingsTimeActivitiesRoute
+  '/agent/settings/webhooks': typeof LayoutAuthenticatedAgentSettingsWebhooksRouteWithChildren
+  '/agent/settings/work-item-templates': typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
+  '/agent/settings/workflows': typeof LayoutAuthenticatedAgentSettingsWorkflowsRoute
   '/agent/views/$id': typeof LayoutAuthenticatedAgentViewsIdRoute
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
   '/dashboard/settings/projects': typeof LayoutAuthenticatedDashboardSettingsProjectsRouteWithChildren
   '/dashboard/settings/workspace': typeof LayoutAuthenticatedDashboardSettingsWorkspaceRouteWithChildren
   '/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
+  '/agent/god-mode': typeof LayoutAuthenticatedAgentGodModeIndexRoute
   '/agent/god-mode/authentication/$id': typeof LayoutAuthenticatedAgentGodModeAuthenticationIdRoute
+  '/agent/god-mode/imports/$id': typeof LayoutAuthenticatedAgentGodModeImportsIdRoute
+  '/agent/kb/$id/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  '/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
+  '/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
+  '/agent/projects/$projectKey/pages': typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute
   '/agent/projects/$projectKey/settings': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren
   '/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
+  '/agent/reports/exports/$id': typeof LayoutAuthenticatedAgentReportsExportsIdRoute
+  '/agent/service-management/releases/$id': typeof LayoutAuthenticatedAgentServiceManagementReleasesIdRoute
+  '/agent/service-management/services/$id': typeof LayoutAuthenticatedAgentServiceManagementServicesIdRoute
   '/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
+  '/agent/settings/custom-fields/$id': typeof LayoutAuthenticatedAgentSettingsCustomFieldsIdRoute
   '/agent/settings/profile/appearance': typeof LayoutAuthenticatedAgentSettingsProfileAppearanceRoute
+  '/agent/settings/profile/notifications': typeof LayoutAuthenticatedAgentSettingsProfileNotificationsRoute
   '/agent/settings/profile/pending-actions': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
+  '/agent/settings/roles/$id': typeof LayoutAuthenticatedAgentSettingsRolesIdRoute
   '/agent/settings/sla-policies/$id': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute
+  '/agent/settings/teams/$id': typeof LayoutAuthenticatedAgentSettingsTeamsIdRoute
+  '/agent/settings/webhooks/$id': typeof LayoutAuthenticatedAgentSettingsWebhooksIdRouteWithChildren
   '/dashboard/settings/account/developer': typeof LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute
   '/dashboard/settings/account/information': typeof LayoutAuthenticatedDashboardSettingsAccountInformationRoute
   '/dashboard/settings/account/notifications': typeof LayoutAuthenticatedDashboardSettingsAccountNotificationsRoute
   '/dashboard/settings/account/preferences': typeof LayoutAuthenticatedDashboardSettingsAccountPreferencesRoute
   '/dashboard/settings/account/security': typeof LayoutAuthenticatedDashboardSettingsAccountSecurityRoute
+  '/dashboard/settings/workspace/features': typeof LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRoute
   '/dashboard/settings/workspace/general': typeof LayoutAuthenticatedDashboardSettingsWorkspaceGeneralRoute
   '/dashboard/settings/workspace/labels': typeof LayoutAuthenticatedDashboardSettingsWorkspaceLabelsRoute
   '/dashboard/settings/workspace/roles': typeof LayoutAuthenticatedDashboardSettingsWorkspaceRolesRoute
+  '/dashboard/settings/workspace/terminology': typeof LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRoute
   '/dashboard/workspace/$workspaceId/members': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdMembersRoute
   '/dashboard/workspace/$workspaceId/search': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRoute
+  '/agent/god-mode/organisations': typeof LayoutAuthenticatedAgentGodModeOrganisationsIndexRoute
   '/dashboard/workspace/$workspaceId': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdIndexRoute
+  '/agent/god-mode/organisations/$id/identity': typeof LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute
+  '/agent/projects/$projectKey/cycles/$cycleId': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute
+  '/agent/projects/$projectKey/modules/$moduleId': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRoute
+  '/agent/projects/$projectKey/pages/$pageId': typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRoute
+  '/agent/projects/$projectKey/settings/automations': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRoute
+  '/agent/projects/$projectKey/settings/budget': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRoute
   '/agent/projects/$projectKey/settings/danger': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute
+  '/agent/projects/$projectKey/settings/estimates': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRoute
+  '/agent/projects/$projectKey/settings/features': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRoute
   '/agent/projects/$projectKey/settings/labels': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRoute
   '/agent/projects/$projectKey/settings/members': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRoute
   '/agent/projects/$projectKey/settings/states': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRoute
   '/agent/settings/profile/pending-actions/$id': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute
+  '/agent/settings/webhooks/$id/deliveries': typeof LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRoute
+  '/dashboard/settings/projects/$projectId/automations': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRoute
+  '/dashboard/settings/projects/$projectId/budget': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRoute
+  '/dashboard/settings/projects/$projectId/estimates': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRoute
+  '/dashboard/settings/projects/$projectId/features': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRoute
   '/dashboard/settings/projects/$projectId/general': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
   '/dashboard/settings/projects/$projectId/labels': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
+  '/dashboard/settings/projects/$projectId/members': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute
   '/dashboard/settings/projects/$projectId/workflow': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/backlog': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRoute
   '/dashboard/workspace/$workspaceId/project/$projectId/board': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBoardRoute
@@ -735,6 +1347,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/test-error': typeof TestErrorRoute
   '/_layout/_authenticated': typeof LayoutAuthenticatedRouteWithChildren
+  '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
@@ -746,28 +1359,62 @@ export interface FileRoutesById {
   '/_layout/_authenticated/onboarding': typeof LayoutAuthenticatedOnboardingRoute
   '/_layout/_authenticated/profile-setup': typeof LayoutAuthenticatedProfileSetupRoute
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
+  '/_layout/_authenticated/agent/dashboard': typeof LayoutAuthenticatedAgentDashboardRoute
+  '/_layout/_authenticated/agent/god-mode': typeof LayoutAuthenticatedAgentGodModeRouteWithChildren
   '/_layout/_authenticated/agent/inbox': typeof LayoutAuthenticatedAgentInboxRoute
+  '/_layout/_authenticated/agent/kb': typeof LayoutAuthenticatedAgentKbRoute
   '/_layout/_authenticated/agent/my-work': typeof LayoutAuthenticatedAgentMyWorkRoute
+  '/_layout/_authenticated/agent/reports': typeof LayoutAuthenticatedAgentReportsRoute
   '/_layout/_authenticated/agent/search': typeof LayoutAuthenticatedAgentSearchRoute
   '/_layout/_authenticated/agent/settings': typeof LayoutAuthenticatedAgentSettingsRouteWithChildren
+  '/_layout/_authenticated/agent/timesheet': typeof LayoutAuthenticatedAgentTimesheetRoute
   '/_layout/_authenticated/agent/triage': typeof LayoutAuthenticatedAgentTriageRoute
   '/_layout/_authenticated/agent/views': typeof LayoutAuthenticatedAgentViewsRouteWithChildren
   '/_layout/_authenticated/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/_layout/_authenticated/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/_layout/_authenticated/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/_layout/_authenticated/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
+  '/_layout/_authenticated/agent/dashboard_/edit': typeof LayoutAuthenticatedAgentDashboardEditRoute
+  '/_layout/_authenticated/agent/god-mode/api-keys': typeof LayoutAuthenticatedAgentGodModeApiKeysRoute
+  '/_layout/_authenticated/agent/god-mode/audit': typeof LayoutAuthenticatedAgentGodModeAuditRoute
   '/_layout/_authenticated/agent/god-mode/authentication': typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
+  '/_layout/_authenticated/agent/god-mode/deliveries': typeof LayoutAuthenticatedAgentGodModeDeliveriesRoute
+  '/_layout/_authenticated/agent/god-mode/features': typeof LayoutAuthenticatedAgentGodModeFeaturesRoute
+  '/_layout/_authenticated/agent/god-mode/general': typeof LayoutAuthenticatedAgentGodModeGeneralRoute
+  '/_layout/_authenticated/agent/god-mode/imports': typeof LayoutAuthenticatedAgentGodModeImportsRouteWithChildren
+  '/_layout/_authenticated/agent/god-mode/jobs': typeof LayoutAuthenticatedAgentGodModeJobsRoute
+  '/_layout/_authenticated/agent/god-mode/mcp': typeof LayoutAuthenticatedAgentGodModeMcpRoute
+  '/_layout/_authenticated/agent/god-mode/notifications': typeof LayoutAuthenticatedAgentGodModeNotificationsRoute
+  '/_layout/_authenticated/agent/god-mode/plugins': typeof LayoutAuthenticatedAgentGodModePluginsRoute
+  '/_layout/_authenticated/agent/god-mode/storage': typeof LayoutAuthenticatedAgentGodModeStorageRoute
   '/_layout/_authenticated/agent/god-mode/users': typeof LayoutAuthenticatedAgentGodModeUsersRoute
+  '/_layout/_authenticated/agent/god-mode/webhooks': typeof LayoutAuthenticatedAgentGodModeWebhooksRoute
+  '/_layout/_authenticated/agent/kb_/$id': typeof LayoutAuthenticatedAgentKbIdRoute
   '/_layout/_authenticated/agent/projects/$projectKey': typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
+  '/_layout/_authenticated/agent/reports_/$key': typeof LayoutAuthenticatedAgentReportsKeyRoute
+  '/_layout/_authenticated/agent/reports_/new': typeof LayoutAuthenticatedAgentReportsNewRoute
+  '/_layout/_authenticated/agent/service-management/changes': typeof LayoutAuthenticatedAgentServiceManagementChangesRoute
+  '/_layout/_authenticated/agent/service-management/releases': typeof LayoutAuthenticatedAgentServiceManagementReleasesRouteWithChildren
+  '/_layout/_authenticated/agent/service-management/services': typeof LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren
+  '/_layout/_authenticated/agent/settings/automations': typeof LayoutAuthenticatedAgentSettingsAutomationsRoute
   '/_layout/_authenticated/agent/settings/calendars': typeof LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren
   '/_layout/_authenticated/agent/settings/canned-responses': typeof LayoutAuthenticatedAgentSettingsCannedResponsesRoute
+  '/_layout/_authenticated/agent/settings/custom-fields': typeof LayoutAuthenticatedAgentSettingsCustomFieldsRouteWithChildren
+  '/_layout/_authenticated/agent/settings/customer-invitations': typeof LayoutAuthenticatedAgentSettingsCustomerInvitationsRoute
   '/_layout/_authenticated/agent/settings/danger': typeof LayoutAuthenticatedAgentSettingsDangerRoute
   '/_layout/_authenticated/agent/settings/labels': typeof LayoutAuthenticatedAgentSettingsLabelsRoute
   '/_layout/_authenticated/agent/settings/members': typeof LayoutAuthenticatedAgentSettingsMembersRoute
   '/_layout/_authenticated/agent/settings/profile': typeof LayoutAuthenticatedAgentSettingsProfileRouteWithChildren
+  '/_layout/_authenticated/agent/settings/rates': typeof LayoutAuthenticatedAgentSettingsRatesRoute
   '/_layout/_authenticated/agent/settings/request-types': typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
+  '/_layout/_authenticated/agent/settings/roles': typeof LayoutAuthenticatedAgentSettingsRolesRouteWithChildren
   '/_layout/_authenticated/agent/settings/sla-policies': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   '/_layout/_authenticated/agent/settings/states': typeof LayoutAuthenticatedAgentSettingsStatesRoute
+  '/_layout/_authenticated/agent/settings/teams': typeof LayoutAuthenticatedAgentSettingsTeamsRouteWithChildren
+  '/_layout/_authenticated/agent/settings/time-activities': typeof LayoutAuthenticatedAgentSettingsTimeActivitiesRoute
+  '/_layout/_authenticated/agent/settings/webhooks': typeof LayoutAuthenticatedAgentSettingsWebhooksRouteWithChildren
+  '/_layout/_authenticated/agent/settings/work-item-templates': typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
+  '/_layout/_authenticated/agent/settings/workflows': typeof LayoutAuthenticatedAgentSettingsWorkflowsRoute
   '/_layout/_authenticated/agent/views/$id': typeof LayoutAuthenticatedAgentViewsIdRoute
   '/_layout/_authenticated/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/_layout/_authenticated/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -775,32 +1422,63 @@ export interface FileRoutesById {
   '/_layout/_authenticated/dashboard/settings/workspace': typeof LayoutAuthenticatedDashboardSettingsWorkspaceRouteWithChildren
   '/_layout/_authenticated/dashboard/workspace/$workspaceId': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteWithChildren
   '/_layout/_authenticated/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
+  '/_layout/_authenticated/agent/god-mode/': typeof LayoutAuthenticatedAgentGodModeIndexRoute
   '/_layout/_authenticated/agent/god-mode/authentication/$id': typeof LayoutAuthenticatedAgentGodModeAuthenticationIdRoute
+  '/_layout/_authenticated/agent/god-mode/imports/$id': typeof LayoutAuthenticatedAgentGodModeImportsIdRoute
+  '/_layout/_authenticated/agent/kb_/$id_/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/_layout/_authenticated/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/pages': typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute
   '/_layout/_authenticated/agent/projects/$projectKey/settings': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren
   '/_layout/_authenticated/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
+  '/_layout/_authenticated/agent/reports_/exports/$id': typeof LayoutAuthenticatedAgentReportsExportsIdRoute
+  '/_layout/_authenticated/agent/service-management/releases/$id': typeof LayoutAuthenticatedAgentServiceManagementReleasesIdRoute
+  '/_layout/_authenticated/agent/service-management/services/$id': typeof LayoutAuthenticatedAgentServiceManagementServicesIdRoute
   '/_layout/_authenticated/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
+  '/_layout/_authenticated/agent/settings/custom-fields/$id': typeof LayoutAuthenticatedAgentSettingsCustomFieldsIdRoute
   '/_layout/_authenticated/agent/settings/profile/appearance': typeof LayoutAuthenticatedAgentSettingsProfileAppearanceRoute
+  '/_layout/_authenticated/agent/settings/profile/notifications': typeof LayoutAuthenticatedAgentSettingsProfileNotificationsRoute
   '/_layout/_authenticated/agent/settings/profile/pending-actions': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
+  '/_layout/_authenticated/agent/settings/roles/$id': typeof LayoutAuthenticatedAgentSettingsRolesIdRoute
   '/_layout/_authenticated/agent/settings/sla-policies/$id': typeof LayoutAuthenticatedAgentSettingsSlaPoliciesIdRoute
+  '/_layout/_authenticated/agent/settings/teams/$id': typeof LayoutAuthenticatedAgentSettingsTeamsIdRoute
+  '/_layout/_authenticated/agent/settings/webhooks/$id': typeof LayoutAuthenticatedAgentSettingsWebhooksIdRouteWithChildren
   '/_layout/_authenticated/dashboard/settings/account/developer': typeof LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute
   '/_layout/_authenticated/dashboard/settings/account/information': typeof LayoutAuthenticatedDashboardSettingsAccountInformationRoute
   '/_layout/_authenticated/dashboard/settings/account/notifications': typeof LayoutAuthenticatedDashboardSettingsAccountNotificationsRoute
   '/_layout/_authenticated/dashboard/settings/account/preferences': typeof LayoutAuthenticatedDashboardSettingsAccountPreferencesRoute
   '/_layout/_authenticated/dashboard/settings/account/security': typeof LayoutAuthenticatedDashboardSettingsAccountSecurityRoute
+  '/_layout/_authenticated/dashboard/settings/workspace/features': typeof LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRoute
   '/_layout/_authenticated/dashboard/settings/workspace/general': typeof LayoutAuthenticatedDashboardSettingsWorkspaceGeneralRoute
   '/_layout/_authenticated/dashboard/settings/workspace/labels': typeof LayoutAuthenticatedDashboardSettingsWorkspaceLabelsRoute
   '/_layout/_authenticated/dashboard/settings/workspace/roles': typeof LayoutAuthenticatedDashboardSettingsWorkspaceRolesRoute
+  '/_layout/_authenticated/dashboard/settings/workspace/terminology': typeof LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/members': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdMembersRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/search': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRoute
+  '/_layout/_authenticated/agent/god-mode/organisations/': typeof LayoutAuthenticatedAgentGodModeOrganisationsIndexRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdIndexRoute
+  '/_layout/_authenticated/agent/god-mode/organisations/$id/identity': typeof LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/pages_/$pageId': typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/settings/automations': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/settings/budget': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRoute
   '/_layout/_authenticated/agent/projects/$projectKey/settings/danger': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/settings/estimates': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/settings/features': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRoute
   '/_layout/_authenticated/agent/projects/$projectKey/settings/labels': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRoute
   '/_layout/_authenticated/agent/projects/$projectKey/settings/members': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRoute
   '/_layout/_authenticated/agent/projects/$projectKey/settings/states': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRoute
   '/_layout/_authenticated/agent/settings/profile/pending-actions/$id': typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRoute
+  '/_layout/_authenticated/agent/settings/webhooks/$id/deliveries': typeof LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRoute
+  '/_layout/_authenticated/dashboard/settings/projects/$projectId/automations': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRoute
+  '/_layout/_authenticated/dashboard/settings/projects/$projectId/budget': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRoute
+  '/_layout/_authenticated/dashboard/settings/projects/$projectId/estimates': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRoute
+  '/_layout/_authenticated/dashboard/settings/projects/$projectId/features': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRoute
   '/_layout/_authenticated/dashboard/settings/projects/$projectId/general': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
   '/_layout/_authenticated/dashboard/settings/projects/$projectId/labels': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
+  '/_layout/_authenticated/dashboard/settings/projects/$projectId/members': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute
   '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow': typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBacklogRoute
   '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdBoardRoute
@@ -815,6 +1493,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/test-error'
+    | '/agent/sign-in'
     | '/auth/check-email'
     | '/auth/sign-in'
     | '/auth/sign-up'
@@ -826,28 +1505,62 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/profile-setup'
     | '/invitation/accept/$inviteId'
+    | '/agent/dashboard'
+    | '/agent/god-mode'
     | '/agent/inbox'
+    | '/agent/kb'
     | '/agent/my-work'
+    | '/agent/reports'
     | '/agent/search'
     | '/agent/settings'
+    | '/agent/timesheet'
     | '/agent/triage'
     | '/agent/views'
     | '/dashboard/invitations'
     | '/dashboard/settings'
     | '/god-mode/observability'
     | '/dashboard/'
+    | '/agent/dashboard/edit'
+    | '/agent/god-mode/api-keys'
+    | '/agent/god-mode/audit'
     | '/agent/god-mode/authentication'
+    | '/agent/god-mode/deliveries'
+    | '/agent/god-mode/features'
+    | '/agent/god-mode/general'
+    | '/agent/god-mode/imports'
+    | '/agent/god-mode/jobs'
+    | '/agent/god-mode/mcp'
+    | '/agent/god-mode/notifications'
+    | '/agent/god-mode/plugins'
+    | '/agent/god-mode/storage'
     | '/agent/god-mode/users'
+    | '/agent/god-mode/webhooks'
+    | '/agent/kb/$id'
     | '/agent/projects/$projectKey'
+    | '/agent/reports/$key'
+    | '/agent/reports/new'
+    | '/agent/service-management/changes'
+    | '/agent/service-management/releases'
+    | '/agent/service-management/services'
+    | '/agent/settings/automations'
     | '/agent/settings/calendars'
     | '/agent/settings/canned-responses'
+    | '/agent/settings/custom-fields'
+    | '/agent/settings/customer-invitations'
     | '/agent/settings/danger'
     | '/agent/settings/labels'
     | '/agent/settings/members'
     | '/agent/settings/profile'
+    | '/agent/settings/rates'
     | '/agent/settings/request-types'
+    | '/agent/settings/roles'
     | '/agent/settings/sla-policies'
     | '/agent/settings/states'
+    | '/agent/settings/teams'
+    | '/agent/settings/time-activities'
+    | '/agent/settings/webhooks'
+    | '/agent/settings/work-item-templates'
+    | '/agent/settings/workflows'
     | '/agent/views/$id'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
@@ -855,32 +1568,63 @@ export interface FileRouteTypes {
     | '/dashboard/settings/workspace'
     | '/dashboard/workspace/$workspaceId'
     | '/dashboard/workspace/create'
+    | '/agent/god-mode/'
     | '/agent/god-mode/authentication/$id'
+    | '/agent/god-mode/imports/$id'
+    | '/agent/kb/$id/edit'
     | '/agent/projects/$projectKey/backlog'
+    | '/agent/projects/$projectKey/cycles'
+    | '/agent/projects/$projectKey/modules'
+    | '/agent/projects/$projectKey/pages'
     | '/agent/projects/$projectKey/settings'
     | '/agent/projects/$projectKey/work'
+    | '/agent/reports/exports/$id'
+    | '/agent/service-management/releases/$id'
+    | '/agent/service-management/services/$id'
     | '/agent/settings/calendars/$id'
+    | '/agent/settings/custom-fields/$id'
     | '/agent/settings/profile/appearance'
+    | '/agent/settings/profile/notifications'
     | '/agent/settings/profile/pending-actions'
+    | '/agent/settings/roles/$id'
     | '/agent/settings/sla-policies/$id'
+    | '/agent/settings/teams/$id'
+    | '/agent/settings/webhooks/$id'
     | '/dashboard/settings/account/developer'
     | '/dashboard/settings/account/information'
     | '/dashboard/settings/account/notifications'
     | '/dashboard/settings/account/preferences'
     | '/dashboard/settings/account/security'
+    | '/dashboard/settings/workspace/features'
     | '/dashboard/settings/workspace/general'
     | '/dashboard/settings/workspace/labels'
     | '/dashboard/settings/workspace/roles'
+    | '/dashboard/settings/workspace/terminology'
     | '/dashboard/workspace/$workspaceId/members'
     | '/dashboard/workspace/$workspaceId/search'
+    | '/agent/god-mode/organisations/'
     | '/dashboard/workspace/$workspaceId/'
+    | '/agent/god-mode/organisations/$id/identity'
+    | '/agent/projects/$projectKey/cycles/$cycleId'
+    | '/agent/projects/$projectKey/modules/$moduleId'
+    | '/agent/projects/$projectKey/pages/$pageId'
+    | '/agent/projects/$projectKey/settings/automations'
+    | '/agent/projects/$projectKey/settings/budget'
     | '/agent/projects/$projectKey/settings/danger'
+    | '/agent/projects/$projectKey/settings/estimates'
+    | '/agent/projects/$projectKey/settings/features'
     | '/agent/projects/$projectKey/settings/labels'
     | '/agent/projects/$projectKey/settings/members'
     | '/agent/projects/$projectKey/settings/states'
     | '/agent/settings/profile/pending-actions/$id'
+    | '/agent/settings/webhooks/$id/deliveries'
+    | '/dashboard/settings/projects/$projectId/automations'
+    | '/dashboard/settings/projects/$projectId/budget'
+    | '/dashboard/settings/projects/$projectId/estimates'
+    | '/dashboard/settings/projects/$projectId/features'
     | '/dashboard/settings/projects/$projectId/general'
     | '/dashboard/settings/projects/$projectId/labels'
+    | '/dashboard/settings/projects/$projectId/members'
     | '/dashboard/settings/projects/$projectId/workflow'
     | '/dashboard/workspace/$workspaceId/project/$projectId/backlog'
     | '/dashboard/workspace/$workspaceId/project/$projectId/board'
@@ -893,6 +1637,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/test-error'
+    | '/agent/sign-in'
     | '/auth/check-email'
     | '/auth/sign-in'
     | '/auth/sign-up'
@@ -903,60 +1648,124 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/profile-setup'
     | '/invitation/accept/$inviteId'
+    | '/agent/dashboard'
     | '/agent/inbox'
+    | '/agent/kb'
     | '/agent/my-work'
+    | '/agent/reports'
     | '/agent/search'
     | '/agent/settings'
+    | '/agent/timesheet'
     | '/agent/triage'
     | '/agent/views'
     | '/dashboard/invitations'
     | '/dashboard/settings'
     | '/god-mode/observability'
     | '/dashboard'
+    | '/agent/dashboard/edit'
+    | '/agent/god-mode/api-keys'
+    | '/agent/god-mode/audit'
     | '/agent/god-mode/authentication'
+    | '/agent/god-mode/deliveries'
+    | '/agent/god-mode/features'
+    | '/agent/god-mode/general'
+    | '/agent/god-mode/imports'
+    | '/agent/god-mode/jobs'
+    | '/agent/god-mode/mcp'
+    | '/agent/god-mode/notifications'
+    | '/agent/god-mode/plugins'
+    | '/agent/god-mode/storage'
     | '/agent/god-mode/users'
+    | '/agent/god-mode/webhooks'
+    | '/agent/kb/$id'
     | '/agent/projects/$projectKey'
+    | '/agent/reports/$key'
+    | '/agent/reports/new'
+    | '/agent/service-management/changes'
+    | '/agent/service-management/releases'
+    | '/agent/service-management/services'
+    | '/agent/settings/automations'
     | '/agent/settings/calendars'
     | '/agent/settings/canned-responses'
+    | '/agent/settings/custom-fields'
+    | '/agent/settings/customer-invitations'
     | '/agent/settings/danger'
     | '/agent/settings/labels'
     | '/agent/settings/members'
     | '/agent/settings/profile'
+    | '/agent/settings/rates'
     | '/agent/settings/request-types'
+    | '/agent/settings/roles'
     | '/agent/settings/sla-policies'
     | '/agent/settings/states'
+    | '/agent/settings/teams'
+    | '/agent/settings/time-activities'
+    | '/agent/settings/webhooks'
+    | '/agent/settings/work-item-templates'
+    | '/agent/settings/workflows'
     | '/agent/views/$id'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
     | '/dashboard/settings/projects'
     | '/dashboard/settings/workspace'
     | '/dashboard/workspace/create'
+    | '/agent/god-mode'
     | '/agent/god-mode/authentication/$id'
+    | '/agent/god-mode/imports/$id'
+    | '/agent/kb/$id/edit'
     | '/agent/projects/$projectKey/backlog'
+    | '/agent/projects/$projectKey/cycles'
+    | '/agent/projects/$projectKey/modules'
+    | '/agent/projects/$projectKey/pages'
     | '/agent/projects/$projectKey/settings'
     | '/agent/projects/$projectKey/work'
+    | '/agent/reports/exports/$id'
+    | '/agent/service-management/releases/$id'
+    | '/agent/service-management/services/$id'
     | '/agent/settings/calendars/$id'
+    | '/agent/settings/custom-fields/$id'
     | '/agent/settings/profile/appearance'
+    | '/agent/settings/profile/notifications'
     | '/agent/settings/profile/pending-actions'
+    | '/agent/settings/roles/$id'
     | '/agent/settings/sla-policies/$id'
+    | '/agent/settings/teams/$id'
+    | '/agent/settings/webhooks/$id'
     | '/dashboard/settings/account/developer'
     | '/dashboard/settings/account/information'
     | '/dashboard/settings/account/notifications'
     | '/dashboard/settings/account/preferences'
     | '/dashboard/settings/account/security'
+    | '/dashboard/settings/workspace/features'
     | '/dashboard/settings/workspace/general'
     | '/dashboard/settings/workspace/labels'
     | '/dashboard/settings/workspace/roles'
+    | '/dashboard/settings/workspace/terminology'
     | '/dashboard/workspace/$workspaceId/members'
     | '/dashboard/workspace/$workspaceId/search'
+    | '/agent/god-mode/organisations'
     | '/dashboard/workspace/$workspaceId'
+    | '/agent/god-mode/organisations/$id/identity'
+    | '/agent/projects/$projectKey/cycles/$cycleId'
+    | '/agent/projects/$projectKey/modules/$moduleId'
+    | '/agent/projects/$projectKey/pages/$pageId'
+    | '/agent/projects/$projectKey/settings/automations'
+    | '/agent/projects/$projectKey/settings/budget'
     | '/agent/projects/$projectKey/settings/danger'
+    | '/agent/projects/$projectKey/settings/estimates'
+    | '/agent/projects/$projectKey/settings/features'
     | '/agent/projects/$projectKey/settings/labels'
     | '/agent/projects/$projectKey/settings/members'
     | '/agent/projects/$projectKey/settings/states'
     | '/agent/settings/profile/pending-actions/$id'
+    | '/agent/settings/webhooks/$id/deliveries'
+    | '/dashboard/settings/projects/$projectId/automations'
+    | '/dashboard/settings/projects/$projectId/budget'
+    | '/dashboard/settings/projects/$projectId/estimates'
+    | '/dashboard/settings/projects/$projectId/features'
     | '/dashboard/settings/projects/$projectId/general'
     | '/dashboard/settings/projects/$projectId/labels'
+    | '/dashboard/settings/projects/$projectId/members'
     | '/dashboard/settings/projects/$projectId/workflow'
     | '/dashboard/workspace/$workspaceId/project/$projectId/backlog'
     | '/dashboard/workspace/$workspaceId/project/$projectId/board'
@@ -971,6 +1780,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/test-error'
     | '/_layout/_authenticated'
+    | '/agent/sign-in'
     | '/auth/check-email'
     | '/auth/sign-in'
     | '/auth/sign-up'
@@ -982,28 +1792,62 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/onboarding'
     | '/_layout/_authenticated/profile-setup'
     | '/invitation/accept/$inviteId'
+    | '/_layout/_authenticated/agent/dashboard'
+    | '/_layout/_authenticated/agent/god-mode'
     | '/_layout/_authenticated/agent/inbox'
+    | '/_layout/_authenticated/agent/kb'
     | '/_layout/_authenticated/agent/my-work'
+    | '/_layout/_authenticated/agent/reports'
     | '/_layout/_authenticated/agent/search'
     | '/_layout/_authenticated/agent/settings'
+    | '/_layout/_authenticated/agent/timesheet'
     | '/_layout/_authenticated/agent/triage'
     | '/_layout/_authenticated/agent/views'
     | '/_layout/_authenticated/dashboard/invitations'
     | '/_layout/_authenticated/dashboard/settings'
     | '/_layout/_authenticated/god-mode/observability'
     | '/_layout/_authenticated/dashboard/'
+    | '/_layout/_authenticated/agent/dashboard_/edit'
+    | '/_layout/_authenticated/agent/god-mode/api-keys'
+    | '/_layout/_authenticated/agent/god-mode/audit'
     | '/_layout/_authenticated/agent/god-mode/authentication'
+    | '/_layout/_authenticated/agent/god-mode/deliveries'
+    | '/_layout/_authenticated/agent/god-mode/features'
+    | '/_layout/_authenticated/agent/god-mode/general'
+    | '/_layout/_authenticated/agent/god-mode/imports'
+    | '/_layout/_authenticated/agent/god-mode/jobs'
+    | '/_layout/_authenticated/agent/god-mode/mcp'
+    | '/_layout/_authenticated/agent/god-mode/notifications'
+    | '/_layout/_authenticated/agent/god-mode/plugins'
+    | '/_layout/_authenticated/agent/god-mode/storage'
     | '/_layout/_authenticated/agent/god-mode/users'
+    | '/_layout/_authenticated/agent/god-mode/webhooks'
+    | '/_layout/_authenticated/agent/kb_/$id'
     | '/_layout/_authenticated/agent/projects/$projectKey'
+    | '/_layout/_authenticated/agent/reports_/$key'
+    | '/_layout/_authenticated/agent/reports_/new'
+    | '/_layout/_authenticated/agent/service-management/changes'
+    | '/_layout/_authenticated/agent/service-management/releases'
+    | '/_layout/_authenticated/agent/service-management/services'
+    | '/_layout/_authenticated/agent/settings/automations'
     | '/_layout/_authenticated/agent/settings/calendars'
     | '/_layout/_authenticated/agent/settings/canned-responses'
+    | '/_layout/_authenticated/agent/settings/custom-fields'
+    | '/_layout/_authenticated/agent/settings/customer-invitations'
     | '/_layout/_authenticated/agent/settings/danger'
     | '/_layout/_authenticated/agent/settings/labels'
     | '/_layout/_authenticated/agent/settings/members'
     | '/_layout/_authenticated/agent/settings/profile'
+    | '/_layout/_authenticated/agent/settings/rates'
     | '/_layout/_authenticated/agent/settings/request-types'
+    | '/_layout/_authenticated/agent/settings/roles'
     | '/_layout/_authenticated/agent/settings/sla-policies'
     | '/_layout/_authenticated/agent/settings/states'
+    | '/_layout/_authenticated/agent/settings/teams'
+    | '/_layout/_authenticated/agent/settings/time-activities'
+    | '/_layout/_authenticated/agent/settings/webhooks'
+    | '/_layout/_authenticated/agent/settings/work-item-templates'
+    | '/_layout/_authenticated/agent/settings/workflows'
     | '/_layout/_authenticated/agent/views/$id'
     | '/_layout/_authenticated/agent/work-items/$key'
     | '/_layout/_authenticated/dashboard/settings/account'
@@ -1011,32 +1855,63 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/dashboard/settings/workspace'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId'
     | '/_layout/_authenticated/dashboard/workspace/create'
+    | '/_layout/_authenticated/agent/god-mode/'
     | '/_layout/_authenticated/agent/god-mode/authentication/$id'
+    | '/_layout/_authenticated/agent/god-mode/imports/$id'
+    | '/_layout/_authenticated/agent/kb_/$id_/edit'
     | '/_layout/_authenticated/agent/projects/$projectKey/backlog'
+    | '/_layout/_authenticated/agent/projects/$projectKey/cycles'
+    | '/_layout/_authenticated/agent/projects/$projectKey/modules'
+    | '/_layout/_authenticated/agent/projects/$projectKey/pages'
     | '/_layout/_authenticated/agent/projects/$projectKey/settings'
     | '/_layout/_authenticated/agent/projects/$projectKey/work'
+    | '/_layout/_authenticated/agent/reports_/exports/$id'
+    | '/_layout/_authenticated/agent/service-management/releases/$id'
+    | '/_layout/_authenticated/agent/service-management/services/$id'
     | '/_layout/_authenticated/agent/settings/calendars/$id'
+    | '/_layout/_authenticated/agent/settings/custom-fields/$id'
     | '/_layout/_authenticated/agent/settings/profile/appearance'
+    | '/_layout/_authenticated/agent/settings/profile/notifications'
     | '/_layout/_authenticated/agent/settings/profile/pending-actions'
+    | '/_layout/_authenticated/agent/settings/roles/$id'
     | '/_layout/_authenticated/agent/settings/sla-policies/$id'
+    | '/_layout/_authenticated/agent/settings/teams/$id'
+    | '/_layout/_authenticated/agent/settings/webhooks/$id'
     | '/_layout/_authenticated/dashboard/settings/account/developer'
     | '/_layout/_authenticated/dashboard/settings/account/information'
     | '/_layout/_authenticated/dashboard/settings/account/notifications'
     | '/_layout/_authenticated/dashboard/settings/account/preferences'
     | '/_layout/_authenticated/dashboard/settings/account/security'
+    | '/_layout/_authenticated/dashboard/settings/workspace/features'
     | '/_layout/_authenticated/dashboard/settings/workspace/general'
     | '/_layout/_authenticated/dashboard/settings/workspace/labels'
     | '/_layout/_authenticated/dashboard/settings/workspace/roles'
+    | '/_layout/_authenticated/dashboard/settings/workspace/terminology'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/members'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/search'
+    | '/_layout/_authenticated/agent/god-mode/organisations/'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/'
+    | '/_layout/_authenticated/agent/god-mode/organisations/$id/identity'
+    | '/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId'
+    | '/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId'
+    | '/_layout/_authenticated/agent/projects/$projectKey/pages_/$pageId'
+    | '/_layout/_authenticated/agent/projects/$projectKey/settings/automations'
+    | '/_layout/_authenticated/agent/projects/$projectKey/settings/budget'
     | '/_layout/_authenticated/agent/projects/$projectKey/settings/danger'
+    | '/_layout/_authenticated/agent/projects/$projectKey/settings/estimates'
+    | '/_layout/_authenticated/agent/projects/$projectKey/settings/features'
     | '/_layout/_authenticated/agent/projects/$projectKey/settings/labels'
     | '/_layout/_authenticated/agent/projects/$projectKey/settings/members'
     | '/_layout/_authenticated/agent/projects/$projectKey/settings/states'
     | '/_layout/_authenticated/agent/settings/profile/pending-actions/$id'
+    | '/_layout/_authenticated/agent/settings/webhooks/$id/deliveries'
+    | '/_layout/_authenticated/dashboard/settings/projects/$projectId/automations'
+    | '/_layout/_authenticated/dashboard/settings/projects/$projectId/budget'
+    | '/_layout/_authenticated/dashboard/settings/projects/$projectId/estimates'
+    | '/_layout/_authenticated/dashboard/settings/projects/$projectId/features'
     | '/_layout/_authenticated/dashboard/settings/projects/$projectId/general'
     | '/_layout/_authenticated/dashboard/settings/projects/$projectId/labels'
+    | '/_layout/_authenticated/dashboard/settings/projects/$projectId/members'
     | '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/backlog'
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board'
@@ -1051,6 +1926,7 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   TestErrorRoute: typeof TestErrorRoute
+  AgentSignInRoute: typeof AgentSignInRoute
   InvitationAcceptInviteIdRoute: typeof InvitationAcceptInviteIdRoute
 }
 
@@ -1090,6 +1966,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof LayoutAuthenticatedRouteImport
       parentRoute: typeof LayoutRoute
+    }
+    '/agent/sign-in': {
+      id: '/agent/sign-in'
+      path: '/agent/sign-in'
+      fullPath: '/agent/sign-in'
+      preLoaderRoute: typeof AgentSignInRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/auth/check-email': {
       id: '/auth/check-email'
@@ -1168,6 +2051,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvitationAcceptInviteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_layout/_authenticated/agent/dashboard': {
+      id: '/_layout/_authenticated/agent/dashboard'
+      path: '/dashboard'
+      fullPath: '/agent/dashboard'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentDashboardRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/god-mode': {
+      id: '/_layout/_authenticated/agent/god-mode'
+      path: '/god-mode'
+      fullPath: '/agent/god-mode'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
     '/_layout/_authenticated/agent/inbox': {
       id: '/_layout/_authenticated/agent/inbox'
       path: '/inbox'
@@ -1175,11 +2072,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentInboxRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentRoute
     }
+    '/_layout/_authenticated/agent/kb': {
+      id: '/_layout/_authenticated/agent/kb'
+      path: '/kb'
+      fullPath: '/agent/kb'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentKbRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
     '/_layout/_authenticated/agent/my-work': {
       id: '/_layout/_authenticated/agent/my-work'
       path: '/my-work'
       fullPath: '/agent/my-work'
       preLoaderRoute: typeof LayoutAuthenticatedAgentMyWorkRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/reports': {
+      id: '/_layout/_authenticated/agent/reports'
+      path: '/reports'
+      fullPath: '/agent/reports'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentReportsRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentRoute
     }
     '/_layout/_authenticated/agent/search': {
@@ -1194,6 +2105,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/agent/settings'
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/timesheet': {
+      id: '/_layout/_authenticated/agent/timesheet'
+      path: '/timesheet'
+      fullPath: '/agent/timesheet'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentTimesheetRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentRoute
     }
     '/_layout/_authenticated/agent/triage': {
@@ -1238,18 +2156,123 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedGodModeObservabilityRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
     }
+    '/_layout/_authenticated/agent/dashboard_/edit': {
+      id: '/_layout/_authenticated/agent/dashboard_/edit'
+      path: '/dashboard/edit'
+      fullPath: '/agent/dashboard/edit'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentDashboardEditRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/': {
+      id: '/_layout/_authenticated/agent/god-mode/'
+      path: '/'
+      fullPath: '/agent/god-mode/'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeIndexRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/api-keys': {
+      id: '/_layout/_authenticated/agent/god-mode/api-keys'
+      path: '/api-keys'
+      fullPath: '/agent/god-mode/api-keys'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeApiKeysRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/audit': {
+      id: '/_layout/_authenticated/agent/god-mode/audit'
+      path: '/audit'
+      fullPath: '/agent/god-mode/audit'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeAuditRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
     '/_layout/_authenticated/agent/god-mode/authentication': {
       id: '/_layout/_authenticated/agent/god-mode/authentication'
-      path: '/god-mode/authentication'
+      path: '/authentication'
       fullPath: '/agent/god-mode/authentication'
       preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteImport
-      parentRoute: typeof LayoutAuthenticatedAgentRoute
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/deliveries': {
+      id: '/_layout/_authenticated/agent/god-mode/deliveries'
+      path: '/deliveries'
+      fullPath: '/agent/god-mode/deliveries'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeDeliveriesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/features': {
+      id: '/_layout/_authenticated/agent/god-mode/features'
+      path: '/features'
+      fullPath: '/agent/god-mode/features'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeFeaturesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/general': {
+      id: '/_layout/_authenticated/agent/god-mode/general'
+      path: '/general'
+      fullPath: '/agent/god-mode/general'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeGeneralRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/imports': {
+      id: '/_layout/_authenticated/agent/god-mode/imports'
+      path: '/imports'
+      fullPath: '/agent/god-mode/imports'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeImportsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/jobs': {
+      id: '/_layout/_authenticated/agent/god-mode/jobs'
+      path: '/jobs'
+      fullPath: '/agent/god-mode/jobs'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeJobsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/mcp': {
+      id: '/_layout/_authenticated/agent/god-mode/mcp'
+      path: '/mcp'
+      fullPath: '/agent/god-mode/mcp'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeMcpRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/notifications': {
+      id: '/_layout/_authenticated/agent/god-mode/notifications'
+      path: '/notifications'
+      fullPath: '/agent/god-mode/notifications'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeNotificationsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/plugins': {
+      id: '/_layout/_authenticated/agent/god-mode/plugins'
+      path: '/plugins'
+      fullPath: '/agent/god-mode/plugins'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModePluginsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/storage': {
+      id: '/_layout/_authenticated/agent/god-mode/storage'
+      path: '/storage'
+      fullPath: '/agent/god-mode/storage'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeStorageRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
     }
     '/_layout/_authenticated/agent/god-mode/users': {
       id: '/_layout/_authenticated/agent/god-mode/users'
-      path: '/god-mode/users'
+      path: '/users'
       fullPath: '/agent/god-mode/users'
       preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeUsersRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/webhooks': {
+      id: '/_layout/_authenticated/agent/god-mode/webhooks'
+      path: '/webhooks'
+      fullPath: '/agent/god-mode/webhooks'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeWebhooksRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/kb_/$id': {
+      id: '/_layout/_authenticated/agent/kb_/$id'
+      path: '/kb/$id'
+      fullPath: '/agent/kb/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentKbIdRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentRoute
     }
     '/_layout/_authenticated/agent/projects/$projectKey': {
@@ -1258,6 +2281,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/agent/projects/$projectKey'
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/reports_/$key': {
+      id: '/_layout/_authenticated/agent/reports_/$key'
+      path: '/reports/$key'
+      fullPath: '/agent/reports/$key'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentReportsKeyRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/reports_/new': {
+      id: '/_layout/_authenticated/agent/reports_/new'
+      path: '/reports/new'
+      fullPath: '/agent/reports/new'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentReportsNewRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/service-management/changes': {
+      id: '/_layout/_authenticated/agent/service-management/changes'
+      path: '/service-management/changes'
+      fullPath: '/agent/service-management/changes'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentServiceManagementChangesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/service-management/releases': {
+      id: '/_layout/_authenticated/agent/service-management/releases'
+      path: '/service-management/releases'
+      fullPath: '/agent/service-management/releases'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentServiceManagementReleasesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/service-management/services': {
+      id: '/_layout/_authenticated/agent/service-management/services'
+      path: '/service-management/services'
+      fullPath: '/agent/service-management/services'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentServiceManagementServicesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/settings/automations': {
+      id: '/_layout/_authenticated/agent/settings/automations'
+      path: '/automations'
+      fullPath: '/agent/settings/automations'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsAutomationsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
     }
     '/_layout/_authenticated/agent/settings/calendars': {
       id: '/_layout/_authenticated/agent/settings/calendars'
@@ -1271,6 +2336,20 @@ declare module '@tanstack/react-router' {
       path: '/canned-responses'
       fullPath: '/agent/settings/canned-responses'
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsCannedResponsesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
+    '/_layout/_authenticated/agent/settings/custom-fields': {
+      id: '/_layout/_authenticated/agent/settings/custom-fields'
+      path: '/custom-fields'
+      fullPath: '/agent/settings/custom-fields'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsCustomFieldsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
+    '/_layout/_authenticated/agent/settings/customer-invitations': {
+      id: '/_layout/_authenticated/agent/settings/customer-invitations'
+      path: '/customer-invitations'
+      fullPath: '/agent/settings/customer-invitations'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsCustomerInvitationsRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
     }
     '/_layout/_authenticated/agent/settings/danger': {
@@ -1301,11 +2380,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsProfileRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
     }
+    '/_layout/_authenticated/agent/settings/rates': {
+      id: '/_layout/_authenticated/agent/settings/rates'
+      path: '/rates'
+      fullPath: '/agent/settings/rates'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsRatesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
     '/_layout/_authenticated/agent/settings/request-types': {
       id: '/_layout/_authenticated/agent/settings/request-types'
       path: '/request-types'
       fullPath: '/agent/settings/request-types'
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsRequestTypesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
+    '/_layout/_authenticated/agent/settings/roles': {
+      id: '/_layout/_authenticated/agent/settings/roles'
+      path: '/roles'
+      fullPath: '/agent/settings/roles'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsRolesRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
     }
     '/_layout/_authenticated/agent/settings/sla-policies': {
@@ -1320,6 +2413,41 @@ declare module '@tanstack/react-router' {
       path: '/states'
       fullPath: '/agent/settings/states'
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsStatesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
+    '/_layout/_authenticated/agent/settings/teams': {
+      id: '/_layout/_authenticated/agent/settings/teams'
+      path: '/teams'
+      fullPath: '/agent/settings/teams'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsTeamsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
+    '/_layout/_authenticated/agent/settings/time-activities': {
+      id: '/_layout/_authenticated/agent/settings/time-activities'
+      path: '/time-activities'
+      fullPath: '/agent/settings/time-activities'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsTimeActivitiesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
+    '/_layout/_authenticated/agent/settings/webhooks': {
+      id: '/_layout/_authenticated/agent/settings/webhooks'
+      path: '/webhooks'
+      fullPath: '/agent/settings/webhooks'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsWebhooksRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
+    '/_layout/_authenticated/agent/settings/work-item-templates': {
+      id: '/_layout/_authenticated/agent/settings/work-item-templates'
+      path: '/work-item-templates'
+      fullPath: '/agent/settings/work-item-templates'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
+    }
+    '/_layout/_authenticated/agent/settings/workflows': {
+      id: '/_layout/_authenticated/agent/settings/workflows'
+      path: '/workflows'
+      fullPath: '/agent/settings/workflows'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsWorkflowsRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsRoute
     }
     '/_layout/_authenticated/agent/views/$id': {
@@ -1378,11 +2506,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationIdRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationRoute
     }
+    '/_layout/_authenticated/agent/god-mode/imports/$id': {
+      id: '/_layout/_authenticated/agent/god-mode/imports/$id'
+      path: '/$id'
+      fullPath: '/agent/god-mode/imports/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeImportsIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeImportsRoute
+    }
+    '/_layout/_authenticated/agent/god-mode/organisations/': {
+      id: '/_layout/_authenticated/agent/god-mode/organisations/'
+      path: '/organisations'
+      fullPath: '/agent/god-mode/organisations/'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeOrganisationsIndexRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/kb_/$id_/edit': {
+      id: '/_layout/_authenticated/agent/kb_/$id_/edit'
+      path: '/kb/$id/edit'
+      fullPath: '/agent/kb/$id/edit'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentKbIdEditRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
     '/_layout/_authenticated/agent/projects/$projectKey/backlog': {
       id: '/_layout/_authenticated/agent/projects/$projectKey/backlog'
       path: '/backlog'
       fullPath: '/agent/projects/$projectKey/backlog'
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/cycles': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/cycles'
+      path: '/cycles'
+      fullPath: '/agent/projects/$projectKey/cycles'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/modules': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/modules'
+      path: '/modules'
+      fullPath: '/agent/projects/$projectKey/modules'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/pages': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/pages'
+      path: '/pages'
+      fullPath: '/agent/projects/$projectKey/pages'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
     }
     '/_layout/_authenticated/agent/projects/$projectKey/settings': {
@@ -1399,6 +2569,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
     }
+    '/_layout/_authenticated/agent/reports_/exports/$id': {
+      id: '/_layout/_authenticated/agent/reports_/exports/$id'
+      path: '/reports/exports/$id'
+      fullPath: '/agent/reports/exports/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentReportsExportsIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/service-management/releases/$id': {
+      id: '/_layout/_authenticated/agent/service-management/releases/$id'
+      path: '/$id'
+      fullPath: '/agent/service-management/releases/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentServiceManagementReleasesIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentServiceManagementReleasesRoute
+    }
+    '/_layout/_authenticated/agent/service-management/services/$id': {
+      id: '/_layout/_authenticated/agent/service-management/services/$id'
+      path: '/$id'
+      fullPath: '/agent/service-management/services/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentServiceManagementServicesIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentServiceManagementServicesRoute
+    }
     '/_layout/_authenticated/agent/settings/calendars/$id': {
       id: '/_layout/_authenticated/agent/settings/calendars/$id'
       path: '/$id'
@@ -1406,11 +2597,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsIdRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsRoute
     }
+    '/_layout/_authenticated/agent/settings/custom-fields/$id': {
+      id: '/_layout/_authenticated/agent/settings/custom-fields/$id'
+      path: '/$id'
+      fullPath: '/agent/settings/custom-fields/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsCustomFieldsIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsCustomFieldsRoute
+    }
     '/_layout/_authenticated/agent/settings/profile/appearance': {
       id: '/_layout/_authenticated/agent/settings/profile/appearance'
       path: '/appearance'
       fullPath: '/agent/settings/profile/appearance'
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsProfileAppearanceRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsProfileRoute
+    }
+    '/_layout/_authenticated/agent/settings/profile/notifications': {
+      id: '/_layout/_authenticated/agent/settings/profile/notifications'
+      path: '/notifications'
+      fullPath: '/agent/settings/profile/notifications'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsProfileNotificationsRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsProfileRoute
     }
     '/_layout/_authenticated/agent/settings/profile/pending-actions': {
@@ -1420,12 +2625,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsProfileRoute
     }
+    '/_layout/_authenticated/agent/settings/roles/$id': {
+      id: '/_layout/_authenticated/agent/settings/roles/$id'
+      path: '/$id'
+      fullPath: '/agent/settings/roles/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsRolesIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsRolesRoute
+    }
     '/_layout/_authenticated/agent/settings/sla-policies/$id': {
       id: '/_layout/_authenticated/agent/settings/sla-policies/$id'
       path: '/$id'
       fullPath: '/agent/settings/sla-policies/$id'
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesIdRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRoute
+    }
+    '/_layout/_authenticated/agent/settings/teams/$id': {
+      id: '/_layout/_authenticated/agent/settings/teams/$id'
+      path: '/$id'
+      fullPath: '/agent/settings/teams/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsTeamsIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsTeamsRoute
+    }
+    '/_layout/_authenticated/agent/settings/webhooks/$id': {
+      id: '/_layout/_authenticated/agent/settings/webhooks/$id'
+      path: '/$id'
+      fullPath: '/agent/settings/webhooks/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsWebhooksIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsWebhooksRoute
     }
     '/_layout/_authenticated/dashboard/settings/account/developer': {
       id: '/_layout/_authenticated/dashboard/settings/account/developer'
@@ -1462,6 +2688,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsAccountSecurityRouteImport
       parentRoute: typeof LayoutAuthenticatedDashboardSettingsAccountRoute
     }
+    '/_layout/_authenticated/dashboard/settings/workspace/features': {
+      id: '/_layout/_authenticated/dashboard/settings/workspace/features'
+      path: '/features'
+      fullPath: '/dashboard/settings/workspace/features'
+      preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRouteImport
+      parentRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceRoute
+    }
     '/_layout/_authenticated/dashboard/settings/workspace/general': {
       id: '/_layout/_authenticated/dashboard/settings/workspace/general'
       path: '/general'
@@ -1481,6 +2714,13 @@ declare module '@tanstack/react-router' {
       path: '/roles'
       fullPath: '/dashboard/settings/workspace/roles'
       preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceRolesRouteImport
+      parentRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceRoute
+    }
+    '/_layout/_authenticated/dashboard/settings/workspace/terminology': {
+      id: '/_layout/_authenticated/dashboard/settings/workspace/terminology'
+      path: '/terminology'
+      fullPath: '/dashboard/settings/workspace/terminology'
+      preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRouteImport
       parentRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceRoute
     }
     '/_layout/_authenticated/dashboard/workspace/$workspaceId/': {
@@ -1504,11 +2744,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdSearchRouteImport
       parentRoute: typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRoute
     }
+    '/_layout/_authenticated/agent/god-mode/organisations/$id/identity': {
+      id: '/_layout/_authenticated/agent/god-mode/organisations/$id/identity'
+      path: '/organisations/$id/identity'
+      fullPath: '/agent/god-mode/organisations/$id/identity'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentGodModeRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId'
+      path: '/cycles/$cycleId'
+      fullPath: '/agent/projects/$projectKey/cycles/$cycleId'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId'
+      path: '/modules/$moduleId'
+      fullPath: '/agent/projects/$projectKey/modules/$moduleId'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/pages_/$pageId': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/pages_/$pageId'
+      path: '/pages/$pageId'
+      fullPath: '/agent/projects/$projectKey/pages/$pageId'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/settings/automations': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/settings/automations'
+      path: '/automations'
+      fullPath: '/agent/projects/$projectKey/settings/automations'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/settings/budget': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/settings/budget'
+      path: '/budget'
+      fullPath: '/agent/projects/$projectKey/settings/budget'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute
+    }
     '/_layout/_authenticated/agent/projects/$projectKey/settings/danger': {
       id: '/_layout/_authenticated/agent/projects/$projectKey/settings/danger'
       path: '/danger'
       fullPath: '/agent/projects/$projectKey/settings/danger'
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/settings/estimates': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/settings/estimates'
+      path: '/estimates'
+      fullPath: '/agent/projects/$projectKey/settings/estimates'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/settings/features': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/settings/features'
+      path: '/features'
+      fullPath: '/agent/projects/$projectKey/settings/features'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute
     }
     '/_layout/_authenticated/agent/projects/$projectKey/settings/labels': {
@@ -1539,6 +2835,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsIdRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute
     }
+    '/_layout/_authenticated/agent/settings/webhooks/$id/deliveries': {
+      id: '/_layout/_authenticated/agent/settings/webhooks/$id/deliveries'
+      path: '/deliveries'
+      fullPath: '/agent/settings/webhooks/$id/deliveries'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentSettingsWebhooksIdRoute
+    }
+    '/_layout/_authenticated/dashboard/settings/projects/$projectId/automations': {
+      id: '/_layout/_authenticated/dashboard/settings/projects/$projectId/automations'
+      path: '/$projectId/automations'
+      fullPath: '/dashboard/settings/projects/$projectId/automations'
+      preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRouteImport
+      parentRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsRoute
+    }
+    '/_layout/_authenticated/dashboard/settings/projects/$projectId/budget': {
+      id: '/_layout/_authenticated/dashboard/settings/projects/$projectId/budget'
+      path: '/$projectId/budget'
+      fullPath: '/dashboard/settings/projects/$projectId/budget'
+      preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRouteImport
+      parentRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsRoute
+    }
+    '/_layout/_authenticated/dashboard/settings/projects/$projectId/estimates': {
+      id: '/_layout/_authenticated/dashboard/settings/projects/$projectId/estimates'
+      path: '/$projectId/estimates'
+      fullPath: '/dashboard/settings/projects/$projectId/estimates'
+      preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRouteImport
+      parentRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsRoute
+    }
+    '/_layout/_authenticated/dashboard/settings/projects/$projectId/features': {
+      id: '/_layout/_authenticated/dashboard/settings/projects/$projectId/features'
+      path: '/$projectId/features'
+      fullPath: '/dashboard/settings/projects/$projectId/features'
+      preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRouteImport
+      parentRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsRoute
+    }
     '/_layout/_authenticated/dashboard/settings/projects/$projectId/general': {
       id: '/_layout/_authenticated/dashboard/settings/projects/$projectId/general'
       path: '/$projectId/general'
@@ -1551,6 +2882,13 @@ declare module '@tanstack/react-router' {
       path: '/$projectId/labels'
       fullPath: '/dashboard/settings/projects/$projectId/labels'
       preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRouteImport
+      parentRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsRoute
+    }
+    '/_layout/_authenticated/dashboard/settings/projects/$projectId/members': {
+      id: '/_layout/_authenticated/dashboard/settings/projects/$projectId/members'
+      path: '/$projectId/members'
+      fullPath: '/dashboard/settings/projects/$projectId/members'
+      preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRouteImport
       parentRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsRoute
     }
     '/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow': {
@@ -1605,6 +2943,99 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface LayoutAuthenticatedAgentGodModeAuthenticationRouteChildren {
+  LayoutAuthenticatedAgentGodModeAuthenticationIdRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationIdRoute
+}
+
+const LayoutAuthenticatedAgentGodModeAuthenticationRouteChildren: LayoutAuthenticatedAgentGodModeAuthenticationRouteChildren =
+  {
+    LayoutAuthenticatedAgentGodModeAuthenticationIdRoute:
+      LayoutAuthenticatedAgentGodModeAuthenticationIdRoute,
+  }
+
+const LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren =
+  LayoutAuthenticatedAgentGodModeAuthenticationRoute._addFileChildren(
+    LayoutAuthenticatedAgentGodModeAuthenticationRouteChildren,
+  )
+
+interface LayoutAuthenticatedAgentGodModeImportsRouteChildren {
+  LayoutAuthenticatedAgentGodModeImportsIdRoute: typeof LayoutAuthenticatedAgentGodModeImportsIdRoute
+}
+
+const LayoutAuthenticatedAgentGodModeImportsRouteChildren: LayoutAuthenticatedAgentGodModeImportsRouteChildren =
+  {
+    LayoutAuthenticatedAgentGodModeImportsIdRoute:
+      LayoutAuthenticatedAgentGodModeImportsIdRoute,
+  }
+
+const LayoutAuthenticatedAgentGodModeImportsRouteWithChildren =
+  LayoutAuthenticatedAgentGodModeImportsRoute._addFileChildren(
+    LayoutAuthenticatedAgentGodModeImportsRouteChildren,
+  )
+
+interface LayoutAuthenticatedAgentGodModeRouteChildren {
+  LayoutAuthenticatedAgentGodModeApiKeysRoute: typeof LayoutAuthenticatedAgentGodModeApiKeysRoute
+  LayoutAuthenticatedAgentGodModeAuditRoute: typeof LayoutAuthenticatedAgentGodModeAuditRoute
+  LayoutAuthenticatedAgentGodModeAuthenticationRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
+  LayoutAuthenticatedAgentGodModeDeliveriesRoute: typeof LayoutAuthenticatedAgentGodModeDeliveriesRoute
+  LayoutAuthenticatedAgentGodModeFeaturesRoute: typeof LayoutAuthenticatedAgentGodModeFeaturesRoute
+  LayoutAuthenticatedAgentGodModeGeneralRoute: typeof LayoutAuthenticatedAgentGodModeGeneralRoute
+  LayoutAuthenticatedAgentGodModeImportsRoute: typeof LayoutAuthenticatedAgentGodModeImportsRouteWithChildren
+  LayoutAuthenticatedAgentGodModeJobsRoute: typeof LayoutAuthenticatedAgentGodModeJobsRoute
+  LayoutAuthenticatedAgentGodModeMcpRoute: typeof LayoutAuthenticatedAgentGodModeMcpRoute
+  LayoutAuthenticatedAgentGodModeNotificationsRoute: typeof LayoutAuthenticatedAgentGodModeNotificationsRoute
+  LayoutAuthenticatedAgentGodModePluginsRoute: typeof LayoutAuthenticatedAgentGodModePluginsRoute
+  LayoutAuthenticatedAgentGodModeStorageRoute: typeof LayoutAuthenticatedAgentGodModeStorageRoute
+  LayoutAuthenticatedAgentGodModeUsersRoute: typeof LayoutAuthenticatedAgentGodModeUsersRoute
+  LayoutAuthenticatedAgentGodModeWebhooksRoute: typeof LayoutAuthenticatedAgentGodModeWebhooksRoute
+  LayoutAuthenticatedAgentGodModeIndexRoute: typeof LayoutAuthenticatedAgentGodModeIndexRoute
+  LayoutAuthenticatedAgentGodModeOrganisationsIndexRoute: typeof LayoutAuthenticatedAgentGodModeOrganisationsIndexRoute
+  LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute: typeof LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute
+}
+
+const LayoutAuthenticatedAgentGodModeRouteChildren: LayoutAuthenticatedAgentGodModeRouteChildren =
+  {
+    LayoutAuthenticatedAgentGodModeApiKeysRoute:
+      LayoutAuthenticatedAgentGodModeApiKeysRoute,
+    LayoutAuthenticatedAgentGodModeAuditRoute:
+      LayoutAuthenticatedAgentGodModeAuditRoute,
+    LayoutAuthenticatedAgentGodModeAuthenticationRoute:
+      LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren,
+    LayoutAuthenticatedAgentGodModeDeliveriesRoute:
+      LayoutAuthenticatedAgentGodModeDeliveriesRoute,
+    LayoutAuthenticatedAgentGodModeFeaturesRoute:
+      LayoutAuthenticatedAgentGodModeFeaturesRoute,
+    LayoutAuthenticatedAgentGodModeGeneralRoute:
+      LayoutAuthenticatedAgentGodModeGeneralRoute,
+    LayoutAuthenticatedAgentGodModeImportsRoute:
+      LayoutAuthenticatedAgentGodModeImportsRouteWithChildren,
+    LayoutAuthenticatedAgentGodModeJobsRoute:
+      LayoutAuthenticatedAgentGodModeJobsRoute,
+    LayoutAuthenticatedAgentGodModeMcpRoute:
+      LayoutAuthenticatedAgentGodModeMcpRoute,
+    LayoutAuthenticatedAgentGodModeNotificationsRoute:
+      LayoutAuthenticatedAgentGodModeNotificationsRoute,
+    LayoutAuthenticatedAgentGodModePluginsRoute:
+      LayoutAuthenticatedAgentGodModePluginsRoute,
+    LayoutAuthenticatedAgentGodModeStorageRoute:
+      LayoutAuthenticatedAgentGodModeStorageRoute,
+    LayoutAuthenticatedAgentGodModeUsersRoute:
+      LayoutAuthenticatedAgentGodModeUsersRoute,
+    LayoutAuthenticatedAgentGodModeWebhooksRoute:
+      LayoutAuthenticatedAgentGodModeWebhooksRoute,
+    LayoutAuthenticatedAgentGodModeIndexRoute:
+      LayoutAuthenticatedAgentGodModeIndexRoute,
+    LayoutAuthenticatedAgentGodModeOrganisationsIndexRoute:
+      LayoutAuthenticatedAgentGodModeOrganisationsIndexRoute,
+    LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute:
+      LayoutAuthenticatedAgentGodModeOrganisationsIdIdentityRoute,
+  }
+
+const LayoutAuthenticatedAgentGodModeRouteWithChildren =
+  LayoutAuthenticatedAgentGodModeRoute._addFileChildren(
+    LayoutAuthenticatedAgentGodModeRouteChildren,
+  )
+
 interface LayoutAuthenticatedAgentSettingsCalendarsRouteChildren {
   LayoutAuthenticatedAgentSettingsCalendarsIdRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
 }
@@ -1618,6 +3049,21 @@ const LayoutAuthenticatedAgentSettingsCalendarsRouteChildren: LayoutAuthenticate
 const LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren =
   LayoutAuthenticatedAgentSettingsCalendarsRoute._addFileChildren(
     LayoutAuthenticatedAgentSettingsCalendarsRouteChildren,
+  )
+
+interface LayoutAuthenticatedAgentSettingsCustomFieldsRouteChildren {
+  LayoutAuthenticatedAgentSettingsCustomFieldsIdRoute: typeof LayoutAuthenticatedAgentSettingsCustomFieldsIdRoute
+}
+
+const LayoutAuthenticatedAgentSettingsCustomFieldsRouteChildren: LayoutAuthenticatedAgentSettingsCustomFieldsRouteChildren =
+  {
+    LayoutAuthenticatedAgentSettingsCustomFieldsIdRoute:
+      LayoutAuthenticatedAgentSettingsCustomFieldsIdRoute,
+  }
+
+const LayoutAuthenticatedAgentSettingsCustomFieldsRouteWithChildren =
+  LayoutAuthenticatedAgentSettingsCustomFieldsRoute._addFileChildren(
+    LayoutAuthenticatedAgentSettingsCustomFieldsRouteChildren,
   )
 
 interface LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteChildren {
@@ -1637,6 +3083,7 @@ const LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren =
 
 interface LayoutAuthenticatedAgentSettingsProfileRouteChildren {
   LayoutAuthenticatedAgentSettingsProfileAppearanceRoute: typeof LayoutAuthenticatedAgentSettingsProfileAppearanceRoute
+  LayoutAuthenticatedAgentSettingsProfileNotificationsRoute: typeof LayoutAuthenticatedAgentSettingsProfileNotificationsRoute
   LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute: typeof LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren
 }
 
@@ -1644,6 +3091,8 @@ const LayoutAuthenticatedAgentSettingsProfileRouteChildren: LayoutAuthenticatedA
   {
     LayoutAuthenticatedAgentSettingsProfileAppearanceRoute:
       LayoutAuthenticatedAgentSettingsProfileAppearanceRoute,
+    LayoutAuthenticatedAgentSettingsProfileNotificationsRoute:
+      LayoutAuthenticatedAgentSettingsProfileNotificationsRoute,
     LayoutAuthenticatedAgentSettingsProfilePendingActionsRoute:
       LayoutAuthenticatedAgentSettingsProfilePendingActionsRouteWithChildren,
   }
@@ -1651,6 +3100,21 @@ const LayoutAuthenticatedAgentSettingsProfileRouteChildren: LayoutAuthenticatedA
 const LayoutAuthenticatedAgentSettingsProfileRouteWithChildren =
   LayoutAuthenticatedAgentSettingsProfileRoute._addFileChildren(
     LayoutAuthenticatedAgentSettingsProfileRouteChildren,
+  )
+
+interface LayoutAuthenticatedAgentSettingsRolesRouteChildren {
+  LayoutAuthenticatedAgentSettingsRolesIdRoute: typeof LayoutAuthenticatedAgentSettingsRolesIdRoute
+}
+
+const LayoutAuthenticatedAgentSettingsRolesRouteChildren: LayoutAuthenticatedAgentSettingsRolesRouteChildren =
+  {
+    LayoutAuthenticatedAgentSettingsRolesIdRoute:
+      LayoutAuthenticatedAgentSettingsRolesIdRoute,
+  }
+
+const LayoutAuthenticatedAgentSettingsRolesRouteWithChildren =
+  LayoutAuthenticatedAgentSettingsRolesRoute._addFileChildren(
+    LayoutAuthenticatedAgentSettingsRolesRouteChildren,
   )
 
 interface LayoutAuthenticatedAgentSettingsSlaPoliciesRouteChildren {
@@ -1668,24 +3132,85 @@ const LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren =
     LayoutAuthenticatedAgentSettingsSlaPoliciesRouteChildren,
   )
 
+interface LayoutAuthenticatedAgentSettingsTeamsRouteChildren {
+  LayoutAuthenticatedAgentSettingsTeamsIdRoute: typeof LayoutAuthenticatedAgentSettingsTeamsIdRoute
+}
+
+const LayoutAuthenticatedAgentSettingsTeamsRouteChildren: LayoutAuthenticatedAgentSettingsTeamsRouteChildren =
+  {
+    LayoutAuthenticatedAgentSettingsTeamsIdRoute:
+      LayoutAuthenticatedAgentSettingsTeamsIdRoute,
+  }
+
+const LayoutAuthenticatedAgentSettingsTeamsRouteWithChildren =
+  LayoutAuthenticatedAgentSettingsTeamsRoute._addFileChildren(
+    LayoutAuthenticatedAgentSettingsTeamsRouteChildren,
+  )
+
+interface LayoutAuthenticatedAgentSettingsWebhooksIdRouteChildren {
+  LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRoute: typeof LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRoute
+}
+
+const LayoutAuthenticatedAgentSettingsWebhooksIdRouteChildren: LayoutAuthenticatedAgentSettingsWebhooksIdRouteChildren =
+  {
+    LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRoute:
+      LayoutAuthenticatedAgentSettingsWebhooksIdDeliveriesRoute,
+  }
+
+const LayoutAuthenticatedAgentSettingsWebhooksIdRouteWithChildren =
+  LayoutAuthenticatedAgentSettingsWebhooksIdRoute._addFileChildren(
+    LayoutAuthenticatedAgentSettingsWebhooksIdRouteChildren,
+  )
+
+interface LayoutAuthenticatedAgentSettingsWebhooksRouteChildren {
+  LayoutAuthenticatedAgentSettingsWebhooksIdRoute: typeof LayoutAuthenticatedAgentSettingsWebhooksIdRouteWithChildren
+}
+
+const LayoutAuthenticatedAgentSettingsWebhooksRouteChildren: LayoutAuthenticatedAgentSettingsWebhooksRouteChildren =
+  {
+    LayoutAuthenticatedAgentSettingsWebhooksIdRoute:
+      LayoutAuthenticatedAgentSettingsWebhooksIdRouteWithChildren,
+  }
+
+const LayoutAuthenticatedAgentSettingsWebhooksRouteWithChildren =
+  LayoutAuthenticatedAgentSettingsWebhooksRoute._addFileChildren(
+    LayoutAuthenticatedAgentSettingsWebhooksRouteChildren,
+  )
+
 interface LayoutAuthenticatedAgentSettingsRouteChildren {
+  LayoutAuthenticatedAgentSettingsAutomationsRoute: typeof LayoutAuthenticatedAgentSettingsAutomationsRoute
   LayoutAuthenticatedAgentSettingsCalendarsRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren
   LayoutAuthenticatedAgentSettingsCannedResponsesRoute: typeof LayoutAuthenticatedAgentSettingsCannedResponsesRoute
+  LayoutAuthenticatedAgentSettingsCustomFieldsRoute: typeof LayoutAuthenticatedAgentSettingsCustomFieldsRouteWithChildren
+  LayoutAuthenticatedAgentSettingsCustomerInvitationsRoute: typeof LayoutAuthenticatedAgentSettingsCustomerInvitationsRoute
   LayoutAuthenticatedAgentSettingsDangerRoute: typeof LayoutAuthenticatedAgentSettingsDangerRoute
   LayoutAuthenticatedAgentSettingsLabelsRoute: typeof LayoutAuthenticatedAgentSettingsLabelsRoute
   LayoutAuthenticatedAgentSettingsMembersRoute: typeof LayoutAuthenticatedAgentSettingsMembersRoute
   LayoutAuthenticatedAgentSettingsProfileRoute: typeof LayoutAuthenticatedAgentSettingsProfileRouteWithChildren
+  LayoutAuthenticatedAgentSettingsRatesRoute: typeof LayoutAuthenticatedAgentSettingsRatesRoute
   LayoutAuthenticatedAgentSettingsRequestTypesRoute: typeof LayoutAuthenticatedAgentSettingsRequestTypesRoute
+  LayoutAuthenticatedAgentSettingsRolesRoute: typeof LayoutAuthenticatedAgentSettingsRolesRouteWithChildren
   LayoutAuthenticatedAgentSettingsSlaPoliciesRoute: typeof LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren
   LayoutAuthenticatedAgentSettingsStatesRoute: typeof LayoutAuthenticatedAgentSettingsStatesRoute
+  LayoutAuthenticatedAgentSettingsTeamsRoute: typeof LayoutAuthenticatedAgentSettingsTeamsRouteWithChildren
+  LayoutAuthenticatedAgentSettingsTimeActivitiesRoute: typeof LayoutAuthenticatedAgentSettingsTimeActivitiesRoute
+  LayoutAuthenticatedAgentSettingsWebhooksRoute: typeof LayoutAuthenticatedAgentSettingsWebhooksRouteWithChildren
+  LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute: typeof LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute
+  LayoutAuthenticatedAgentSettingsWorkflowsRoute: typeof LayoutAuthenticatedAgentSettingsWorkflowsRoute
 }
 
 const LayoutAuthenticatedAgentSettingsRouteChildren: LayoutAuthenticatedAgentSettingsRouteChildren =
   {
+    LayoutAuthenticatedAgentSettingsAutomationsRoute:
+      LayoutAuthenticatedAgentSettingsAutomationsRoute,
     LayoutAuthenticatedAgentSettingsCalendarsRoute:
       LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren,
     LayoutAuthenticatedAgentSettingsCannedResponsesRoute:
       LayoutAuthenticatedAgentSettingsCannedResponsesRoute,
+    LayoutAuthenticatedAgentSettingsCustomFieldsRoute:
+      LayoutAuthenticatedAgentSettingsCustomFieldsRouteWithChildren,
+    LayoutAuthenticatedAgentSettingsCustomerInvitationsRoute:
+      LayoutAuthenticatedAgentSettingsCustomerInvitationsRoute,
     LayoutAuthenticatedAgentSettingsDangerRoute:
       LayoutAuthenticatedAgentSettingsDangerRoute,
     LayoutAuthenticatedAgentSettingsLabelsRoute:
@@ -1694,12 +3219,26 @@ const LayoutAuthenticatedAgentSettingsRouteChildren: LayoutAuthenticatedAgentSet
       LayoutAuthenticatedAgentSettingsMembersRoute,
     LayoutAuthenticatedAgentSettingsProfileRoute:
       LayoutAuthenticatedAgentSettingsProfileRouteWithChildren,
+    LayoutAuthenticatedAgentSettingsRatesRoute:
+      LayoutAuthenticatedAgentSettingsRatesRoute,
     LayoutAuthenticatedAgentSettingsRequestTypesRoute:
       LayoutAuthenticatedAgentSettingsRequestTypesRoute,
+    LayoutAuthenticatedAgentSettingsRolesRoute:
+      LayoutAuthenticatedAgentSettingsRolesRouteWithChildren,
     LayoutAuthenticatedAgentSettingsSlaPoliciesRoute:
       LayoutAuthenticatedAgentSettingsSlaPoliciesRouteWithChildren,
     LayoutAuthenticatedAgentSettingsStatesRoute:
       LayoutAuthenticatedAgentSettingsStatesRoute,
+    LayoutAuthenticatedAgentSettingsTeamsRoute:
+      LayoutAuthenticatedAgentSettingsTeamsRouteWithChildren,
+    LayoutAuthenticatedAgentSettingsTimeActivitiesRoute:
+      LayoutAuthenticatedAgentSettingsTimeActivitiesRoute,
+    LayoutAuthenticatedAgentSettingsWebhooksRoute:
+      LayoutAuthenticatedAgentSettingsWebhooksRouteWithChildren,
+    LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute:
+      LayoutAuthenticatedAgentSettingsWorkItemTemplatesRoute,
+    LayoutAuthenticatedAgentSettingsWorkflowsRoute:
+      LayoutAuthenticatedAgentSettingsWorkflowsRoute,
   }
 
 const LayoutAuthenticatedAgentSettingsRouteWithChildren =
@@ -1721,23 +3260,12 @@ const LayoutAuthenticatedAgentViewsRouteWithChildren =
     LayoutAuthenticatedAgentViewsRouteChildren,
   )
 
-interface LayoutAuthenticatedAgentGodModeAuthenticationRouteChildren {
-  LayoutAuthenticatedAgentGodModeAuthenticationIdRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationIdRoute
-}
-
-const LayoutAuthenticatedAgentGodModeAuthenticationRouteChildren: LayoutAuthenticatedAgentGodModeAuthenticationRouteChildren =
-  {
-    LayoutAuthenticatedAgentGodModeAuthenticationIdRoute:
-      LayoutAuthenticatedAgentGodModeAuthenticationIdRoute,
-  }
-
-const LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren =
-  LayoutAuthenticatedAgentGodModeAuthenticationRoute._addFileChildren(
-    LayoutAuthenticatedAgentGodModeAuthenticationRouteChildren,
-  )
-
 interface LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteChildren {
+  LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRoute
+  LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRoute
   LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute
+  LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRoute
+  LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRoute
   LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRoute
   LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRoute
   LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsStatesRoute
@@ -1745,8 +3273,16 @@ interface LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteChildren {
 
 const LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteChildren: LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteChildren =
   {
+    LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeySettingsAutomationsRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeySettingsBudgetRoute,
     LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute:
       LayoutAuthenticatedAgentProjectsProjectKeySettingsDangerRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeySettingsEstimatesRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeySettingsFeaturesRoute,
     LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRoute:
       LayoutAuthenticatedAgentProjectsProjectKeySettingsLabelsRoute,
     LayoutAuthenticatedAgentProjectsProjectKeySettingsMembersRoute:
@@ -1762,18 +3298,36 @@ const LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren =
 
 interface LayoutAuthenticatedAgentProjectsProjectKeyRouteChildren {
   LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute
   LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRoute
 }
 
 const LayoutAuthenticatedAgentProjectsProjectKeyRouteChildren: LayoutAuthenticatedAgentProjectsProjectKeyRouteChildren =
   {
     LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute,
     LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute:
       LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren,
     LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyPagesPageIdRoute,
   }
 
 const LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren =
@@ -1781,37 +3335,100 @@ const LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren =
     LayoutAuthenticatedAgentProjectsProjectKeyRouteChildren,
   )
 
+interface LayoutAuthenticatedAgentServiceManagementReleasesRouteChildren {
+  LayoutAuthenticatedAgentServiceManagementReleasesIdRoute: typeof LayoutAuthenticatedAgentServiceManagementReleasesIdRoute
+}
+
+const LayoutAuthenticatedAgentServiceManagementReleasesRouteChildren: LayoutAuthenticatedAgentServiceManagementReleasesRouteChildren =
+  {
+    LayoutAuthenticatedAgentServiceManagementReleasesIdRoute:
+      LayoutAuthenticatedAgentServiceManagementReleasesIdRoute,
+  }
+
+const LayoutAuthenticatedAgentServiceManagementReleasesRouteWithChildren =
+  LayoutAuthenticatedAgentServiceManagementReleasesRoute._addFileChildren(
+    LayoutAuthenticatedAgentServiceManagementReleasesRouteChildren,
+  )
+
+interface LayoutAuthenticatedAgentServiceManagementServicesRouteChildren {
+  LayoutAuthenticatedAgentServiceManagementServicesIdRoute: typeof LayoutAuthenticatedAgentServiceManagementServicesIdRoute
+}
+
+const LayoutAuthenticatedAgentServiceManagementServicesRouteChildren: LayoutAuthenticatedAgentServiceManagementServicesRouteChildren =
+  {
+    LayoutAuthenticatedAgentServiceManagementServicesIdRoute:
+      LayoutAuthenticatedAgentServiceManagementServicesIdRoute,
+  }
+
+const LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren =
+  LayoutAuthenticatedAgentServiceManagementServicesRoute._addFileChildren(
+    LayoutAuthenticatedAgentServiceManagementServicesRouteChildren,
+  )
+
 interface LayoutAuthenticatedAgentRouteChildren {
+  LayoutAuthenticatedAgentDashboardRoute: typeof LayoutAuthenticatedAgentDashboardRoute
+  LayoutAuthenticatedAgentGodModeRoute: typeof LayoutAuthenticatedAgentGodModeRouteWithChildren
   LayoutAuthenticatedAgentInboxRoute: typeof LayoutAuthenticatedAgentInboxRoute
+  LayoutAuthenticatedAgentKbRoute: typeof LayoutAuthenticatedAgentKbRoute
   LayoutAuthenticatedAgentMyWorkRoute: typeof LayoutAuthenticatedAgentMyWorkRoute
+  LayoutAuthenticatedAgentReportsRoute: typeof LayoutAuthenticatedAgentReportsRoute
   LayoutAuthenticatedAgentSearchRoute: typeof LayoutAuthenticatedAgentSearchRoute
   LayoutAuthenticatedAgentSettingsRoute: typeof LayoutAuthenticatedAgentSettingsRouteWithChildren
+  LayoutAuthenticatedAgentTimesheetRoute: typeof LayoutAuthenticatedAgentTimesheetRoute
   LayoutAuthenticatedAgentTriageRoute: typeof LayoutAuthenticatedAgentTriageRoute
   LayoutAuthenticatedAgentViewsRoute: typeof LayoutAuthenticatedAgentViewsRouteWithChildren
-  LayoutAuthenticatedAgentGodModeAuthenticationRoute: typeof LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren
-  LayoutAuthenticatedAgentGodModeUsersRoute: typeof LayoutAuthenticatedAgentGodModeUsersRoute
+  LayoutAuthenticatedAgentDashboardEditRoute: typeof LayoutAuthenticatedAgentDashboardEditRoute
+  LayoutAuthenticatedAgentKbIdRoute: typeof LayoutAuthenticatedAgentKbIdRoute
   LayoutAuthenticatedAgentProjectsProjectKeyRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
+  LayoutAuthenticatedAgentReportsKeyRoute: typeof LayoutAuthenticatedAgentReportsKeyRoute
+  LayoutAuthenticatedAgentReportsNewRoute: typeof LayoutAuthenticatedAgentReportsNewRoute
+  LayoutAuthenticatedAgentServiceManagementChangesRoute: typeof LayoutAuthenticatedAgentServiceManagementChangesRoute
+  LayoutAuthenticatedAgentServiceManagementReleasesRoute: typeof LayoutAuthenticatedAgentServiceManagementReleasesRouteWithChildren
+  LayoutAuthenticatedAgentServiceManagementServicesRoute: typeof LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren
   LayoutAuthenticatedAgentWorkItemsKeyRoute: typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
+  LayoutAuthenticatedAgentKbIdEditRoute: typeof LayoutAuthenticatedAgentKbIdEditRoute
+  LayoutAuthenticatedAgentReportsExportsIdRoute: typeof LayoutAuthenticatedAgentReportsExportsIdRoute
 }
 
 const LayoutAuthenticatedAgentRouteChildren: LayoutAuthenticatedAgentRouteChildren =
   {
+    LayoutAuthenticatedAgentDashboardRoute:
+      LayoutAuthenticatedAgentDashboardRoute,
+    LayoutAuthenticatedAgentGodModeRoute:
+      LayoutAuthenticatedAgentGodModeRouteWithChildren,
     LayoutAuthenticatedAgentInboxRoute: LayoutAuthenticatedAgentInboxRoute,
+    LayoutAuthenticatedAgentKbRoute: LayoutAuthenticatedAgentKbRoute,
     LayoutAuthenticatedAgentMyWorkRoute: LayoutAuthenticatedAgentMyWorkRoute,
+    LayoutAuthenticatedAgentReportsRoute: LayoutAuthenticatedAgentReportsRoute,
     LayoutAuthenticatedAgentSearchRoute: LayoutAuthenticatedAgentSearchRoute,
     LayoutAuthenticatedAgentSettingsRoute:
       LayoutAuthenticatedAgentSettingsRouteWithChildren,
+    LayoutAuthenticatedAgentTimesheetRoute:
+      LayoutAuthenticatedAgentTimesheetRoute,
     LayoutAuthenticatedAgentTriageRoute: LayoutAuthenticatedAgentTriageRoute,
     LayoutAuthenticatedAgentViewsRoute:
       LayoutAuthenticatedAgentViewsRouteWithChildren,
-    LayoutAuthenticatedAgentGodModeAuthenticationRoute:
-      LayoutAuthenticatedAgentGodModeAuthenticationRouteWithChildren,
-    LayoutAuthenticatedAgentGodModeUsersRoute:
-      LayoutAuthenticatedAgentGodModeUsersRoute,
+    LayoutAuthenticatedAgentDashboardEditRoute:
+      LayoutAuthenticatedAgentDashboardEditRoute,
+    LayoutAuthenticatedAgentKbIdRoute: LayoutAuthenticatedAgentKbIdRoute,
     LayoutAuthenticatedAgentProjectsProjectKeyRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren,
+    LayoutAuthenticatedAgentReportsKeyRoute:
+      LayoutAuthenticatedAgentReportsKeyRoute,
+    LayoutAuthenticatedAgentReportsNewRoute:
+      LayoutAuthenticatedAgentReportsNewRoute,
+    LayoutAuthenticatedAgentServiceManagementChangesRoute:
+      LayoutAuthenticatedAgentServiceManagementChangesRoute,
+    LayoutAuthenticatedAgentServiceManagementReleasesRoute:
+      LayoutAuthenticatedAgentServiceManagementReleasesRouteWithChildren,
+    LayoutAuthenticatedAgentServiceManagementServicesRoute:
+      LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren,
     LayoutAuthenticatedAgentWorkItemsKeyRoute:
       LayoutAuthenticatedAgentWorkItemsKeyRoute,
+    LayoutAuthenticatedAgentKbIdEditRoute:
+      LayoutAuthenticatedAgentKbIdEditRoute,
+    LayoutAuthenticatedAgentReportsExportsIdRoute:
+      LayoutAuthenticatedAgentReportsExportsIdRoute,
   }
 
 const LayoutAuthenticatedAgentRouteWithChildren =
@@ -1847,17 +3464,32 @@ const LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren =
   )
 
 interface LayoutAuthenticatedDashboardSettingsProjectsRouteChildren {
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRoute
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRoute
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRoute
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRoute
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute
+  LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute
   LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute: typeof LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute
 }
 
 const LayoutAuthenticatedDashboardSettingsProjectsRouteChildren: LayoutAuthenticatedDashboardSettingsProjectsRouteChildren =
   {
+    LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRoute:
+      LayoutAuthenticatedDashboardSettingsProjectsProjectIdAutomationsRoute,
+    LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRoute:
+      LayoutAuthenticatedDashboardSettingsProjectsProjectIdBudgetRoute,
+    LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRoute:
+      LayoutAuthenticatedDashboardSettingsProjectsProjectIdEstimatesRoute,
+    LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRoute:
+      LayoutAuthenticatedDashboardSettingsProjectsProjectIdFeaturesRoute,
     LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute:
       LayoutAuthenticatedDashboardSettingsProjectsProjectIdGeneralRoute,
     LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute:
       LayoutAuthenticatedDashboardSettingsProjectsProjectIdLabelsRoute,
+    LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute:
+      LayoutAuthenticatedDashboardSettingsProjectsProjectIdMembersRoute,
     LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute:
       LayoutAuthenticatedDashboardSettingsProjectsProjectIdWorkflowRoute,
   }
@@ -1868,19 +3500,25 @@ const LayoutAuthenticatedDashboardSettingsProjectsRouteWithChildren =
   )
 
 interface LayoutAuthenticatedDashboardSettingsWorkspaceRouteChildren {
+  LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRoute
   LayoutAuthenticatedDashboardSettingsWorkspaceGeneralRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceGeneralRoute
   LayoutAuthenticatedDashboardSettingsWorkspaceLabelsRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceLabelsRoute
   LayoutAuthenticatedDashboardSettingsWorkspaceRolesRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceRolesRoute
+  LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRoute: typeof LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRoute
 }
 
 const LayoutAuthenticatedDashboardSettingsWorkspaceRouteChildren: LayoutAuthenticatedDashboardSettingsWorkspaceRouteChildren =
   {
+    LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRoute:
+      LayoutAuthenticatedDashboardSettingsWorkspaceFeaturesRoute,
     LayoutAuthenticatedDashboardSettingsWorkspaceGeneralRoute:
       LayoutAuthenticatedDashboardSettingsWorkspaceGeneralRoute,
     LayoutAuthenticatedDashboardSettingsWorkspaceLabelsRoute:
       LayoutAuthenticatedDashboardSettingsWorkspaceLabelsRoute,
     LayoutAuthenticatedDashboardSettingsWorkspaceRolesRoute:
       LayoutAuthenticatedDashboardSettingsWorkspaceRolesRoute,
+    LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRoute:
+      LayoutAuthenticatedDashboardSettingsWorkspaceTerminologyRoute,
   }
 
 const LayoutAuthenticatedDashboardSettingsWorkspaceRouteWithChildren =
@@ -2032,6 +3670,7 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   TestErrorRoute: TestErrorRoute,
+  AgentSignInRoute: AgentSignInRoute,
   InvitationAcceptInviteIdRoute: InvitationAcceptInviteIdRoute,
 }
 export const routeTree = rootRouteImport

@@ -5,11 +5,15 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { COLUMN_DELETION_ROUTE } from "./column-deletion-target";
 import createColumn from "./controllers/create-column";
-import deleteColumn from "./controllers/delete-column";
 import getColumns from "./controllers/get-columns";
 import reorderColumns from "./controllers/reorder-columns";
 import updateColumn from "./controllers/update-column";
@@ -144,7 +148,7 @@ const deleteColumnRoute = createRoute({
   tags: ["Columns"],
   summary: "Delete column",
   description:
-    "Delete an empty column. A column holding tasks is refused until they are moved or deleted.",
+    "Request deletion of an empty column (202 pending action; executed on the requester's approval). A column holding tasks is refused, at request and again at approval, until they are moved or deleted.",
   middleware: [
     workspaceAccess.fromColumn("id", {
       requireProjectReach: true,
@@ -154,11 +158,16 @@ const deleteColumnRoute = createRoute({
   ] as const,
   request: { params: columnParam },
   responses: {
-    200: jsonResponse("The deleted column", columnSchema),
+    202: jsonResponse(
+      "Pending deletion; column unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse("id must not contain a NUL (\\u0000) byte"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Column not found"),
-    409: errorResponse("The column still contains tasks"),
+    409: errorResponse(
+      "The column still contains tasks, or an equivalent deletion is already pending",
+    ),
   },
 });
 
@@ -205,10 +214,12 @@ const column = apiRouter()
     );
   })
   .openapi(deleteColumnRoute, async (c) => {
-    const identity = await resolveCallerIdentity(c, c.get("userId"));
-    if (!identity)
-      throw new HTTPException(404, { message: "Column not found" });
-    return c.json(await deleteColumn(identity, c.req.valid("param").id), 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: COLUMN_DELETION_ROUTE,
+      targetType: "column",
+      id: c.req.valid("param").id,
+    });
+    return c.json(pending, 202);
   });
 
 export default column;

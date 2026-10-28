@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     globals: false,
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // `tests/mcp/` (MC-18's injection.test.ts) runs here: it needs no database.
+    include: ["src/**/*.test.ts", "../../tests/mcp/**/*.test.ts"],
   },
 });

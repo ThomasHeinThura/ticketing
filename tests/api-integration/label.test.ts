@@ -10,6 +10,10 @@ import {
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
 
 describe("API integration: labels", () => {
   beforeEach(async () => {
@@ -121,8 +125,10 @@ describe("API integration: labels", () => {
   });
 
   describe("deletion cascade", () => {
+    // Catalogue label deletion is a durable pending action evaluated against the registered
+    // `label:manage` capability, which the built-in admin tier holds and `member` does not.
     it("deletes task-level copies when a workspace label is deleted", async () => {
-      const member = await createWorkspaceMember();
+      const member = await createWorkspaceMember({ role: "admin" });
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
@@ -211,13 +217,23 @@ describe("API integration: labels", () => {
 
       // Delete the workspace-level label via the API
       mockAuthenticatedSession(member.user);
+      await ensureAgentSession(member.user.id);
       const { app } = createApp();
 
-      const response = await app.request(`/api/label/${workspaceLabel.id}`, {
-        method: "DELETE",
-      });
-
-      expect(response.status).toBe(200);
+      // DELETE only requests (202): every copy survives until the requester approves.
+      await deleteThroughApproval(
+        app,
+        member.user,
+        `/api/label/${workspaceLabel.id}`,
+        {
+          afterRequest: async () => {
+            const untouched = await db.query.labelTable.findMany({
+              where: eq(schema.labelTable.workspaceId, member.workspace.id),
+            });
+            expect(untouched).toHaveLength(3);
+          },
+        },
+      );
 
       // Verify the workspace label and task-level copies are all gone
       const remaining = await db.query.labelTable.findMany({
@@ -227,7 +243,7 @@ describe("API integration: labels", () => {
     });
 
     it("does not affect unrelated labels when deleting a workspace label", async () => {
-      const member = await createWorkspaceMember();
+      const member = await createWorkspaceMember({ role: "admin" });
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
@@ -298,13 +314,15 @@ describe("API integration: labels", () => {
       );
 
       mockAuthenticatedSession(member.user);
+      await ensureAgentSession(member.user.id);
       const { app } = createApp();
 
-      // Delete only the "Bug" workspace label
-      const response = await app.request(`/api/label/${labelBug.id}`, {
-        method: "DELETE",
-      });
-      expect(response.status).toBe(200);
+      // Delete only the "Bug" workspace label (request, then approval)
+      await deleteThroughApproval(
+        app,
+        member.user,
+        `/api/label/${labelBug.id}`,
+      );
 
       // "Feature" workspace label and its task-level copy should still exist
       const featureWorkspace = await db.query.labelTable.findFirst({

@@ -1,0 +1,601 @@
+{
+	"count": 13,
+	"value": [
+		{
+			"id": 4123,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4123,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Epic",
+				"System.Title": "Observability uplift",
+				"System.State": "In Progress",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform",
+				"System.IterationPath": "Platform Ops\\Release 2026.1",
+				"System.CreatedDate": "2025-11-18T09:01:00.000Z",
+				"System.ChangedDate": "2025-10-09T11:21:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Tags": "obs",
+				"Microsoft.VSTS.Common.Priority": 1,
+				"System.Description": "<p>Observability uplift &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4131",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4147",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4155",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "ArtifactLink",
+					"url": "vstfs:///Git/Commit/aaaa%2fbbbb%2f4123",
+					"attributes": {
+						"name": "Fixed in Commit"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4123"
+		},
+		{
+			"id": 4131,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4131,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Feature",
+				"System.Title": "Central log pipeline",
+				"System.State": "In Progress",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform\\Logging",
+				"System.IterationPath": "Platform Ops\\Release 2026.1",
+				"System.CreatedDate": "2025-11-26T08:57:00.000Z",
+				"System.ChangedDate": "2025-10-17T10:17:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Tags": "logs",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"System.Description": "<div>Central log pipeline.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4123",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4135",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4143",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4159",
+					"attributes": {
+						"name": "Child"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4131"
+		},
+		{
+			"id": 4135,
+			"rev": 4,
+			"fields": {
+				"System.Id": 4135,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Product Backlog Item",
+				"System.Title": "Ship logs to central store",
+				"System.State": "Committed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform\\Logging",
+				"System.IterationPath": "Platform Ops\\Release 2026.1\\Sprint 4",
+				"System.CreatedDate": "2025-11-30T12:25:00.000Z",
+				"System.ChangedDate": "2025-10-21T14:45:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Rev": 4,
+				"System.AssignedTo": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Tags": "logs",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Scheduling.Effort": 8,
+				"System.Description": "<div><b>Context</b></div><ul><li>Requested by support</li><li>Seen by 5 customers</li></ul><p>See <a href=\"https://wiki.contoso.example/x/4135\">the wiki page</a>.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4131",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4167",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4171",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Related",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4170",
+					"attributes": {
+						"name": "Related"
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/00007111-1111-4222-8333-00000000d1fb",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30405,
+						"resourceCreatedDate": "2025-12-02T14:39:00.000Z",
+						"comment": ""
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4135"
+		},
+		{
+			"id": 4143,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4143,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Product Backlog Item",
+				"System.Title": "Retention policy per service",
+				"System.State": "Approved",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform\\Logging",
+				"System.IterationPath": "Platform Ops\\Release 2026.1\\Sprint 4",
+				"System.CreatedDate": "2025-10-09T11:21:00.000Z",
+				"System.ChangedDate": "2025-10-29T13:41:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Tags": "logs; compliance",
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Scheduling.Effort": 5,
+				"System.Description": "<div>Retention policy per service.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4131",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4179",
+					"attributes": {
+						"name": "Child"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4143"
+		},
+		{
+			"id": 4147,
+			"rev": 1,
+			"fields": {
+				"System.Id": 4147,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Product Backlog Item",
+				"System.Title": "Alert on error-rate spike",
+				"System.State": "New",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform\\Alerting",
+				"System.IterationPath": "Platform Ops",
+				"System.CreatedDate": "2025-10-13T15:49:00.000Z",
+				"System.ChangedDate": "2025-11-02T08:09:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Project Collection Build Service (contoso)",
+					"uniqueName": "Build\\a1b2c3d4"
+				},
+				"System.Rev": 1,
+				"System.Tags": "alerts",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Scheduling.Effort": 8,
+				"System.Description": "<p>Alert on error-rate spike &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4123",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "Hyperlink",
+					"url": "https://wiki.contoso.example/x/4147",
+					"attributes": {
+						"comment": "wiki"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4147"
+		},
+		{
+			"id": 4155,
+			"rev": 5,
+			"fields": {
+				"System.Id": 4155,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Product Backlog Item",
+				"System.Title": "Dashboard for queue depth",
+				"System.State": "Done",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform\\Dashboards",
+				"System.IterationPath": "Platform Ops\\Release 2025.4\\Sprint 3",
+				"System.CreatedDate": "2025-10-21T14:45:00.000Z",
+				"System.ChangedDate": "2025-11-10T16:05:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Rev": 5,
+				"System.AssignedTo": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Tags": "dashboards",
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Scheduling.Effort": 3,
+				"Microsoft.VSTS.Common.ClosedDate": "2025-11-05T11:30:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-11-20T08:15:00.000Z",
+				"System.Description": "<div><b>Context</b></div><ul><li>Requested by support</li><li>Seen by 7 customers</li></ul><p>See <a href=\"https://wiki.contoso.example/x/4155\">the wiki page</a>.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4123",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/0000719d-1111-4222-8333-00000000d2ff",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30465,
+						"resourceCreatedDate": "2025-10-23T16:59:00.000Z",
+						"comment": ""
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4155"
+		},
+		{
+			"id": 4159,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4159,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Product Backlog Item",
+				"System.Title": "Drop legacy syslog forwarder",
+				"System.State": "Removed",
+				"System.Reason": "Removed from the backlog",
+				"System.AreaPath": "Platform Ops\\Platform\\Logging",
+				"System.IterationPath": "Platform Ops\\Release 2025.4\\Sprint 3",
+				"System.CreatedDate": "2025-10-25T09:13:00.000Z",
+				"System.ChangedDate": "2025-11-14T11:33:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 4,
+				"Microsoft.VSTS.Scheduling.Effort": 2,
+				"System.Description": "<p>Drop legacy syslog forwarder &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4131",
+					"attributes": {
+						"name": "Parent"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4159"
+		},
+		{
+			"id": 4167,
+			"rev": 3,
+			"fields": {
+				"System.Id": 4167,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Task",
+				"System.Title": "Provision log storage bucket",
+				"System.State": "Done",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform\\Logging",
+				"System.IterationPath": "Platform Ops\\Release 2026.1\\Sprint 4",
+				"System.CreatedDate": "2025-11-02T08:09:00.000Z",
+				"System.ChangedDate": "2025-11-22T10:29:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Rev": 3,
+				"System.AssignedTo": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 0,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 8,
+				"Microsoft.VSTS.Common.ClosedDate": "2025-11-17T14:54:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-12-02T11:39:00.000Z",
+				"System.Description": "<div>Provision log storage bucket.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4135",
+					"attributes": {
+						"name": "Parent"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4167"
+		},
+		{
+			"id": 4171,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4171,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Task",
+				"System.Title": "Write forwarder config",
+				"System.State": "In Progress",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform\\Logging",
+				"System.IterationPath": "Platform Ops\\Release 2026.1\\Sprint 4",
+				"System.CreatedDate": "2025-11-06T12:37:00.000Z",
+				"System.ChangedDate": "2025-11-26T14:57:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 4,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 4,
+				"System.Description": "<p>Write forwarder config &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4135",
+					"attributes": {
+						"name": "Parent"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4171"
+		},
+		{
+			"id": 4179,
+			"rev": 1,
+			"fields": {
+				"System.Id": 4179,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Task",
+				"System.Title": "Document retention tiers",
+				"System.State": "To Do",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform\\Logging",
+				"System.IterationPath": "Platform Ops\\Release 2026.1\\Sprint 4",
+				"System.CreatedDate": "2025-11-14T11:33:00.000Z",
+				"System.ChangedDate": "2025-12-04T13:53:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Rev": 1,
+				"System.AssignedTo": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 4,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 4,
+				"System.Description": "<div>Document retention tiers.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4143",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "ArtifactLink",
+					"url": "vstfs:///Git/Commit/aaaa%2fbbbb%2f4179",
+					"attributes": {
+						"name": "Fixed in Commit"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4179"
+		},
+		{
+			"id": 4182,
+			"rev": 5,
+			"fields": {
+				"System.Id": 4182,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Bug",
+				"System.Title": "Dashboard times out above 10k series",
+				"System.State": "Committed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform\\Dashboards",
+				"System.IterationPath": "Platform Ops\\Release 2026.1\\Sprint 4",
+				"System.CreatedDate": "2025-11-17T14:54:00.000Z",
+				"System.ChangedDate": "2025-10-08T16:14:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Rev": 5,
+				"System.AssignedTo": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Tags": "perf",
+				"Microsoft.VSTS.Common.Priority": 1,
+				"Microsoft.VSTS.Common.Severity": "2 - High",
+				"System.Description": "<div>Dashboard times out above 10k series.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/0000725a-1111-4222-8333-00000000d45e",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30546,
+						"resourceCreatedDate": "2025-11-19T16:08:00.000Z",
+						"comment": ""
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4182"
+		},
+		{
+			"id": 4183,
+			"rev": 1,
+			"fields": {
+				"System.Id": 4183,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Impediment",
+				"System.Title": "Waiting for storage budget approval",
+				"System.State": "Open",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform",
+				"System.IterationPath": "Platform Ops\\Release 2026.1\\Sprint 4",
+				"System.CreatedDate": "2025-11-18T15:01:00.000Z",
+				"System.ChangedDate": "2025-10-09T08:21:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Rev": 1,
+				"System.AssignedTo": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 2,
+				"System.Description": "<p>Waiting for storage budget approval &amp; related work.</p>"
+			},
+			"relations": [],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4183"
+		},
+		{
+			"id": 4185,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4185,
+				"System.TeamProject": "Platform Ops",
+				"System.WorkItemType": "Impediment",
+				"System.Title": "VPN access for contractor",
+				"System.State": "Closed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Platform Ops\\Platform",
+				"System.IterationPath": "Platform Ops\\Release 2025.4\\Sprint 3",
+				"System.CreatedDate": "2025-11-20T08:15:00.000Z",
+				"System.ChangedDate": "2025-10-11T10:35:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Farid Haddad",
+					"uniqueName": "farid.haddad@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Common.ClosedDate": "2025-10-06T14:00:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-10-21T11:45:00.000Z",
+				"System.Description": "<div><b>Context</b></div><ul><li>Requested by support</li><li>Seen by 1 customers</li></ul><p>See <a href=\"https://wiki.contoso.example/x/4185\">the wiki page</a>.</p>"
+			},
+			"relations": [],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4185"
+		}
+	]
+}

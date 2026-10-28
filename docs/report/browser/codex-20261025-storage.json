@@ -1,0 +1,296 @@
+{
+	"generatedAt": "2026-10-25T11:34:30.952Z",
+	"environment": "Local TaskDesk agent on trusted TLS with the dedicated local SIT audit database",
+	"status": "passed",
+	"tlsVerification": "enabled",
+	"preflight": {
+		"dedicatedDatabase": true,
+		"taskOwnedFilesystemRoot": true,
+		"reservedProbeObjectsBefore": 0,
+		"reservedProbeObjectsAfterReadOnlyRecheck": 0
+	},
+	"database": {
+		"identityVerified": true,
+		"metadata": {
+			"ready": {
+				"count": "0",
+				"bytes": "0"
+			},
+			"pending": {
+				"count": "0",
+				"bytes": "0"
+			},
+			"deleted": {
+				"count": "0",
+				"bytes": "0"
+			}
+		},
+		"apiMetadataMatches": true
+	},
+	"backend": {
+		"source": "bootstrap",
+		"driver": "filesystem",
+		"configuration": "configured",
+		"connectivity": "not_checked",
+		"probeAvailable": true,
+		"usageBasis": "attachment_metadata",
+		"physicalUsageAvailable": false,
+		"limits": {
+			"maxAttachmentBytes": 26214400,
+			"maxAttachmentsPerItem": 100,
+			"allowedExtensions": [
+				"jpg",
+				"jpeg",
+				"png",
+				"gif",
+				"webp",
+				"heic",
+				"heif",
+				"bmp",
+				"tiff",
+				"pdf",
+				"doc",
+				"docx",
+				"xls",
+				"xlsx",
+				"ppt",
+				"pptx",
+				"odt",
+				"ods",
+				"odp",
+				"txt",
+				"csv",
+				"md",
+				"json",
+				"log",
+				"rtf"
+			]
+		}
+	},
+	"kaneoParity": {
+		"originalSettingsRouteStatus": 200,
+		"storageRouteStatus": 200,
+		"sharedSettingsTabs": true,
+		"sameSettingsShell": true,
+		"settingsSelectedTab": "God Mode",
+		"storageSelectedTab": "God Mode",
+		"cardsBuiltFromLibrary": true,
+		"originalSettingsOverflow": false,
+		"storageOverflow": false
+	},
+	"layout": [
+		{
+			"width": 390,
+			"theme": "light",
+			"routeStatus": 200,
+			"usageStatus": 200,
+			"viewportWidth": 390,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"settingsTabsVisible": true,
+			"selectedTabVisible": true,
+			"selectedTabText": "God Mode",
+			"cardCount": 2,
+			"documentOverflow": false
+		},
+		{
+			"width": 390,
+			"theme": "dark",
+			"routeStatus": 200,
+			"usageStatus": 200,
+			"viewportWidth": 390,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"settingsTabsVisible": true,
+			"selectedTabVisible": true,
+			"selectedTabText": "God Mode",
+			"cardCount": 2,
+			"documentOverflow": false
+		},
+		{
+			"width": 768,
+			"theme": "light",
+			"routeStatus": 200,
+			"usageStatus": 200,
+			"viewportWidth": 768,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"settingsTabsVisible": true,
+			"selectedTabVisible": true,
+			"selectedTabText": "God Mode",
+			"cardCount": 2,
+			"documentOverflow": false
+		},
+		{
+			"width": 768,
+			"theme": "dark",
+			"routeStatus": 200,
+			"usageStatus": 200,
+			"viewportWidth": 768,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"settingsTabsVisible": true,
+			"selectedTabVisible": true,
+			"selectedTabText": "God Mode",
+			"cardCount": 2,
+			"documentOverflow": false
+		},
+		{
+			"width": 1440,
+			"theme": "light",
+			"routeStatus": 200,
+			"usageStatus": 200,
+			"viewportWidth": 1440,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"settingsTabsVisible": true,
+			"selectedTabVisible": true,
+			"selectedTabText": "God Mode",
+			"cardCount": 2,
+			"documentOverflow": false
+		},
+		{
+			"width": 1440,
+			"theme": "dark",
+			"routeStatus": 200,
+			"usageStatus": 200,
+			"viewportWidth": 1440,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"settingsTabsVisible": true,
+			"selectedTabVisible": true,
+			"selectedTabText": "God Mode",
+			"cardCount": 2,
+			"documentOverflow": false
+		}
+	],
+	"keyboard": {
+		"reachable": true,
+		"visibleFocus": true,
+		"tabPresses": 3
+	},
+	"probe": {
+		"outcome": "verified",
+		"missingCsrfStatus": 403,
+		"cleanup": "confirmed",
+		"durationMs": 4,
+		"responseStatus": 200,
+		"reservedProbeObjectsBefore": 0,
+		"reservedProbeObjectsAfter": 0,
+		"cleanupConfirmedByFilesystem": true,
+		"recheckDidNotRepeatProbe": true,
+		"reservedProbeObjectsAfterReadOnlyRecheck": 0
+	},
+	"memberAccess": {
+		"routeStatus": 200,
+		"accessDeniedSurface": true,
+		"usageStatus": 403,
+		"missingCsrfPostStatus": 403,
+		"csrfIssuerStatus": 200,
+		"validCsrfPostStatus": 403,
+		"postChecksFromPriorSingleRun": true,
+		"recheckDidNotPost": true
+	},
+	"historicalAttachmentSample": {
+		"outcome": "no_ready_attachments",
+		"sampled": 0,
+		"available": 0,
+		"missing": 0,
+		"sizeMismatch": 0,
+		"limit": 25
+	},
+	"errors": {
+		"page": 0,
+		"pageErrorClasses": {},
+		"console": 1,
+		"consoleCategories": {
+			"expected_http_denial": 1
+		},
+		"consoleDiagnostics": [
+			{
+				"category": "expected_http_denial",
+				"class": null,
+				"httpStatus": 403,
+				"sourcePath": "/api/instance/storage/usage",
+				"expectedDenial": true
+			}
+		],
+		"httpStatusCounts": {
+			"GET /api/instance/storage/usage 200": 13,
+			"GET /api/instance/storage/usage 403": 1
+		},
+		"unexpectedHttp": [],
+		"expectedConsoleDenials": 1,
+		"unexpectedConsoleErrors": 0
+	},
+	"screenshots": [
+		"docs/report/browser/screens/storage175-390-light.png",
+		"docs/report/browser/screens/storage175-390-dark.png",
+		"docs/report/browser/screens/storage175-768-light.png",
+		"docs/report/browser/screens/storage175-768-dark.png",
+		"docs/report/browser/screens/storage175-1440-light.png",
+		"docs/report/browser/screens/storage175-1440-dark.png",
+		"docs/report/browser/screens/storage175-1440-light-probe-result.png",
+		"docs/report/browser/screens/storage175-390-light-scrolled.png"
+	],
+	"attemptHistory": [
+		{
+			"status": "failed",
+			"wrapperTarget": "ops_fixture_database",
+			"metadataComparisonValid": false,
+			"probe": {
+				"outcome": "verified",
+				"missingCsrfStatus": 403,
+				"cleanup": "confirmed",
+				"durationMs": 4,
+				"responseStatus": 200,
+				"reservedProbeObjectsBefore": 0,
+				"reservedProbeObjectsAfter": 0,
+				"cleanupConfirmedByFilesystem": true
+			},
+			"consoleErrorCount": 4,
+			"pageErrorCount": 0,
+			"reportedFailureStage": "admin_ui_probe",
+			"interpretation": "Initial journey used the resettable ops fixture DB for comparison, so its metadata comparison is invalid. Its single UI probe verified and cleanup completed.",
+			"consoleErrorAttribution": "Four expected 403 responses were issued; the attempt retained only a count, not raw console text."
+		},
+		{
+			"status": "failed",
+			"reportedFailureStage": "browser_console_or_network_error",
+			"interpretation": "Read-only audit DB comparison matched. Its only console diagnostic was the expected member GET 403, later classified explicitly without raw messages.",
+			"wrapperTarget": "guarded_audit_copy",
+			"metadataComparisonValid": true,
+			"probe": {
+				"outcome": "verified",
+				"missingCsrfStatus": 403,
+				"cleanup": "confirmed",
+				"durationMs": 4,
+				"responseStatus": 200,
+				"reservedProbeObjectsBefore": 0,
+				"reservedProbeObjectsAfter": 0,
+				"cleanupConfirmedByFilesystem": true,
+				"recheckDidNotRepeatProbe": true,
+				"reservedProbeObjectsAfterReadOnlyRecheck": 0
+			},
+			"consoleErrorCount": 1,
+			"pageErrorCount": 0,
+			"consoleDiagnostics": [
+				{
+					"category": "resource_load",
+					"class": null,
+					"httpStatus": 403,
+					"sourcePath": "/api/instance/storage/usage"
+				}
+			]
+		}
+	],
+	"responsiveScroll": {
+		"tablePresent": true,
+		"scrollContainerFound": true,
+		"documentScrollHeight": 1000,
+		"viewportHeight": 1000,
+		"tableVisible": true,
+		"tableTop": 702,
+		"tableBottom": 858
+	}
+}

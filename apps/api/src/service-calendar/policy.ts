@@ -31,6 +31,18 @@ export const serviceCalendarPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "GET /api/service-calendars/{id}/holidays/presets": {
+    capability: "sla_policy:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/service-calendars/{id}/holidays/preset": {
+    capability: "sla_policy:manage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
   "GET /api/service-calendars/{id}/preview": {
     capability: "sla_policy:read",
     scope: "workspace",

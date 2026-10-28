@@ -6,11 +6,23 @@ import WorkItemDetail, { type WorkItemDetailProps } from "./work-item-detail";
 
 const mocks = vi.hoisted(() => ({ update: vi.fn() }));
 
+vi.mock("@taskdesk/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@taskdesk/ui")>()),
+  useIsMobile: () => false,
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
 vi.mock("@tanstack/react-router", () => ({
+  useLocation: () => ({
+    search: {},
+    searchStr: "",
+    pathname: "/agent/work-items/PROJ-1",
+    hash: "",
+  }),
+  useNavigate: () => vi.fn(),
   Link: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
 }));
 vi.mock("@/fetchers/work-item/update-work-item", () => ({
@@ -19,9 +31,17 @@ vi.mock("@/fetchers/work-item/update-work-item", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canUpdateTasks: () => true }),
 }));
+vi.mock("./work-item-hierarchy", () => ({
+  default: () => <div data-testid="work-item-hierarchy" />,
+}));
+vi.mock("./work-item-relations", () => ({ default: () => null }));
 vi.mock("./work-item-sla", () => ({ default: () => null }));
 vi.mock("./work-item-approvals", () => ({ default: () => null }));
 vi.mock("./work-item-attachments", () => ({ default: () => null }));
+vi.mock("@/components/service-management/change-section", () => ({
+  default: () => null,
+  useChangeSectionVisible: () => false,
+}));
 vi.mock("./work-item-activity", () => ({ default: () => null }));
 vi.mock("./work-item-properties", () => ({ default: () => null }));
 /** The editor double reports typing through `onDocumentChange`, as kaneo's editor does. */

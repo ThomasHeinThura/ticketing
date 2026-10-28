@@ -9,14 +9,18 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { PROJECT_LABEL_DELETION_ROUTE } from "./label-deletion-target";
 import {
   createProjectCatalogueLabel,
   editProjectCatalogueLabel,
   getProjectLabelCatalogue,
-  removeProjectCatalogueLabel,
 } from "./project-controller";
 import { labelSchema } from "./response";
 
@@ -111,10 +115,16 @@ const remove = createRoute({
   operationId: "deleteProjectLabel",
   tags: ["Labels"],
   summary: "Delete a project label and journal its removed assignments",
+  description:
+    "Requests a durable pending deletion (202). The label and its work-item assignments are unchanged until the requester approves; approval clears the assignments (journaled) and deletes the label.",
   middleware: scope("label:manage"),
   request: { params: projectLabelParam },
   responses: {
-    200: jsonResponse("Deleted project label", response),
+    202: jsonResponse(
+      "Pending deletion; project label unchanged",
+      registeredDeletionRequestSchema,
+    ),
+    409: errorResponse("An equivalent deletion is already pending"),
     ...errors,
   },
 });
@@ -166,13 +176,11 @@ export const projectLabelRoutes = apiRouter()
   })
   .openapi(remove, async (c) => {
     const { projectId, id } = c.req.valid("param");
-    return c.json(
-      await removeProjectCatalogueLabel(
-        await identity(c),
-        projectId,
-        id,
-        c.get("userId"),
-      ),
-      200,
-    );
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: PROJECT_LABEL_DELETION_ROUTE,
+      targetType: "project_label",
+      id,
+      projectId,
+    });
+    return c.json(pending, 202);
   });

@@ -8,6 +8,10 @@ export const attachmentSchema = z
   .object({
     id: z.string(),
     workItemId: z.string(),
+    commentId: z.string().nullable().openapi({
+      description:
+        "AT-1: the comment this file is attached to, or null for a work-item attachment.",
+    }),
     filename: z.string(),
     mimeType: z.string(),
     size: z.number(),
@@ -16,6 +20,8 @@ export const attachmentSchema = z
       .openapi({ description: "One of: pending, ready, deleted." }),
     customerVisible: z.boolean(),
     uploadedBy: z.string().nullable(),
+    canDelete: z.boolean(),
+    canRestore: z.boolean(),
     createdAt: responseTimestamp,
     deletedAt: nullableResponseTimestamp,
   })

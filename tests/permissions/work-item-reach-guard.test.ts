@@ -10,6 +10,7 @@ import {
   LEGACY_WRITE_ROUTE_KEYS,
   OTHER_COVERED_ROUTE_KEYS,
   READ_ROUTE_KEYS,
+  RELATION_REACH_ROUTE_KEYS,
 } from "../api-integration/helpers/reach-route-keys";
 import { loadApiApp, loadPolicyRegistry } from "./api-app";
 
@@ -42,8 +43,6 @@ function markOf(handler: Handler): WorkItemReachMark | undefined {
 const OTHER_REACH_MECHANISM: Readonly<Record<string, string>> = {
   "GET /api/canned-responses":
     "canned-response middleware resolves the query workItemKey, evaluates its registered work_item policy, and the API integration case asserts reachable-item listing",
-  "GET /api/work-items/{key}/approvals":
-    "approval domain: customers read the approvals addressed to them through this route; row evidence via approvalWorkItemEvidence and the handler's reach and addressed-approval checks decide",
   "POST /api/approvals/{id}/decide":
     "approval domain: row evidence via approvalIdEvidence resolves the approval's work item; named-approver, CAB and addressed-portal predicates are decided by the handler",
   "POST /api/approvals/{id}/withdraw":
@@ -263,6 +262,7 @@ describe("work-item reach guard: the real router", () => {
           ...LEGACY_WRITE_ROUTE_KEYS,
           ...READ_ROUTE_KEYS,
           ...OTHER_COVERED_ROUTE_KEYS,
+          ...RELATION_REACH_ROUTE_KEYS,
         ]),
         OTHER_REACH_MECHANISM,
       ),

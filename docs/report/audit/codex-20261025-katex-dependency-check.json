@@ -1,0 +1,33 @@
+{
+	"recordedAt": "2026-10-25T17:04:41.073422+00:00",
+	"scope": "Current dependency graph only; separate shipping-image scan findings remain open. Mermaid browser comment rendering defect is tracked separately.",
+	"change": {
+		"parent": "mermaid@11.16.1",
+		"existingTransitiveDependency": "katex",
+		"previousVersion": "0.16.47",
+		"currentVersion": "0.18.2",
+		"override": "mermaid@11.16.1>katex",
+		"directDependencyAdded": false
+	},
+	"advisory": "https://github.com/KaTeX/KaTeX/security/advisories/GHSA-238p-pmpm-9mq7",
+	"checks": {
+		"dependencyAudit": {
+			"info": 0,
+			"low": 0,
+			"moderate": 0,
+			"high": 0,
+			"critical": 0
+		},
+		"targetAdvisoryPresent": false,
+		"resolvedVersions": 1,
+		"regressionTests": {
+			"passed": 2,
+			"total": 2,
+			"path": "apps/web/src/components/task/extensions/mermaid-security.test.ts",
+			"covers": [
+				"MathML API compatibility",
+				"Inherited Object.prototype.trust cannot enable an unsafe href"
+			]
+		}
+	}
+}

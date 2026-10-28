@@ -1,0 +1,126 @@
+{
+	"upstream": "42bb801114aa1ae499228a53180f0cdbc5607964 verified git archive; original runtime, dedicated reference DB",
+	"method": "Live original/candidate structural visual comparison; persisted content differs due audit records. This is not a pixel-gate pass or whole-screen acceptance.",
+	"results": [
+		{
+			"side": "upstream",
+			"theme": "light",
+			"width": 1440,
+			"height": 900,
+			"path": "/dashboard/workspace/ws-taskdesk-sit/project/proj-help-sit/board",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-upstream-light-1440.png"
+		},
+		{
+			"side": "upstream",
+			"theme": "light",
+			"width": 820,
+			"height": 1180,
+			"path": "/dashboard/workspace/ws-taskdesk-sit/project/proj-help-sit/board",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-upstream-light-820.png"
+		},
+		{
+			"side": "upstream",
+			"theme": "light",
+			"width": 375,
+			"height": 844,
+			"path": "/dashboard/workspace/ws-taskdesk-sit/project/proj-help-sit/board",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-upstream-light-375.png"
+		},
+		{
+			"side": "upstream",
+			"theme": "dark",
+			"width": 1440,
+			"height": 900,
+			"path": "/dashboard/workspace/ws-taskdesk-sit/project/proj-help-sit/board",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-upstream-dark-1440.png"
+		},
+		{
+			"side": "upstream",
+			"theme": "dark",
+			"width": 820,
+			"height": 1180,
+			"path": "/dashboard/workspace/ws-taskdesk-sit/project/proj-help-sit/board",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-upstream-dark-820.png"
+		},
+		{
+			"side": "upstream",
+			"theme": "dark",
+			"width": 375,
+			"height": 844,
+			"path": "/dashboard/workspace/ws-taskdesk-sit/project/proj-help-sit/board",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-upstream-dark-375.png"
+		},
+		{
+			"side": "candidate",
+			"theme": "light",
+			"width": 1440,
+			"height": 900,
+			"path": "/agent/projects/HELP/work",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-candidate-light-1440.png"
+		},
+		{
+			"side": "candidate",
+			"theme": "light",
+			"width": 820,
+			"height": 1180,
+			"path": "/agent/projects/HELP/work",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-candidate-light-820.png"
+		},
+		{
+			"side": "candidate",
+			"theme": "light",
+			"width": 375,
+			"height": 844,
+			"path": "/agent/projects/HELP/work",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-candidate-light-375.png"
+		},
+		{
+			"side": "candidate",
+			"theme": "dark",
+			"width": 1440,
+			"height": 900,
+			"path": "/agent/projects/HELP/work",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-candidate-dark-1440.png"
+		},
+		{
+			"side": "candidate",
+			"theme": "dark",
+			"width": 820,
+			"height": 1180,
+			"path": "/agent/projects/HELP/work",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-candidate-dark-820.png"
+		},
+		{
+			"side": "candidate",
+			"theme": "dark",
+			"width": 375,
+			"height": 844,
+			"path": "/agent/projects/HELP/work",
+			"errors": [],
+			"overflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-parity-board-candidate-dark-375.png"
+		}
+	]
+}

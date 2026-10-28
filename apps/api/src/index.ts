@@ -15,6 +15,8 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { WebSocketServer } from "ws";
 import activity from "./activity";
+import agile from "./agile";
+import apiKey from "./api-key";
 import approval from "./approval";
 import attachment from "./attachment";
 import audit from "./audit";
@@ -22,23 +24,36 @@ import {
   assertCookieDomainIsNotConfiguredForHostIsolation,
   authForHost,
   hasCustomerPortalIdentity,
+  isCustomerInviteSignUpEndpoint,
   isCustomerLocalAuthEndpoint,
   portalForHost,
   startAuthConfigRuntime,
   stopAuthConfigRuntime,
 } from "./auth";
-import csrfToken from "./auth/csrf-token-api";
+import csrfToken, { portalCsrfToken } from "./auth/csrf-token-api";
 import factorStatus from "./auth/factor-status-api";
+import { runWithImpersonator } from "./auth/impersonation-context";
 import {
   InactiveFactorIdentityError,
   loadLocalFactorState,
 } from "./auth/local-factor-service";
 import stepUp from "./auth/step-up-api";
+import automation from "./automation";
 import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
 import comment from "./comment";
 import config from "./config";
+import customField from "./custom-field";
+import customFieldSections from "./custom-field/sections";
+import customerInvitation from "./customer-invitation";
+import {
+  acceptContinuation,
+  publicContinuation,
+} from "./customer-invitation/auth-continuation";
+import portalAuthMethods from "./customer-invitation/auth-methods";
+import { customerInvitationDeliveryKeyring } from "./customer-invitation/delivery/keyring";
+import { purgeExpiredCustomerInvitationEnvelopes } from "./customer-invitation/delivery/repository";
 import {
   closeMigrationPool,
   getDatabase,
@@ -54,12 +69,34 @@ import { resolveMigrationDatabaseConfig } from "./database/resolve-database-url"
 import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
+import featureFlag from "./feature-flag";
+import {
+  customerPortalStateForSubmission,
+  customerPortalStateForUser,
+  type FeatureLookupState,
+  featureStateSomewhere,
+} from "./feature-flag/enforce";
+import { accountLinkApi as accountLinkRouter } from "./identity/account-link";
 import identityConnectionAdmin from "./identity/connection-admin";
+import identityConnectionDeletion from "./identity/connection-deletion";
+import { createHomeRealmApi } from "./identity/home-realm";
 import { oidcGroupMappingAdminRouter } from "./identity/oidc-group-mapping-admin";
 import scimAdmin from "./identity/scim-admin";
 import scimProtocol from "./identity/scim-protocol";
+import { createImportRouter } from "./imports";
+import { requestImportChunkApproval } from "./imports/pending-action";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
+import instanceDeliveries from "./instance/deliveries";
+import instanceDeliveryRequeue from "./instance/deliveries/requeue";
+import instanceHealth from "./instance/health";
+import impersonation from "./instance/impersonation";
+import {
+  enforceImpersonationRestrictions,
+  impersonationMayCallAuthEndpoint,
+} from "./instance/impersonation/guard";
+import instanceJobs from "./instance/jobs";
 import localFactorPolicy from "./instance/local-factor-policy";
+import instanceMcpUsage from "./instance/mcp-usage";
 import observability from "./instance/observability";
 import {
   logDatabaseFailure,
@@ -74,17 +111,47 @@ import {
   startObservabilityRuntime,
   stopObservabilityRuntime,
 } from "./instance/observability/runtime";
+import organisationCatalogue from "./instance/organisation-catalogue";
+import organisationCustomerVisibility from "./instance/organisation-customer-visibility";
+import organisationLifecycle from "./instance/organisation-lifecycle";
+import instancePlugins from "./instance/plugins";
+import hardPurge from "./instance/purge";
 import resetMfa from "./instance/reset-mfa";
+import rotateSecrets from "./instance/secrets/rotate-secrets";
+import instanceSettings from "./instance/settings";
 import { ensureSetupToken } from "./instance/setup-token";
+import instanceStorage from "./instance/storage";
 import users from "./instance/users";
 import intake from "./intake";
+import { requestTypeGroupOrderRouter } from "./intake/group-order";
+import {
+  intakeQueueReadRouter,
+  intakeQueueRunRouter,
+  intakeQueueWriteRouter,
+} from "./intake/queues/router";
 import invitation from "./invitation";
+import kb from "./kb";
 import label from "./label";
+import mcpTelemetry from "./mcp-telemetry";
+import meIdentity from "./me-identity";
+import { idempotencyKeyMiddleware } from "./middleware/idempotency";
+import { createPostgresIdempotencyStore } from "./middleware/idempotency.repository";
 import { migrateColumns } from "./migrations/column-migration";
 import notification from "./notification";
+import portalCanonicalPreferences from "./notification/portal-canonical-preferences";
+import portalNotificationRouter from "./notification/portal-inbox";
+import { portalNotificationPolicies } from "./notification/portal-inbox-policy";
+import { createPortalNotificationWebSocket } from "./notification/portal-inbox-websocket";
+import {
+  authenticatedPreferenceHandoff,
+  publicPreferenceHandoff,
+} from "./notification/preference-handoff";
 import notificationPreferences from "./notification-preferences";
+import notificationProvider from "./notification-provider";
+import { installRuntimeSmtpResolver } from "./notification-provider/runtime";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
+import pages from "./pages";
 import pendingAction from "./pending-action";
 import {
   type ExplicitCredentialMutation,
@@ -114,11 +181,35 @@ import { initializePlugins } from "./plugins";
 import { policyRegistry } from "./policy-registry";
 import { isPortalClientRoute } from "./portal-client-routes";
 import project, { projectStates } from "./project";
+import { projectSettingsInheritanceApi as projectSettingsInheritance } from "./project/settings-inheritance";
+import report from "./report";
+import {
+  parseTaskDeskRole,
+  roleOwnsGeneralJobs,
+  roleOwnsHttp,
+  type ServingRole,
+  startJobLivenessServer,
+} from "./runtime-role";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
+import { recoverDensePositionPartitions } from "./scheduler/position-rebalance";
 import search from "./search";
+import {
+  applyPdfPreviewAssetResponseHeaders,
+  createSecurityHeadersMiddleware,
+  cspNonceForContext,
+  cspReportApi,
+  injectCspNonceIntoHtmlResponse,
+} from "./security-headers";
 import serviceCalendar from "./service-calendar";
+import serviceManagement from "./service-management";
+import { portalReleaseRouter } from "./service-management/release-portal";
 import slaPolicy from "./sla-policy";
-import { getPrivateObject, getStorageDriver } from "./storage";
+import {
+  getPrivateObject,
+  getStorageBrowserOrigins,
+  getStorageDriver,
+} from "./storage";
+import { buildContentDisposition } from "./storage/content-disposition";
 import {
   readAttachmentDownloadObject,
   StoragePathError,
@@ -127,7 +218,15 @@ import {
 } from "./storage/filesystem";
 import task, { taskV2 } from "./task";
 import taskRelation from "./task-relation";
+import team from "./team";
+import {
+  instanceTerminology,
+  portalTerminology,
+  publicTerminology,
+  workspaceTerminology,
+} from "./terminology";
 import timeEntry from "./time-entry";
+import timeTracking from "./time-tracking";
 import user from "./user";
 import getAvatar from "./user/controllers/get-avatar";
 import userPreference from "./user-preference";
@@ -135,6 +234,7 @@ import { buildAuthRequest } from "./utils/auth-request";
 import {
   authenticateApiRequest,
   hasInvalidExplicitCredential,
+  resolveOptionalCookieSession,
 } from "./utils/authenticate-api-request";
 import {
   type ReachableAsset,
@@ -143,6 +243,7 @@ import {
 import { backfillWorkspaceAndProjectDefaults } from "./utils/backfill-workspace-project-defaults";
 import { getInvitationDetails } from "./utils/check-registration-allowed";
 import { csrfProtectionMiddleware } from "./utils/csrf-protection";
+import { requireAnonymousInvitationRateLimit } from "./utils/invitation-anonymous-rate-limit";
 import { migrateApiKeyReferenceId } from "./utils/migrate-apikey-reference-id";
 import { migrateNotificationPreferencesSchema } from "./utils/migrate-notification-preferences-schema";
 import { migrateSessionColumn } from "./utils/migrate-session-column";
@@ -158,14 +259,23 @@ import {
   assertCallerHasCapability,
   capabilityCredential,
 } from "./utils/require-workspace-capability";
-import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
+import {
+  seedCanonicalWorkspaceRoles,
+  seedDefaultWorkspaceRoles,
+} from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import view from "./view";
+import webhook from "./webhook";
+import webhookRotateAll from "./webhook/rotate-all-api";
+import webhookSecurityPosture from "./webhook/security-posture";
 import workItem from "./work-item";
+import { combinedWorkItemRouter } from "./work-item/combined-router";
 import workItemCommentVersions from "./work-item/comment-versions";
+import workItemRelation from "./work-item-relation";
 import workflow from "./workflow";
 import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
+import workspaceProjectSettings from "./workspace/project-settings";
 import { reconcileWorkspaceAdminReach } from "./workspace/workspace-admin-reach";
 import {
   type addConnection,
@@ -179,6 +289,7 @@ import {
   removeNativeConnection,
   removeUserConnection,
   shutdownWebSocketAdapter,
+  startInboxRealtimeListener,
 } from "./ws";
 import {
   callerReachesLegacySocketProject,
@@ -192,6 +303,7 @@ type ApiKey = {
   userId: string;
   enabled: boolean;
   permissions: Record<string, string[]> | null;
+  isMcp?: boolean;
 };
 
 type AppVariables = {
@@ -203,6 +315,8 @@ type AppVariables = {
     apiKey?: ApiKey;
     appOrigin: "agent" | "portal" | "unknown";
     appPublicOrigin?: string;
+    /** Set on the portal host while `feature.customer_portal` is not on (P3-R2-03, P4R2-L1). */
+    portalFeatureState?: PortalFeatureOffState;
   };
 };
 
@@ -250,29 +364,6 @@ const SAFE_INLINE_ASSET_TYPES = new Set([
   "image/png",
   "image/webp",
 ]);
-
-function buildContentDisposition(filename: string, inline: boolean) {
-  const normalized = filename
-    .normalize("NFC")
-    .replace(/[\r\n"]/g, "")
-    .trim();
-  const safeFilename = normalized || "file";
-  const asciiFallback =
-    safeFilename
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[\\/]/g, "-")
-      .replace(/[^\x20-\x7E]+/g, "_")
-      .replace(/\s+/g, " ")
-      .trim() || "file";
-  const encodedFilename = encodeURIComponent(safeFilename).replace(
-    /['()*]/g,
-    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
-
-  const disposition = inline ? "inline" : "attachment";
-  return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encodedFilename}`;
-}
 
 /**
  * Where the built web app can be found, relative to this module's own file
@@ -331,23 +422,64 @@ const CUSTOMER_AUTH_ENDPOINTS = new Set([
   "POST /api/auth/sign-out",
   "POST /api/auth/two-factor/verify-totp",
   "POST /api/auth/two-factor/verify-backup-code",
+  "POST /api/portal/sign-in/home-realm",
+  "GET /api/portal/sign-in/home-realm/start",
+]);
+const PORTAL_HOME_REALM_ENDPOINTS = new Set([
+  "POST /api/portal/sign-in/home-realm",
+  "GET /api/portal/sign-in/home-realm/start",
+]);
+const PORTAL_CANONICAL_PREFERENCE_ENDPOINTS = new Set([
+  "GET /api/portal/notification-preferences/canonical",
+  "PUT /api/portal/notification-preferences/canonical",
 ]);
 
+function routeKeyMatchesRequest(
+  routeKey: string,
+  method: string,
+  path: string,
+) {
+  const separator = routeKey.indexOf(" ");
+  if (separator < 0 || routeKey.slice(0, separator) !== method) return false;
+  const expected = routeKey.slice(separator + 1).split("/");
+  const actual = path.split("/");
+  return (
+    expected.length === actual.length &&
+    expected.every((part, index) =>
+      /^\{[^/]+\}$/u.test(part)
+        ? Boolean(actual[index])
+        : part === actual[index],
+    )
+  );
+}
+
 function matchesPortalPolicyRoute(method: string, path: string): boolean {
-  const pathParts = path.split("/");
-  return policyRegistry.entries.some((entry) => {
-    if (entry.kind !== "portal") return false;
-    const separator = entry.routeKey.indexOf(" ");
-    if (separator < 0 || entry.routeKey.slice(0, separator) !== method)
-      return false;
-    const routeParts = entry.routeKey.slice(separator + 1).split("/");
-    return (
-      routeParts.length === pathParts.length &&
-      routeParts.every(
-        (part, index) => /^\{[^/]+\}$/u.test(part) || part === pathParts[index],
-      )
-    );
-  });
+  return policyRegistry.entries.some(
+    (entry) =>
+      entry.kind === "portal" &&
+      routeKeyMatchesRequest(entry.routeKey, method, path),
+  );
+}
+
+const PORTAL_INVITATION_AUTH_ROUTES = [
+  "GET /api/portal/auth-methods",
+  "POST /api/portal/invitations/{id}/continuation",
+  "POST /api/portal/invitations/{id}/accept-continuation",
+  "GET /api/portal/invitations/{id}/continuation-result",
+] as const;
+function matchesPortalInvitationAuthRoute(
+  method: string,
+  path: string,
+): boolean {
+  return PORTAL_INVITATION_AUTH_ROUTES.some((key) =>
+    routeKeyMatchesRequest(key, method, path),
+  );
+}
+
+function matchesPortalNotificationRoute(method: string, path: string): boolean {
+  return Object.keys(portalNotificationPolicies).some((routeKey) =>
+    routeKeyMatchesRequest(routeKey, method, path),
+  );
 }
 
 /**
@@ -392,6 +524,7 @@ function isPortalSubmissionStorageRequest(
 function isCustomerAuthEndpoint(method: string, path: string): boolean {
   if (CUSTOMER_AUTH_ENDPOINTS.has(`${method} ${path}`)) return true;
   if (isCustomerLocalAuthEndpoint(method, path)) return true;
+  if (isCustomerInviteSignUpEndpoint(method, path)) return true;
   if (method !== "GET") return false;
   const parts = path.split("/");
   return (
@@ -400,7 +533,9 @@ function isCustomerAuthEndpoint(method: string, path: string): boolean {
     parts[2] === "auth" &&
     parts[3] === "identity" &&
     Boolean(parts[4]) &&
-    (parts[5] === "start" || parts[5] === "callback")
+    // The portal's only SSO entry is the typed-domain home-realm flow; a direct
+    // connection start is agent-host only. The provider's redirect back stays admitted.
+    parts[5] === "callback"
   );
 }
 
@@ -439,6 +574,19 @@ async function handleAuthRequest(
         !(await hasCustomerPortalIdentity(session.user.id))))
   ) {
     throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
+  // GM-9: an impersonation session may not change credentials, factors, keys or the account
+  // through Better Auth; it may only read and sign out.
+  if (
+    (session?.session as { impersonatedBy?: string | null } | undefined)
+      ?.impersonatedBy &&
+    !impersonationMayCallAuthEndpoint(c.req.method, c.req.path)
+  ) {
+    throw new HTTPException(403, {
+      message:
+        "impersonation: this action is not allowed during an impersonation session",
+    });
   }
 
   const accountDeletionRoute =
@@ -598,6 +746,10 @@ function registerStaticServing(
     const surface = c.get("appOrigin");
     if (surface !== "agent" && surface !== "portal") return next();
     const staticRoot = staticRoots[surface];
+    const portalOff =
+      surface === "portal" ? c.get("portalFeatureState") : undefined;
+    if (!staticRoot && portalOff)
+      return portalFeatureOffResponse(c.req.path, portalOff);
     if (!staticRoot) {
       return c.req.method === "HEAD"
         ? c.body(null, 503, { "content-type": "application/json" })
@@ -606,24 +758,194 @@ function registerStaticServing(
 
     const serveAsset = serveStatic({ root: staticRoot });
     const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
+    const serveNoncedHtml = (response: Response, nonce: string) => {
+      // Hono merges the previous context headers into returned responses. Clear
+      // file metadata here as well as in the transformed Response, or the old
+      // byte count truncates the document after its nonce is added.
+      c.header("Content-Length", undefined);
+      c.header("ETag", undefined);
+      c.header("Last-Modified", undefined);
+      return injectCspNonceIntoHtmlResponse(response, nonce);
+    };
     let assetMissing = false;
     const result = await serveAsset(c, async () => {
       assetMissing = true;
     });
-    if (!assetMissing) return result;
+    if (!assetMissing) {
+      const assetResponse = applyPdfPreviewAssetResponseHeaders(
+        result ?? c.res,
+        c.req.path,
+      );
+      const nonce = cspNonceForContext(c);
+      const isHtml = assetResponse.headers
+        .get("content-type")
+        ?.startsWith("text/html");
+      const htmlResponse =
+        nonce && isHtml
+          ? await serveNoncedHtml(assetResponse, nonce)
+          : assetResponse;
+      // "/" is served here as the directory index: mark it like the SPA fallback below.
+      if (surface === "portal" && isHtml) {
+        const offState = portalOff ?? (await customerPortalDocumentState(c));
+        if (offState) return markPortalShell(htmlResponse, offState);
+      }
+      return htmlResponse;
+    }
+    const serveNoncedIndex = async () => {
+      const response = await serveIndex(c, next);
+      const nonce = cspNonceForContext(c);
+      const shell = nonce
+        ? await serveNoncedHtml(response ?? c.res, nonce)
+        : response;
+      if (surface !== "portal" || !shell) return shell;
+      // P3-R2-03: a switched-off portal is still the portal app, which renders the
+      // library-built feature-off state from this marker; never a hand-written page.
+      const offState = portalOff ?? (await customerPortalDocumentState(c));
+      return offState ? markPortalShell(shell, offState) : shell;
+    };
 
     const lastSegment = c.req.path.split("/").pop() ?? "";
     if (lastSegment.includes(".")) return next();
     if (surface === "portal") {
       // CP-19: only registered portal client routes get the portal shell; never agent files.
       return isPortalClientRoute(c.req.path)
-        ? serveIndex(c, next)
+        ? serveNoncedIndex()
         : c.notFound();
     }
-    return serveIndex(c, next);
+    return serveNoncedIndex();
   };
   declareCatchAllMiddleware(serveStaticOrSpaShell);
   app.use("*", serveStaticOrSpaShell);
+}
+
+type PortalFeatureOffState = Exclude<FeatureLookupState, "on">;
+
+/** Seconds a client should wait before retrying while the portal flag cannot be read. */
+const PORTAL_STATE_RETRY_AFTER_SECONDS = "5";
+
+/**
+ * The portal host while `feature.customer_portal` is off (404) or cannot be read (503,
+ * "temporarily unavailable", fail closed; P4R2-L1). API calls get JSON; a document request
+ * gets the portal app itself, which shows its feature-off state (P3-R2-03), so this response is
+ * only used for API paths, non-GET requests and an installation without a portal build.
+ */
+function portalFeatureOffResponse(
+  path: string,
+  state: PortalFeatureOffState,
+): Response {
+  const unavailable = state === "unknown";
+  const headers: Record<string, string> = {
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    ...(unavailable ? { "retry-after": PORTAL_STATE_RETRY_AFTER_SECONDS } : {}),
+  };
+  const status = unavailable ? 503 : 404;
+  if (isApiRequestPath(path))
+    return Response.json(
+      { message: unavailable ? "temporarily_unavailable" : "Not found" },
+      { status, headers },
+    );
+  return new Response(
+    unavailable
+      ? '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Customer portal temporarily unavailable</title></head><body><h1>Customer portal temporarily unavailable</h1><p>Please try again in a moment.</p></body></html>'
+      : '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Customer portal unavailable</title></head><body><h1>Customer portal unavailable</h1><p>The customer portal is not enabled for this instance.</p></body></html>',
+    {
+      status,
+      headers: { ...headers, "content-type": "text/html; charset=utf-8" },
+    },
+  );
+}
+
+/** The `<meta>` the portal app reads to show its feature-off state instead of signing in. */
+const PORTAL_STATE_META_NAME = "taskdesk-portal-state";
+
+/**
+ * Marks the served portal shell as switched off ("disabled") or unreadable ("unavailable") and
+ * gives it the matching status, so clients and monitoring can tell the two apart while the page
+ * itself renders the library-built feature-off state.
+ */
+async function markPortalShell(
+  response: Response,
+  state: PortalFeatureOffState,
+): Promise<Response> {
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "no-store");
+  headers.delete("content-length");
+  headers.delete("etag");
+  headers.delete("last-modified");
+  const unavailable = state === "unknown";
+  if (unavailable) headers.set("retry-after", PORTAL_STATE_RETRY_AFTER_SECONDS);
+  const status = unavailable ? 503 : 404;
+  if (
+    response.body === null ||
+    !headers.get("content-type")?.toLowerCase().startsWith("text/html")
+  )
+    return new Response(response.body, { status, headers });
+  const meta = `<meta name="${PORTAL_STATE_META_NAME}" content="${unavailable ? "unavailable" : "disabled"}">`;
+  const html = await response.text();
+  const marked = /<head\b[^>]*>/i.test(html)
+    ? html.replace(/<head\b[^>]*>/i, (tag) => `${tag}${meta}`)
+    : /^\s*<!doctype[^>]*>/i.test(html)
+      ? html.replace(/^\s*<!doctype[^>]*>/i, (doctype) => `${doctype}${meta}`)
+      : `${meta}${html}`;
+  return new Response(marked, { status, headers });
+}
+
+/**
+ * The per-organisation `feature.customer_portal` state for a portal document request that
+ * carries a customer session (P4R2-M2), so a customer whose organisation's workspaces have the
+ * portal off sees the same feature-off state. No cookie, no session or a staff session: none.
+ */
+async function customerPortalDocumentState(
+  c: Context<AppVariables>,
+): Promise<PortalFeatureOffState | undefined> {
+  if (!c.req.header("cookie")) return undefined;
+  try {
+    const session = await resolveOptionalCookieSession(c.req.raw.headers);
+    if (!session?.user) return undefined;
+    const state = await customerPortalStateForUser(session.user.id);
+    return state === null || state === "on" ? undefined : state;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Portal data routes that belong to a customer's organisation, gated per organisation (and per
+ * submission) on `feature.customer_portal` (P4R2-M2). Sign-in, session, CSRF, terminology,
+ * invitations and notification preferences stay open so the portal app can always load and show
+ * its state.
+ */
+const PORTAL_FEATURE_DATA_PREFIXES = [
+  "/api/portal/approvals",
+  "/api/portal/catalogue",
+  "/api/portal/kb",
+  "/api/portal/releases",
+  "/api/portal/requests",
+  "/api/portal/submissions",
+] as const;
+
+function isPortalFeatureDataPath(path: string): boolean {
+  return PORTAL_FEATURE_DATA_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
+}
+
+async function enforceCustomerPortalFeature(
+  c: Context<ApiVariables>,
+): Promise<Response | undefined> {
+  if (!isPortalFeatureDataPath(c.req.path)) return undefined;
+  const userId = c.get("userId");
+  if (!userId) return undefined;
+  let state = await customerPortalStateForUser(userId);
+  if (state === null) return undefined;
+  const submission =
+    /^\/api\/portal\/submissions\/SUB-([1-9]\d{0,9})(?:\/|$)/.exec(c.req.path);
+  if (state === "on" && submission?.[1])
+    state = await customerPortalStateForSubmission(Number(submission[1]));
+  return state === "on"
+    ? undefined
+    : portalFeatureOffResponse(c.req.path, state);
 }
 
 export function createApp(
@@ -633,6 +955,7 @@ export function createApp(
     registerAdditionalRoutes?: (app: Hono<AppVariables>) => void;
   } = {},
 ) {
+  installRuntimeSmtpResolver();
   assertCookieDomainIsNotConfiguredForHostIsolation();
   const app = new Hono<AppVariables>();
 
@@ -687,6 +1010,24 @@ export function createApp(
     process.env.TASKDESK_AGENT_URL,
     process.env.TASKDESK_PORTAL_URL,
   );
+  const browserStorageOrigins = getStorageBrowserOrigins();
+  const securityHeaders = createSecurityHeadersMiddleware({
+    surfaceForContext: (c) => {
+      const surface = c.get("appOrigin");
+      return surface === "agent" || surface === "portal" ? surface : undefined;
+    },
+    origins: {
+      agent: publicOriginForKind("agent", origins),
+      portal: publicOriginForKind("portal", origins),
+      storage: { agent: browserStorageOrigins, portal: browserStorageOrigins },
+    },
+    readCspMode: async () => {
+      const result = await getDatabase().execute<{ mode: string }>(
+        sql`SELECT csp_mode AS mode FROM instance_setting WHERE id = 'singleton' LIMIT 1`,
+      );
+      return result.rows[0]?.mode ?? "enforce";
+    },
+  });
   const hostRoutingGuard = async (c: Context<AppVariables>, next: Next) => {
     const selected = selectOriginFromContext(c, origins);
     const isHealthPath =
@@ -701,16 +1042,38 @@ export function createApp(
     const isWebSocketUpgrade =
       upgrade === "websocket" && connection.includes("upgrade");
 
+    const isPortalNotificationSocket =
+      c.req.method === "GET" && c.req.path === "/api/ws/portal/notification";
+    const isPortalInvitationAuthRequest = matchesPortalInvitationAuthRoute(
+      c.req.method,
+      c.req.path,
+    );
+    const isPortalNotificationRequest = matchesPortalNotificationRoute(
+      c.req.method,
+      c.req.path,
+    );
     if (selected === "invalid") return denyByHost(c);
     if (isScimPath && selected !== "agent") return denyByHost(c);
-    if (isWebSocketUpgrade && (selected !== "agent" || isHealthPath))
+    if (
+      isWebSocketUpgrade &&
+      ((selected !== "agent" &&
+        !(selected === "portal" && isPortalNotificationSocket)) ||
+        isHealthPath)
+    )
+      return denyByHost(c);
+    if (
+      selected === "agent" &&
+      (isPortalNotificationSocket ||
+        isPortalNotificationRequest ||
+        isPortalInvitationAuthRequest)
+    )
       return denyByHost(c);
     if (isHealthRequest) {
       c.set("appOrigin", selected === "unknown" ? "unknown" : selected);
       if (selected !== "unknown") {
         c.set("appPublicOrigin", publicOriginForKind(selected, origins));
       }
-      await next();
+      await securityHeaders(c, next);
       if (c.req.method === "HEAD")
         return new Response(null, {
           status: c.res.status,
@@ -722,10 +1085,50 @@ export function createApp(
     if (selected === "unknown") return denyByHost(c);
     c.set("appOrigin", selected);
     c.set("appPublicOrigin", publicOriginForKind(selected, origins));
+    if (
+      selected === "agent" &&
+      (PORTAL_HOME_REALM_ENDPOINTS.has(`${c.req.method} ${c.req.path}`) ||
+        PORTAL_CANONICAL_PREFERENCE_ENDPOINTS.has(
+          `${c.req.method} ${c.req.path}`,
+        ))
+    )
+      return denyByHost(c);
     if (selected === "portal") {
+      // `feature.customer_portal` off: the portal router answers 404 and the portal host serves a
+      // disabled notice (features.md). A flag cannot unbind a hostname, so the host stays up.
+      // A lookup failure is "unknown": still closed, but answered 503 "temporarily
+      // unavailable" rather than the disabled 404 (P4R2-L1). Document GETs fall through to the
+      // portal app (static assets and client routes only), which shows the feature-off state.
+      const portalState = await featureStateSomewhere(
+        "feature.customer_portal",
+      );
+      if (portalState !== "on") {
+        if (
+          isApiRequestPath(c.req.path) ||
+          (c.req.method !== "GET" && c.req.method !== "HEAD")
+        )
+          return portalFeatureOffResponse(c.req.path, portalState);
+        c.set("portalFeatureState", portalState);
+        return securityHeaders(c, next);
+      }
       const portalAllowed =
+        (c.req.method === "POST" && c.req.path === "/api/public/csp-report") ||
+        (c.req.method === "GET" && c.req.path === "/api/public/terminology") ||
         isCustomerAuthEndpoint(c.req.method, c.req.path) ||
         matchesPortalPolicyRoute(c.req.method, c.req.path) ||
+        isPortalNotificationRequest ||
+        isPortalNotificationSocket ||
+        isPortalInvitationAuthRequest ||
+        PORTAL_CANONICAL_PREFERENCE_ENDPOINTS.has(
+          `${c.req.method} ${c.req.path}`,
+        ) ||
+        (c.req.method === "POST" &&
+          c.req.path ===
+            "/api/public/portal/notification-preference-handoffs") ||
+        (c.req.method === "GET" &&
+          (c.req.path === "/api/portal/csrf-token" ||
+            c.req.path ===
+              "/api/portal/notification-preferences/email-link-handoff")) ||
         isPortalSubmissionStorageRequest(
           c.req.method,
           c.req.path,
@@ -736,7 +1139,7 @@ export function createApp(
         if (!isApiRequestPath(c.req.path) || !portalAllowed)
           return denyByHost(c);
     }
-    return next();
+    return securityHeaders(c, next);
   };
   declareCatchAllMiddleware(hostRoutingGuard);
   app.use("*", hostRoutingGuard);
@@ -799,6 +1202,7 @@ export function createApp(
   const scimProtocolApi = app.route("/scim/v2", scimProtocol);
 
   const api = installStrictPolicyRegistration(new OpenAPIHono<ApiVariables>());
+  const publicCspReportApi = api.route("/public/csp-report", cspReportApi);
 
   api.get("/health", (c) => {
     return c.json({ status: "ok" });
@@ -847,6 +1251,7 @@ export function createApp(
   );
 
   const invitationPublicApi = api.get("/invitation/public/:id", async (c) => {
+    await requireAnonymousInvitationRateLimit(c);
     const { id } = c.req.param();
     // #281 sweep: this id reaches a raw `eq(invitationTable.id, ...)` query inside
     // `getInvitationDetails`, unvalidated -- a NUL byte would otherwise 500 instead
@@ -1082,18 +1487,29 @@ export function createApp(
       const { key, expires, token, filename } = c.req.valid("query");
 
       try {
+        // RFC 5987 `filename*` keeps non-Latin names (Myanmar script, CJK) out of the
+        // ByteString-only header value. The header is built before the file is opened, and
+        // the body is cancelled if the response still cannot be built, so a failure never
+        // leaks a read stream's file handle.
+        const contentDisposition = buildContentDisposition(filename, false);
         const object = await readAttachmentDownloadObject({
           key,
           expires,
           token,
         });
-        return new Response(object.body as BodyInit, {
-          headers: {
-            "Cache-Control": "private, max-age=0, no-store",
-            "Content-Type": object.contentType || "application/octet-stream",
-            "Content-Disposition": `attachment; filename="${filename.replaceAll('"', "")}"`,
-          },
-        });
+        const body = object.body as ReadableStream<Uint8Array> | null;
+        try {
+          return new Response(body, {
+            headers: {
+              "Cache-Control": "private, max-age=0, no-store",
+              "Content-Type": object.contentType || "application/octet-stream",
+              "Content-Disposition": contentDisposition,
+            },
+          });
+        } catch (responseError) {
+          await body?.cancel().catch(() => {});
+          throw responseError;
+        }
       } catch (error) {
         if (!(error instanceof StoragePathError)) {
           logHttpRequestFailure();
@@ -1343,6 +1759,34 @@ export function createApp(
   // `assertRouteIsClassified` runs FROM INSIDE this very function, so `c.req.matchedRoutes`
   // always includes this guard's own entry, and it must be exempted from its own check the
   // same identity-based way CORS/compress/static-serving are.
+  const publicAgentPreferenceHandoffApi = api.route(
+    "/public/agent/notification-preference-handoffs",
+    publicPreferenceHandoff("agent"),
+  );
+  const publicPortalPreferenceHandoffApi = api.route(
+    "/public/portal/notification-preference-handoffs",
+    publicPreferenceHandoff("customer"),
+  );
+
+  // CP-27/IP-35 anonymous portal-host-only discovery and fixed OIDC initiation.
+  // Keep both routes above the app-wide session guard; the host guard and explicit
+  // public policy entries restrict the exposed methods and portal origin.
+  api.route("/", createHomeRealmApi());
+
+  const portalAuthMethodsApi = api.route("/", portalAuthMethods);
+  const customerInvitationPublicContinuationApi = api.route(
+    "/",
+    publicContinuation,
+  );
+
+  const publicTerminologyApi = api.route(
+    "/public/terminology",
+    publicTerminology,
+  );
+
+  const deleteIdempotency = idempotencyKeyMiddleware({
+    store: createPostgresIdempotencyStore(),
+  });
   const authGuard = async (c: Context<ApiVariables>, next: Next) => {
     // No prefix exemptions. kaneo exempted /api/mcp, /api/.well-known/ and
     // /api/billing/webhook; all three surfaces are removed in issue #6, so
@@ -1368,11 +1812,18 @@ export function createApp(
       await enforceLocalFactorEnrollment(c);
       const csrfResponse = await csrfProtectionMiddleware()(c, async () => {});
       if (csrfResponse instanceof Response) return csrfResponse;
+      // P4R2-M2: the customer's own organisation must have the portal on, not just "somewhere".
+      if (portalForHost(c.req.header("host")) === "customer") {
+        const portalOff = await enforceCustomerPortalFeature(c);
+        if (portalOff) return portalOff;
+      }
       // Issue #8: refuses outright (never silently serves) a route below this guard that
       // has no entry at all in the declarative policy registry -- see
       // `route-classification-guard.ts`'s own doc comment for exactly what this does and
       // does not check (presence only, never an ALLOW/DENY verdict).
       assertRouteIsClassified(c);
+      // GM-9: an impersonation session is refused the restricted classes before any route runs.
+      await enforceImpersonationRestrictions(c);
       const windowId = c.req.header("X-TaskDesk-Window-Id");
       const userId = c.get("userId");
       const initiatorId = windowId ? `${userId}:${windowId}` : userId;
@@ -1384,9 +1835,23 @@ export function createApp(
       // specifically so the registration count at this key never changes — see that
       // function's own doc comment (`apps/api/src/permissions/shadow-middleware.ts`) for
       // why a second registration is not safe here.
-      return await eventContext.run({ initiatorId }, () =>
-        runNextWithPolicyShadow(c, next),
-      );
+      // `Idempotency-Key` on every unsafe request (PA-4, api-design.md) also runs from inside this guard,
+      // for the same registration-count reason: it scopes a key to the authenticated
+      // caller and sits before every route's pending-action layer, so a keyed retry
+      // replays the stored 202 instead of creating a second pending action.
+      const impersonatorId = (
+        c.get("session") as { impersonatedBy?: string | null } | null
+      )?.impersonatedBy;
+      const runRequest = () =>
+        eventContext.run({ initiatorId }, () =>
+          !["GET", "HEAD", "OPTIONS"].includes(c.req.method)
+            ? deleteIdempotency(c, () => runNextWithPolicyShadow(c, next))
+            : runNextWithPolicyShadow(c, next),
+        );
+      // GM-8: every audit row written by an impersonated request names the impersonator.
+      return await (impersonatorId
+        ? runWithImpersonator(impersonatorId, runRequest)
+        : runRequest());
     } catch (error) {
       if (!(error instanceof HTTPException)) {
         logTaskDesk({
@@ -1496,6 +1961,10 @@ export function createApp(
   const capabilitiesApi = api.route("/capabilities", capabilities);
   const projectApi = api.route("/project", project);
   const projectStatesApi = api.route("/projects", projectStates);
+  const projectSettingsInheritanceApi = api.route(
+    "/projects",
+    projectSettingsInheritance,
+  );
   const taskApi = api.route("/task", task);
   const taskV2Api = api.route("/v2/task", taskV2);
   const columnApi = api.route("/column", column);
@@ -1503,6 +1972,8 @@ export function createApp(
   const cannedResponseApi = api.route("/canned-responses", cannedResponse);
   const commentApi = api.route("/comment", comment);
   const timeEntryApi = api.route("/time-entry", timeEntry);
+  // P5 time and cost: /time-entries, /time-activities, /rates and /projects/{projectId}/budget(s).
+  const timeTrackingApi = api.route("/", timeTracking);
   const labelApi = api.route("/label", label);
   // Audit-read routes mount FLAT (paths carried in full) so they match audit-trail.md's
   // API table verbatim: /api/instance/audit and /api/workspaces/{workspaceId}/audit.
@@ -1523,34 +1994,140 @@ export function createApp(
   const workflowApi = api.route("/workflows", workflow);
   const invitationApi = api.route("/invitation", invitation);
   const workspaceApi = api.route("/workspace", workspace);
+  const workspaceProjectSettingsApi = api.route(
+    "/workspace",
+    workspaceProjectSettings,
+  );
   // #23 -- mounted at the api root, not a feature prefix: the spec's own API table names
   // two different path shapes for this one resource (`/projects/{projectId}/work-items`,
   // `/work-items/{key}`), which `workItem`'s own routes already declare in full. See
   // `work-item/index.ts`'s file comment.
   const workItemApi = api.route("/", workItem);
+  const workItemRelationApi = api.route("/", workItemRelation);
+  // P5 service catalogue, changes, freezes and releases: mounted at the root like work items.
+  api.route("/", serviceManagement);
+  const portalReleaseApi = api.route("/portal", portalReleaseRouter);
   const workItemCommentVersionsApi = api.route("/", workItemCommentVersions);
   const approvalApi = api.route("/", approval);
+  const combinedWorkItemApi = api.route("/", combinedWorkItemRouter);
+  const organisationLifecycleApi = api.route(
+    "/instance",
+    organisationLifecycle,
+  );
+  const instanceTerminologyApi = api.route(
+    "/instance/terminology",
+    instanceTerminology,
+  );
+  const workspaceTerminologyApi = api.route(
+    "/workspaces",
+    workspaceTerminology,
+  );
+  const portalTerminologyApi = api.route(
+    "/portal/terminology",
+    portalTerminology,
+  );
+  const portalNotificationApi = api.route(
+    "/portal/notification",
+    portalNotificationRouter,
+  );
+  api.get("/ws/portal/notification", createPortalNotificationWebSocket());
   const intakeApi = api.route("/", intake);
+  const intakeQueueReadApi = api.route("/intake", intakeQueueReadRouter);
+  const intakeQueueRunApi = api.route("/intake", intakeQueueRunRouter);
+  const intakeQueueWriteApi = api.route("/intake", intakeQueueWriteRouter);
+  const requestTypeGroupOrderApi = api.route("/", requestTypeGroupOrderRouter);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
   const viewApi = api.route("/views", view);
   const factorStatusApi = api.route("/me", factorStatus);
   const csrfTokenApi = api.route("/me", csrfToken);
+  const portalCsrfTokenApi = api.route("/portal", portalCsrfToken);
+  const agentPreferenceHandoffApi = api.route(
+    "/notification-preferences",
+    authenticatedPreferenceHandoff("agent"),
+  );
+  const portalPreferenceHandoffApi = api.route(
+    "/portal/notification-preferences",
+    authenticatedPreferenceHandoff("customer"),
+  );
+  api.route(
+    "/portal/notification-preferences/canonical",
+    portalCanonicalPreferences,
+  );
   const stepUpApi = api.route("/me", stepUp);
+  const notificationProviderApi = api.route("/instance", notificationProvider);
   const observabilityApi = api.route("/instance", observability);
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
   const usersApi = api.route("/instance", users);
+  const hardPurgeApi = api.route("/instance", hardPurge);
+  const impersonationApi = api.route("/instance", impersonation);
+  const rotateSecretsApi = api.route("/instance", rotateSecrets);
   const identityConnectionAdminApi = api.route(
     "/instance",
     identityConnectionAdmin,
+  );
+  const identityConnectionDeletionApi = api.route(
+    "/instance",
+    identityConnectionDeletion,
   );
   const oidcGroupMappingAdminApi = api.route(
     "/instance",
     oidcGroupMappingAdminRouter,
   );
   const scimAdminApi = api.route("/instance", scimAdmin);
+  const instanceDeliveriesApi = api.route("/instance", instanceDeliveries);
+  const instanceDeliveryRequeueApi = api.route(
+    "/instance",
+    instanceDeliveryRequeue,
+  );
+  const instanceJobsApi = api.route("/instance", instanceJobs);
+  const instanceMcpUsageApi = api.route("/instance", instanceMcpUsage);
+  const importsApi = api.route(
+    "/",
+    createImportRouter({ requestImportChunkApproval }),
+  );
+  const instanceStorageApi = api.route("/instance", instanceStorage);
+  const mcpTelemetryApi = api.route("/", mcpTelemetry);
+  const meIdentityApi = api.route("/me", meIdentity);
+  const accountLinkApi = api.route("/me", accountLinkRouter);
+  const instancePluginsApi = api.route("/instance", instancePlugins);
+  const instanceHealthApi = api.route("/instance", instanceHealth);
+  const instanceSettingsApi = api.route("/instance", instanceSettings);
+  const organisationCustomerVisibilityApi = api.route(
+    "/instance",
+    organisationCustomerVisibility,
+  );
+  const organisationCatalogueApi = api.route(
+    "/instance",
+    organisationCatalogue,
+  );
+  // P4 integration. Feature-flag, automation and api-key routers declare full paths
+  // (`/instance/features`, `/workspaces/{id}/automations`, `/me/api-keys`, ...), so they
+  // mount at the api root like `workItem`.
+  const featureFlagApi = api.route("/", featureFlag);
+  const automationApi = api.route("/", automation);
+  const agileApi = api.route("/", agile);
+  const pagesApi = api.route("/", pages);
+  const customerInvitationApi = api.route("/", customerInvitation);
+  const customerInvitationAcceptContinuationApi = api.route(
+    "/",
+    acceptContinuation,
+  );
+  const apiKeyApi = api.route("/", apiKey);
+  const webhookApi = api.route("/webhooks", webhook);
+  const webhookSecurityPostureApi = api.route("/", webhookSecurityPosture);
+  const webhookRotateAllApi = api.route("/", webhookRotateAll);
+  const customFieldApi = api.route("/custom-fields", customField);
+  const customFieldSectionApi = api.route(
+    "/custom-field-sections",
+    customFieldSections,
+  );
+  const teamApi = api.route("/teams", team);
+  const kbApi = api.route("/", kb);
+  // P5 reports and dashboards: /reports and /dashboards, staff only (customers receive 403).
+  const reportApi = api.route("/", report);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -1855,19 +2432,73 @@ export function createApp(
     externalLinkApi,
     factorStatusApi,
     csrfTokenApi,
+    portalCsrfTokenApi,
+    publicAgentPreferenceHandoffApi,
+    publicPortalPreferenceHandoffApi,
+    agentPreferenceHandoffApi,
+    portalPreferenceHandoffApi,
     stepUpApi,
+    notificationProviderApi,
     observabilityApi,
     metricsTokenRotationApi,
     localFactorPolicyApi,
     resetMfaApi,
     usersApi,
+    hardPurgeApi,
+    impersonationApi,
+    rotateSecretsApi,
     identityConnectionAdminApi,
+    identityConnectionDeletionApi,
     oidcGroupMappingAdminApi,
     scimAdminApi,
+    instanceDeliveriesApi,
+    instanceDeliveryRequeueApi,
+    instanceJobsApi,
+    instanceMcpUsageApi,
+    importsApi,
+    instanceStorageApi,
+    mcpTelemetryApi,
+    meIdentityApi,
+    accountLinkApi,
+    publicCspReportApi,
+    instancePluginsApi,
+    instanceHealthApi,
+    instanceSettingsApi,
+    organisationCustomerVisibilityApi,
+    combinedWorkItemApi,
+    organisationLifecycleApi,
+    organisationCatalogueApi,
+    featureFlagApi,
+    automationApi,
+    agileApi,
+    pagesApi,
+    customerInvitationApi,
+    portalAuthMethodsApi,
+    customerInvitationPublicContinuationApi,
+    customerInvitationAcceptContinuationApi,
+    apiKeyApi,
+    webhookApi,
+    webhookSecurityPostureApi,
+    webhookRotateAllApi,
+    customFieldApi,
+    customFieldSectionApi,
+    teamApi,
+    kbApi,
+    portalReleaseApi,
+    reportApi,
     scimProtocolApi,
     invitationApi,
     invitationPublicApi,
+    publicTerminologyApi,
+    instanceTerminologyApi,
+    workspaceTerminologyApi,
+    portalTerminologyApi,
+    portalNotificationApi,
     intakeApi,
+    intakeQueueReadApi,
+    intakeQueueRunApi,
+    intakeQueueWriteApi,
+    requestTypeGroupOrderApi,
     oauthApi,
     labelApi,
     notificationApi,
@@ -1876,6 +2507,7 @@ export function createApp(
     userPreferenceApi,
     projectApi,
     projectStatesApi,
+    projectSettingsInheritanceApi,
     searchApi,
     serviceCalendarApi,
     slaPolicyApi,
@@ -1883,13 +2515,16 @@ export function createApp(
     taskV2Api,
     taskRelationApi,
     timeEntryApi,
+    timeTrackingApi,
     userApi,
     viewApi,
     workflowApi,
     workflowRuleApi,
     workItemApi,
+    workItemRelationApi,
     workItemCommentVersionsApi,
     workspaceApi,
+    workspaceProjectSettingsApi,
   };
 }
 
@@ -1975,14 +2610,53 @@ export async function runMigrationStep(): Promise<void> {
   await closeMigrationPool();
 }
 
+/** Bounded best-effort recovery; failures never masquerade as a completed scan. */
+export async function runPositionRecoveryBootTask(): Promise<void> {
+  try {
+    const outcomes = await recoverDensePositionPartitions(10, {
+      scanRows: 2000,
+      maxPartitionRows: 1000,
+    });
+    const deferred = outcomes.filter(
+      ({ outcome }) => !["healthy", "rebalanced"].includes(outcome.status),
+    ).length;
+    if (deferred) {
+      logTaskDesk({
+        module: "jobs",
+        message: "jobs.failure",
+        level: "warn",
+        result: "degraded",
+      });
+      console.warn(
+        `Position recovery deferred ${deferred} partition(s); bounded startup scan is incomplete`,
+      );
+    } else {
+      console.log(
+        `Position recovery: ${outcomes.length} partition(s) examined within startup bounds; this is not a full scan`,
+      );
+    }
+  } catch {
+    logTaskDesk({
+      module: "jobs",
+      message: "jobs.failure",
+      level: "error",
+      result: "degraded",
+    });
+    console.warn(
+      "Position recovery failed; deferred work remains persisted for retry",
+    );
+  }
+}
+
 /**
  * The serving process's own boot sequence — application connection only. See
  * `runMigrationStep`'s doc comment above for why these are two separate functions,
  * run from two separate OS processes, rather than two calls in one.
  */
 export async function runApiBootTasks(
-  options: Pick<NodeServerShutdownOptions, "hostname"> = {},
+  options: Pick<NodeServerShutdownOptions, "hostname" | "role"> = {},
 ): Promise<void> {
+  const role = options.role ?? "all";
   // S1's structural backstop: fail loudly, before anything else, if this process's
   // own environment carries the owner/migration credential at all. A correctly
   // configured compose/Helm deployment never sets it here in the first place; this
@@ -2000,8 +2674,9 @@ export async function runApiBootTasks(
   console.log(`🔐 ${policyRegistry.entries.length} policies loaded`);
 
   await migrateColumns();
-  await startAuthConfigRuntime();
+  if (roleOwnsHttp(role)) await startAuthConfigRuntime();
   await seedDefaultWorkspaceRoles();
+  await seedCanonicalWorkspaceRoles();
   await seedInternalOrganisationAndStaffPersons();
   // Owner/admin explicit sees_all (decision log 2026-10-14): re-sync members whose person
   // or genuine-admin role row was created/healed by the two seeds above.
@@ -2011,16 +2686,24 @@ export async function runApiBootTasks(
   // that #309/#313 only seed on NEW workspace/project creation -- see that file's own
   // doc comment for the mechanism and why it is a boot step, not a migration.
   await backfillWorkspaceAndProjectDefaults();
+  if (roleOwnsGeneralJobs(role)) await runPositionRecoveryBootTask();
 
   // #18: print a fresh setup token (and invalidate the previous one) on
   // every boot while the instance is unclaimed. A no-op once
   // instance_setting.setup_completed_at is set.
-  await ensureSetupToken();
+  if (roleOwnsHttp(role)) await ensureSetupToken();
 
   initializePlugins();
-  initializeScheduler();
+  if (roleOwnsHttp(role)) await purgeExpiredCustomerInvitationEnvelopes();
+  initializeScheduler(role);
+  // Jobs replicas publish outbox and control-plane messages through this adapter even though
+  // they do not accept WebSocket upgrades or bind the API listener.
   await initializeWebSocketAdapter();
-  await startObservabilityRuntime(options);
+  if (roleOwnsHttp(role)) await startInboxRealtimeListener();
+  await startObservabilityRuntime({
+    ...(options.hostname ? { hostname: options.hostname } : {}),
+    metricsListener: roleOwnsHttp(role),
+  });
 }
 
 const DEFAULT_PORT = 5173;
@@ -2047,6 +2730,7 @@ export function resolvePort(rawPort: string | undefined): {
 
 type NodeServerShutdownOptions = {
   hostname?: string;
+  role?: ServingRole;
   shutdownTimeoutMs?: number;
   shutdownAdapter?: () => Promise<void>;
   forceAdapter?: () => void;
@@ -2193,8 +2877,9 @@ export function createNodeServer(
 
 export async function startServer(
   port = DEFAULT_PORT,
-  options: Pick<NodeServerShutdownOptions, "hostname"> = {},
+  options: Pick<NodeServerShutdownOptions, "hostname" | "role"> = {},
 ) {
+  const role = options.role ?? "all";
   try {
     await runApiBootTasks(options);
   } catch {
@@ -2203,6 +2888,34 @@ export async function startServer(
   }
 
   let shuttingDown = false;
+
+  if (!roleOwnsHttp(role)) {
+    let stopLiveness: (() => Promise<void>) | undefined;
+    try {
+      stopLiveness = await startJobLivenessServer();
+    } catch {
+      shutdownScheduler();
+      await stopObservabilityRuntime();
+      customerInvitationDeliveryKeyring.dispose();
+      await shutdownWebSocketAdapter().catch(() => logRealtimeFailure());
+      logHttpLifecycleFailure();
+      process.exit(1);
+    }
+    const gracefulJobsShutdown = async () => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      shutdownScheduler();
+      await stopObservabilityRuntime();
+      customerInvitationDeliveryKeyring.dispose();
+      await shutdownWebSocketAdapter().catch(() => logRealtimeFailure());
+      await stopLiveness?.().catch(() => logHttpLifecycleFailure());
+      process.exit(0);
+    };
+    process.on("SIGTERM", () => void gracefulJobsShutdown());
+    process.on("SIGINT", () => void gracefulJobsShutdown());
+    console.log("⚙️ Jobs role is running without an HTTP listener");
+    return;
+  }
 
   const { close, server } = createNodeServer(app, port, options);
   server.on("listening", () => {
@@ -2229,6 +2942,7 @@ export async function startServer(
     console.log("🛑 Shutting down gracefully...");
     shutdownScheduler();
     await stopObservabilityRuntime();
+    customerInvitationDeliveryKeyring.dispose();
     const result = await close();
     if (result === "graceful") {
       console.log("✅ API shutdown completed gracefully");
@@ -2262,19 +2976,73 @@ const {
   externalLinkApi,
   factorStatusApi,
   csrfTokenApi,
+  portalCsrfTokenApi,
+  publicAgentPreferenceHandoffApi,
+  publicPortalPreferenceHandoffApi,
+  agentPreferenceHandoffApi,
+  portalPreferenceHandoffApi,
   stepUpApi,
+  notificationProviderApi,
   observabilityApi,
   metricsTokenRotationApi,
   localFactorPolicyApi,
   resetMfaApi,
   usersApi,
+  hardPurgeApi,
+  impersonationApi,
+  rotateSecretsApi,
   identityConnectionAdminApi,
+  identityConnectionDeletionApi,
   oidcGroupMappingAdminApi,
   scimAdminApi,
+  instanceDeliveriesApi,
+  instanceDeliveryRequeueApi,
+  instanceJobsApi,
+  instanceMcpUsageApi,
+  importsApi,
+  instanceStorageApi,
+  mcpTelemetryApi,
+  meIdentityApi,
+  accountLinkApi,
+  publicCspReportApi,
+  instancePluginsApi,
+  instanceHealthApi,
+  instanceSettingsApi,
+  organisationCustomerVisibilityApi,
+  combinedWorkItemApi,
+  organisationLifecycleApi,
+  organisationCatalogueApi,
+  featureFlagApi,
+  automationApi,
+  agileApi,
+  pagesApi,
+  customerInvitationApi,
+  portalAuthMethodsApi,
+  customerInvitationPublicContinuationApi,
+  customerInvitationAcceptContinuationApi,
+  apiKeyApi,
+  webhookApi,
+  webhookSecurityPostureApi,
+  webhookRotateAllApi,
+  customFieldApi,
+  customFieldSectionApi,
+  teamApi,
+  kbApi,
+  portalReleaseApi,
+  reportApi,
   scimProtocolApi,
   invitationApi,
   invitationPublicApi,
+  publicTerminologyApi,
+  instanceTerminologyApi,
+  workspaceTerminologyApi,
+  portalTerminologyApi,
+  portalNotificationApi,
   intakeApi,
+  intakeQueueReadApi,
+  intakeQueueRunApi,
+  intakeQueueWriteApi,
+  requestTypeGroupOrderApi,
   oauthApi,
   labelApi,
   notificationApi,
@@ -2283,6 +3051,7 @@ const {
   userPreferenceApi,
   projectApi,
   projectStatesApi,
+  projectSettingsInheritanceApi,
   searchApi,
   serviceCalendarApi,
   slaPolicyApi,
@@ -2290,13 +3059,16 @@ const {
   taskV2Api,
   taskRelationApi,
   timeEntryApi,
+  timeTrackingApi,
   userApi,
   viewApi,
   workflowApi,
   workflowRuleApi,
   workItemApi,
+  workItemRelationApi,
   workItemCommentVersionsApi,
   workspaceApi,
+  workspaceProjectSettingsApi,
 } = createdApp;
 
 const entrypoint = process.argv[1];
@@ -2307,12 +3079,18 @@ const isMainModule =
 
 if (isMainModule) {
   // Issue #296, S1: `TASKDESK_ROLE=migrate` selects the one-shot migration entry
-  // point instead of the serving one — same env-var-selects-behaviour pattern as
-  // the documented `TASKDESK_ROLE=web`/`jobs` (`docs/05-operations/
-  // container-image.md`), not a new mechanism. This process never calls
+  // point instead of the serving one — same role switch documented in
+  // `docs/technical/operations-and-distribution.md`, not a new mechanism. This process never calls
   // `startServer()`/`serve()`, so it never binds a port and never touches the
   // application connection.
-  if (process.env.TASKDESK_ROLE === "migrate") {
+  let role: ReturnType<typeof parseTaskDeskRole>;
+  try {
+    role = parseTaskDeskRole();
+  } catch {
+    logHttpLifecycleFailure();
+    process.exit(1);
+  }
+  if (role === "migrate") {
     runMigrationStep()
       .then(() => {
         console.log("✅ Migration step complete.");
@@ -2330,7 +3108,7 @@ if (isMainModule) {
         `⚠ TASKDESK_PORT="${rawPort}" is not a valid port (1-65535) — falling back to ${DEFAULT_PORT}`,
       );
     }
-    void startServer(port);
+    void startServer(port, { role });
   }
 }
 
@@ -2338,6 +3116,7 @@ export type AppType =
   | typeof configApi
   | typeof projectApi
   | typeof projectStatesApi
+  | typeof projectSettingsInheritanceApi
   | typeof taskApi
   | typeof taskV2Api
   | typeof columnApi
@@ -2348,6 +3127,7 @@ export type AppType =
   | typeof cannedResponseApi
   | typeof commentApi
   | typeof timeEntryApi
+  | typeof timeTrackingApi
   | typeof labelApi
   | typeof notificationApi
   | typeof notificationPreferencesApi
@@ -2360,26 +3140,82 @@ export type AppType =
   | typeof externalLinkApi
   | typeof factorStatusApi
   | typeof csrfTokenApi
+  | typeof portalCsrfTokenApi
+  | typeof publicAgentPreferenceHandoffApi
+  | typeof publicPortalPreferenceHandoffApi
+  | typeof agentPreferenceHandoffApi
+  | typeof portalPreferenceHandoffApi
   | typeof stepUpApi
+  | typeof notificationProviderApi
   | typeof observabilityApi
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
   | typeof usersApi
+  | typeof hardPurgeApi
+  | typeof impersonationApi
+  | typeof rotateSecretsApi
   | typeof identityConnectionAdminApi
+  | typeof identityConnectionDeletionApi
   | typeof oidcGroupMappingAdminApi
   | typeof scimAdminApi
+  | typeof instanceDeliveriesApi
+  | typeof instanceDeliveryRequeueApi
+  | typeof instanceJobsApi
+  | typeof instanceMcpUsageApi
+  | typeof importsApi
+  | typeof instanceStorageApi
+  | typeof mcpTelemetryApi
+  | typeof meIdentityApi
+  | typeof accountLinkApi
+  | typeof publicCspReportApi
+  | typeof instancePluginsApi
+  | typeof instanceHealthApi
+  | typeof instanceSettingsApi
+  | typeof organisationCustomerVisibilityApi
+  | typeof combinedWorkItemApi
+  | typeof organisationLifecycleApi
+  | typeof organisationCatalogueApi
+  | typeof featureFlagApi
+  | typeof automationApi
+  | typeof agileApi
+  | typeof pagesApi
+  | typeof customerInvitationApi
+  | typeof portalAuthMethodsApi
+  | typeof customerInvitationPublicContinuationApi
+  | typeof customerInvitationAcceptContinuationApi
+  | typeof apiKeyApi
+  | typeof webhookApi
+  | typeof webhookSecurityPostureApi
+  | typeof webhookRotateAllApi
+  | typeof customFieldApi
+  | typeof customFieldSectionApi
+  | typeof teamApi
+  | typeof kbApi
+  | typeof portalReleaseApi
+  | typeof reportApi
   | typeof scimProtocolApi
   | typeof workflowApi
   | typeof workflowRuleApi
+  | typeof workItemRelationApi
   | typeof workItemApi
   | typeof workItemCommentVersionsApi
   | typeof invitationApi
   | typeof workspaceApi
+  | typeof workspaceProjectSettingsApi
   | typeof userApi
   | typeof viewApi
   | typeof invitationPublicApi
+  | typeof publicTerminologyApi
+  | typeof instanceTerminologyApi
+  | typeof workspaceTerminologyApi
+  | typeof portalTerminologyApi
+  | typeof portalNotificationApi
   | typeof intakeApi
+  | typeof intakeQueueReadApi
+  | typeof intakeQueueRunApi
+  | typeof intakeQueueWriteApi
+  | typeof requestTypeGroupOrderApi
   | typeof oauthApi
   | typeof capabilitiesApi;
 

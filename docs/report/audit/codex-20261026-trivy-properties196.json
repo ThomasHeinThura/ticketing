@@ -1,0 +1,14 @@
+{
+	"recordedAt": "2026-10-26T21:00:02.180867+06:30",
+	"image": "taskdesk-codex-sit:source196-properties-scroll-20261026",
+	"counts": {
+		"LOW": 66,
+		"HIGH": 42,
+		"MEDIUM": 59
+	},
+	"highUniqueCves": 7,
+	"highWithFixedVersion": 0,
+	"wgetPresentInPackageFindings": false,
+	"status": "open; applicability and independent disposition pending",
+	"phaseSignOff": false
+}

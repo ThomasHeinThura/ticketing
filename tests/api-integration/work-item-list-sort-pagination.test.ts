@@ -19,6 +19,7 @@ import {
   createWorkspaceMember,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -81,6 +82,11 @@ async function setupProject() {
   await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const { state } = await makeState(creator.workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: creator.workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, project, type, state };
 }
 
@@ -651,6 +657,11 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
     await grantWorkItemProjectAccess(creator.user.id, otherProject.id);
     const otherType = await makeWorkItemType(creator.workspace.id);
     await makeState(creator.workspace.id, otherProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: creator.workspace.id,
+      projectId: otherProject.id,
+      typeId: otherType.id,
+    });
 
     const inThisProject = await createItem(app, project.id, type.id, "Mine");
     await createItem(app, otherProject.id, otherType.id, "Not mine");
@@ -680,6 +691,11 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
     await grantWorkItemProjectAccess(creator.user.id, projectB.id);
     const typeB = await makeWorkItemType(creator.workspace.id);
     await makeState(creator.workspace.id, projectB.id);
+    await ensureCreationWorkflow({
+      workspaceId: creator.workspace.id,
+      projectId: projectB.id,
+      typeId: typeB.id,
+    });
 
     // Two items in A so paging with limit=1 actually yields a next cursor.
     await createItem(app, projectA.id, typeA.id, "A1");
@@ -1429,5 +1445,63 @@ describe("API integration: work item list sort=position (WI-11, WI-12, VW-10)", 
     );
     expect(walked).toHaveLength(4);
     expect(walked).not.toContain(foreign.id);
+  });
+});
+
+describe("canonical project traversal at 500 persisted items", () => {
+  beforeEach(resetTestDatabase);
+  it("traverses all ten default pages in server order without gaps, duplicates or cross-project rows", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const foreign = await setupProject();
+    mockAuthenticatedSession(foreign.creator.user);
+    const foreignItem = await createItem(
+      app,
+      foreign.project.id,
+      foreign.type.id,
+      "Unrelated private pagination fixture",
+    );
+    mockAuthenticatedSession(creator.user);
+    const expected: string[] = [];
+    // Real creation exercises the canonical persisted keys/counters/workflow contract.
+    // Sequential creation avoids making this pagination test a contention benchmark.
+    for (let index = 0; index < 500; index += 1) {
+      expected.push(
+        (
+          await createItem(
+            app,
+            project.id,
+            type.id,
+            `Pagination fixture ${String(index).padStart(3, "0")}`,
+          )
+        ).id,
+      );
+    }
+    const walked: string[] = [];
+    const cursors = new Set<string>();
+    let cursor: string | null = null;
+    for (let pageNumber = 0; pageNumber < 10; pageNumber += 1) {
+      const response = await list(
+        app,
+        project.id,
+        `sort=key&dir=asc${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+      );
+      expect(response.status).toBe(200);
+      const body = response.body as ListBody;
+      expect(body.data).toHaveLength(50);
+      expect(body.meta.total).toBe(500);
+      walked.push(...body.data.map((row) => row.id));
+      expect(body.page.hasMore).toBe(pageNumber < 9);
+      cursor = body.page.nextCursor;
+      if (pageNumber < 9) {
+        expect(cursor).toBeTruthy();
+        expect(cursors.has(cursor as string)).toBe(false);
+        cursors.add(cursor as string);
+      } else expect(cursor).toBeNull();
+    }
+    expect(walked).toEqual(expected);
+    expect(new Set(walked).size).toBe(500);
+    expect(walked).not.toContain(foreignItem.id);
   });
 });

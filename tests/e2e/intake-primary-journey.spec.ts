@@ -10,6 +10,7 @@ import {
   type MfaCsrfAppFixtureSetup,
   withMfaCsrfApp,
 } from "./helpers/mfa-csrf-app-fixture";
+import { uniqueProjectKey } from "./helpers/project-key";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const webRequire = createRequire(resolve(repoRoot, "apps/web/package.json"));
@@ -335,7 +336,7 @@ async function createStaffWorkspace(
     name: "Intake primary customer project",
     workspaceId,
     icon: "Folder",
-    slug: `intake-primary-${randomUUID().slice(0, 8)}`,
+    slug: uniqueProjectKey(),
   });
   expect(projectResponse.status()).toBe(200);
   const project = (await projectResponse.json()) as { id?: string };

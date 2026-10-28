@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { findEnvReads } from "./env-reads.mjs";
 
-// Opus review of #423 pass 1 (docs/07-planning/security-reviews/423-env-reads-ast-rewrite.md)
+// Opus review of #423 pass 1 (archive/2026-10-22/docs/07-planning/security-reviews/423-env-reads-ast-rewrite.md)
 // — the AST walker's allow-list default silently dropped ~26 real shapes the old tokenizer on
 // `main` correctly charged, because it only recognized specific consuming contexts instead of
 // charging by default and carving out specific safe narrowings. Every row below is one of

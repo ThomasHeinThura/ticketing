@@ -15,6 +15,7 @@ vi.mock("@/fetchers/service-calendar", () => ({
 const calendar: ServiceCalendar = {
   id: "calendar-1",
   workspaceId: "workspace-1",
+  key: "coverage",
   name: "Coverage",
   timezone: "UTC",
   windows: { mon: [{ from: 540, to: 1020 }] },
@@ -49,6 +50,7 @@ describe("service-calendar paginated list cache", () => {
     await act(async () => {
       await created.result.current.mutateAsync({
         workspaceId: calendar.workspaceId,
+        key: calendar.key,
         name: calendar.name,
         timezone: calendar.timezone,
         windows: calendar.windows,

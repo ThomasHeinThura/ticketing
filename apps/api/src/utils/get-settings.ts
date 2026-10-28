@@ -1,17 +1,17 @@
-import { isSmtpConfigured } from "@taskdesk/email";
 import { config } from "dotenv-mono";
+import { isRuntimeSmtpConfigured } from "../notification-provider/runtime";
 import { isGithubSsoConfigured } from "./github-sso-env";
 
 config();
 
-function getSettings() {
+async function getSettings() {
   return {
     disableRegistration: process.env.DISABLE_REGISTRATION === "true",
     disablePasswordRegistration:
       process.env.DISABLE_PASSWORD_REGISTRATION === "true",
     disableEmailOtpSignIn: process.env.DISABLE_EMAIL_OTP_SIGN_IN === "true",
     disableWorkspaceCreation: process.env.DISABLE_WORKSPACE_CREATION === "true",
-    hasSmtp: isSmtpConfigured(),
+    hasSmtp: await isRuntimeSmtpConfigured(),
     hasGithubSignIn: isGithubSsoConfigured(),
     hasGoogleSignIn:
       Boolean(process.env.GOOGLE_CLIENT_ID) &&

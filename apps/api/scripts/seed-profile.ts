@@ -13,6 +13,7 @@ import {
   DEFAULT_STATE_TEMPLATES,
 } from "../src/utils/default-state-templates";
 import { DEFAULT_WORK_ITEM_TYPES } from "../src/utils/default-work-item-types";
+import { defaultWorkflowId } from "../src/utils/seed-default-workflow";
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
 import { seedProjectStates } from "../src/utils/seed-project-states";
 import { seedWorkspaceDefaults } from "../src/utils/seed-workspace-defaults";
@@ -62,7 +63,8 @@ async function verifyWorkspaceDefaults(
       actual.name !== expected.name ||
       actual.category !== expected.category ||
       actual.icon !== null ||
-      actual.workflowId !== null ||
+      (actual.workflowId !== null &&
+        actual.workflowId !== defaultWorkflowId(workspaceId)) ||
       actual.slaPolicyId !== null ||
       actual.isEpic !== (expected.isEpic ?? false) ||
       actual.isChange !== (expected.isChange ?? false)

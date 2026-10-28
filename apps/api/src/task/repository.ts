@@ -39,6 +39,7 @@ import {
   workspaceTable,
   workspaceUserTable,
 } from "../database/schema";
+import { taskExternalLinkColumns } from "../external-link/repository";
 
 /** Current persisted reach for the addressed outer project row. */
 function currentProjectRowReach(
@@ -608,7 +609,7 @@ export async function listExternalLinksForTasks(
 ) {
   const executor = executorOrDefault();
   return await executor
-    .select()
+    .select(taskExternalLinkColumns)
     .from(externalLinkTable)
     .where(
       and(
@@ -659,19 +660,6 @@ export async function listTaskRelations(
 }
 
 // ---- writes ----------------------------------------------------------------------------
-
-export async function deleteTaskById(
-  executor: Executor,
-  identity: ResolvedIdentity,
-  taskId: string,
-) {
-  const [deletedTask] = await executor
-    .delete(taskTable)
-    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
-    .returning()
-    .execute();
-  return deletedTask;
-}
 
 /** Update a task row by id and bump its version; the caller holds the row lock. */
 export async function updateTaskRow(
@@ -887,6 +875,8 @@ export async function insertAsset(
               "createdAt",
             )
           : sql`now()`.as("createdAt"),
+      // P0R1-01: a new asset is referenced by the content it was uploaded for.
+      detachedAt: sql`NULL::timestamptz`.as("detachedAt"),
     })
     .from(taskTable)
     .innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
@@ -1025,18 +1015,6 @@ export async function updateTaskRowReturningId(
   return updated;
 }
 
-export async function deleteTaskReturningId(
-  executor: Executor,
-  identity: ResolvedIdentity,
-  taskId: string,
-) {
-  const [deleted] = await executor
-    .delete(taskTable)
-    .where(and(eq(taskTable.id, taskId), taskProjectReach(identity, executor)))
-    .returning({ id: taskTable.id });
-  return deleted;
-}
-
 export type TaskLabelWriteResult<T = undefined> =
   | { kind: "refused" }
   | { kind: "unchanged" }
@@ -1068,6 +1046,7 @@ export async function addTaskLabelForIdentity(
         executor
           .select({
             id: sql`${sql.param(createId(), labelTable.id)}`.as("id"),
+            key: sql`null`.as("key"),
             name: sql`${sql.param(values.name, labelTable.name)}`.as("name"),
             color: sql`${sql.param(values.color, labelTable.color)}`.as(
               "color",
@@ -1140,6 +1119,7 @@ export async function removeTaskLabelForIdentity(
       deletedId: deleted.id,
       deletedName: deleted.name,
       deletedColor: deleted.color,
+      deletedKey: deleted.key,
       deletedCreatedAt: deleted.createdAt,
       deletedUpdatedAt: deleted.updatedAt,
       deletedTaskId: deleted.taskId,
@@ -1156,6 +1136,7 @@ export async function removeTaskLabelForIdentity(
       id: result.deletedId,
       name: result.deletedName as string,
       color: result.deletedColor as string,
+      key: result.deletedKey as string | null,
       createdAt: result.deletedCreatedAt as Date,
       updatedAt: result.deletedUpdatedAt as Date,
       taskId: result.deletedTaskId as string | null,
@@ -1203,6 +1184,7 @@ export async function insertTaskLabelOnConflictDoNothing(
   const selectedLabel = executor
     .select({
       id: sql`${sql.param(createId(), labelTable.id)}`.as("id"),
+      key: sql`null`.as("key"),
       name: sql`${sql.param(values.name, labelTable.name)}`.as("name"),
       color: sql`${sql.param(values.color, labelTable.color)}`.as("color"),
       createdAt: sql`now()`.as("createdAt"),

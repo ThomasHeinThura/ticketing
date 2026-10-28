@@ -32,11 +32,13 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
 import {
   createUserOperationProof,
   getCurrentFactorStatus,
   type InstanceUser,
+  type StepUpMethod,
 } from "@/fetchers/god-mode/instance-users";
 import {
   useInstanceUser,
@@ -91,9 +93,7 @@ function InstanceUsersPage() {
   const [reason, setReason] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [verificationNote, setVerificationNote] = useState("");
-  const [method, setMethod] = useState<"password" | "totp" | "backup_code">(
-    "password",
-  );
+  const [method, setMethod] = useState<StepUpMethod>("password");
   const [secret, setSecret] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -114,7 +114,7 @@ function InstanceUsersPage() {
 
   useEffect(() => {
     if (factor.data) {
-      setMethod(factor.data.enabled ? "totp" : "password");
+      setMethod(factor.data.availableMethods[0] ?? "password");
     }
   }, [factor.data]);
 
@@ -203,6 +203,25 @@ function InstanceUsersPage() {
           verificationNote: note,
           token,
         });
+      } else if (requestedAction === "impersonate") {
+        const note = reason.trim();
+        const token = await createUserOperationProof({
+          operation: "impersonation_start",
+          userId: user.id,
+          reason: note,
+          method,
+          secret,
+        });
+        if (!isCurrentOperation()) return;
+        await actions.impersonate.mutateAsync({
+          id: user.id,
+          reason: note,
+          token,
+        });
+        // The session cookie is now the target's: reload so every query and the banner
+        // start from the impersonated identity.
+        window.location.assign("/agent");
+        return;
       } else {
         return;
       }
@@ -245,7 +264,8 @@ function InstanceUsersPage() {
     actions.signOut.isPending ||
     actions.deactivate.isPending ||
     actions.grantAdmin.isPending ||
-    actions.resetMfa.isPending;
+    actions.resetMfa.isPending ||
+    actions.impersonate.isPending;
 
   return (
     <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
@@ -299,73 +319,39 @@ function InstanceUsersPage() {
             navigateSearch({ q: event.target.value, cursor: undefined })
           }
         />
-        <Select
+        <PickerPopover
           value={search.side ?? "all"}
-          onValueChange={(value) =>
+          ariaLabel={t("instanceUsers:copy.4dc97a606e2f")}
+          className="w-44"
+          options={[
+            { value: "all", label: t("instanceUsers:copy.ec137488beec") },
+            { value: "staff", label: t("instanceUsers:copy.a4730a22cf49") },
+            { value: "customer", label: t("instanceUsers:copy.0e85749a6f40") },
+          ]}
+          onChange={(value) =>
             navigateSearch({
               side:
                 value === "staff" || value === "customer" ? value : undefined,
               cursor: undefined,
             })
           }
-        >
-          <SelectTrigger
-            aria-label={t("instanceUsers:copy.4dc97a606e2f")}
-            className="w-44"
-          >
-            <SelectValue>
-              {search.side === "staff"
-                ? t("instanceUsers:copy.a4730a22cf49")
-                : search.side === "customer"
-                  ? t("instanceUsers:copy.0e85749a6f40")
-                  : t("instanceUsers:copy.ec137488beec")}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {t("instanceUsers:copy.ec137488beec")}
-            </SelectItem>
-            <SelectItem value="staff">
-              {t("instanceUsers:copy.a4730a22cf49")}
-            </SelectItem>
-            <SelectItem value="customer">
-              {t("instanceUsers:copy.0e85749a6f40")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
+        />
+        <PickerPopover
           value={search.active ?? "all"}
-          onValueChange={(value) =>
+          ariaLabel={t("instanceUsers:copy.dd5947e50ac8")}
+          className="w-44"
+          options={[
+            { value: "all", label: t("instanceUsers:copy.6405179d241b") },
+            { value: "true", label: t("instanceUsers:copy.274e10cde2d6") },
+            { value: "false", label: t("instanceUsers:copy.c51407d28beb") },
+          ]}
+          onChange={(value) =>
             navigateSearch({
               active: value === "true" || value === "false" ? value : undefined,
               cursor: undefined,
             })
           }
-        >
-          <SelectTrigger
-            aria-label={t("instanceUsers:copy.dd5947e50ac8")}
-            className="w-44"
-          >
-            <SelectValue>
-              {search.active === "true"
-                ? t("instanceUsers:copy.274e10cde2d6")
-                : search.active === "false"
-                  ? t("instanceUsers:copy.c51407d28beb")
-                  : t("instanceUsers:copy.6405179d241b")}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {t("instanceUsers:copy.6405179d241b")}
-            </SelectItem>
-            <SelectItem value="true">
-              {t("instanceUsers:copy.274e10cde2d6")}
-            </SelectItem>
-            <SelectItem value="false">
-              {t("instanceUsers:copy.c51407d28beb")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        />
         <Input
           aria-label={t("instanceUsers:copy.b745c3cd8743")}
           className="w-full sm:max-w-64"
@@ -419,19 +405,19 @@ function InstanceUsersPage() {
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)]">
           <Card className="min-w-0 overflow-hidden">
             <CardContent className="p-0">
-              <Table>
+              <Table className="sm:min-w-[44rem] sm:table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>
+                    <TableHead className="sm:w-[44%]">
                       {t("instanceUsers:copy.9f8a2389a20c")}
                     </TableHead>
-                    <TableHead className="max-sm:hidden">
+                    <TableHead className="max-sm:hidden sm:w-24">
                       {t("instanceUsers:copy.3deb74565196")}
                     </TableHead>
-                    <TableHead className="max-sm:hidden">
+                    <TableHead className="max-sm:hidden sm:w-[22%]">
                       {t("instanceUsers:copy.6e99c1d3b150")}
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="sm:w-40">
                       {t("instanceUsers:copy.bae7d5be7082")}
                     </TableHead>
                   </TableRow>
@@ -457,10 +443,16 @@ function InstanceUsersPage() {
                             email: user.email,
                           })}
                         >
-                          <span className="block break-words font-medium">
+                          <span
+                            className="block break-words font-medium sm:truncate"
+                            title={user.name}
+                          >
                             {user.name}
                           </span>
-                          <span className="block break-all text-xs text-muted-foreground">
+                          <span
+                            className="block break-all text-xs text-muted-foreground sm:truncate"
+                            title={user.email}
+                          >
                             {user.email}
                           </span>
                         </Link>
@@ -483,7 +475,10 @@ function InstanceUsersPage() {
                           ? t(`instanceUsers:dynamic.side.${user.person.side}`)
                           : t("instanceUsers:dynamic.unlinked")}
                       </TableCell>
-                      <TableCell className="max-sm:hidden">
+                      <TableCell
+                        className="max-sm:hidden sm:truncate"
+                        title={user.person?.organisationName ?? undefined}
+                      >
                         {user.person?.organisationName ?? "—"}
                       </TableCell>
                       <TableCell className="whitespace-normal">
@@ -503,6 +498,12 @@ function InstanceUsersPage() {
                               {t("instanceUsers:copy.09af574c7f20")}
                             </Badge>
                           )}
+                          {!user.isSuspended &&
+                            (!user.person || user.person.active) && (
+                              <Badge variant="outline">
+                                {t("instanceUsers:dynamic.personActive")}
+                              </Badge>
+                            )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -563,7 +564,10 @@ function InstanceUsersPage() {
           onReason={setReason}
           onExpiresAt={setExpiresAt}
           onVerificationNote={setVerificationNote}
-          onMethod={setMethod}
+          onMethod={(value) => {
+            setMethod(value);
+            setSecret("");
+          }}
           onSecret={setSecret}
           onCancel={resetAction}
           onSubmit={() => void runAction(selected.data as InstanceUser, action)}
@@ -611,6 +615,8 @@ function UserDetails({
     !user.person.isPlaceholder &&
     !user.isSuspended &&
     !user.isInstanceAdmin;
+  // GM-10 plus the staff-only reading of GM-7: the server enforces the same rules.
+  const eligibleForImpersonation = eligibleForAdmin;
   return (
     <Card className="h-fit" data-testid="instance-user-details">
       <CardContent className="space-y-4 p-5">
@@ -725,6 +731,16 @@ function UserDetails({
           {!user.isInstanceAdmin && (
             <Button
               size="sm"
+              variant="outline"
+              disabled={!eligibleForImpersonation}
+              onClick={() => onAction("impersonate")}
+            >
+              {t("instanceUsers:dynamic.actions.impersonate")}
+            </Button>
+          )}
+          {!user.isInstanceAdmin && (
+            <Button
+              size="sm"
               disabled={!eligibleForAdmin}
               onClick={() => onAction("grant-admin")}
             >
@@ -770,13 +786,19 @@ function UserActionDialog({
   reason: string;
   expiresAt: string;
   verificationNote: string;
-  method: "password" | "totp" | "backup_code";
+  method: StepUpMethod;
   secret: string;
-  factor: { enabled: boolean; required: boolean } | undefined;
+  factor:
+    | {
+        enabled: boolean;
+        required: boolean;
+        availableMethods: StepUpMethod[];
+      }
+    | undefined;
   onReason: (value: string) => void;
   onExpiresAt: (value: string) => void;
   onVerificationNote: (value: string) => void;
-  onMethod: (value: "password" | "totp" | "backup_code") => void;
+  onMethod: (value: StepUpMethod) => void;
   onSecret: (value: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
@@ -785,14 +807,22 @@ function UserActionDialog({
   const isStepUp =
     action === "grant-admin" ||
     action === "reset-mfa" ||
+    action === "impersonate" ||
     (action === "suspend" && user.isInstanceAdmin);
   const factorBlocked =
-    isStepUp && (!factor || (factor.required && !factor.enabled));
+    isStepUp &&
+    (!factor ||
+      factor.availableMethods.length === 0 ||
+      !factor.availableMethods.includes(method));
   const canSubmit =
     !pending &&
-    (!isStepUp || (!factorBlocked && secret.length > 0)) &&
+    (!isStepUp ||
+      (!factorBlocked &&
+        (method === "sso_prompt_login" || secret.length > 0))) &&
     (action !== "reset-mfa" || verificationNote.trim().length >= 12) &&
-    (action !== "suspend" || Array.from(reason).length <= 500);
+    (action !== "suspend" || Array.from(reason).length <= 500) &&
+    (action !== "impersonate" ||
+      (reason.trim().length >= 12 && Array.from(reason).length <= 500));
   const titles: Record<GodModeUserAction, string> = {
     suspend: t("instanceUsers:dynamic.actions.suspend"),
     unsuspend: t("instanceUsers:dynamic.actions.unsuspend"),
@@ -800,6 +830,7 @@ function UserActionDialog({
     "reset-mfa": t("instanceUsers:dynamic.actions.resetMfa"),
     "sign-out": t("instanceUsers:dynamic.actions.signOut"),
     deactivate: t("instanceUsers:dynamic.actions.deactivate"),
+    impersonate: t("instanceUsers:dynamic.actions.impersonate"),
   };
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onCancel()}>
@@ -839,6 +870,26 @@ function UserActionDialog({
               </div>
             </>
           )}
+          {action === "impersonate" && (
+            <div className="space-y-2">
+              <p className="text-sm">
+                {t("instanceUsers:dynamic.impersonation.explainer")}
+              </p>
+              <Label htmlFor="impersonation-reason">
+                {t("instanceUsers:dynamic.impersonation.reasonLabel")}
+              </Label>
+              <Input
+                id="impersonation-reason"
+                minLength={12}
+                maxLength={500}
+                value={reason}
+                onChange={(event) => onReason(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("instanceUsers:dynamic.impersonation.reasonHelp")}
+              </p>
+            </div>
+          )}
           {action === "unsuspend" && (
             <p className="text-sm">{t("instanceUsers:copy.711c48ecc613")}</p>
           )}
@@ -868,73 +919,85 @@ function UserActionDialog({
               </p>
             </div>
           )}
-          {isStepUp &&
-            (factor?.enabled ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="step-up-method">
-                    {t("instanceUsers:copy.fc7481906e3b")}
-                  </Label>
-                  <Select
-                    value={method}
-                    onValueChange={(value) =>
-                      onMethod(value === "backup_code" ? "backup_code" : "totp")
-                    }
-                  >
-                    <SelectTrigger id="step-up-method">
-                      <SelectValue>
-                        {method === "backup_code"
-                          ? t("instanceUsers:copy.2a8367498e23")
-                          : t("instanceUsers:copy.2908b4e9c428")}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="totp">
-                        {t("instanceUsers:copy.2908b4e9c428")}
+          {isStepUp && factor && !factorBlocked ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="step-up-method">
+                  {t("instanceUsers:copy.fc7481906e3b")}
+                </Label>
+                <Select
+                  items={factor.availableMethods.map((availableMethod) => ({
+                    value: availableMethod,
+                    label:
+                      availableMethod === "password"
+                        ? t("instanceUsers:copy.19dff4dad0a7")
+                        : availableMethod === "totp"
+                          ? t("instanceUsers:copy.2908b4e9c428")
+                          : availableMethod === "backup_code"
+                            ? t("instanceUsers:copy.2a8367498e23")
+                            : t("identityConnections:stepUp.ssoPromptLogin"),
+                  }))}
+                  value={method}
+                  onValueChange={(value) => {
+                    if (factor.availableMethods.includes(value as StepUpMethod))
+                      onMethod(value as StepUpMethod);
+                  }}
+                >
+                  <SelectTrigger id="step-up-method">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {factor.availableMethods.map((availableMethod) => (
+                      <SelectItem key={availableMethod} value={availableMethod}>
+                        {availableMethod === "password"
+                          ? t("instanceUsers:copy.19dff4dad0a7")
+                          : availableMethod === "totp"
+                            ? t("instanceUsers:copy.2908b4e9c428")
+                            : availableMethod === "backup_code"
+                              ? t("instanceUsers:copy.2a8367498e23")
+                              : t("identityConnections:stepUp.ssoPromptLogin")}
                       </SelectItem>
-                      <SelectItem value="backup_code">
-                        {t("instanceUsers:copy.2a8367498e23")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {method === "sso_prompt_login" ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("identityConnections:stepUp.ssoPromptLoginDescription")}
+                </p>
+              ) : (
                 <div className="space-y-2">
                   <Label htmlFor="step-up-code">
                     {t(
-                      method === "totp"
-                        ? "instanceUsers:dynamic.authenticatorCode"
-                        : "instanceUsers:dynamic.backupCode",
+                      method === "password"
+                        ? "instanceUsers:copy.19dff4dad0a7"
+                        : method === "totp"
+                          ? "instanceUsers:dynamic.authenticatorCode"
+                          : "instanceUsers:dynamic.backupCode",
                     )}
                   </Label>
                   <Input
                     id="step-up-code"
-                    autoComplete="one-time-code"
+                    autoComplete={
+                      method === "password"
+                        ? "current-password"
+                        : "one-time-code"
+                    }
+                    type={method === "password" ? "password" : "text"}
                     value={secret}
                     onChange={(event) => onSecret(event.target.value)}
                   />
                 </div>
-              </>
-            ) : factor && !factor.required ? (
-              <div className="space-y-2">
-                <Label htmlFor="step-up-password">
-                  {t("instanceUsers:copy.19dff4dad0a7")}
-                </Label>
-                <Input
-                  id="step-up-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={secret}
-                  onChange={(event) => onSecret(event.target.value)}
-                />
-              </div>
-            ) : (
-              <Alert variant="error">
-                <AlertTitle>{t("instanceUsers:copy.02c7fa45ff1a")}</AlertTitle>
-                <AlertDescription>
-                  {t("instanceUsers:copy.d5d49ba4b1bf")}
-                </AlertDescription>
-              </Alert>
-            ))}
+              )}
+            </>
+          ) : isStepUp ? (
+            <Alert variant="error">
+              <AlertTitle>{t("instanceUsers:copy.02c7fa45ff1a")}</AlertTitle>
+              <AlertDescription>
+                {t("instanceUsers:copy.d5d49ba4b1bf")}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {formError && (
             <Alert variant="error" role="alert">
               <AlertTitle>{t("instanceUsers:copy.f169620795e0")}</AlertTitle>

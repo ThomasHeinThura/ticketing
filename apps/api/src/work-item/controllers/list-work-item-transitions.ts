@@ -1,5 +1,6 @@
 import {
   filterOfferableForType,
+  isChangeApprovalEdge,
   isGateSatisfied,
   legalTransitions,
   offerTransition,
@@ -8,6 +9,12 @@ import {
 } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { listApprovalsForWorkItemTransition } from "../../approval/repository";
+import db from "../../database";
+import {
+  changeGateBlocks,
+  loadChangeTransitionFacts,
+} from "../../service-management/change-repository";
+import { serviceCatalogueEnabled } from "../../service-management/common";
 import {
   buildGuardContext,
   loadWorkflowTransitionContext,
@@ -19,6 +26,8 @@ export type WorkItemTransitionOffer = {
   toStateTemplateId: string;
   toStateName: string;
   toStateId: string;
+  /** `state_template.group` of the target state, so a client can warn before a close (RH-10). */
+  toStateCategory: string | undefined;
   notePolicy: "none" | "optional" | "required";
   noteVisibility: "public" | "internal";
   requiresApproval: boolean;
@@ -114,6 +123,18 @@ export async function listWorkItemTransitions(
     hasNote: false,
   };
 
+  // CH-4 / CH-6: the CAB-gated approval of a change also needs a rollback plan and no active freeze.
+  const changeBlocks =
+    ctx.isChangeType &&
+    offerable.some(isChangeApprovalEdge) &&
+    (await serviceCatalogueEnabled(ctx.workItem.workspaceId))
+      ? await changeGateBlocks(
+          db,
+          ctx.workItem.workspaceId,
+          await loadChangeTransitionFacts(db, ctx.workItem.id),
+        )
+      : [];
+
   const results: WorkItemTransitionOffer[] = [];
   for (const transition of offerable) {
     const resolution = resolveStateTemplateForProject(
@@ -159,27 +180,33 @@ export async function listWorkItemTransitions(
         ctx.templateNames.get(transition.toStateTemplateId) ??
         transition.toStateTemplateId,
       toStateId: resolution.stateId,
+      toStateCategory: ctx.templateGroups.get(transition.toStateTemplateId),
       notePolicy: transition.notePolicy,
       noteVisibility: transition.noteVisibility,
       requiresApproval: transition.requiresApproval,
       requiresCab: transition.requiresCab,
       isReopen: transition.isReopen,
-      available: offer.available,
-      blockedBy: offer.blockedBy.map((reason) => {
-        const waiting =
-          reason.kind === "cab"
-            ? pendingApprovals.filter((approval) => approval.kind === "cab")
-            : pendingApprovals;
-        return (reason.kind === "approval" || reason.kind === "cab") &&
-          waiting.length > 0
-          ? {
-              ...reason,
-              pendingApprovals: waiting.map(
-                ({ kind: _kind, ...details }) => details,
-              ),
-            }
-          : reason;
-      }),
+      available:
+        offer.available &&
+        !(isChangeApprovalEdge(transition) && changeBlocks.length > 0),
+      blockedBy: [
+        ...(isChangeApprovalEdge(transition) ? changeBlocks : []),
+        ...offer.blockedBy.map((reason) => {
+          const waiting =
+            reason.kind === "cab"
+              ? pendingApprovals.filter((approval) => approval.kind === "cab")
+              : pendingApprovals;
+          return (reason.kind === "approval" || reason.kind === "cab") &&
+            waiting.length > 0
+            ? {
+                ...reason,
+                pendingApprovals: waiting.map(
+                  ({ kind: _kind, ...details }) => details,
+                ),
+              }
+            : reason;
+        }),
+      ],
     });
   }
   return results;

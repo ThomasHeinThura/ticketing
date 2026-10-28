@@ -3,6 +3,7 @@ import {
   cloneSavedViewName,
   isExecutableSavedViewQuery,
   isSavedViewSnapshotComplete,
+  retainSelectedCustomFieldSorts,
   savedViewDefinitionMatches,
   savedViewQueryDocument,
   savedViewSort,
@@ -36,19 +37,39 @@ describe("saved-view query execution contract", () => {
       isExecutableSavedViewQuery({
         entity: "work_item",
         filter: { field: "priority", op: "eq", value: "high" },
-        sort: [{ field: "key", direction: "asc" }],
+        sort: [
+          { field: "key", direction: "asc" },
+          { field: "state", direction: "desc" },
+        ],
         columns: ["key", "title"],
       }),
     ).toBe(true);
     expect(isExecutableSavedViewQuery({ entity: "work_item" })).toBe(true);
     expect(isExecutableSavedViewQuery({})).toBe(true);
+    expect(
+      isExecutableSavedViewQuery({
+        entity: "submission",
+        filter: { state: "accepted", olderThanDays: 30 },
+      }),
+    ).toBe(true);
+    expect(
+      isExecutableSavedViewQuery({
+        entity: "submission",
+        filter: { state: "accepted", requesterId: "person-1" },
+      }),
+    ).toBe(false);
+    expect(
+      isExecutableSavedViewQuery({
+        entity: "work_item",
+        columns: ["key", "cf.constructor"],
+      }),
+    ).toBe(true);
   });
 
   it.each([
     null,
     "work_item",
     [],
-    { entity: "submission" },
     { entity: "work_item", groupBy: "state" },
     { entity: "work_item", aggregate: { count: "id" } },
     { entity: "work_item", futureExecutionMode: "silent" },
@@ -57,6 +78,20 @@ describe("saved-view query execution contract", () => {
     // The list's rank order is not a saved-view sort.
     { entity: "work_item", sort: [{ field: "position", direction: "asc" }] },
     { entity: "work_item", sort: [{ field: "key", order: "asc" }] },
+    {
+      entity: "work_item",
+      sort: [
+        { field: "key", direction: "asc" },
+        { field: "key", direction: "desc" },
+      ],
+    },
+    {
+      entity: "work_item",
+      sort: Array.from({ length: 6 }, (_, index) => ({
+        field: `cf.field_${index}`,
+        direction: "asc",
+      })),
+    },
     { entity: "work_item", columns: ["secret"] },
     { entity: "work_item", columns: [] },
     { entity: "work_item", columns: ["key", "key"] },
@@ -65,13 +100,6 @@ describe("saved-view query execution contract", () => {
     {
       entity: "work_item",
       filter: { field: "priority", op: "eq", value: "x" },
-    },
-    {
-      entity: "work_item",
-      sort: [
-        { field: "key", direction: "asc" },
-        { field: "title", direction: "desc" },
-      ],
     },
   ])("rejects stored semantics the URL runner cannot preserve: %o", (query) => {
     expect(isExecutableSavedViewQuery(query)).toBe(false);
@@ -155,27 +183,69 @@ describe("saved view <-> URL definition (SV-14, SV-19)", () => {
     expect(savedViewQueryDocument(search)).toEqual(view.query);
   });
 
+  it("preserves custom-field columns when reading saved query documents", () => {
+    const customView = {
+      ...view,
+      query: { entity: "work_item", columns: ["key", "cf.constructor"] },
+    };
+    const search = savedViewStoredSearch(customView);
+    expect(search.columns).toEqual(["key", "cf.constructor"]);
+    expect(savedViewQueryDocument(search)).toEqual(customView.query);
+  });
+
   it("stores the search endpoint's `order` as the envelope's `direction`", () => {
     expect(
       savedViewQueryDocument({ sort: "title", dir: "desc" }),
     ).toMatchObject({ sort: [{ field: "title", direction: "desc" }] });
-    expect(savedViewSort({ sort: "title", dir: "desc" })).toEqual({
-      field: "title",
-      order: "desc",
-    });
+    expect(savedViewSort({ sort: "title", dir: "desc" })).toEqual([
+      { field: "title", order: "desc" },
+    ]);
   });
 
   it("reads a partial sort one way only: a field alone ascends, a direction alone sorts by key, neither is none", () => {
-    expect(savedViewSort({ sort: "priority" })).toEqual({
-      field: "priority",
-      order: "asc",
-    });
-    expect(savedViewSort({ dir: "desc" })).toEqual({
-      field: "key",
-      order: "desc",
-    });
+    expect(savedViewSort({ sort: "priority" })).toEqual([
+      { field: "priority", order: "asc" },
+    ]);
+    expect(savedViewSort({ dir: "desc" })).toEqual([
+      { field: "key", order: "desc" },
+    ]);
     expect(savedViewSort({})).toBeUndefined();
     expect(savedViewSort({ sort: "position", dir: "asc" })).toBeUndefined();
+  });
+
+  it("preserves ordered custom and native sort arrays in both directions", () => {
+    const sorts = [
+      { field: "state", order: "desc" },
+      { field: "cf.constructor", order: "asc" },
+    ] as const;
+    const customView = {
+      ...view,
+      query: {
+        entity: "work_item",
+        sort: sorts.map(({ field, order }) => ({ field, direction: order })),
+        columns: ["key", "cf.constructor"],
+      },
+    };
+    expect(isExecutableSavedViewQuery(customView.query)).toBe(true);
+    const search = savedViewStoredSearch(customView);
+    expect(search.sorts).toEqual(sorts);
+    expect(savedViewQueryDocument(search)).toEqual(customView.query);
+  });
+
+  it("removes custom sorts when their columns are removed while retaining native precedence", () => {
+    expect(
+      retainSelectedCustomFieldSorts(
+        [
+          { field: "cf.constructor", order: "desc" },
+          { field: "state", order: "asc" },
+          { field: "cf.cost", order: "asc" },
+        ],
+        ["key", "cf.cost"],
+      ),
+    ).toEqual([
+      { field: "state", order: "asc" },
+      { field: "cf.cost", order: "asc" },
+    ]);
   });
 
   it("refuses to store filter text that does not parse", () => {

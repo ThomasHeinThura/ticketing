@@ -9,8 +9,9 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * aligned"): this is inherited machinery kept for the native automations feature, not deleted
  * kaneo scaffolding. All three routes are capability-kind (kind 1); none is
  * `self`/`portal`/`public`/`delegated`, and none is `elevated` — no Projects-group capability
- * declared below is in `AUTHORITY_GRANTING`. No `sessionOnly`, same reasoning as every other
- * file in this batch: kaneo never restricted `/api/workflow-rule/*` to a browser session.
+ * declared below is in `AUTHORITY_GRANTING`. `sessionOnly` on DELETE only (P0 deletion audit): the
+ * delete is immediate and a workflow rule has no pending-action target, so API and MCP keys are
+ * refused (`requireSessionOnly`); GET and PUT stay open to keys as kaneo had them.
  *
  * **Legacy resource key: `"project"`, same as `column/policy.ts`, not a `"workflowRule"`
  * resource of its own.** Both mutation routes run `requireWorkspacePermission({ project:
@@ -64,6 +65,7 @@ export const workflowRulePolicies = {
   // project, then `requireWorkspacePermission({ project: ["update"] })` runs.
   "DELETE /api/workflow-rule/{id}": {
     capability: "project:update",
+    sessionOnly: true,
     scope: "project",
     scopeSource: "row",
     reach: "required",

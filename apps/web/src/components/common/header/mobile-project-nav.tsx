@@ -3,8 +3,11 @@ import {
   CalendarDays,
   CalendarRange,
   Check,
+  FileText,
+  Layers,
   Menu,
   Plus,
+  Repeat,
   SquareKanban,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -15,13 +18,27 @@ import { cn } from "@/lib/cn";
 type MobileProjectNavProps = {
   workspaceId: string;
   projectId: string;
-  activeView: "backlog" | "board" | "calendar" | "gantt";
+  activeView:
+    | "backlog"
+    | "board"
+    | "calendar"
+    | "gantt"
+    | "cycles"
+    | "modules"
+    | "pages";
   onSelectBoard: () => void;
   onSelectBacklog: () => void;
-  onSelectCalendar: () => void;
-  onSelectGantt: () => void;
+  /** Offered only while `feature.calendar` / `feature.timeline` is on. */
+  onSelectCalendar?: () => void;
+  onSelectGantt?: () => void;
+  /** Present only when `feature.cycles` resolves on for the project. */
+  onSelectCycles?: () => void;
+  /** Present only when `feature.modules` resolves on for the project. */
+  onSelectModules?: () => void;
+  /** Project pages are staff-only and always offered to the agent surface. */
+  onSelectPages?: () => void;
   onSelectProject: (projectId: string) => void;
-  onAddProject: () => void;
+  onAddProject?: () => void;
 };
 
 export default function MobileProjectNav({
@@ -32,6 +49,9 @@ export default function MobileProjectNav({
   onSelectBacklog,
   onSelectCalendar,
   onSelectGantt,
+  onSelectCycles,
+  onSelectModules,
+  onSelectPages,
   onSelectProject,
   onAddProject,
 }: MobileProjectNavProps) {
@@ -86,34 +106,86 @@ export default function MobileProjectNav({
                 <SquareKanban className="size-3.5" />
                 Board
               </Button>
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={onSelectCalendar}
-                className={cn(
-                  "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-                  activeView === "calendar"
-                    ? "border-border bg-secondary text-foreground"
-                    : "border-transparent text-muted-foreground hover:bg-accent",
-                )}
-              >
-                <CalendarRange className="size-3.5" />
-                {t("tasks:calendar.title")}
-              </Button>
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={onSelectGantt}
-                className={cn(
-                  "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-                  activeView === "gantt"
-                    ? "border-border bg-secondary text-foreground"
-                    : "border-transparent text-muted-foreground hover:bg-accent",
-                )}
-              >
-                <CalendarDays className="size-3.5" />
-                Gantt
-              </Button>
+              {onSelectCalendar ? (
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={onSelectCalendar}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                    activeView === "calendar"
+                      ? "border-border bg-secondary text-foreground"
+                      : "border-transparent text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  <CalendarRange className="size-3.5" />
+                  {t("navigation:projectViews.calendar")}
+                </Button>
+              ) : null}
+              {onSelectGantt ? (
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={onSelectGantt}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                    activeView === "gantt"
+                      ? "border-border bg-secondary text-foreground"
+                      : "border-transparent text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  <CalendarDays className="size-3.5" />
+                  Gantt
+                </Button>
+              ) : null}
+              {onSelectCycles ? (
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={onSelectCycles}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                    activeView === "cycles"
+                      ? "border-border bg-secondary text-foreground"
+                      : "border-transparent text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  <Repeat className="size-3.5" />
+                  {t("navigation:projectViews.cycles")}
+                </Button>
+              ) : null}
+              {onSelectModules ? (
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={onSelectModules}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                    activeView === "modules"
+                      ? "border-border bg-secondary text-foreground"
+                      : "border-transparent text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  <Layers className="size-3.5" />
+                  {t("navigation:projectViews.modules")}
+                </Button>
+              ) : null}
+              {onSelectPages ? (
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={onSelectPages}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                    activeView === "pages"
+                      ? "border-border bg-secondary text-foreground"
+                      : "border-transparent text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  <FileText className="size-3.5" />
+                  {t("navigation:projectViews.pages")}
+                </Button>
+              ) : null}
             </div>
           </div>
 
@@ -149,15 +221,17 @@ export default function MobileProjectNav({
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={onAddProject}
-            className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
-          >
-            <Plus className="size-3.5" />
-            Add project
-          </Button>
+          {onAddProject ? (
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={onAddProject}
+              className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+            >
+              <Plus className="size-3.5" />
+              Add project
+            </Button>
+          ) : null}
         </div>
       </PopoverContent>
     </Popover>

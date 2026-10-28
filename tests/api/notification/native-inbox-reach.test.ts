@@ -94,8 +94,10 @@ function resource(
     projectId: ids.project,
     organisationId: ids.servingOrganisation,
     visibleToPersonIds: null,
+    customerRequestOwnerPersonIds: [ids.requester],
     customerVisible: true,
     staffUrl: null,
+    portalUrl: null,
     ...overrides,
   };
 }
@@ -132,7 +134,7 @@ describe("native inbox current reach", () => {
     ).toBe(false);
   });
 
-  it("keeps private requester/participant audience and public-comment checks", () => {
+  it("keeps private requester visibility but still limits customers to their own requests", () => {
     const privateResource = resource({
       visibleToPersonIds: [ids.requester, ids.participant],
     });
@@ -149,7 +151,7 @@ describe("native inbox current reach", () => {
         candidate(ids.participant),
         privateResource,
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       canReadNativeInboxCandidate(
         customer(ids.nonparticipant),
@@ -290,6 +292,70 @@ describe("native inbox current reach", () => {
           kind: "work_item.assigned",
         }),
         resource({ organisationId: null }),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("native inbox inherited authority (PR-2/PR-3, P1-1)", () => {
+  const parent = "project-parent";
+  const workspaceMember = {
+    roleKey: "member",
+    scope: "workspace",
+    scopeId: ids.workspace,
+    rank: 40,
+    capabilities: ["work_item:read", "work_item:update"],
+  } as const;
+
+  /** A caller whose only project row is on the PARENT, narrowed to no work-item read. */
+  function parentOnly(capabilities: readonly string[]): ResolvedIdentity {
+    return {
+      ...staff(),
+      memberships: [{ scope: "project", scopeId: parent, seesAll: false }],
+      authority: [
+        workspaceMember,
+        {
+          roleKey: "parent-narrow",
+          scope: "project",
+          scopeId: parent,
+          rank: 1,
+          capabilities: [...capabilities],
+        },
+      ],
+    };
+  }
+
+  it("a parent grant without work_item:read hides the child's notification despite a workspace read role", () => {
+    const identity = parentOnly(["project:read"]);
+    expect(
+      canReadNativeInboxCandidate(
+        identity,
+        candidate(identity.personId),
+        resource(),
+        [parent],
+      ),
+    ).toBe(false);
+  });
+
+  it("a parent grant with work_item:read reaches and reads the child's notification", () => {
+    const identity = parentOnly(["work_item:read"]);
+    expect(
+      canReadNativeInboxCandidate(
+        identity,
+        candidate(identity.personId),
+        resource(),
+        [parent],
+      ),
+    ).toBe(true);
+  });
+
+  it("without the ancestor list no reach is inherited (callers must supply it)", () => {
+    const identity = parentOnly(["work_item:read"]);
+    expect(
+      canReadNativeInboxCandidate(
+        identity,
+        candidate(identity.personId),
+        resource(),
       ),
     ).toBe(false);
   });

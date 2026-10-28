@@ -1,0 +1,185 @@
+{
+	"artifact": "codex-20261025-performance-10k-mixed-search",
+	"target": {
+		"agent": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871
+	},
+	"fixture": {
+		"projectSlug": "PERF",
+		"titlePrefix": "TaskDeskPerf10k-20261025",
+		"expectedRows": 10000
+	},
+	"journey": "Existing sidebar Search button opens the Kaneo Search dialog directly.",
+	"queryCounts": {
+		"exactKeys": 4,
+		"titlePrefixes": 4,
+		"cjkPrefixes": 4
+	},
+	"cacheConditions": {
+		"firstSample": "first query in fresh browser context; server/database cache unknown",
+		"subsequentSamples": "new query key in same browser context; server/database cache may be warm",
+		"serverDatabaseCache": "Unknown; this run did not reset or control server/database cache."
+	},
+	"metric": "Input-to-visible-result latency, measured from filling the Search dialog input.",
+	"requirementMs": 100,
+	"p95": {
+		"endpointCompleteMs": 137.842,
+		"inputToVisibleResultMs": 150,
+		"requirementMs": 100,
+		"visibleSamples": 11,
+		"totalSamples": 12
+	},
+	"rawSamples": [
+		{
+			"index": 1,
+			"kind": "exact-key",
+			"query": "PERF-1",
+			"cacheState": "first query in fresh browser context; server/database cache unknown",
+			"status": 200,
+			"endpointTtfbMs": 57.355000000000004,
+			"endpointCompleteMs": 58.006,
+			"inputToResponseMs": 68.40000003576279,
+			"inputToVisibleResultMs": 73.80000001192093,
+			"visible": true
+		},
+		{
+			"index": 2,
+			"kind": "exact-key",
+			"query": "PERF-2",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": 200,
+			"endpointTtfbMs": 46.433,
+			"endpointCompleteMs": 46.945,
+			"inputToResponseMs": 52.5,
+			"inputToVisibleResultMs": 55.299999952316284,
+			"visible": true
+		},
+		{
+			"index": 3,
+			"kind": "exact-key",
+			"query": "PERF-3",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": 200,
+			"endpointTtfbMs": 47.071,
+			"endpointCompleteMs": 47.544,
+			"inputToResponseMs": 55.69999998807907,
+			"inputToVisibleResultMs": 60.69999998807907,
+			"visible": true
+		},
+		{
+			"index": 4,
+			"kind": "exact-key",
+			"query": "PERF-4",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": 200,
+			"endpointTtfbMs": 33.464999999999996,
+			"endpointCompleteMs": 34.039,
+			"inputToResponseMs": 41.200000047683716,
+			"inputToVisibleResultMs": 46.200000047683716,
+			"visible": true
+		},
+		{
+			"index": 5,
+			"kind": "title-prefix",
+			"query": "TaskDeskPerf10k-20261025 #00001",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": 200,
+			"endpointTtfbMs": 126.318,
+			"endpointCompleteMs": 126.857,
+			"inputToResponseMs": 132.80000001192093,
+			"inputToVisibleResultMs": 137.30000001192093,
+			"visible": true
+		},
+		{
+			"index": 6,
+			"kind": "title-prefix",
+			"query": "TaskDeskPerf10k-20261025 #00002",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": 200,
+			"endpointTtfbMs": 136.805,
+			"endpointCompleteMs": 137.842,
+			"inputToResponseMs": 146,
+			"inputToVisibleResultMs": 150,
+			"visible": true
+		},
+		{
+			"index": 7,
+			"kind": "title-prefix",
+			"query": "TaskDeskPerf10k-20261025 #00003",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": 200,
+			"endpointTtfbMs": 131.91400000000002,
+			"endpointCompleteMs": 132.524,
+			"inputToResponseMs": 141.30000001192093,
+			"inputToVisibleResultMs": 144.19999998807907,
+			"visible": true
+		},
+		{
+			"index": 8,
+			"kind": "title-prefix",
+			"query": "TaskDeskPerf10k-20261025 #00004",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": 200,
+			"endpointTtfbMs": 133.68,
+			"endpointCompleteMs": 134.805,
+			"inputToResponseMs": 143.29999995231628,
+			"inputToVisibleResultMs": 145.89999997615814,
+			"visible": true
+		},
+		{
+			"index": 9,
+			"kind": "cjk-prefix",
+			"query": "性能",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": null,
+			"endpointTtfbMs": null,
+			"endpointCompleteMs": null,
+			"inputToResponseMs": null,
+			"inputToVisibleResultMs": null,
+			"visible": false
+		},
+		{
+			"index": 10,
+			"kind": "cjk-prefix",
+			"query": "性能測",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": 200,
+			"endpointTtfbMs": 93.106,
+			"endpointCompleteMs": 93.619,
+			"inputToResponseMs": 100.30000001192093,
+			"inputToVisibleResultMs": 104.89999997615814,
+			"visible": true
+		},
+		{
+			"index": 11,
+			"kind": "cjk-prefix",
+			"query": "性能測試",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": 200,
+			"endpointTtfbMs": 59.606,
+			"endpointCompleteMs": 61.177,
+			"inputToResponseMs": 64.89999997615814,
+			"inputToVisibleResultMs": 71.30000001192093,
+			"visible": true
+		},
+		{
+			"index": 12,
+			"kind": "cjk-prefix",
+			"query": "性能測試項目",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"status": 200,
+			"endpointTtfbMs": 61.372,
+			"endpointCompleteMs": 61.906,
+			"inputToResponseMs": 68.19999998807907,
+			"inputToVisibleResultMs": 72.5,
+			"visible": true
+		}
+	],
+	"missingSample": {
+		"query": "性能",
+		"kind": "cjk-prefix",
+		"outcome": "No matching API response within the 15 second sample timeout; retained as unavailable, not dropped."
+	},
+	"browserErrors": []
+}

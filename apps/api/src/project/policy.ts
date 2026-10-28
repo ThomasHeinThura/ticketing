@@ -9,7 +9,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `elevated` — `project:manage_members` is the only Projects-group capability in
  * `AUTHORITY_GRANTING` (`elevated.ts`), and no route below declares it.
  *
- * **No `sessionOnly`, deliberately, on any route in this file.** That restriction was added
+ * **No `sessionOnly`, deliberately, on any route in this file except `DELETE /api/project/{id}`**
+ * (P0 deletion audit; see that entry). That restriction was added
  * to the *native* `/api/workspace/*` routes (`workspace/policy.ts`) to preserve a specific
  * inherited restriction the better-auth `organization()` plugin had (`enableSessionForAPIKeys:
  * false`). Nothing analogous ever existed for the *inherited* `/api/project/*` router — kaneo
@@ -79,6 +80,124 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * existing, addressable resource at all; none of the eight routes below are that.
  */
 export const projectPolicies = {
+  // PR-1: set or clear the parent project. `project:manage_members` on the child is the
+  // registered gate (reach decided from the project row, 404 when out of reach); the same
+  // capability on the prospective parent is checked in the handler. The parent is a
+  // reach-affecting field (permissions.md "Reach"), and `project:manage_members` is in
+  // `AUTHORITY_GRANTING`, but permissions.md's single elevated-action table carries no row for
+  // it, so declaring `elevated: true` would claim a requirement the contract does not make
+  // (the same reasoning `workspace/policy.ts` records for member routes). Declared
+  // `elevated: false` with that reason. The step-up mechanism exists, so electing to elevate
+  // re-parenting later is a contract decision plus a PA-15 operation, not a missing verifier.
+  "PATCH /api/projects/{projectId}/ownership": {
+    capability: "project:manage_members",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    elevated: false,
+    elevationExemptionReason:
+      "re-parenting is audited as project.reach_changed and needs project:manage_members on both projects; permissions.md's elevated-action table carries no row for it",
+  },
+
+  // PR-2..PR-4: the project roster. Reads need project:read; every write needs
+  // project:manage_members (an authority-granting capability, but permissions.md's elevated
+  // table has no row for roster writes, so each is declared `elevated: false` with that
+  // reason, like the ownership route). Writes are bounded in the handler by the caller's own role rank.
+  "GET /api/projects/{projectId}/members": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/projects/{projectId}/members/candidates": {
+    capability: "project:manage_members",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    elevated: false,
+    elevationExemptionReason:
+      "read-only list of workspace people eligible to be added; writes nothing and grants nothing",
+  },
+  "POST /api/projects/{projectId}/members": {
+    capability: "project:manage_members",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    elevated: false,
+    elevationExemptionReason:
+      "roster writes are audited as membership.changed and capped at the caller's own role rank in the handler; permissions.md's elevated-action table carries no row for them",
+  },
+  "PATCH /api/projects/{projectId}/members/{personId}": {
+    capability: "project:manage_members",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    elevated: false,
+    elevationExemptionReason:
+      "roster writes are audited as membership.changed and capped at the caller's own role rank in the handler; permissions.md's elevated-action table carries no row for them",
+  },
+  "DELETE /api/projects/{projectId}/members/{personId}": {
+    capability: "project:manage_members",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    elevated: false,
+    elevationExemptionReason:
+      "roster removal revokes a direct grant only, is audited as membership.changed and capped at the caller's own role rank; permissions.md's elevated-action table carries no row for it",
+  },
+  // Re-parent access preview: same gate as the ownership write (the handler also requires
+  // project:manage_members on the prospective parent), but it writes nothing.
+  "GET /api/projects/{projectId}/ownership/preview": {
+    capability: "project:manage_members",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    elevated: false,
+    elevationExemptionReason:
+      "read-only preview of who gains or loses access; writes nothing",
+  },
+
+  // PR-17: project states management (Project settings -> States). `project:manage_settings`
+  // is the registered gate ("Project states, features, labels, ..." in permissions.md); reach
+  // is resolved from the project row. Creating is additionally guarded by WF-2 (the template
+  // must have an outbound transition).
+  "GET /api/projects/{projectId}/state-templates": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "POST /api/projects/{projectId}/states": {
+    capability: "project:manage_settings",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PATCH /api/projects/{projectId}/states/{stateId}": {
+    capability: "project:manage_settings",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/projects/{projectId}/settings/inheritance": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PATCH /api/projects/{projectId}/settings/inheritance": {
+    capability: "project:manage_settings",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PATCH /api/projects/{projectId}/state-set": {
+    capability: "project:manage_settings",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+
   // VW-8: read the project's active concrete states, including empty board columns.
   // Reach is resolved from the named project row before project:read is enforced.
   "GET /api/projects/{projectId}/states": {
@@ -156,12 +275,20 @@ export const projectPolicies = {
   },
 
   // Soft-delete a project. Same middleware shape as update, with `project: ["delete"]` --
-  // an exact match for `project:delete`.
+  // an exact match for `project:delete`. P0 deletion audit: this route no longer deletes; it
+  // records a durable pending action (202) that its requester approves in a current browser
+  // session with the typed exact project name plus step-up (permissions.md "Deleting a ...
+  // project — typed exact name/key + step-up, through a pending action"). `sessionOnly` is the
+  // one deliberate exception to the file comment's no-sessionOnly rule below: an API key can no
+  // longer request (or approve) a project deletion. Elevation is the approval-time step-up, not
+  // a request-time `elevated: true` (permissions.md's elevated table names the target route
+  // `DELETE /api/projects/{projectId}`, not this legacy key).
   "DELETE /api/project/{id}": {
     capability: "project:delete",
     scope: "project",
     scopeSource: "row",
     reach: "required",
+    sessionOnly: true,
   },
 
   // Archive a project. `requireWorkspacePermission({ project: ["update"] })` runs -- the
@@ -179,6 +306,15 @@ export const projectPolicies = {
   // both routes map to the one narrower target capability the runtime does not distinctly
   // enforce.
   "PUT /api/project/{id}/unarchive": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // Restore a soft-deleted project within PR-16's retained recovery window.
+  // This reuses the same project:update authority as archive/unarchive.
+  "PUT /api/project/{id}/restore": {
     capability: "project:update",
     scope: "project",
     scopeSource: "row",

@@ -10,6 +10,7 @@ import {
   test,
 } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -234,7 +235,7 @@ async function setupWorkItem(
       data: {
         name: "Comments E2E project",
         icon: "Folder",
-        slug: `comments-e2e-${randomUUID().slice(0, 12)}`,
+        slug: uniqueProjectKey(8),
         workspaceId: workspace?.id,
       },
     },
@@ -527,19 +528,31 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       await dialog.getByRole("button", { name: "Save", exact: true }).click();
       expect((await renamed).status()).toBe(200);
       await expect(dialog).not.toBeVisible();
-      await page.getByRole("button", { name: "Delete", exact: true }).click();
+      // The row button requests the deletion (202, a pending action) and opens its
+      // in-place approval; only approving it deletes the label.
       const deleted = page.waitForResponse(
         (answer) =>
           new URL(answer.url()).pathname.startsWith(
             `/api/label/project/${item.projectId}/catalogue/`,
           ) && answer.request().method() === "DELETE",
       );
-      await page
-        .getByRole("alertdialog")
+      await page.getByRole("button", { name: "Delete", exact: true }).click();
+      expect((await deleted).status()).toBe(202);
+      const approval = page
+        .getByRole("dialog")
+        .filter({ hasText: "Delete project label" });
+      await expect(approval).toBeVisible();
+      const approved = page.waitForResponse(
+        (answer) =>
+          /\/api\/me\/pending-actions\/[^/]+\/approve$/.test(
+            new URL(answer.url()).pathname,
+          ) && answer.request().method() === "POST",
+      );
+      await approval
         .getByRole("button", { name: "Delete", exact: true })
         .click();
-      expect((await deleted).status()).toBe(200);
-      await expect(page.getByRole("alertdialog")).not.toBeVisible();
+      expect((await approved).status()).toBe(200);
+      await expect(approval).not.toBeVisible();
       await page.goto(itemUrl);
       await expect(trigger).toContainText("SIT label");
       await expect(trigger).not.toContainText("project label");
@@ -551,6 +564,97 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         }),
       ).toHaveCount(0);
       await page.keyboard.press("Escape");
+    });
+
+    await test.step("page a persisted hierarchy through the canonical Kaneo surface", async () => {
+      const client = new Client({ connectionString: databaseUrl });
+      await client.connect();
+      let childKeys: string[];
+      try {
+        // Disposable database fixture only: clone authoritative project/type/state
+        // from the actual API-created parent, with 51 real direct children.
+        const children = await client.query<{ key: string }>(
+          `INSERT INTO work_item
+             (id, workspace_id, project_id, type_id, number, key, title,
+              parent_id, state_id, position)
+           SELECT $1 || '-' || n, parent.workspace_id, parent.project_id,
+                  parent.type_id, 1000 + n, project.slug || '-' || (1000 + n),
+                  'Persisted hierarchy child ' || n, parent.id, parent.state_id, n
+             FROM work_item AS parent
+             JOIN project ON project.id = parent.project_id
+             CROSS JOIN generate_series(1, 51) AS n
+            WHERE parent.id = $2
+           RETURNING key`,
+          [`hierarchy-${randomUUID()}`, item.id],
+        );
+        expect(children.rowCount).toBe(51);
+        childKeys = children.rows.map((row) => row.key);
+      } finally {
+        await client.end();
+      }
+      await page.goto(itemUrl);
+      const hierarchy = page.getByTestId("work-item-hierarchy");
+      await expect(hierarchy.getByText("0/51", { exact: true })).toBeVisible();
+      // The section opens as Kaneo's sub-task list; the parent-and-children tree is its
+      // URL-addressed "Hierarchy" mode, which survives the reload below.
+      const treeMode = hierarchy.getByRole("button", {
+        name: "Hierarchy",
+        exact: true,
+      });
+      await treeMode.click();
+      await expect(treeMode).toHaveAttribute("aria-pressed", "true");
+      await expect(hierarchy.getByRole("link")).toHaveCount(51);
+      const more = hierarchy.getByRole("button", {
+        name: `Load more children of ${item.key}`,
+        exact: true,
+      });
+      const nextPage = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          url.pathname === `/api/work-items/${item.key}/children` &&
+          url.searchParams.has("cursor")
+        );
+      });
+      await more.click();
+      const response = await nextPage;
+      expect(response.status()).toBe(200);
+      const payload = await response.json();
+      expect(payload.data).toHaveLength(1);
+      expect(payload.meta.total).toBe(51);
+      await expect(hierarchy.getByRole("link")).toHaveCount(52, {
+        timeout: 15000,
+      });
+      await expect(more).toHaveCount(0);
+      await page.reload();
+      await expect(hierarchy.getByRole("link")).toHaveCount(52, {
+        timeout: 15000,
+      });
+      await hierarchy
+        .getByRole("link", {
+          name: `${childKeys[0]} · Persisted hierarchy child 1`,
+          exact: true,
+        })
+        .click();
+      await expect(page).toHaveURL(
+        new RegExp(`/agent/work-items/${childKeys[0]}$`),
+      );
+      // Tree mode is addressed per item, so the child opens in its sub-task list again.
+      await treeMode.click();
+      await expect(treeMode).toHaveAttribute("aria-pressed", "true");
+      await expect(hierarchy.locator('[aria-current="page"]')).toContainText(
+        childKeys[0] ?? "",
+      );
+      await expect(
+        hierarchy.getByRole("link", {
+          name: `${item.key} · Inline edited work item`,
+          exact: true,
+        }),
+      ).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath("kaneo-hierarchy-real-api.png"),
+        fullPage: true,
+      });
+      await page.goto(itemUrl);
     });
 
     const mentionRecipient = await seedReachableMentionRecipient(
@@ -578,8 +682,13 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
 
     const activity = page.getByTestId("work-item-activity");
     await expect(activity).toBeVisible();
-    const visibility = page.locator("#comment-visibility");
-    await expect(visibility).toContainText("Internal");
+    // Comment visibility is a Kaneo toggle group; the pressed button is the current choice.
+    const visibility = page.getByRole("group", {
+      name: "Who can see this comment?",
+    });
+    await expect(
+      visibility.getByRole("button", { name: "Internal", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
     const composer = commentEditor(activity);
     await expect(composer).toBeVisible();
 
@@ -592,9 +701,11 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
           recoveryPage.getByTestId("work-item-activity");
         const recoveredEditor = commentEditor(recoveredActivity);
         await expect(recoveredEditor).toHaveText("Recovered internal draft");
-        await expect(recoveryPage.locator("#comment-visibility")).toContainText(
-          "Internal",
-        );
+        await expect(
+          recoveryPage
+            .getByRole("group", { name: "Who can see this comment?" })
+            .getByRole("button", { name: "Internal", exact: true }),
+        ).toHaveAttribute("aria-pressed", "true");
         await recoveryPage.screenshot({
           path: testInfo.outputPath("comments-draft-recovery.png"),
           fullPage: true,
@@ -631,9 +742,12 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       "Recovered internal draft",
     );
     await expect(
-      activity.locator('li[data-visibility="internal"]').filter({
-        hasText: "Recovered internal draft",
-      }),
+      activity
+        .getByRole("listitem")
+        .locator('[data-visibility="internal"]')
+        .filter({
+          hasText: "Recovered internal draft",
+        }),
     ).toBeVisible();
 
     await test.step("reject an oversized JSON comment with the API contract", async () => {
@@ -655,9 +769,12 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       expect(await response.text()).toContain("body must not exceed");
     });
 
-    await visibility.click();
-    await page.getByRole("option", { name: "Public", exact: true }).click();
-    await expect(visibility).toContainText("Public");
+    await visibility
+      .getByRole("button", { name: "Public", exact: true })
+      .click();
+    await expect(
+      visibility.getByRole("button", { name: "Public", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
     const mentionCandidatesResponse = await page.request.get(
       new URL(
         `/api/work-items/${encodeURIComponent(item.key)}/comments/mention-candidates?visibility=public`,
@@ -789,7 +906,10 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       await historyDb.end();
     }
 
-    const commentRow = activity.locator("ol > li").last();
+    // The activity timeline is a Kaneo list; each comment card carries its comment id.
+    const commentRow = activity
+      .getByRole("listitem")
+      .filter({ has: page.locator(`#comment-${publicComment.id}`) });
     await expect(commentRow).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("comments-public-and-internal.png"),
@@ -882,17 +1002,18 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
     });
 
     await test.step("filter state is URL-backed and survives reload", async () => {
-      await page.getByRole("combobox", { name: "Filter activity" }).click();
+      await page.getByRole("button", { name: "Filter activity" }).click();
       await page
-        .getByRole("option", { name: "Public only", exact: true })
+        .getByRole("dialog")
+        .getByRole("button", { name: "Public only", exact: true })
         .click();
       await expect(page).toHaveURL(/activity=public/);
       await expect(
-        activity.locator('li[data-visibility="internal"]'),
+        activity.getByRole("listitem").locator('[data-visibility="internal"]'),
       ).toHaveCount(0);
       await page.reload();
       await expect(
-        page.getByRole("combobox", { name: "Filter activity" }),
+        page.getByRole("button", { name: "Filter activity" }),
       ).toContainText("Public only");
       await expect(commentRow).toBeVisible();
     });
@@ -1055,18 +1176,23 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
           },
         );
         expect(changedDueDate.status(), await changedDueDate.text()).toBe(200);
-        const responseSelect = page.getByRole("combobox", {
-          name: "Canned response",
+        // Kaneo's picker popover: a trigger button opening a list of option buttons.
+        const responseSelect = page.getByRole("button", {
+          name: "Canned responses",
+          exact: true,
         });
         await expect(responseSelect).toBeVisible();
         await responseSelect.click();
         await page
-          .getByRole("option", { name: responseName, exact: true })
+          .getByRole("dialog")
+          .getByRole("button", { name: responseName, exact: true })
           .click();
         await expect(composer).toContainText(originalText);
-        await expect(page.locator("#comment-visibility")).toContainText(
-          "Internal",
-        );
+        await expect(
+          page
+            .getByRole("group", { name: "Who can see this comment?" })
+            .getByRole("button", { name: "Internal", exact: true }),
+        ).toHaveAttribute("aria-pressed", "true");
 
         await composer.fill(editedText);
         await expect(composer).toContainText(editedText);

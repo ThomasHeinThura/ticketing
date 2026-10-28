@@ -32,6 +32,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { createImpersonatingAdmin } from "./helpers/impersonator";
 import {
   createCredentialBoundPendingAction,
   expectCredentialInvalidationPersisted,
@@ -78,6 +79,17 @@ function gate<T>() {
   });
   return { promise, resolve };
 }
+
+vi.mock(
+  "../../apps/api/src/notification-provider/runtime",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("../../apps/api/src/notification-provider/runtime")
+      >();
+    return { ...actual, isRuntimeSmtpConfigured: vi.fn(async () => true) };
+  },
+);
 
 vi.mock("@taskdesk/email", () => ({
   isSmtpConfigured: () => true,
@@ -704,7 +716,9 @@ describe("instance local-factor policy API", () => {
     expect(factorPolicy.status).toBe(403);
     expect(patchFactorPolicy.status).toBe(403);
 
-    mockAuthenticatedSession(admin, { impersonatedBy: "acting-admin" });
+    mockAuthenticatedSession(admin, {
+      impersonatedBy: await createImpersonatingAdmin(),
+    });
     const impersonatedSettings = await app.request(
       "/api/instance/observability",
     );

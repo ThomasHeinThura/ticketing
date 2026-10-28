@@ -1,0 +1,61 @@
+{
+	"method": "Real separate-host sessions and direct HTTP reads through browser context; no cookie values recorded",
+	"results": [
+		{
+			"role": "admin",
+			"crossHostPath": "/sign-in",
+			"crossHostBody": "Sign In\nTaskDesk\nEmail\nSign In",
+			"crossHostApi": 404,
+			"cookieScopes": [
+				{
+					"domain": "ticketing.localhost",
+					"secure": true,
+					"httpOnly": true,
+					"sameSite": "Lax"
+				},
+				{
+					"domain": "ticketing.localhost",
+					"secure": true,
+					"httpOnly": false,
+					"sameSite": "Lax"
+				}
+			]
+		},
+		{
+			"role": "customer",
+			"crossHostPath": "/auth/sign-in",
+			"crossHostBody": "Welcome back\nEnter your credentials to access your workspace\nEmail\nPassword\nSign In\nDon't have an account? Create account",
+			"crossHostApi": 401,
+			"staffApiOnPortal": 404,
+			"cookieScopes": [
+				{
+					"domain": "portal.localhost",
+					"secure": true,
+					"httpOnly": true,
+					"sameSite": "Lax"
+				}
+			]
+		},
+		{
+			"role": "viewer",
+			"path": "/agent/god-mode",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nGod Mode\nAccess denied\n\nYou do not have instance administrator access, or this session cannot make the change.",
+			"adminApi": 403,
+			"screenshot": "docs/report/screens/codex-20261025-viewer-admin-denial.png",
+			"cookieScopes": [
+				{
+					"domain": "ticketing.localhost",
+					"secure": true,
+					"httpOnly": true,
+					"sameSite": "Lax"
+				},
+				{
+					"domain": "ticketing.localhost",
+					"secure": true,
+					"httpOnly": false,
+					"sameSite": "Lax"
+				}
+			]
+		}
+	]
+}

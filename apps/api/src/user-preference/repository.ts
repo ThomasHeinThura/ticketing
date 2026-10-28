@@ -9,7 +9,7 @@ import {
   userPreferenceTable,
   workspaceTable,
 } from "../database/schema";
-import { SETTINGS_WRITE_LOCK_NAMESPACE } from "./whitelist";
+import { PROJECT_ROW_KEYS, SETTINGS_WRITE_LOCK_NAMESPACE } from "./whitelist";
 
 export type SettingRowTarget = {
   readonly scope: string;
@@ -27,7 +27,7 @@ const ownRowsFilter = (personId: string) =>
       ),
       and(
         eq(userPreferenceTable.scope, "project"),
-        eq(userPreferenceTable.key, "layout"),
+        inArray(userPreferenceTable.key, [...PROJECT_ROW_KEYS]),
       ),
     ),
   );
@@ -114,6 +114,7 @@ export async function listOwnSettingAddresses(
     .select({
       scope: userPreferenceTable.scope,
       scopeId: userPreferenceTable.scopeId,
+      key: userPreferenceTable.key,
     })
     .from(userPreferenceTable)
     .where(ownRowsFilter(personId));

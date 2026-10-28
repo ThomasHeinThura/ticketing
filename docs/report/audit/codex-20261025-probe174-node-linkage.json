@@ -1,0 +1,19 @@
+{
+	"imageId": "sha256:f6c6d83d8aac0515b25058dfa01d2dec384dc8c26eb79fea3d5b43f3122858fe",
+	"scope": "Direct Node process linkage only; no application or customer data loaded. Not a final-tree scan.",
+	"node": "v24.22.1",
+	"uid": 10001,
+	"loadedLibraries": [
+		"/usr/lib/aarch64-linux-gnu/libc.so.6",
+		"/usr/lib/aarch64-linux-gnu/libpthread.so.0",
+		"/usr/lib/aarch64-linux-gnu/libgcc_s.so.1",
+		"/usr/lib/aarch64-linux-gnu/libm.so.6",
+		"/usr/lib/aarch64-linux-gnu/libstdc++.so.6.0.33",
+		"/usr/lib/aarch64-linux-gnu/libdl.so.2",
+		"/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1"
+	],
+	"ldd": "\tlinux-vdso.so.1 (0x0000ffff81dec000)\n\tlibdl.so.2 => /lib/aarch64-linux-gnu/libdl.so.2 (0x0000ffff81d80000)\n\tlibstdc++.so.6 => /lib/aarch64-linux-gnu/libstdc++.so.6 (0x0000ffff81b10000)\n\tlibm.so.6 => /lib/aarch64-linux-gnu/libm.so.6 (0x0000ffff81a60000)\n\tlibgcc_s.so.1 => /lib/aarch64-linux-gnu/libgcc_s.so.1 (0x0000ffff81a20000)\n\tlibpthread.so.0 => /lib/aarch64-linux-gnu/libpthread.so.0 (0x0000ffff819f0000)\n\tlibc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x0000ffff81830000)\n\t/lib/ld-linux-aarch64.so.1 (0x0000ffff81db0000)\n",
+	"homed": false,
+	"infocmp": true,
+	"nsenter": true
+}

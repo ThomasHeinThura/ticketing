@@ -1,7 +1,7 @@
 import { Navigate } from "@tanstack/react-router";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import type { LabelCatalogueSearch } from "@/lib/routes";
+import type { AgentGlobalSearch, LabelCatalogueSearch } from "@/lib/routes";
 
 /**
  * `/agent/*` URLs whose screen already exists in kaneo send the user to that kaneo page
@@ -21,7 +21,11 @@ export function WorkspaceMembersRedirect() {
   );
 }
 
-export function WorkspaceSearchRedirect() {
+export function WorkspaceSearchRedirect({
+  search,
+}: {
+  search?: AgentGlobalSearch;
+}) {
   const { data: workspace, isLoading } = useActiveWorkspace();
   if (!workspace)
     return isLoading ? null : <Navigate to="/dashboard" replace />;
@@ -29,6 +33,7 @@ export function WorkspaceSearchRedirect() {
     <Navigate
       to="/dashboard/workspace/$workspaceId/search"
       params={{ workspaceId: workspace.id }}
+      search={search ?? {}}
       replace
     />
   );
@@ -40,7 +45,15 @@ export function ProjectSettingsRedirect({
   search,
 }: {
   projectKey: string;
-  section: "general" | "workflow" | "labels";
+  section:
+    | "general"
+    | "workflow"
+    | "labels"
+    | "members"
+    | "features"
+    | "automations"
+    | "estimates"
+    | "budget";
   search?: LabelCatalogueSearch;
 }) {
   const { data: workspace, isLoading: isWorkspaceLoading } =
@@ -62,6 +75,46 @@ export function ProjectSettingsRedirect({
         to="/dashboard/settings/projects/$projectId/labels"
         params={{ projectId: project.id }}
         search={search ?? {}}
+        replace
+      />
+    );
+  if (section === "members")
+    return (
+      <Navigate
+        to="/dashboard/settings/projects/$projectId/members"
+        params={{ projectId: project.id }}
+        replace
+      />
+    );
+  if (section === "automations")
+    return (
+      <Navigate
+        to="/dashboard/settings/projects/$projectId/automations"
+        params={{ projectId: project.id }}
+        replace
+      />
+    );
+  if (section === "estimates")
+    return (
+      <Navigate
+        to="/dashboard/settings/projects/$projectId/estimates"
+        params={{ projectId: project.id }}
+        replace
+      />
+    );
+  if (section === "budget")
+    return (
+      <Navigate
+        to="/dashboard/settings/projects/$projectId/budget"
+        params={{ projectId: project.id }}
+        replace
+      />
+    );
+  if (section === "features")
+    return (
+      <Navigate
+        to="/dashboard/settings/projects/$projectId/features"
+        params={{ projectId: project.id }}
         replace
       />
     );

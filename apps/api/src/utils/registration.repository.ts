@@ -14,7 +14,9 @@ export async function findPendingInvitation(params: {
   now: Date;
 }) {
   const { email, invitationId, now } = params;
+  // CP-21: a customer-scope invitation never opens agent-side registration.
   const conditions = [
+    eq(invitationTable.scope, "staff"),
     eq(invitationTable.status, "pending"),
     gt(invitationTable.expiresAt, now),
   ];
@@ -66,7 +68,12 @@ export async function findInvitationWithNames(invitationId: string) {
       eq(invitationTable.workspaceId, workspaceTable.id),
     )
     .innerJoin(userTable, eq(invitationTable.inviterId, userTable.id))
-    .where(eq(invitationTable.id, invitationId))
+    .where(
+      and(
+        eq(invitationTable.id, invitationId),
+        eq(invitationTable.scope, "staff"),
+      ),
+    )
     .limit(1);
   return result[0];
 }
@@ -95,6 +102,7 @@ export async function listPendingInvitationsForEmail(
     .innerJoin(userTable, eq(invitationTable.inviterId, userTable.id))
     .where(
       and(
+        eq(invitationTable.scope, "staff"),
         eq(invitationTable.email, userEmail.toLowerCase()),
         eq(invitationTable.status, "pending"),
         gt(invitationTable.expiresAt, now),

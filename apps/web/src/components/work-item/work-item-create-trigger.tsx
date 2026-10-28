@@ -2,6 +2,8 @@ import { Button } from "@taskdesk/ui";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
+import { WorkItemCreateTriggerPlaceholder } from "./work-item-toolbar-placeholders";
 
 export default function WorkItemCreateTrigger({
   workspaceId,
@@ -17,13 +19,16 @@ export default function WorkItemCreateTrigger({
   pending?: boolean;
   buttonRef?: Ref<HTMLButtonElement>;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission(
     workspaceId,
     projectId,
   );
   const canCreate = !isCheckingPermissions && canCreateTasks();
 
+  // While permission loads, hold the action's place (invisible, inert) so the toolbar does not
+  // grow, and possibly wrap onto a second row, under the loaded board or list (G13).
+  if (isCheckingPermissions) return <WorkItemCreateTriggerPlaceholder />;
   if (!canCreate) return null;
 
   return (
@@ -33,6 +38,7 @@ export default function WorkItemCreateTrigger({
       loading={pending}
       aria-busy={pending || undefined}
       onClick={onClick}
+      title={getDefaultAgentTerm(i18n, "work_item", 1)}
       data-testid="create-work-item-trigger"
     >
       {t("workItems:create.trigger")}

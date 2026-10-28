@@ -1,3 +1,6 @@
+import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
+import { staffQueueRowSchema } from "../intake/response";
 import {
   type ApiKey,
   apiRouter,
@@ -26,7 +29,10 @@ import listViews from "./controllers/list-views";
 import pinView from "./controllers/pin-view";
 import { countSavedView, runSavedView } from "./controllers/run-view";
 import updateView from "./controllers/update-view";
-import { listShareableViewTeamsForWorkspace } from "./repository";
+import {
+  findSavedViewById,
+  listShareableViewTeamsForWorkspace,
+} from "./repository";
 import { requireSavedViewEditAccess } from "./require-saved-view-edit-access";
 import { resolveCallerPersonId } from "./resolve-person-id";
 import {
@@ -46,6 +52,19 @@ const runViewQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   cursor: z.string().max(4096).optional(),
 });
+
+const submissionSavedViewResponseSchema = z.object({
+  submissions: z.array(staffQueueRowSchema),
+  page: z.object({
+    nextCursor: z.string().nullable(),
+    hasMore: z.boolean(),
+  }),
+  meta: z.object({ total: z.number() }),
+});
+const runSavedViewResponseSchema = z.union([
+  workItemListResponseSchema,
+  submissionSavedViewResponseSchema,
+]);
 
 function savedViewAuditActor(
   userId: string,
@@ -170,7 +189,7 @@ const updateViewRoute = createRoute({
     "A caller with workspace:manage_settings, or the owner with saved_view:create, may " +
     "edit a view. " +
     "Changing a view's team audience additionally requires saved_view:share and " +
-    "membership in the target team.",
+    "membership in the target team. Paired intake queue views must be edited through their queue.",
   middleware: [
     workspaceAccess.fromSavedView(),
     requireSavedViewEditAccess(),
@@ -188,6 +207,9 @@ const updateViewRoute = createRoute({
     403: errorResponse(
       "Missing workspace:manage_settings and not the owner with saved_view:create, " +
         "saved_view:share permission / membership in the target team",
+    ),
+    409: errorResponse(
+      "Paired intake queue views must be edited through their queue",
     ),
     404: errorResponse("Saved view not found"),
   },
@@ -218,7 +240,7 @@ const runViewRoute = createRoute({
   tags: ["Views"],
   summary: "Run a saved view for the current viewer",
   description:
-    "Executes the stored query with current work-item reach and field permissions.",
+    "Executes the stored query for its entity with current work-item reach or intake triage capability.",
   middleware: [
     workspaceAccess.fromSavedView(),
     requireWorkspaceCapability("saved_view:read"),
@@ -226,11 +248,11 @@ const runViewRoute = createRoute({
   request: { params: savedViewIdParam, query: runViewQuery },
   responses: {
     200: jsonResponse(
-      "A page of reachable matching work items",
-      workItemListResponseSchema,
+      "A page of reachable matching work items or submissions",
+      runSavedViewResponseSchema,
     ),
     404: errorResponse("Saved view not found or out of reach"),
-    422: errorResponse("Saved query contains unsupported filters"),
+    422: errorResponse("Saved query contains unsupported filters or scope"),
   },
 });
 
@@ -239,9 +261,9 @@ const countViewRoute = createRoute({
   operationId: "countSavedView",
   path: "/{id}/count",
   tags: ["Views"],
-  summary: "Count reachable work items matching a saved view",
+  summary: "Count reachable items matching a saved view",
   description:
-    "The count uses the current viewer's work-item reach. When Valkey is configured, an authorized count may be cached for up to 30 seconds.",
+    "The count uses current work-item reach or intake triage capability. When Valkey is configured, an authorized count may be cached for up to 30 seconds.",
   middleware: [
     workspaceAccess.fromSavedView(),
     requireWorkspaceCapability("saved_view:read"),
@@ -253,7 +275,7 @@ const countViewRoute = createRoute({
       z.object({ count: z.number().int().nonnegative() }),
     ),
     404: errorResponse("Saved view not found or out of reach"),
-    422: errorResponse("Saved query contains unsupported filters"),
+    422: errorResponse("Saved query contains unsupported filters or scope"),
   },
 });
 
@@ -368,7 +390,7 @@ const view = apiRouter()
       impersonatedBy?: string | null;
     } | null;
     const personId = await resolveCallerPersonId(userId);
-    const result: z.infer<typeof workItemListResponseSchema> =
+    const result: z.infer<typeof runSavedViewResponseSchema> =
       await runSavedView({
         id,
         personId,
@@ -398,6 +420,13 @@ const view = apiRouter()
   })
   .openapi(deleteViewRoute, async (c) => {
     const { id } = c.req.valid("param");
+    const existing = await findSavedViewById(id);
+    if (existing?.queuePairId) {
+      throw new HTTPException(409, {
+        message:
+          "This saved view belongs to an intake queue; edit the queue instead",
+      });
+    }
     const userId = c.get("userId") as string;
     const apiKey = c.get("apiKey") as ApiKey | undefined;
     const session = c.get("session") as { id?: string } | null;
@@ -421,7 +450,7 @@ const view = apiRouter()
       organisationId: null,
       actorId: userId,
       actorType: apiKey ? "api_key" : "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
     return c.json(

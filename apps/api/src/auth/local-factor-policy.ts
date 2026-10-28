@@ -51,6 +51,9 @@ export function isLocalFactorRequired(input: {
   personSide: "staff" | "customer";
   activeRoleIds: readonly string[];
 }): boolean {
+  // The policy governs staff only; customers sign in without a local factor (P3-R1-04,
+  // owner decision 27 Oct 2026).
+  if (input.personSide === "customer") return false;
   const { mode, requiredRoleId } = input.policy;
   switch (mode) {
     case "off":

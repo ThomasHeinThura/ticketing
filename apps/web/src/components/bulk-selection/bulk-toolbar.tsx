@@ -1,40 +1,5 @@
-import {
-  Button,
-  Calendar,
-  Command,
-  CommandCollection,
-  CommandDialog,
-  CommandDialogPopup,
-  CommandEmpty,
-  CommandGroup,
-  CommandGroupLabel,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandPanel,
-  CommandSeparator,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Toolbar,
-  ToolbarGroup,
-  ToolbarSeparator,
-} from "@taskdesk/ui";
-import {
-  Archive,
-  ArrowDownToLine,
-  CalendarIcon,
-  Menu,
-  Trash2,
-  X,
-} from "lucide-react";
-import {
-  Fragment,
-  type ReactNode,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { Archive } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useBulkOperations } from "@/hooks/mutations/task/use-bulk-operations";
@@ -51,20 +16,9 @@ import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
-import { useUserPreferencesStore } from "@/store/user-preferences";
-
-type BulkActionItem = {
-  value: string;
-  label: string;
-  icon?: ReactNode;
-  onRun: () => void;
-};
-
-type BulkActionGroup = {
-  value: string;
-  label: string;
-  items: BulkActionItem[];
-};
+import BulkToolbarPresentation, {
+  type BulkActionGroup,
+} from "./bulk-toolbar-presentation";
 
 function BulkToolbar({
   keyboardShortcutsEnabled = true,
@@ -72,7 +26,6 @@ function BulkToolbar({
   keyboardShortcutsEnabled?: boolean;
 }) {
   const { t } = useTranslation();
-  const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const { selectedTaskIds, clearSelection } = useBulkSelectionStore();
   const selectedCount = selectedTaskIds.size;
 
@@ -89,7 +42,6 @@ function BulkToolbar({
   const { project } = useProjectStore();
   const {
     bulkMoveToBacklog,
-    bulkDelete,
     bulkArchive,
     bulkChangeStatus,
     bulkAssign,
@@ -106,10 +58,9 @@ function BulkToolbar({
     workspace?.id ?? "",
     selectedCount > 0,
   );
-  const { canUpdateTasks, canDeleteTasks, canAssignTasks, canUpdateLabels } =
+  const { canUpdateTasks, canAssignTasks, canUpdateLabels } =
     useWorkspacePermission();
   const canEdit = canUpdateTasks();
-  const canDelete = canDeleteTasks();
   const canAssign = canAssignTasks();
   const canEditLabels = canUpdateLabels();
   const [isActionsOpen, setIsActionsOpen] = useState(false);
@@ -139,21 +90,6 @@ function BulkToolbar({
       toast.error(t("tasks:bulk.moveToBacklogError"));
     }
   }, [bulkMoveToBacklog, selectedTaskIds, selectedCount, clearSelection, t]);
-
-  const handleBulkDelete = useCallback(async () => {
-    if (!confirm(t("tasks:bulk.deleteConfirm", { count: selectedCount }))) {
-      return;
-    }
-
-    try {
-      await bulkDelete(Array.from(selectedTaskIds));
-      toast.success(t("tasks:bulk.deleteSuccess", { count: selectedCount }));
-      clearSelection();
-      setIsActionsOpen(false);
-    } catch (_error) {
-      toast.error(t("tasks:bulk.deleteError"));
-    }
-  }, [bulkDelete, selectedTaskIds, selectedCount, clearSelection, t]);
 
   const handleBulkArchive = useCallback(async () => {
     try {
@@ -252,23 +188,11 @@ function BulkToolbar({
 
   const groupedItems = useMemo<BulkActionGroup[]>(() => {
     const groups: BulkActionGroup[] = [];
-    if (canEdit || canDelete) {
+    if (canEdit) {
       groups.push({
         value: "actions",
         label: t("tasks:bulk.actions"),
         items: [
-          ...(canDelete
-            ? [
-                {
-                  value: "bulk-delete",
-                  label: t("tasks:bulk.delete"),
-                  icon: <Trash2 className="h-4 w-4 text-muted-foreground" />,
-                  onRun: () => {
-                    void handleBulkDelete();
-                  },
-                },
-              ]
-            : []),
           ...(canEdit
             ? [
                 {
@@ -360,13 +284,11 @@ function BulkToolbar({
     return groups;
   }, [
     canEdit,
-    canDelete,
     canAssign,
     canEditLabels,
     project?.columns,
     workspaceUsers?.members,
     uniqueLabels,
-    handleBulkDelete,
     handleBulkArchive,
     handleBulkChangeStatus,
     handleBulkAssign,
@@ -378,124 +300,22 @@ function BulkToolbar({
 
   if (selectedCount === 0) return null;
   // Nothing the user can do in bulk → no toolbar.
-  if (!canEdit && !canDelete && !canAssign && !canEditLabels) return null;
+  if (!canEdit && !canAssign && !canEditLabels) return null;
 
   return (
-    <div className="-translate-x-1/2 fixed bottom-6 left-1/2 z-50 transition-[translate,opacity] duration-200 ease-out starting:translate-y-3 starting:opacity-0 motion-reduce:starting:translate-y-0">
-      <Toolbar className="items-center gap-1 rounded-xl border-border/80 bg-background px-1.5 py-1 shadow-lg/8">
-        <ToolbarGroup className="px-1.5">
-          <span className="text-sm font-medium text-foreground">
-            {t("tasks:bulk.selectedCount", { count: selectedCount })}
-          </span>
-        </ToolbarGroup>
-
-        {canEdit && (
-          <>
-            <ToolbarSeparator orientation="vertical" className="my-1 h-5" />
-            <ToolbarGroup>
-              <Button size="sm" variant="ghost" onClick={handleMoveToBacklog}>
-                <ArrowDownToLine className="size-4" />
-                {t("tasks:bulk.moveToBacklog")}
-              </Button>
-            </ToolbarGroup>
-
-            <ToolbarSeparator orientation="vertical" className="my-1 h-5" />
-            <ToolbarGroup>
-              <Popover
-                open={isDatePickerOpen}
-                onOpenChange={setIsDatePickerOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button size="sm" variant="ghost">
-                    <CalendarIcon className="size-4" />
-                    {t("tasks:bulk.setDueDate")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0" align="center">
-                  <Calendar
-                    mode="single"
-                    onSelect={handleBulkDueDate}
-                    className="w-full bg-popover"
-                    weekStartsOn={weekStartsOn}
-                  />
-                  <div className="p-0 border-t border-border">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground rounded-none"
-                      onClick={() => handleBulkDueDate(undefined)}
-                    >
-                      <X className="h-4 w-4" />
-                      {t("tasks:dueDate.clear")}
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </ToolbarGroup>
-          </>
-        )}
-
-        {groupedItems.length > 0 && (
-          <>
-            <ToolbarSeparator orientation="vertical" className="my-1 h-5" />
-            <ToolbarGroup>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsActionsOpen(true)}
-              >
-                <Menu className="size-4" />
-                {t("tasks:bulk.actions")}
-              </Button>
-            </ToolbarGroup>
-          </>
-        )}
-
-        <ToolbarSeparator orientation="vertical" className="my-1 h-5" />
-
-        <ToolbarGroup>
-          <Button size="sm" variant="ghost" onClick={clearSelection}>
-            <X className="size-4" />
-          </Button>
-        </ToolbarGroup>
-      </Toolbar>
-
-      <CommandDialog open={isActionsOpen} onOpenChange={setIsActionsOpen}>
-        <CommandDialogPopup instant>
-          <Command items={groupedItems}>
-            <CommandInput placeholder={t("tasks:bulk.searchActions")} />
-            <CommandPanel>
-              <CommandEmpty>{t("tasks:bulk.noActionsFound")}</CommandEmpty>
-              <CommandList>
-                {(group: BulkActionGroup, groupIndex: number) => (
-                  <Fragment key={group.value}>
-                    <CommandGroup items={group.items}>
-                      <CommandGroupLabel>{group.label}</CommandGroupLabel>
-                      <CommandCollection>
-                        {(item: BulkActionItem) => (
-                          <CommandItem
-                            key={item.value}
-                            value={item.value}
-                            onClick={item.onRun}
-                            className="gap-1.5 px-3"
-                          >
-                            <span className="shrink-0">{item.icon}</span>
-                            <span className="flex-1 text-sm">{item.label}</span>
-                          </CommandItem>
-                        )}
-                      </CommandCollection>
-                    </CommandGroup>
-                    {groupIndex < groupedItems.length - 1 && (
-                      <CommandSeparator />
-                    )}
-                  </Fragment>
-                )}
-              </CommandList>
-            </CommandPanel>
-          </Command>
-        </CommandDialogPopup>
-      </CommandDialog>
-    </div>
+    <BulkToolbarPresentation
+      selectedCount={selectedCount}
+      groupedItems={groupedItems}
+      onClear={clearSelection}
+      onMoveToBacklog={canEdit ? () => void handleMoveToBacklog() : undefined}
+      onDueDateChange={
+        canEdit ? (date) => void handleBulkDueDate(date) : undefined
+      }
+      isActionsOpen={isActionsOpen}
+      onActionsOpenChange={setIsActionsOpen}
+      isDatePickerOpen={isDatePickerOpen}
+      onDatePickerOpenChange={setIsDatePickerOpen}
+    />
   );
 }
 

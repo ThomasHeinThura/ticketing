@@ -363,7 +363,7 @@ describe("API integration: project reorder", () => {
           name: "Newest",
           workspaceId: member.workspace.id,
           icon: "Folder",
-          slug: "newest",
+          slug: "NEWEST",
         }),
       },
     );

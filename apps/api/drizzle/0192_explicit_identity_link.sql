@@ -1,0 +1,2 @@
+ALTER TABLE "external_identity" DROP CONSTRAINT "external_identity_provisioned_via_check";--> statement-breakpoint
+ALTER TABLE "external_identity" ADD CONSTRAINT "external_identity_provisioned_via_check" CHECK (provisioned_via = ANY (ARRAY['jit'::text, 'scim'::text, 'invite'::text, 'linked'::text]));

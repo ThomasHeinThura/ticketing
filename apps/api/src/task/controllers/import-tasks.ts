@@ -2,6 +2,12 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
+import {
+  dispatchLegacyTaskNotification,
+  insertLegacyTaskActivity,
+  insertLegacyTaskNotification,
+} from "../../events/legacy-task-effects";
 import {
   assertAssignableUserAndLockMembership,
   filterAssignableUsers,
@@ -35,6 +41,7 @@ async function importTasks(
   projectId: string,
   tasksToImport: ImportTask[],
   currentUserId?: string,
+  apiKeyId?: string | null,
 ) {
   const project = await db.transaction(async (tx) => {
     await lockProjectAndAssertLiveForTaskNumberForIdentity(
@@ -113,7 +120,7 @@ async function importTasks(
         status,
       );
 
-      const createdTask = await db.transaction(async (tx) => {
+      const { createdTask, notification } = await db.transaction(async (tx) => {
         await lockProjectAndAssertLiveForTaskNumberForIdentity(
           tx,
           projectId,
@@ -146,7 +153,48 @@ async function importTasks(
           number: taskNumber,
         });
 
-        return task;
+        let notification: Awaited<
+          ReturnType<typeof insertLegacyTaskNotification>
+        > = null;
+        if (task) {
+          const eventId = await recordLegacyTaskCompatibilityEvent(tx, {
+            kind: "task.created",
+            taskId: task.id,
+            projectId: task.projectId,
+            workspaceId: project.workspaceId,
+            identity,
+            apiKeyId,
+            payload: {
+              title: task.title,
+              status: task.status,
+              priority: task.priority,
+              userId: task.userId,
+              number: task.number,
+              type: "create",
+              source: "import",
+            },
+          });
+          if (currentUserId) {
+            await insertLegacyTaskActivity(tx, identity, {
+              taskId: task.id,
+              type: "create",
+              userId: currentUserId,
+            });
+          }
+          if (task.userId && task.userId !== currentUserId) {
+            notification = await insertLegacyTaskNotification(tx, {
+              eventId,
+              eventKind: "task.created",
+              userId: task.userId,
+              type: "task_created",
+              taskId: task.id,
+              projectId: task.projectId,
+              eventData: { taskTitle: task.title },
+            });
+          }
+        }
+
+        return { createdTask: task, notification };
       });
 
       if (createdTask) {
@@ -158,6 +206,7 @@ async function importTasks(
           type: "create",
           content: "imported the task",
         });
+        await dispatchLegacyTaskNotification(notification);
 
         results.push({
           success: true,

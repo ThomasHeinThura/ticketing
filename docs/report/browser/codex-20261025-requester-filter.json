@@ -1,0 +1,415 @@
+{
+	"recordedAt": "2026-10-25T05:32:52.917Z",
+	"environment": "Chromium strict TLS on ticketing.localhost",
+	"fixture": {
+		"workspaceName": "Codex Cost Cycle 20261025",
+		"workspaceId": "vjsgsgt7jrlia8sln5j3rzhm",
+		"projectName": "Cost Cycle QA",
+		"projectId": "y8onxgpl4vd25fsgq4dnc2fp"
+	},
+	"lead": {
+		"visual": {
+			"displayedValue": "@me",
+			"url": "https://ticketing.localhost/agent/projects/CCY/work?layout=list&sort=position&dir=asc&filter=AND%28requester%3A%40me%29",
+			"itemKeys": ["CCY-1"]
+		},
+		"text": {
+			"displayedText": "AND(requester:@me)",
+			"url": "https://ticketing.localhost/agent/projects/CCY/work?layout=list&sort=position&dir=asc&filter=requester%3A%40me&filterMode=text",
+			"itemKeys": ["CCY-1"]
+		},
+		"reload": {
+			"url": "https://ticketing.localhost/agent/projects/CCY/work?layout=list&sort=position&dir=asc&filter=requester%3A%40me&filterMode=text",
+			"itemKeys": ["CCY-1"]
+		},
+		"apiSearches": [
+			{
+				"status": 200,
+				"total": null,
+				"itemKeys": []
+			},
+			{
+				"status": 200,
+				"total": null,
+				"itemKeys": []
+			},
+			{
+				"status": 200,
+				"total": null,
+				"itemKeys": []
+			},
+			{
+				"status": 200,
+				"total": null,
+				"itemKeys": []
+			},
+			{
+				"status": 200,
+				"total": null,
+				"itemKeys": []
+			}
+		],
+		"savedView": {
+			"viewName": "CCY requester @me verification",
+			"url": "https://ticketing.localhost/agent/views/v4zjt6p49973fg437xlm4xcf?workspaceId=vjsgsgt7jrlia8sln5j3rzhm&scope=workspace&scopeId=vjsgsgt7jrlia8sln5j3rzhm&layout=list&filter=requester%3A%40me&filterMode=text",
+			"itemKeys": ["CCY-1"]
+		}
+	},
+	"member": {
+		"savedView": {
+			"url": "https://ticketing.localhost/agent/views/v4zjt6p49973fg437xlm4xcf?workspaceId=vjsgsgt7jrlia8sln5j3rzhm&scope=workspace&scopeId=vjsgsgt7jrlia8sln5j3rzhm&layout=list&filter=requester%3A%40me&filterMode=text",
+			"fallbackNotice": true,
+			"itemKeys": [],
+			"apiSearches": [
+				{
+					"status": 200,
+					"total": null,
+					"itemKeys": []
+				}
+			]
+		},
+		"restored": {
+			"workspace": "TaskDesk Service Desk",
+			"theme": "dark"
+		}
+	},
+	"focus768": [
+		{
+			"text": "Backlog",
+			"fullyVisible": true,
+			"tabScrollLeft": 0,
+			"tabScrollWidth": 534,
+			"tabClientWidth": 241
+		},
+		{
+			"text": "Tasks",
+			"fullyVisible": true,
+			"tabScrollLeft": 0,
+			"tabScrollWidth": 534,
+			"tabClientWidth": 241
+		},
+		{
+			"text": "Calendar",
+			"fullyVisible": true,
+			"tabScrollLeft": 0,
+			"tabScrollWidth": 534,
+			"tabClientWidth": 241
+		},
+		{
+			"text": "Gantt",
+			"fullyVisible": true,
+			"tabScrollLeft": 63,
+			"tabScrollWidth": 534,
+			"tabClientWidth": 241
+		},
+		{
+			"text": "Cycles",
+			"fullyVisible": true,
+			"tabScrollLeft": 221,
+			"tabScrollWidth": 534,
+			"tabClientWidth": 241
+		},
+		{
+			"text": "Modules",
+			"fullyVisible": false,
+			"tabScrollLeft": 221,
+			"tabScrollWidth": 534,
+			"tabClientWidth": 241,
+			"activeRect": {
+				"left": 659.890625,
+				"right": 742.015625,
+				"width": 82.125,
+				"top": 18.5,
+				"bottom": 42.5
+			},
+			"viewportRect": {
+				"left": 501.3125,
+				"right": 742,
+				"width": 240.6875,
+				"top": 15.5,
+				"bottom": 45.5
+			},
+			"rightClippedByPx": 0.015625
+		},
+		{
+			"text": "Pages",
+			"fullyVisible": true,
+			"tabScrollLeft": 293,
+			"tabScrollWidth": 534,
+			"tabClientWidth": 241
+		}
+	],
+	"listCaptures": [
+		{
+			"theme": "light",
+			"screenshot": "docs/report/screens/codex-20261025-inline-list-light-390.png",
+			"width": 390,
+			"bodyWidth": 390,
+			"bodyOverflow": false,
+			"headerHydrated": true,
+			"contentReady": true,
+			"tabs": [
+				"Backlog",
+				"Tasks",
+				"Calendar",
+				"Gantt",
+				"Cycles",
+				"Modules",
+				"Pages"
+			],
+			"tabScrollWidth": 0,
+			"tabClientWidth": 0,
+			"rowCount": 4,
+			"bodyTextTail": "ng, then use the arrow keys to move.\nCCY-4\nTo Do\nCost Cycle QA unscheduled estimate\nSA\nTask CCY-2: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-2\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nTask CCY-1: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-1\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nIn Progress\n0\nNo tasks\nDone\n0\nNo tasks\nCancelled\n0\nNo tasks",
+			"visibleItemKeys": ["CCY-3", "CCY-4", "CCY-2", "CCY-1"]
+		},
+		{
+			"theme": "light",
+			"screenshot": "docs/report/screens/codex-20261025-inline-list-light-768.png",
+			"width": 768,
+			"bodyWidth": 768,
+			"bodyOverflow": false,
+			"headerHydrated": true,
+			"contentReady": true,
+			"tabs": [
+				"Backlog",
+				"Tasks",
+				"Calendar",
+				"Gantt",
+				"Cycles",
+				"Modules",
+				"Pages"
+			],
+			"tabScrollWidth": 534,
+			"tabClientWidth": 241,
+			"rowCount": 4,
+			"bodyTextTail": "ng, then use the arrow keys to move.\nCCY-4\nTo Do\nCost Cycle QA unscheduled estimate\nSA\nTask CCY-2: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-2\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nTask CCY-1: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-1\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nIn Progress\n0\nNo tasks\nDone\n0\nNo tasks\nCancelled\n0\nNo tasks",
+			"visibleItemKeys": ["CCY-3", "CCY-4", "CCY-2", "CCY-1"]
+		},
+		{
+			"theme": "light",
+			"screenshot": "docs/report/screens/codex-20261025-inline-list-light-1440.png",
+			"width": 1440,
+			"bodyWidth": 1440,
+			"bodyOverflow": false,
+			"headerHydrated": true,
+			"contentReady": true,
+			"tabs": [
+				"Backlog",
+				"Tasks",
+				"Calendar",
+				"Gantt",
+				"Cycles",
+				"Modules",
+				"Pages"
+			],
+			"tabScrollWidth": 534,
+			"tabClientWidth": 534,
+			"rowCount": 4,
+			"bodyTextTail": "ng, then use the arrow keys to move.\nCCY-4\nTo Do\nCost Cycle QA unscheduled estimate\nSA\nTask CCY-2: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-2\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nTask CCY-1: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-1\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nIn Progress\n0\nNo tasks\nDone\n0\nNo tasks\nCancelled\n0\nNo tasks",
+			"visibleItemKeys": ["CCY-3", "CCY-4", "CCY-2", "CCY-1"]
+		},
+		{
+			"theme": "dark",
+			"screenshot": "docs/report/screens/codex-20261025-inline-list-dark-390.png",
+			"width": 390,
+			"bodyWidth": 390,
+			"bodyOverflow": false,
+			"headerHydrated": true,
+			"contentReady": true,
+			"tabs": [
+				"Backlog",
+				"Tasks",
+				"Calendar",
+				"Gantt",
+				"Cycles",
+				"Modules",
+				"Pages"
+			],
+			"tabScrollWidth": 0,
+			"tabClientWidth": 0,
+			"rowCount": 4,
+			"bodyTextTail": "ng, then use the arrow keys to move.\nCCY-4\nTo Do\nCost Cycle QA unscheduled estimate\nSA\nTask CCY-2: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-2\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nTask CCY-1: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-1\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nIn Progress\n0\nNo tasks\nDone\n0\nNo tasks\nCancelled\n0\nNo tasks",
+			"visibleItemKeys": ["CCY-3", "CCY-4", "CCY-2", "CCY-1"]
+		},
+		{
+			"theme": "dark",
+			"screenshot": "docs/report/screens/codex-20261025-inline-list-dark-768.png",
+			"width": 768,
+			"bodyWidth": 768,
+			"bodyOverflow": false,
+			"headerHydrated": true,
+			"contentReady": true,
+			"tabs": [
+				"Backlog",
+				"Tasks",
+				"Calendar",
+				"Gantt",
+				"Cycles",
+				"Modules",
+				"Pages"
+			],
+			"tabScrollWidth": 534,
+			"tabClientWidth": 241,
+			"rowCount": 4,
+			"bodyTextTail": "ng, then use the arrow keys to move.\nCCY-4\nTo Do\nCost Cycle QA unscheduled estimate\nSA\nTask CCY-2: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-2\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nTask CCY-1: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-1\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nIn Progress\n0\nNo tasks\nDone\n0\nNo tasks\nCancelled\n0\nNo tasks",
+			"visibleItemKeys": ["CCY-3", "CCY-4", "CCY-2", "CCY-1"]
+		},
+		{
+			"theme": "dark",
+			"screenshot": "docs/report/screens/codex-20261025-inline-list-dark-1440.png",
+			"width": 1440,
+			"bodyWidth": 1440,
+			"bodyOverflow": false,
+			"headerHydrated": true,
+			"contentReady": true,
+			"tabs": [
+				"Backlog",
+				"Tasks",
+				"Calendar",
+				"Gantt",
+				"Cycles",
+				"Modules",
+				"Pages"
+			],
+			"tabScrollWidth": 534,
+			"tabClientWidth": 534,
+			"rowCount": 4,
+			"bodyTextTail": "ng, then use the arrow keys to move.\nCCY-4\nTo Do\nCost Cycle QA unscheduled estimate\nSA\nTask CCY-2: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-2\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nTask CCY-1: Cost Cycle QA known estimate\nPress Enter to open. Press Space to start dragging, then use the arrow keys to move.\nCCY-1\nTo Do\nCost Cycle QA known estimate\nOct 25\nSA\nIn Progress\n0\nNo tasks\nDone\n0\nNo tasks\nCancelled\n0\nNo tasks",
+			"visibleItemKeys": ["CCY-3", "CCY-4", "CCY-2", "CCY-1"]
+		}
+	],
+	"errors": [],
+	"savedViews": [
+		{
+			"id": "v4zjt6p49973fg437xlm4xcf",
+			"name": "CCY requester @me verification",
+			"visibility": "private",
+			"filter": "requester:@me",
+			"use": "LEAD saved definition and MEMBER complete-URL fallback",
+			"results": {
+				"lead": ["CCY-1"],
+				"member": []
+			}
+		},
+		{
+			"id": "zqahud8r5ewrhnj445x4yyxn",
+			"name": "CCY requester @me verification",
+			"visibility": "private",
+			"filter": "",
+			"use": "Accidental duplicate created during browser-selector retry; remains in owned workspace"
+		}
+	],
+	"productFinding": "After the scroll-margin build, sequential keyboard focus at 768px fully reveals all seven project tabs: Backlog, Tasks, Calendar, Gantt, Cycles, Modules, and Pages. Modules ends at 738.0156px inside the viewport ending at 742px.",
+	"leadRestored": {
+		"workspace": "TaskDesk Service Desk",
+		"theme": "dark",
+		"projectWidth381": "unchanged",
+		"fixtureItems": "CCY-1..4 fields unchanged except coordinator-prepared CCY-1 requester fixture"
+	},
+	"listCapturesPending": "Complete: six hydrated screenshots at 390, 768, and 1440px in light and dark themes; body has no horizontal overflow and each shows the four CCY items.",
+	"finalVisualCheckRecordedAt": "2026-10-25T05:43:07.117Z",
+	"focus768PostMarginFix": {
+		"width": 768,
+		"expectedTabs": [
+			"Backlog",
+			"Tasks",
+			"Calendar",
+			"Gantt",
+			"Cycles",
+			"Modules",
+			"Pages"
+		],
+		"focus": [
+			{
+				"text": "Backlog",
+				"left": 503.3125,
+				"right": 583.15625,
+				"viewportLeft": 501.3125,
+				"viewportRight": 742,
+				"fullyVisible": true,
+				"scrollLeft": 0,
+				"scrollWidth": 534,
+				"clientWidth": 241
+			},
+			{
+				"text": "Tasks",
+				"left": 585.15625,
+				"right": 651.21875,
+				"viewportLeft": 501.3125,
+				"viewportRight": 742,
+				"fullyVisible": true,
+				"scrollLeft": 0,
+				"scrollWidth": 534,
+				"clientWidth": 241
+			},
+			{
+				"text": "Calendar",
+				"left": 653.21875,
+				"right": 738.078125,
+				"viewportLeft": 501.3125,
+				"viewportRight": 742,
+				"fullyVisible": true,
+				"scrollLeft": 0,
+				"scrollWidth": 534,
+				"clientWidth": 241
+			},
+			{
+				"text": "Gantt",
+				"left": 673.078125,
+				"right": 737.921875,
+				"viewportLeft": 501.3125,
+				"viewportRight": 742,
+				"fullyVisible": true,
+				"scrollLeft": 67,
+				"scrollWidth": 534,
+				"clientWidth": 241
+			},
+			{
+				"text": "Cycles",
+				"left": 665.921875,
+				"right": 737.890625,
+				"viewportLeft": 501.3125,
+				"viewportRight": 742,
+				"fullyVisible": true,
+				"scrollLeft": 141,
+				"scrollWidth": 534,
+				"clientWidth": 241
+			},
+			{
+				"text": "Modules",
+				"left": 655.890625,
+				"right": 738.015625,
+				"viewportLeft": 501.3125,
+				"viewportRight": 742,
+				"fullyVisible": true,
+				"scrollLeft": 225,
+				"scrollWidth": 534,
+				"clientWidth": 241
+			},
+			{
+				"text": "Pages",
+				"left": 672.015625,
+				"right": 740.734375,
+				"viewportLeft": 501.3125,
+				"viewportRight": 742,
+				"fullyVisible": true,
+				"scrollLeft": 293,
+				"scrollWidth": 534,
+				"clientWidth": 241
+			}
+		]
+	},
+	"finalRestoration": {
+		"workspace": "TaskDesk Service Desk",
+		"theme": "dark",
+		"widthPreference": "381px unchanged"
+	},
+	"finalBrowserErrors": [],
+	"requesterFixtureRestoredByCoordinator": true,
+	"coordinatorVisualInspection": {
+		"recordedAt": "2026-10-25T06:23:39.911930+00:00",
+		"screens": "All six hydrated list screenshots: 390/768/1440 in light/dark",
+		"result": "No overlapping controls or rows; narrow titles truncate; header navigation scrolls within Kaneo shell. Full screen/role/flag matrix remains pending."
+	}
+}

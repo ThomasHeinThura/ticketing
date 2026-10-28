@@ -1,0 +1,23 @@
+{
+	"method": "UI-only authenticator enrollment and fresh sign-ins on additive audit owner; secrets saved privately, never included in screenshots or evidence",
+	"checks": [
+		{
+			"name": "enroll-reload",
+			"outcome": "passed"
+		},
+		{
+			"name": "wrong-totp-denied",
+			"outcome": "passed"
+		},
+		{
+			"name": "totp-sign-in",
+			"outcome": "passed"
+		},
+		{
+			"name": "backup-code-sign-in",
+			"outcome": "passed"
+		}
+	],
+	"outcome": "passed",
+	"screenshot": "docs/report/screens/codex-20261025-mfa-after-signin.png"
+}

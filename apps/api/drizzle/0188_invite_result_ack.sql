@@ -1,0 +1,3 @@
+ALTER TABLE "customer_invitation_auth_continuation" ADD COLUMN "accepted_user_id" text;--> statement-breakpoint
+ALTER TABLE "customer_invitation_auth_continuation" ADD CONSTRAINT "customer_invitation_auth_user_fk" FOREIGN KEY ("accepted_user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
+CREATE INDEX "customer_invitation_auth_accepted_user_idx" ON "customer_invitation_auth_continuation" USING btree ("accepted_user_id");

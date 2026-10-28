@@ -1,7 +1,8 @@
 import { createId } from "@paralleldrive/cuid2";
 import { dueReminder, isApprovalOverdue } from "@taskdesk/domain";
-import { appendAuditLog } from "../audit/audit-writer";
+import { appendAuditSavepoint } from "../events/audit-savepoint";
 import { eventScope } from "../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { enqueueNotificationEvent } from "../notification/fanout";
 import { resolveApprovalEventRecipients } from "../notification/recipient-resolvers";
 import { withJobLease } from "../scheduler/leader-lock";
@@ -25,64 +26,75 @@ export type ApprovalReminderOutcome = {
 export async function scanApprovalReminders(): Promise<ApprovalReminderOutcome> {
   return withJobLease(
     JOB_NAME,
-    async () => {
-      let scanned = 0;
-      let expired = 0;
-      let reminded = 0;
-      while (scanned < MAX_ROWS_PER_RUN) {
-        const batch = await withDueApprovalRows(
-          Math.min(BATCH_SIZE, MAX_ROWS_PER_RUN - scanned),
-          async (tx, row) => {
-            // Computed timestamp expressions may arrive as ISO strings through
-            // some PostgreSQL drivers even though schema-backed timestamps are
-            // mapped to Date instances.
-            const now = row.now instanceof Date ? row.now : new Date(row.now);
-            const approval = {
-              id: row.id,
-              transitionId: row.transitionId,
-              kind: row.kind as "customer" | "cab",
-              requestedBy: row.requestedBy,
-              approverId: row.approverId,
-              state: row.state as
-                | "pending"
-                | "approved"
-                | "rejected"
-                | "expired"
-                | "withdrawn",
-              createdAt: row.createdAt,
-              expiresAt: row.expiresAt,
-              reminder50SentAt: row.reminder50SentAt,
-              reminder90SentAt: row.reminder90SentAt,
-            };
+    scanApprovalRemindersUnleased,
+    () => ({ scanned: 0, expired: 0, reminded: 0 }),
+    5 * 60_000,
+  );
+}
 
-            if (isApprovalOverdue(approval, now)) {
-              const updated = await expireDueApprovalRow(tx, {
-                id: row.id,
-                workspaceId: row.workspaceId,
-                decidedAt: now,
-              });
-              if (!updated) return "unchanged" as const;
-              const occurredAt = now.toISOString();
-              await enqueueNotificationEvent(
-                tx,
-                {
-                  id: `evt_${createId()}`,
-                  kind: "approval.expired",
-                  occurredAt,
-                  actor: { type: "system", id: null, name: "TaskDesk system" },
-                  scope: eventScope({
-                    workspaceId: row.workspaceId,
-                    organisationId: row.organisationId,
-                    projectId: row.projectId,
-                  }),
-                  payload: { approvalId: row.id },
-                  causationId: null,
-                  depth: 0,
-                  originAutomationId: null,
-                },
-                { resolveRecipients: resolveApprovalEventRecipients },
-              );
-              await appendAuditLog(tx, {
+/** The approval step without its own lease, for the composite `reminder-scan` job. */
+export async function scanApprovalRemindersUnleased(): Promise<ApprovalReminderOutcome> {
+  {
+    let scanned = 0;
+    let expired = 0;
+    let reminded = 0;
+    let auditFailures = 0;
+    while (scanned < MAX_ROWS_PER_RUN) {
+      const batch = await withDueApprovalRows(
+        Math.min(BATCH_SIZE, MAX_ROWS_PER_RUN - scanned),
+        async (tx, row) => {
+          // Computed timestamp expressions may arrive as ISO strings through
+          // some PostgreSQL drivers even though schema-backed timestamps are
+          // mapped to Date instances.
+          const now = row.now instanceof Date ? row.now : new Date(row.now);
+          const approval = {
+            id: row.id,
+            transitionId: row.transitionId,
+            kind: row.kind as "customer" | "cab",
+            requestedBy: row.requestedBy,
+            approverId: row.approverId,
+            state: row.state as
+              | "pending"
+              | "approved"
+              | "rejected"
+              | "expired"
+              | "withdrawn",
+            createdAt: row.createdAt,
+            expiresAt: row.expiresAt,
+            reminder50SentAt: row.reminder50SentAt,
+            reminder90SentAt: row.reminder90SentAt,
+          };
+
+          if (isApprovalOverdue(approval, now)) {
+            const updated = await expireDueApprovalRow(tx, {
+              id: row.id,
+              workspaceId: row.workspaceId,
+              decidedAt: now,
+            });
+            if (!updated) return "unchanged" as const;
+            const occurredAt = now.toISOString();
+            await enqueueNotificationEvent(
+              tx,
+              {
+                id: `evt_${createId()}`,
+                kind: "approval.expired",
+                occurredAt,
+                actor: { type: "system", id: null, name: "TaskDesk system" },
+                scope: eventScope({
+                  workspaceId: row.workspaceId,
+                  organisationId: row.organisationId,
+                  projectId: row.projectId,
+                }),
+                payload: { approvalId: row.id },
+                causationId: null,
+                depth: 0,
+                originAutomationId: null,
+              },
+              { resolveRecipients: resolveApprovalEventRecipients },
+            );
+            // AU-14: the expiry commits even when its audit append fails (never silent).
+            if (
+              await appendAuditSavepoint(tx, {
                 actorId: null,
                 actorType: "system",
                 workspaceId: row.workspaceId,
@@ -93,54 +105,56 @@ export async function scanApprovalReminders(): Promise<ApprovalReminderOutcome> 
                 entityId: row.id,
                 before: { state: "pending" },
                 after: { state: "expired", expiredAt: occurredAt },
-              });
-              return "expired" as const;
-            }
+              })
+            )
+              auditFailures += 1;
+            return "expired" as const;
+          }
 
-            const reminder = dueReminder(approval, now);
-            if (!reminder) return "unchanged" as const;
-            const pctElapsed = reminder === "reminder_50" ? 50 : 90;
-            const updated = await markDueApprovalReminderSent(tx, {
-              id: row.id,
-              workspaceId: row.workspaceId,
-              reminder,
-              sentAt: now,
-            });
-            if (!updated) return "unchanged" as const;
-            await enqueueNotificationEvent(
-              tx,
-              {
-                id: `evt_${createId()}`,
-                kind: "approval.expiring",
-                occurredAt: now.toISOString(),
-                actor: { type: "system", id: null, name: "TaskDesk system" },
-                scope: eventScope({
-                  workspaceId: row.workspaceId,
-                  organisationId: row.organisationId,
-                  projectId: row.projectId,
-                }),
-                payload: {
-                  approvalId: row.id,
-                  expiresAt: row.expiresAt.toISOString(),
-                  pctElapsed,
-                },
-                causationId: null,
-                depth: 0,
-                originAutomationId: null,
+          const reminder = dueReminder(approval, now);
+          if (!reminder) return "unchanged" as const;
+          const pctElapsed = reminder === "reminder_50" ? 50 : 90;
+          const updated = await markDueApprovalReminderSent(tx, {
+            id: row.id,
+            workspaceId: row.workspaceId,
+            reminder,
+            sentAt: now,
+          });
+          if (!updated) return "unchanged" as const;
+          await enqueueNotificationEvent(
+            tx,
+            {
+              id: `evt_${createId()}`,
+              kind: "approval.expiring",
+              occurredAt: now.toISOString(),
+              actor: { type: "system", id: null, name: "TaskDesk system" },
+              scope: eventScope({
+                workspaceId: row.workspaceId,
+                organisationId: row.organisationId,
+                projectId: row.projectId,
+              }),
+              payload: {
+                approvalId: row.id,
+                expiresAt: row.expiresAt.toISOString(),
+                pctElapsed,
               },
-              { resolveRecipients: resolveApprovalEventRecipients },
-            );
-            return "reminded" as const;
-          },
-        );
-        scanned += batch.length;
-        expired += batch.filter((result) => result === "expired").length;
-        reminded += batch.filter((result) => result === "reminded").length;
-        if (batch.length === 0) break;
-      }
-      return { scanned, expired, reminded };
-    },
-    () => ({ scanned: 0, expired: 0, reminded: 0 }),
-    5 * 60_000,
-  );
+              causationId: null,
+              depth: 0,
+              originAutomationId: null,
+            },
+            { resolveRecipients: resolveApprovalEventRecipients },
+          );
+          return "reminded" as const;
+        },
+      );
+      scanned += batch.length;
+      expired += batch.filter((result) => result === "expired").length;
+      reminded += batch.filter((result) => result === "reminded").length;
+      if (batch.length === 0) break;
+    }
+    // One administrator notification per scan, however many rows failed their audit append.
+    if (auditFailures > 0)
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    return { scanned, expired, reminded };
+  }
 }

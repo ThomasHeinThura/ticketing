@@ -17,6 +17,10 @@ async function updateProject({
   supportLevel,
   serviceCalendarId,
   defaultCommentVisibility,
+  managerId,
+  startDate,
+  endDate,
+  defaultAssigneeId,
 }: UpdateProjectRequest) {
   const response = await client.project[":id"].$put({
     param: { id },
@@ -36,6 +40,12 @@ async function updateProject({
       ...(defaultCommentVisibility !== undefined
         ? { defaultCommentVisibility }
         : {}),
+      // Planning fields (PR-6, PR-10, AS-11): same rule, omitted means "unchanged" and an
+      // explicit null clears. Each needs project:manage_settings server-side.
+      ...(managerId !== undefined ? { managerId } : {}),
+      ...(startDate !== undefined ? { startDate } : {}),
+      ...(endDate !== undefined ? { endDate } : {}),
+      ...(defaultAssigneeId !== undefined ? { defaultAssigneeId } : {}),
     },
   });
 

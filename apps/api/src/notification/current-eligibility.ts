@@ -2,26 +2,54 @@ import { can, type ProjectReachFacts, reaches } from "@taskdesk/permissions";
 import type { ClaimedNotificationDelivery } from "../database/repositories/notification-delivery.repository";
 import type { DbTransaction } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import { isCustomerEligibleNotificationEvent } from "./customer-event-audience";
+import {
+  parseNotificationCopyDescriptor,
+  renderNotificationCopyDescriptor,
+} from "../terminology/notification-copy";
+import {
+  requireTerminologyLocale,
+  resolveTermForm,
+} from "../terminology/service";
+import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
+import { isActiveTeamNotificationRecipient } from "./automation-team-recipients";
+import {
+  CUSTOMER_APPROVAL_EVENT_KINDS,
+  isCustomerEligibleNotificationEvent,
+} from "./customer-event-audience";
+import { isCurrentCustomerOwnRequest } from "./customer-request-scope";
 import type { NotificationProjection } from "./outbox-drain";
 import { resolveNotificationPreference } from "./preferences";
 import {
+  evaluateQuietHours,
+  QUIET_HOURS_EXEMPT_EVENT_KINDS,
+} from "./quiet-hours";
+import {
   findApprovalNotificationContext,
   findCurrentNotificationResource,
+  findInstanceTimezone,
   findNotificationPerson,
   isApprovalApproverStillValid,
   listApprovalWatcherPersonIds,
 } from "./repository";
 import { isSupportedNotificationResourceEvent } from "./resource-contract";
+import { isCurrentSubmissionNotificationRecipient } from "./submission-recipients";
 
 export type CurrentNotificationEligibility =
   | { kind: "suppress"; reason: string }
   | { kind: "eligible"; projection: NotificationProjection }
   | {
+      /** `NO-3`: the recipient is inside their quiet hours; retry at `until`. */
+      kind: "defer";
+      until: Date;
+      reason: "quiet_hours";
+    }
+  | {
       /**
-       * The current reach and channel preference passed, but configured quiet hours
-       * cannot be evaluated until the approved timezone/DST contract is resolved.
-       * This result must never be translated into provider authorization.
+       * Configured quiet hours are malformed (unparseable time, equal start and end, unknown
+       * zone) and cannot be evaluated. Never translated into provider authorization.
        */
       kind: "quiet_hours_unresolved";
     }
@@ -135,6 +163,20 @@ function canonicalBinding(
     payload.workspaceId === delivery.resourceId
   )
     return { payload, projectId };
+  if (
+    delivery.resourceType === "webhook" &&
+    isSupportedNotificationResourceEvent("webhook", delivery.eventKind) &&
+    payload.webhookId === delivery.resourceId
+  )
+    return { payload, projectId };
+  // `P2R1-05`: submission events carry only the `SUB-n` reference; the stored submission is
+  // resolved by the delivery's resource id and re-checked below.
+  if (
+    delivery.resourceType === "submission" &&
+    isSupportedNotificationResourceEvent("submission", delivery.eventKind) &&
+    typeof payload.ref === "string"
+  )
+    return { payload, projectId };
   return null;
 }
 
@@ -180,7 +222,12 @@ export async function evaluateCurrentNotificationReachAndPreference(
     },
   });
   if (!resource) return { kind: "suppress", reason: "resource_unavailable" };
-  if (resource.projectId === null && delivery.resourceType !== "workspace")
+  if (
+    resource.projectId === null &&
+    delivery.resourceType !== "workspace" &&
+    delivery.resourceType !== "webhook" &&
+    delivery.resourceType !== "submission"
+  )
     return { kind: "suppress", reason: "resource_unavailable" };
   if (
     resource.workspaceId !== delivery.workspaceId ||
@@ -197,6 +244,29 @@ export async function evaluateCurrentNotificationReachAndPreference(
     )
   )
     return { kind: "suppress", reason: "customer_event_not_eligible" };
+  if (
+    identity.side === "customer" &&
+    (delivery.resourceType === "work_item" ||
+      delivery.resourceType === "comment") &&
+    (!resource.workItemId ||
+      !(await isCurrentCustomerOwnRequest(tx, identity, resource.workItemId)))
+  )
+    return { kind: "suppress", reason: "customer_request_not_owned" };
+
+  if (delivery.eventKind === "automation.notification_sent") {
+    const teamId = binding.payload.teamId;
+    if (
+      identity.side !== "staff" ||
+      typeof teamId !== "string" ||
+      !(await isActiveTeamNotificationRecipient(tx, {
+        teamId,
+        workspaceId: delivery.workspaceId,
+        userId: person.userId,
+        personId: identity.personId,
+      }))
+    )
+      return { kind: "suppress", reason: "team_membership_lost" };
+  }
 
   if (delivery.resourceType === "workspace") {
     if (
@@ -205,24 +275,58 @@ export async function evaluateCurrentNotificationReachAndPreference(
       })
     )
       return { kind: "suppress", reason: "reach_lost" };
+  } else if (delivery.resourceType === "webhook") {
+    if (
+      identity.side !== "staff" ||
+      !resource.staffUrl ||
+      !can(identity, "workspace:read", "workspace", {
+        workspaceId: resource.workspaceId,
+      }) ||
+      !can(identity, "webhook:manage", "workspace", {
+        workspaceId: resource.workspaceId,
+      })
+    )
+      return { kind: "suppress", reason: "reach_lost" };
+  } else if (delivery.resourceType === "submission") {
+    if (
+      !(await isCurrentSubmissionNotificationRecipient(tx, identity, {
+        submissionId: delivery.resourceId,
+        workspaceId: delivery.workspaceId,
+      }))
+    )
+      return { kind: "suppress", reason: "reach_lost" };
   } else {
     if (resource.projectId === null)
       return { kind: "suppress", reason: "resource_unavailable" };
+    // PR-2/PR-3: reach and read authority both follow the ancestor chain.
+    const ancestorProjectIds = await projectAncestryFor(
+      tx,
+      identity,
+      resource.workspaceId,
+      resource.projectId,
+    );
     const reachFacts: ProjectReachFacts = {
       projectId: resource.projectId,
       workspaceId: resource.workspaceId,
       organisationId: resource.organisationId,
-      visibleToPersonIds: resource.visibleToPersonIds,
+      ancestorProjectIds,
+      ownerTeamId: await projectOwnerTeamFor(
+        tx,
+        identity,
+        resource.workspaceId,
+        resource.projectId,
+      ),
+      visibleToPersonIds:
+        identity.side === "customer" ? resource.visibleToPersonIds : null,
     };
     if (!reaches(identity, reachFacts))
       return { kind: "suppress", reason: "reach_lost" };
     // Reach and authority are separate axes (rbac.md section 2): the recipient must also
     // currently hold work_item:read, the same rule as GET /api/work-items/{key}.
-    // A customer's role is organisation-scoped, so for an approval addressed to or raised
-    // by a customer the read authority is evaluated at the organisation, not at work-item
-    // scope where no organisation grant applies.
+    // A customer's role is organisation-scoped. Check the organisation grant after the
+    // current resource-reach check, which still enforces the individual request boundary.
     const canRead =
-      delivery.resourceType === "approval" && identity.side === "customer"
+      identity.side === "customer"
         ? can(identity, "work_item:read", "organisation", {
             organisationId: resource.organisationId ?? undefined,
           })
@@ -231,6 +335,7 @@ export async function evaluateCurrentNotificationReachAndPreference(
             organisationId: resource.organisationId ?? undefined,
             workItemProjectId: resource.projectId,
             projectId: resource.projectId,
+            ancestorProjectIds,
           });
     if (!canRead) return { kind: "suppress", reason: "read_authority_lost" };
   }
@@ -243,6 +348,15 @@ export async function evaluateCurrentNotificationReachAndPreference(
     );
     if (!approval || approval.workspaceId !== delivery.workspaceId)
       return { kind: "suppress", reason: "resource_unavailable" };
+    // A customer is only ever an approval's addressed approver (`P2R2-04`).
+    if (
+      identity.side === "customer" &&
+      !CUSTOMER_APPROVAL_EVENT_KINDS.has(delivery.eventKind)
+    )
+      return {
+        kind: "suppress",
+        reason: "approval_not_addressed_to_recipient",
+      };
     let currentRecipient = false;
     switch (delivery.eventKind) {
       case "approval.requested":
@@ -294,24 +408,68 @@ export async function evaluateCurrentNotificationReachAndPreference(
   if (!preference.enabled)
     return { kind: "suppress", reason: "channel_disabled" };
 
-  if (
-    person.quietHoursStart !== null ||
-    person.quietHoursEnd !== null ||
-    person.quietHoursTimezone !== null
-  )
-    return { kind: "quiet_hours_unresolved" };
+  if (!QUIET_HOURS_EXEMPT_EVENT_KINDS.has(delivery.eventKind)) {
+    const quiet = evaluateQuietHours(
+      {
+        start: person.quietHoursStart,
+        end: person.quietHoursEnd,
+        timezone: person.quietHoursTimezone,
+      },
+      person.quietHoursStart === null && person.quietHoursEnd === null
+        ? "UTC"
+        : await findInstanceTimezone(tx),
+      new Date(),
+    );
+    if (quiet.kind === "unresolved") return { kind: "quiet_hours_unresolved" };
+    if (quiet.kind === "quiet")
+      return { kind: "defer", until: quiet.until, reason: "quiet_hours" };
+  }
 
-  if (identity.side !== "staff" || !resource.staffUrl)
-    return { kind: "destination_unresolved" };
+  const authenticatedUrl =
+    identity.side === "staff" ? resource.staffUrl : resource.portalUrl;
+  if (!authenticatedUrl) return { kind: "destination_unresolved" };
+
+  let projectionTitle = delivery.title;
+  let projectionBody = delivery.body;
+  const eventData = delivery.eventData;
+  const systemCopy =
+    eventData && typeof eventData === "object" && !Array.isArray(eventData)
+      ? parseNotificationCopyDescriptor(eventData.systemCopy)
+      : null;
+  if (systemCopy) {
+    let locale = "en-US";
+    try {
+      locale = requireTerminologyLocale(person.locale ?? "en-US");
+    } catch {
+      // Older/unrecognized account locale falls back to the shipped English default.
+    }
+    const rendered = await renderNotificationCopyDescriptor(
+      systemCopy,
+      (termKey, count) =>
+        resolveTermForm({
+          locale,
+          audience: identity.side === "staff" ? "agent" : "customer",
+          termKey,
+          count,
+          workspaceId: resource.workspaceId,
+          executor: tx,
+        }),
+    ).catch(() => null);
+    if (rendered) {
+      projectionTitle = rendered.title;
+      projectionBody = rendered.body;
+    }
+  }
 
   // The inbox projection was created for this recipient in the originating
   // transaction. Return it only after rechecking current resource visibility.
   return {
     kind: "eligible",
     projection: {
-      title: delivery.title,
-      body: delivery.body,
-      url: resource.staffUrl,
+      title: projectionTitle,
+      body: projectionBody,
+      url: authenticatedUrl,
+      audience: identity.side === "staff" ? "agent" : "customer",
     },
   };
 }

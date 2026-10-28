@@ -1,4 +1,9 @@
 import { and, eq, sql } from "drizzle-orm";
+import {
+  captureWorkspaceServiceKeyAuthority,
+  markServiceKeysForAuthorityLoss,
+} from "../../api-key/authority-loss";
+import type { StepUpExecutor } from "../../auth/repository";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
@@ -78,6 +83,8 @@ async function transferWorkspaceOwnership(
   workspaceId: string,
   callerId: string,
   newOwnerUserId: string,
+  /** Spends the caller's step-up proof in this transaction, right before the first write. */
+  beforeWrite?: (tx: StepUpExecutor) => Promise<void>,
 ): Promise<TransferredWorkspaceOwnership> {
   if (newOwnerUserId === callerId) {
     throw new AlreadyOwnerError();
@@ -128,6 +135,19 @@ async function transferWorkspaceOwnership(
       throw new AmbiguousMembershipError();
     }
 
+    const callerAuthorityBefore = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      callerId,
+      workspaceId,
+    );
+    const incomingAuthorityBefore = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      newOwnerUserId,
+      workspaceId,
+    );
+
+    await beforeWrite?.(tx);
+
     await tx
       .update(schema.workspaceUserTable)
       .set({ role: "owner" })
@@ -154,6 +174,28 @@ async function transferWorkspaceOwnership(
     await lockPersonsInOrder(tx, [newOwnerUserId, callerId]);
     await syncWorkspaceAdminReach(tx, workspaceId, newOwnerUserId);
     await syncWorkspaceAdminReach(tx, workspaceId, callerId);
+
+    const callerAuthorityAfter = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      callerId,
+      workspaceId,
+    );
+    const incomingAuthorityAfter = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      newOwnerUserId,
+      workspaceId,
+    );
+    const now = new Date();
+    await markServiceKeysForAuthorityLoss(tx, {
+      before: callerAuthorityBefore,
+      after: callerAuthorityAfter,
+      now,
+    });
+    await markServiceKeysForAuthorityLoss(tx, {
+      before: incomingAuthorityBefore,
+      after: incomingAuthorityAfter,
+      now,
+    });
 
     return {
       workspaceId,

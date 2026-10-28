@@ -2,14 +2,19 @@
  * `audit-verify` -- `AU-15`: "walks the chain, so alteration by a database-level actor
  * is detectable even though the application role holds no UPDATE/DELETE on the table."
  *
- * Issue #37, first slice: only the on-demand walk itself. `audit-purge`/`audit_chain_
- * anchor` do not exist yet (tracked separately, per `data-model.md`'s "Purging" section
- * and `background-jobs.md`'s `audit-purge` row) -- this function always starts from the
- * zero hash, which is correct today (nothing has ever purged) and will need a real
- * anchor lookup added when `audit-purge` lands, not before.
+ * The walk starts from the newest `audit_chain_anchor` row's `last_purged_row_hash`
+ * (data-model.md §11: "`audit-verify` starts its walk from the newest anchor instead of the
+ * zero hash"), and from the zero hash when no anchor exists or the anchor table has not been
+ * migrated yet. `audit-purge` only ever deletes the oldest contiguous prefix, so the oldest
+ * surviving row's `prev_hash` is exactly the newest anchor's `last_purged_row_hash`.
+ *
+ * Anchors cannot be forged by the application role: it holds only SELECT on
+ * `audit_chain_anchor`, and `audit_log_purge_prefix(bigint)` (migration 0132) is the sole
+ * writer, stamping `created_at = now()` itself, so "newest by created_at" is trustworthy.
  */
 import { canonicalRowHash, ZERO_HASH } from "@taskdesk/domain";
 import type { Executor } from "../database/executor";
+import { findNewestAuditChainAnchor } from "./purge.repository";
 import { listAuditChainRows } from "./repository";
 
 type DbOrTx = Executor;
@@ -59,9 +64,10 @@ export interface VerifyAuditChainResult {
 export async function verifyAuditChain(
   dbOrTx: DbOrTx,
 ): Promise<VerifyAuditChainResult> {
+  const anchor = await findNewestAuditChainAnchor(dbOrTx);
   const rows = await listAuditChainRows(dbOrTx);
 
-  let expectedPrevHash = ZERO_HASH;
+  let expectedPrevHash = anchor?.last_purged_row_hash ?? ZERO_HASH;
   let rowsChecked = 0;
 
   for (const row of rows) {

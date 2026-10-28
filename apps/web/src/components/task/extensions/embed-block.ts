@@ -4,26 +4,41 @@ import { escapeHtml, isValidUrl } from "./url-safety";
 
 type EmbedMode = "embed" | "link";
 
-function getEmbedSource(url: string) {
+const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
+export const YOUTUBE_IFRAME_SANDBOX =
+  "allow-scripts allow-same-origin allow-presentation";
+
+export function getYouTubeEmbedSource(url: string) {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "");
-
     if (
-      host === "youtube.com" ||
-      host === "m.youtube.com" ||
-      host === "youtu.be"
+      parsed.protocol !== "https:" ||
+      parsed.username ||
+      parsed.password ||
+      parsed.port
     ) {
+      return null;
+    }
+
+    let videoId: string | null = null;
+    if (host === "youtu.be") {
       const pathParts = parsed.pathname.split("/").filter(Boolean);
-      const videoId =
-        host === "youtu.be"
-          ? pathParts[0]
-          : parsed.searchParams.get("v") ||
-            (pathParts[0] === "shorts" ? pathParts[1] : null) ||
-            (pathParts[0] === "live" ? pathParts[1] : null);
-      if (videoId) {
-        return `https://www.youtube.com/embed/${videoId}`;
+      if (pathParts.length === 1) videoId = pathParts[0] ?? null;
+    } else if (host === "youtube.com" || host === "m.youtube.com") {
+      const pathParts = parsed.pathname.split("/").filter(Boolean);
+      if (parsed.pathname === "/watch") {
+        const values = parsed.searchParams.getAll("v");
+        if (values.length === 1) videoId = values[0] ?? null;
+      } else if (
+        pathParts.length === 2 &&
+        (pathParts[0] === "shorts" || pathParts[0] === "live")
+      ) {
+        videoId = pathParts[1] ?? null;
       }
+    }
+    if (videoId && YOUTUBE_VIDEO_ID.test(videoId)) {
+      return `https://www.youtube.com/embed/${videoId}`;
     }
   } catch {
     return null;
@@ -64,7 +79,7 @@ export const EmbedBlock = Node.create({
   renderHTML({ HTMLAttributes }) {
     const url = String(HTMLAttributes.url || "");
     const mode = String(HTMLAttributes.mode || "embed") as EmbedMode;
-    const embedSource = mode === "embed" ? getEmbedSource(url) : null;
+    const embedSource = mode === "embed" ? getYouTubeEmbedSource(url) : null;
     const attrs = mergeAttributes(HTMLAttributes, {
       "data-type": "taskdesk-embed",
       "data-url": url,
@@ -88,6 +103,7 @@ export const EmbedBlock = Node.create({
           "iframe",
           {
             src: embedSource,
+            sandbox: YOUTUBE_IFRAME_SANDBOX,
             loading: "lazy",
             allow:
               "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",

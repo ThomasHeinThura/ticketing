@@ -1,0 +1,24 @@
+{
+  "extends": "../../apps/api/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../..",
+    "baseUrl": ".",
+    "paths": {
+      "@taskdesk/permissions": [
+        "../../packages/permissions/src/index.ts"
+      ],
+      "@taskdesk/domain": [
+        "../../packages/domain/src/index.ts"
+      ],
+      "drizzle-orm": [
+        "../../apps/api/node_modules/drizzle-orm/index.js"
+      ]
+    }
+  },
+  "include": [
+    "./*.ts",
+    "../../tests/api-integration/helpers/*.ts",
+    "../../apps/api/src/**/*.ts"
+  ]
+}

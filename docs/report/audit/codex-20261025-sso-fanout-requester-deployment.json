@@ -1,0 +1,33 @@
+{
+	"recordedAt": "2026-10-25T05:19:30.977664+00:00",
+	"runtime": "Owned native local SIT on HTTPS port 443",
+	"database": "taskdesk_codex_sit_20261025",
+	"schemaChanges": "none in this deployment",
+	"apiBundleSha256": "c3b81f362f68b4a5df777fbc2fb3a4a897f3c6721151f530bf4057d19f565fc6",
+	"changes": [
+		"SSO step-up API",
+		"Transactional legacy event/notification fanout",
+		"Requester @me query"
+	],
+	"checks": [
+		{
+			"host": "ticketing.localhost",
+			"path": "/api/public/health/ready",
+			"status": 200,
+			"tls": "system trust; no exceptions",
+			"exitCode": 0
+		},
+		{
+			"host": "portal.localhost",
+			"path": "/",
+			"status": 200,
+			"tls": "system trust; no exceptions",
+			"exitCode": 0
+		}
+	],
+	"limits": [
+		"SSO browser journey and real Entra provider validation pending.",
+		"Full phase gates and independent review pending.",
+		"Web SSO final source needs the next coordinated build."
+	]
+}

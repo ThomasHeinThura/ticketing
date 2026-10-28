@@ -225,18 +225,58 @@ export async function checkBundleSizes({
           ...measurement.assets,
           ...collectInitialAssets(manifest, workRouteKey),
         ]);
-        const localeEntries = Object.keys(manifest).filter(
-          (candidate) =>
-            candidate.includes("/i18n/") && candidate.endsWith(".json"),
+        // These lazy modules are also HTML-preloaded for a direct work visit.
+        // Count their complete static closures, even though the route manifest's
+        // static imports alone do not reach them.
+        for (const [preloadKey, entry] of Object.entries(manifest)) {
+          if (
+            entry.name === "project-layout" ||
+            entry.name === "work-items-panel" ||
+            preloadKey.endsWith("/components/common/project-layout.tsx") ||
+            preloadKey.endsWith("/components/work-item/work-items-panel.tsx") ||
+            preloadKey.endsWith("/lib/i18n/group-loaders-slim.ts") ||
+            preloadKey.endsWith(
+              "/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx?tsr-split=component",
+            )
+          ) {
+            for (const asset of collectInitialAssets(manifest, preloadKey))
+              workListAssets.add(asset);
+          }
+        }
+        const slimLocaleEntries = Object.keys(manifest).filter((candidate) =>
+          candidate.startsWith("virtual:taskdesk-i18n/slim-"),
         );
+        // Production work visits fetch a slim locale, not the deferred full catalog.
+        // Older/simple manifests without namespace groups retain full-catalog accounting.
+        const localeEntries =
+          slimLocaleEntries.length > 0
+            ? slimLocaleEntries
+            : Object.keys(manifest).filter(
+                (candidate) =>
+                  candidate.includes("/i18n/") && candidate.endsWith(".json"),
+              );
+        // i18next also fetches English fallback namespaces for non-English users.
+        const fallbackLocaleKey = localeEntries.find(
+          (candidate) =>
+            candidate.endsWith("/slim-en-US") ||
+            candidate.endsWith("/i18n/en-US.json"),
+        );
+        const fallbackAssets = fallbackLocaleKey
+          ? collectInitialAssets(manifest, fallbackLocaleKey)
+          : [];
         const localeMeasurements = await Promise.all(
-          localeEntries.map(async (localeKey) => ({
-            assets: collectInitialAssets(manifest, localeKey),
-            measurement: await measureAssets(
-              collectInitialAssets(manifest, localeKey),
-              currentOutputDir,
-            ),
-          })),
+          localeEntries.map(async (localeKey) => {
+            const assets = [
+              ...new Set([
+                ...collectInitialAssets(manifest, localeKey),
+                ...fallbackAssets,
+              ]),
+            ];
+            return {
+              assets,
+              measurement: await measureAssets(assets, currentOutputDir),
+            };
+          }),
         );
         const largestLocale = localeMeasurements.sort(
           (left, right) => right.measurement.bytes - left.measurement.bytes,

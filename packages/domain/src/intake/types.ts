@@ -37,6 +37,12 @@ export interface SubmissionRecord {
   readonly claimedAt: Date | null;
   readonly clarifyingSince: Date | null;
   readonly staffMessageCount: number;
+  /**
+   * True only for a `declined` submission the system auto-declined (IQ-15). Only that
+   * decline is reopenable by the customer; a staff decline (IQ-16) is final for them.
+   * Absent means `false`, so older callers that never set it stay valid.
+   */
+  readonly autoDeclined?: boolean;
 }
 
 /** Who is acting — the permission split the specs draw (portal session vs `intake:triage`). */

@@ -6,6 +6,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
+import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import deleteWorkflowRule from "./controllers/delete-workflow-rule";
@@ -75,8 +76,10 @@ const deleteWorkflowRuleRoute = createRoute({
   path: "/{id}",
   tags: ["Workflow Rules"],
   summary: "Delete workflow rule",
-  description: "Delete a workflow rule. Returns the rule that was removed.",
+  description:
+    "Delete a workflow rule. Returns the rule that was removed. Browser session only; API and MCP keys are refused (403 session_required). A rule is a column-routing setting with no history of its own, so it is not a pending-action target.",
   middleware: [
+    requireSessionOnly(),
     workspaceAccess.fromWorkflowRule("id", {
       requireProjectReach: true,
       deferApiKeyCapability: true,
@@ -87,7 +90,10 @@ const deleteWorkflowRuleRoute = createRoute({
   responses: {
     200: jsonResponse("The deleted rule", workflowRuleRowSchema),
     400: errorResponse("id must not contain a NUL (\\u0000) byte"),
-    403: errorResponse("Missing project:update permission"),
+    401: errorResponse("Not authenticated"),
+    403: errorResponse(
+      "A browser session is required, or missing project:update permission",
+    ),
     404: errorResponse("Workflow rule not found"),
   },
 });

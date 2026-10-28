@@ -11,6 +11,7 @@ function useGetWorkspaces() {
     data: workspaces,
     error,
     isPending,
+    refetch,
   } = useQuery({
     queryKey: ["workspaces"],
     queryFn: getWorkspaces,
@@ -21,6 +22,7 @@ function useGetWorkspaces() {
     error,
     isLoading: isPending,
     isError: !!error,
+    refetch,
   };
 }
 

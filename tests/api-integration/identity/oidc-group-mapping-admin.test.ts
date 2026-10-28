@@ -21,6 +21,7 @@ import * as websocket from "../../../apps/api/src/ws";
 import { mockAuthenticatedSession } from "../helpers/auth";
 import { csrfRequest } from "../helpers/csrf";
 import { resetTestDatabase } from "../helpers/database";
+import { createImpersonatingAdmin } from "../helpers/impersonator";
 
 const apiRequire = createRequire(
   new URL("../../../apps/api/package.json", import.meta.url),
@@ -814,7 +815,9 @@ describe("IP-34 OIDC group mapping administration", () => {
     expect(apiKeyWrite.status).toBe(403);
     expect(await apiKeyWrite.text()).toContain("session_required");
 
-    mockAuthenticatedSession(admin, { impersonatedBy: "acting-admin" });
+    mockAuthenticatedSession(admin, {
+      impersonatedBy: await createImpersonatingAdmin(),
+    });
     const impersonatedRead = await app.request(
       `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings`,
     );

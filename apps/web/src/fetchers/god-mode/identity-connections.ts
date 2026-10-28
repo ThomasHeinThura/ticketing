@@ -1,5 +1,6 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import { HttpError } from "@/lib/http-error";
 import { ensureIdentityAdminOk } from "./identity-admin-error";
 
 // The generated Hono client cannot address these routes: the identity routers are mounted as a
@@ -225,6 +226,17 @@ export async function getIdentityConnections(): Promise<IdentityConnection[]> {
   return body.data;
 }
 
+/** The identity connection bound to one customer organisation, or null when it has none (404 when the organisation is unknown). */
+export async function getOrganisationIdentityConnection(
+  organisationId: string,
+): Promise<IdentityConnection | null> {
+  const body = await request<{ data: IdentityConnection | null }>(
+    `instance/organisations/${encodeURIComponent(organisationId)}/identity`,
+    "Unable to load the organisation identity connection",
+  );
+  return body.data;
+}
+
 export function getIdentityConnectionEvents(
   id: string,
   cursor: string | undefined,
@@ -278,6 +290,36 @@ export async function configureIdentityConnection(input: {
     { method: "PATCH", token: input.token, body: input.body },
   );
   return result.data;
+}
+
+/** Starts the canonical typed-name + fresh step-up pending-action flow. */
+export async function requestIdentityConnectionDeletion(id: string) {
+  const response = await apiFetch(getApiUrl(itemPath(id)), {
+    method: "DELETE",
+    credentials: "include",
+    cache: "no-store",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
+  await ensureIdentityAdminOk(
+    response,
+    "Identity connection deletion request could not be created",
+  );
+  const body = (await response.json()) as {
+    pendingActionId?: unknown;
+    confirmation?: unknown;
+  };
+  if (
+    typeof body.pendingActionId !== "string" ||
+    !body.pendingActionId ||
+    response.status !== 202 ||
+    body.confirmation !== "typed_name_step_up"
+  )
+    throw new HttpError(
+      502,
+      "Unexpected identity connection deletion response",
+    );
+  return { pendingActionId: body.pendingActionId };
 }
 
 export function patchScimAdmin(input: {

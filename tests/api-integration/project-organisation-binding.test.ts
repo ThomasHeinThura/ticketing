@@ -19,6 +19,7 @@ import {
   grantProjectManageAccess,
   requireRow,
 } from "./helpers/fixtures";
+import { projectKey } from "./helpers/project-key";
 
 type ProjectRow = typeof schema.projectTable.$inferSelect;
 
@@ -50,7 +51,7 @@ async function createProjectRequest(
       workspaceId,
       name: "Customer support",
       icon: "Folder",
-      slug: `cs-${randomUUID().slice(0, 6)}`,
+      slug: projectKey(),
       ...body,
     }),
   });
@@ -80,6 +81,101 @@ describe("API integration: project customer-organisation binding", () => {
     await expect(projectOrganisation(created.id)).resolves.toBe(
       organisation.id,
     );
+  });
+
+  it("copies workspace-local organisation defaults once and preserves an explicit calendar override", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    const organisation = await makeOrganisation();
+    mockAuthenticatedSession(admin.user);
+    const calendars = await db
+      .insert(schema.serviceCalendarTable)
+      .values(
+        ["Original", "Replacement"].map((name) => ({
+          workspaceId: admin.workspace.id,
+          name,
+          timezone: "UTC",
+          windows: {},
+          holidays: [],
+        })),
+      )
+      .returning();
+    const policies = await db
+      .insert(schema.slaPolicyTable)
+      .values(
+        ["Original", "Replacement"].map((name) => ({
+          workspaceId: admin.workspace.id,
+          name,
+        })),
+      )
+      .returning();
+    const firstCalendar = requireRow(
+      calendars.slice(0, 1),
+      "original calendar",
+    );
+    const nextCalendar = requireRow(calendars.slice(1), "replacement calendar");
+    const firstPolicy = requireRow(policies.slice(0, 1), "original policy");
+    const nextPolicy = requireRow(policies.slice(1), "replacement policy");
+    await db.insert(schema.organisationProjectDefaultTable).values({
+      organisationId: organisation.id,
+      workspaceId: admin.workspace.id,
+      serviceCalendarId: firstCalendar.id,
+      slaPolicyId: firstPolicy.id,
+    });
+    const initialResponse = await createProjectRequest(admin.workspace.id, {
+      organisationId: organisation.id,
+      kind: "managed_service",
+      supportLevel: "L1",
+    });
+    expect(initialResponse.status, await initialResponse.clone().text()).toBe(
+      200,
+    );
+    const initial = (await initialResponse.json()) as ProjectRow;
+    expect(initial.serviceCalendarId).toBe(firstCalendar.id);
+    expect(initial.slaPolicyId).toBe(firstPolicy.id);
+
+    const explicitResponse = await createProjectRequest(admin.workspace.id, {
+      organisationId: organisation.id,
+      serviceCalendarId: null,
+    });
+    expect(explicitResponse.status).toBe(200);
+    expect(
+      ((await explicitResponse.json()) as ProjectRow).serviceCalendarId,
+    ).toBeNull();
+    await db
+      .update(schema.organisationProjectDefaultTable)
+      .set({
+        serviceCalendarId: nextCalendar.id,
+        slaPolicyId: nextPolicy.id,
+      })
+      .where(
+        and(
+          eq(
+            schema.organisationProjectDefaultTable.organisationId,
+            organisation.id,
+          ),
+          eq(
+            schema.organisationProjectDefaultTable.workspaceId,
+            admin.workspace.id,
+          ),
+        ),
+      );
+    const nextResponse = await createProjectRequest(admin.workspace.id, {
+      organisationId: organisation.id,
+    });
+    expect(nextResponse.status).toBe(200);
+    const next = (await nextResponse.json()) as ProjectRow;
+    expect(next.serviceCalendarId).toBe(nextCalendar.id);
+    expect(next.slaPolicyId).toBe(nextPolicy.id);
+    const stored = await db.query.projectTable.findFirst({
+      where: eq(schema.projectTable.id, initial.id),
+    });
+    expect(stored?.serviceCalendarId).toBe(firstCalendar.id);
+    expect(stored?.slaPolicyId).toBe(firstPolicy.id);
+    const internalResponse = await createProjectRequest(admin.workspace.id);
+    expect(internalResponse.status).toBe(200);
+    const internal = (await internalResponse.json()) as ProjectRow;
+    expect(internal.serviceCalendarId).toBeNull();
+    expect(internal.slaPolicyId).toBeNull();
   });
 
   it("leaves a project internal (null) when no organisation is supplied or null is", async () => {

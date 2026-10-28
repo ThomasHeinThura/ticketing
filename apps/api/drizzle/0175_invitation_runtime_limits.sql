@@ -1,0 +1,12 @@
+ALTER TABLE "request_rate_limit_counter" DROP CONSTRAINT "request_rate_limit_counter_bucket_check";--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD COLUMN "invitation_lifetime_hours" integer DEFAULT 48 NOT NULL;--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD COLUMN "customer_invitation_create_window_minutes" integer DEFAULT 60 NOT NULL;--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD COLUMN "customer_invitation_per_inviter_limit" integer DEFAULT 20 NOT NULL;--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD COLUMN "customer_invitation_per_organisation_limit" integer DEFAULT 50 NOT NULL;--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD COLUMN "customer_invitation_resend_cooldown_seconds" integer DEFAULT 60 NOT NULL;--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD CONSTRAINT "instance_setting_invitation_lifetime_hours_range" CHECK (invitation_lifetime_hours >= 1 AND invitation_lifetime_hours <= 720);--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD CONSTRAINT "instance_setting_customer_invitation_create_window_minutes_range" CHECK (customer_invitation_create_window_minutes >= 1 AND customer_invitation_create_window_minutes <= 1440);--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD CONSTRAINT "instance_setting_customer_invitation_per_inviter_limit_range" CHECK (customer_invitation_per_inviter_limit >= 1 AND customer_invitation_per_inviter_limit <= 10000);--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD CONSTRAINT "instance_setting_customer_invitation_per_organisation_limit_range" CHECK (customer_invitation_per_organisation_limit >= 1 AND customer_invitation_per_organisation_limit <= 10000);--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD CONSTRAINT "instance_setting_customer_invitation_resend_cooldown_seconds_range" CHECK (customer_invitation_resend_cooldown_seconds >= 1 AND customer_invitation_resend_cooldown_seconds <= 86400);--> statement-breakpoint
+ALTER TABLE "request_rate_limit_counter" ADD CONSTRAINT "request_rate_limit_counter_bucket_check" CHECK ("request_rate_limit_counter"."bucket" IN ('anonymous_scim_failure', 'scim_connection', 'anonymous_invitation'));

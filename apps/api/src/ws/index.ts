@@ -31,6 +31,11 @@ export {
 } from "./native-work-item-realtime";
 
 import { InMemoryBroadcastAdapter } from "./in-memory-broadcast-adapter";
+import {
+  forceStopInboxPostgresRealtime,
+  startInboxPostgresRealtime as startPostgresInboxRealtime,
+  stopInboxPostgresRealtime,
+} from "./inbox-postgres-realtime";
 import { RedisBroadcastAdapter } from "./redis-broadcast-adapter";
 
 const INSTANCE_ID = randomUUID();
@@ -108,6 +113,25 @@ function deliverToLocalUserConnections(
   if (connections.size === 0) {
     userConnections.delete(userId);
   }
+}
+
+/** Local-only notification invalidation; PostgreSQL LISTEN reaches every API process. */
+export function deliverLocalNotificationInvalidation(userId: string) {
+  deliverToLocalUserConnections(userId, { type: "NOTIFICATION_CREATED" });
+}
+
+function invalidateConnectedLocalUsers() {
+  for (const userId of userConnections.keys()) {
+    deliverLocalNotificationInvalidation(userId);
+  }
+}
+
+/** Start this only for HTTP-owning API roles; jobs-only replicas do not LISTEN. */
+export function startInboxRealtimeListener() {
+  startPostgresInboxRealtime(
+    deliverLocalNotificationInvalidation,
+    invalidateConnectedLocalUsers,
+  );
 }
 
 /**
@@ -237,6 +261,7 @@ export function shutdownWebSocketAdapter(): Promise<void> {
   projectBroadcastQueues.clear();
 
   const cleanup = async () => {
+    await stopInboxPostgresRealtime();
     if (currentAdapter) {
       await Promise.allSettled(
         pendingQueues.flatMap(([projectId, queue]) =>
@@ -269,6 +294,7 @@ export function forceShutdownWebSocketAdapter(): void {
   projectBroadcastQueues.clear();
   adapterBeingShutdown?.forceShutdown?.();
   adapterBeingShutdown = null;
+  forceStopInboxPostgresRealtime();
 }
 
 function deliverToLocalConnections(

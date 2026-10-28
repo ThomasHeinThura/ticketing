@@ -11,9 +11,13 @@ describe("NotificationEmail", () => {
         message: "デザイン案の確認をお願いします。",
         actionUrl: "https://taskdesk.example/task/1",
         locale: "ja-JP",
+        preferenceUrl:
+          "https://taskdesk.example/agent/settings/profile/notifications#preference_token=synthetic",
       }),
     );
     expect(html).toContain("TaskDesk で開く");
+    expect(html).toContain("通知設定");
+    expect(html).toContain("#preference_token=synthetic");
     expect(html).toContain("配信設定に一致する通知がありました。");
   });
 });

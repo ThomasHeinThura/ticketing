@@ -17,6 +17,7 @@ const mockTxExecute = vi.fn(async (..._args: unknown[]) => ({ rows: [] }));
 const mockDelete = vi.fn();
 const mockInsert = vi.fn();
 const mockPublishEvent = vi.fn();
+const mockEnqueueOutbox = vi.fn();
 
 // Catalogue assignment/deletion serializes across the whole workspace before taking
 // the name lock. Check the bound lock keys, not merely the number of SQL statements.
@@ -56,6 +57,11 @@ vi.mock("../../../apps/api/src/database", () => ({
 
 vi.mock("../../../apps/api/src/events", () => ({
   publishEvent: (...args: unknown[]) => mockPublishEvent(...args),
+}));
+
+// Keep the database adapter isolated while exercising real compatibility-envelope construction.
+vi.mock("../../../apps/api/src/events/outbox", () => ({
+  enqueueOutboxEvent: (...args: unknown[]) => mockEnqueueOutbox(...args),
 }));
 
 import assignLabelToTask from "../../../apps/api/src/label/controllers/assign-label-to-task";
@@ -173,6 +179,13 @@ describe("unassignLabelFromTask", () => {
     await unassignLabelFromTask(IDENTITY, "label-task-1", "user-1");
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(mockEnqueueOutbox).toHaveBeenCalledWith(
+      expect.objectContaining({ execute: expect.any(Function) }),
+      expect.objectContaining({
+        kind: "task.label_unassigned",
+        actor: expect.objectContaining({ type: "person", id: "person-1" }),
+      }),
+    );
     expectLabelFamilyLocks();
     expect(mockPublishEvent).toHaveBeenCalledWith("task.label_unassigned", {
       label: TASK_LABEL,
@@ -234,6 +247,13 @@ describe("assignLabelToTask", () => {
     );
 
     expect(result).toEqual(insertedCopy);
+    expect(mockEnqueueOutbox).toHaveBeenCalledWith(
+      expect.objectContaining({ execute: expect.any(Function) }),
+      expect.objectContaining({
+        kind: "task.label_assigned",
+        actor: expect.objectContaining({ type: "person", id: "person-1" }),
+      }),
+    );
     expectLabelFamilyLocks();
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockDelete).not.toHaveBeenCalled();

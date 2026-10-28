@@ -308,6 +308,8 @@ export async function installIdentityAdminFixture(
         required: false,
         bootstrapRequired: false,
         policyMode: "optional",
+        // Matches GET /api/me/security/factors for an enrolled authenticator.
+        availableMethods: ["totp", "backup_code"],
       });
     if (path === "/api/me/csrf-token")
       return json({
@@ -333,6 +335,17 @@ export async function installIdentityAdminFixture(
         expiresAt: "2030-01-01T00:00:00.000Z",
       });
     }
+
+    const organisationIdentity =
+      /^\/api\/instance\/organisations\/([^/]+)\/identity$/u.exec(path);
+    if (organisationIdentity && method === "GET")
+      return json({
+        data:
+          fixture.connections.find(
+            (connection) =>
+              connection.organisationId === organisationIdentity[1],
+          ) ?? null,
+      });
 
     const connectionMatch =
       /^\/api\/instance\/identity-connections(?:\/([^/]+))?(?:\/(.+))?$/u.exec(

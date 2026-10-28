@@ -1,0 +1,334 @@
+{
+	"count": 8,
+	"value": [
+		{
+			"id": 4126,
+			"rev": 3,
+			"fields": {
+				"System.Id": 4126,
+				"System.TeamProject": "Legacy ERP",
+				"System.WorkItemType": "Requirement",
+				"System.Title": "Invoice approval workflow",
+				"System.State": "Active",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Legacy ERP\\ERP\\Finance",
+				"System.IterationPath": "Legacy ERP\\Phase 2",
+				"System.CreatedDate": "2025-11-21T12:22:00.000Z",
+				"System.ChangedDate": "2025-10-12T14:42:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Rev": 3,
+				"System.AssignedTo": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Tags": "finance",
+				"Microsoft.VSTS.Common.Priority": 1,
+				"System.Description": "<p>Invoice approval workflow &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4174",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4188",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/000070d2-1111-4222-8333-00000000d186",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30378,
+						"resourceCreatedDate": "2025-11-23T14:36:00.000Z",
+						"comment": ""
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4126"
+		},
+		{
+			"id": 4138,
+			"rev": 4,
+			"fields": {
+				"System.Id": 4138,
+				"System.TeamProject": "Legacy ERP",
+				"System.WorkItemType": "Requirement",
+				"System.Title": "Supplier onboarding form",
+				"System.State": "Resolved",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Legacy ERP\\ERP\\Procurement",
+				"System.IterationPath": "Legacy ERP\\Phase 2",
+				"System.CreatedDate": "2025-12-03T15:46:00.000Z",
+				"System.ChangedDate": "2025-10-24T08:06:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Rev": 4,
+				"System.AssignedTo": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Tags": "procurement",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Common.ResolvedDate": "2025-10-16T09:10:00.000Z",
+				"System.Description": "<p>Supplier onboarding form &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4186",
+					"attributes": {
+						"name": "Child"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4138"
+		},
+		{
+			"id": 4150,
+			"rev": 4,
+			"fields": {
+				"System.Id": 4150,
+				"System.TeamProject": "Legacy ERP",
+				"System.WorkItemType": "Requirement",
+				"System.Title": "Month-end close checklist",
+				"System.State": "Closed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Legacy ERP\\ERP\\Finance",
+				"System.IterationPath": "Legacy ERP\\Phase 1",
+				"System.CreatedDate": "2025-10-16T09:10:00.000Z",
+				"System.ChangedDate": "2025-11-05T11:30:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Rev": 4,
+				"System.AssignedTo": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Tags": "finance",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Common.ClosedDate": "2025-10-31T15:55:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-11-15T12:40:00.000Z",
+				"System.Description": "<div><b>Context</b></div><ul><li>Requested by support</li><li>Seen by 2 customers</li></ul><p>See <a href=\"https://wiki.contoso.example/x/4150\">the wiki page</a>.</p>"
+			},
+			"relations": [],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4150"
+		},
+		{
+			"id": 4162,
+			"rev": 1,
+			"fields": {
+				"System.Id": 4162,
+				"System.TeamProject": "Legacy ERP",
+				"System.WorkItemType": "Requirement",
+				"System.Title": "Archive legacy cost centres",
+				"System.State": "Proposed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Legacy ERP\\ERP\\Finance",
+				"System.IterationPath": "Legacy ERP",
+				"System.CreatedDate": "2025-10-28T12:34:00.000Z",
+				"System.ChangedDate": "2025-11-17T14:54:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Project Collection Build Service (contoso)",
+					"uniqueName": "Build\\a1b2c3d4"
+				},
+				"System.Rev": 1,
+				"Microsoft.VSTS.Common.Priority": 3,
+				"System.Description": "<p>Archive legacy cost centres &amp; related work.</p>"
+			},
+			"relations": [],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4162"
+		},
+		{
+			"id": 4174,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4174,
+				"System.TeamProject": "Legacy ERP",
+				"System.WorkItemType": "Task",
+				"System.Title": "Build approval screen",
+				"System.State": "Active",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Legacy ERP\\ERP\\Finance",
+				"System.IterationPath": "Legacy ERP\\Phase 2",
+				"System.CreatedDate": "2025-11-09T15:58:00.000Z",
+				"System.ChangedDate": "2025-11-29T08:18:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 4,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 4,
+				"System.Description": "<p>Build approval screen &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4126",
+					"attributes": {
+						"name": "Parent"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4174"
+		},
+		{
+			"id": 4186,
+			"rev": 4,
+			"fields": {
+				"System.Id": 4186,
+				"System.TeamProject": "Legacy ERP",
+				"System.WorkItemType": "Task",
+				"System.Title": "Import supplier list",
+				"System.State": "Closed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Legacy ERP\\ERP\\Procurement",
+				"System.IterationPath": "Legacy ERP\\Phase 2",
+				"System.CreatedDate": "2025-11-21T09:22:00.000Z",
+				"System.ChangedDate": "2025-10-12T11:42:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Rev": 4,
+				"System.AssignedTo": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 0,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 8,
+				"Microsoft.VSTS.Common.ClosedDate": "2025-10-07T15:07:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-10-22T12:52:00.000Z",
+				"System.Description": "<p>Import supplier list &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4138",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "ArtifactLink",
+					"url": "vstfs:///Git/Commit/aaaa%2fbbbb%2f4186",
+					"attributes": {
+						"name": "Fixed in Commit"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4186"
+		},
+		{
+			"id": 4188,
+			"rev": 4,
+			"fields": {
+				"System.Id": 4188,
+				"System.TeamProject": "Legacy ERP",
+				"System.WorkItemType": "Bug",
+				"System.Title": "Approval email not sent for amounts over limit",
+				"System.State": "Resolved",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Legacy ERP\\ERP\\Finance",
+				"System.IterationPath": "Legacy ERP\\Phase 2",
+				"System.CreatedDate": "2025-11-23T11:36:00.000Z",
+				"System.ChangedDate": "2025-10-14T13:56:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Rev": 4,
+				"System.AssignedTo": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Tags": "email",
+				"Microsoft.VSTS.Common.Priority": 1,
+				"Microsoft.VSTS.Common.Severity": "1 - Critical",
+				"Microsoft.VSTS.Common.ResolvedDate": "2025-10-06T14:00:00.000Z",
+				"Custom.CustomerImpact": "Low",
+				"System.Description": "<div>Approval email not sent for amounts over limit.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4126",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/00007284-1111-4222-8333-00000000d4ac",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30564,
+						"resourceCreatedDate": "2025-11-25T13:50:00.000Z",
+						"comment": ""
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4188"
+		},
+		{
+			"id": 4191,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4191,
+				"System.TeamProject": "Legacy ERP",
+				"System.WorkItemType": "Bug",
+				"System.Title": "Supplier VAT id rejected",
+				"System.State": "Removed",
+				"System.Reason": "Removed from the backlog",
+				"System.AreaPath": "Legacy ERP\\ERP\\Procurement",
+				"System.IterationPath": "Legacy ERP\\Phase 2",
+				"System.CreatedDate": "2025-11-26T14:57:00.000Z",
+				"System.ChangedDate": "2025-10-17T16:17:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Common.Severity": "3 - Medium",
+				"System.Description": "<div>Supplier VAT id rejected.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "Hyperlink",
+					"url": "https://wiki.contoso.example/x/4191",
+					"attributes": {
+						"comment": "wiki"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4191"
+		}
+	]
+}

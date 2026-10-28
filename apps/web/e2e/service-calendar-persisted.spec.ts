@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
@@ -8,6 +8,29 @@ test.use({ trace: "off", video: "off", screenshot: "off" });
 test.afterEach(({ page: _page }, testInfo) => {
   redactSecretErrorContext(testInfo);
 });
+
+// P4R1-M2: `feature.sla` is off by default, so a fresh workspace fails closed on the
+// calendar and SLA screens (and their API routes). The workspace owner turns it on.
+async function enableSlaFeature(
+  page: Page,
+  origin: string,
+  workspaceId: string,
+) {
+  const csrf = await page.request.get(
+    new URL("/api/me/csrf-token", origin).toString(),
+    { headers: { Origin: origin } },
+  );
+  expect(csrf.status()).toBe(200);
+  const { token } = (await csrf.json()) as { token: string };
+  const response = await page.request.patch(
+    new URL(`/api/workspaces/${workspaceId}/features`, origin).toString(),
+    {
+      headers: { Origin: origin, "X-TaskDesk-CSRF": token },
+      data: { changes: [{ key: "feature.sla", enabled: true }] },
+    },
+  );
+  expect(response.status()).toBe(200);
+}
 
 test("CAL-17 imports holidays through the editor and reads them back from PostgreSQL", async ({
   page,
@@ -26,11 +49,20 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
       .fill("Disposable Calendar Workspace");
     await page.getByRole("button", { name: "Create workspace" }).click();
     await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+    const workspaceId = new URL(page.url()).pathname
+      .split("/")
+      .filter(Boolean)
+      .at(-1);
+    if (!workspaceId) throw new Error("No workspace id in the URL.");
+    await enableSlaFeature(page, origin, workspaceId);
 
     await page.goto(
       new URL("/agent/settings/calendars/new", origin).toString(),
     );
-    await page.getByLabel("Name").fill("Persisted holiday calendar");
+    await page.getByLabel("Stable key").fill("persisted-holiday-calendar");
+    await page
+      .getByLabel("Name", { exact: true })
+      .fill("Persisted holiday calendar");
     await page.getByLabel("IANA timezone").fill("UTC");
     await page.getByRole("button", { name: "Create calendar" }).click();
     await expect(page).toHaveURL(/\/agent\/settings\/calendars\/[a-z0-9]+/);

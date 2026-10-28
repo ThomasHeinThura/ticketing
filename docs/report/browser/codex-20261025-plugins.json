@@ -1,0 +1,512 @@
+{
+	"generatedAt": "2026-10-25T09:42:10.572Z",
+	"scenario": "God Mode Plugins read-only browser verification",
+	"results": [
+		{
+			"check": "catalog 390px light",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"statusLabel": "Unconfigured",
+			"settingsLinkVisible": true,
+			"screenshot": "docs/report/browser/screens/codex-20261025-plugins-390-light.png"
+		},
+		{
+			"check": "catalog 768px light",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"statusLabel": "Unconfigured",
+			"settingsLinkVisible": true,
+			"screenshot": "docs/report/browser/screens/codex-20261025-plugins-768-light.png"
+		},
+		{
+			"check": "catalog 1440px light",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"statusLabel": "Unconfigured",
+			"settingsLinkVisible": true,
+			"screenshot": "docs/report/browser/screens/codex-20261025-plugins-1440-light.png"
+		},
+		{
+			"check": "catalog 390px dark",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"statusLabel": "Unconfigured",
+			"settingsLinkVisible": true,
+			"screenshot": "docs/report/browser/screens/codex-20261025-plugins-390-dark.png"
+		},
+		{
+			"check": "catalog 768px dark",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"statusLabel": "Unconfigured",
+			"settingsLinkVisible": true,
+			"screenshot": "docs/report/browser/screens/codex-20261025-plugins-768-dark.png"
+		},
+		{
+			"check": "catalog 1440px dark",
+			"status": "pass",
+			"http": 200,
+			"horizontalOverflow": false,
+			"statusLabel": "Unconfigured",
+			"settingsLinkVisible": true,
+			"screenshot": "docs/report/browser/screens/codex-20261025-plugins-1440-dark.png"
+		},
+		{
+			"check": "member denial",
+			"status": "pass",
+			"sessionStatus": 200,
+			"sessionPresent": true,
+			"roleCategory": "non-admin",
+			"pluginStatus": 403,
+			"routeStatus": 200,
+			"finalPath": "/agent/god-mode/plugins",
+			"denialVisible": true,
+			"denialLabel": "admin_access_denied"
+		},
+		{
+			"check": "settings shell tabs 390px light",
+			"status": "pass",
+			"http": 200,
+			"selectedGodModeFullyVisible": true,
+			"geometryBeforeLayoutSettle": {
+				"visible": true,
+				"tabLeft": 272.375,
+				"tabRight": 368.90625,
+				"viewportLeft": 21,
+				"viewportRight": 369,
+				"clientWidth": 348,
+				"scrollLeft": 43
+			},
+			"selectedGeometry": {
+				"visible": true,
+				"tabLeft": 272.375,
+				"tabRight": 368.90625,
+				"viewportLeft": 21,
+				"viewportRight": 369,
+				"clientWidth": 348,
+				"scrollLeft": 43
+			},
+			"layoutBeforeSettle": {
+				"listClass": "relative z-0 flex items-center justify-center data-[orientation=vertical]:flex-col rounded-lg p-0.5 text-muted-foreground bg-sidebar w-max min-w-full gap-2 pr-1",
+				"listPaddingRight": "4px",
+				"listWidth": 395,
+				"listScrollWidth": 395,
+				"viewportScrollWidth": 395,
+				"viewportClientWidth": 348,
+				"viewportRight": 369,
+				"tabRight": 368.90625,
+				"width": 390,
+				"documentWidth": 390,
+				"bodyWidth": 390,
+				"scrollY": 0
+			},
+			"layout": {
+				"listClass": "relative z-0 flex items-center justify-center data-[orientation=vertical]:flex-col rounded-lg p-0.5 text-muted-foreground bg-sidebar w-max min-w-full gap-2 pr-1",
+				"listPaddingRight": "4px",
+				"listWidth": 395,
+				"listScrollWidth": 395,
+				"viewportScrollWidth": 395,
+				"viewportClientWidth": 348,
+				"viewportRight": 369,
+				"tabRight": 368.90625,
+				"width": 390,
+				"documentWidth": 390,
+				"bodyWidth": 390,
+				"scrollY": 0
+			},
+			"keyboardFocus": [
+				{
+					"expected": "God Mode",
+					"focused": "God Mode",
+					"revealed": true
+				},
+				{
+					"expected": "Projects",
+					"focused": "Projects",
+					"revealed": true
+				},
+				{
+					"expected": "Workspace",
+					"focused": "Workspace",
+					"revealed": true
+				},
+				{
+					"expected": "Account",
+					"focused": "Account",
+					"revealed": true
+				},
+				{
+					"expected": "Workspace",
+					"focused": "Workspace",
+					"revealed": true
+				},
+				{
+					"expected": "Projects",
+					"focused": "Projects",
+					"revealed": true
+				},
+				{
+					"expected": "God Mode",
+					"focused": "God Mode",
+					"revealed": true
+				}
+			],
+			"bodyOverflow": false,
+			"pageScrollYBefore": 0,
+			"pageScrollYAfter": 0,
+			"screenshot": "docs/report/browser/screens/codex-20261025-plugins-shell-390-light.png"
+		},
+		{
+			"check": "settings shell tabs 390px dark",
+			"status": "pass",
+			"http": 200,
+			"selectedGodModeFullyVisible": true,
+			"geometryBeforeLayoutSettle": {
+				"visible": true,
+				"tabLeft": 272.375,
+				"tabRight": 368.90625,
+				"viewportLeft": 21,
+				"viewportRight": 369,
+				"clientWidth": 348,
+				"scrollLeft": 43
+			},
+			"selectedGeometry": {
+				"visible": true,
+				"tabLeft": 272.375,
+				"tabRight": 368.90625,
+				"viewportLeft": 21,
+				"viewportRight": 369,
+				"clientWidth": 348,
+				"scrollLeft": 43
+			},
+			"layoutBeforeSettle": {
+				"listClass": "relative z-0 flex items-center justify-center data-[orientation=vertical]:flex-col rounded-lg p-0.5 text-muted-foreground bg-sidebar w-max min-w-full gap-2 pr-1",
+				"listPaddingRight": "4px",
+				"listWidth": 395,
+				"listScrollWidth": 395,
+				"viewportScrollWidth": 395,
+				"viewportClientWidth": 348,
+				"viewportRight": 369,
+				"tabRight": 368.90625,
+				"width": 390,
+				"documentWidth": 390,
+				"bodyWidth": 390,
+				"scrollY": 0
+			},
+			"layout": {
+				"listClass": "relative z-0 flex items-center justify-center data-[orientation=vertical]:flex-col rounded-lg p-0.5 text-muted-foreground bg-sidebar w-max min-w-full gap-2 pr-1",
+				"listPaddingRight": "4px",
+				"listWidth": 395,
+				"listScrollWidth": 395,
+				"viewportScrollWidth": 395,
+				"viewportClientWidth": 348,
+				"viewportRight": 369,
+				"tabRight": 368.90625,
+				"width": 390,
+				"documentWidth": 390,
+				"bodyWidth": 390,
+				"scrollY": 0
+			},
+			"keyboardFocus": [
+				{
+					"expected": "God Mode",
+					"focused": "God Mode",
+					"revealed": true
+				},
+				{
+					"expected": "Projects",
+					"focused": "Projects",
+					"revealed": true
+				},
+				{
+					"expected": "Workspace",
+					"focused": "Workspace",
+					"revealed": true
+				},
+				{
+					"expected": "Account",
+					"focused": "Account",
+					"revealed": true
+				},
+				{
+					"expected": "Workspace",
+					"focused": "Workspace",
+					"revealed": true
+				},
+				{
+					"expected": "Projects",
+					"focused": "Projects",
+					"revealed": true
+				},
+				{
+					"expected": "God Mode",
+					"focused": "God Mode",
+					"revealed": true
+				}
+			],
+			"bodyOverflow": false,
+			"pageScrollYBefore": 0,
+			"pageScrollYAfter": 0,
+			"screenshot": "docs/report/browser/screens/codex-20261025-plugins-shell-390-dark.png"
+		}
+	],
+	"settingsLink": {
+		"status": "pass",
+		"path": "/agent/god-mode/notifications",
+		"savedConfigurationReadOnly": true
+	},
+	"apiPluginListResponses": [
+		{
+			"status": 200
+		},
+		{
+			"status": 200
+		},
+		{
+			"status": 200
+		},
+		{
+			"status": 200
+		},
+		{
+			"status": 200
+		},
+		{
+			"status": 200
+		},
+		{
+			"status": 403
+		},
+		{
+			"status": 403
+		}
+	],
+	"smtpWriteRequests": 0,
+	"screenshots": [
+		"docs/report/browser/screens/codex-20261025-plugins-390-light.png",
+		"docs/report/browser/screens/codex-20261025-plugins-768-light.png",
+		"docs/report/browser/screens/codex-20261025-plugins-1440-light.png",
+		"docs/report/browser/screens/codex-20261025-plugins-390-dark.png",
+		"docs/report/browser/screens/codex-20261025-plugins-768-dark.png",
+		"docs/report/browser/screens/codex-20261025-plugins-1440-dark.png",
+		"docs/report/browser/screens/codex-20261025-plugins-shell-390-light.png",
+		"docs/report/browser/screens/codex-20261025-plugins-shell-390-dark.png"
+	],
+	"limitations": [
+		"Only the currently supported notify.email descriptor is displayed.",
+		"No SMTP connectivity test was sent and no provider settings were changed.",
+		"Auth, AI, licensing, generic CRUD, and health-history surfaces remain unsupported.",
+		"At 390px the inherited Settings category strip clips the final tab label; the Plugins card remains visible and the document has no horizontal overflow."
+	],
+	"settingsShell": {
+		"source": "apps/web/src/components/settings/settings-shell.tsx",
+		"viewport": "390px",
+		"themes": ["light", "dark"],
+		"results": [
+			{
+				"check": "settings shell tabs 390px light",
+				"status": "pass",
+				"http": 200,
+				"selectedGodModeFullyVisible": true,
+				"geometryBeforeLayoutSettle": {
+					"visible": true,
+					"tabLeft": 272.375,
+					"tabRight": 368.90625,
+					"viewportLeft": 21,
+					"viewportRight": 369,
+					"clientWidth": 348,
+					"scrollLeft": 43
+				},
+				"selectedGeometry": {
+					"visible": true,
+					"tabLeft": 272.375,
+					"tabRight": 368.90625,
+					"viewportLeft": 21,
+					"viewportRight": 369,
+					"clientWidth": 348,
+					"scrollLeft": 43
+				},
+				"layoutBeforeSettle": {
+					"listClass": "relative z-0 flex items-center justify-center data-[orientation=vertical]:flex-col rounded-lg p-0.5 text-muted-foreground bg-sidebar w-max min-w-full gap-2 pr-1",
+					"listPaddingRight": "4px",
+					"listWidth": 395,
+					"listScrollWidth": 395,
+					"viewportScrollWidth": 395,
+					"viewportClientWidth": 348,
+					"viewportRight": 369,
+					"tabRight": 368.90625,
+					"width": 390,
+					"documentWidth": 390,
+					"bodyWidth": 390,
+					"scrollY": 0
+				},
+				"layout": {
+					"listClass": "relative z-0 flex items-center justify-center data-[orientation=vertical]:flex-col rounded-lg p-0.5 text-muted-foreground bg-sidebar w-max min-w-full gap-2 pr-1",
+					"listPaddingRight": "4px",
+					"listWidth": 395,
+					"listScrollWidth": 395,
+					"viewportScrollWidth": 395,
+					"viewportClientWidth": 348,
+					"viewportRight": 369,
+					"tabRight": 368.90625,
+					"width": 390,
+					"documentWidth": 390,
+					"bodyWidth": 390,
+					"scrollY": 0
+				},
+				"keyboardFocus": [
+					{
+						"expected": "God Mode",
+						"focused": "God Mode",
+						"revealed": true
+					},
+					{
+						"expected": "Projects",
+						"focused": "Projects",
+						"revealed": true
+					},
+					{
+						"expected": "Workspace",
+						"focused": "Workspace",
+						"revealed": true
+					},
+					{
+						"expected": "Account",
+						"focused": "Account",
+						"revealed": true
+					},
+					{
+						"expected": "Workspace",
+						"focused": "Workspace",
+						"revealed": true
+					},
+					{
+						"expected": "Projects",
+						"focused": "Projects",
+						"revealed": true
+					},
+					{
+						"expected": "God Mode",
+						"focused": "God Mode",
+						"revealed": true
+					}
+				],
+				"bodyOverflow": false,
+				"pageScrollYBefore": 0,
+				"pageScrollYAfter": 0,
+				"screenshot": "docs/report/browser/screens/codex-20261025-plugins-shell-390-light.png"
+			},
+			{
+				"check": "settings shell tabs 390px dark",
+				"status": "pass",
+				"http": 200,
+				"selectedGodModeFullyVisible": true,
+				"geometryBeforeLayoutSettle": {
+					"visible": true,
+					"tabLeft": 272.375,
+					"tabRight": 368.90625,
+					"viewportLeft": 21,
+					"viewportRight": 369,
+					"clientWidth": 348,
+					"scrollLeft": 43
+				},
+				"selectedGeometry": {
+					"visible": true,
+					"tabLeft": 272.375,
+					"tabRight": 368.90625,
+					"viewportLeft": 21,
+					"viewportRight": 369,
+					"clientWidth": 348,
+					"scrollLeft": 43
+				},
+				"layoutBeforeSettle": {
+					"listClass": "relative z-0 flex items-center justify-center data-[orientation=vertical]:flex-col rounded-lg p-0.5 text-muted-foreground bg-sidebar w-max min-w-full gap-2 pr-1",
+					"listPaddingRight": "4px",
+					"listWidth": 395,
+					"listScrollWidth": 395,
+					"viewportScrollWidth": 395,
+					"viewportClientWidth": 348,
+					"viewportRight": 369,
+					"tabRight": 368.90625,
+					"width": 390,
+					"documentWidth": 390,
+					"bodyWidth": 390,
+					"scrollY": 0
+				},
+				"layout": {
+					"listClass": "relative z-0 flex items-center justify-center data-[orientation=vertical]:flex-col rounded-lg p-0.5 text-muted-foreground bg-sidebar w-max min-w-full gap-2 pr-1",
+					"listPaddingRight": "4px",
+					"listWidth": 395,
+					"listScrollWidth": 395,
+					"viewportScrollWidth": 395,
+					"viewportClientWidth": 348,
+					"viewportRight": 369,
+					"tabRight": 368.90625,
+					"width": 390,
+					"documentWidth": 390,
+					"bodyWidth": 390,
+					"scrollY": 0
+				},
+				"keyboardFocus": [
+					{
+						"expected": "God Mode",
+						"focused": "God Mode",
+						"revealed": true
+					},
+					{
+						"expected": "Projects",
+						"focused": "Projects",
+						"revealed": true
+					},
+					{
+						"expected": "Workspace",
+						"focused": "Workspace",
+						"revealed": true
+					},
+					{
+						"expected": "Account",
+						"focused": "Account",
+						"revealed": true
+					},
+					{
+						"expected": "Workspace",
+						"focused": "Workspace",
+						"revealed": true
+					},
+					{
+						"expected": "Projects",
+						"focused": "Projects",
+						"revealed": true
+					},
+					{
+						"expected": "God Mode",
+						"focused": "God Mode",
+						"revealed": true
+					}
+				],
+				"bodyOverflow": false,
+				"pageScrollYBefore": 0,
+				"pageScrollYAfter": 0,
+				"screenshot": "docs/report/browser/screens/codex-20261025-plugins-shell-390-dark.png"
+			}
+		],
+		"pageErrors": 0,
+		"notes": [
+			"Selected God Mode tab is checked for full visibility after route hydration.",
+			"Keyboard arrow navigation checks Account, Workspace, Projects, and God Mode focus visibility.",
+			"Document/body horizontal overflow and page scroll movement during keyboard focus are checked.",
+			"No plugin or notification configuration writes were issued."
+		]
+	},
+	"coordinatorVisualInspection": {
+		"status": "scoped_pass",
+		"screensInspected": 2,
+		"finding": "At 390px in both themes the selected God Mode tab is fully visible and Plugin cards remain inside the content viewport.",
+		"limitation": "Visual inspection of these captures only; independent phase review and complete screen matrix remain pending."
+	}
+}

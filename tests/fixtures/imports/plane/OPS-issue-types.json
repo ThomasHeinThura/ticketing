@@ -1,0 +1,26 @@
+[
+	{
+		"id": "62000001-aaaa-4bbb-8ccc-000000000977",
+		"name": "Epic",
+		"is_epic": true,
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	},
+	{
+		"id": "62000002-aaaa-4bbb-8ccc-000000001954",
+		"name": "Task",
+		"is_epic": false,
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	},
+	{
+		"id": "62000003-aaaa-4bbb-8ccc-000000002931",
+		"name": "Bug",
+		"is_epic": false,
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	},
+	{
+		"id": "62000004-aaaa-4bbb-8ccc-000000003908",
+		"name": "Campaign",
+		"is_epic": false,
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	}
+]

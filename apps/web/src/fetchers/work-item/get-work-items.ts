@@ -1,7 +1,14 @@
 import { client } from "@taskdesk/libs";
 import { HttpError } from "@/lib/http-error";
-import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
+import type { WorkItemSortDirection } from "@/lib/routes";
+import type {
+  WorkItemCustomFieldColumn,
+  WorkItemCustomFieldPerson,
+} from "@/types/work-item";
 import { parseWorkItemRow, type WorkItemRow } from "@/types/work-item";
+
+/** A cycle or module whose members a list read is narrowed to (P5 agile). */
+export type WorkItemAgileScope = { cycleId?: string; moduleId?: string };
 
 export type WorkItemsResult = {
   items: WorkItemRow[];
@@ -13,59 +20,40 @@ export type WorkItemsResult = {
    * what it has rather than falling back to the error state.
    */
   hasPartialFailure: boolean;
-  /**
-   * `page.hasMore` from the server (`api-design.md`'s cursor-pagination envelope) --
-   * true when this project has more work items than the one page this fetcher
-   * requests. #310 added real pagination to the route; this screen does not yet have
-   * "load more"/paging UI (out of scope for this change, flagged in the pull request
-   * body), so it always requests only the first page at the server's default page size
-   * and never follows `page.nextCursor`. Surfacing `hasMore` here, even unused by the
-   * component today, keeps that limitation honest and visible rather than silently
-   * dropped -- a future paging slice reads it instead of re-deriving it.
-   */
+  /** The server reports another cursor page; consumers must offer bounded paging. */
   hasMore: boolean;
-  /** `page.nextCursor`: the board follows it to load further pages of one project. */
+  /** `page.nextCursor`: list and board consumers follow it to load further pages of one project. */
   nextCursor?: string | null;
+  /** Search-only metadata for currently selected custom-field columns. */
+  customFieldColumns?: WorkItemCustomFieldColumn[];
+  /** Search-only, project-bound names referenced by visible custom-field values. */
+  customFieldPeople?: WorkItemCustomFieldPerson[];
 };
 
-/**
- * `GET /api/projects/{projectId}/work-items` (`work_item:read`, plus reach on the
- * project). `docs/03-features/work-items.md`'s own API table also lists
- * `GET /api/work-items` and `POST /api/work-items/search` -- neither exists yet in
- * `apps/api/src/work-item/index.ts` (only `create`, this list route, `get`, `update`
- * are implemented, per that file's own "#23's first slice" comment). This is a
- * deliberate API gap, not a mistake here: reported in this pull request's body rather
- * than worked around.
- *
- * #310 added server-side sort/pagination/filters: the response is now
- * `{ data, page, meta }` (`docs/01-architecture/api-design.md`'s cursor-pagination
- * envelope), and `sort`/`dir` are real query parameters the server applies -- this
- * fetcher forwards the caller's `sort`/`dir` (`lib/routes.ts`'s URL state) instead of
- * sorting the page client-side (the old client-side sort helper is deleted; nothing
- * else in this codebase called it once this fetcher stopped needing it). Only the
- * first page is requested -- no `cursor` is sent, and none of the server's later pages
- * are fetched -- since this screen has no "load more"/paging UI yet; see
- * `WorkItemsResult`.`hasMore`'s own comment.
- *
- * Each row is validated at this boundary (`parseWorkItemRow`) since `InferResponseType`
- * is a compile-time assertion only, not a runtime check -- see that function's own
- * comment for why this, not a mocked partial-batch shape, is this screen's real
- * "partial" case.
- */
+/** Read one validated canonical project page in server order. Cursor traversal is
+ * live, not a snapshot: concurrent edits may shift rows between pages. */
 async function getWorkItems(
   projectId: string,
-  sort: WorkItemSortField,
+  sort: "key" | "position" | "title" | "priority" | "dueDate",
   dir: WorkItemSortDirection,
-  options: { cursor?: string; limit?: number } = {},
+  options: {
+    cursor?: string;
+    limit?: number;
+    /** P5 agile: narrow to one cycle or module (`cycle` / `module` list filters). */
+    scope?: WorkItemAgileScope;
+  } = {},
 ): Promise<WorkItemsResult> {
+  const query: Record<string, string> = {
+    sort,
+    dir,
+    ...(options.cursor ? { cursor: options.cursor } : {}),
+    ...(options.limit ? { limit: String(options.limit) } : {}),
+    ...(options.scope?.cycleId ? { cycle: options.scope.cycleId } : {}),
+    ...(options.scope?.moduleId ? { module: options.scope.moduleId } : {}),
+  };
   const response = await client.projects[":projectId"]["work-items"].$get({
     param: { projectId },
-    query: {
-      sort,
-      dir,
-      ...(options.cursor ? { cursor: options.cursor } : {}),
-      ...(options.limit ? { limit: String(options.limit) } : {}),
-    },
+    query: query as { sort: typeof sort; dir: typeof dir },
   });
 
   if (!response.ok) {

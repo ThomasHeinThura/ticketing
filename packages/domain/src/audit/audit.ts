@@ -301,6 +301,61 @@ function compareActivityRows(a: ActivityRow, b: ActivityRow): number {
   return a.sequence - b.sequence;
 }
 
+/** The reconstruction field a work item's state is recorded under (matches the web label). */
+export const STATE_FIELD = "stateId";
+
+/** One field-level change an activity row implies. */
+export interface ActivityFieldChange {
+  field: string;
+  oldValue: string | null | undefined;
+  newValue: string | null;
+}
+
+function payloadString(payload: unknown, key: string): string | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const value = (payload as Record<string, unknown>)[key];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/**
+ * The field changes one activity row implies (`AU-8`). A row with a `field` is that field's
+ * change (`assignee` is the same field as `assigneeId`); a `transitioned` row has no field and
+ * is the `stateId` change from its old to its new state id; a `project` move row is a change of
+ * `project` and, because the move remaps the state, also of `stateId` (`payload.fromStateId` ->
+ * `payload.toStateId`). Legacy rows need no rewrite: the mapping is by verb and field.
+ */
+export function activityFieldChanges(row: ActivityRow): ActivityFieldChange[] {
+  if (row.field === null) {
+    return row.verb === "transitioned"
+      ? [{ field: STATE_FIELD, oldValue: row.oldValue, newValue: row.newValue }]
+      : [];
+  }
+  const field = row.field === "assignee" ? "assigneeId" : row.field;
+  const changes: ActivityFieldChange[] = [
+    { field, oldValue: row.oldValue, newValue: row.newValue },
+  ];
+  if (row.field === "project") {
+    const toStateId = payloadString(row.payload, "toStateId");
+    if (toStateId !== null) {
+      changes.push({
+        field: STATE_FIELD,
+        oldValue: payloadString(row.payload, "fromStateId"),
+        newValue: toStateId,
+      });
+    }
+  }
+  return changes;
+}
+
+/**
+ * Reconstruction options. `current` is the item's present value for fields the journal may
+ * never have recorded (state, assignee, title, ...): a field no row ever changed still holds
+ * its present value at every instant since creation, so it is the baseline for that field.
+ */
+export interface ReconstructOptions {
+  current?: Record<string, string | null>;
+}
+
 /**
  * A work item's field-level state at `at`, folded from `activityRows` (`AU-8`:
  * "Reconstruction is a domain function over activity rows, not a stored snapshot" — "a
@@ -325,10 +380,18 @@ function compareActivityRows(a: ActivityRow, b: ActivityRow): number {
  * exist. `null` (not `undefined`, not a thrown `Error`) matches this package's existing
  * convention for "no computable result" (`nextWindowOpening` in `calendar.ts` returns
  * `Date | null` for the same shape of question).
+ *
+ * **Complete journal required; transitions and creation values (`AU-9`).** Pass every activity
+ * row of the item, not only those up to `at`: a field's value at creation is the `oldValue` of
+ * its first recorded change (which may lie after `at`), and a field no row ever changed takes
+ * `options.current`. A `transitioned` row (no `field`) is the `stateId` change, and a project
+ * move also remaps `stateId` (`activityFieldChanges`), so state at an arbitrary instant is
+ * answerable across transitions and moves.
  */
 export function reconstructAt(
   activityRows: ActivityRow[],
   at: Date,
+  options: ReconstructOptions = {},
 ): WorkItemSnapshot | null {
   if (activityRows.length === 0) {
     return null;
@@ -342,14 +405,32 @@ export function reconstructAt(
     return null;
   }
 
+  // Creation values: the first recorded change of a field names what it held before (its
+  // `oldValue`); a field no row changed holds its present value (`options.current`).
   const fields: Record<string, string | null> = {};
+  const changed = new Set<string>();
+  for (const row of sorted) {
+    for (const change of activityFieldChanges(row)) {
+      if (changed.has(change.field)) continue;
+      changed.add(change.field);
+      if (change.oldValue !== undefined) {
+        fields[change.field] = change.oldValue;
+      }
+    }
+  }
+  for (const [field, value] of Object.entries(options.current ?? {})) {
+    if (!changed.has(field)) {
+      fields[field] = value;
+    }
+  }
+
   for (const row of sorted) {
     if (row.createdAt.getTime() > at.getTime()) {
       // Sorted ascending — nothing from here on can be <= at either.
       break;
     }
-    if (row.field !== null) {
-      fields[row.field] = row.newValue;
+    for (const change of activityFieldChanges(row)) {
+      fields[change.field] = change.newValue;
     }
   }
 

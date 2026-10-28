@@ -4,6 +4,7 @@ import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { resolveWorkItemEventRecipients } from "../../notification/work-item-recipients";
 import {
   type ActivityActorType,
   type NewActivityInput,
@@ -45,9 +46,9 @@ import { WorkItemAssigneeConflictError } from "./assign-work-item";
  * here to clear, so the honest answer is "it is already as you asked" rather than an
  * invented conflict or a write that would fabricate history.
  *
- * WHAT THIS DOES NOT DO: the notification fan-out that subscribes to
- * `work_item.unassigned` (`AS-17`/`AS-18`: the event IS emitted here; excluding the actor
- * from their own notification is the fan-out's job), and bulk unassign.
+ * NOTIFICATIONS: `AS-17`/`AS-18`/`WI-28` -- the previous assignee and unmuted watchers are
+ * notified in this transaction (`recordWorkItemEvent`'s `notify` hook); the actor never is,
+ * including when unassigning themselves. NOT DONE HERE: bulk unassign.
  */
 
 export type UnassignedWorkItem = {
@@ -192,6 +193,7 @@ export async function unassignWorkItem(
 
     realtimeEvent = await recordWorkItemEvent(tx, {
       kind: "work_item.unassigned",
+      notify: { resolveRecipients: resolveWorkItemEventRecipients },
       workItemId: item.id,
       key: updated.key,
       workspaceId,
@@ -200,6 +202,7 @@ export async function unassignWorkItem(
       actorType,
       customerVisible: true,
       payload: {
+        workItemId: item.id,
         key: updated.key,
         url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
         previousAssigneeId,

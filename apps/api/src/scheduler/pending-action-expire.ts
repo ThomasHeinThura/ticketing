@@ -2,13 +2,15 @@ import { createId } from "@paralleldrive/cuid2";
 import { sql } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
-import { enqueueOutboxEvent, eventScope } from "../events/outbox";
+import { enqueueOutboxEvent } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import {
   logTaskDesk,
   recordAuditWriteFailure,
 } from "../instance/observability/runtime";
-import { withJobLease } from "./leader-lock";
+import { instancePendingActionExpiryPredicate } from "../pending-action/expiry-scope";
+import { pendingActionEventScope } from "../pending-action/lifecycle-invalidation";
+import { assertJobExecutionOwned, withJobLease } from "./leader-lock";
 
 const JOB_NAME = "pending-action-expire";
 const LEASE_MS = 60_000;
@@ -21,8 +23,9 @@ export type PendingActionExpireOutcome = {
 };
 
 /**
- * PA-8 expiry supports workspace actions and the explicitly registered instance
- * canonical user-deactivation action and its legacy user_deactivation/person rows.
+ * PA-8 expiry supports workspace actions, the explicitly registered instance
+ * canonical user-deactivation action and its legacy user_deactivation/person rows,
+ * plus exact organisation deletion actions with their organisation scope bound.
  * Other nullable-scope actions remain degraded until
  * their own scope and event contract is documented. The database clock is sampled
  * after each row is locked so lock waits cannot make the decision use stale time.
@@ -39,14 +42,7 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
           FROM pending_action
           WHERE state = 'pending'
             AND workspace_id IS NULL
-            AND NOT (
-              project_id IS NULL AND organisation_id IS NULL AND (
-                (action = 'delete' AND target_type = 'user'
-                  AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
-                (action = 'user_deactivation' AND target_type = 'person'
-                  AND route_key = 'POST /api/instance/users/{id}/deactivate')
-              )
-            )
+            AND NOT (${sql.raw(instancePendingActionExpiryPredicate)})
             AND expires_at <= (SELECT clock_timestamp())
           ORDER BY expires_at
           LIMIT 1
@@ -78,15 +74,8 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             SELECT id, expires_at
             FROM pending_action
             WHERE state = 'pending'
-              AND (
-                workspace_id IS NOT NULL OR
-                (workspace_id IS NULL AND project_id IS NULL AND organisation_id IS NULL AND (
-                  (action = 'delete' AND target_type = 'user'
-                    AND route_key = 'POST /api/instance/users/{id}/deactivate') OR
-                  (action = 'user_deactivation' AND target_type = 'person'
-                    AND route_key = 'POST /api/instance/users/{id}/deactivate')
-                ))
-              )
+              AND (workspace_id IS NOT NULL OR
+                (workspace_id IS NULL AND (${sql.raw(instancePendingActionExpiryPredicate)})))
               AND expires_at <= (SELECT clock_timestamp())
               ${afterCursor}
             ORDER BY expires_at, id
@@ -97,6 +86,7 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
           let batchExpired = 0;
           let batchDegraded = false;
           for (const candidate of candidates.rows) {
+            await assertJobExecutionOwned();
             cursor = { expiresAt: candidate.expires_at, id: candidate.id };
             const selected = await tx.execute<{
               id: string;
@@ -104,13 +94,15 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
               project_id: string | null;
               organisation_id: string | null;
               route_key: string;
+              target_ids: string[];
               trace_id: string;
               action: string;
               target_type: string;
               decided_at: string;
             }>(sql`
               SELECT pa.id, pa.workspace_id, pa.project_id, pa.organisation_id, pa.route_key,
-                     pa.trace_id, pa.action, pa.target_type, clock_timestamp() AS decided_at
+                     pa.target_ids, pa.trace_id, pa.action, pa.target_type,
+                     clock_timestamp() AS decided_at
               FROM pending_action pa
               WHERE pa.id = ${candidate.id} AND pa.state = 'pending'
                 AND pa.expires_at <= clock_timestamp()
@@ -120,15 +112,32 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             if (!row) continue;
             const supportedInstanceAction =
               row.workspace_id === null &&
-              ((row.action === "delete" &&
-                row.target_type === "user" &&
-                row.route_key === "POST /api/instance/users/{id}/deactivate") ||
-                (row.action === "user_deactivation" &&
-                  row.target_type === "person" &&
-                  row.route_key ===
-                    "POST /api/instance/users/{id}/deactivate")) &&
               row.project_id === null &&
-              row.organisation_id === null;
+              ((row.organisation_id === null &&
+                row.action === "delete" &&
+                row.target_type === "identity_connection" &&
+                row.route_key ===
+                  "DELETE /api/instance/identity-connections/{id}" &&
+                row.target_ids.length === 1) ||
+                (row.organisation_id === null &&
+                  ((row.action === "delete" &&
+                    row.target_type === "user" &&
+                    row.route_key ===
+                      "POST /api/instance/users/{id}/deactivate") ||
+                    (row.action === "user_deactivation" &&
+                      row.target_type === "person" &&
+                      row.route_key ===
+                        "POST /api/instance/users/{id}/deactivate"))) ||
+                (row.action === "delete" &&
+                  row.target_type === "organisation" &&
+                  row.route_key === "DELETE /api/instance/organisations/{id}" &&
+                  row.target_ids.length === 1 &&
+                  row.organisation_id === row.target_ids[0]) ||
+                (row.action === "purge" &&
+                  row.target_type === "organisation" &&
+                  row.route_key === "POST /api/instance/purge" &&
+                  row.target_ids.length === 1 &&
+                  row.organisation_id === row.target_ids[0]));
             if (!row.workspace_id && !supportedInstanceAction) {
               if (!unsupportedLogged) {
                 logTaskDesk({
@@ -157,7 +166,11 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
               kind: "pending_action.decided",
               occurredAt: new Date(row.decided_at).toISOString(),
               actor: { type: "system", id: null, name: "TaskDesk system" },
-              scope: eventScope({
+              scope: pendingActionEventScope({
+                action: row.action,
+                targetType: row.target_type,
+                routeKey: row.route_key,
+                targetIds: row.target_ids,
                 workspaceId: row.workspace_id,
                 organisationId: row.organisation_id,
                 projectId: row.project_id,

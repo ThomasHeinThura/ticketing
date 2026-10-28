@@ -1,12 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
   CircularProgress,
   Collapsible,
@@ -23,13 +16,14 @@ import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import { useUpdateTaskStatus } from "@/hooks/mutations/task/use-update-task-status";
 import useCreateTaskRelation from "@/hooks/mutations/task-relation/use-create-task-relation";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
+import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import useGetTaskRelations from "@/hooks/queries/task-relation/use-get-task-relations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
-import queryClient from "@/query-client";
 import type Task from "@/types/task";
 import SubtaskRow from "./subtask-row";
 
@@ -51,7 +45,6 @@ function TaskSubtasks({
   const [isOpen, setIsOpen] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
-  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -69,6 +62,8 @@ function TaskSubtasks({
   const createTask = useCreateTask();
   const createRelation = useCreateTaskRelation();
   const { mutateAsync: deleteTask } = useDeleteTask();
+  const openPendingAction = useOpenPendingAction();
+  const { data: project } = useGetProject({ id: projectId, workspaceId });
   const { mutateAsync: updateTaskStatus } = useUpdateTaskStatus();
   const { data: columns = [], isLoading: isLoadingColumns } =
     useGetColumns(projectId);
@@ -290,201 +285,160 @@ function TaskSubtasks({
     }
   };
 
-  const handleDeleteTask = async () => {
-    if (!deleteTaskId) return;
+  const handleDeleteTask = async (deleteTaskId: string) => {
     try {
-      await deleteTask(deleteTaskId);
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["task-relations", taskId] });
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(deleteTaskId);
-        return next;
-      });
-      toast.success(t("tasks:subtasks.deleteSuccess"));
+      const target = subtasks.find((s) => s.task.id === deleteTaskId)?.task;
+      if (!project?.slug || !target?.number)
+        throw new Error(t("tasks:subtasks.deleteError"));
+      // Deletion is only requested; the subtask stays until the requester approves it.
+      const pendingAction = await deleteTask(
+        `${project.slug}-${target.number}`,
+      );
+      await openPendingAction(pendingAction);
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : t("tasks:subtasks.deleteError"),
       );
-    } finally {
-      setDeleteTaskId(null);
     }
   };
 
   return (
-    <>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                type="button"
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {isOpen ? (
-                  <ChevronDown className="size-4" />
-                ) : (
-                  <ChevronRight className="size-4" />
-                )}
-                <span>{t("tasks:subtasks.title")}</span>
-              </Button>
-            </CollapsibleTrigger>
-            {totalCount > 0 && (
-              <span className="flex items-center gap-1.5 ml-0.5">
-                <CircularProgress
-                  completed={completedCount}
-                  total={totalCount}
-                />
-                <span className="text-xs text-muted-foreground">
-                  {completedCount}/{totalCount}
-                </span>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="ghost"
+              type="button"
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {isOpen ? (
+                <ChevronDown className="size-4" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+              <span>{t("tasks:subtasks.title")}</span>
+            </Button>
+          </CollapsibleTrigger>
+          {totalCount > 0 && (
+            <span className="flex items-center gap-1.5 ml-0.5">
+              <CircularProgress completed={completedCount} total={totalCount} />
+              <span className="text-xs text-muted-foreground">
+                {completedCount}/{totalCount}
               </span>
-            )}
-          </div>
-          {canEdit && canCreate && (
+            </span>
+          )}
+        </div>
+        {canEdit && canCreate && (
+          <Button
+            variant="ghost"
+            size="xs"
+            className="text-muted-foreground"
+            aria-label={`${t("tasks:subtasks.addAction")} ${t("tasks:subtasks.title")}`}
+            onClick={() => setIsAdding(true)}
+            disabled={!canCreateSubtask}
+          >
+            <Plus className="size-3.5" />
+          </Button>
+        )}
+      </div>
+
+      <CollapsibleContent>
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard nav managed via document listener */}
+        <div
+          ref={containerRef}
+          className="flex flex-col mt-1"
+          onMouseDown={() => {
+            if (focusedIndex === -1 && !hasSelection) {
+              setFocusedIndex(0);
+            }
+          }}
+        >
+          <AnimatePresence initial={false}>
+            {subtasks.map((subtask, index) => {
+              const taskObj = buildTaskObject(subtask);
+              const isSelected = selectedIds.has(subtask.task.id);
+
+              return (
+                <SubtaskRow
+                  key={subtask.task.id}
+                  task={taskObj}
+                  tasks={getTargetTasks(taskObj)}
+                  projectId={projectId}
+                  workspaceId={workspace?.id ?? workspaceId}
+                  isSelected={isSelected}
+                  isFocused={focusedIndex === index}
+                  isCompleted={isCompleted(subtask.task.status)}
+                  canEdit={canEdit}
+                  selectionRadius={getSelectionRadius(index, isSelected)}
+                  assignee={getAssignee(subtask.task.userId)}
+                  onToggleComplete={() => handleToggleComplete(taskObj)}
+                  onNavigate={() =>
+                    navigate({
+                      to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
+                      params: {
+                        workspaceId,
+                        projectId,
+                        taskId: subtask.task.id,
+                      },
+                    })
+                  }
+                  onDeleteClick={() => void handleDeleteTask(subtask.task.id)}
+                />
+              );
+            })}
+          </AnimatePresence>
+        </div>
+
+        {isAdding && canEdit && canCreate && (
+          <div className="flex items-center gap-2 mt-2">
+            <Input
+              size="sm"
+              placeholder={t("tasks:subtasks.inputPlaceholder")}
+              value={newTitle}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setNewTitle(e.target.value)
+              }
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                if (e.key === "Enter") handleAddSubtask();
+                if (e.key === "Escape") {
+                  setIsAdding(false);
+                  setNewTitle("");
+                }
+              }}
+              autoFocus
+            />
+            <Button
+              size="xs"
+              onClick={handleAddSubtask}
+              disabled={
+                !newTitle.trim() || createTask.isPending || !canCreateSubtask
+              }
+            >
+              {t("tasks:subtasks.addAction")}
+            </Button>
             <Button
               variant="ghost"
               size="xs"
-              className="text-muted-foreground"
-              aria-label={`${t("tasks:subtasks.addAction")} ${t("tasks:subtasks.title")}`}
-              onClick={() => setIsAdding(true)}
-              disabled={!canCreateSubtask}
+              onClick={() => {
+                setIsAdding(false);
+                setNewTitle("");
+              }}
             >
-              <Plus className="size-3.5" />
-            </Button>
-          )}
-        </div>
-
-        <CollapsibleContent>
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard nav managed via document listener */}
-          <div
-            ref={containerRef}
-            className="flex flex-col mt-1"
-            onMouseDown={() => {
-              if (focusedIndex === -1 && !hasSelection) {
-                setFocusedIndex(0);
-              }
-            }}
-          >
-            <AnimatePresence initial={false}>
-              {subtasks.map((subtask, index) => {
-                const taskObj = buildTaskObject(subtask);
-                const isSelected = selectedIds.has(subtask.task.id);
-
-                return (
-                  <SubtaskRow
-                    key={subtask.task.id}
-                    task={taskObj}
-                    tasks={getTargetTasks(taskObj)}
-                    projectId={projectId}
-                    workspaceId={workspace?.id ?? workspaceId}
-                    isSelected={isSelected}
-                    isFocused={focusedIndex === index}
-                    isCompleted={isCompleted(subtask.task.status)}
-                    canEdit={canEdit}
-                    selectionRadius={getSelectionRadius(index, isSelected)}
-                    assignee={getAssignee(subtask.task.userId)}
-                    onToggleComplete={() => handleToggleComplete(taskObj)}
-                    onNavigate={() =>
-                      navigate({
-                        to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
-                        params: {
-                          workspaceId,
-                          projectId,
-                          taskId: subtask.task.id,
-                        },
-                      })
-                    }
-                    onDeleteClick={() => setDeleteTaskId(subtask.task.id)}
-                  />
-                );
-              })}
-            </AnimatePresence>
-          </div>
-
-          {isAdding && canEdit && canCreate && (
-            <div className="flex items-center gap-2 mt-2">
-              <Input
-                size="sm"
-                placeholder={t("tasks:subtasks.inputPlaceholder")}
-                value={newTitle}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setNewTitle(e.target.value)
-                }
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                  if (e.key === "Enter") handleAddSubtask();
-                  if (e.key === "Escape") {
-                    setIsAdding(false);
-                    setNewTitle("");
-                  }
-                }}
-                autoFocus
-              />
-              <Button
-                size="xs"
-                onClick={handleAddSubtask}
-                disabled={
-                  !newTitle.trim() || createTask.isPending || !canCreateSubtask
-                }
-              >
-                {t("tasks:subtasks.addAction")}
-              </Button>
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => {
-                  setIsAdding(false);
-                  setNewTitle("");
-                }}
-              >
-                {t("common:actions.cancel")}
-              </Button>
-            </div>
-          )}
-
-          {!isAdding && totalCount === 0 && (
-            <p className="text-xs text-muted-foreground px-2 py-1">
-              {t("tasks:subtasks.empty")}
-            </p>
-          )}
-        </CollapsibleContent>
-      </Collapsible>
-
-      <AlertDialog
-        open={!!deleteTaskId}
-        onOpenChange={(open) => !open && setDeleteTaskId(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("tasks:subtasks.deleteDialogTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("tasks:subtasks.deleteDialogDescription")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" size="sm" />}>
               {t("common:actions.cancel")}
-            </AlertDialogClose>
-            <AlertDialogClose
-              render={
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDeleteTask}
-                />
-              }
-            >
-              {t("tasks:subtasks.deleteAction")}
-            </AlertDialogClose>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+            </Button>
+          </div>
+        )}
+
+        {!isAdding && totalCount === 0 && (
+          <p className="text-xs text-muted-foreground px-2 py-1">
+            {t("tasks:subtasks.empty")}
+          </p>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

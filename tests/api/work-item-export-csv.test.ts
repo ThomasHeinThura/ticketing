@@ -36,6 +36,79 @@ describe("work item CSV export", () => {
     expect(workItemsCsvRows([], ["key", "title"])).toBe("");
   });
 
+  it("exports selected custom fields by their registered name and escapes formulas", () => {
+    const fields = [
+      {
+        key: "severity",
+        name: "Severity",
+        format: "select",
+        options: [
+          { key: "high", label: "High" },
+          { key: "low", label: "Low" },
+        ],
+      },
+      {
+        key: "note",
+        name: "Customer note",
+        format: "text",
+        options: [],
+      },
+    ] as const;
+    const rows = [
+      {
+        key: "OPS-1",
+        title: "Task",
+        stateName: null,
+        assigneeName: null,
+        priority: null,
+        dueDate: null,
+        customFieldValues: { severity: "high", note: "=SUM(A1:A2)" },
+      },
+    ];
+    expect(workItemsCsv(rows, ["key", "cf.severity", "cf.note"], fields)).toBe(
+      '"Key","Severity","Customer note"\r\n"OPS-1","High","\'=SUM(A1:A2)"\r\n',
+    );
+  });
+
+  it("resolves custom user values only with project-bound names", () => {
+    const fields = [
+      {
+        key: "owner",
+        name: "Owner",
+        format: "user",
+        options: [],
+      },
+    ] as const;
+    const people = [
+      { projectId: "project-a", personId: "person-1", name: "Morgan" },
+    ];
+    const rows = [
+      {
+        key: "OPS-1",
+        projectId: "project-a",
+        title: "Task A",
+        stateName: null,
+        assigneeName: null,
+        priority: null,
+        dueDate: null,
+        customFieldValues: { owner: "person-1" },
+      },
+      {
+        key: "OPS-2",
+        projectId: "project-b",
+        title: "Task B",
+        stateName: null,
+        assigneeName: null,
+        priority: null,
+        dueDate: null,
+        customFieldValues: { owner: "person-1" },
+      },
+    ];
+    expect(workItemsCsv(rows, ["cf.owner"], fields, people)).toBe(
+      '"Owner"\r\n"Morgan"\r\n""\r\n',
+    );
+  });
+
   it.each(["=1+1", "  =1+1", "\t@SUM(A1:A2)", "\n-2+3", "+cmd"])(
     "prefixes formula-shaped cell %j as text",
     (title) => {

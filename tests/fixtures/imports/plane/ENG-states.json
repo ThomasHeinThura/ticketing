@@ -1,0 +1,74 @@
+[
+	{
+		"id": "41000001-aaaa-4bbb-8ccc-000000000977",
+		"name": "Backlog",
+		"group": "backlog",
+		"color": "#888888",
+		"sequence": 15000,
+		"default": true,
+		"project": "33000001-aaaa-4bbb-8ccc-000000000977"
+	},
+	{
+		"id": "41000002-aaaa-4bbb-8ccc-000000001954",
+		"name": "Todo",
+		"group": "unstarted",
+		"color": "#888888",
+		"sequence": 25000,
+		"default": false,
+		"project": "33000001-aaaa-4bbb-8ccc-000000000977"
+	},
+	{
+		"id": "41000003-aaaa-4bbb-8ccc-000000002931",
+		"name": "In Progress",
+		"group": "started",
+		"color": "#888888",
+		"sequence": 35000,
+		"default": false,
+		"project": "33000001-aaaa-4bbb-8ccc-000000000977"
+	},
+	{
+		"id": "41000004-aaaa-4bbb-8ccc-000000003908",
+		"name": "In Review",
+		"group": "started",
+		"color": "#888888",
+		"sequence": 45000,
+		"default": false,
+		"project": "33000001-aaaa-4bbb-8ccc-000000000977"
+	},
+	{
+		"id": "41000005-aaaa-4bbb-8ccc-000000004885",
+		"name": "Done",
+		"group": "completed",
+		"color": "#888888",
+		"sequence": 55000,
+		"default": false,
+		"project": "33000001-aaaa-4bbb-8ccc-000000000977"
+	},
+	{
+		"id": "41000006-aaaa-4bbb-8ccc-000000005862",
+		"name": "Cancelled",
+		"group": "cancelled",
+		"color": "#888888",
+		"sequence": 65000,
+		"default": false,
+		"project": "33000001-aaaa-4bbb-8ccc-000000000977"
+	},
+	{
+		"id": "41000007-aaaa-4bbb-8ccc-000000006839",
+		"name": "Won't Fix",
+		"group": "cancelled",
+		"color": "#888888",
+		"sequence": 75000,
+		"default": false,
+		"project": "33000001-aaaa-4bbb-8ccc-000000000977"
+	},
+	{
+		"id": "41000008-aaaa-4bbb-8ccc-000000007816",
+		"name": "Intake",
+		"group": "triage",
+		"color": "#888888",
+		"sequence": 85000,
+		"default": false,
+		"project": "33000001-aaaa-4bbb-8ccc-000000000977"
+	}
+]

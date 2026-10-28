@@ -1,6 +1,11 @@
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import db from "../database";
 import { policyShadowEnabled } from "../permissions/shadow-config";
+import {
+  loadProjectAncestorIdsForRequest,
+  loadProjectOwnerTeamIdFor,
+} from "../project/hierarchy.repository";
 import {
   evaluateProjectRead,
   projectCapabilityRefused,
@@ -33,14 +38,26 @@ export function requireCannedResponseListReach() {
     c.set("workItemId", target.id);
     c.set("projectId", target.projectId);
     c.set("policyScopeResource", "work_item");
+    const ancestorProjectIds = await loadProjectAncestorIdsForRequest(
+      c,
+      db,
+      target.workspaceId,
+      target.projectId,
+    );
+    const ownerTeamId = await loadProjectOwnerTeamIdFor(
+      db,
+      identity,
+      target.workspaceId,
+      target.projectId,
+    );
     if (policyShadowEnabled) {
       c.set("projectReachFacts", {
         projectId: target.projectId,
         workspaceId: target.workspaceId,
         organisationId: target.organisationId,
         workItemId: target.id,
-        ancestorProjectIds: [],
-        ownerTeamId: null,
+        ancestorProjectIds,
+        ownerTeamId,
       });
     }
     const policy = cannedResponsePolicies["GET /api/canned-responses"];
@@ -53,8 +70,8 @@ export function requireCannedResponseListReach() {
         workspaceId: target.workspaceId,
         organisationId: target.organisationId,
         workItemId: target.id,
-        ancestorProjectIds: [],
-        ownerTeamId: null,
+        ancestorProjectIds,
+        ownerTeamId,
       },
     );
     if (!decision?.reachable)

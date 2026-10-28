@@ -1,5 +1,7 @@
 import { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
+import type { QueueSubmissionRow } from "@/fetchers/intake-queues";
+import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 import {
   parseFilterTextOrThrow,
   postWorkItemSearch,
@@ -23,6 +25,15 @@ export type ShareableViewTeam = InferResponseType<
 >["data"][number];
 export type SavedViewVisibility = "private" | "team" | "workspace";
 export type SavedViewScope = "workspace" | "project";
+export type SavedViewRunResult =
+  | (StructuredWorkItemsResult & { entity: "work_item" })
+  | {
+      entity: "submission";
+      submissions: QueueSubmissionRow[];
+      hasMore: boolean;
+      nextCursor?: string | null;
+      total?: number;
+    };
 
 export async function getSavedViews(workspaceId: string): Promise<SavedView[]> {
   const response = await views.$get({ query: { workspaceId } });
@@ -53,7 +64,7 @@ export async function runSavedView(input: {
   id: string;
   limit?: number;
   cursor?: string;
-}): Promise<StructuredWorkItemsResult> {
+}): Promise<SavedViewRunResult> {
   const response = await views[":id"].run.$post({
     param: { id: input.id },
     query: {
@@ -62,9 +73,20 @@ export async function runSavedView(input: {
     },
   });
   if (!response.ok) throw new HttpError(response.status, "Unable to run view");
-  const { data, page, meta } = await response.json();
+  const result = await response.json();
+  if ("submissions" in result) {
+    return {
+      entity: "submission",
+      submissions: result.submissions,
+      hasMore: result.page.hasMore,
+      nextCursor: result.page.nextCursor,
+      total: result.meta?.total,
+    };
+  }
+  const { data, page, meta } = result;
   const items = data.map(parseWorkItemRow);
   return {
+    entity: "work_item",
     items,
     hasPartialFailure: items.some((item) => item.unavailableFields.length > 0),
     hasMore: page.hasMore,
@@ -137,12 +159,7 @@ export async function updateSavedView(input: {
  */
 export async function requestSavedViewDeletion(id: string) {
   const response = await views[":id"].$delete({ param: { id } });
-  if (!response.ok)
-    throw new HttpError(
-      response.status,
-      "Unable to request saved view deletion",
-    );
-  return (await response.json()) as { pendingActionId: string };
+  return readPendingDeletion(response, "Unable to request saved view deletion");
 }
 
 /**
@@ -157,6 +174,7 @@ export async function runSavedViewUrlQuery(input: {
   projectSlug?: string;
   sort?: SavedViewUrlSearch["sort"];
   dir?: SavedViewUrlSearch["dir"];
+  sorts?: SavedViewUrlSearch["sorts"];
   columns?: SavedViewUrlSearch["columns"];
   cursor?: string;
 }): Promise<StructuredWorkItemsResult> {
@@ -171,11 +189,15 @@ export async function runSavedViewUrlQuery(input: {
       ? { op: "and" as const, clauses: [projectFilter, filter] }
       : projectFilter
     : filter;
-  const sort = savedViewSort({ sort: input.sort, dir: input.dir });
+  const sort = savedViewSort({
+    sort: input.sort,
+    dir: input.dir,
+    sorts: input.sorts,
+  });
   return postWorkItemSearch({
     workspaceId: input.workspaceId,
     ...(scopedFilter ? { filter: scopedFilter } : {}),
-    ...(sort ? { sort: [sort] } : {}),
+    ...(sort ? { sort } : {}),
     ...(input.columns ? { columns: input.columns } : {}),
     ...(input.cursor ? { cursor: input.cursor } : {}),
   });

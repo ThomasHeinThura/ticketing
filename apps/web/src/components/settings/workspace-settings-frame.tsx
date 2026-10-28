@@ -9,67 +9,176 @@ import {
 } from "@taskdesk/ui";
 import {
   CalendarDays,
+  Clock,
   Inbox,
+  Languages,
+  LayoutTemplate,
   MessageSquareText,
+  PiggyBank,
   Settings,
   Shield,
+  SlidersHorizontal,
   Tag,
   Timer,
+  UserPlus,
+  Users,
+  Webhook,
+  Workflow,
+  Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SettingsSidebar from "@/components/SettingsSidebar";
+import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
+import { routes } from "@/lib/routes";
 
 export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
-  const { workspace, role, canManageWorkspaceSettings } =
-    useWorkspacePermission();
+  const {
+    workspace,
+    role,
+    canManageWorkspaceSettings,
+    canManageServiceCalendars,
+    canManageRoles,
+    canManageWebhooks,
+    canManageCustomFields,
+    canInviteUsers,
+    canManageRates,
+    canManageWorkflows,
+  } = useWorkspacePermission();
   const location = useLocation();
-  const menuItems = [
+  const canSettings = canManageWorkspaceSettings();
+  const canCalendars = canManageServiceCalendars();
+  const canRoles = canManageRoles();
+  const canWebhooks = canManageWebhooks();
+  const canFields = canManageCustomFields();
+  const canInvite = canInviteUsers();
+  const canRates = canManageRates();
+  const canWorkflows = canManageWorkflows();
+  // P4R2-M1: SLA policies and service calendars are `feature.sla` settings; off (or still
+  // loading) they are not offered, like every other flagged area.
+  const workspaceFeatures = useWorkspaceFeatures(workspace?.id);
+  const slaOn = workspaceFeatures.isOn("feature.sla");
+  // Every entry is shown only to people the server would let into it, using the capability the
+  // API of that area enforces: `workspace:manage_roles`, `webhook:manage`, `custom_field:manage`,
+  // `sla_policy:manage` (service calendars), `time_entry:manage_rates` (rates), `workflow:manage`
+  // (workflows and the CAB template) and otherwise `workspace:manage_settings`. A direct
+  // URL still reaches the page, which shows the API's access-denied error.
+  const allMenuItems = [
     {
       title: t("settings:workspaceGeneral.title"),
       url: "/dashboard/settings/workspace/general",
       icon: Settings,
+      visible: true,
+    },
+    {
+      title: t("settings:workspaceFeatures.title"),
+      url: routes.workspaceFeatures.path,
+      icon: SlidersHorizontal,
+      visible: canSettings,
+    },
+    {
+      title: t("settings:terminology.title", { defaultValue: "Terminology" }),
+      url: routes.workspaceTerminology.path,
+      icon: Languages,
+      visible: canSettings,
     },
     {
       title: t("settings:workspaceRoles.title", { defaultValue: "Roles" }),
-      url: "/dashboard/settings/workspace/roles",
+      url: "/agent/settings/roles",
       icon: Shield,
+      visible: canRoles,
     },
     {
       title: t("settings:workspaceLabels.title", { defaultValue: "Labels" }),
       url: "/dashboard/settings/workspace/labels",
       icon: Tag,
+      visible: true,
     },
-    ...(canManageWorkspaceSettings()
-      ? [
-          {
-            title: t("settings:cannedResponses.title"),
-            url: "/agent/settings/canned-responses",
-            icon: MessageSquareText,
-          },
-        ]
-      : []),
+    {
+      title: t("settings:cannedResponses.title"),
+      url: "/agent/settings/canned-responses",
+      icon: MessageSquareText,
+      visible: canSettings,
+    },
+    {
+      title: t("settings:workItemTemplates.title"),
+      url: "/agent/settings/work-item-templates",
+      icon: LayoutTemplate,
+      visible: canSettings,
+    },
     {
       title: t("serviceCalendars:list.title"),
       url: "/agent/settings/calendars",
       icon: CalendarDays,
+      visible: canCalendars && slaOn,
     },
     {
       title: t("slaPolicies:list.title"),
       url: "/agent/settings/sla-policies",
       icon: Timer,
+      visible: canCalendars && slaOn,
     },
     {
       title: t("requestTypes:title"),
       url: "/agent/settings/request-types",
       icon: Inbox,
+      visible: canSettings,
+    },
+    {
+      title: t("settings:workflows.title"),
+      url: "/agent/settings/workflows",
+      icon: Workflow,
+      visible: canWorkflows,
+    },
+    {
+      title: t("teams:list.title"),
+      url: "/agent/settings/teams",
+      icon: Users,
+      visible: canSettings,
+    },
+    {
+      title: t("timeTracking:activities.title"),
+      url: "/agent/settings/time-activities",
+      icon: Clock,
+      visible: canSettings,
+    },
+    {
+      title: t("timeTracking:rates.title"),
+      url: "/agent/settings/rates",
+      icon: PiggyBank,
+      visible: canRates,
+    },
+    {
+      title: t("customFields:list.title"),
+      url: "/agent/settings/custom-fields",
+      icon: SlidersHorizontal,
+      visible: canFields,
+    },
+    {
+      title: t("customerInvitations:title"),
+      url: "/agent/settings/customer-invitations",
+      icon: UserPlus,
+      visible: canInvite,
+    },
+    {
+      title: t("automations:workspace.title"),
+      url: "/agent/settings/automations",
+      icon: Zap,
+      visible: canSettings,
+    },
+    {
+      title: t("webhooks:list.title"),
+      url: "/agent/settings/webhooks",
+      icon: Webhook,
+      visible: canWebhooks,
     },
   ];
+  const menuItems = allMenuItems.filter((item) => item.visible);
   const isActivePath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
   const workspaceInitials = getInitials(workspace?.name, "WS");

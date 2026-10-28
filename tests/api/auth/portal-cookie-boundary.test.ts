@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   auth,
   authForHost,
+  isCustomerInviteSignUpEndpoint,
   isCustomerLocalAuthEndpoint,
   portalAuth,
   resolveLocalAuthProviders,
@@ -132,6 +133,23 @@ describe("portal-scoped local auth providers", () => {
     ).toBe(false);
     expect(
       isCustomerLocalAuthEndpoint("GET", "/api/auth/list-accounts", providers),
+    ).toBe(false);
+  });
+
+  it("admits the invitation-gated sign-up only while the customer password provider is on", () => {
+    const on = { password: true, magicLink: false, emailOtp: false };
+    const off = { password: false, magicLink: true, emailOtp: true };
+    expect(
+      isCustomerInviteSignUpEndpoint("POST", "/api/auth/sign-up/email", on),
+    ).toBe(true);
+    expect(
+      isCustomerInviteSignUpEndpoint("POST", "/api/auth/sign-up/email", off),
+    ).toBe(false);
+    expect(
+      isCustomerInviteSignUpEndpoint("GET", "/api/auth/sign-up/email", on),
+    ).toBe(false);
+    expect(
+      isCustomerInviteSignUpEndpoint("POST", "/api/auth/sign-in/email", on),
     ).toBe(false);
   });
 

@@ -120,6 +120,7 @@ export async function listCommentVersionPageQuery(
 export async function findWorkItemMentionContextQuery(
   executor: Executor,
   workItemId: string,
+  options: { allowArchivedForRead?: true } = {},
 ): Promise<WorkItemMentionContext | null> {
   const [row] = await executor
     .select({
@@ -138,7 +139,9 @@ export async function findWorkItemMentionContextQuery(
       and(
         eq(workItemTable.id, workItemId),
         isNull(workItemTable.deletedAt),
-        isNull(workItemTable.archivedAt),
+        ...(options.allowArchivedForRead
+          ? []
+          : [isNull(workItemTable.archivedAt)]),
         isNull(projectTable.deletedAt),
         isNull(projectTable.archivedAt),
         isNull(workspaceTable.deletedAt),

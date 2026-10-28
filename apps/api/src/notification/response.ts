@@ -1,4 +1,4 @@
-import { responseTimestamp, z } from "../openapi";
+import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
 
 export const notificationSchema = z
   .object({
@@ -25,12 +25,41 @@ export const notificationSchema = z
     resourceType: z.string().nullable().openapi({
       description: "`task` or `workspace`.",
     }),
+    kind: z.string().nullable().optional().openapi({
+      description:
+        "The domain event key for event-derived notifications (for example `work_item.mentioned`); null for legacy rows. Drives the inbox mention and assignment filters.",
+    }),
+    readAt: nullableResponseTimestamp.optional().openapi({
+      description: "When the notification was read; null while unread (NO-15).",
+    }),
+    workItemKey: z.string().nullable().optional().openapi({
+      description:
+        "The key of the work item the notification is about (directly, or through its comment or approval), for deep links (NO-14); null when it has none.",
+    }),
+    deepLink: z
+      .discriminatedUnion("type", [
+        z.object({ type: z.literal("webhook"), id: z.string() }),
+        z.object({ type: z.literal("api_key"), id: z.string() }),
+      ])
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          "Typed resource deep link for supported events. Webhook and API key links are emitted only for their owner auto-disable notices.",
+      }),
     createdAt: responseTimestamp,
     updatedAt: responseTimestamp,
   })
   .openapi("Notification");
 
 export const notificationListSchema = z.array(notificationSchema);
+
+export const notificationInboxSchema = z.object({
+  data: z.array(notificationSchema),
+  unreadCount: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+  nextCursor: z.string().nullable(),
+});
 
 export const bulkResultSchema = z
   .object({ success: z.boolean() })

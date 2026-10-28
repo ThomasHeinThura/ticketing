@@ -108,9 +108,13 @@ describe("work list URL state (AGENTS.md rule 4, SV-11)", () => {
     expect(parseWorkItemListSearch({ columns: ["state"] }).columns).toEqual([
       "state",
     ]);
+    expect(
+      parseWorkItemListSearch({ columns: ["key", "cf.constructor"] }).columns,
+    ).toEqual(["key", "cf.constructor"]);
     for (const bad of [
       [],
       ["nope"],
+      ["cf.Bad Key"],
       ["key", "key"],
       '{"a":1}',
       "not json",
@@ -141,6 +145,46 @@ describe("parseWorkItemQueryState (shared with saved views)", () => {
 
   it("knows which sort fields the search endpoint accepts (position is rank order only)", () => {
     expect(isWorkItemSearchSortField("priority")).toBe(true);
+    expect(isWorkItemSearchSortField("state")).toBe(true);
+    expect(isWorkItemSearchSortField("assignee")).toBe(true);
+    expect(isWorkItemSearchSortField("cf.constructor")).toBe(true);
     expect(isWorkItemSearchSortField("position")).toBe(false);
+  });
+
+  it("round-trips a bounded ordered multi-sort URL while keeping legacy sort fields", () => {
+    const sorts = [
+      { field: "state" as const, order: "desc" as const },
+      { field: "cf.constructor" as const, order: "asc" as const },
+      { field: "assignee" as const, order: "desc" as const },
+    ];
+    const url = routes.workItemList.build(
+      { projectKey: "OPS" },
+      { sorts, sort: "state", dir: "desc" },
+    );
+    const parsed = parseWorkItemListSearchFromQueryString(
+      url.split("?")[1] ?? "",
+    );
+    expect(parsed.sorts).toEqual(sorts);
+    expect(parsed.sort).toBe("state");
+    expect(parsed.dir).toBe("desc");
+    expect(url).toContain(`sorts=${encodeURIComponent(JSON.stringify(sorts))}`);
+  });
+
+  it("rejects malformed, duplicate, position, and over-five sort arrays", () => {
+    for (const sorts of [
+      [],
+      [{ field: "key", order: "sideways" }],
+      [
+        { field: "key", order: "asc" },
+        { field: "key", order: "desc" },
+      ],
+      [{ field: "position", order: "asc" }],
+      Array.from({ length: 6 }, (_, index) => ({
+        field: `cf.field_${index}`,
+        order: "asc",
+      })),
+    ]) {
+      expect(parseWorkItemListSearch({ sorts })).not.toHaveProperty("sorts");
+    }
   });
 });

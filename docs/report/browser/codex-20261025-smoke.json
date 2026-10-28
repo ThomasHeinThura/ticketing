@@ -1,0 +1,1581 @@
+{
+	"source": "aea5d5702 built output; browser discovery before repair rebuild",
+	"tls": "Private local self-signed certificate; ignoreHTTPSErrors enabled. curl verifies using explicit CA.",
+	"method": "Real Chromium against isolated persisted audit database; route smoke only, no feature acceptance implied.",
+	"results": [
+		{
+			"route": "/agent",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nProjects\nCreate project\nTitle\tProgress\tDue date\tStatus\n\nCustomer Support Desk\n\t\nx\n7%\n\tOct 21, 2026\tIn progress",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-00.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/inbox",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/inbox",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nInbox\nInbox\nAll\nUnread (0)\nMentions\nAssignments\n\nNo notifications yet\n\nYou'll see updates and activity here.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-01.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/my-work",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/my-work",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nMy work\nMy work\nAssigned to me\nWatching\nApprovals\nNo work items match this filter\nChange or clear the filter to see more of this project's work items.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-02.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/search",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/dashboard/workspace/ws-taskdesk-sit/search",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nSearch\nBack to Dashboard\n\nSearch across all projects in this workspace. Use short IDs like DEP-23 to find specific tasks.\n\nStart Searching\n\nEnter a search term to find tasks across all projects\n\nQuick searches:\n\nHigh priority\nBug\nFeature\nIn progress\nCompleted",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-03.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/work",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\n\nCustomer Support Desk · Work items\nFilter\nTask number\nSelect items\nBoard\nList\nTable\nCreate work item\n\nBacklog\n5\nHELP-2\nProvision VPN & analytics access for Acme engineering\nAccess\n?\nHELP-14\nTemporary original dialog verification\n?\nHELP-15\nTemporary complete creation verification\nOct 29\nGH\nHELP-16\nTemporary persisted label verification\nAccess\nOct 29\nAT\nHELP-17\nTemporary new-label creation verification\nLocal verification label\nOct 29\nAT\nTo Do\n5\nHELP-1\nProduction SSO certificate rotation & SLA verification\nChange window\n?\nHELP-3\nInternal database index maintenance review\nChange window\n?\nHELP-4\nRotate production SSO certificate after CAB approval\nChange window\nCustomer follow-up\nBreached\nOct 23\nAT\nHELP-7\nInvestigate intermittent analytics refresh failures\nCustomer follow-up\nIncident\nBreached\nOct 26\nGH\nHELP-13\nTemporary local drag verification\n?\nIn Progress\n3\nHELP-5\nVerify certificate chain and sign-in on the customer portal\nAccess\nCustomer follow-up\nBreached\nOct 24\nGH\nHELP-11\nTemporary local approval verification\n?\nHELP-12\nThis is the test\nOct 31\n?\nDone\n1\nHELP-6\nComplete VPN onboarding and publish access guide\nAccess\nMissed\nOct 21\nGH\nCancelled\n0\nNo tasks",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-04.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP/work?layout=board",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/work",
+			"body": " Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\n\nCustomer Support Desk · Work items\nFilter\nTask number\nGroup\nSelect items\nBoard\nList\nTable\nCreate work item\n\nBacklog\n5\nHELP-2\n?\nProvision VPN & analytics access for Acme engineering\nAccess\nCurrent state: Backlog\nHELP-14\n?\nTemporary original dialog verification\nCurrent state: Backlog\nHELP-15\nGH\nTemporary complete creation verification\nOct 29\nCurrent state: Backlog\nHELP-16\nAT\nTemporary persisted label verification\nAccess\nOct 29\nCurrent state: Backlog\nHELP-17\nAT\nTemporary new-label creation verification\nLocal verification label\n1/2\nOct 29\nCurrent state: Backlog\nTo Do\n5\nHELP-1\n?\nProduction SSO certificate rotation & SLA verification\nChange window\nCurrent state: To Do\nHELP-3\n?\nInternal database index maintenance review\nChange window\nCurrent state: To Do\nHELP-4\nAT\nRotate production SSO certificate after CAB approval\nChange window\nCustomer follow-up\nOct 23\nBreached\nCurrent state: To Do\nHELP-7\nGH\nInvestigate intermittent analytics refresh failures\nCustomer follow-up\nIncident\nOct 26\nBreached\nBlocked\nCurrent state: To Do\nHELP-13\n?\nTemporary local drag verification\nCurrent state: To Do\nIn Progress\n3\nHELP-5\nGH\nVerify certificate chain and sign-in on the customer portal\nAccess\nCustomer follow-up\nOct 24\nBreached\nCurrent state: In Progress\nHELP-11\n?\nTemporary local approval verification\nCurrent state: In Progress\nHELP-12\n?\nThis is the test\nOct 31\nCurrent state: In Progress\nDone\n1\nHELP-6\nGH\nComplete VPN onboarding and publish access guide\nAccess\nOct 21\nMissed\nCurrent state: Done\nCancelled\n0\n\nNo work items in this state.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-05.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP/work?layout=list",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/work",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\n\nCustomer Support Desk · Work items\nFilter\nTask number\nSelect items\nBoard\nList\nTable\nCreate work item\n\nBacklog\n5\nHELP-2\nProvision VPN & analytics access for Acme engineering\nAccess\n?\nHELP-14\nTemporary original dialog verification\n?\nHELP-15\nTemporary complete creation verification\nOct 29\nGH\nHELP-16\nTemporary persisted label verification\nAccess\nOct 29\nAT\nHELP-17\nTemporary new-label creation verification\nLocal verification label\nOct 29\nAT\nTo Do\n5\nHELP-1\nProduction SSO certificate rotation & SLA verification\nChange window\n?\nHELP-3\nInternal database index maintenance review\nChange window\n?\nHELP-4\nRotate production SSO certificate after CAB approval\nChange window\nCustomer follow-up\nBreached\nOct 23\nAT\nHELP-7\nInvestigate intermittent analytics refresh failures\nCustomer follow-up\nIncident\nBreached\nOct 26\nGH\nHELP-13\nTemporary local drag verification\n?\nIn Progress\n3\nHELP-5\nVerify certificate chain and sign-in on the customer portal\nAccess\nCustomer follow-up\nBreached\nOct 24\nGH\nHELP-11\nTemporary local approval verification\n?\nHELP-12\nThis is the test\nOct 31\n?\nDone\n1\nHELP-6\nComplete VPN onboarding and publish access guide\nAccess\nMissed\nOct 21\nGH\nCancelled\n0\nNo tasks",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-06.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP/work?layout=table",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/work",
+			"body": "gs\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\n\nCustomer Support Desk · Work items\nFilter\nTask number\nSelect items\nBoard\nList\nTable\nCreate work item\nKey\n\tTitle\n\tPriority\n\tDue date\n\tState\tAssignee\n\nHELP-1\n\t\nProduction SSO certificate rotation & SLA verification\n\t\nHigh\n\tNo due date\t\nTo Do\n\tUnassigned\n\nHELP-2\n\t\nProvision VPN & analytics access for Acme engineering\n\t\nMedium\n\tNo due date\t\nBacklog\n\tUnassigned\n\nHELP-3\n\t\nInternal database index maintenance review\n\t\nLow\n\tNo due date\t\nTo Do\n\tUnassigned\n\nHELP-4\n\t\nRotate production SSO certificate after CAB approval\n\t\nHigh\n\tOct 23\t\nTo Do\n\tAlan Turing (Project Lead & Approver)\n\nHELP-5\n\t\nVerify certificate chain and sign-in on the customer portal\n\t\nHigh\n\tOct 24\t\nIn Progress\n\tGrace Hopper (Service Desk Agent)\n\nHELP-6\n\t\nComplete VPN onboarding and publish access guide\n\t\nHigh\n\tOct 21\t\nDone\n\tGrace Hopper (Service Desk Agent)\n\nHELP-7\n\t\nInvestigate intermittent analytics refresh failures\n\t\nHigh\n\tOct 26\t\nTo Do\nBlocked\n\tGrace Hopper (Service Desk Agent)\n\nHELP-11\n\t\nTemporary local approval verification\n\t\nNo priority\n\tNo due date\t\nIn Progress\n\tUnassigned\n\nHELP-12\n\t\nThis is the test\n\t\nHigh\n\tOct 31\t\nIn Progress\n\tUnassigned\n\nHELP-13\n\t\nTemporary local drag verification\n\t\nHigh\n\tNo due date\t\nTo Do\n\tUnassigned\n\nHELP-14\n\t\nTemporary original dialog verification\n\t\nNo priority\n\tNo due date\t\nBacklog\n\tUnassigned\n\nHELP-15\n\t\nTemporary complete creation verification\n\t\nHigh\n\tOct 29\t\nBacklog\n\tGrace Hopper (Service Desk Agent)\n\nHELP-16\n\t\nTemporary persisted label verification\n\t\nLow\n\tOct 29\t\nBacklog\n\tAlan Turing (Project Lead & Approver)\n\nHELP-17\n\t\nTemporary new-label creation verification\n\t\nLow\n\tOct 29\t\nBacklog\n\tAlan Turing (Project Lead & Approver)",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-07.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP/backlog",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/backlog",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\nCustomer Support Desk · Backlog\nWork items\nSelect items\nFilter\nCreate work item\nBacklog\n5\nlist.columns.key\tlist.columns.title\tlist.columns.priority\tlist.columns.assignee\tOrder\nHELP-16\tTemporary persisted label verification\tpriority.low\tAlan Turing (Project Lead & Approver)\t\n\nHELP-17\tTemporary new-label creation verification\tpriority.low\tAlan Turing (Project Lead & Approver)\t\n\nHELP-14\tTemporary original dialog verification\tpriority.null\tUnassigned\t\n\nHELP-15\tTemporary complete creation verification\tpriority.high\tGrace Hopper (Service Desk Agent)\t\n\nHELP-2\tProvision VPN & analytics access for Acme engineering\tpriority.medium\tUnassigned\t\nTo Do\n5\nlist.columns.key\tlist.columns.title\tlist.columns.priority\tlist.columns.assignee\tOrder\nHELP-13\tTemporary local drag verification\tpriority.high\tUnassigned\t\n\nHELP-1\tProduction SSO certificate rotation & SLA verification\tpriority.high\tUnassigned\t\n\nHELP-3\tInternal database index maintenance review\tpriority.low\tUnassigned\t\n\nHELP-4\tRotate production SSO certificate after CAB approval\tpriority.high\tAlan Turing (Project Lead & Approver)\t\n\nHELP-7\tInvestigate intermittent analytics refresh failures\tpriority.high\tGrace Hopper (Service Desk Agent)\t",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-08.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/work-items/HELP-12",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/work-items/HELP-12",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nCustomer Support Desk\n/\nHELP-12\n\nHELP-12\n\nThis is the test\n\ntesting for todo\n\nSub-tasks\nHierarchy\n\nNo children\n\nRelations\n\nNo related tasks\n\nActivity & comments\nEverything\n\n\n\n\nInternal\nPublic\n\nInternal note — customers cannot see this.\n\nAL\nAda Lovelace (Instance & Workspace Admin)\n Created\n3 changes\n2 days ago\nAL\nAda Lovelace (Instance & Workspace Admin)\n Changed state 2 days ago\nAL\nAda Lovelace (Instance & Workspace Admin)\n Changed state\n2 changes\n2 days ago\nAudit history\n\nProperties\n\nIn Progress\nHigh\nUnassigned\nOct 1, 2026\nOct 31, 2026\nLabels\nNo parent\nAttachments\nSLA\nApprovals\nProject\nCustomer Support Desk\nCreated\nOct 22, 2026, 4:04 PM\nUpdated\nOct 22, 2026, 10:46 PM",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-09.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/views",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/views",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nSaved views\nSaved views\n\nViews available to you in this workspace. Each one is a stored search you can open, share by its link, pin and copy.\n\nVisibility\nPrivate\nCreate view\nNo saved views are available.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-10.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/profile",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/dashboard/settings/account/information",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nSA\n\nSIT Audit admin\n\naudit-20261025-admin@example.test\n\nACCOUNT\nInformation\nNotifications\nPreferences\nPending actions\nDEVELOPER\nAPI Keys\nPersonal Information\n\nManage your personal details and account information.\n\nAccount Information\n\nManage your profile and account details.\n\nProfile picture\n\nClick your picture to change or remove it. Cropped to a square and resized to 256x256.\n\nSA\nFull name\nEmail\nDanger zone\n\nPermanent actions that affect your whole account.\n\nDelete account\n\nWorkspaces only you belong to are deleted with your account. Elsewhere, your tasks stay and become unassigned, and your comments are removed.\n\nDelete account",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-11.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/profile/appearance",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/dashboard/settings/account/preferences",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nSA\n\nSIT Audit admin\n\naudit-20261025-admin@example.test\n\nACCOUNT\nInformation\nNotifications\nPreferences\nPending actions\nDEVELOPER\nAPI Keys\nPreferences\n\nCustomize your TaskDesk experience.\n\nAppearance\n\nVisual settings and layout preferences.\n\nTheme\n\nChoose your preferred color scheme\n\nLight\nLanguage\n\nChoose your preferred interface language\n\nEnglish\nFirst Day of Week\n\nChoose which day calendars and weekly ranges start on\n\nSunday\nDefault View\n\nChoose your preferred task view mode\n\nBoard\nDensity\n\nSpacing of rows, cards and fields\n\nComfortable\nSidebar Default\n\nKeep sidebar expanded on startup\n\nDisplay options\n\nChoose which information to show in task views\n\nReset\nTask Numbers\n\nShow task IDs and numbers\n\nAssignees\n\nShow who is assigned to tasks\n\nDue Dates\n\nDisplay task deadlines\n\nLabels\n\nShow task labels and tags\n\nPriority\n\nDisplay priority indicators",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-12.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/profile/pending-actions",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/profile/pending-actions",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nSA\n\nSIT Audit admin\n\naudit-20261025-admin@example.test\n\nACCOUNT\nInformation\nNotifications\nPreferences\nPending actions\nDEVELOPER\nAPI Keys\nMy pending actions\n\nReview requests made by your account. Each action expires after its listed time.\n\nYou have no pending actions.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-13.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/teams",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/teams",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nTeams\n\nNamed groups of staff. Teams can own projects, be notified as a unit and act as the Change Advisory Board.\n\nNew team\nSIT HELP Change Advisory Board\n1 member\nCAB",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-14.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/roles",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/roles",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nRoles\n\nWhat each role can do, who holds it, and how roles rank against each other. A role's rank decides who may edit whom.\n\nNew role\nOwner\nEverything, including deleting the workspace. Not editable · Rank 100 · 3 people · changed Oct 22, 2026\nBuilt-in\nNot editable\nAdmin\nEverything except deleting the workspace · Rank 80 · 2 people · changed Oct 22, 2026\nBuilt-in\nManager\nRuns delivery: projects, members, policies, workflows · Rank 60 · 0 people · changed Oct 25, 2026\nBuilt-in\nLead\nAssigns work, triages intake, decides approvals within reach · Rank 50 · 0 people · changed Oct 22, 2026\nBuilt-in\nMember\nCreates and updates work items, comments internally, self-assigns · Rank 40 · 3 people · changed Oct 22, 2026\nBuilt-in\nViewer\nRead-only · Rank 20 · 0 people · changed Oct 22, 2026\nBuilt-in",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-15.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/custom-fields",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/custom-fields",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nCustom fields\n\nCapture what your organisation needs to know. Fields are grouped into sections and each field says which work item types it applies to.\n\nNew section\nNew field\nNo sections yet\nCreate a section first, then add fields to it.\nShow deleted fields",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-16.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/workflows",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/workflows",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nWorkflows\n\nState machines that decide which transitions a work item may take. Edit the transitions, save a draft, validate it against every project that uses it, then publish.\n\nNew workflow\nCAB approval for changes\n\nAdds an Approved state and requires CAB approval before a change can move into work. It binds the Change type to a new workflow and is never applied on its own. Choose the projects that adopt the Approved state; a project that has not adopted it cannot approve changes.\n\nAdd CAB approval\nName\tKey\tActive version\nSIT maintenance approval\tsit-maintenance\tActive\nDefault workflow\tdefault\tActive",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-17.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/sla-policies",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/sla-policies",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nSLA policies\n\nDefine response and resolution goals for work-item types and priorities.\n\nNew SLA policy\nSIT support response\nNo description\nActive version 1\nPrevious\nNext",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-18.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/calendars",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/calendars",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nService calendars\n\nSet the working hours that SLA clocks count for this workspace.\n\nNew calendar\nSome calendar tools are not available yet\nPresets, calendar cloning and country holidays are not available yet. Add holidays manually or import a supported .ics file. Open a calendar to see its references and request deletion.\nSIT continuous support\nUTC\n168 h/week\n\nManual holidays: 0\n\nOpen a calendar to see where it is used.\n\nPrevious\nNext",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-19.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/request-types",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/request-types",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nRequest types\n\nAuthor published customer forms. Each publish creates an immutable version.\n\nNew request type\nAccess request\nPublished · v2\nReport a problem\nPublished · v2\nCreate request type\nName\nCatalogue group\nDescription\nWork item type\nChoose a type\nDefault project ID\nCatalogue order\n Visible to customers\n Auto accept\n Keep submissions private\nForm fields\nAdd field\nField key\nCustomer label\nType\nText\nRequired\nHelp text\nOptions (one per line)\nMaps to\nWork item title\nShow when\nAlways visible\n↑\n↓\nRemove\nCustomer preview\n\nRequest form description\n\nSummary *\n\nExactly one required text field maps to the work item title.\n\nSave draft",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-20.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/webhooks",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/webhooks",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nWebhooks\n\nSend signed events from this workspace to another system. Each webhook delivers only what its owner can see.\n\nNew webhook\nNo webhooks yet\nCreate a webhook to send events to Power Automate, n8n, Zapier or your own service.\nCreate webhook",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-21.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/automations",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/automations",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nAutomations\n\nRules that run when something happens in any project of this workspace. Each rule runs as a role and cannot do more than that role.\n\nNew rule\nAutomations are turned off here\nTurn on the Automations feature in the feature settings before creating or enabling rules. Existing rules do not run while it is off.\nNo rules yet\nCreate a rule to do a repetitive thing automatically. New rules start disabled; dry-run one before you enable it.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-22.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/god-mode",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/god-mode",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nGod Mode\nGOD MODE\nHealth\nGeneral\nInstance users\nAuthentication providers\nNotification delivery\nFeatures\nAPI keys\nAudit log\nHealth\nOverall\nOK\nChecked Oct 25, 2026, 1:21 AM\n\nDatabase\n\nWhether the database answers, and how quickly.\n\nResponse time (ms): 1\n\nOK\n\nEncryption key rotation\n\nWhether every stored secret is under the current encryption key. When it is, the previous key can be removed.\n\nKey configured: yes · Previous key configured: no · Secrets stored: 0 · Secrets awaiting rekey: 0 · Rekey complete: yes · Safe to remove the previous key: no\n\nOK\n\nEvent delivery\n\nPending and dead-lettered events and notification deliveries.\n\nDead events: 0 · Pending events: 0 · Dead deliveries: 0 · Pending deliveries: 0\n\nOK\nRefresh",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-23.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/god-mode/general",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/god-mode/general",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nGod Mode\nGOD MODE\nHealth\nGeneral\nInstance users\nAuthentication providers\nNotification delivery\nFeatures\nAPI keys\nAudit log\nGeneral\nRegional and retention\nThe instance time zone and how long read notifications are kept.\nTime zone\nUTC\n\nUsed for digest windows and quiet hours when a person has not chosen their own.\n\nKeep read notifications for (days)\n\nRead notifications older than this are deleted daily. Unread notifications are never deleted.\n\nWindows\nHow long requests and approvals stay open.\nApproval expiry (days)\n\nThe default for a new approval request. At most 90.\n\nClarification window (days)\n\nA request awaiting the customer's reply for longer than this is declined automatically.\n\nReopen window (days)\n\nHow long after resolution a customer may reopen a request.\n\nAttachments\nLimits that apply to every file uploaded to a work item.\nLargest file (bytes)\n\nThe maximum size of one uploaded file.\n\nFiles per work item\n\nThe maximum number of files on one work item.\n\nAllowed file types\n\nExtensions separated by commas, for example pdf, png, docx.\n\nSave changes\n\nLast changed Oct 22, 2026, 1:13 PM",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-24.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/god-mode/features",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/god-mode/features",
+			"body": "22, 2026, 12:32 PM\n\nLock\nEnabled\nTime tracking\n\nTimesheets, time entries and the timer.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nCost tracking\n\nRates, budgets and cost reports.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nKnowledge base\n\nArticles and request deflection.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nService catalogue\n\nServices, changes, freezes and releases.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nCustomer portal\n\nThe customer portal. Turning it off shows a disabled notice on the portal address.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nReports\n\nThe reports index, dashboards and detailed reports.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nAutomations\n\nAutomation rules.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nTimeline\n\nThe timeline (Gantt) view.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nCalendar\n\nThe calendar view.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nPages\n\nDocuments in a project.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nMCP\n\nAPI keys flagged for the MCP server. Off refuses them.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nSCIM provisioning\n\nThe SCIM endpoint. Off answers not found for every SCIM call.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nImport\n\nImport runs and the import screens.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nPublic boards\n\nReserved. Nothing is behind this switch yet.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nDeveloper links\n\nReserved. Nothing is behind this switch yet.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-25.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/god-mode/notifications",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/god-mode/notifications",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nGod Mode\nGOD MODE\nHealth\nGeneral\nInstance users\nAuthentication providers\nNotification delivery\nFeatures\nAPI keys\nAudit log\nNotification delivery\nEmail provider\nConfigure the SMTP connection used for email across this instance.\nEnable email delivery\n\nNo email provider is configured.\n\nSMTP host\nPort\nFrom address\nReply-to address (optional)\nUsername (optional)\nPassword\n\nLeave blank to keep the saved password. Saved passwords are never returned.\n\nUse TLS from connection start\nRequire TLS before authentication\nSave configuration\nTest connection\n\nChecks connection and authentication without sending an email.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-26.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/god-mode/users",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/god-mode/users",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nGod Mode\nGOD MODE\nHealth\nGeneral\nInstance users\nAuthentication providers\nNotification delivery\nFeatures\nAPI keys\nAudit log\nInstance users\n\nSearch and manage accounts across this instance.\n\nRefresh\nMy pending actions\nAll account types\nAll statuses\nUser\tType\tOrganisation\tStatus\n\nSIT Audit viewer\naudit-20261025-viewer@example.test\n\tStaff\tInternal\t\n\n\nSIT Audit owner\naudit-20261025-owner@example.test\n\tStaff\tInternal\t\n\n\nSIT Audit member\naudit-20261025-member@example.test\n\tStaff\tInternal\t\n\n\nSIT Audit lead\naudit-20261025-lead@example.test\n\tStaff\tInternal\t\n\n\nSIT Audit customer\naudit-20261025-customer@example.test\n\tCustomer\tAcme Corp\t\n\n\nSIT Audit admin\naudit-20261025-admin@example.test\n\tStaff\tInternal\t\nAdministrator\n\n\nAlan Turing (Project Lead & Approver)\nlead@taskdesk.local\n\tStaff\tInternal\t\n\n\nKatherine Johnson (Acme Customer Requester)\ncustomer@acme.example\n\tCustomer\tAcme Corp\t\n\n\nGrace Hopper (Service Desk Agent)\nagent@taskdesk.local\n\tStaff\tInternal\t\n\n\nAda Lovelace (Instance & Workspace Admin)\nadmin@taskdesk.local\n\tStaff\tInternal\t\nAdministrator\n10 users on this page\nNext page",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-27.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP/cycles",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/cycles",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-28.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/projects/HELP/cycles",
+					"status": 404
+				},
+				{
+					"path": "/api/projects/HELP/cycles",
+					"status": 404
+				}
+			]
+		},
+		{
+			"route": "/agent/projects/HELP/modules",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/modules",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-29.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/projects/HELP/modules",
+					"status": 404
+				},
+				{
+					"path": "/api/projects/HELP/modules",
+					"status": 404
+				}
+			]
+		},
+		{
+			"route": "/agent/projects/HELP/pages",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/pages",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\nThis project was not found.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-30.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/projects/HELP/pages",
+					"status": 404
+				}
+			]
+		},
+		{
+			"route": "/agent/projects/HELP/settings/estimates",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/dashboard/settings/projects/proj-help-sit/estimates",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nPROJECT\nCustomer Support Desk\nSETTINGS\nGeneral Settings\nMembers\nLabels\nWorkflow\nFeatures\nAutomations\nEstimates\nBudget",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-31.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/projects/HELP/estimates",
+					"status": 404
+				}
+			]
+		},
+		{
+			"route": "/agent/projects/HELP/settings/budget",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/dashboard/settings/projects/proj-help-sit/budget",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nPROJECT\nCustomer Support Desk\nSETTINGS\nGeneral Settings\nMembers\nLabels\nWorkflow\nFeatures\nAutomations\nEstimates\nBudget\nBudgets are off\nTurn on cost tracking for this project to use budgets.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-32.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/time-settings",
+					"status": 409
+				},
+				{
+					"path": "/api/projects/proj-help-sit/budget",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/timesheet",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/timesheet",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nTimesheet\n\nYour week, by work item and activity. Type minutes straight into a day, or use the arrow keys to move between days.\n\nTime tracking is off\nTurn on time tracking to log time and use the timesheet.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-33.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/time-entries/timer",
+					"status": 409
+				},
+				{
+					"path": "/api/time-entries",
+					"status": 409
+				},
+				{
+					"path": "/api/time-activities",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/settings/rates",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/rates",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nRates\n\nHourly rates by person, optionally per project, from a date. The rate in force on an entry's date is captured on the entry when it is logged or the timer stops.\n\nCost tracking is off\nTurn on cost tracking to manage rates.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-34.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/rates",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/settings/time-activities",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/time-activities",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nTime activities\n\nThe kinds of work a time entry must be filed under. Archiving a type hides it from new entries; time already logged keeps it.\n\nTime tracking is off\nTurn on time tracking to log time and use the timesheet.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-35.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/time-activities",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/settings/cost-types",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/cost-types",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\n\nNot Found",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-36.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/kb",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/kb",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nKnowledge base\n\nArticles that answer questions before they become requests. Customers see an article only when it is published and visible to customers.\n\nArticles\nCategories\nReport\nSearch articles\nStatus\nall\nCategory\nall\nReview overdue",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-37.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/kb/categories",
+					"status": 404
+				},
+				{
+					"path": "/api/kb/settings",
+					"status": 404
+				},
+				{
+					"path": "/api/kb/articles",
+					"status": 404
+				},
+				{
+					"path": "/api/kb/categories",
+					"status": 404
+				},
+				{
+					"path": "/api/kb/articles",
+					"status": 404
+				},
+				{
+					"path": "/api/kb/settings",
+					"status": 404
+				}
+			]
+		},
+		{
+			"route": "/agent/service-management/services",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/service-management/services",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nService management\nServices\n\nWhat we run on behalf of customers: who owns each service, how it is doing and what depends on it.\n\nNew service\nServices\nChange calendar\nReleases\nSearch\nService management is off\nAn administrator can turn on the service catalogue in the workspace feature switches.\nAn administrator can turn on the service catalogue in the workspace feature switches.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-38.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/services",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/service-management/changes",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/service-management/changes",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nService management\nChange calendar\n\nPlanned change windows, freezes and conflicts on one calendar.\n\nServices\nChange calendar\nReleases\nCalendar\nFreezes\nOverrides\nCalendar\nOctober 2026\nToday\nService management is off\nAn administrator can turn on the service catalogue in the workspace feature switches.\nPlanned change\nSame-service conflict\nInside a freeze\nFreeze\nRecorded after the fact",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-39.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/changes/calendar",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/service-management/releases",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/service-management/releases",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nService management\nReleases\n\nChanges deployed together, with a checklist and release notes.\n\nNew release\nServices\nChange calendar\nReleases\nService\nAll services\nService management is off\nAn administrator can turn on the service catalogue in the workspace feature switches.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-40.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/releases",
+					"status": 409
+				},
+				{
+					"path": "/api/services",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/reports",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/reports",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nReports\n\nFind the right report in one click. Fixed reports answer the questions asked most often; saved table and chart reports are yours and your team's.\n\nDashboards\nNew custom report\nReports are off\nAn administrator can turn this feature on in the workspace feature settings.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-41.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/reports",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/reports/new",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/reports/new",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nAll reports\nReport builder\n\nPick what to count, how to group it and how to draw it. The preview is live. A saved report is a saved view with the chart layout.\n\nName\nReport on\nWork items\nGroup by\nPriority\nWindow\n7 days\n30 days\n60 days\n90 days\nPriority\nAll priorities\nChart\nBar\nLine\nTable\nNumber\nReports are off\nAn administrator can turn this feature on in the workspace feature settings.\nWho can see it\nOnly me\nSave report",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-42.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/reports",
+					"status": 409
+				},
+				{
+					"path": "/api/reports/custom/preview",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/dashboard",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/dashboard",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nDashboard\n\nYour dashboards and the workspace's. Each widget runs for you, over your own reach.\n\nOpen editor\nReports are off\nAn administrator can turn this feature on in the workspace feature settings.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-43.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/reports",
+					"status": 409
+				},
+				{
+					"path": "/api/dashboards",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/dashboard/edit",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/dashboard/edit",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nBack to the dashboard\nDashboard editor\n\nDrag a widget by its handle (arrow keys work too), resize it with the steppers, then save the whole layout.\n\nReports are off\nAn administrator can turn this feature on in the workspace feature settings.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-light-44.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/dashboards",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/settings/customer-invitations",
+			"theme": "light",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"failure": "page.goto: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://ticketing.localhost/agent/settings/customer-invitations\", waiting until \"networkidle\"\u001b[22m\n",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/auth/get-session",
+					"status": 429
+				},
+				{
+					"path": "/api/auth/get-session",
+					"status": 429
+				},
+				{
+					"path": "/api/auth/get-session",
+					"status": 429
+				},
+				{
+					"path": "/api/auth/get-session",
+					"status": 429
+				}
+			]
+		},
+		{
+			"route": "/agent",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nProjects\nCreate project\nTitle\tProgress\tDue date\tStatus\n\nCustomer Support Desk\n\t\nx\n7%\n\tOct 21, 2026\tIn progress",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-00.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/inbox",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/inbox",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nInbox\nInbox\nAll\nUnread (0)\nMentions\nAssignments\n\nNo notifications yet\n\nYou'll see updates and activity here.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-01.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/my-work",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/my-work",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nMy work\nMy work\nAssigned to me\nWatching\nApprovals\nNo work items match this filter\nChange or clear the filter to see more of this project's work items.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-02.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/search",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/dashboard/workspace/ws-taskdesk-sit/search",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nSearch\nBack to Dashboard\n\nSearch across all projects in this workspace. Use short IDs like DEP-23 to find specific tasks.\n\nStart Searching\n\nEnter a search term to find tasks across all projects\n\nQuick searches:\n\nHigh priority\nBug\nFeature\nIn progress\nCompleted",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-03.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/work",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\n\nCustomer Support Desk · Work items\nFilter\nTask number\nSelect items\nBoard\nList\nTable\nCreate work item\n\nBacklog\n5\nHELP-2\nProvision VPN & analytics access for Acme engineering\nAccess\n?\nHELP-14\nTemporary original dialog verification\n?\nHELP-15\nTemporary complete creation verification\nOct 29\nGH\nHELP-16\nTemporary persisted label verification\nAccess\nOct 29\nAT\nHELP-17\nTemporary new-label creation verification\nLocal verification label\nOct 29\nAT\nTo Do\n5\nHELP-1\nProduction SSO certificate rotation & SLA verification\nChange window\n?\nHELP-3\nInternal database index maintenance review\nChange window\n?\nHELP-4\nRotate production SSO certificate after CAB approval\nChange window\nCustomer follow-up\nBreached\nOct 23\nAT\nHELP-7\nInvestigate intermittent analytics refresh failures\nCustomer follow-up\nIncident\nBreached\nOct 26\nGH\nHELP-13\nTemporary local drag verification\n?\nIn Progress\n3\nHELP-5\nVerify certificate chain and sign-in on the customer portal\nAccess\nCustomer follow-up\nBreached\nOct 24\nGH\nHELP-11\nTemporary local approval verification\n?\nHELP-12\nThis is the test\nOct 31\n?\nDone\n1\nHELP-6\nComplete VPN onboarding and publish access guide\nAccess\nMissed\nOct 21\nGH\nCancelled\n0\nNo tasks",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-04.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP/work?layout=board",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/work",
+			"body": " Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\n\nCustomer Support Desk · Work items\nFilter\nTask number\nGroup\nSelect items\nBoard\nList\nTable\nCreate work item\n\nBacklog\n5\nHELP-2\n?\nProvision VPN & analytics access for Acme engineering\nAccess\nCurrent state: Backlog\nHELP-14\n?\nTemporary original dialog verification\nCurrent state: Backlog\nHELP-15\nGH\nTemporary complete creation verification\nOct 29\nCurrent state: Backlog\nHELP-16\nAT\nTemporary persisted label verification\nAccess\nOct 29\nCurrent state: Backlog\nHELP-17\nAT\nTemporary new-label creation verification\nLocal verification label\n1/2\nOct 29\nCurrent state: Backlog\nTo Do\n5\nHELP-1\n?\nProduction SSO certificate rotation & SLA verification\nChange window\nCurrent state: To Do\nHELP-3\n?\nInternal database index maintenance review\nChange window\nCurrent state: To Do\nHELP-4\nAT\nRotate production SSO certificate after CAB approval\nChange window\nCustomer follow-up\nOct 23\nBreached\nCurrent state: To Do\nHELP-7\nGH\nInvestigate intermittent analytics refresh failures\nCustomer follow-up\nIncident\nOct 26\nBreached\nBlocked\nCurrent state: To Do\nHELP-13\n?\nTemporary local drag verification\nCurrent state: To Do\nIn Progress\n3\nHELP-5\nGH\nVerify certificate chain and sign-in on the customer portal\nAccess\nCustomer follow-up\nOct 24\nBreached\nCurrent state: In Progress\nHELP-11\n?\nTemporary local approval verification\nCurrent state: In Progress\nHELP-12\n?\nThis is the test\nOct 31\nCurrent state: In Progress\nDone\n1\nHELP-6\nGH\nComplete VPN onboarding and publish access guide\nAccess\nOct 21\nMissed\nCurrent state: Done\nCancelled\n0\n\nNo work items in this state.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-05.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP/work?layout=list",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/work",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\n\nCustomer Support Desk · Work items\nFilter\nTask number\nSelect items\nBoard\nList\nTable\nCreate work item\n\nBacklog\n5\nHELP-2\nProvision VPN & analytics access for Acme engineering\nAccess\n?\nHELP-14\nTemporary original dialog verification\n?\nHELP-15\nTemporary complete creation verification\nOct 29\nGH\nHELP-16\nTemporary persisted label verification\nAccess\nOct 29\nAT\nHELP-17\nTemporary new-label creation verification\nLocal verification label\nOct 29\nAT\nTo Do\n5\nHELP-1\nProduction SSO certificate rotation & SLA verification\nChange window\n?\nHELP-3\nInternal database index maintenance review\nChange window\n?\nHELP-4\nRotate production SSO certificate after CAB approval\nChange window\nCustomer follow-up\nBreached\nOct 23\nAT\nHELP-7\nInvestigate intermittent analytics refresh failures\nCustomer follow-up\nIncident\nBreached\nOct 26\nGH\nHELP-13\nTemporary local drag verification\n?\nIn Progress\n3\nHELP-5\nVerify certificate chain and sign-in on the customer portal\nAccess\nCustomer follow-up\nBreached\nOct 24\nGH\nHELP-11\nTemporary local approval verification\n?\nHELP-12\nThis is the test\nOct 31\n?\nDone\n1\nHELP-6\nComplete VPN onboarding and publish access guide\nAccess\nMissed\nOct 21\nGH\nCancelled\n0\nNo tasks",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-06.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP/work?layout=table",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/work",
+			"body": "gs\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\n\nCustomer Support Desk · Work items\nFilter\nTask number\nSelect items\nBoard\nList\nTable\nCreate work item\nKey\n\tTitle\n\tPriority\n\tDue date\n\tState\tAssignee\n\nHELP-1\n\t\nProduction SSO certificate rotation & SLA verification\n\t\nHigh\n\tNo due date\t\nTo Do\n\tUnassigned\n\nHELP-2\n\t\nProvision VPN & analytics access for Acme engineering\n\t\nMedium\n\tNo due date\t\nBacklog\n\tUnassigned\n\nHELP-3\n\t\nInternal database index maintenance review\n\t\nLow\n\tNo due date\t\nTo Do\n\tUnassigned\n\nHELP-4\n\t\nRotate production SSO certificate after CAB approval\n\t\nHigh\n\tOct 23\t\nTo Do\n\tAlan Turing (Project Lead & Approver)\n\nHELP-5\n\t\nVerify certificate chain and sign-in on the customer portal\n\t\nHigh\n\tOct 24\t\nIn Progress\n\tGrace Hopper (Service Desk Agent)\n\nHELP-6\n\t\nComplete VPN onboarding and publish access guide\n\t\nHigh\n\tOct 21\t\nDone\n\tGrace Hopper (Service Desk Agent)\n\nHELP-7\n\t\nInvestigate intermittent analytics refresh failures\n\t\nHigh\n\tOct 26\t\nTo Do\nBlocked\n\tGrace Hopper (Service Desk Agent)\n\nHELP-11\n\t\nTemporary local approval verification\n\t\nNo priority\n\tNo due date\t\nIn Progress\n\tUnassigned\n\nHELP-12\n\t\nThis is the test\n\t\nHigh\n\tOct 31\t\nIn Progress\n\tUnassigned\n\nHELP-13\n\t\nTemporary local drag verification\n\t\nHigh\n\tNo due date\t\nTo Do\n\tUnassigned\n\nHELP-14\n\t\nTemporary original dialog verification\n\t\nNo priority\n\tNo due date\t\nBacklog\n\tUnassigned\n\nHELP-15\n\t\nTemporary complete creation verification\n\t\nHigh\n\tOct 29\t\nBacklog\n\tGrace Hopper (Service Desk Agent)\n\nHELP-16\n\t\nTemporary persisted label verification\n\t\nLow\n\tOct 29\t\nBacklog\n\tAlan Turing (Project Lead & Approver)\n\nHELP-17\n\t\nTemporary new-label creation verification\n\t\nLow\n\tOct 29\t\nBacklog\n\tAlan Turing (Project Lead & Approver)",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-07.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP/backlog",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/backlog",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\nCustomer Support Desk · Backlog\nWork items\nSelect items\nFilter\nCreate work item\nBacklog\n5\nlist.columns.key\tlist.columns.title\tlist.columns.priority\tlist.columns.assignee\tOrder\nHELP-16\tTemporary persisted label verification\tpriority.low\tAlan Turing (Project Lead & Approver)\t\n\nHELP-17\tTemporary new-label creation verification\tpriority.low\tAlan Turing (Project Lead & Approver)\t\n\nHELP-14\tTemporary original dialog verification\tpriority.null\tUnassigned\t\n\nHELP-15\tTemporary complete creation verification\tpriority.high\tGrace Hopper (Service Desk Agent)\t\n\nHELP-2\tProvision VPN & analytics access for Acme engineering\tpriority.medium\tUnassigned\t\nTo Do\n5\nlist.columns.key\tlist.columns.title\tlist.columns.priority\tlist.columns.assignee\tOrder\nHELP-13\tTemporary local drag verification\tpriority.high\tUnassigned\t\n\nHELP-1\tProduction SSO certificate rotation & SLA verification\tpriority.high\tUnassigned\t\n\nHELP-3\tInternal database index maintenance review\tpriority.low\tUnassigned\t\n\nHELP-4\tRotate production SSO certificate after CAB approval\tpriority.high\tAlan Turing (Project Lead & Approver)\t\n\nHELP-7\tInvestigate intermittent analytics refresh failures\tpriority.high\tGrace Hopper (Service Desk Agent)\t",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-08.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/work-items/HELP-12",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/work-items/HELP-12",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nCustomer Support Desk\n/\nHELP-12\n\nHELP-12\n\nThis is the test\n\ntesting for todo\n\nSub-tasks\nHierarchy\n\nNo children\n\nRelations\n\nNo related tasks\n\nActivity & comments\nEverything\n\n\n\n\nInternal\nPublic\n\nInternal note — customers cannot see this.\n\nAL\nAda Lovelace (Instance & Workspace Admin)\n Created\n3 changes\n2 days ago\nAL\nAda Lovelace (Instance & Workspace Admin)\n Changed state 2 days ago\nAL\nAda Lovelace (Instance & Workspace Admin)\n Changed state\n2 changes\n2 days ago\nAudit history\n\nProperties\n\nIn Progress\nHigh\nUnassigned\nOct 1, 2026\nOct 31, 2026\nLabels\nNo parent\nAttachments\nSLA\nApprovals\nProject\nCustomer Support Desk\nCreated\nOct 22, 2026, 4:04 PM\nUpdated\nOct 22, 2026, 10:46 PM",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-09.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/views",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/views",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nSaved views\nSaved views\n\nViews available to you in this workspace. Each one is a stored search you can open, share by its link, pin and copy.\n\nVisibility\nPrivate\nCreate view\nNo saved views are available.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-10.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/profile",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/dashboard/settings/account/information",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nSA\n\nSIT Audit admin\n\naudit-20261025-admin@example.test\n\nACCOUNT\nInformation\nNotifications\nPreferences\nPending actions\nDEVELOPER\nAPI Keys\nPersonal Information\n\nManage your personal details and account information.\n\nAccount Information\n\nManage your profile and account details.\n\nProfile picture\n\nClick your picture to change or remove it. Cropped to a square and resized to 256x256.\n\nSA\nFull name\nEmail\nDanger zone\n\nPermanent actions that affect your whole account.\n\nDelete account\n\nWorkspaces only you belong to are deleted with your account. Elsewhere, your tasks stay and become unassigned, and your comments are removed.\n\nDelete account",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-11.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/profile/appearance",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/dashboard/settings/account/preferences",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nSA\n\nSIT Audit admin\n\naudit-20261025-admin@example.test\n\nACCOUNT\nInformation\nNotifications\nPreferences\nPending actions\nDEVELOPER\nAPI Keys\nPreferences\n\nCustomize your TaskDesk experience.\n\nAppearance\n\nVisual settings and layout preferences.\n\nTheme\n\nChoose your preferred color scheme\n\nDark\nLanguage\n\nChoose your preferred interface language\n\nEnglish\nFirst Day of Week\n\nChoose which day calendars and weekly ranges start on\n\nSunday\nDefault View\n\nChoose your preferred task view mode\n\nBoard\nDensity\n\nSpacing of rows, cards and fields\n\nComfortable\nSidebar Default\n\nKeep sidebar expanded on startup\n\nDisplay options\n\nChoose which information to show in task views\n\nReset\nTask Numbers\n\nShow task IDs and numbers\n\nAssignees\n\nShow who is assigned to tasks\n\nDue Dates\n\nDisplay task deadlines\n\nLabels\n\nShow task labels and tags\n\nPriority\n\nDisplay priority indicators",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-12.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/profile/pending-actions",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/profile/pending-actions",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nSA\n\nSIT Audit admin\n\naudit-20261025-admin@example.test\n\nACCOUNT\nInformation\nNotifications\nPreferences\nPending actions\nDEVELOPER\nAPI Keys\nMy pending actions\n\nReview requests made by your account. Each action expires after its listed time.\n\nYou have no pending actions.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-13.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/teams",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/teams",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nTeams\n\nNamed groups of staff. Teams can own projects, be notified as a unit and act as the Change Advisory Board.\n\nNew team\nSIT HELP Change Advisory Board\n1 member\nCAB",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-14.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/roles",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/roles",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nRoles\n\nWhat each role can do, who holds it, and how roles rank against each other. A role's rank decides who may edit whom.\n\nNew role\nOwner\nEverything, including deleting the workspace. Not editable · Rank 100 · 3 people · changed Oct 22, 2026\nBuilt-in\nNot editable\nAdmin\nEverything except deleting the workspace · Rank 80 · 2 people · changed Oct 22, 2026\nBuilt-in\nManager\nRuns delivery: projects, members, policies, workflows · Rank 60 · 0 people · changed Oct 25, 2026\nBuilt-in\nLead\nAssigns work, triages intake, decides approvals within reach · Rank 50 · 0 people · changed Oct 22, 2026\nBuilt-in\nMember\nCreates and updates work items, comments internally, self-assigns · Rank 40 · 3 people · changed Oct 22, 2026\nBuilt-in\nViewer\nRead-only · Rank 20 · 0 people · changed Oct 22, 2026\nBuilt-in",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-15.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/custom-fields",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/custom-fields",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nCustom fields\n\nCapture what your organisation needs to know. Fields are grouped into sections and each field says which work item types it applies to.\n\nNew section\nNew field\nNo sections yet\nCreate a section first, then add fields to it.\nShow deleted fields",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-16.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/workflows",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/workflows",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nWorkflows\n\nState machines that decide which transitions a work item may take. Edit the transitions, save a draft, validate it against every project that uses it, then publish.\n\nNew workflow\nCAB approval for changes\n\nAdds an Approved state and requires CAB approval before a change can move into work. It binds the Change type to a new workflow and is never applied on its own. Choose the projects that adopt the Approved state; a project that has not adopted it cannot approve changes.\n\nAdd CAB approval\nName\tKey\tActive version\nSIT maintenance approval\tsit-maintenance\tActive\nDefault workflow\tdefault\tActive",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-17.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/sla-policies",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/sla-policies",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nSLA policies\n\nDefine response and resolution goals for work-item types and priorities.\n\nNew SLA policy\nSIT support response\nNo description\nActive version 1\nPrevious\nNext",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-18.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/calendars",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/calendars",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nService calendars\n\nSet the working hours that SLA clocks count for this workspace.\n\nNew calendar\nSome calendar tools are not available yet\nPresets, calendar cloning and country holidays are not available yet. Add holidays manually or import a supported .ics file. Open a calendar to see its references and request deletion.\nSIT continuous support\nUTC\n168 h/week\n\nManual holidays: 0\n\nOpen a calendar to see where it is used.\n\nPrevious\nNext",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-19.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/request-types",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/request-types",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nRequest types\n\nAuthor published customer forms. Each publish creates an immutable version.\n\nNew request type\nAccess request\nPublished · v2\nReport a problem\nPublished · v2\nCreate request type\nName\nCatalogue group\nDescription\nWork item type\nChoose a type\nDefault project ID\nCatalogue order\n Visible to customers\n Auto accept\n Keep submissions private\nForm fields\nAdd field\nField key\nCustomer label\nType\nText\nRequired\nHelp text\nOptions (one per line)\nMaps to\nWork item title\nShow when\nAlways visible\n↑\n↓\nRemove\nCustomer preview\n\nRequest form description\n\nSummary *\n\nExactly one required text field maps to the work item title.\n\nSave draft",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-20.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/webhooks",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/webhooks",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nWebhooks\n\nSend signed events from this workspace to another system. Each webhook delivers only what its owner can see.\n\nNew webhook\nNo webhooks yet\nCreate a webhook to send events to Power Automate, n8n, Zapier or your own service.\nCreate webhook",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-21.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/settings/automations",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/automations",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nAutomations\n\nRules that run when something happens in any project of this workspace. Each rule runs as a role and cannot do more than that role.\n\nNew rule\nAutomations are turned off here\nTurn on the Automations feature in the feature settings before creating or enabling rules. Existing rules do not run while it is off.\nNo rules yet\nCreate a rule to do a repetitive thing automatically. New rules start disabled; dry-run one before you enable it.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-22.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/god-mode",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/god-mode",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nGod Mode\nGOD MODE\nHealth\nGeneral\nInstance users\nAuthentication providers\nNotification delivery\nFeatures\nAPI keys\nAudit log\nHealth\nOverall\nOK\nChecked Oct 25, 2026, 1:22 AM\n\nDatabase\n\nWhether the database answers, and how quickly.\n\nResponse time (ms): 2\n\nOK\n\nEncryption key rotation\n\nWhether every stored secret is under the current encryption key. When it is, the previous key can be removed.\n\nKey configured: yes · Previous key configured: no · Secrets stored: 0 · Secrets awaiting rekey: 0 · Rekey complete: yes · Safe to remove the previous key: no\n\nOK\n\nEvent delivery\n\nPending and dead-lettered events and notification deliveries.\n\nDead events: 0 · Pending events: 0 · Dead deliveries: 0 · Pending deliveries: 0\n\nOK\nRefresh",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-23.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/god-mode/general",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/god-mode/general",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nGod Mode\nGOD MODE\nHealth\nGeneral\nInstance users\nAuthentication providers\nNotification delivery\nFeatures\nAPI keys\nAudit log\nGeneral\nRegional and retention\nThe instance time zone and how long read notifications are kept.\nTime zone\nUTC\n\nUsed for digest windows and quiet hours when a person has not chosen their own.\n\nKeep read notifications for (days)\n\nRead notifications older than this are deleted daily. Unread notifications are never deleted.\n\nWindows\nHow long requests and approvals stay open.\nApproval expiry (days)\n\nThe default for a new approval request. At most 90.\n\nClarification window (days)\n\nA request awaiting the customer's reply for longer than this is declined automatically.\n\nReopen window (days)\n\nHow long after resolution a customer may reopen a request.\n\nAttachments\nLimits that apply to every file uploaded to a work item.\nLargest file (bytes)\n\nThe maximum size of one uploaded file.\n\nFiles per work item\n\nThe maximum number of files on one work item.\n\nAllowed file types\n\nExtensions separated by commas, for example pdf, png, docx.\n\nSave changes\n\nLast changed Oct 22, 2026, 1:13 PM",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-24.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/god-mode/features",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/god-mode/features",
+			"body": "22, 2026, 12:32 PM\n\nLock\nEnabled\nTime tracking\n\nTimesheets, time entries and the timer.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nCost tracking\n\nRates, budgets and cost reports.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nKnowledge base\n\nArticles and request deflection.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nService catalogue\n\nServices, changes, freezes and releases.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nCustomer portal\n\nThe customer portal. Turning it off shows a disabled notice on the portal address.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nReports\n\nThe reports index, dashboards and detailed reports.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nAutomations\n\nAutomation rules.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nTimeline\n\nThe timeline (Gantt) view.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nCalendar\n\nThe calendar view.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nPages\n\nDocuments in a project.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nMCP\n\nAPI keys flagged for the MCP server. Off refuses them.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nSCIM provisioning\n\nThe SCIM endpoint. Off answers not found for every SCIM call.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nImport\n\nImport runs and the import screens.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nPublic boards\n\nReserved. Nothing is behind this switch yet.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled\nDeveloper links\n\nReserved. Nothing is behind this switch yet.\n\nLast changed by System on Oct 22, 2026, 12:32 PM\n\nLock\nEnabled",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-25.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/god-mode/notifications",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/god-mode/notifications",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nGod Mode\nGOD MODE\nHealth\nGeneral\nInstance users\nAuthentication providers\nNotification delivery\nFeatures\nAPI keys\nAudit log\nNotification delivery\nEmail provider\nConfigure the SMTP connection used for email across this instance.\nEnable email delivery\n\nNo email provider is configured.\n\nSMTP host\nPort\nFrom address\nReply-to address (optional)\nUsername (optional)\nPassword\n\nLeave blank to keep the saved password. Saved passwords are never returned.\n\nUse TLS from connection start\nRequire TLS before authentication\nSave configuration\nTest connection\n\nChecks connection and authentication without sending an email.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-26.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/god-mode/users",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/god-mode/users",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nGod Mode\nGOD MODE\nHealth\nGeneral\nInstance users\nAuthentication providers\nNotification delivery\nFeatures\nAPI keys\nAudit log\nInstance users\n\nSearch and manage accounts across this instance.\n\nRefresh\nMy pending actions\nAll account types\nAll statuses\nUser\tType\tOrganisation\tStatus\n\nSIT Audit viewer\naudit-20261025-viewer@example.test\n\tStaff\tInternal\t\n\n\nSIT Audit owner\naudit-20261025-owner@example.test\n\tStaff\tInternal\t\n\n\nSIT Audit member\naudit-20261025-member@example.test\n\tStaff\tInternal\t\n\n\nSIT Audit lead\naudit-20261025-lead@example.test\n\tStaff\tInternal\t\n\n\nSIT Audit customer\naudit-20261025-customer@example.test\n\tCustomer\tAcme Corp\t\n\n\nSIT Audit admin\naudit-20261025-admin@example.test\n\tStaff\tInternal\t\nAdministrator\n\n\nAlan Turing (Project Lead & Approver)\nlead@taskdesk.local\n\tStaff\tInternal\t\n\n\nKatherine Johnson (Acme Customer Requester)\ncustomer@acme.example\n\tCustomer\tAcme Corp\t\n\n\nGrace Hopper (Service Desk Agent)\nagent@taskdesk.local\n\tStaff\tInternal\t\n\n\nAda Lovelace (Instance & Workspace Admin)\nadmin@taskdesk.local\n\tStaff\tInternal\t\nAdministrator\n10 users on this page\nNext page",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-27.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/projects/HELP/cycles",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/cycles",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-28.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/projects/HELP/cycles",
+					"status": 404
+				},
+				{
+					"path": "/api/projects/HELP/cycles",
+					"status": 404
+				}
+			]
+		},
+		{
+			"route": "/agent/projects/HELP/modules",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/modules",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-29.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/projects/HELP/modules",
+					"status": 404
+				}
+			]
+		},
+		{
+			"route": "/agent/projects/HELP/pages",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/projects/HELP/pages",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\n/\nCustomer Support Desk\nBacklog\nTasks\nCalendar\nGantt\nThis project was not found.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-30.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/projects/HELP/pages",
+					"status": 404
+				}
+			]
+		},
+		{
+			"route": "/agent/projects/HELP/settings/estimates",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/dashboard/settings/projects/proj-help-sit/estimates",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nPROJECT\nCustomer Support Desk\nSETTINGS\nGeneral Settings\nMembers\nLabels\nWorkflow\nFeatures\nAutomations\nEstimates\nBudget",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-31.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/projects/HELP/estimates",
+					"status": 404
+				}
+			]
+		},
+		{
+			"route": "/agent/projects/HELP/settings/budget",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/dashboard/settings/projects/proj-help-sit/budget",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nPROJECT\nCustomer Support Desk\nSETTINGS\nGeneral Settings\nMembers\nLabels\nWorkflow\nFeatures\nAutomations\nEstimates\nBudget\nBudgets are off\nTurn on cost tracking for this project to use budgets.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-32.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/time-settings",
+					"status": 409
+				},
+				{
+					"path": "/api/projects/proj-help-sit/budget",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/timesheet",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/timesheet",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nTimesheet\n\nYour week, by work item and activity. Type minutes straight into a day, or use the arrow keys to move between days.\n\nTime tracking is off\nTurn on time tracking to log time and use the timesheet.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-33.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/time-activities",
+					"status": 409
+				},
+				{
+					"path": "/api/time-entries/timer",
+					"status": 409
+				},
+				{
+					"path": "/api/time-entries",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/settings/rates",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/rates",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nRates\n\nHourly rates by person, optionally per project, from a date. The rate in force on an entry's date is captured on the entry when it is logged or the timer stops.\n\nCost tracking is off\nTurn on cost tracking to manage rates.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-34.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/rates",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/settings/time-activities",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/time-activities",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\nTime activities\n\nThe kinds of work a time entry must be filed under. Archiving a type hides it from new entries; time already logged keeps it.\n\nTime tracking is off\nTurn on time tracking to log time and use the timesheet.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-35.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/time-activities",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/settings/cost-types",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/settings/cost-types",
+			"body": "Back to Workspace\nSettings\nAccount\nWorkspace\nProjects\nTS\n\nTaskDesk Service Desk\n\nOwner\n\nWORKSPACE\nGeneral Settings\nRoles\nLabels\nCanned responses\nWork item templates\nService calendars\nSLA policies\nRequest types\nWorkflows\nTeams\nTime activities\nRates\nCustom fields\nCustomer invitations\nAutomations\nWebhooks\n\nNot Found",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-36.png",
+			"errors": [],
+			"failedCalls": []
+		},
+		{
+			"route": "/agent/kb",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/kb",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nKnowledge base\n\nArticles that answer questions before they become requests. Customers see an article only when it is published and visible to customers.\n\nArticles\nCategories\nReport\nSearch articles\nStatus\nall\nCategory\nall\nReview overdue",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-37.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/kb/articles",
+					"status": 404
+				},
+				{
+					"path": "/api/kb/settings",
+					"status": 404
+				},
+				{
+					"path": "/api/kb/categories",
+					"status": 404
+				},
+				{
+					"path": "/api/kb/categories",
+					"status": 404
+				},
+				{
+					"path": "/api/kb/articles",
+					"status": 404
+				},
+				{
+					"path": "/api/kb/settings",
+					"status": 404
+				}
+			]
+		},
+		{
+			"route": "/agent/service-management/services",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/service-management/services",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nService management\nServices\n\nWhat we run on behalf of customers: who owns each service, how it is doing and what depends on it.\n\nNew service\nServices\nChange calendar\nReleases\nSearch\nService management is off\nAn administrator can turn on the service catalogue in the workspace feature switches.\nAn administrator can turn on the service catalogue in the workspace feature switches.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-38.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/services",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/service-management/changes",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/service-management/changes",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nService management\nChange calendar\n\nPlanned change windows, freezes and conflicts on one calendar.\n\nServices\nChange calendar\nReleases\nCalendar\nFreezes\nOverrides\nCalendar\nOctober 2026\nToday\nService management is off\nAn administrator can turn on the service catalogue in the workspace feature switches.\nPlanned change\nSame-service conflict\nInside a freeze\nFreeze\nRecorded after the fact",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-39.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/changes/calendar",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/service-management/releases",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/service-management/releases",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nService management\nReleases\n\nChanges deployed together, with a checklist and release notes.\n\nNew release\nServices\nChange calendar\nReleases\nService\nAll services\nService management is off\nAn administrator can turn on the service catalogue in the workspace feature switches.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-40.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/releases",
+					"status": 409
+				},
+				{
+					"path": "/api/services",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/reports",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/reports",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nReports\n\nFind the right report in one click. Fixed reports answer the questions asked most often; saved table and chart reports are yours and your team's.\n\nDashboards\nNew custom report\nReports are off\nAn administrator can turn this feature on in the workspace feature settings.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-41.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/reports",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/reports/new",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/reports/new",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nAll reports\nReport builder\n\nPick what to count, how to group it and how to draw it. The preview is live. A saved report is a saved view with the chart layout.\n\nName\nReport on\nWork items\nGroup by\nPriority\nWindow\n7 days\n30 days\n60 days\n90 days\nPriority\nAll priorities\nChart\nBar\nLine\nTable\nNumber\nReports are off\nAn administrator can turn this feature on in the workspace feature settings.\nWho can see it\nOnly me\nSave report",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-42.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/reports",
+					"status": 409
+				},
+				{
+					"path": "/api/reports/custom/preview",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/dashboard",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/dashboard",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nDashboard\n\nYour dashboards and the workspace's. Each widget runs for you, over your own reach.\n\nOpen editor\nReports are off\nAn administrator can turn this feature on in the workspace feature settings.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-43.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/dashboards",
+					"status": 409
+				},
+				{
+					"path": "/api/reports",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/dashboard/edit",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"http": 200,
+			"finalPath": "/agent/dashboard/edit",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nOverview\nBack to the dashboard\nDashboard editor\n\nDrag a widget by its handle (arrow keys work too), resize it with the steppers, then save the whole layout.\n\nReports are off\nAn administrator can turn this feature on in the workspace feature settings.",
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-admin-dark-44.png",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/dashboards",
+					"status": 409
+				}
+			]
+		},
+		{
+			"route": "/agent/settings/customer-invitations",
+			"theme": "dark",
+			"width": 1440,
+			"role": "admin",
+			"checks": "Render/reload smoke only; functional and parity sign-off pending",
+			"failure": "page.goto: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://ticketing.localhost/agent/settings/customer-invitations\", waiting until \"networkidle\"\u001b[22m\n",
+			"errors": [],
+			"failedCalls": [
+				{
+					"path": "/api/auth/get-session",
+					"status": 429
+				},
+				{
+					"path": "/api/auth/get-session",
+					"status": 429
+				},
+				{
+					"path": "/api/auth/get-session",
+					"status": 429
+				},
+				{
+					"path": "/api/auth/get-session",
+					"status": 429
+				}
+			]
+		}
+	]
+}

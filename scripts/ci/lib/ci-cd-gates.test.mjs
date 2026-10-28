@@ -1,6 +1,6 @@
 /**
  * Finding 1 red probe (post-#19-freeze review) — `readDeclaredGates()` used to attribute
- * the two `│`-containing fenced blocks in docs/04-engineering/ci-cd.md to the fast and
+ * the two `│`-containing fenced blocks in docs/technical/ci-gates.md to the fast and
  * full stages by raw array position (`blocks[0]` -> fast, `blocks[1]` -> full), never
  * checking that a block actually sits under the document's own `**Fast —**` / `**Full
  * —**` heading. Reordering the two blocks, or inserting a third `│`-containing block
@@ -14,7 +14,7 @@
  * every comparison below isolated to the one thing this fix changes, and does not depend
  * on a specific commit staying reachable the way a `git show` of the old file would.
  *
- * Case 6 runs both parsers against the REAL, shipped docs/04-engineering/ci-cd.md and
+ * Case 6 runs both parsers against the REAL, shipped docs/technical/ci-gates.md and
  * asserts they agree — proving this fix does not change which gates are fast-stage vs.
  * full-stage on the tree as shipped. It is fragility being closed, not a live swap.
  */
@@ -63,7 +63,7 @@ function scratchDoc(name, content) {
   const dir = scratchDir(`ci-cd-gates-${name}`);
   initRepo(dir);
   write(dir, "package.json", '{ "name": "root", "version": "0.0.0" }\n');
-  write(dir, "docs/04-engineering/ci-cd.md", content);
+  write(dir, "docs/technical/ci-gates.md", content);
   for (const relative of CI_CD_GATES_FILES) {
     installFromRepo(dir, relative);
   }
@@ -104,7 +104,7 @@ function oldPositionalAttribution(dir) {
        return cell.split(/\\s+/)[0];
      }
 
-     const source = readFileSync("docs/04-engineering/ci-cd.md", "utf8");
+     const source = readFileSync("docs/technical/ci-gates.md", "utf8");
      const blocks = (source.match(/\`\`\`[\\s\\S]*?\`\`\`/g) ?? []).filter((b) =>
        b.includes("│"),
      );
@@ -227,7 +227,7 @@ describe("Finding 1 -- stage attribution follows the nearest heading, not docume
     write(dir, "package.json", '{ "name": "root", "version": "0.0.0" }\n');
     for (const relative of [
       ...CI_CD_GATES_FILES,
-      "docs/04-engineering/ci-cd.md",
+      "docs/technical/ci-gates.md",
     ]) {
       installFromRepo(dir, relative);
     }

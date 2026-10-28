@@ -1,12 +1,21 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
+import { workItemTable } from "../../database/schema";
+import { logTaskDesk } from "../../instance/observability/runtime";
 import {
+  attachmentUploadUrlTtlSeconds,
   deleteStorageObject,
   finalizeStorageObject,
   getObjectSizeAndHeader,
   toFinalAttachmentObjectKey,
 } from "../../storage";
+import { queueVacatedUploadKey } from "../../utils/attachment-object-queue";
+import {
+  recordReopenRequested,
+  requestCustomerReopen,
+} from "../../workflow/customer-reopen";
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
 import {
   deletePendingSubmissionAttachment,
@@ -15,6 +24,10 @@ import {
   lockSubmissionForCompletion,
   markSubmissionAttachmentReady,
 } from "../repository";
+import {
+  assertOrganisationStorageQuota,
+  STORAGE_QUOTA_MESSAGE,
+} from "../storage-quota";
 
 const MAX_SNIFF_BYTES = 512;
 const FALLBACK_MAX_BYTES = 25 * 1024 * 1024;
@@ -71,6 +84,12 @@ export async function completeSubmissionAttachment(input: {
             "Upload not found in storage -- the presigned URL was never used, or the upload never finished.",
         });
       });
+      // P1R2-6: the vacated pending key is removed once its upload credential has expired.
+      await queueVacatedUploadKey(db, {
+        objectKey: attachment.objectKey,
+        workspaceId: input.workspaceId,
+        ttlSeconds: attachmentUploadUrlTtlSeconds(),
+      }).catch(() => {});
       const { contentLength, header } = await getObjectSizeAndHeader(
         finalKey,
         MAX_SNIFF_BYTES,
@@ -90,6 +109,18 @@ export async function completeSubmissionAttachment(input: {
               : `The uploaded file is ${Math.ceil(contentLength / (1024 * 1024))} MB; the limit is ${Math.floor(maxBytes / (1024 * 1024))} MB.`,
         };
       }
+      try {
+        await assertOrganisationStorageQuota(tx, {
+          workspaceId: input.workspaceId,
+          additionalBytes: contentLength,
+          excludeAttachmentId: attachment.id,
+        });
+      } catch (error) {
+        if (!(error instanceof HTTPException) || error.status !== 429)
+          throw error;
+        await deletePendingSubmissionAttachment(tx, attachment.id);
+        return { finalKey, error: STORAGE_QUOTA_MESSAGE, status: 429 as const };
+      }
       if (!magicBytesMatchDeclaredMime(header, attachment.mimeType)) {
         await deletePendingSubmissionAttachment(tx, attachment.id);
         return {
@@ -107,7 +138,27 @@ export async function completeSubmissionAttachment(input: {
           finalKey,
           error: "Attachment changed before upload completion",
         };
-      return { attachment: ready, finalKey };
+      // An accepted submission's work item is the only upload parent that can trigger
+      // WF-21. Keep the durable customer request beside the ready attachment so a process
+      // failure after commit still leaves evidence for staff. The shared system transition
+      // runs after commit, through requestCustomerReopen, just as it does for a reply.
+      let reopenWorkItemId: string | null = null;
+      if (acceptedParentId) {
+        const [parent] = await tx
+          .select({ resolvedAt: workItemTable.resolvedAt })
+          .from(workItemTable)
+          .where(eq(workItemTable.id, acceptedParentId))
+          .limit(1);
+        if (parent?.resolvedAt) {
+          reopenWorkItemId = acceptedParentId;
+          await recordReopenRequested(tx, {
+            workspaceId: input.workspaceId,
+            workItemId: acceptedParentId,
+            source: "upload",
+          });
+        }
+      }
+      return { attachment: ready, finalKey, reopenWorkItemId };
     })
     .catch(async (error: unknown) => {
       if (error instanceof HTTPException && error.status === 400) {
@@ -119,7 +170,24 @@ export async function completeSubmissionAttachment(input: {
     });
   if ("error" in result) {
     await deleteStorageObject(result.finalKey).catch(() => {});
-    throw new HTTPException(400, { message: result.error });
+    throw new HTTPException("status" in result ? result.status : 400, {
+      message: result.error,
+    });
+  }
+  if (result.reopenWorkItemId) {
+    try {
+      await requestCustomerReopen({
+        workItemId: result.reopenWorkItemId,
+        source: "upload",
+      });
+    } catch {
+      logTaskDesk({
+        module: "jobs",
+        message: "jobs.failure",
+        level: "error",
+        result: "degraded",
+      });
+    }
   }
   return result.attachment;
 }

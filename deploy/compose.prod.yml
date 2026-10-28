@@ -55,6 +55,12 @@ services:
       - traefik.http.routers.taskdesk-prod-agent.tls.certresolver=letsencrypt
       - traefik.http.routers.taskdesk-prod-agent.service=taskdesk-prod
       - traefik.http.routers.taskdesk-prod-agent.middlewares=security-headers${TASKDESK_HSTS_PRELOAD:+-preload}@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-prod-agent-pdf-preview.rule=Host(`${TASKDESK_AGENT_HOST:-ticket.${DOMAIN:?DOMAIN is required}}`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-prod-agent-pdf-preview.entrypoints=websecure
+      - traefik.http.routers.taskdesk-prod-agent-pdf-preview.tls=true
+      - traefik.http.routers.taskdesk-prod-agent-pdf-preview.tls.certresolver=letsencrypt
+      - traefik.http.routers.taskdesk-prod-agent-pdf-preview.service=taskdesk-prod
+      - traefik.http.routers.taskdesk-prod-agent-pdf-preview.middlewares=pdf-preview-headers${TASKDESK_HSTS_PRELOAD:+-preload}@file,compress@file,rate-limit@file
       # portal — separate cookie scope, separate identity providers, no agent code
       - traefik.http.routers.taskdesk-prod-portal.rule=Host(`${TASKDESK_PORTAL_HOST:-portal.${DOMAIN:?DOMAIN is required}}`)
       - traefik.http.routers.taskdesk-prod-portal.entrypoints=websecure
@@ -62,6 +68,12 @@ services:
       - traefik.http.routers.taskdesk-prod-portal.tls.certresolver=letsencrypt
       - traefik.http.routers.taskdesk-prod-portal.service=taskdesk-prod
       - traefik.http.routers.taskdesk-prod-portal.middlewares=security-headers${TASKDESK_HSTS_PRELOAD:+-preload}@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-prod-portal-pdf-preview.rule=Host(`${TASKDESK_PORTAL_HOST:-portal.${DOMAIN:?DOMAIN is required}}`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-prod-portal-pdf-preview.entrypoints=websecure
+      - traefik.http.routers.taskdesk-prod-portal-pdf-preview.tls=true
+      - traefik.http.routers.taskdesk-prod-portal-pdf-preview.tls.certresolver=letsencrypt
+      - traefik.http.routers.taskdesk-prod-portal-pdf-preview.service=taskdesk-prod
+      - traefik.http.routers.taskdesk-prod-portal-pdf-preview.middlewares=pdf-preview-headers${TASKDESK_HSTS_PRELOAD:+-preload}@file,compress@file,rate-limit@file
     networks:
       - taskdesk
       - proxy

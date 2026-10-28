@@ -6,6 +6,7 @@ export type CreateLabelRequest = InferRequestType<
 >["json"];
 
 async function createLabel({
+  key,
   name,
   color,
   taskId,
@@ -15,6 +16,7 @@ async function createLabel({
     json: {
       name,
       color,
+      ...(key ? { key } : {}),
       taskId,
       workspaceId,
     },

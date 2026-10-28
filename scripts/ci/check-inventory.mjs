@@ -9,7 +9,7 @@ import {
   renderRouteMetadata,
 } from "./lib/route-metadata.mjs";
 
-const inventoryPath = "docs/02-design/screen-inventory.md";
+const inventoryPath = "docs/screens.md";
 const routeRegistryPath = "apps/web/src/lib/routes.ts";
 
 export function canonicalRoute(value) {

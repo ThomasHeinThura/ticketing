@@ -5,11 +5,12 @@ import {
   type WorkItemFilter,
 } from "./work-item-filter";
 import {
+  isWorkItemSearchColumn,
   isWorkItemSearchSortField,
-  WORK_ITEM_SEARCH_COLUMNS,
+  parseWorkItemSorts,
   type WorkItemSearchColumn,
   type WorkItemSearchSortField,
-  type WorkItemSortDirection,
+  type WorkItemSort,
   type WorkItemSortField,
 } from "./work-item-list-search";
 
@@ -50,8 +51,6 @@ const SUPPORTED_QUERY_KEYS = new Set([
   "aggregate",
 ]);
 
-const COLUMNS = new Set<string>(WORK_ITEM_SEARCH_COLUMNS);
-
 /** The minimum of a saved view these helpers read (the API's `SavedView`). */
 export type SavedViewDefinition = {
   workspaceId: string;
@@ -65,6 +64,46 @@ export type SavedViewDefinition = {
 export function isExecutableSavedViewQuery(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const query = value as Record<string, unknown>;
+  if (query.entity === "submission") {
+    if (Object.keys(query).some((key) => key !== "entity" && key !== "filter"))
+      return false;
+    if (query.filter === undefined) return true;
+    if (
+      !query.filter ||
+      typeof query.filter !== "object" ||
+      Array.isArray(query.filter)
+    )
+      return false;
+    const filter = query.filter as Record<string, unknown>;
+    const states = [
+      "new",
+      "clarifying",
+      "accepted",
+      "declined",
+      "duplicate",
+      "withdrawn",
+    ];
+    return (
+      Object.keys(filter).every((key) =>
+        ["state", "requestTypeKey", "assignee", "olderThanDays"].includes(key),
+      ) &&
+      (filter.state === undefined ||
+        (typeof filter.state === "string" && states.includes(filter.state))) &&
+      (filter.requestTypeKey === undefined ||
+        (typeof filter.requestTypeKey === "string" &&
+          filter.requestTypeKey.length > 0 &&
+          filter.requestTypeKey.length <= 200)) &&
+      (filter.assignee === undefined ||
+        (typeof filter.assignee === "string" &&
+          filter.assignee.length > 0 &&
+          filter.assignee.length <= 200)) &&
+      (filter.olderThanDays === undefined ||
+        (typeof filter.olderThanDays === "number" &&
+          Number.isInteger(filter.olderThanDays) &&
+          filter.olderThanDays >= 0 &&
+          filter.olderThanDays <= 3650))
+    );
+  }
   if (
     Object.keys(query).some((key) => !SUPPORTED_QUERY_KEYS.has(key)) ||
     (query.entity !== undefined && query.entity !== "work_item") ||
@@ -77,7 +116,7 @@ export function isExecutableSavedViewQuery(value: unknown): boolean {
   if (
     query.sort !== undefined &&
     (!Array.isArray(query.sort) ||
-      query.sort.length > 1 ||
+      query.sort.length > 5 ||
       query.sort.some(
         (item) =>
           !item ||
@@ -89,7 +128,10 @@ export function isExecutableSavedViewQuery(value: unknown): boolean {
           !["asc", "desc"].includes(
             String((item as Record<string, unknown>).direction),
           ),
-      ))
+      ) ||
+      new Set(
+        query.sort.map((item) => (item as Record<string, unknown>)?.field),
+      ).size !== query.sort.length)
   ) {
     return false;
   }
@@ -97,11 +139,23 @@ export function isExecutableSavedViewQuery(value: unknown): boolean {
     query.columns !== undefined &&
     (!Array.isArray(query.columns) ||
       query.columns.length === 0 ||
-      query.columns.some((column) => !COLUMNS.has(String(column))) ||
+      query.columns.length > 100 ||
+      query.columns.some((column) => !isWorkItemSearchColumn(column)) ||
       new Set(query.columns).size !== query.columns.length)
   ) {
     return false;
   }
+  if (
+    Array.isArray(query.sort) &&
+    query.sort.some(
+      (item) =>
+        typeof (item as Record<string, unknown>).field === "string" &&
+        String((item as Record<string, unknown>).field).startsWith("cf.") &&
+        (!Array.isArray(query.columns) ||
+          !query.columns.includes((item as Record<string, unknown>).field)),
+    )
+  )
+    return false;
   if (query.filter !== undefined) {
     if (
       !query.filter ||
@@ -169,14 +223,31 @@ export function isSavedViewSnapshotComplete(search: {
  * means by key, so a partial URL has exactly one reading; neither means no sort at all.
  */
 export function savedViewSort(
-  search: Pick<SavedViewUrlSearch, "sort" | "dir">,
-):
-  | { field: WorkItemSearchSortField; order: WorkItemSortDirection }
-  | undefined {
+  search: Pick<SavedViewUrlSearch, "sort" | "dir" | "sorts">,
+): { field: WorkItemSearchSortField; order: "asc" | "desc" }[] | undefined {
+  if (search.sorts?.length) {
+    if (!search.sorts.every((entry) => isWorkItemSearchSortField(entry.field)))
+      return undefined;
+    return search.sorts.map((entry) => ({
+      field: entry.field as WorkItemSearchSortField,
+      order: entry.order,
+    }));
+  }
   if (search.sort === undefined && search.dir === undefined) return undefined;
   const field: WorkItemSortField = search.sort ?? "key";
   if (!isWorkItemSearchSortField(field)) return undefined;
-  return { field, order: search.dir ?? "asc" };
+  return [{ field, order: search.dir ?? "asc" }];
+}
+
+export function retainSelectedCustomFieldSorts(
+  sorts: readonly WorkItemSort[],
+  columns: readonly WorkItemSearchColumn[],
+): WorkItemSort[] {
+  return sorts.filter(
+    (entry) =>
+      !entry.field.startsWith("cf.") ||
+      columns.some((column) => column === entry.field),
+  );
 }
 
 function printStoredFilter(filter: unknown): string | undefined {
@@ -200,16 +271,21 @@ export function savedViewStoredSearch(
     view.query && typeof view.query === "object" && !Array.isArray(view.query)
       ? (view.query as Record<string, unknown>)
       : {};
-  const sort = Array.isArray(query.sort)
-    ? (query.sort[0] as Record<string, unknown> | undefined)
+  const rawSort = Array.isArray(query.sort)
+    ? query.sort.map((item) => {
+        if (!item || typeof item !== "object" || Array.isArray(item))
+          return item;
+        const entry = item as Record<string, unknown>;
+        return { field: entry.field, order: entry.direction };
+      })
     : undefined;
+  const sorts = parseWorkItemSorts(rawSort);
   const filter = printStoredFilter(query.filter);
   const columns =
     Array.isArray(query.columns) &&
     query.columns.length > 0 &&
-    query.columns.every(
-      (item): item is WorkItemSearchColumn =>
-        typeof item === "string" && COLUMNS.has(item),
+    query.columns.every((item): item is WorkItemSearchColumn =>
+      isWorkItemSearchColumn(item),
     )
       ? query.columns
       : undefined;
@@ -219,10 +295,11 @@ export function savedViewStoredSearch(
     scopeId: view.scopeId,
     layout: view.layout,
     ...(filter ? { filter } : {}),
-    ...(sort && isWorkItemSearchSortField(sort.field)
+    ...(sorts
       ? {
-          sort: sort.field,
-          dir: sort.direction === "desc" ? ("desc" as const) : ("asc" as const),
+          sort: sorts[0].field,
+          dir: sorts[0].order,
+          ...(sorts.length > 1 ? { sorts } : {}),
         }
       : {}),
     ...(columns ? { columns } : {}),
@@ -234,7 +311,10 @@ export function savedViewStoredSearch(
  * text is parsed here, so unparseable text throws rather than being stored.
  */
 export function savedViewQueryDocument(
-  search: Pick<SavedViewUrlSearch, "filter" | "sort" | "dir" | "columns">,
+  search: Pick<
+    SavedViewUrlSearch,
+    "filter" | "sort" | "dir" | "sorts" | "columns"
+  >,
 ): Record<string, unknown> {
   const filter = search.filter
     ? parseWorkItemFilterText(search.filter)
@@ -243,7 +323,9 @@ export function savedViewQueryDocument(
   return {
     entity: "work_item",
     ...(filter ? { filter } : {}),
-    ...(sort ? { sort: [{ field: sort.field, direction: sort.order }] } : {}),
+    ...(sort
+      ? { sort: sort.map(({ field, order }) => ({ field, direction: order })) }
+      : {}),
     ...(search.columns ? { columns: search.columns } : {}),
   };
 }

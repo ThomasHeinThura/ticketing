@@ -1482,9 +1482,15 @@ test("diagnostic: source-bound command-palette open profile", async ({
         waitUntil: "domcontentloaded",
         timeout: 45_000,
       });
+      // The settled grouped list (as the bench's `openWorkList`): its Backlog group counts all
+      // 500 items and its virtual rows are mounted. Rows are windowed, so none count 500 `tr`.
+      const list = page.locator("div[data-testid=work-item-list-populated]");
       await expect(
-        page.locator("[data-testid=work-item-list-populated] tbody tr"),
-      ).toHaveCount(500);
+        list.getByRole("button", { name: "Backlog 500", exact: true }),
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(
+        list.locator("[data-virtual-item-id] [data-task-id]").first(),
+      ).toBeVisible({ timeout: 30_000 });
       const popup = page.locator('[data-slot="command-dialog-popup"]');
       await expect(popup).toHaveCount(1);
       await expect(popup).toBeHidden();

@@ -10,8 +10,10 @@ import {
   validateScimPutExternalId,
 } from "@taskdesk/domain";
 import { and, eq, sql } from "drizzle-orm";
+import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { instanceFeatureEnabled } from "../feature-flag/enforce";
 import type { BaseVariables } from "../openapi";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import {
@@ -44,6 +46,10 @@ import {
   lockScimProfilePerson as lockScimProfilePersonRow,
 } from "./repository";
 import {
+  recordScimAuthFailure,
+  recordScimRequestDenied,
+} from "./scim-auth-events";
+import {
   lockAndVerifyScimMutation,
   resolveScimBearer,
   type ScimRequestAuthority,
@@ -51,17 +57,219 @@ import {
 import { ScimGroupWriteError, writeScimGroup } from "./scim-group-sync";
 import {
   announceScimDeactivation,
+  enqueueScimIdentityProvisioned,
   setScimIdentityActiveInTransaction,
 } from "./scim-lifecycle";
+import {
+  SCIM_FAILURE_LIMIT,
+  SCIM_FAILURE_WINDOW_MS,
+  scimBodyLimit,
+  scimClientKey,
+  scimConnectionRateLimit,
+  scimErrorBody,
+  scimErrorResponse,
+} from "./scim-limits";
+import {
+  checkScimRateLimit,
+  hitScimRateLimit,
+  reportScimRateLimitUnavailable,
+  type ScimRateLimitDecision,
+} from "./scim-rate-limit-store";
 
 type ScimVariables = BaseVariables & { scimAuthority: ScimRequestAuthority };
 const scim = apiRouter<ScimVariables>();
 
+// One registration on purpose (`DECLARED_ROUTER_MIDDLEWARE` pins `ALL /scim/v2/*` to a single
+// reviewed entry): authenticate, then apply the per-connection rate limit (IP-14), then the
+// body-size cap, in that order, as one chain.
+const connectionRateLimit = scimConnectionRateLimit(
+  (c) => c.get("scimAuthority")?.connectionId,
+);
+const bodySizeCap = scimBodyLimit();
 scim.use("*", async (c, next) => {
-  const authority = await resolveScimBearer(c.req.header("Authorization"));
+  // `feature.scim` off: the endpoint does not exist (features.md, ST-11). Checked before the
+  // bearer, so a disabled endpoint reveals nothing about tokens.
+  if (!(await instanceFeatureEnabled("feature.scim")))
+    return new Response(JSON.stringify(scimErrorBody(404, "Not found")), {
+      status: 404,
+      headers: {
+        "Content-Type": "application/scim+json; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  const client = scimClientKey(c);
+  let exhausted: ScimRateLimitDecision;
+  try {
+    exhausted = await checkScimRateLimit({
+      bucket: "anonymous_scim_failure",
+      key: client,
+      limit: SCIM_FAILURE_LIMIT,
+      windowMs: SCIM_FAILURE_WINDOW_MS,
+    });
+  } catch {
+    reportScimRateLimitUnavailable();
+    throw new HTTPException(503, { message: "SCIM rate limit unavailable" });
+  }
+  if (!exhausted.allowed) {
+    await recordScimRequestDenied(null, "rate_limited");
+    return scimErrorResponse(c, 429, "Too many requests", undefined, {
+      "Retry-After": String(exhausted.retryAfterSeconds),
+    });
+  }
+  let authority: ScimRequestAuthority;
+  try {
+    authority = await resolveScimBearer(c.req.header("Authorization"));
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 401) {
+      let counted: ScimRateLimitDecision;
+      try {
+        counted = await hitScimRateLimit({
+          bucket: "anonymous_scim_failure",
+          key: client,
+          limit: SCIM_FAILURE_LIMIT,
+          windowMs: SCIM_FAILURE_WINDOW_MS,
+        });
+      } catch {
+        await recordScimAuthFailure(error);
+        reportScimRateLimitUnavailable();
+        throw new HTTPException(503, {
+          message: "SCIM rate limit unavailable",
+        });
+      }
+      // IP-24: `onError` records this 401 once, including a token rotation discovered during
+      // transactional revalidation. The anonymous ingress counter remains the request limit.
+      if (!counted.allowed) {
+        await recordScimRequestDenied(null, "rate_limited");
+        return scimErrorResponse(c, 429, "Too many requests", undefined, {
+          "Retry-After": String(counted.retryAfterSeconds),
+        });
+      }
+    }
+    throw error;
+  }
   c.set("scimAuthority", authority);
-  await next();
+  let capped: Response | undefined;
+  const limited = await connectionRateLimit(c, async () => {
+    capped = (await bodySizeCap(c, next)) ?? undefined;
+  });
+  const response = limited ?? capped ?? c.res;
+  if (
+    response.status >= 400 &&
+    response.status < 500 &&
+    response.status !== 401 &&
+    response.status !== 429
+  ) {
+    await recordScimRequestDenied(
+      authority.connectionId,
+      response.status === 403
+        ? "authorization_denied"
+        : response.status === 413
+          ? "request_too_large"
+          : "request_rejected",
+    );
+  }
+  return limited ?? capped;
 });
+
+type ScimGroupPatchState = {
+  displayName: string;
+  active: boolean;
+  memberIds: string[];
+};
+
+/**
+ * Applies a parsed group PATCH to one state snapshot. Pure and repeatable: the repository
+ * re-runs it on the freshly locked row, so the result never rests on a stale earlier read
+ * (IP-22). Returns null for an invalid operation.
+ */
+function applyScimGroupPatch(
+  operations: readonly ScimGroupPatchOperation[],
+  state: ScimGroupPatchState,
+): ScimGroupPatchState | null {
+  let displayName = state.displayName;
+  let active = state.active;
+  const members = new Set<string>(state.memberIds);
+  for (const operation of operations) {
+    const path = operation.path.toLowerCase();
+    if (path === "displayname") {
+      if (
+        operation.op === "remove" ||
+        typeof operation.value !== "string" ||
+        !operation.value.trim() ||
+        operation.value.length > 255
+      )
+        return null;
+      displayName = operation.value;
+    } else if (path === "active") {
+      if (operation.op === "remove" || typeof operation.value !== "boolean")
+        return null;
+      active = operation.value;
+    } else if (path === "members") {
+      if (operation.op === "remove") {
+        if (operation.value !== undefined) return null;
+        members.clear();
+      } else {
+        if (!Array.isArray(operation.value)) return null;
+        const next = new Set<string>();
+        for (const member of operation.value) {
+          if (
+            !isRecord(member) ||
+            Object.keys(member).some(
+              (key) => !["value", "type", "display"].includes(key),
+            ) ||
+            typeof member.value !== "string" ||
+            member.value.length === 0 ||
+            (member.type !== undefined && member.type !== "User") ||
+            (member.display !== undefined && typeof member.display !== "string")
+          )
+            return null;
+          next.add(member.value);
+        }
+        if (next.size !== operation.value.length) return null;
+        if (operation.op === "replace") {
+          members.clear();
+          for (const memberId of next) members.add(memberId);
+        } else for (const memberId of next) members.add(memberId);
+      }
+    } else {
+      const match = path.match(
+        /^members\[value\s+eq\s+"([a-z0-9_-]{1,128})"\]$/iu,
+      );
+      if (!match?.[1]) return null;
+      const memberId = match[1];
+      if (operation.op === "remove") {
+        if (operation.value !== undefined) return null;
+        members.delete(memberId);
+      } else {
+        if (
+          !isRecord(operation.value) ||
+          Object.keys(operation.value).some(
+            (key) => !["value", "type", "display"].includes(key),
+          ) ||
+          operation.value.value !== memberId ||
+          (operation.value.type !== undefined &&
+            operation.value.type !== "User") ||
+          (operation.value.display !== undefined &&
+            typeof operation.value.display !== "string")
+        )
+          return null;
+        members.add(memberId);
+      }
+    }
+  }
+  return { displayName, active, memberIds: [...members] };
+}
+
+/** IP-4: a tenant, role, capability or portal attribute is refused and is a provisioning event. */
+async function forbiddenAttributeResponse(c: Context, connectionId: string) {
+  await recordScimRequestDenied(connectionId, "forbidden_attribute");
+  return scimResponse(
+    c.json(
+      scimErrorBody(400, "Forbidden attribute", "forbidden_attribute"),
+      400,
+    ),
+  );
+}
 
 function scimResponse<T extends Response>(response: T): T {
   response.headers.set("Content-Type", "application/scim+json; charset=utf-8");
@@ -69,20 +277,13 @@ function scimResponse<T extends Response>(response: T): T {
   return response;
 }
 
-function scimErrorBody(status: number, detail: string, scimType?: string) {
-  return {
-    schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
-    status: String(status),
-    ...(scimType ? { scimType } : {}),
-    detail,
-  };
-}
-
-scim.onError((error, c) => {
+scim.onError(async (error, c) => {
   if (!(error instanceof HTTPException)) throw error;
   const status = error.status;
-  if (status === 401)
+  if (status === 401) {
+    await recordScimAuthFailure(error);
     return scimResponse(c.json(scimErrorBody(401, "Unauthorized"), 401));
+  }
   if (status === 403)
     return scimResponse(
       c.json(
@@ -304,6 +505,7 @@ const userPatchRoute = createRoute({
     400: jsonResponse("Invalid SCIM patch", scimListSchema),
     403: jsonResponse("SCIM resource is not allowed", scimListSchema),
     404: jsonResponse("SCIM user not found", scimListSchema),
+    409: jsonResponse("Identity conflict", scimListSchema),
     503: jsonResponse("SCIM configuration unavailable", scimListSchema),
   },
 });
@@ -456,6 +658,18 @@ async function applyScimActiveState(
       const { scim } = await lockAndVerifyScimMutation(tx, authority, "users");
       if (scim.lifecyclePolicy !== scimConnection.lifecyclePolicy)
         throw new IdentityGrantClosureChangedError();
+      if (active) {
+        const [identity] = await getScimExternalIdentity(
+          tx,
+          identityId,
+          connectionId,
+        );
+        if (!identity) return false;
+        await enqueueScimIdentityProvisioned(tx, {
+          connectionId,
+          personId: identity.personId,
+        });
+      }
       return lifecycle;
     }),
   );
@@ -494,6 +708,18 @@ async function applyScimActiveStateInTransaction(
   const { scim } = await lockAndVerifyScimMutation(tx, authority, "users");
   if (scim.lifecyclePolicy !== scimConnection.lifecyclePolicy)
     throw new IdentityGrantClosureChangedError();
+  if (active) {
+    const [identity] = await getScimExternalIdentity(
+      tx,
+      identityId,
+      connectionId,
+    );
+    if (!identity) return false;
+    await enqueueScimIdentityProvisioned(tx, {
+      connectionId,
+      personId: identity.personId,
+    });
+  }
   return lifecycle;
 }
 
@@ -805,6 +1031,8 @@ export default scim
       );
     const raw: unknown = c.req.valid("json");
     const parsed = parseScimUser(raw);
+    if (!parsed.ok && parsed.reason === "forbidden_attribute")
+      return forbiddenAttributeResponse(c, authority.connectionId);
     const parsedExternalId = parsed.ok ? parsed.value.externalId : undefined;
     if (!parsed.ok || !parsedExternalId || !parsed.value.userName)
       return scimResponse(
@@ -899,6 +1127,10 @@ export default scim
           detail: { personId, active: attrs.active ?? true },
           actorType: "scim",
         });
+        await enqueueScimIdentityProvisioned(tx, {
+          connectionId: authority.connectionId,
+          personId,
+        });
         return { created: true as const };
       });
       if ("conflict" in created)
@@ -956,6 +1188,8 @@ export default scim
     const { id } = c.req.valid("param");
     const raw: unknown = c.req.valid("json");
     const parsed = parseScimUser(raw);
+    if (!parsed.ok && parsed.reason === "forbidden_attribute")
+      return forbiddenAttributeResponse(c, authority.connectionId);
     const mapping = await readScimProfileMapping(authority.connectionId);
     if (!mapping)
       return scimResponse(
@@ -1136,6 +1370,8 @@ export default scim
       ...(current.locale ? { preferredLanguage: current.locale } : {}),
     };
     const patched = applyScimPatchOps(currentResource, operations);
+    if (!patched.ok && patched.reason === "forbidden_attribute")
+      return forbiddenAttributeResponse(c, authority.connectionId);
     if (!patched.ok)
       return scimResponse(
         c.json(scimErrorBody(400, "Invalid SCIM patch", patched.reason), 400),
@@ -1165,6 +1401,29 @@ export default scim
       return scimResponse(
         c.json(scimErrorBody(400, "Invalid SCIM patch", profile.reason), 400),
       );
+    if (
+      profile.value.email &&
+      profile.value.email.toLowerCase() !== (current.email ?? "").toLowerCase()
+    ) {
+      // Same cross-organisation uniqueness rule as PUT: a changed address may not collide with
+      // another identity or a user account (P3-R1-07).
+      const [emailConflict] = await findScimReplaceEmailConflict(
+        profile.value.email,
+        id,
+        current.personId,
+      );
+      if (emailConflict)
+        return scimResponse(
+          c.json(
+            scimErrorBody(
+              409,
+              "A matching identity already exists.",
+              "uniqueness",
+            ),
+            409,
+          ),
+        );
+    }
     const updateResult = await retryIdentityGrantClosure(async () =>
       db.transaction(async (tx) => {
         await lockPendingActionLifecycle(tx);
@@ -1452,112 +1711,26 @@ export default scim
       return scimResponse(
         c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
       );
-    let displayName = current.displayName;
-    let active = current.active;
-    const members = new Set<string>(
-      current.members.map((member) => member.value),
-    );
-    for (const operation of operations) {
-      const path = operation.path.toLowerCase();
-      if (path === "displayname") {
-        if (
-          operation.op === "remove" ||
-          typeof operation.value !== "string" ||
-          !operation.value.trim() ||
-          operation.value.length > 255
-        )
-          return scimResponse(
-            c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
-          );
-        displayName = operation.value;
-      } else if (path === "active") {
-        if (operation.op === "remove" || typeof operation.value !== "boolean")
-          return scimResponse(
-            c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
-          );
-        active = operation.value;
-      } else if (path === "members") {
-        if (operation.op === "remove") {
-          if (operation.value !== undefined)
-            return scimResponse(
-              c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
-            );
-          members.clear();
-        } else {
-          if (!Array.isArray(operation.value))
-            return scimResponse(
-              c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
-            );
-          const next = new Set<string>();
-          for (const member of operation.value) {
-            if (
-              !isRecord(member) ||
-              Object.keys(member).some(
-                (key) => !["value", "type", "display"].includes(key),
-              ) ||
-              typeof member.value !== "string" ||
-              member.value.length === 0 ||
-              (member.type !== undefined && member.type !== "User") ||
-              (member.display !== undefined &&
-                typeof member.display !== "string")
-            )
-              return scimResponse(
-                c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
-              );
-            next.add(member.value);
-          }
-          if (next.size !== operation.value.length)
-            return scimResponse(
-              c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
-            );
-          if (operation.op === "replace") {
-            members.clear();
-            for (const memberId of next) members.add(memberId);
-          } else for (const memberId of next) members.add(memberId);
-        }
-      } else {
-        const match = path.match(
-          /^members\[value\s+eq\s+"([a-z0-9_-]{1,128})"\]$/iu,
-        );
-        if (!match?.[1])
-          return scimResponse(
-            c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
-          );
-        const memberId = match[1];
-        if (operation.op === "remove") {
-          if (operation.value !== undefined)
-            return scimResponse(
-              c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
-            );
-          members.delete(memberId);
-        } else {
-          if (
-            !isRecord(operation.value) ||
-            Object.keys(operation.value).some(
-              (key) => !["value", "type", "display"].includes(key),
-            ) ||
-            operation.value.value !== memberId ||
-            (operation.value.type !== undefined &&
-              operation.value.type !== "User") ||
-            (operation.value.display !== undefined &&
-              typeof operation.value.display !== "string")
-          )
-            return scimResponse(
-              c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
-            );
-          members.add(memberId);
-        }
-      }
-    }
+    const initial = applyScimGroupPatch(operations, {
+      displayName: current.displayName,
+      active: current.active,
+      memberIds: current.members.map((member) => member.value),
+    });
+    if (!initial)
+      return scimResponse(
+        c.json(scimErrorBody(400, "Invalid SCIM group patch"), 400),
+      );
     try {
       const groupId = await writeScimGroup({
         authority,
         connectionId: authority.connectionId,
         groupId: id,
         externalId: current.externalId,
-        displayName,
-        active,
-        memberIds: [...members],
+        displayName: initial.displayName,
+        active: initial.active,
+        memberIds: initial.memberIds,
+        // Re-applied on the row read after the group lock, so a concurrent PATCH is never lost.
+        patch: (locked) => applyScimGroupPatch(operations, locked),
       });
       const resource = groupId
         ? await readScimGroup(authority.connectionId, groupId)

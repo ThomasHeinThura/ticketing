@@ -48,11 +48,13 @@ import {
   removeCannedResponse,
   saveCannedResponse,
 } from "@/fetchers/canned-response/manage-canned-responses";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import {
   type CannedResponseSearch,
   parseCannedResponseSearch,
 } from "@/lib/routes";
+import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/canned-responses",
@@ -213,6 +215,7 @@ function CannedResponsesPage() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const openPendingAction = useOpenPendingAction();
   const cache = useQueryClient();
   const { workspace, canManageWorkspaceSettings, isCheckingPermissions } =
     useWorkspacePermission();
@@ -229,14 +232,17 @@ function CannedResponsesPage() {
   const close = () => open({ q: search.q });
   const mutation = useMutation({
     mutationFn: async (
-      input: { kind: "save"; value: CannedResponseInput } | { kind: "delete" },
+      input:
+        | { kind: "save"; value: CannedResponseInput }
+        | { kind: "delete"; id?: string },
     ) => {
       if (!workspace || !canManage)
         throw new Error(t("settings:cannedResponses.forbidden"));
       if (input.kind === "delete") {
-        if (!search.id || search.id === "new")
+        const target = input.id ?? search.id;
+        if (!target || target === "new")
           throw new Error(t("settings:cannedResponses.notFound"));
-        return removeCannedResponse(search.id);
+        return removeCannedResponse(target);
       }
       return saveCannedResponse(
         workspace.id,
@@ -244,7 +250,15 @@ function CannedResponsesPage() {
         search.id === "new" ? undefined : search.id,
       );
     },
-    onSuccess: async () => {
+    onSuccess: async (result, input) => {
+      if (input.kind === "delete") {
+        // Deletion is only requested; the response stays until the requester approves it.
+        // The row button requests directly and the approval dialog is the single
+        // confirmation; a `?action=delete` link keeps its own confirmation.
+        if (search.action === "delete") close();
+        await openPendingAction(result as { pendingActionId: string });
+        return;
+      }
       await cache.invalidateQueries({ queryKey: ["canned-responses"] });
       close();
     },
@@ -347,8 +361,14 @@ function CannedResponsesPage() {
                             "settings:cannedResponses.deleteNamed",
                             { name: row.name },
                           )}
+                          disabled={mutation.isPending}
                           onClick={() =>
-                            open({ ...search, id: row.id, action: "delete" })
+                            mutation.mutate(
+                              { kind: "delete", id: row.id },
+                              {
+                                onError: (cause) => toast.error(cause.message),
+                              },
+                            )
                           }
                         >
                           <Trash2 />

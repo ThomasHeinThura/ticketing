@@ -288,6 +288,15 @@ describe("approvals: request-time and read-time validation", () => {
       })
       .returning();
     expect(state).toBeDefined();
+    // The type's published workflow must be able to leave the default state in THIS project:
+    // its backlog -> done edge needs a concrete `done` state here too.
+    await db.insert(schema.stateTable).values({
+      projectId: other.id,
+      stateTemplateId: t.done.id,
+      isDefault: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
     mockAuthenticatedSession(t.requester.user);
     const created = await t.app.request(
       `/api/projects/${other.id}/work-items`,

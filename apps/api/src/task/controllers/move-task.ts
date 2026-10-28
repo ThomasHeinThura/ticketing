@@ -3,6 +3,8 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import type { Executor } from "../../database/executor";
 import { publishEvent } from "../../events";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
+import { insertLegacyTaskActivity } from "../../events/legacy-task-effects";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { assertProjectStillLive } from "../../work-item/assert-work-item-live";
 import {
@@ -89,12 +91,14 @@ async function moveTask({
   destinationProjectId,
   destinationStatus,
   currentUserId,
+  apiKeyId,
 }: {
   identity: ResolvedIdentity;
   taskId: string;
   destinationProjectId: string;
   destinationStatus?: string;
   currentUserId: string;
+  apiKeyId?: string | null;
 }) {
   // #290 S4 sweep: `destinationProjectId` is a body field, not covered by
   // `workspaceAccess.fromTask()` (which only guards `taskId`) -- a NUL byte here
@@ -231,6 +235,40 @@ async function moveTask({
         message: "Failed to move task",
       });
     }
+
+    await insertLegacyTaskActivity(tx, identity, {
+      taskId: updatedTask.id,
+      type: "moved",
+      userId: currentUserId,
+      eventData: {
+        fromProjectId: sourceProject.id,
+        fromProjectName: sourceProject.name,
+        toProjectId: destinationProject.id,
+        toProjectName: destinationProject.name,
+        oldStatus: lockedTask.status,
+        newStatus: resolvedColumn.slug,
+      },
+    });
+
+    await recordLegacyTaskCompatibilityEvent(tx, {
+      kind: "task.moved",
+      taskId: updatedTask.id,
+      projectId: destinationProject.id,
+      workspaceId: sourceProject.workspaceId,
+      identity,
+      apiKeyId,
+      payload: {
+        fromProjectId: sourceProject.id,
+        fromProjectName: sourceProject.name,
+        toProjectId: destinationProject.id,
+        toProjectName: destinationProject.name,
+        oldStatus: lockedTask.status,
+        newStatus: resolvedColumn.slug,
+        oldColumnId: lockedTask.columnId,
+        newColumnId: resolvedColumn.id,
+        type: "moved",
+      },
+    });
 
     return {
       movedTask: updatedTask,

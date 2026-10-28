@@ -85,3 +85,102 @@ export class RoleAssignedToMembersError extends Error {
     this.name = "RoleAssignedToMembersError";
   }
 }
+
+/** The name does not reduce to a usable role key (nothing letter- or digit-like survives). */
+export class RoleNameInvalidError extends Error {
+  constructor() {
+    super("The role name must contain at least one letter or number");
+    this.name = "RoleNameInvalidError";
+  }
+}
+
+/** A requested capability is unknown to this build, or is instance-tier (RL-6). */
+export class InvalidCapabilityError extends Error {
+  constructor(public readonly capabilities: readonly string[]) {
+    super(
+      `Unknown or non-grantable capability(ies): ${capabilities.join(", ")}`,
+    );
+    this.name = "InvalidCapabilityError";
+  }
+}
+
+/**
+ * RL-4 / RL-14: the rank ceiling. The caller may not edit a role ranked at or above their own
+ * (except the role they hold), nor create or move a role to a rank at or above their own.
+ */
+export class RoleRankError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RoleRankError";
+  }
+}
+
+/** RL-6: `owner` and the built-in roles are not edited; clone one instead. */
+export class RoleNotEditableError extends Error {
+  constructor(public readonly role: string) {
+    super(
+      `The built-in role "${role}" cannot be edited. Clone it and adjust the copy.`,
+    );
+    this.name = "RoleNotEditableError";
+  }
+}
+
+/** A built-in role is never deleted. */
+export class SystemRoleNotDeletableError extends Error {
+  constructor(public readonly role: string) {
+    super(`The built-in role "${role}" cannot be deleted`);
+    this.name = "SystemRoleNotDeletableError";
+  }
+}
+
+/** Optimistic concurrency: the role changed since the caller loaded it. */
+export class RoleChangedError extends Error {
+  constructor(public readonly current: unknown) {
+    super("This role was changed by someone else since you opened it");
+    this.name = "RoleChangedError";
+  }
+}
+
+/** The caller is removing capabilities from the role they hold and has not confirmed. */
+export class SelfEditConfirmationError extends Error {
+  constructor(public readonly removed: readonly string[]) {
+    super(
+      "You are editing your own role and removing capabilities from it. Confirm to continue.",
+    );
+    this.name = "SelfEditConfirmationError";
+  }
+}
+
+/**
+ * RL-9 / IP-22: capabilities or rank of a role that identity provisioning (grants, OIDC or SCIM
+ * group mappings) points at cannot be changed here yet; that needs the shared IP-22 closure.
+ */
+export class RoleInIdentityUseError extends Error {
+  constructor() {
+    super(
+      "This role is referenced by identity provisioning and the resulting authority is not permitted for an external grant.",
+    );
+    this.name = "RoleInIdentityUseError";
+  }
+}
+
+/** The role is referenced by rows that would block its deletion. */
+export class RoleInUseError extends Error {
+  constructor(public readonly references: Record<string, number>) {
+    super(
+      `This role is still used by ${Object.entries(references)
+        .filter(([, value]) => value > 0)
+        .map(([name, value]) => `${value} ${name}`)
+        .join(", ")} and cannot be deleted`,
+    );
+    this.name = "RoleInUseError";
+  }
+}
+
+/** Bulk reassignment refused (same role, owner role, unknown target role). */
+export class RoleReassignError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RoleReassignError";
+  }
+}

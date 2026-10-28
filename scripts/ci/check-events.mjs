@@ -1,136 +1,7 @@
 #!/usr/bin/env node
-/**
- * check:events — every event key `publishEvent(...)` can actually emit is named in
- * docs/01-architecture/events.md.
- *
- * Issue #86: the API published 20 keys in the inherited kaneo vocabulary (`task.*`,
- * `comment.*`, …) while events.md declared 40 keys in the target `work_item.*` / `sla.*` /
- * `approval.*` vocabulary — zero overlap, because nothing had ever compared the two. This
- * is that comparison, made permanent. Both sides are DERIVED, never hand-maintained:
- *
- *   published  every literal string `publishEvent(...)` can be called with, found by
- *              scanning apps/api/src (see extractPublishedKeys below)
- *   declared   every backticked, dot-namespaced identifier events.md names — in the
- *              current-canon Catalogue, or in its "Inherited compatibility vocabulary"
- *              section, either counts
- *
- * A hand-written duplicate list is the exact defect this repository keeps reproducing —
- * #81 was a whole pull request fixing one instance of it. So when a `publishEvent(...)`
- * call's argument is not a plain string literal, this FAILS CLOSED (throws) rather than
- * skipping it: a checker that skips what it cannot read is how #79's uncovered reach
- * stayed hidden. The one shape this repository actually uses beyond a bare literal — a
- * local `const NAME = cond ? "a" : "b"` immediately consumed by `publishEvent(NAME, …)` —
- * is resolved rather than skipped; anything else is unresolvable and the run refuses to
- * pass silently.
- *
- * **Disclosed limits, so a reader does not have to assume more coverage than exists:**
- *
- *   SURFACE   Only `apps/api/src` is scanned (`SOURCE_ROOTS` below), and `walk()` in
- *             `./lib/repo.mjs` additionally skips symlinks and its own
- *             `ignoredDirectories` (`build`/`dist`/`out`, among others) and
- *             `generatedFiles` (the two TanStack route trees). Today that surface is ACCURATE:
- *             `grep -rln publishEvent --include=*.ts` outside `apps/api/src` (excluding
- *             `node_modules`, this script and its tests) returns nothing. It is NOT
- *             future-proof — the `work_item.*` migration `events.md` already names implies
- *             a future publisher living in `packages/domain`, which would sit outside this
- *             root and go undetected. Widen `SOURCE_ROOTS` when that publisher exists,
- *             rather than assuming this comment still describes reality.
- *   DECLARED  `declaredKeys()` is a WHOLE-DOCUMENT prose scrape, not a parse of a specific
- *             section: any backticked, lowercase, dot-namespaced token anywhere in
- *             events.md counts as "declared", including a field or column name the
- *             document happens to backtick that is not an event key at all. Measured on
- *             the tree today, SIX tokens are publishable this way, not four:
- *             `actor.type`, `outbox.kind`, `approval.state` and
- *             `notification_preference.event_kind` are field/column names; worse,
- *             `mention.in_comment` and `work_item.field_changed` are event-key-shaped
- *             names events.md backticks only to DISOWN — the former as the retired
- *             predecessor `work_item.mentioned` replaced, the latter in bold as "not a
- *             key; it is `work_item.updated` with a condition on `changes[].field`". A
- *             `publishEvent(...)` call using any of these six names would pass this check
- *             without ever being genuinely registered as an event (round 1's LOW 8,
- *             unfixed). The fix is a section-scoped parse — the current-canon Catalogue
- *             and the inherited-compatibility section only — rather than a whole-file
- *             scrape; not done, because it needs a name collision to matter and the
- *             DIRECTION accounting below already reports every orphan declaration.
- *   DIRECTION Only the forward direction is checked: every PUBLISHED key must be
- *             DECLARED. A key `events.md` declares that nothing publishes is never
- *             reported — deliberately, not an oversight. `events.md` names the
- *             forward-looking `work_item.*` / `sla.*` / `approval.*` target vocabulary
- *             #86 exists to migrate toward (47 such orphan declarations at the time of
- *             writing), so a reverse check would be red from day one on keys nothing has
- *             built yet. The success line below reports only the direction actually
- *             checked; it is not a two-way reconciliation.
- *   CALL      `publishedKeysIn` recognises, WITHIN ONE FILE: a direct call, a space before
- *             the paren (`publishEvent (…)`), a single level of generic type arguments
- *             (`publishEvent<T>(…)`), an aliased import (`import { publishEvent as X }`),
- *             and a local const alias (`const X = publishEvent;`, transitively through a
- *             chain of such aliases). Comments are blanked before any of this is scanned,
- *             so a comment can never fake a declaration or a call site. A shape this
- *             extractor does not specifically recognise as one of those — optional
- *             chaining, a namespace-qualified call, a generic argument nested two levels
- *             deep, a bare reference passed as a callback, and more — is not silently
- *             invisible either: a residual scan (bottom of `publishedKeysIn`) fails the
- *             run on any bare occurrence of a tracked name that sits outside a recognised
- *             call, import, or alias declaration, rather than reporting the file as though
- *             the usage does not exist. A checker that cannot understand a shape refuses
- *             to guess "0 keys" — but only within the one file it is reading.
- *
- *             A CROSS-FILE alias IS silently invisible, and this is a real gap, not a case
- *             the residual scan covers. `names` — the set of identifiers this extractor
- *             treats as `publishEvent` — is computed separately PER FILE, from that file's
- *             own text (`callNamesIn`), and `main()` only ever opens a file whose own text
- *             contains the literal identifier `publishEvent`. A file that does
- *             `export const emit = publishEvent;` (or `export { publishEvent as emit }`,
- *             or a multi-hop re-export chain through an index module) and a SEPARATE
- *             consuming file that only ever imports and calls `emit` never spells
- *             `publishEvent` in its own text, so that consuming file is never opened and
- *             its call is never seen — the residual scan cannot fail closed on a file the
- *             pre-filter never let it read. Such a call reports "0 published event key(s)"
- *             for that file, silently (review PR #91, round 2, MEDIUM 3). There is no
- *             mitigation today: a publisher of a NEW key must `import { publishEvent }`
- *             directly, or alias it in the SAME file as the call site, for this checker to
- *             see it. Closing this properly means a first pass that resolves import
- *             specifiers to files and builds a repo-wide alias set before the per-file
- *             scan runs — real, undone work, not a one-line fix — and no such cross-file
- *             indirection exists in the tree today (`grep -rn "= publishEvent\s*;\|publishEvent as "
- *             apps/` finds none); this comment is a disclosure of a gap, not a promise it
- *             never will.
- *   IDENTIFIER `resolveLocalConst`/`assertNoOtherBinding` (round 5-6, HIGH/MEDIUM) match a
- *             tracked identifier by its literal TEXT (`\bNAME\b`), not by resolving it the
- *             way a JS/TS parser would, and this is not limited to `let`/`const` bindings —
- *             a same-named METHOD declaration (object-shorthand or class) is exactly as
- *             blind to this scanner as the function-declaration case round 6 fixed, and for
- *             the identical reason: neither shape was added to the whitelist's exclusion,
- *             only the `function` keyword shape was. No such method exists in
- *             `apps/api/src` today; disclosed rather than chased, same as everything else in
- *             this section — round 6 fixed the live near-miss (a `function`-declared
- *             wrapper actually existed in this tree), this narrower sibling does not have
- *             one (independent Opus review, round 7, LOW).
- *
- *             Separately, and more fundamentally: a Unicode escape sequence inside an
- *             identifier is, at runtime, the SAME BINDING as the plain-spelled identifier —
- *             writing the letter `e` in `eventType` as its escape sequence instead changes
- *             nothing about which variable is referenced — but it is invisible to a text
- *             match, because the escaped source text contains no substring spelling the
- *             tracked name. A single-file bypass this specific (independent Opus review,
- *             round 6, LOW): a shadowing `let` whose declaration spells one letter of its
- *             name as a Unicode escape defeats both the round-5 shadow check AND the round-6
- *             fix above, resolving to whatever the outer const says while actually reading
- *             the escaped `let`. This is the irreducible floor of a regex-over-text
- *             approach, not a one-line gap — closing it for real needs an AST parse, which
- *             this file deliberately does not carry (see the module's own "no framework
- *             dependency" convention elsewhere in this codebase). No such escape exists
- *             anywhere in `apps/api/src` today — re-runnable evidence, corrected after the
- *             independent review of this very disclosure found the first version's cited
- *             command was over-escaped and always matched nothing regardless of the tree's
- *             actual content (round 7, LOW, documentation accuracy):
- *             `grep -rlnE '\\u[0-9a-fA-F]{4}' apps/api/src` finds only a regex character
- *             class in `index.ts`, never an identifier; this comment is a disclosure of a
- *             gap, not a promise it never will.
- *
- * Usage:
- *   node scripts/ci/check-events.mjs
- */
+/** Validate published API event keys against maintained event catalogue tables.
+ * Extraction remains fail-closed for unsupported call shapes; its existing limitations
+ * (including cross-file publisher aliases) are not a claim of runtime coverage. */
 
 import path from "node:path";
 import {
@@ -145,7 +16,7 @@ import { stripCodeComments } from "./lib/strip-code-comments.mjs";
 
 const NAME = "check:events";
 const SOURCE_ROOTS = ["apps/api/src"];
-const AUTHORITY = "docs/01-architecture/events.md";
+const AUTHORITY = "docs/technical/events.md";
 
 /** A TaskDesk or kaneo event key: lowercase, dot-namespaced, segments may use `-`/`_`. */
 const KEY_SHAPE = /^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/;
@@ -154,21 +25,27 @@ function isEventKeyShaped(text) {
   return KEY_SHAPE.test(text);
 }
 
-/**
- * Every backticked, event-key-shaped identifier named anywhere in the authority document —
- * the current Catalogue and the inherited compatibility section both count as "declared".
- */
+/** Only catalogue table first columns register event identifiers. */
 async function declaredKeys() {
   const source = await readText(path.join(repoRoot, AUTHORITY));
   const names = new Set();
-  for (const match of source.matchAll(/`([a-zA-Z0-9_.-]+)`/g)) {
-    if (isEventKeyShaped(match[1])) {
-      names.add(match[1]);
-    }
+  let active = false;
+  for (const line of source.split("\n")) {
+    if (line.startsWith("## "))
+      active = /^## (Catalogue|Inherited compatibility vocabulary)(?:$| )/.test(
+        line,
+      );
+    if (!active) continue;
+    const row = /^\| `([^`]+)` \|/.exec(line);
+    if (!row) continue;
+    if (!isEventKeyShaped(row[1]))
+      throw new Error(
+        `Invalid event key ${JSON.stringify(row[1])} in ${AUTHORITY}`,
+      );
+    names.add(row[1]);
   }
-  if (names.size === 0) {
+  if (!names.size)
     throw new Error(`No event keys parsed from ${AUTHORITY}; refusing to run.`);
-  }
   return names;
 }
 
@@ -641,7 +518,7 @@ async function main() {
         `publishEvent("${key}", …) is not named in ${AUTHORITY}. Add it there first, in ` +
           "the same change — as current canon in the Catalogue if the emitting code is " +
           "native, or in the inherited compatibility section if it is not " +
-          "(AGENTS.md do-not 11).",
+          "(maintained event contract).",
       ),
     );
   }

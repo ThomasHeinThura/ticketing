@@ -2,8 +2,11 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
+import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import { resolveCatalogueKey } from "../catalogue-key";
 import {
   findProjectWorkspaceId,
   findTaskLabelByName,
@@ -21,6 +24,8 @@ async function createLabel(
   taskId: string | undefined,
   workspaceId: string,
   userId: string,
+  key?: string,
+  apiKeyId?: string | null,
 ) {
   if (taskId) {
     // #290 S4 sweep: `taskId` is a body field, not covered by any
@@ -60,6 +65,17 @@ async function createLabel(
       });
       const label =
         inserted ?? (await findTaskLabelByName(tx, identity, taskId, name));
+      if (inserted) {
+        await recordLegacyTaskCompatibilityEvent(tx, {
+          kind: "task.label_created",
+          taskId: lockedTask.id,
+          projectId: lockedTask.projectId,
+          workspaceId: project.workspaceId,
+          identity,
+          apiKeyId,
+          payload: { type: "label_created" },
+        });
+      }
       return { label, inserted, projectId: lockedTask.projectId };
     });
 
@@ -78,26 +94,36 @@ async function createLabel(
     return label;
   }
 
-  const label = await db.transaction(async (tx) => {
-    await lockWorkspaceLabelNames(tx, workspaceId, [name]);
-    const inserted = await insertWorkspaceLabelOnConflictDoNothing(
-      tx,
-      identity,
-      {
-        name,
-        color,
-        workspaceId,
-      },
-    );
+  const catalogueKey = resolveCatalogueKey(name, key);
+  if (!catalogueKey)
+    throw new HTTPException(422, {
+      message: "A valid catalogue key is required",
+    });
+  let label: Awaited<ReturnType<typeof findWorkspaceLabelByName>>;
+  try {
+    label = await db.transaction(async (tx) => {
+      await lockWorkspaceLabelNames(tx, workspaceId, [name]);
+      const inserted = await insertWorkspaceLabelOnConflictDoNothing(
+        tx,
+        identity,
+        { name, color, workspaceId, key: catalogueKey },
+      );
 
-    return (
-      inserted ?? findWorkspaceLabelByName(tx, identity, workspaceId, name)
-    );
-  });
+      return (
+        inserted ?? findWorkspaceLabelByName(tx, identity, workspaceId, name)
+      );
+    });
+  } catch (error) {
+    if (isUniqueViolation(error, "label_workspace_key_unique"))
+      throw new HTTPException(409, { message: "catalogue_key_conflict" });
+    throw error;
+  }
 
   if (!label) {
     throw new Error("Failed to create or resolve label");
   }
+  if (label.key !== catalogueKey)
+    throw new HTTPException(409, { message: "catalogue_key_conflict" });
 
   return label;
 }

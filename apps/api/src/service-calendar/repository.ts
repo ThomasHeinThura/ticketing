@@ -1,7 +1,23 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
-import { type Holiday, holidayImportIdentity } from "@taskdesk/domain";
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import {
+  type Holiday,
+  holidayImportIdentity,
+  retroactiveHolidayWindows,
+} from "@taskdesk/domain";
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import {
   type AppendAuditLogInput,
@@ -21,7 +37,9 @@ import {
 import { enqueueOutboxEvent } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import { resolveCatalogueKey } from "../label/catalogue-key";
 import { withWorkspaceDeletionAccessLifecycle } from "../pending-action/workspace-access-invalidation";
+import { isUniqueViolation } from "../utils/is-unique-violation";
 import { ServiceCalendarVersionConflictError } from "./errors";
 
 type CalendarActor = {
@@ -49,10 +67,27 @@ export async function assertCalendarUnused(
   const [projectReference] = await tx
     .select({ id: projectTable.id })
     .from(projectTable)
+    .innerJoin(workspaceTable, eq(workspaceTable.id, projectTable.workspaceId))
     .where(
       and(
         eq(projectTable.workspaceId, workspaceId),
-        eq(projectTable.serviceCalendarId, calendarId),
+        or(
+          eq(projectTable.serviceCalendarId, calendarId),
+          and(
+            eq(projectTable.serviceCalendarMode, "inherit"),
+            eq(workspaceTable.defaultServiceCalendarId, calendarId),
+          ),
+        ),
+      ),
+    )
+    .limit(1);
+  const [workspaceReference] = await tx
+    .select({ id: workspaceTable.id })
+    .from(workspaceTable)
+    .where(
+      and(
+        eq(workspaceTable.id, workspaceId),
+        eq(workspaceTable.defaultServiceCalendarId, calendarId),
       ),
     )
     .limit(1);
@@ -66,7 +101,7 @@ export async function assertCalendarUnused(
       ),
     )
     .limit(1);
-  if (projectReference || policyReference) {
+  if (projectReference || workspaceReference || policyReference) {
     throw new HTTPException(409, { message: "service_calendar_in_use" });
   }
 }
@@ -103,10 +138,17 @@ export async function getCalendarUsage(id: string, workspaceId: string) {
   const [projectCount] = await db
     .select({ value: count() })
     .from(projectTable)
+    .innerJoin(workspaceTable, eq(workspaceTable.id, projectTable.workspaceId))
     .where(
       and(
         eq(projectTable.workspaceId, workspaceId),
-        eq(projectTable.serviceCalendarId, id),
+        or(
+          eq(projectTable.serviceCalendarId, id),
+          and(
+            eq(projectTable.serviceCalendarMode, "inherit"),
+            eq(workspaceTable.defaultServiceCalendarId, id),
+          ),
+        ),
       ),
     );
   const versions = await db
@@ -269,6 +311,7 @@ function changedCalendarFields(
 
 function auditSnapshot(calendar: {
   name: string;
+  key: string;
   timezone: string;
   windows: unknown;
   holidays: unknown;
@@ -276,6 +319,7 @@ function auditSnapshot(calendar: {
   return JSON.parse(
     JSON.stringify({
       name: calendar.name,
+      key: calendar.key,
       timezone: calendar.timezone,
       windows: calendar.windows,
       holidays: calendar.holidays,
@@ -433,43 +477,121 @@ export const getCalendar = async (id: string, workspaceId: string) => {
 export async function createCalendar(input: {
   workspaceId: string;
   name: string;
+  key?: string;
   timezone: string;
   windows: unknown;
   holidays: unknown;
   actor: CalendarActor;
 }) {
-  const outcome = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(serviceCalendarTable)
-      .values({
+  const key = resolveCatalogueKey(input.name, input.key);
+  if (!key)
+    throw new HTTPException(422, {
+      message: "A valid catalogue key is required",
+    });
+  let outcome: {
+    row: typeof serviceCalendarTable.$inferSelect;
+    auditFailed: boolean;
+  };
+  try {
+    outcome = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(serviceCalendarTable)
+        .values({
+          workspaceId: input.workspaceId,
+          name: input.name,
+          key,
+          timezone: input.timezone,
+          windows: input.windows,
+          holidays: input.holidays,
+        })
+        .returning();
+      if (!row) throw new Error("Calendar insert returned no row");
+      const auditFailed = await appendCalendarAudit(tx, {
+        ...input.actor,
         workspaceId: input.workspaceId,
-        name: input.name,
-        timezone: input.timezone,
-        windows: input.windows,
-        holidays: input.holidays,
-      })
-      .returning();
-    if (!row) throw new Error("Calendar insert returned no row");
-    const auditFailed = await appendCalendarAudit(tx, {
-      ...input.actor,
-      workspaceId: input.workspaceId,
-      action: "service_calendar.created",
-      entityType: "service_calendar",
-      entityId: row.id,
-      after: auditSnapshot(row),
+        action: "service_calendar.created",
+        entityType: "service_calendar",
+        entityId: row.id,
+        after: auditSnapshot(row),
+      });
+      await appendCalendarEvent(tx, {
+        kind: "service_calendar.created",
+        calendar: row,
+        actor: input.actor,
+      });
+      return { row, auditFailed };
     });
-    await appendCalendarEvent(tx, {
-      kind: "service_calendar.created",
-      calendar: row,
-      actor: input.actor,
-    });
-    return { row, auditFailed };
-  });
+  } catch (error) {
+    if (isUniqueViolation(error, "service_calendar_workspace_key_unique"))
+      throw new HTTPException(409, { message: "catalogue_key_conflict" });
+    throw error;
+  }
   if (outcome.auditFailed) {
     await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
   }
   return materializeCalendar(outcome.row);
 }
+/**
+ * CAL-13: open work items whose deadline a newly added holiday moves later. A holiday that
+ * takes effect in the past (or today, calendar-local) removes cover from time an unresolved
+ * item pinned to a policy version on this calendar has already run through, so the count is
+ * those items that started on or before the end of any newly covered past day. Future-dated
+ * additions are not counted: due instants are not stored, so their effect on each item is
+ * not known without evaluating every item. Pure read; runs inside the mutation transaction.
+ */
+export async function countRetroactiveHolidayImpact(
+  tx: Pick<typeof db, "select">,
+  input: {
+    workspaceId: string;
+    calendarId: string;
+    timezone: string;
+    before: Holiday[];
+    after: Holiday[];
+    now?: Date;
+  },
+): Promise<number> {
+  const windows = retroactiveHolidayWindows({
+    timezone: input.timezone,
+    before: input.before,
+    after: input.after,
+    now: input.now ?? new Date(),
+  });
+  if (windows.length === 0) return 0;
+  // The widest window's end bounds every narrower one: an item that started on or before
+  // an earlier window's end also started on or before the latest end.
+  const latestEnd = windows.reduce(
+    (latest, w) => (w.endsAt > latest ? w.endsAt : latest),
+    windows[0]?.endsAt ?? new Date(0),
+  );
+  const [row] = await tx
+    .select({ value: countDistinct(workItemTable.id) })
+    .from(workItemTable)
+    .innerJoin(
+      slaPolicyVersionTable,
+      eq(slaPolicyVersionTable.id, workItemTable.slaPolicyVersionId),
+    )
+    .where(
+      and(
+        eq(workItemTable.workspaceId, input.workspaceId),
+        eq(slaPolicyVersionTable.calendarId, input.calendarId),
+        isNull(workItemTable.resolvedAt),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        or(
+          and(
+            isNotNull(workItemTable.slaStartedAt),
+            lte(workItemTable.slaStartedAt, latestEnd),
+          ),
+          and(
+            isNull(workItemTable.slaStartedAt),
+            lte(workItemTable.createdAt, latestEnd),
+          ),
+        ),
+      ),
+    );
+  return row?.value ?? 0;
+}
+
 export async function updateCalendar(
   id: string,
   workspaceId: string,
@@ -533,7 +655,17 @@ export async function updateCalendar(
         actor,
         changedFields: changedCalendarFields(before, row),
       });
-      return { value: { before, row }, auditFailed };
+      const affectedWorkItemCount =
+        input.holidays === undefined
+          ? 0
+          : await countRetroactiveHolidayImpact(tx, {
+              workspaceId,
+              calendarId: row.id,
+              timezone: row.timezone,
+              before: before.holidays as Holiday[],
+              after: row.holidays as Holiday[],
+            });
+      return { value: { before, row, affectedWorkItemCount }, auditFailed };
     },
   );
   if (outcome?.auditFailed) {
@@ -543,6 +675,7 @@ export async function updateCalendar(
     ? {
         before: materializeCalendar(outcome.value.before),
         row: materializeCalendar(outcome.value.row),
+        affectedWorkItemCount: outcome.value.affectedWorkItemCount,
       }
     : undefined;
 }
@@ -589,7 +722,12 @@ export async function importCalendarHolidays(
       }
       if (additions.length === 0)
         return {
-          value: { row: before, importedCount: 0, duplicateCount },
+          value: {
+            row: before,
+            importedCount: 0,
+            duplicateCount,
+            affectedWorkItemCount: 0,
+          },
           auditFailed: false,
         };
       const [row] = await tx
@@ -622,8 +760,20 @@ export async function importCalendarHolidays(
         actor,
         changedFields: ["holidays"],
       });
+      const affectedWorkItemCount = await countRetroactiveHolidayImpact(tx, {
+        workspaceId,
+        calendarId: row.id,
+        timezone: row.timezone,
+        before: before.holidays as Holiday[],
+        after: row.holidays as Holiday[],
+      });
       return {
-        value: { row, importedCount: additions.length, duplicateCount },
+        value: {
+          row,
+          importedCount: additions.length,
+          duplicateCount,
+          affectedWorkItemCount,
+        },
         auditFailed,
       };
     },

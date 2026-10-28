@@ -1,0 +1,101 @@
+{
+	"scope": "God Mode organisation catalogue browser slice only; not P4 or phase acceptance",
+	"environment": "local SIT agent host, existing seeded customer; screenshots contain no credentials or session data",
+	"mutation": {
+		"method": "normal instance-admin UI, CSRF/session handling and catalogue CAS",
+		"result": "success",
+		"previousAssignmentCount": 2,
+		"persistedAssignmentCountAfterFreshReload": 3,
+		"preservedPreviousAssignments": ["Access request", "Report a problem"],
+		"addedAssignment": "AT9 PDF Preview Fixture"
+	},
+	"authorization": {
+		"existingIdentityRouteReachable": true,
+		"memberDenied": true,
+		"memberCatalogueListRequests": 0
+	},
+	"visualChecks": [
+		{
+			"width": 375,
+			"theme": "light",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"opaqueRequestTypeIdsVisible": false,
+			"screenshot": "organisation-catalogue-375-light.png"
+		},
+		{
+			"width": 375,
+			"theme": "dark",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"opaqueRequestTypeIdsVisible": false,
+			"screenshot": "organisation-catalogue-375-dark.png"
+		},
+		{
+			"width": 390,
+			"theme": "light",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"opaqueRequestTypeIdsVisible": false,
+			"screenshot": "organisation-catalogue-390-light.png"
+		},
+		{
+			"width": 390,
+			"theme": "dark",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"opaqueRequestTypeIdsVisible": false,
+			"screenshot": "organisation-catalogue-390-dark.png"
+		},
+		{
+			"width": 768,
+			"theme": "light",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"opaqueRequestTypeIdsVisible": false,
+			"screenshot": "organisation-catalogue-768-light.png"
+		},
+		{
+			"width": 768,
+			"theme": "dark",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"opaqueRequestTypeIdsVisible": false,
+			"screenshot": "organisation-catalogue-768-dark.png"
+		},
+		{
+			"width": 1440,
+			"theme": "light",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"opaqueRequestTypeIdsVisible": false,
+			"screenshot": "organisation-catalogue-1440-light.png"
+		},
+		{
+			"width": 1440,
+			"theme": "dark",
+			"pageRendered": true,
+			"viewportHorizontalOverflow": false,
+			"opaqueRequestTypeIdsVisible": false,
+			"screenshot": "organisation-catalogue-1440-dark.png"
+		}
+	],
+	"limitations": [
+		"Evidence covers only the retained catalogue assignment flow and the authorized single additive SIT mapping.",
+		"Create, suspend, and delete organisation workflows remain outside this slice.",
+		"At 390 px, the SettingsShell category tab strip is intentionally horizontally scrollable; browser keyboard check confirmed earlier tabs are revealed when focused."
+	],
+	"settingsTabs390": {
+		"component": "SettingsShell category tabs, not InstanceSettingsFrame God Mode sidebar",
+		"intentionalHorizontalOverflow": true,
+		"css": "overflow-x-auto overscroll-x-contain",
+		"metrics": {
+			"viewportClientWidth": 348,
+			"tabListScrollWidth": 395,
+			"initialScrollLeft": 43,
+			"inactiveAccountTabInitiallyClippedLeftPx": 41
+		},
+		"keyboardReachability": "Starting on selected God Mode tab, ArrowLeft moved focus through Projects and Workspace to Account; focus handling scrolled Account fully into view (scrollLeft 2).",
+		"conclusion": "Selected God Mode tab is visible by default; earlier tab clipping is a horizontally scrollable strip, with focus-reveal behavior. No catalogue-scope change proposed."
+	}
+}

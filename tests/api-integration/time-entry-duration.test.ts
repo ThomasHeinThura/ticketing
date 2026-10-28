@@ -38,13 +38,17 @@ async function seedTaskFor(workspaceId: string) {
 }
 
 // Runs the shipped migration rather than a copy of its SQL, so the test covers
-// the artifact that actually reaches an upgraded installation.
+// the artifact that actually reaches an upgraded installation. Migration 0149 renamed the
+// legacy `time_entry` table to `task_time_entry` (the canonical work-item `time_entry` took the
+// name), and 0043 ran when the legacy table still had its old name: the statements are applied to
+// the renamed table, which is the table they were always about.
 async function runDurationBackfillMigration() {
   const file = new URL(
     "../../apps/api/drizzle/0043_backfill_time_entry_durations.sql",
     import.meta.url,
   );
   const statements = readFileSync(file, "utf8")
+    .replaceAll('"time_entry"', '"task_time_entry"')
     .split("--> statement-breakpoint")
     .map((statement) => statement.trim())
     .filter(Boolean);
@@ -181,7 +185,7 @@ describe("time entry duration backfill", () => {
 
     const entry = requireRow(
       await db
-        .insert(schema.timeEntryTable)
+        .insert(schema.taskTimeEntryTable)
         .values({
           taskId: task.id,
           userId: user.id,
@@ -199,8 +203,8 @@ describe("time entry duration backfill", () => {
     const repaired = requireRow(
       await db
         .select()
-        .from(schema.timeEntryTable)
-        .where(eq(schema.timeEntryTable.id, entry.id)),
+        .from(schema.taskTimeEntryTable)
+        .where(eq(schema.taskTimeEntryTable.id, entry.id)),
       "repaired",
     );
 
@@ -213,7 +217,7 @@ describe("time entry duration backfill", () => {
 
     const entry = requireRow(
       await db
-        .insert(schema.timeEntryTable)
+        .insert(schema.taskTimeEntryTable)
         .values({
           taskId: task.id,
           userId: user.id,
@@ -231,8 +235,8 @@ describe("time entry duration backfill", () => {
     const repaired = requireRow(
       await db
         .select()
-        .from(schema.timeEntryTable)
-        .where(eq(schema.timeEntryTable.id, entry.id)),
+        .from(schema.taskTimeEntryTable)
+        .where(eq(schema.taskTimeEntryTable.id, entry.id)),
       "repaired",
     );
 
@@ -245,7 +249,7 @@ describe("time entry duration backfill", () => {
 
     const entry = requireRow(
       await db
-        .insert(schema.timeEntryTable)
+        .insert(schema.taskTimeEntryTable)
         .values({
           taskId: task.id,
           userId: user.id,
@@ -263,8 +267,8 @@ describe("time entry duration backfill", () => {
     const after = requireRow(
       await db
         .select()
-        .from(schema.timeEntryTable)
-        .where(eq(schema.timeEntryTable.id, entry.id)),
+        .from(schema.taskTimeEntryTable)
+        .where(eq(schema.taskTimeEntryTable.id, entry.id)),
       "after",
     );
 
@@ -396,7 +400,7 @@ describe("backfill tolerates legacy rows the API would now reject", () => {
 
     const entry = requireRow(
       await db
-        .insert(schema.timeEntryTable)
+        .insert(schema.taskTimeEntryTable)
         .values({
           taskId: task.id,
           userId: user.id,
@@ -414,8 +418,8 @@ describe("backfill tolerates legacy rows the API would now reject", () => {
     const after = requireRow(
       await db
         .select()
-        .from(schema.timeEntryTable)
-        .where(eq(schema.timeEntryTable.id, entry.id)),
+        .from(schema.taskTimeEntryTable)
+        .where(eq(schema.taskTimeEntryTable.id, entry.id)),
       "after",
     );
 
@@ -431,7 +435,7 @@ describe("backfill repairs every invalid legacy state", () => {
 
     const entry = requireRow(
       await db
-        .insert(schema.timeEntryTable)
+        .insert(schema.taskTimeEntryTable)
         .values({
           taskId: task.id,
           userId: user.id,
@@ -449,8 +453,8 @@ describe("backfill repairs every invalid legacy state", () => {
     const after = requireRow(
       await db
         .select()
-        .from(schema.timeEntryTable)
-        .where(eq(schema.timeEntryTable.id, entry.id)),
+        .from(schema.taskTimeEntryTable)
+        .where(eq(schema.taskTimeEntryTable.id, entry.id)),
       "after",
     );
 
@@ -463,7 +467,7 @@ describe("backfill repairs every invalid legacy state", () => {
 
     const entry = requireRow(
       await db
-        .insert(schema.timeEntryTable)
+        .insert(schema.taskTimeEntryTable)
         .values({
           taskId: task.id,
           userId: user.id,
@@ -481,8 +485,8 @@ describe("backfill repairs every invalid legacy state", () => {
     const after = requireRow(
       await db
         .select()
-        .from(schema.timeEntryTable)
-        .where(eq(schema.timeEntryTable.id, entry.id)),
+        .from(schema.taskTimeEntryTable)
+        .where(eq(schema.taskTimeEntryTable.id, entry.id)),
       "after",
     );
 

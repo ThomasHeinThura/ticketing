@@ -9,7 +9,9 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createServiceApiKey } from "../../apps/api/src/api-key/service";
 import db, { schema } from "../../apps/api/src/database";
+import { apiKeyExtensionTable } from "../../apps/api/src/database/schema";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
 import { createApp } from "../../apps/api/src/index";
 import deleteAccountData, {
@@ -26,7 +28,7 @@ import {
 import { signUpUser } from "./helpers/organization-http";
 import {
   createWorkspaceNative,
-  deleteWorkspaceNative,
+  deleteWorkspaceThroughApproval,
 } from "./helpers/workspace-write-http";
 
 const ENCRYPTION_KEY = "ab".repeat(32);
@@ -269,6 +271,47 @@ async function seedProvisioningRows(
 }
 
 describe("#180 workspace delete with role-referencing rows", () => {
+  it("revokes the parent service credential before workspace metadata cascades, preserving another workspace's key", async () => {
+    const target = await createWorkspaceViaRoute("Service credential deletion");
+    const other = await createWorkspaceViaRoute(
+      "Independent service credential",
+    );
+    const makeKey = (fixture: typeof target) =>
+      createServiceApiKey(
+        { userId: fixture.owner.user.id },
+        fixture.workspaceId,
+        { name: "Deletion coverage", capabilities: ["workspace:read"] },
+      );
+    const targetKey = await makeKey(target);
+    const otherKey = await makeKey(other);
+    const removal = await deleteWorkspaceThroughApproval(
+      target.app,
+      target.owner.cookie,
+      target.workspaceId,
+    );
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
+    const [credential] = await db
+      .select({ enabled: schema.apikeyTable.enabled })
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.id, targetKey.id));
+    expect(credential).toEqual({ enabled: false });
+    expect(
+      await db
+        .select({ id: apiKeyExtensionTable.apikeyId })
+        .from(apiKeyExtensionTable)
+        .where(eq(apiKeyExtensionTable.apikeyId, targetKey.id)),
+    ).toHaveLength(0);
+    const [unrelated] = await db
+      .select({ enabled: schema.apikeyTable.enabled })
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.id, otherKey.id));
+    expect(unrelated).toEqual({ enabled: true });
+  });
+
   it("deletes a workspace holding a project-scope role membership (the repro)", async () => {
     const { app, owner, workspaceId } =
       await createWorkspaceViaRoute("Project role");
@@ -277,12 +320,17 @@ describe("#180 workspace delete with role-referencing rows", () => {
       "project:read",
     ]);
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
 
     expect(
       await db
@@ -339,12 +387,17 @@ describe("#180 workspace delete with role-referencing rows", () => {
       directOrigin: "system_backfill",
     });
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
 
     expect(await countDependents(workspaceId, [])).toEqual({
       roles: 0,
@@ -367,12 +420,17 @@ describe("#180 workspace delete with role-referencing rows", () => {
       owner.user.id,
     );
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
 
     expect(await db.select().from(schema.oidcGroupMappingTable)).toHaveLength(
       0,
@@ -426,12 +484,17 @@ describe("#180 workspace delete with role-referencing rows", () => {
       owner.user.id,
     );
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
 
     expect(
       await db
@@ -584,12 +647,17 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
       roleId: role.id,
     });
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
     expect(
       await db
         .select()
@@ -625,12 +693,17 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
       },
     ]);
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
     const remaining = await db
       .select()
       .from(schema.membershipTable)
@@ -706,12 +779,17 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
     });
     expect(doomed.connectionId).not.toBe(survivor.connectionId);
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
     expect(await db.select().from(schema.scimGroupMemberTable)).toHaveLength(0);
     // The surviving workspace's grant is untouched.
     expect(
@@ -734,12 +812,17 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
       roleId: roleA.id,
     });
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
     expect(
       await db
         .select()
@@ -780,6 +863,28 @@ describe("#734 account erasure and IdP-provisioned members", () => {
     const wsRole = await createRole(owner.workspace.id, "workspace");
     return { owner, wsRole };
   }
+
+  it("revokes workspace service credentials when account erasure deletes a sole-member workspace", async () => {
+    const { owner } = await soleLegacyMemberWorkspace();
+    await personIdFor(owner.user.id);
+    const key = await createServiceApiKey(
+      { userId: owner.user.id },
+      owner.workspace.id,
+      { name: "Erasure credential", capabilities: ["workspace:read"] },
+    );
+    await deleteAccountData(owner.user.id);
+    const [credential] = await db
+      .select({ enabled: schema.apikeyTable.enabled })
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.id, key.id));
+    expect(credential).toEqual({ enabled: false });
+    expect(
+      await db
+        .select({ id: apiKeyExtensionTable.apikeyId })
+        .from(apiKeyExtensionTable)
+        .where(eq(apiKeyExtensionTable.apikeyId, key.id)),
+    ).toHaveLength(0);
+  });
 
   it("stops with a 409 and deletes nothing when another person holds SCIM/OIDC access", async () => {
     const { owner, wsRole } = await soleLegacyMemberWorkspace();
@@ -1355,12 +1460,17 @@ describe("#734 account erasure and IdP-provisioned members", () => {
       priority: "medium",
     });
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(200);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(200);
     expect(
       await db
         .select()
@@ -1394,12 +1504,17 @@ describe("#734 account erasure and IdP-provisioned members", () => {
       enabled: true,
     });
 
-    const response = await deleteWorkspaceNative(
+    // DELETE only requests (202); the typed-name + step-up approval executes the deletion.
+    const removal = await deleteWorkspaceThroughApproval(
       app,
       owner.cookie,
       workspaceId,
     );
-    expect(response.status).toBe(409);
+    expect(removal.requested.status).toBe(202);
+    expect(
+      removal.approved?.status,
+      await removal.approved?.clone().text(),
+    ).toBe(409);
     expect(
       await db
         .select()

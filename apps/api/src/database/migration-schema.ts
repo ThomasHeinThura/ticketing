@@ -151,6 +151,8 @@ export const customFieldTable = pgTable(
 export const customFieldTypeVisibilityTable = pgTable(
   "custom_field_type_visibility",
   {
+    // 0139: tenant anchor, backfilled from the owning custom_field.
+    workspaceId: text("workspace_id").notNull(),
     customFieldId: text("custom_field_id").notNull(),
     workItemTypeId: text("work_item_type_id").notNull(),
     visible: boolean("visible").default(false).notNull(),
@@ -158,19 +160,23 @@ export const customFieldTypeVisibilityTable = pgTable(
   },
   (table) => [
     foreignKey({
-      name: "custom_field_type_visibility_custom_field_id_custom_field_id_fk",
-      columns: [table.customFieldId],
-      foreignColumns: [customFieldTable.id],
+      name: "custom_field_type_visibility_workspace_id_workspace_id_fk",
+      columns: [table.workspaceId],
+      foreignColumns: [workspaceTable.id],
     })
       .onDelete("cascade")
       .onUpdate("cascade"),
     foreignKey({
-      name: "custom_field_type_visibility_work_item_type_id_work_item_type_i",
-      columns: [table.workItemTypeId],
-      foreignColumns: [workItemTypeTable.id],
-    })
-      .onDelete("restrict")
-      .onUpdate("cascade"),
+      name: "custom_field_type_visibility_workspace_field_fk",
+      columns: [table.workspaceId, table.customFieldId],
+      foreignColumns: [customFieldTable.workspaceId, customFieldTable.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "custom_field_type_visibility_workspace_type_fk",
+      columns: [table.workspaceId, table.workItemTypeId],
+      foreignColumns: [workItemTypeTable.workspaceId, workItemTypeTable.id],
+    }).onDelete("restrict"),
+    index("custom_field_type_visibility_workspaceId_idx").on(table.workspaceId),
     primaryKey({
       // PostgreSQL truncates the historical SQL identifier to name limit 63.
       name: "custom_field_type_visibility_custom_field_id_work_item_type_id_",
@@ -191,6 +197,8 @@ export const customFieldValueTable = pgTable(
   "custom_field_value",
   {
     id: text("id").primaryKey(),
+    // 0139: tenant anchor, backfilled from the owning custom_field.
+    workspaceId: text("workspace_id").notNull(),
     customFieldId: text("custom_field_id").notNull(),
     entityType: text("entity_type").default("work_item").notNull(),
     entityId: text("entity_id").notNull(),
@@ -212,17 +220,29 @@ export const customFieldValueTable = pgTable(
   },
   (table) => [
     foreignKey({
-      name: "custom_field_value_custom_field_id_custom_field_id_fk",
-      columns: [table.customFieldId],
-      foreignColumns: [customFieldTable.id],
+      name: "custom_field_value_workspace_id_workspace_id_fk",
+      columns: [table.workspaceId],
+      foreignColumns: [workspaceTable.id],
     })
       .onDelete("cascade")
       .onUpdate("cascade"),
     foreignKey({
-      name: "custom_field_value_project_id_project_id_fk",
-      columns: [table.projectId],
-      foreignColumns: [projectTable.id],
+      name: "custom_field_value_workspace_field_fk",
+      columns: [table.workspaceId, table.customFieldId],
+      foreignColumns: [customFieldTable.workspaceId, customFieldTable.id],
+    }).onDelete("cascade"),
+    // entity_type is 'work_item' only in P4 (check below); P5 adds project and person.
+    foreignKey({
+      name: "custom_field_value_workspace_work_item_fk",
+      columns: [table.workspaceId, table.entityId],
+      foreignColumns: [workItemTable.workspaceId, workItemTable.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "custom_field_value_workspace_project_fk",
+      columns: [table.workspaceId, table.projectId],
+      foreignColumns: [projectTable.workspaceId, projectTable.id],
     }).onDelete("restrict"),
+    index("custom_field_value_workspaceId_idx").on(table.workspaceId),
     foreignKey({
       name: "custom_field_value_organisation_id_organisation_id_fk",
       columns: [table.organisationId],

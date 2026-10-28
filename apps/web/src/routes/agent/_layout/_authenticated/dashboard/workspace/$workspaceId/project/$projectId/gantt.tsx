@@ -1,7 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Button, useIsMobile } from "@taskdesk/ui";
+import { Button, Toggle, useIsMobile } from "@taskdesk/ui";
 import {
   addDays,
+  differenceInCalendarDays,
   eachDayOfInterval,
   endOfWeek,
   format,
@@ -12,8 +14,10 @@ import {
   startOfWeek,
   subDays,
 } from "date-fns";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Workflow } from "lucide-react";
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -22,14 +26,37 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import ScheduleFilterChips, {
+  buildScheduleFilterChips,
+} from "@/components/calendar/schedule-filter-chips";
+import ScheduleViewState, {
+  scheduleViewStatus,
+} from "@/components/calendar/schedule-view-state";
+import GroupControl from "@/components/common/group-control";
 import ProjectLayout from "@/components/common/project-layout";
 import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
-import { GanttTaskBar } from "@/components/gantt/gantt-task-bar";
+import ProjectViewFeatureGate from "@/components/common/project-view-feature-gate";
+import { CanonicalGanttTaskBar } from "@/components/gantt/canonical-gantt-task-bar";
+import {
+  type ArrowPath,
+  type BarBox,
+  buildArrowPaths,
+  GanttDependencyArrows,
+} from "@/components/gantt/gantt-dependency-arrows";
+import { buildGanttRows } from "@/components/gantt/gantt-groups";
 import PageTitle from "@/components/page-title";
-import TaskDetailsSheet from "@/components/task/task-details-sheet";
-import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
+import {
+  ScheduleSelectionBar,
+  ScheduleSelectionToggle,
+  useScheduleSelection,
+} from "@/components/work-item/work-item-calendar-selection";
+import WorkItemSidePane from "@/components/work-item/work-item-side-pane";
+import { getDependencies, getModules } from "@/fetchers/agile";
+import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
+import { useScheduleProject } from "@/hooks/queries/work-item/use-schedule-project";
 import { cn } from "@/lib/cn";
 import { filterProjectTasks } from "@/lib/filter-project-tasks";
+import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import { getStatusLabel } from "@/lib/i18n/domain";
 import { parseProjectBoardSearch } from "@/lib/project-board-search";
 import {
@@ -40,10 +67,14 @@ import {
 import { PROJECT_GANTT_PATH } from "@/lib/routes";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
+const SelectionCheckbox = lazy(
+  () => import("@/components/work-item/selection-checkbox"),
+);
+
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt",
 )({
-  component: RouteComponent,
+  component: GatedRouteComponent,
   validateSearch: parseProjectBoardSearch,
 });
 
@@ -53,13 +84,32 @@ function parseTaskDate(value: string | null) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+/** P4R1-M2: the view renders only while its feature flag is on for the project. */
+function GatedRouteComponent() {
+  const { projectId, workspaceId } = Route.useParams();
+  return (
+    <ProjectViewFeatureGate
+      projectId={projectId}
+      workspaceId={workspaceId}
+      view="gantt"
+    >
+      <RouteComponent />
+    </ProjectViewFeatureGate>
+  );
+}
+
 function RouteComponent() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { projectId, workspaceId } = Route.useParams();
   const search = Route.useSearch();
   const { taskId } = search;
   const navigate = useNavigate();
-  const { data: project } = useGetTasks(projectId);
+  const {
+    data: project,
+    isLoading,
+    isError,
+    refetch,
+  } = useScheduleProject(projectId, workspaceId, search.filter);
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const searchQuery = search.q ?? "";
   const filters = projectViewFiltersFromSearch(search);
@@ -145,6 +195,49 @@ function RouteComponent() {
     [filters, parsedTasks, project?.slug, searchQuery, weekStartsOn],
   );
 
+  // `VW-27`: group the bars by assignee, or by module when `feature.modules` is on. It lives in
+  // the URL; a `group=module` link on a project without modules shows no grouping.
+  const { features } = useAgileFeatures(projectId);
+  const group =
+    search.group === "assignee"
+      ? "assignee"
+      : search.group === "module" && features.modules
+        ? "module"
+        : search.group === "epic"
+          ? "epic"
+          : "none";
+  const modulesQuery = useQuery({
+    queryKey: ["agile", "modules", project?.slug],
+    queryFn: () => getModules(project?.slug as string),
+    enabled: group === "module" && Boolean(project?.slug),
+    retry: false,
+  });
+  const moduleNames = useMemo(
+    () =>
+      new Map((modulesQuery.data?.data ?? []).map((mod) => [mod.id, mod.name])),
+    [modulesQuery.data],
+  );
+  const ganttRows = useMemo(
+    () => buildGanttRows(scheduledTasks, group, moduleNames),
+    [scheduledTasks, group, moduleNames],
+  );
+
+  // `VW-28`: dependency arrows are toggleable and off by default (`deps=1` in the URL).
+  const showDependencies = search.deps === "1";
+  const dependencies = useQuery({
+    queryKey: ["agile", "dependencies", project?.slug],
+    queryFn: () => getDependencies(project?.slug as string),
+    enabled: showDependencies && Boolean(project?.slug),
+    retry: false,
+  });
+
+  const hasFilterChips = buildScheduleFilterChips(search).length > 0;
+  const loadStatus = scheduleViewStatus({
+    isLoading,
+    isError,
+    isEmpty: false,
+  });
+
   const updateViewState = useCallback(
     (patch: Parameters<typeof withProjectViewState>[1]) => {
       navigate({
@@ -169,6 +262,22 @@ function RouteComponent() {
       });
     },
     [navigate, projectId, workspaceId],
+  );
+
+  const selection = useScheduleSelection({
+    projectId,
+    allKeys: useMemo(
+      () => scheduledTasks.map((task) => task.id),
+      [scheduledTasks],
+    ),
+    paneOpen: Boolean(taskId),
+  });
+  const handleActivateTask = useCallback(
+    (key: string) => {
+      if (selection.active) selection.toggleKey(key);
+      else handleOpenTask(key);
+    },
+    [handleOpenTask, selection],
   );
 
   const timeline = useMemo(() => {
@@ -250,6 +359,93 @@ function RouteComponent() {
     return () => observer.disconnect();
   }, [timeline]);
 
+  // `VW-28`: arrows are measured from the rendered rows (rows vary in height) and the day grid, so
+  // they stay attached to the bars after a resize, a regroup or a filter.
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const [arrowLayout, setArrowLayout] = useState<{
+    paths: ArrowPath[];
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const dependencyEdges = dependencies.data;
+  // `scheduledTasks` is a new array on most renders, so the effect reads it through a ref and
+  // re-measures on a signature of the visible rows instead: depending on the array itself would
+  // set state on every render.
+  const scheduledTasksRef = useRef(scheduledTasks);
+  scheduledTasksRef.current = scheduledTasks;
+  const rowsSignature = ganttRows
+    .map((row) => (row.kind === "task" ? row.task.id : row.id))
+    .join("|");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: rowsSignature, showTaskRail and isMobile change the row layout the measurement reads.
+  useLayoutEffect(() => {
+    const container = rowsRef.current;
+    const track = timelineTrackRef.current;
+    if (
+      !showDependencies ||
+      !timeline ||
+      !dependencyEdges ||
+      !container ||
+      !track
+    ) {
+      setArrowLayout(null);
+      return;
+    }
+    const dates = new Map(
+      scheduledTasksRef.current.map((task) => [
+        task.id,
+        { start: task.scheduleStart, end: task.scheduleEnd },
+      ]),
+    );
+    const measure = () => {
+      const bars = new Map<string, BarBox>();
+      for (const row of container.querySelectorAll<HTMLElement>(
+        "[data-gantt-row]",
+      )) {
+        const key = row.dataset.ganttRow;
+        const range = key ? dates.get(key) : undefined;
+        if (!key || !range) continue;
+        const startIndex = differenceInCalendarDays(
+          range.start,
+          timeline.rangeStart,
+        );
+        const endIndex = differenceInCalendarDays(
+          range.end,
+          timeline.rangeStart,
+        );
+        bars.set(key, {
+          left: startIndex * pixelsPerDay + 4,
+          right: (endIndex + 1) * pixelsPerDay - 4,
+          top: row.offsetTop,
+          bottom: row.offsetTop + row.offsetHeight,
+        });
+      }
+      const next = {
+        paths: buildArrowPaths(dependencyEdges, bars),
+        left: track.offsetLeft,
+        width: track.offsetWidth,
+        height: container.offsetHeight,
+      };
+      setArrowLayout((previous) =>
+        previous && JSON.stringify(previous) === JSON.stringify(next)
+          ? previous
+          : next,
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [
+    showDependencies,
+    timeline,
+    dependencyEdges,
+    rowsSignature,
+    pixelsPerDay,
+    showTaskRail,
+    isMobile,
+  ]);
+
   // Center the view on today the first time it becomes available, so opening
   // the Gantt chart on a long-running project doesn't drop you at the start
   // of the timeline with today scrolled off-screen. `projectId` is listed as
@@ -275,6 +471,7 @@ function RouteComponent() {
 
   return (
     <ProjectLayout
+      realtimeMode="canonical"
       projectId={projectId}
       workspaceId={workspaceId}
       activeView="gantt"
@@ -297,6 +494,40 @@ function RouteComponent() {
               onValueChange={(q) => updateViewState({ q: q || undefined })}
               placeholder={t("tasks:gantt.searchPlaceholder")}
               clearLabel={t("common:actions.clearAll")}
+            />
+
+            <GroupControl
+              group={group === "none" ? "state" : group}
+              groups={
+                features.modules
+                  ? (["state", "assignee", "module", "epic"] as const)
+                  : (["state", "assignee", "epic"] as const)
+              }
+              defaultLabel={t("tasks:group.none")}
+              onGroupChange={(next) =>
+                updateViewState({
+                  group: next === "state" ? undefined : next,
+                })
+              }
+            />
+
+            <Toggle
+              size="sm"
+              variant="outline"
+              pressed={showDependencies}
+              onPressedChange={(pressed) =>
+                updateViewState({ deps: pressed ? "1" : undefined })
+              }
+              aria-label={t("tasks:gantt.dependencies.toggle")}
+            >
+              <Workflow className="size-3.5" aria-hidden="true" />
+              {t("tasks:gantt.dependencies.toggle")}
+            </Toggle>
+
+            <ScheduleSelectionToggle
+              workspaceId={workspaceId}
+              projectId={projectId}
+              selection={selection}
             />
 
             <Button
@@ -328,17 +559,31 @@ function RouteComponent() {
           </div>
         </div>
 
-        {!timeline || parsedTasks.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center px-6">
-            <div className="max-w-sm text-center">
-              <h2 className="text-sm font-semibold text-foreground">
-                {t("tasks:gantt.noTasks")}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("tasks:gantt.noTasksSubtitle")}
-              </p>
-            </div>
-          </div>
+        <ScheduleSelectionBar
+          workspaceId={workspaceId}
+          projectId={projectId}
+          selection={selection}
+        />
+
+        <ScheduleFilterChips
+          search={search}
+          onChange={(patch) => updateViewState(patch)}
+        />
+
+        {loadStatus === "loading" || loadStatus === "error" ? (
+          <ScheduleViewState
+            layout="gantt"
+            status={loadStatus}
+            isFiltered={false}
+            onRetry={() => void refetch()}
+          />
+        ) : !timeline || parsedTasks.length === 0 ? (
+          <ScheduleViewState
+            layout="gantt"
+            status="empty"
+            isFiltered={hasFilterChips}
+            onRetry={() => void refetch()}
+          />
         ) : scheduledTasks.length === 0 ? (
           <div className="flex flex-1 items-center justify-center px-6">
             <div className="max-w-sm text-center">
@@ -436,11 +681,75 @@ function RouteComponent() {
                   ))}
                 </div>
 
-                <div className="relative z-10 flex flex-col">
-                  {scheduledTasks.map((task) => {
+                <div ref={rowsRef} className="relative z-10 flex flex-col">
+                  {arrowLayout ? (
+                    <div
+                      className="pointer-events-none absolute top-0"
+                      style={{ left: arrowLayout.left }}
+                    >
+                      <GanttDependencyArrows
+                        paths={arrowLayout.paths}
+                        width={arrowLayout.width}
+                        height={arrowLayout.height}
+                        label={t("tasks:gantt.dependencies.label")}
+                      />
+                    </div>
+                  ) : null}
+                  {ganttRows.map((row) => {
+                    if (row.kind === "group") {
+                      return (
+                        <div
+                          key={row.id}
+                          data-testid="gantt-group-row"
+                          className="grid items-stretch border-b border-border/70 bg-muted/40"
+                          style={{
+                            gridTemplateColumns: showTaskRail
+                              ? isMobile
+                                ? `${taskColumnWidthRem}rem max-content`
+                                : "20rem max-content"
+                              : "max-content",
+                          }}
+                        >
+                          {showTaskRail ? (
+                            <div className="sticky left-0 z-[11] flex items-center gap-2 border-r border-border bg-muted px-2 py-1.5 sm:px-3">
+                              <h2
+                                className="truncate text-[11px] font-medium uppercase tracking-wide text-foreground"
+                                title={
+                                  row.by === "epic" && !row.name
+                                    ? getDefaultAgentTerm(i18n, "epic", 1)
+                                    : undefined
+                                }
+                              >
+                                {row.name ??
+                                  t(
+                                    row.by === "module"
+                                      ? "tasks:gantt.noModule"
+                                      : row.by === "epic"
+                                        ? row.unavailable
+                                          ? "tasks:gantt.epicUnavailable"
+                                          : "tasks:gantt.noEpic"
+                                        : "tasks:gantt.unassigned",
+                                  )}
+                              </h2>
+                              <span className="rounded-md bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                {row.count}
+                              </span>
+                            </div>
+                          ) : null}
+                          <div
+                            className="shrink-0"
+                            style={{
+                              minWidth: `${timeline.timelineMinWidthRem}rem`,
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+                    const task = row.task;
                     return (
                       <div
                         key={task.id}
+                        data-gantt-row={task.id}
                         className="grid items-stretch border-b border-border/70"
                         style={{
                           gridTemplateColumns: showTaskRail
@@ -451,12 +760,34 @@ function RouteComponent() {
                         }}
                       >
                         {showTaskRail ? (
-                          <div className="sticky left-0 z-[11] h-full border-r border-border bg-background">
+                          <div
+                            className={cn(
+                              "sticky left-0 z-[11] flex h-full items-center border-r border-border bg-background",
+                              selection.selectedKeys.includes(task.id) &&
+                                "bg-accent/35",
+                            )}
+                          >
+                            {selection.active ? (
+                              <Suspense fallback={null}>
+                                <SelectionCheckbox
+                                  className="ml-2 shrink-0"
+                                  aria-label={t("workItems:bulk.selectItem", {
+                                    key: `${project?.slug}-${task.number}`,
+                                  })}
+                                  checked={selection.selectedKeys.includes(
+                                    task.id,
+                                  )}
+                                  onCheckedChange={() =>
+                                    selection.toggleKey(task.id)
+                                  }
+                                />
+                              </Suspense>
+                            ) : null}
                             <Button
                               variant="ghost"
                               type="button"
                               className="flex min-h-[44px] w-full min-w-0 flex-col items-start justify-center gap-0.5 px-2 py-2 text-left transition-colors hover:bg-muted sm:min-h-0 sm:px-3 sm:py-1.5"
-                              onClick={() => handleOpenTask(task.id)}
+                              onClick={() => handleActivateTask(task.id)}
                             >
                               <div className="flex w-full items-center gap-1.5">
                                 <span className="max-w-[7rem] truncate rounded-full bg-secondary px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-secondary-foreground sm:max-w-none">
@@ -486,12 +817,13 @@ function RouteComponent() {
                             minWidth: `${timeline.timelineMinWidthRem}rem`,
                           }}
                         >
-                          <GanttTaskBar
+                          <CanonicalGanttTaskBar
+                            workspaceId={workspaceId}
                             task={task}
                             timeline={timeline}
                             pixelsPerDay={pixelsPerDay}
                             isMobile={isMobile}
-                            onOpenTask={() => handleOpenTask(task.id)}
+                            onOpenTask={() => handleActivateTask(task.id)}
                           />
                         </div>
                       </div>
@@ -503,10 +835,8 @@ function RouteComponent() {
           </div>
         )}
 
-        <TaskDetailsSheet
-          taskId={taskId}
-          projectId={projectId}
-          workspaceId={workspaceId}
+        <WorkItemSidePane
+          itemKey={taskId}
           onClose={() => handleOpenTask(undefined)}
         />
       </div>

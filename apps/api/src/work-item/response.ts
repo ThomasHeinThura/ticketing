@@ -1,4 +1,27 @@
+import { CUSTOM_FIELD_FORMATS } from "../custom-field/logic";
+import { workItemCustomFieldSchema } from "../custom-field/response";
+import { optionSchema } from "../custom-field/schema";
 import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
+
+/** One import provenance link of a work item (P6, IM-5): where it came from and when. */
+export const workItemImportProvenanceSchema = z.object({
+  system: z.string().openapi({
+    description: "The source reference the import ran against.",
+  }),
+  pluginId: z.string().nullable(),
+  sourceUrl: z.string().nullable().openapi({
+    description: "The original record's http(s) URL, when the source gave one.",
+  }),
+  importedAt: responseTimestamp,
+  lastSeenAt: nullableResponseTimestamp,
+  stale: z.boolean().openapi({
+    description:
+      "true when a later complete import no longer found the record in the source.",
+  }),
+  sourceCreatedAt: nullableResponseTimestamp,
+  sourceUpdatedAt: nullableResponseTimestamp,
+  sourceResolvedAt: nullableResponseTimestamp,
+});
 
 // Plain (unregistered) shape shared by `workItemSchema` and `workItemDetailSchema`, so the
 // detail schema extends this shape rather than the already-`.openapi()`-registered
@@ -26,6 +49,10 @@ const workItemShape = z.object({
   assigneeId: z.string().nullable(),
   requesterId: z.string().nullable(),
   parentId: z.string().nullable(),
+  // P5 agile planning pointers (cycles, modules, estimates).
+  cycleId: z.string().nullable().optional(),
+  moduleId: z.string().nullable().optional(),
+  estimatePointId: z.string().nullable().optional(),
   position: z
     .string()
     .openapi({ description: "numeric(20,10) fractional rank, as a string." }),
@@ -40,6 +67,42 @@ const workItemShape = z.object({
   createdAt: responseTimestamp,
   updatedAt: responseTimestamp,
 });
+
+// `AS-8` / `RH-17` display facts, resolved per page by `row-facts.ts`. Optional on the LIST
+// item because other producers of this envelope (search, saved views) do not resolve them
+// yet; the project list route and the detail route always do.
+const assigneeFactsShape = {
+  assigneeActive: z.boolean().nullable().optional().openapi({
+    description:
+      'person.active of the assignee (AS-8); null when unassigned. false renders "(inactive)".',
+  }),
+  assigneeOnProject: z.boolean().nullable().optional().openapi({
+    description:
+      "Whether the assignee still holds a membership on this project (AS-8); null when unassigned.",
+  }),
+  blockedByOpenCount: z.number().int().optional().openapi({
+    description:
+      "Number of open blocked_by relations (RH-17); greater than zero shows the blocked badge.",
+  }),
+};
+
+// `VW-16` / `SLA-18`: the compact SLA badge of a list row, computed on read from the item's
+// pinned policy (never from `work_item_sla_cache`). Absent when no goal applies.
+const slaBadgeShape = {
+  sla: z
+    .object({
+      metric: z.enum(["first_response", "resolution"]),
+      state: z.enum(["ok", "at_risk", "breached", "met", "missed"]),
+      dueAt: nullableResponseTimestamp,
+      remainingMinutes: z.number().nonnegative().nullable(),
+      consumedPct: z.number().nonnegative(),
+    })
+    .optional()
+    .openapi({
+      description:
+        "The most severe SLA metric for the row (resolution on a tie); absent when no policy goal applies.",
+    }),
+};
 
 export const workItemSchema = workItemShape.openapi("WorkItem");
 
@@ -71,6 +134,12 @@ export const workItemDetailSchema = workItemShape
         "The project's CA-2 default for the comment composer; comments still require an explicit visibility on create.",
     }),
     assigneeName: z.string().nullable(),
+    ...assigneeFactsShape,
+    customFields: z.array(workItemCustomFieldSchema),
+    importProvenance: z.array(workItemImportProvenanceSchema).openapi({
+      description:
+        "Where an imported item came from (empty for a native item). Staff detail only; never part of a customer view.",
+    }),
   })
   .openapi("WorkItemDetail");
 
@@ -100,12 +169,26 @@ export const workItemDetailSchema = workItemShape
 // finding, even though nothing about its runtime behaviour would change.
 export const workItemListItemSchema = workItemSchema
   .extend({
+    /** Server-resolved self/nearest epic; null is meaningful only when epicAvailable is true. */
+    epic: z
+      .object({ id: z.string(), key: z.string(), title: z.string() })
+      .nullable()
+      .optional(),
+    /** False means the parent chain cannot be safely resolved or disclosed. */
+    epicAvailable: z.boolean().optional(),
+    labels: z
+      .array(z.object({ id: z.string(), name: z.string(), color: z.string() }))
+      .optional(),
     stateName: z.string(),
     stateCategory: z.string().openapi({
       description:
         "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
     }),
     assigneeName: z.string().nullable(),
+    /** Selected live custom-column values only; absent for native-only list/search requests. */
+    customFieldValues: z.record(z.string(), z.unknown()).optional(),
+    ...assigneeFactsShape,
+    ...slaBadgeShape,
   })
   .openapi("WorkItemListItem");
 
@@ -115,6 +198,14 @@ export const workItemPageSchema = z
     hasMore: z.boolean(),
   })
   .openapi("WorkItemPage");
+
+/** One selected custom-column definition, returned once per page rather than repeated per row. */
+export const workItemCustomFieldColumnSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  format: z.enum(CUSTOM_FIELD_FORMATS),
+  options: z.array(optionSchema),
+});
 
 // `api-design.md`'s collection envelope (`{ data, page, meta }`). `meta.total` is an
 // exact count in this implementation (one extra `count(*)` query over the same
@@ -127,6 +218,17 @@ export const workItemListResponseSchema = z
     data: z.array(workItemListItemSchema),
     page: workItemPageSchema,
     meta: z.object({ total: z.number() }),
+    customFieldColumns: z.array(workItemCustomFieldColumnSchema).optional(),
+    /** Project-bound names referenced by visible selected user fields only. */
+    customFieldPeople: z
+      .array(
+        z.object({
+          projectId: z.string(),
+          personId: z.string(),
+          name: z.string().nullable(),
+        }),
+      )
+      .optional(),
   })
   .openapi("WorkItemListResponse");
 
@@ -177,6 +279,9 @@ export const assignablePersonSchema = z
     name: z.string().nullable(),
     roleName: z.string(),
     openWorkCount: z.number(),
+    // PR-2: true when the person is on an ANCESTOR project's roster only (read-only
+    // inclusion), not on this project's own.
+    inherited: z.boolean().optional(),
   })
   .openapi("AssignablePerson");
 
@@ -360,6 +465,13 @@ export const workItemActivityRowSchema = z
     visibility: z.string(),
     workflowVersionId: z.string().nullable(),
     createdAt: responseTimestamp,
+    origin: z.string().nullable().optional().openapi({
+      description:
+        "`imported` for a row an import wrote: createdAt is then the source time and importedAt the real write time; null for a native row.",
+    }),
+    importedAt: nullableResponseTimestamp.optional().openapi({
+      description: "When an imported row was written; null for a native row.",
+    }),
     kind: z
       .enum(["activity", "comment"])
       .optional()
@@ -389,6 +501,14 @@ export const workItemActivityRowSchema = z
     }),
     updatedAt: responseTimestamp.optional().openapi({
       description: "Comment rows only.",
+    }),
+    canEdit: z.boolean().optional().openapi({
+      description:
+        "Comment rows only: current caller may edit; server revalidates on mutation.",
+    }),
+    canDelete: z.boolean().optional().openapi({
+      description:
+        "Comment rows only: current caller has deletion authority; deletion confirmation remains required.",
     }),
   })
   .openapi("WorkItemActivityRow");
@@ -460,6 +580,10 @@ export const workItemTransitionOfferSchema = z
     toStateTemplateId: z.string(),
     toStateName: z.string(),
     toStateId: z.string(),
+    toStateCategory: z.string().optional().openapi({
+      description:
+        "state_template.group of the target state; completed/cancelled means the move closes the item (RH-10 open-children warning).",
+    }),
     notePolicy: z.enum(["none", "optional", "required"]),
     noteVisibility: z.enum(["public", "internal"]),
     requiresApproval: z.boolean(),
@@ -520,6 +644,8 @@ const hierarchyPageNodeSchema = z.object({
   id: z.string(),
   key: z.string(),
   title: z.string(),
+  assigneeId: z.string().nullable(),
+  assigneeName: z.string().nullable(),
   stateName: z.string(),
   stateCategory: z.string(),
 });
@@ -541,3 +667,20 @@ export const hierarchyChildrenResponseSchema = z
     }),
   })
   .openapi("WorkItemHierarchyChildren");
+
+export const moveWorkItemResponseSchema = z
+  .object({
+    item: workItemSchema,
+    moved: z.array(
+      z.object({ id: z.string(), fromKey: z.string(), toKey: z.string() }),
+    ),
+    detachedChildKeys: z.array(z.string()).openapi({
+      description:
+        "Direct children left behind in the source project with no parent (`moveChildren: false`).",
+    }),
+    droppedLabelCount: z.number().int().openapi({
+      description:
+        "Project-scoped labels with no same-named label in the target project, removed from the moved items.",
+    }),
+  })
+  .openapi("MoveWorkItemResult");

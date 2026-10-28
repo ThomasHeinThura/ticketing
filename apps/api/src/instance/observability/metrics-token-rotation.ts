@@ -6,6 +6,7 @@ import type { LocalFactorState } from "../../auth/local-factor-service";
 import { loadLocalFactorState } from "../../auth/local-factor-service";
 import { appendStepUpAudit } from "../../auth/step-up-audit";
 import { consumeRotationProof, sha256 } from "../../auth/step-up-service";
+import { proofMethodAcceptable } from "../../auth/step-up-spend";
 import db, { schema } from "../../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
@@ -87,6 +88,9 @@ const routes = apiRouter().openapi(rotateRoute, async (c) => {
   }
   try {
     const result = await db.transaction(async (tx) => {
+      const currentFactor = await loadLocalFactorState(c.get("userId"), tx);
+      if (currentFactor.personId !== factor.personId)
+        return { kind: "denied" as const };
       const proof = await consumeRotationProof(tx, {
         token: c.req.header("X-TaskDesk-Step-Up-Token") ?? "",
         personId: factor.personId,
@@ -103,12 +107,7 @@ const routes = apiRouter().openapi(rotateRoute, async (c) => {
         });
         return { kind: "denied" as const };
       }
-      if (
-        (proof.authMethod === "password" &&
-          (factor.required || factor.enabled)) ||
-        ((proof.authMethod === "totp" || proof.authMethod === "backup_code") &&
-          !factor.enabled)
-      ) {
+      if (!proofMethodAcceptable(proof.authMethod, currentFactor)) {
         throw new StepUpPolicyDenied();
       }
       const updated = await tx

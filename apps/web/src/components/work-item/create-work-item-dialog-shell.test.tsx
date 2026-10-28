@@ -11,6 +11,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CreateWorkItemDialogLoadError } from "./create-work-item-dialog";
 import WorkItemCreateDialogShell from "./work-item-create-dialog-shell";
 
+vi.mock("@/hooks/queries/project/use-get-projects", () => ({
+  default: () => ({ data: [{ id: "project-1", slug: "HELP" }] }),
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -56,9 +59,7 @@ describe("CreateWorkItemDialog shared shell", () => {
     expect(await screen.findByRole("dialog")).toBeVisible();
     expect(await screen.findByTestId("create-work-item-form")).toBeVisible();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "workItems:create.close" }),
-    );
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 

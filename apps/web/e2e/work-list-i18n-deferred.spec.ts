@@ -85,6 +85,22 @@ async function holdDeferredGroup(page: Page) {
   return release;
 }
 
+/**
+ * Opens the first work item's full page from the work list: a row of Kaneo's grouped list
+ * (`layout=list`) opens the side pane on the same route, and its "Open full page" link is the
+ * in-app navigation off the work list.
+ */
+async function openFirstWorkItem(page: Page) {
+  await page
+    .getByTestId("work-item-list-populated")
+    .getByRole("link", { name: "WLP-1 Seeded work item 1", exact: true })
+    .click();
+  await page
+    .getByRole("dialog", { name: "Work item WLP-1" })
+    .getByRole("link", { name: "Open full page", exact: true })
+    .click();
+}
+
 async function navigateInApp(page: Page, path: string) {
   await page.evaluate((target) => {
     window.history.pushState({}, "", target);
@@ -117,10 +133,7 @@ test("opening a work item while the deferred namespaces are held waits for them,
   const release = await holdDeferredGroup(page);
   await page.goto(WORK_LIST_PATH);
   await expect(page.getByTestId("create-work-item-trigger")).toBeVisible();
-  await page
-    .locator("[data-testid=work-item-list-populated] tbody tr a")
-    .first()
-    .click();
+  await openFirstWorkItem(page);
   await page.waitForTimeout(1_000);
   // Still on the list: navigation is gated on the catalog, not rendered with raw keys.
   expect(await rawKeys(page)).toEqual([]);
@@ -158,10 +171,7 @@ test("a failed deferred fetch falls back to the full catalog instead of raw keys
   await expect(page.getByTestId("create-work-item-trigger")).toBeVisible();
   await page.waitForTimeout(1_000);
   expect(await rawKeys(page)).toEqual([]);
-  await page
-    .locator("[data-testid=work-item-list-populated] tbody tr a")
-    .first()
-    .click();
+  await openFirstWorkItem(page);
   await expect(page).toHaveURL(/\/agent\/work-items\/WLP-1/);
   await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   await page.waitForTimeout(500);
@@ -177,10 +187,7 @@ test("when the deferred group and the full catalog both fail, an error is shown 
   await page.route(/\/assets\/en-US-[\w-]+\.js/, (route) => route.abort());
   await page.goto(WORK_LIST_PATH);
   await expect(page.getByTestId("create-work-item-trigger")).toBeVisible();
-  await page
-    .locator("[data-testid=work-item-list-populated] tbody tr a")
-    .first()
-    .click();
+  await openFirstWorkItem(page);
   await expect(page.getByRole("button", { name: "Try Again" })).toBeVisible();
   expect(await rawKeys(page)).toEqual([]);
 });

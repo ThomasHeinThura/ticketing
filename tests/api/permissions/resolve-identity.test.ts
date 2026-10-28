@@ -987,3 +987,111 @@ describe("resolveIdentityFromFacts — S5 (PR #315 review): teamIds tied to curr
     expect(identity?.teamIds).toEqual(["team-1"]);
   });
 });
+
+describe("resolveIdentityFromFacts — canonical workspace role rows (owner decision, 23 Oct)", () => {
+  const withRow = (
+    role: string,
+    roleRow: {
+      rank: number;
+      capabilities: unknown;
+      isSystem: boolean;
+    },
+    isSystemRole = false,
+  ) =>
+    resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [
+          {
+            workspaceId: "ws-1",
+            role,
+            seesAll: false,
+            isSystemRole,
+            roleRow,
+          },
+        ],
+      }),
+    );
+
+  it("grants a custom role exactly the capabilities and rank of its canonical row", () => {
+    const identity = withRow("support-lead", {
+      rank: 30,
+      capabilities: ["work_item:read", "work_item:update"],
+      isSystem: false,
+    });
+    expect(identity?.memberships).toEqual([
+      { scope: "workspace", scopeId: "ws-1", seesAll: false },
+    ]);
+    expect(identity?.authority).toEqual([
+      {
+        roleKey: "support-lead",
+        scope: "workspace",
+        scopeId: "ws-1",
+        rank: 30,
+        capabilities: ["work_item:read", "work_item:update"],
+      },
+    ]);
+  });
+
+  it("reads a seeded built-in from its row, so an edited built-in takes effect", () => {
+    const identity = withRow(
+      "member",
+      { rank: 40, capabilities: ["work_item:read"], isSystem: true },
+      true,
+    );
+    expect(identity?.authority[0]?.capabilities).toEqual(["work_item:read"]);
+  });
+
+  it("never trusts a non-system row that shares a built-in key", () => {
+    const identity = withRow("manager", {
+      rank: 30,
+      capabilities: ["workspace:delete"],
+      isSystem: false,
+    });
+    expect(identity?.authority).toEqual([]);
+    expect(identity?.memberships).toEqual([]);
+  });
+
+  it("owner stays compiled whatever a row says", () => {
+    const identity = withRow(
+      "owner",
+      { rank: 1, capabilities: [], isSystem: true },
+      true,
+    );
+    expect(identity?.authority[0]).toMatchObject({
+      roleKey: "owner",
+      rank: BUILT_IN_ROLES.owner.rank,
+    });
+  });
+
+  it("skips a row whose stored capabilities are malformed", () => {
+    for (const capabilities of [null, "work_item:read", [1, 2], { a: 1 }]) {
+      expect(
+        withRow("support-lead", { rank: 30, capabilities, isSystem: false })
+          ?.authority,
+      ).toEqual([]);
+    }
+    expect(
+      withRow("support-lead", {
+        rank: Number.NaN,
+        capabilities: [],
+        isSystem: false,
+      })?.authority,
+    ).toEqual([]);
+  });
+
+  it("a custom key with no canonical row still grants nothing", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [
+          {
+            workspaceId: "ws-1",
+            role: "support-lead",
+            seesAll: false,
+            isSystemRole: false,
+          },
+        ],
+      }),
+    );
+    expect(identity?.authority).toEqual([]);
+  });
+});

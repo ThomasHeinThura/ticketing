@@ -60,6 +60,7 @@ export async function findInvitationWorkspaceId(
     .where(
       and(
         eq(schema.invitationTable.id, invitationId),
+        eq(schema.invitationTable.scope, "staff"),
         recipientMatchesCurrentUser(identity, database),
       ),
     )
@@ -77,7 +78,12 @@ export async function findInvitationRecipientMatch(
   const [row] = await database
     .select({ matches: recipientMatchesCurrentUser(identity, database) })
     .from(schema.invitationTable)
-    .where(eq(schema.invitationTable.id, invitationId))
+    .where(
+      and(
+        eq(schema.invitationTable.id, invitationId),
+        eq(schema.invitationTable.scope, "staff"),
+      ),
+    )
     .limit(1);
   return row?.matches;
 }
@@ -96,11 +102,13 @@ export async function findInvitationForAccept(
       role: schema.invitationTable.role,
       status: schema.invitationTable.status,
       expiresAt: schema.invitationTable.expiresAt,
+      inviterId: schema.invitationTable.inviterId,
     })
     .from(schema.invitationTable)
     .where(
       and(
         eq(schema.invitationTable.id, invitationId),
+        eq(schema.invitationTable.scope, "staff"),
         recipientMatchesCurrentUser(identity, executor),
       ),
     )
@@ -124,6 +132,7 @@ export async function findInvitationStatus(
     .where(
       and(
         eq(schema.invitationTable.id, invitationId),
+        eq(schema.invitationTable.scope, "staff"),
         managerHasCurrentWorkspaceReach(identity, database),
       ),
     )
@@ -145,7 +154,12 @@ export async function findInvitationRecipientAndStatus(
       recipientMatches: recipientMatchesCurrentUser(identity, database),
     })
     .from(schema.invitationTable)
-    .where(eq(schema.invitationTable.id, invitationId))
+    .where(
+      and(
+        eq(schema.invitationTable.id, invitationId),
+        eq(schema.invitationTable.scope, "staff"),
+      ),
+    )
     .limit(1);
   return invitation;
 }
@@ -174,12 +188,13 @@ export async function findWorkspaceRoleId(
   role: string,
 ) {
   const [roleRow] = await executor
-    .select({ id: schema.workspaceRoleTable.id })
-    .from(schema.workspaceRoleTable)
+    .select({ id: schema.roleTable.id })
+    .from(schema.roleTable)
     .where(
       and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
+        eq(schema.roleTable.scope, "workspace"),
+        eq(schema.roleTable.workspaceId, workspaceId),
+        eq(schema.roleTable.key, role),
       ),
     )
     .limit(1);
@@ -197,6 +212,7 @@ export async function markInvitationAccepted(
     .where(
       and(
         eq(schema.invitationTable.id, invitationId),
+        eq(schema.invitationTable.scope, "staff"),
         eq(schema.invitationTable.status, "pending"),
         recipientMatchesCurrentUser(identity, executor),
       ),
@@ -230,6 +246,7 @@ export async function cancelPendingInvitation(
     .where(
       and(
         eq(schema.invitationTable.id, invitationId),
+        eq(schema.invitationTable.scope, "staff"),
         eq(schema.invitationTable.status, "pending"),
         managerHasCurrentWorkspaceReach(identity, database),
       ),
@@ -251,6 +268,7 @@ export async function rejectOwnPendingInvitation(
     .where(
       and(
         eq(schema.invitationTable.id, invitationId),
+        eq(schema.invitationTable.scope, "staff"),
         eq(schema.invitationTable.status, "pending"),
         recipientMatchesCurrentUser(identity, database),
       ),

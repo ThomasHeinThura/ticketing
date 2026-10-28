@@ -20,9 +20,13 @@ packages:
 #                 removal. That is why the collision above was invisible.
 # ─────────────────────────────────────────────────────────────────────────────
 overrides:
+  # Security fix for GHSA-238p-pmpm-9mq7 in Mermaid's existing renderer.
+  'mermaid@11.16.1>katex': 0.18.2
   # ── inherited pins and floors, carried forward unchanged ──
   '@isaacs/brace-expansion': 5.0.1
   ajv: 8.18.0
+  body-parser: ">=2.4.0 <3"
+  zod: ">=4.6.6 <5"
   brace-expansion: '>=5.0.11 <6'
   diff: 8.0.3
   engine.io: '>=6.6.10 <7'
@@ -40,7 +44,7 @@ overrides:
                                   # "sharp": "^0.35.3" (next@16.3.0) -- 0.36.0 would violate
                                   # that peer range even though nothing here imports sharp.
   socket.io-parser: '>=4.2.7'
-  undici: '>=7.29.0 <8'
+  undici: '>=7.30.1 <8'
   ws: '>=8.20.1'
   yaml: '>=2.8.3'
   '@babel/core': '>=7.29.6 <8'
@@ -60,17 +64,23 @@ overrides:
   '@hono/node-server': ^2.1.3     # was ^1.19.15. The patched built-in WebSocket helper
                                   # is provided by adapter 2.x; @hono/node-ws is removed
                                   # because its peer range excludes adapter 2.x.
-  better-auth: 1.6.30             # was 1.6.25. DELIBERATELY SUPERSEDED: exact 1.6.25
+  better-auth: 1.7.10             # was 1.6.30 (and 1.6.25 before that). SECURITY PIN:
+                                  # closes the critical OAuth-state-as-magic-link sign-in,
+                                  # GHSA-r4xp-prcw-77qf (oauth-proxy) and GHSA-q84f-53jg-9ppm
+                                  # (device approval), all patched >=1.7.7. 1.7.10 is the
+                                  # newest 1.7.x about two weeks old on 2026-10-28.
+                                  # History of the 1.6.30 entry: exact 1.6.25
                                   # violates @better-auth/api-key@1.6.26's peer ^1.6.26,
                                   # yielding a second better-auth copy and 7 TS errors.
                                   # better-call 1.3.7 below is its partner pin.
   effect: ^3.22.1                 # was '>=3.20.0'
   esbuild: ^0.28.1                # was 0.28.1 — caret admits patch fixes only
   hono: ^4.13.12                  # was ^4.12.34; closes GHSA-5r4p-p66f-jhc7.
-  ip-address: ^10.7.1             # patched production advisory floor; MIT, Node >=12
+  ip-address: ^10.7.4             # patched production advisory floor; MIT, Node >=12
   js-yaml: ^4.3.1                 # was '>=4.2.0 <5' — same major bound, higher floor
   lodash: ^4.18.0                 # was 4.18.0
-  qs: ^6.16.0                     # was '>=6.15.2'
+  qs: 6.16.1                      # was ^6.16.0. SECURITY PIN: qs <=6.16.0 advisory, patched
+                                  # 6.16.1 (exact: 6.16.2 was one day old on 2026-10-28)
   seroval: ^1.6.4                 # was '>=1.5.3'
   valibot: ^1.4.2                 # was '>=1.4.2'
 
@@ -95,9 +105,10 @@ overrides:
                                   # behavior around overrides + auto-installed optional
                                   # peers, not one pnpm documents -- re-verify this after any
                                   # pnpm upgrade rather than trusting it holds.
-  better-call: 1.3.7              # partner pin for better-auth 1.6.30
+  better-call: 1.4.2              # partner pin for better-auth 1.7.10 (was 1.3.7 for 1.6.30)
+  '@better-auth/api-key': 1.7.10  # one copy across apps/api and apps/web; peer ^better-auth
   deepmerge-ts: ^8.0.0
-  fast-uri: ^3.1.8                # patched production advisory floor; BSD-3-Clause
+  fast-uri: ^3.1.9                # patched production advisory floor; BSD-3-Clause
   mysql2: ^3.23.1
   nanoid: ^3.3.18                 # caret-bounded: '>=' let pnpm jump 3.x -> 6.x, which
                                   # took the audit from 11 findings to 51 with a CRITICAL.
@@ -113,3 +124,6 @@ onlyBuiltDependencies:
   - bcrypt
   - better-sqlite3
   - esbuild
+
+patchedDependencies:
+  react-i18next@17.0.11: patches/react-i18next@17.0.11.patch

@@ -9,6 +9,7 @@
 		"ignoreUnknown": false,
 		"includes": [
 			"**",
+			"!archive",
 			"!**/coverage",
 			"!**/tsconfig*.json",
 			"!**/routeTree.gen.ts",
@@ -30,13 +31,20 @@
 			"!**/.pi",
 			"!**/.pi-subagents",
 			"!**/openapi.json"
-		]
+		],
+		"maxSize": 8388608
 	},
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab"
 	},
-	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {

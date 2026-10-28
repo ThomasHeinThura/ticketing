@@ -1,10 +1,18 @@
 import { createId } from "@paralleldrive/cuid2";
+import type { NotificationCopyDescriptorV1 } from "@taskdesk/domain";
+import { isImportSourcedEvent } from "../events/import-source";
 import {
   type DbTransaction,
   type DomainEventEnvelope,
   enqueueOutboxEvent,
 } from "../events/outbox";
+import { renderNotificationCopyDescriptor } from "../terminology/notification-copy";
+import {
+  requireTerminologyLocale,
+  resolveTermForm,
+} from "../terminology/service";
 import { notificationDedupeKey } from "./delivery-primitives";
+import { attachDigestWindow } from "./digest-writer";
 import {
   insertEventInboxRow,
   insertPendingDelivery,
@@ -19,6 +27,8 @@ export type NotificationRecipientCandidate = {
   resourceId: string;
   title: string;
   body: string;
+  /** Closed system-authored copy segments; user text remains an opaque literal. */
+  systemCopy?: NotificationCopyDescriptorV1;
   /** Configured, installed `notify.*` channels from the plugin registry. */
   channels: readonly string[];
 };
@@ -33,7 +43,7 @@ export type NotificationFanoutHooks = {
     tx: DbTransaction,
     event: DomainEventEnvelope<Record<string, unknown>>,
   ): Promise<readonly NotificationRecipientCandidate[]>;
-  /** Allocate/lock the event-time window group; required only for digest preferences. */
+  /** Override the event-time window group writer; defaults to `attachDigestWindow`. */
   attachDigest?: (input: {
     tx: DbTransaction;
     event: DomainEventEnvelope<Record<string, unknown>>;
@@ -93,6 +103,9 @@ export async function materializeNotificationFanout(
   event: DomainEventEnvelope<Record<string, unknown>>,
   hooks: NotificationFanoutHooks,
 ): Promise<void> {
+  // Imported events are history, not triggers (P6-R2-01): no inbox row, external delivery or
+  // digest membership for any channel. The outbox record itself is kept by the caller.
+  if (isImportSourcedEvent(event)) return;
   const candidates = await hooks.resolveRecipients(tx, event);
   const actorPersonId = event.actor.type === "person" ? event.actor.id : null;
   const distinct = new Map<string, NotificationRecipientCandidate>();
@@ -124,6 +137,25 @@ export async function materializeNotificationFanout(
     // inbox principal. The current notification API is user-session-backed, so fail
     // closed for this batch rather than invent a recipient account or drop its person id.
     if (!recipient?.active || !recipient.userId) continue;
+    const audience = recipient.side === "customer" ? "customer" : "agent";
+    const workspaceId =
+      "workspaceId" in event.scope && event.scope.workspaceId
+        ? event.scope.workspaceId
+        : null;
+    const rendered = candidate.systemCopy
+      ? await renderNotificationCopyDescriptor(
+          candidate.systemCopy,
+          (termKey, count) =>
+            resolveTermForm({
+              locale: requireTerminologyLocale(recipient.locale ?? "en-US"),
+              audience,
+              termKey,
+              count,
+              workspaceId,
+              executor: tx,
+            }),
+        )
+      : null;
 
     await insertEventInboxRow(tx, {
       id: createId(),
@@ -131,8 +163,11 @@ export async function materializeNotificationFanout(
       personId: candidate.personId,
       eventId: event.id,
       eventKind: event.kind,
-      title: candidate.title,
-      body: candidate.body,
+      title: rendered?.title ?? candidate.title,
+      body: rendered?.body ?? candidate.body,
+      eventData: candidate.systemCopy
+        ? { systemCopy: candidate.systemCopy }
+        : null,
       resourceType: candidate.resourceType,
       resourceId: candidate.resourceId,
     });
@@ -154,13 +189,8 @@ export async function materializeNotificationFanout(
         ? "off"
         : preference.digest;
       if (cadence !== "off") {
-        if (!hooks.attachDigest) {
-          throw new Error(
-            "Digest candidate cannot be materialized without the canonical digest-window writer",
-          );
-        }
         digestId = (
-          await hooks.attachDigest({
+          await (hooks.attachDigest ?? attachDigestWindow)({
             tx,
             event,
             recipientPersonId: candidate.personId,

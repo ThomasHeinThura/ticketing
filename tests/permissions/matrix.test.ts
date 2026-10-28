@@ -5,6 +5,7 @@ import {
   type BuiltInRoleKey,
   evaluatePolicy,
   isCapabilityPolicy,
+  workItemScopeFromRow,
   workspaceScopeFromRequest,
 } from "@taskdesk/permissions";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -14,8 +15,11 @@ import {
   capabilityGrid,
   identityFor,
   MATRIX_TARGET,
+  PERSON_ID,
+  PROJECT_ID,
   type RouteGrid,
   routeGrid,
+  WORK_ITEM_ID,
   WORKSPACE_ID,
 } from "./matrix-fixture";
 
@@ -143,5 +147,33 @@ describe("the two axes stay separate", () => {
     const viewer = identityFor("viewer");
     const seesAll = { ...viewer, reach: { kind: "all" } as const };
     expect(seesAll.authority).toEqual(viewer.authority);
+  });
+});
+
+describe("attachment deletion policy matches canonical uploader and moderation", () => {
+  it("requires delete-any or actual canonical uploader with delete-own, never guessed ownership", async () => {
+    const registry = await loadPolicyRegistry();
+    const entry = registry.entries.find(
+      (row) => row.routeKey === "DELETE /api/attachments/{id}",
+    );
+    if (!entry) throw new Error("Attachment policy missing");
+    const scope = workItemScopeFromRow({
+      workItemId: WORK_ITEM_ID,
+      projectId: PROJECT_ID,
+      workspaceId: WORKSPACE_ID,
+    });
+    for (const role of ["member", "manager"] as const)
+      for (const owner of [true, false]) {
+        const decision = evaluatePolicy(entry.policy, {
+          identity: identityFor(role, { inReach: true }),
+          target: MATRIX_TARGET,
+          scope,
+          inReach: true,
+          row: { personId: owner ? PERSON_ID : "other-person" },
+        });
+        expect(decision.allowed, `${role} owner=${owner}`).toBe(
+          role === "manager" || owner,
+        );
+      }
   });
 });

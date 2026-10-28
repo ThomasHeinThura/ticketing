@@ -1,0 +1,9 @@
+{
+	"method": "strict HTTPS Chromium with real persisted customer cookie; exact portal origin; no notification writes",
+	"pageStatus": 200,
+	"opened": true,
+	"origin": "https://portal.localhost",
+	"pathname": "/api/ws/portal/notification",
+	"message": null,
+	"pingNoReply": true
+}

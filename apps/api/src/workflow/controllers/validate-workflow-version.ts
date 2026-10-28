@@ -12,10 +12,12 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import type { ResolveIdentityInput } from "../../permissions/resolve-identity";
 import { resolveIdentity } from "../../permissions/resolve-identity";
+import { listLiveProjectReachFacts } from "../../user-preference/repository";
 import {
   findWorkflowVersionId,
   findWorkflowWorkspaceId,
   hasCompleteWorkflowProjectReach,
+  listActiveWorkflowWorkspaceUserIds,
   listDefaultStateTemplates,
   listEnabledProjectStates,
   listLiveItemsWithStateTemplate,
@@ -35,6 +37,7 @@ export type WorkflowVersionProjectValidation = {
 
 export type WorkflowVersionValidationResult = {
   valid: boolean;
+  affected: { people: number; workItems: number; projects: number };
   unreachableStateTemplateIds: string[];
   noOutboundStateTemplateIds: string[];
   rolesWithNoLegalTransition: string[];
@@ -137,6 +140,7 @@ export async function validateWorkflowVersion(
         tx,
       );
       const projectIds = adoptingProjectRows.map((r) => r.projectId);
+      let affectedWorkItems = 0;
 
       if (projectIds.length > 0) {
         // Every adopting project's own default state's TEMPLATE -- `unreachableStates`'
@@ -181,10 +185,13 @@ export async function validateWorkflowVersion(
 
           // `WF-9`: work items currently sitting in a template this version has no
           // outbound transition from -- stuck.
-          const stuckRows =
-            noOutboundIdSet.size === 0
-              ? []
-              : await listLiveItemsWithStateTemplate(identity, projectId, tx);
+          const liveRows = await listLiveItemsWithStateTemplate(
+            identity,
+            projectId,
+            tx,
+          );
+          affectedWorkItems += liveRows.length;
+          const stuckRows = noOutboundIdSet.size === 0 ? [] : liveRows;
           const stuckWorkItemKeys = stuckRows
             .filter((row) =>
               noOutboundIdSet.has(asStateTemplateId(row.stateTemplateId)),
@@ -212,8 +219,35 @@ export async function validateWorkflowVersion(
         roleIdsWithNoLegalTransition.length === 0 &&
         projects.every((p) => p.valid);
 
+      const candidateProjectIds = adoptingProjectRows.map(
+        (row) => row.projectId,
+      );
+      const activeStaffUserIds = await listActiveWorkflowWorkspaceUserIds(
+        tx,
+        workflow.workspaceId,
+      );
+      const affectedPeople = new Set<string>();
+      for (const userId of activeStaffUserIds) {
+        const candidate = await resolveIdentity(
+          { userId, credential: "session" },
+          tx,
+        );
+        if (candidate?.side !== "staff") continue;
+        const reachable = await listLiveProjectReachFacts(
+          candidate,
+          candidateProjectIds,
+          tx,
+        );
+        if (reachable.length > 0) affectedPeople.add(candidate.personId);
+      }
+
       return {
         valid,
+        affected: {
+          people: affectedPeople.size,
+          workItems: affectedWorkItems,
+          projects: projectIds.length,
+        },
         unreachableStateTemplateIds: unreachableIds,
         noOutboundStateTemplateIds: noOutboundIds,
         rolesWithNoLegalTransition: roleIdsWithNoLegalTransition,

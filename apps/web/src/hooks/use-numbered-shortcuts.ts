@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 type NumberedShortcutOption = {
   onSelect: () => void;
+  disabled?: boolean;
 };
 
 export function useNumberedShortcuts(
@@ -13,11 +14,22 @@ export function useNumberedShortcuts(
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
+      if (
+        e.defaultPrevented ||
+        e.isComposing ||
+        e.repeat ||
+        e.altKey ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.shiftKey
+      )
+        return;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (!target) return;
       const isTypingInInput =
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.contentEditable === "true";
+        !!target.closest('[contenteditable]:not([contenteditable="false"])');
 
       if (isTypingInInput) return;
 
@@ -27,7 +39,7 @@ export function useNumberedShortcuts(
         num >= 1 &&
         num <= Math.min(options.length, maxNumbers);
 
-      if (isValidNumber) {
+      if (isValidNumber && !options[num - 1].disabled) {
         e.preventDefault();
         e.stopPropagation();
         options[num - 1].onSelect();

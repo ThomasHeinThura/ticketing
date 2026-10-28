@@ -1,6 +1,10 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
+  approveImportChunk,
+  approveImportRun,
+} from "../imports/pending-action";
+import {
   type ApiKey,
   apiRouter,
   createRoute,
@@ -12,11 +16,19 @@ import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { resolvePendingActionApprovalContract } from "./approval-contract";
+import { approveAttachmentDeletion } from "./attachment-deletion-target";
+import { approveBulkWorkItemDeletion } from "./bulk-work-item-deletion-target";
+import { approveCommentDeletion } from "./comment-deletion-target";
 import {
+  approveRegisteredDeletion,
   approveSavedViewDeletion,
   approveServiceCalendarDeletion,
   getPendingActionExecutionTarget,
 } from "./deletion-targets";
+import { withPendingActionFailureOutcome } from "./execution-failure";
+import { approveHardPurge } from "./hard-purge-executor";
+import { approveMcpApprovalDecision } from "./mcp-approval-decision";
+import { approveRelationDeletion } from "./relation-deletion-target";
 import {
   pendingActionApprovalSchema,
   pendingActionDecisionSchema,
@@ -34,6 +46,7 @@ import {
   getOwnPendingActions,
   requirePendingActionRequesterIdentity,
 } from "./service";
+import { approveWorkItemDeletion } from "./work-item-deletion-target";
 
 function readAuditContext(c: Context) {
   return {
@@ -111,7 +124,8 @@ const approvePendingActionRoute = createRoute({
   request: {
     params: pendingActionParamSchema,
     // A missing or malformed token is not a validation error: it is an unavailable PA-15
-    // proof (403 step_up_expired), audited like any other denied consumption.
+    // proof (403 step_up_required when absent, 403 step_up_expired otherwise), audited like
+    // any other denied consumption.
     headers: z.object({
       "x-taskdesk-step-up-token": z.string().max(256).optional(),
     }),
@@ -120,7 +134,10 @@ const approvePendingActionRoute = createRoute({
       content: {
         "application/json": {
           schema: z
-            .object({ typedName: z.string().max(320).optional() })
+            .object({
+              typedName: z.string().max(320).optional(),
+              typedCount: z.string().max(3).optional(),
+            })
             .strict(),
         },
       },
@@ -226,20 +243,80 @@ const pendingAction = apiRouter()
       sessionId: session.id,
       traceId: normaliseTraceId(c.req.header("x-request-id")),
     };
-    const result =
-      contract.executor === "user_deactivation"
-        ? await approveUserDeactivation({
-            ...executionInput,
-            typedName: c.req.valid("json").typedName ?? "",
-            stepUpToken:
-              c.req.valid("header")["x-taskdesk-step-up-token"] ?? "",
-          })
-        : contract.executor === "service_calendar_deletion"
-          ? await approveServiceCalendarDeletion(executionInput)
-          : await approveSavedViewDeletion(executionInput);
+    // PA-6 step 5: an executor that throws leaves a terminal `failed` action, not a pending one.
+    const result = await withPendingActionFailureOutcome(executionInput, () =>
+      contract.executor === "attachment_deletion"
+        ? approveAttachmentDeletion(executionInput)
+        : contract.executor === "comment_deletion"
+          ? approveCommentDeletion(executionInput)
+          : contract.executor === "user_deactivation"
+            ? approveUserDeactivation({
+                ...executionInput,
+                typedName: c.req.valid("json").typedName ?? "",
+                stepUpToken:
+                  c.req.valid("header")["x-taskdesk-step-up-token"] ?? "",
+              })
+            : contract.executor === "service_calendar_deletion"
+              ? approveServiceCalendarDeletion(executionInput)
+              : contract.executor === "relation_deletion"
+                ? approveRelationDeletion(executionInput)
+                : contract.executor === "bulk_work_item_deletion"
+                  ? approveBulkWorkItemDeletion({
+                      ...executionInput,
+                      typedCount: c.req.valid("json").typedCount,
+                      stepUpToken:
+                        c.req.valid("header")["x-taskdesk-step-up-token"],
+                    })
+                  : contract.executor === "work_item_deletion"
+                    ? approveWorkItemDeletion(executionInput)
+                    : contract.executor === "registered_deletion"
+                      ? approveRegisteredDeletion({
+                          ...executionInput,
+                          typedName: c.req.valid("json").typedName,
+                          stepUpToken:
+                            c.req.valid("header")["x-taskdesk-step-up-token"],
+                        })
+                      : contract.executor === "hard_purge"
+                        ? approveHardPurge({
+                            ...executionInput,
+                            typedName: c.req.valid("json").typedName,
+                            stepUpToken:
+                              c.req.valid("header")["x-taskdesk-step-up-token"],
+                          })
+                        : contract.executor === "mcp_approval_decision"
+                          ? approveMcpApprovalDecision(executionInput)
+                          : contract.executor === "import_run"
+                            ? approveImportRun({
+                                ...executionInput,
+                                typedCount: c.req.valid("json").typedCount,
+                                stepUpToken:
+                                  c.req.valid("header")[
+                                    "x-taskdesk-step-up-token"
+                                  ],
+                              })
+                            : contract.executor === "import_chunk"
+                              ? approveImportChunk({
+                                  ...executionInput,
+                                  routeKey: executionTarget.routeKey as
+                                    | "POST /api/imports/{id}/records"
+                                    | "POST /api/imports/{id}/links",
+                                  typedCount: c.req.valid("json").typedCount,
+                                  stepUpToken:
+                                    c.req.valid("header")[
+                                      "x-taskdesk-step-up-token"
+                                    ],
+                                })
+                              : approveSavedViewDeletion(executionInput),
+    );
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
-      { id: result.id, state: result.state as "executed" | "expired" },
+      {
+        id: result.id,
+        state: result.state as "executed" | "expired",
+        ...("result" in result && result.result
+          ? { result: result.result }
+          : {}),
+      },
       200,
     );
   })

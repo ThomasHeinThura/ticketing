@@ -1,0 +1,1156 @@
+{
+	"scope": "IQ-19/20/21 paired saved intake queue, owner-controlled audit workspace",
+	"method": "Real Chromium over strict HTTPS, no TLS bypass. Reused the single owned private QA queue and SUB-7. Normal UI temporarily applied the accepted URL override and restored the original new/unclaimed filter; only the owned queue pair and the approved SUB-7 fixture were changed. No existing work items, memberships, roles, or accounts were edited.",
+	"workspaceId": "ws-taskdesk-sit",
+	"queueName": "SIT IQ19 queue 20261026 2026-10-25T20-54-34-657Z",
+	"checks": [
+		{
+			"name": "Owner agent shell loads over trusted HTTPS",
+			"passed": true,
+			"status": 200
+		},
+		{
+			"name": "Existing workspace and queue API are readable",
+			"passed": true,
+			"workspaceFound": true,
+			"queueListStatus": 200,
+			"existingQueueCount": 1
+		},
+		{
+			"name": "Existing submission data can be inspected before fixture creation",
+			"passed": true,
+			"status": 200,
+			"count": 4
+		},
+		{
+			"name": "Resume exactly one previously created private queue",
+			"passed": true,
+			"status": 200,
+			"ownedFixtureCount": 1
+		},
+		{
+			"name": "Resumed queue retains the two expected saved-view entities",
+			"passed": true,
+			"status": 200,
+			"visibility": "private"
+		},
+		{
+			"name": "Paired run reads both submission and work-item halves",
+			"passed": true,
+			"status": 200,
+			"submissionTotal": 4,
+			"workItemTotal": 7
+		},
+		{
+			"name": "Approved SUB-7 remains in the paired view with both matching suggestions",
+			"passed": true,
+			"found": true,
+			"suggestedKeys": ["HELP-22", "HELP-23"]
+		},
+		{
+			"name": "Current pair has a prior version for stale-CAS testing",
+			"passed": true,
+			"current": {
+				"submission": 12,
+				"workItem": 12
+			},
+			"stale": {
+				"submission": 11,
+				"workItem": 11
+			}
+		},
+		{
+			"name": "Stale pair version is rejected without mutation",
+			"passed": true,
+			"status": 409,
+			"error": null
+		},
+		{
+			"name": "Stale CAS conflict preserves both current versions",
+			"passed": true,
+			"versions": {
+				"submission": 12,
+				"workItem": 12
+			}
+		},
+		{
+			"name": "Work-item sort stays a URL-local override and does not save queue metadata",
+			"passed": true,
+			"patches": 0,
+			"versionsBefore": {
+				"submission": 12,
+				"workItem": 12
+			},
+			"versionsAfter": {
+				"submission": 12,
+				"workItem": 12
+			},
+			"persistedSort": null,
+			"urlHasSorts": true
+		},
+		{
+			"name": "Private queue stays hidden from a non-owner lead",
+			"passed": true,
+			"detailStatus": 404,
+			"listed": false
+		},
+		{
+			"name": "Theme control applies dark",
+			"passed": true,
+			"expected": "dark",
+			"actual": "dark"
+		},
+		{
+			"name": "Responsive 375px dark layout has no page overflow",
+			"passed": true,
+			"width": 375,
+			"documentWidth": 375,
+			"bodyWidth": 375,
+			"panelWidth": 357
+		},
+		{
+			"name": "Responsive 768px dark layout has no page overflow",
+			"passed": true,
+			"width": 768,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"panelWidth": 518
+		},
+		{
+			"name": "Responsive 1440px dark layout has no page overflow",
+			"passed": true,
+			"width": 1440,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"panelWidth": 1190
+		},
+		{
+			"name": "Theme control applies light",
+			"passed": true,
+			"expected": "light",
+			"actual": "light"
+		},
+		{
+			"name": "Responsive 375px light layout has no page overflow",
+			"passed": true,
+			"width": 375,
+			"documentWidth": 375,
+			"bodyWidth": 375,
+			"panelWidth": 357
+		},
+		{
+			"name": "Responsive 768px light layout has no page overflow",
+			"passed": true,
+			"width": 768,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"panelWidth": 518
+		},
+		{
+			"name": "Responsive 1440px light layout has no page overflow",
+			"passed": true,
+			"width": 1440,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"panelWidth": 1190
+		},
+		{
+			"name": "Queue picker supports keyboard selection and presents the human name",
+			"passed": true,
+			"labelText": "SIT IQ19 queue 20261026 owner QA renamed",
+			"selected": true,
+			"encodedIdShown": false
+		},
+		{
+			"name": "Keyboard selection returns focus to the queue picker",
+			"passed": true,
+			"focused": true
+		},
+		{
+			"name": "Queue visibility picker renders its human label",
+			"passed": true,
+			"visibilityText": "Only me"
+		},
+		{
+			"name": "Escape cancels queue editing and returns focus to the edit control",
+			"passed": true,
+			"focusReturned": true
+		},
+		{
+			"name": "SUB-7 renders both accessible duplicate links in ordinary triage",
+			"passed": true,
+			"keys": ["HELP-22", "HELP-23"],
+			"hrefs": ["/agent/work-items/HELP-22", "/agent/work-items/HELP-23"]
+		},
+		{
+			"name": "SUB-7 renders both accessible duplicate links in paired queue",
+			"passed": true,
+			"keys": ["HELP-22", "HELP-23"],
+			"hrefs": ["/agent/work-items/HELP-22", "/agent/work-items/HELP-23"]
+		}
+	],
+	"duplicatePreflight": {
+		"workspaceStatus": 200,
+		"workspaceFound": true,
+		"queueListStatus": 200,
+		"existingQueueCount": 1,
+		"submissionStatus": 200,
+		"newSubmissionCount": 4,
+		"matchedDuplicateRows": [
+			{
+				"ref": "SUB-7",
+				"suggestions": ["HELP-22", "HELP-23"]
+			}
+		],
+		"requestFields": [
+			{
+				"ref": "SUB-1",
+				"state": "new",
+				"duplicateCount": 0
+			},
+			{
+				"ref": "SUB-2",
+				"state": "new",
+				"duplicateCount": 0
+			},
+			{
+				"ref": "SUB-4",
+				"state": "new",
+				"duplicateCount": 0
+			},
+			{
+				"ref": "SUB-7",
+				"state": "new",
+				"duplicateCount": 2
+			}
+		]
+	},
+	"screenshots": [
+		"intake-queues184-375-dark.png",
+		"intake-queues184-768-dark.png",
+		"intake-queues184-1440-dark.png",
+		"intake-queues184-375-light.png",
+		"intake-queues184-768-light.png",
+		"intake-queues184-1440-light.png",
+		"intake-queues184-picker-focus.png"
+	],
+	"network": [
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/submissions",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/submissions",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/csrf-token",
+			"status": 200
+		},
+		{
+			"method": "PATCH",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 409
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/config",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/invitation/pending",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/notification/inbox",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspaces/ws-taskdesk-sit/features/resolved",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/service-catalogue/status",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/views",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/config",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/invitation/pending",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/settings",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspaces/ws-taskdesk-sit/features/resolved",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/service-catalogue/status",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/views",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/notification/inbox",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/submissions",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/submissions",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/me/security/factors",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/work-item-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/workspace/ws-taskdesk-sit/members",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/request-types",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/project",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/intake/queues/o0yg8rvw06x4gttii0hr7uju/run",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/capabilities",
+			"status": 200
+		}
+	],
+	"queueId": "o0yg8rvw06x4gttii0hr7uju",
+	"viewIds": {
+		"submission": "geocrt66mms5prdpvveyzkcg",
+		"workItem": "ihqyx55y0412s70jocpie38c"
+	},
+	"run": {
+		"status": 200,
+		"submissionCount": 4,
+		"submissionTotal": 4,
+		"suggestionKeys": ["HELP-22", "HELP-23"],
+		"workItemCount": 7,
+		"workItemTotal": 7,
+		"workItemKeys": [
+			"HELP-14",
+			"HELP-15",
+			"HELP-16",
+			"HELP-17",
+			"HELP-2",
+			"HELP-22",
+			"HELP-23"
+		],
+		"workItemFieldUnavailable": false
+	},
+	"localSort": {
+		"tested": true,
+		"workItemRows": 7
+	},
+	"duplicateUi": {
+		"ordinary": {
+			"label": "ordinary triage",
+			"keys": ["HELP-22", "HELP-23"],
+			"hrefs": ["/agent/work-items/HELP-22", "/agent/work-items/HELP-23"],
+			"hasBoth": true
+		},
+		"paired": {
+			"label": "paired queue",
+			"keys": ["HELP-22", "HELP-23"],
+			"hrefs": ["/agent/work-items/HELP-22", "/agent/work-items/HELP-23"],
+			"hasBoth": true
+		}
+	},
+	"created": {
+		"visibility": "private",
+		"savedViewCount": 2,
+		"submissionViewId": "geocrt66mms5prdpvveyzkcg",
+		"workItemViewId": "ihqyx55y0412s70jocpie38c"
+	},
+	"finalVersions": {
+		"submission": 12,
+		"workItem": 12
+	},
+	"outcome": "passed"
+}

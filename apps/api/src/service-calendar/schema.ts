@@ -1,4 +1,5 @@
 import { isIanaTimeZone } from "@taskdesk/domain";
+import { CATALOGUE_KEY_PATTERN } from "../label/catalogue-key";
 import { z } from "../openapi";
 
 const windowSchema = z.object({
@@ -77,12 +78,22 @@ export const previewQuery = z.object({
 export const createCalendarBody = calendarDataSchema.extend({
   workspaceId: z.string().min(1),
   name: z.string().trim().min(1).max(120),
+  key: z.string().regex(CATALOGUE_KEY_PATTERN).optional(),
 });
 export const updateCalendarBody = calendarDataSchema
   .partial()
   .extend({ name: z.string().trim().min(1).max(120).optional() })
+  .strict()
   .refine((value) => Object.keys(value).length > 0);
 
 export const importHolidayBody = z.object({
   ics: z.string().min(1),
+});
+
+/** CAL-10 / CAL-11: a country preset for one year. Preview first; the administrator confirms. */
+export const holidayPresetBody = z.object({
+  country: z.string().trim().min(2).max(8),
+  year: z.number().int().min(1900).max(2200),
+  /** Default true: return the proposed dates without saving. Send false to confirm and append. */
+  preview: z.boolean().default(true),
 });

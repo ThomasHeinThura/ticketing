@@ -9,22 +9,14 @@ import {
   MouseSensor,
   TouchSensor,
   type UniqueIdentifier,
-  useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { useNavigate } from "@tanstack/react-router";
-import { Button, ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
-import { AnimatePresence, motion } from "framer-motion";
-import type { TFunction } from "i18next";
+import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
+import { motion } from "framer-motion";
 import { produce } from "immer";
-import { Archive, ChevronRight, Flag, Plus } from "lucide-react";
-import type { ReactNode } from "react";
 import {
   lazy,
   Suspense,
@@ -35,13 +27,11 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
-import { priorityColorsTaskCard } from "@/constants/priority-colors";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
-import { cn } from "@/lib/cn";
-import { getColumnIcon } from "@/lib/column";
+import { useRequestTaskDeletion } from "@/hooks/use-request-task-deletion";
 import type { ProjectBoardSearch } from "@/lib/project-board-search";
 import { withProjectBoardTask } from "@/lib/project-board-search-state";
 import { toast } from "@/lib/toast";
@@ -53,124 +43,18 @@ import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import type { TaskCardWorkspaceUser } from "../kanban-board/task-card";
 import TaskCardContextMenuContent from "../kanban-board/task-card-context-menu/task-card-context-menu-content";
 import { ArchiveTasksModal } from "../shared/modals/archive-tasks-modal";
+import { ListColumnSection } from "./list-column-section";
+import TaskDragPreview from "./task-drag-preview";
 import TaskRow from "./task-row";
 
 const CreateTaskModal = lazy(
   () => import("../shared/modals/create-task-modal"),
-);
-const TaskCardDeleteConfirmation = lazy(
-  () => import("../kanban-board/task-card-delete-confirmation"),
 );
 
 type ListViewProps = {
   project: ProjectWithTasks;
   disableDragDrop?: boolean;
 };
-
-type ListColumnSectionProps = {
-  column: ProjectWithTasks["columns"][number];
-  expanded: boolean;
-  showDropIndicator: boolean;
-  onToggle: () => void;
-  onAddTask: () => void;
-  onArchive: () => void;
-  t: TFunction;
-  children: ReactNode;
-};
-
-function ListColumnSection({
-  column,
-  expanded,
-  showDropIndicator,
-  onToggle,
-  onAddTask,
-  onArchive,
-  t,
-  children,
-}: ListColumnSectionProps) {
-  const { setNodeRef } = useDroppable({
-    id: column.id,
-    data: { type: "column", column },
-  });
-
-  return (
-    <div
-      className={cn(
-        "border-b border-border/50 transition-colors duration-150 overflow-auto",
-        showDropIndicator && "border-l-4 border-l-ring bg-accent/35",
-      )}
-    >
-      <div className="flex items-center justify-between py-2 px-4 bg-muted/60 border-b border-border/50">
-        <Button
-          variant="ghost"
-          type="button"
-          onClick={onToggle}
-          className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronRight
-            className={cn(
-              "w-3 h-3 transition-transform",
-              expanded && "rotate-90",
-            )}
-          />
-          <div className="flex items-center gap-2 h-4">
-            {getColumnIcon(column.id, column.isFinal, column.icon)}
-            <div className="flex items-center gap-1">
-              <span className="mt-1 mr-1">{column.name}</span>
-              <span className="text-xs text-muted-foreground mt-0.5">
-                {column.tasks.length}
-              </span>
-            </div>
-          </div>
-        </Button>
-
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={onAddTask}
-            className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
-            title={t("tasks:listView.addTask")}
-          >
-            <Plus className="w-3 h-3" />
-          </Button>
-          {column.isFinal && column.tasks.length > 0 && (
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={onArchive}
-              className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
-              title={t("tasks:listView.archiveAllTooltip")}
-            >
-              <Archive className="w-3 h-3" />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {expanded && (
-        <div
-          ref={setNodeRef}
-          className="bg-card transition-[translate,opacity] duration-150 ease-out starting:-translate-y-1 starting:opacity-0 motion-reduce:starting:translate-y-0"
-        >
-          <SortableContext
-            items={column.tasks}
-            strategy={verticalListSortingStrategy}
-          >
-            <AnimatePresence initial={false} mode="popLayout">
-              {children}
-            </AnimatePresence>
-          </SortableContext>
-          {column.tasks.length === 0 && (
-            <div className="py-6 px-4 text-center text-xs text-muted-foreground">
-              {t("tasks:listView.noTasks")}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function ListView({ project, disableDragDrop = false }: ListViewProps) {
   const { t } = useTranslation();
@@ -225,7 +109,7 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
     null,
   );
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
-  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+  const requestTaskDeletion = useRequestTaskDeletion(project?.slug);
   const contextMenuTask = contextMenuTaskId
     ? taskById.get(contextMenuTaskId)
     : undefined;
@@ -343,7 +227,13 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
         tolerance: 8,
       },
     }),
-    useSensor(KeyboardSensor),
+    useSensor(KeyboardSensor, {
+      keyboardCodes: {
+        start: ["Space"],
+        end: ["Space", "Enter"],
+        cancel: ["Escape"],
+      },
+    }),
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -582,7 +472,7 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
               worskpaceId: workspace.id,
             }}
             onDeleteClick={() => {
-              setDeleteTaskId(contextMenuTask.id);
+              void requestTaskDeletion(contextMenuTask);
               setIsContextMenuOpen(false);
             }}
           />
@@ -590,33 +480,9 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
       </ContextMenu>
 
       <DragOverlay>
-        {activeTask && (
-          <div className="bg-card border border-border rounded-lg shadow-lg p-2 max-w-[200px] cursor-grabbing">
-            <div className="flex items-center gap-2">
-              <div className="flex-shrink-0">
-                <Flag
-                  className={cn(
-                    "w-3 h-3",
-                    priorityColorsTaskCard[
-                      activeTask.priority as keyof typeof priorityColorsTaskCard
-                    ],
-                  )}
-                />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono text-muted-foreground">
-                    {project?.slug}-{activeTask.number}
-                  </span>
-                  <span className="text-xs text-foreground truncate">
-                    {activeTask.title}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {activeTask ? (
+          <TaskDragPreview task={activeTask} projectSlug={project?.slug} />
+        ) : null}
       </DragOverlay>
 
       {hasOpenedTaskModal && (
@@ -640,22 +506,6 @@ function ListView({ project, disableDragDrop = false }: ListViewProps) {
       />
 
       <BulkToolbar />
-      {deleteTaskId ? (
-        <Suspense
-          fallback={
-            <div role="status" aria-live="polite">
-              {t("common:empty.loading")}
-            </div>
-          }
-        >
-          <TaskCardDeleteConfirmation
-            taskId={deleteTaskId}
-            onOpenChange={(open) => {
-              if (!open) setDeleteTaskId(null);
-            }}
-          />
-        </Suspense>
-      ) : null}
     </DndContext>
   );
 }

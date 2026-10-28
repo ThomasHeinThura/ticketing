@@ -15,11 +15,19 @@ import {
   inArray,
   isNotNull,
   isNull,
+  ne,
   or,
   type SQL,
   sql,
 } from "drizzle-orm";
+import { markServiceKeysForFormerCreator } from "../api-key/accountability";
+import {
+  captureWorkspaceServiceKeyAuthority,
+  markServiceKeysForAuthorityLoss,
+} from "../api-key/authority-loss";
+import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
+import { apiKeyExtensionTable } from "../database/schema";
 import {
   invalidatePendingActionsForRequester,
   lockPendingActionLifecycle,
@@ -158,6 +166,7 @@ const connectionProjection = {
   mfaUpstreamMode: schema.identityConnectionTable.mfaUpstreamMode,
   enabled: schema.identityConnectionTable.enabled,
   configVersion: schema.identityConnectionTable.configVersion,
+  deletedAt: schema.identityConnectionTable.deletedAt,
   healthState: schema.identityConnectionTable.healthState,
   healthCheckedAt: schema.identityConnectionTable.healthCheckedAt,
 } as const;
@@ -167,6 +176,7 @@ export async function listIdentityConnections() {
     await db
       .select(connectionProjection)
       .from(schema.identityConnectionTable)
+      .where(isNull(schema.identityConnectionTable.deletedAt))
       .orderBy(
         schema.identityConnectionTable.portalScope,
         schema.identityConnectionTable.id,
@@ -179,7 +189,12 @@ export async function getIdentityConnection(id: string) {
     await db
       .select(connectionProjection)
       .from(schema.identityConnectionTable)
-      .where(eq(schema.identityConnectionTable.id, id))
+      .where(
+        and(
+          eq(schema.identityConnectionTable.id, id),
+          isNull(schema.identityConnectionTable.deletedAt),
+        ),
+      )
       .limit(1),
   );
 }
@@ -192,7 +207,12 @@ export async function lockIdentityConnection(
     await tx
       .select(connectionProjection)
       .from(schema.identityConnectionTable)
-      .where(eq(schema.identityConnectionTable.id, id))
+      .where(
+        and(
+          eq(schema.identityConnectionTable.id, id),
+          isNull(schema.identityConnectionTable.deletedAt),
+        ),
+      )
       .for("update")
       .limit(1),
   );
@@ -204,7 +224,8 @@ export async function listIdentityDomainBindings(tx: IdentityTransaction) {
       id: schema.identityConnectionTable.id,
       domains: schema.identityConnectionTable.domainBindings,
     })
-    .from(schema.identityConnectionTable);
+    .from(schema.identityConnectionTable)
+    .where(isNull(schema.identityConnectionTable.deletedAt));
 }
 
 export async function lockCustomerOrganisation(
@@ -276,7 +297,12 @@ export async function getIdentityConnectionIdForOrganisation(id: string) {
     await db
       .select(connectionProjection)
       .from(schema.identityConnectionTable)
-      .where(eq(schema.identityConnectionTable.organisationId, id))
+      .where(
+        and(
+          eq(schema.identityConnectionTable.organisationId, id),
+          isNull(schema.identityConnectionTable.deletedAt),
+        ),
+      )
       .limit(1),
   );
 }
@@ -375,7 +401,12 @@ export async function lockFullIdentityConnection(
     await tx
       .select()
       .from(schema.identityConnectionTable)
-      .where(eq(schema.identityConnectionTable.id, id))
+      .where(
+        and(
+          eq(schema.identityConnectionTable.id, id),
+          isNull(schema.identityConnectionTable.deletedAt),
+        ),
+      )
       .for("update")
       .limit(1),
   );
@@ -437,7 +468,12 @@ export async function getScimConnectionVersion(
   return await tx
     .select({ version: schema.identityConnectionTable.configVersion })
     .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, id))
+    .where(
+      and(
+        eq(schema.identityConnectionTable.id, id),
+        isNull(schema.identityConnectionTable.deletedAt),
+      ),
+    )
     .limit(1);
 }
 
@@ -448,7 +484,12 @@ export async function findIdentityConnectionForOrganisation(
   return await tx
     .select({ id: schema.identityConnectionTable.id })
     .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.organisationId, organisationId))
+    .where(
+      and(
+        eq(schema.identityConnectionTable.organisationId, organisationId),
+        isNull(schema.identityConnectionTable.deletedAt),
+      ),
+    )
     .limit(1);
 }
 
@@ -475,7 +516,12 @@ export async function getIdentityConnectionConfiguration(id: string) {
         configVersion: schema.identityConnectionTable.configVersion,
       })
       .from(schema.identityConnectionTable)
-      .where(eq(schema.identityConnectionTable.id, id))
+      .where(
+        and(
+          eq(schema.identityConnectionTable.id, id),
+          isNull(schema.identityConnectionTable.deletedAt),
+        ),
+      )
       .limit(1),
   );
 }
@@ -502,7 +548,12 @@ export async function getScimSettingsRow(connectionId: string) {
           schema.identityConnectionTable.id,
         ),
       )
-      .where(eq(schema.identityConnectionTable.id, connectionId))
+      .where(
+        and(
+          eq(schema.identityConnectionTable.id, connectionId),
+          isNull(schema.identityConnectionTable.deletedAt),
+        ),
+      )
       .limit(1),
   );
 }
@@ -1043,7 +1094,7 @@ export async function validateIdpMappingRole(
     .where(eq(schema.roleTable.id, input.roleId))
     .limit(1);
   if (!role || role.scope !== input.scope || role.rank < 0) return false;
-  if (!hasSafeOidcRoleCapabilities(role.scope, role.capabilities)) return false;
+  if (!hasSafeIdpRoleCapabilities(role.scope, role.capabilities)) return false;
   if (input.portalScope === "customer")
     return (
       role.workspaceId === null &&
@@ -1070,7 +1121,10 @@ export async function validateIdpMappingRole(
   return true;
 }
 
-function hasSafeOidcRoleCapabilities(scope: string, value: unknown): boolean {
+export function hasSafeIdpRoleCapabilities(
+  scope: string,
+  value: unknown,
+): boolean {
   if (scope !== "organisation" && scope !== "workspace") return false;
   if (
     !Array.isArray(value) ||
@@ -1147,10 +1201,12 @@ export type MembershipProjectionKey = {
 export async function lockScimGrantClosure(
   tx: IdentityTransaction,
   input: {
-    connectionId: string;
+    connectionId?: string;
+    connectionIds?: readonly string[];
     sourceKinds?: readonly ("jit_default" | "oidc_group" | "scim_group")[];
     actorPersonId?: string;
     additionalPersonIds?: readonly string[];
+    additionalRoleIds?: readonly string[];
     additionalIdentityIds?: readonly string[];
     proposedRoleId?: string;
     proposedScope?: string;
@@ -1159,11 +1215,22 @@ export async function lockScimGrantClosure(
     mappingId?: string;
     additionalProjectionKeys?: readonly (MembershipProjectionKey & {
       roleId: string;
-      externalIdentityId: string;
+      externalIdentityId: string | null;
     })[];
     scimGroupIds?: readonly string[];
   },
 ) {
+  const connectionIds = [
+    ...new Set([
+      ...(input.connectionIds ?? []),
+      ...(input.connectionId ? [input.connectionId] : []),
+    ]),
+  ].sort();
+  if (
+    connectionIds.length === 0 &&
+    !(input.additionalProjectionKeys?.length || input.additionalRoleIds?.length)
+  )
+    return [];
   const discovered = await tx
     .select({
       id: schema.membershipGrantTable.id,
@@ -1180,9 +1247,9 @@ export async function lockScimGrantClosure(
     .from(schema.membershipGrantTable)
     .where(
       and(
-        eq(
+        inArray(
           schema.membershipGrantTable.identityConnectionId,
-          input.connectionId,
+          connectionIds,
         ),
         ...(input.sourceKinds
           ? [inArray(schema.membershipGrantTable.sourceKind, input.sourceKinds)]
@@ -1232,8 +1299,7 @@ export async function lockScimGrantClosure(
     : [];
   const sourceConnectionIds = [
     ...new Set([
-      input.connectionId,
-      ...(input.additionalProjectionKeys ?? []).map(() => input.connectionId),
+      ...connectionIds,
       ...projectionGrants.flatMap((grant) =>
         grant.identityConnectionId ? [grant.identityConnectionId] : [],
       ),
@@ -1252,7 +1318,7 @@ export async function lockScimGrantClosure(
     })
     .from(schema.scimGroupMappingTable)
     .where(
-      eq(schema.scimGroupMappingTable.scimConnectionId, input.connectionId),
+      inArray(schema.scimGroupMappingTable.scimConnectionId, connectionIds),
     );
   const oidcMappings = await tx
     .select({
@@ -1265,7 +1331,7 @@ export async function lockScimGrantClosure(
     })
     .from(schema.oidcGroupMappingTable)
     .where(
-      eq(schema.oidcGroupMappingTable.identityConnectionId, input.connectionId),
+      inArray(schema.oidcGroupMappingTable.identityConnectionId, connectionIds),
     );
   const proposedScope =
     input.proposedScope ??
@@ -1362,6 +1428,7 @@ export async function lockScimGrantClosure(
       ...mappings.map((mapping) => mapping.roleId),
       ...oidcMappings.map((mapping) => mapping.roleId),
       ...(input.proposedRoleId ? [input.proposedRoleId] : []),
+      ...(input.additionalRoleIds ?? []),
     ]),
   ].sort();
   if (roleIds.length) {
@@ -1427,7 +1494,7 @@ export async function lockScimGrantClosure(
       .from(schema.scimGroupTable)
       .where(
         and(
-          eq(schema.scimGroupTable.scimConnectionId, input.connectionId),
+          inArray(schema.scimGroupTable.scimConnectionId, connectionIds),
           inArray(schema.scimGroupTable.id, [...input.scimGroupIds].sort()),
         ),
       )
@@ -1443,7 +1510,7 @@ export async function lockScimGrantClosure(
     })
     .from(schema.scimGroupMappingTable)
     .where(
-      eq(schema.scimGroupMappingTable.scimConnectionId, input.connectionId),
+      inArray(schema.scimGroupMappingTable.scimConnectionId, connectionIds),
     )
     .orderBy(schema.scimGroupMappingTable.id);
   const mappingKey = (mapping: (typeof mappings)[number]) =>
@@ -1469,7 +1536,7 @@ export async function lockScimGrantClosure(
     })
     .from(schema.oidcGroupMappingTable)
     .where(
-      eq(schema.oidcGroupMappingTable.identityConnectionId, input.connectionId),
+      inArray(schema.oidcGroupMappingTable.identityConnectionId, connectionIds),
     )
     .orderBy(schema.oidcGroupMappingTable.id);
   const oidcMappingKey = (mapping: (typeof oidcMappings)[number]) =>
@@ -1495,8 +1562,8 @@ export async function lockScimGrantClosure(
       ...projectionGrants.flatMap((grant) =>
         grant.externalIdentityId ? [grant.externalIdentityId] : [],
       ),
-      ...(input.additionalProjectionKeys ?? []).map(
-        (grant) => grant.externalIdentityId,
+      ...(input.additionalProjectionKeys ?? []).flatMap((grant) =>
+        grant.externalIdentityId ? [grant.externalIdentityId] : [],
       ),
       ...(input.additionalIdentityIds ?? []),
     ]),
@@ -1515,9 +1582,9 @@ export async function lockScimGrantClosure(
       .from(schema.scimGroupDirectoryMemberTable)
       .where(
         and(
-          eq(
+          inArray(
             schema.scimGroupDirectoryMemberTable.scimConnectionId,
-            input.connectionId,
+            connectionIds,
           ),
           inArray(
             schema.scimGroupDirectoryMemberTable.scimGroupId,
@@ -1536,13 +1603,13 @@ export async function lockScimGrantClosure(
     ),
   );
   if (membershipPredicates.length) {
-    for (const grant of [...discovered].sort((left, right) =>
+    for (const key of [...projectionKeys].sort((left, right) =>
       `${left.personId}\0${left.scope}\0${left.scopeId}`.localeCompare(
         `${right.personId}\0${right.scope}\0${right.scopeId}`,
       ),
     )) {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(
-        ${`taskdesk:membership:${grant.personId}:${grant.scope}:${grant.scopeId}`}, 0))`);
+        ${`taskdesk:membership:${key.personId}:${key.scope}:${key.scopeId}`}, 0))`);
     }
     await tx
       .select({ id: schema.membershipTable.id })
@@ -1584,9 +1651,9 @@ export async function lockScimGrantClosure(
     .from(schema.membershipGrantTable)
     .where(
       and(
-        eq(
+        inArray(
           schema.membershipGrantTable.identityConnectionId,
-          input.connectionId,
+          connectionIds,
         ),
         ...(input.sourceKinds
           ? [inArray(schema.membershipGrantTable.sourceKind, input.sourceKinds)]
@@ -1624,6 +1691,441 @@ export async function lockScimGrantClosure(
   );
 }
 
+export type RoleIdentityGrant = {
+  id: string;
+  personId: string;
+  scope: string;
+  scopeId: string;
+  roleId: string;
+  sourceKind: string;
+  identityConnectionId: string | null;
+  externalIdentityId: string | null;
+  oidcGroupMappingId: string | null;
+  scimGroupMappingId: string | null;
+};
+
+export type RoleIdentitySource = {
+  id: string;
+  portalScope: string;
+  organisationId: string | null;
+  defaultWorkspaceId: string | null;
+  enabled: boolean;
+  maxRoleRank: number | null;
+  configVersion: number;
+  jitPolicy: unknown;
+};
+
+/**
+ * Lock every identity source and projection affected by editing one workspace role.
+ * Discovery is advisory; the shared IP-22 closure locks parents, people, roles,
+ * connections, mappings, identities, projection keys and grants in global order,
+ * then the role-reference sets are reread and any expansion restarts the transaction.
+ */
+export async function lockRoleIdentityGrantClosure(
+  tx: IdentityTransaction,
+  input: { workspaceId: string; roleId: string },
+): Promise<{
+  projectionKeys: MembershipProjectionKey[];
+  activeRoleGrants: RoleIdentityGrant[];
+  connections: RoleIdentitySource[];
+  oidcMappings: Array<{
+    id: string;
+    identityConnectionId: string;
+    roleId: string;
+    scope: string;
+    scopeId: string;
+    enabled: boolean;
+  }>;
+  scimMappings: Array<{
+    id: string;
+    identityConnectionId: string;
+    externalGroupId: string;
+    roleId: string;
+    scope: string;
+    scopeId: string;
+    enabled: boolean;
+  }>;
+  scimDirectoryMembers: Array<{
+    connectionId: string;
+    externalIdentityId: string;
+    externalGroupId: string;
+    groupActive: boolean;
+    memberActive: boolean;
+  }>;
+  affectedUserIds: string[];
+  identityReferenceConnectionIds: string[];
+}> {
+  const [targetRole] = await tx
+    .select({ id: schema.roleTable.id })
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.id, input.roleId),
+        eq(schema.roleTable.scope, "workspace"),
+        eq(schema.roleTable.workspaceId, input.workspaceId),
+      ),
+    )
+    .limit(1);
+  if (!targetRole) {
+    return {
+      projectionKeys: [],
+      activeRoleGrants: [],
+      connections: [],
+      oidcMappings: [],
+      scimMappings: [],
+      scimDirectoryMembers: [],
+      affectedUserIds: [],
+      identityReferenceConnectionIds: [],
+    };
+  }
+
+  const discoveredGrants = await tx
+    .select({
+      id: schema.membershipGrantTable.id,
+      personId: schema.membershipGrantTable.personId,
+      scope: schema.membershipGrantTable.scope,
+      scopeId: schema.membershipGrantTable.scopeId,
+      roleId: schema.membershipGrantTable.roleId,
+      sourceKind: schema.membershipGrantTable.sourceKind,
+      identityConnectionId: schema.membershipGrantTable.identityConnectionId,
+      externalIdentityId: schema.membershipGrantTable.externalIdentityId,
+      oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
+      scimGroupMappingId: schema.membershipGrantTable.scimGroupMappingId,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.roleId, input.roleId),
+        ne(schema.membershipGrantTable.sourceKind, "direct"),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    );
+  const directRoleGrants = await tx
+    .select({
+      id: schema.membershipGrantTable.id,
+      personId: schema.membershipGrantTable.personId,
+      scope: schema.membershipGrantTable.scope,
+      scopeId: schema.membershipGrantTable.scopeId,
+      roleId: schema.membershipGrantTable.roleId,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.roleId, input.roleId),
+        eq(schema.membershipGrantTable.sourceKind, "direct"),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    );
+  const oidcRefs = await tx
+    .select({
+      id: schema.oidcGroupMappingTable.id,
+      connectionId: schema.oidcGroupMappingTable.identityConnectionId,
+    })
+    .from(schema.oidcGroupMappingTable)
+    .where(eq(schema.oidcGroupMappingTable.roleId, input.roleId));
+  const scimRefs = await tx
+    .select({
+      id: schema.scimGroupMappingTable.id,
+      connectionId: schema.scimGroupMappingTable.scimConnectionId,
+    })
+    .from(schema.scimGroupMappingTable)
+    .where(eq(schema.scimGroupMappingTable.roleId, input.roleId));
+  const scimIdentityConnections = scimRefs.length
+    ? await tx
+        .select({
+          scimConnectionId: schema.scimConnectionTable.identityConnectionId,
+          identityConnectionId: schema.identityConnectionTable.id,
+        })
+        .from(schema.scimConnectionTable)
+        .innerJoin(
+          schema.identityConnectionTable,
+          eq(
+            schema.identityConnectionTable.id,
+            schema.scimConnectionTable.identityConnectionId,
+          ),
+        )
+        .where(
+          inArray(schema.scimConnectionTable.identityConnectionId, [
+            ...new Set(scimRefs.map((mapping) => mapping.connectionId)),
+          ]),
+        )
+    : [];
+  const scimGroups = await tx
+    .select({ id: schema.scimGroupTable.id })
+    .from(schema.scimGroupTable)
+    .innerJoin(
+      schema.scimGroupMappingTable,
+      and(
+        eq(
+          schema.scimGroupMappingTable.scimConnectionId,
+          schema.scimGroupTable.scimConnectionId,
+        ),
+        eq(
+          schema.scimGroupMappingTable.externalGroupId,
+          schema.scimGroupTable.externalId,
+        ),
+      ),
+    )
+    .where(eq(schema.scimGroupMappingTable.roleId, input.roleId));
+  const jitRefs = await tx
+    .select({ id: schema.identityConnectionTable.id })
+    .from(schema.identityConnectionTable)
+    .where(
+      sql`${schema.identityConnectionTable.jitPolicy}->>'default_role_id' = ${input.roleId}`,
+    );
+  const connectionIds = [
+    ...new Set([
+      ...discoveredGrants.flatMap((grant) =>
+        grant.identityConnectionId ? [grant.identityConnectionId] : [],
+      ),
+      ...oidcRefs.map((mapping) => mapping.connectionId),
+      ...scimIdentityConnections.map(
+        (connection) => connection.identityConnectionId,
+      ),
+      ...jitRefs.map((connection) => connection.id),
+    ]),
+  ].sort();
+  const holderMemberships = await tx
+    .select({
+      personId: schema.membershipTable.personId,
+      scope: schema.membershipTable.scope,
+      scopeId: schema.membershipTable.scopeId,
+    })
+    .from(schema.membershipTable)
+    .where(eq(schema.membershipTable.roleId, input.roleId));
+  const additionalProjectionKeys = [
+    ...discoveredGrants.map((grant) => ({
+      personId: grant.personId,
+      scope: grant.scope,
+      scopeId: grant.scopeId,
+      roleId: grant.roleId,
+      externalIdentityId: grant.externalIdentityId,
+    })),
+    ...directRoleGrants.map((grant) => ({
+      personId: grant.personId,
+      scope: grant.scope,
+      scopeId: grant.scopeId,
+      roleId: grant.roleId,
+      externalIdentityId: null,
+    })),
+    ...holderMemberships.map((membership) => ({
+      ...membership,
+      roleId: input.roleId,
+      externalIdentityId: null,
+    })),
+  ];
+  const sourceProjectionKeys = await lockScimGrantClosure(tx, {
+    connectionIds,
+    sourceKinds: ["jit_default", "oidc_group", "scim_group"],
+    additionalRoleIds: [input.roleId],
+    additionalPersonIds: [
+      ...holderMemberships.map((membership) => membership.personId),
+      ...directRoleGrants.map((grant) => grant.personId),
+    ],
+    additionalIdentityIds: discoveredGrants.flatMap((grant) =>
+      grant.externalIdentityId ? [grant.externalIdentityId] : [],
+    ),
+    additionalProjectionKeys,
+    scimGroupIds: scimGroups.map((group) => group.id),
+  });
+
+  const currentGrants = await tx
+    .select({
+      id: schema.membershipGrantTable.id,
+      personId: schema.membershipGrantTable.personId,
+      scope: schema.membershipGrantTable.scope,
+      scopeId: schema.membershipGrantTable.scopeId,
+      roleId: schema.membershipGrantTable.roleId,
+      sourceKind: schema.membershipGrantTable.sourceKind,
+      identityConnectionId: schema.membershipGrantTable.identityConnectionId,
+      externalIdentityId: schema.membershipGrantTable.externalIdentityId,
+      oidcGroupMappingId: schema.membershipGrantTable.oidcGroupMappingId,
+      scimGroupMappingId: schema.membershipGrantTable.scimGroupMappingId,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.roleId, input.roleId),
+        ne(schema.membershipGrantTable.sourceKind, "direct"),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    );
+  const grantKey = (grant: RoleIdentityGrant) =>
+    [
+      grant.id,
+      grant.personId,
+      grant.scope,
+      grant.scopeId,
+      grant.roleId,
+      grant.sourceKind,
+      grant.identityConnectionId,
+      grant.externalIdentityId,
+      grant.oidcGroupMappingId,
+      grant.scimGroupMappingId,
+    ].join("\0");
+  if (
+    discoveredGrants.map(grantKey).sort().join("\n") !==
+    currentGrants.map(grantKey).sort().join("\n")
+  )
+    throw new IdentityGrantClosureChangedError();
+
+  const currentOidcRefs = await tx
+    .select({ id: schema.oidcGroupMappingTable.id })
+    .from(schema.oidcGroupMappingTable)
+    .where(eq(schema.oidcGroupMappingTable.roleId, input.roleId));
+  const currentScimRefs = await tx
+    .select({ id: schema.scimGroupMappingTable.id })
+    .from(schema.scimGroupMappingTable)
+    .where(eq(schema.scimGroupMappingTable.roleId, input.roleId));
+  const currentJitRefs = await tx
+    .select({ id: schema.identityConnectionTable.id })
+    .from(schema.identityConnectionTable)
+    .where(
+      sql`${schema.identityConnectionTable.jitPolicy}->>'default_role_id' = ${input.roleId}`,
+    );
+  const discoveredRefKeys = [
+    ...oidcRefs.map((row) => `oidc:${row.id}`),
+    ...scimRefs.map((row) => `scim:${row.id}`),
+    ...jitRefs.map((row) => `jit:${row.id}`),
+  ].sort();
+  const currentRefKeys = [
+    ...currentOidcRefs.map((row) => `oidc:${row.id}`),
+    ...currentScimRefs.map((row) => `scim:${row.id}`),
+    ...currentJitRefs.map((row) => `jit:${row.id}`),
+  ].sort();
+  if (discoveredRefKeys.join("\n") !== currentRefKeys.join("\n"))
+    throw new IdentityGrantClosureChangedError();
+
+  const projectionKeys = [
+    ...new Map(
+      [...sourceProjectionKeys, ...holderMemberships, ...directRoleGrants].map(
+        (key) => [
+          `${key.personId}\0${key.scope}\0${key.scopeId}`,
+          { personId: key.personId, scope: key.scope, scopeId: key.scopeId },
+        ],
+      ),
+    ).values(),
+  ];
+  const connections = connectionIds.length
+    ? await tx
+        .select({
+          id: schema.identityConnectionTable.id,
+          portalScope: schema.identityConnectionTable.portalScope,
+          organisationId: schema.identityConnectionTable.organisationId,
+          defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
+          enabled: schema.identityConnectionTable.enabled,
+          maxRoleRank: schema.identityConnectionTable.maxRoleRank,
+          configVersion: schema.identityConnectionTable.configVersion,
+          jitPolicy: schema.identityConnectionTable.jitPolicy,
+        })
+        .from(schema.identityConnectionTable)
+        .where(inArray(schema.identityConnectionTable.id, connectionIds))
+    : [];
+  const oidcMappings = await tx
+    .select({
+      id: schema.oidcGroupMappingTable.id,
+      identityConnectionId: schema.oidcGroupMappingTable.identityConnectionId,
+      roleId: schema.oidcGroupMappingTable.roleId,
+      scope: schema.oidcGroupMappingTable.scope,
+      scopeId: schema.oidcGroupMappingTable.scopeId,
+      enabled: schema.oidcGroupMappingTable.enabled,
+    })
+    .from(schema.oidcGroupMappingTable)
+    .where(eq(schema.oidcGroupMappingTable.roleId, input.roleId));
+  const scimMappings = await tx
+    .select({
+      id: schema.scimGroupMappingTable.id,
+      identityConnectionId: schema.scimConnectionTable.identityConnectionId,
+      externalGroupId: schema.scimGroupMappingTable.externalGroupId,
+      roleId: schema.scimGroupMappingTable.roleId,
+      scope: schema.scimGroupMappingTable.scope,
+      scopeId: schema.scimGroupMappingTable.scopeId,
+      enabled: schema.scimGroupMappingTable.enabled,
+    })
+    .from(schema.scimGroupMappingTable)
+    .innerJoin(
+      schema.scimConnectionTable,
+      eq(
+        schema.scimConnectionTable.identityConnectionId,
+        schema.scimGroupMappingTable.scimConnectionId,
+      ),
+    )
+    .where(eq(schema.scimGroupMappingTable.roleId, input.roleId));
+  const externalIdentityIds = [
+    ...new Set(
+      currentGrants.flatMap((grant) =>
+        grant.externalIdentityId ? [grant.externalIdentityId] : [],
+      ),
+    ),
+  ];
+  const scimDirectoryMembers =
+    connectionIds.length && externalIdentityIds.length
+      ? await tx
+          .select({
+            connectionId: schema.scimGroupDirectoryMemberTable.scimConnectionId,
+            externalIdentityId:
+              schema.scimGroupDirectoryMemberTable.externalIdentityId,
+            externalGroupId: schema.scimGroupTable.externalId,
+            groupActive: schema.scimGroupTable.active,
+            memberActive: schema.scimGroupDirectoryMemberTable.active,
+          })
+          .from(schema.scimGroupDirectoryMemberTable)
+          .innerJoin(
+            schema.scimGroupTable,
+            and(
+              eq(
+                schema.scimGroupTable.id,
+                schema.scimGroupDirectoryMemberTable.scimGroupId,
+              ),
+              eq(
+                schema.scimGroupTable.scimConnectionId,
+                schema.scimGroupDirectoryMemberTable.scimConnectionId,
+              ),
+            ),
+          )
+          .where(
+            and(
+              inArray(
+                schema.scimGroupDirectoryMemberTable.scimConnectionId,
+                connectionIds,
+              ),
+              inArray(
+                schema.scimGroupDirectoryMemberTable.externalIdentityId,
+                externalIdentityIds,
+              ),
+            ),
+          )
+      : [];
+  const affectedUserRows = projectionKeys.length
+    ? await tx
+        .select({ userId: schema.personTable.userId })
+        .from(schema.personTable)
+        .where(
+          inArray(schema.personTable.id, [
+            ...new Set([
+              ...currentGrants.map((grant) => grant.personId),
+              ...directRoleGrants.map((grant) => grant.personId),
+              ...holderMemberships.map((membership) => membership.personId),
+            ]),
+          ]),
+        )
+    : [];
+  return {
+    projectionKeys,
+    activeRoleGrants: currentGrants,
+    connections: connections as RoleIdentitySource[],
+    oidcMappings,
+    scimMappings,
+    scimDirectoryMembers,
+    affectedUserIds: [
+      ...new Set(
+        affectedUserRows.flatMap((row) => (row.userId ? [row.userId] : [])),
+      ),
+    ],
+    identityReferenceConnectionIds: connectionIds,
+  };
+}
+
 export async function getScimIdentityByTokenDigest(digest: Buffer) {
   return await db
     .select({
@@ -1633,6 +2135,7 @@ export async function getScimIdentityByTokenDigest(digest: Buffer) {
       portalScope: schema.identityConnectionTable.portalScope,
       organisationId: schema.identityConnectionTable.organisationId,
       connectionEnabled: schema.identityConnectionTable.enabled,
+      connectionDeletedAt: schema.identityConnectionTable.deletedAt,
       maxRoleRank: schema.identityConnectionTable.maxRoleRank,
     })
     .from(schema.scimConnectionTable)
@@ -1662,9 +2165,15 @@ export async function lockScimIdentityConnection(
       enabled: schema.identityConnectionTable.enabled,
       portalScope: schema.identityConnectionTable.portalScope,
       organisationId: schema.identityConnectionTable.organisationId,
+      deletedAt: schema.identityConnectionTable.deletedAt,
     })
     .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.id, connectionId))
+    .where(
+      and(
+        eq(schema.identityConnectionTable.id, connectionId),
+        isNull(schema.identityConnectionTable.deletedAt),
+      ),
+    )
     .for("update");
 }
 
@@ -1760,6 +2269,7 @@ export async function getOidcConnectionForStart(connectionId: string) {
     await db
       .select({
         id: schema.identityConnectionTable.id,
+        organisationId: schema.identityConnectionTable.organisationId,
         portalScope: schema.identityConnectionTable.portalScope,
         enabled: schema.identityConnectionTable.enabled,
         tenantId: schema.identityConnectionTable.tenantId,
@@ -1772,9 +2282,87 @@ export async function getOidcConnectionForStart(connectionId: string) {
         jitPolicy: schema.identityConnectionTable.jitPolicy,
       })
       .from(schema.identityConnectionTable)
-      .where(eq(schema.identityConnectionTable.id, connectionId))
+      .where(
+        and(
+          eq(schema.identityConnectionTable.id, connectionId),
+          isNull(schema.identityConnectionTable.deletedAt),
+        ),
+      )
       .limit(1),
   );
+}
+
+/** Resolve a typed portal domain only when exactly one enabled customer IdP owns it. */
+export async function resolveCustomerOidcDomain(domain: string) {
+  const rows = await db
+    .select({ id: schema.identityConnectionTable.id })
+    .from(schema.identityConnectionTable)
+    .innerJoin(
+      schema.organisationTable,
+      eq(
+        schema.organisationTable.id,
+        schema.identityConnectionTable.organisationId,
+      ),
+    )
+    .where(
+      and(
+        eq(schema.identityConnectionTable.portalScope, "customer"),
+        eq(schema.identityConnectionTable.enabled, true),
+        isNull(schema.identityConnectionTable.deletedAt),
+        eq(schema.organisationTable.active, true),
+        eq(schema.organisationTable.portalAccess, true),
+        eq(schema.organisationTable.isInternal, false),
+        isNull(schema.organisationTable.deletedAt),
+        sql`${schema.identityConnectionTable.domainBindings} @> ARRAY[${domain}]::text[]`,
+      ),
+    )
+    .limit(2);
+  return rows.length === 1 ? (rows[0]?.id ?? null) : null;
+}
+
+/** Recheck the encrypted home-realm target against current customer and domain scope. */
+export async function getCustomerOidcConnectionForHomeRealm(
+  connectionId: string,
+  domain: string,
+) {
+  const [row] = await db
+    .select({
+      id: schema.identityConnectionTable.id,
+      portalScope: schema.identityConnectionTable.portalScope,
+      enabled: schema.identityConnectionTable.enabled,
+      organisationId: schema.identityConnectionTable.organisationId,
+      tenantId: schema.identityConnectionTable.tenantId,
+      defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
+      issuer: schema.identityConnectionTable.issuer,
+      clientId: schema.identityConnectionTable.clientId,
+      redirectUri: schema.identityConnectionTable.redirectUri,
+      scopes: schema.identityConnectionTable.scopes,
+      claimMapping: schema.identityConnectionTable.claimMapping,
+      domainBindings: schema.identityConnectionTable.domainBindings,
+      jitPolicy: schema.identityConnectionTable.jitPolicy,
+    })
+    .from(schema.identityConnectionTable)
+    .innerJoin(
+      schema.organisationTable,
+      eq(
+        schema.organisationTable.id,
+        schema.identityConnectionTable.organisationId,
+      ),
+    )
+    .where(
+      and(
+        eq(schema.identityConnectionTable.id, connectionId),
+        eq(schema.identityConnectionTable.portalScope, "customer"),
+        eq(schema.identityConnectionTable.enabled, true),
+        eq(schema.organisationTable.active, true),
+        eq(schema.organisationTable.portalAccess, true),
+        eq(schema.organisationTable.isInternal, false),
+        isNull(schema.organisationTable.deletedAt),
+        sql`${schema.identityConnectionTable.domainBindings} @> ARRAY[${domain}]::text[]`,
+      ),
+    )
+    .limit(1);
+  return row ? (materializeConnectionRows([row])[0] ?? null) : null;
 }
 
 export async function getOidcConnectionForCallback(connectionId: string) {
@@ -2036,7 +2624,12 @@ export async function listEnabledOidcDomainOwners() {
       identityConnectionId: schema.identityConnectionTable.id,
     })
     .from(schema.identityConnectionTable)
-    .where(eq(schema.identityConnectionTable.enabled, true));
+    .where(
+      and(
+        eq(schema.identityConnectionTable.enabled, true),
+        isNull(schema.identityConnectionTable.deletedAt),
+      ),
+    );
 }
 
 export async function getOidcUserFactorState(userId: string) {
@@ -2212,6 +2805,69 @@ export async function retireConnectionGrantsAboveRoleRank(
  * Callers must acquire the IP-22 parent/person/role/source locks before invoking this
  * function and must include every source key whose validity changed in the transaction.
  */
+/** Snapshot only service-key creators touched by this projection, before membership writes. */
+async function captureProjectionServiceKeyAuthority(
+  tx: IdentityTransaction,
+  keys: readonly MembershipProjectionKey[],
+) {
+  const personIds = [...new Set(keys.map((key) => key.personId))];
+  if (personIds.length === 0) return [];
+  const owners = await tx
+    .selectDistinct({
+      userId: schema.personTable.userId,
+      personId: apiKeyExtensionTable.createdByPersonId,
+      workspaceId: apiKeyExtensionTable.workspaceId,
+    })
+    .from(apiKeyExtensionTable)
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.id, apiKeyExtensionTable.createdByPersonId),
+    )
+    .where(
+      and(
+        inArray(apiKeyExtensionTable.createdByPersonId, personIds),
+        isNotNull(apiKeyExtensionTable.workspaceId),
+      ),
+    );
+  if (owners.length === 0) return [];
+  const projectIds = [
+    ...new Set(
+      keys.filter((key) => key.scope === "project").map((key) => key.scopeId),
+    ),
+  ];
+  const projects = projectIds.length
+    ? await tx
+        .select({
+          id: schema.projectTable.id,
+          workspaceId: schema.projectTable.workspaceId,
+        })
+        .from(schema.projectTable)
+        .where(inArray(schema.projectTable.id, projectIds))
+    : [];
+  const workspaceByProject = new Map(
+    projects.map((project) => [project.id, project.workspaceId]),
+  );
+  const snapshots = [];
+  for (const owner of owners) {
+    if (!owner.userId || !owner.workspaceId) continue;
+    const touched = keys.some(
+      (key) =>
+        key.personId === owner.personId &&
+        ((key.scope === "workspace" && key.scopeId === owner.workspaceId) ||
+          (key.scope === "project" &&
+            workspaceByProject.get(key.scopeId) === owner.workspaceId)),
+    );
+    if (!touched) continue;
+    const snapshot = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      owner.userId,
+      owner.workspaceId,
+    );
+    if (snapshot) snapshots.push(snapshot);
+  }
+  return snapshots;
+}
+
 export async function projectMembershipKeys(
   tx: IdentityTransaction,
   keys: readonly MembershipProjectionKey[],
@@ -2219,6 +2875,9 @@ export async function projectMembershipKeys(
   const uniqueKeys = new Map(
     keys.map((key) => [`${key.personId}\0${key.scope}\0${key.scopeId}`, key]),
   );
+  const serviceKeyAuthority = await captureProjectionServiceKeyAuthority(tx, [
+    ...uniqueKeys.values(),
+  ]);
   for (const key of uniqueKeys.values()) {
     const grants = await tx
       .select({
@@ -2342,6 +3001,43 @@ export async function projectMembershipKeys(
       .set({ membershipId })
       .where(eq(schema.scimGroupMemberTable.membershipGrantId, winner.id));
   }
+  for (const before of serviceKeyAuthority) {
+    const after = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      before.userId,
+      before.workspaceId,
+    );
+    await markServiceKeysForAuthorityLoss(tx, {
+      before,
+      after,
+      now: new Date(),
+    });
+  }
+}
+
+/**
+ * Project-scope membership writers take the person lock first, then this shared project
+ * fence. Project deletion takes the same project rows exclusively after locking its current
+ * effective roster, so it cannot freeze an incomplete member count or race a new grant.
+ */
+export async function lockProjectMembershipScopes(
+  tx: IdentityTransaction,
+  projectIds: readonly string[],
+): Promise<boolean> {
+  const ids = [...new Set(projectIds)].sort();
+  if (!ids.length) return true;
+  const rows = await tx
+    .select({ id: schema.projectTable.id })
+    .from(schema.projectTable)
+    .where(
+      and(
+        inArray(schema.projectTable.id, ids),
+        isNull(schema.projectTable.deletedAt),
+      ),
+    )
+    .orderBy(asc(schema.projectTable.id))
+    .for("share");
+  return rows.length === ids.length;
 }
 
 export async function retireScimGroupGrants(
@@ -2759,6 +3455,8 @@ export async function transitionPersonLifecycleInTransaction(
     .set({ active, updatedAt: now })
     .where(eq(schema.personTable.id, person.id));
   if (!active) {
+    if (person.active !== false)
+      await markServiceKeysForFormerCreator(tx, person.id, now);
     pendingActionAuditFailures = await invalidatePendingActionsForRequester(
       tx,
       person.id,
@@ -2781,6 +3479,41 @@ export async function transitionPersonLifecycleInTransaction(
         )
         .returning({ id: schema.apikeyTable.id });
       keysRevoked = keys.length;
+      // TM-8: a deactivated person leaves every team's lead roster so that reactivation never
+      // silently restores lead authority. The `team_member` row itself stays (history, and
+      // the active-roster read already hides an inactive person); the demotion is audited.
+      const demoted = await tx
+        .update(schema.teamMemberTable)
+        .set({ isLead: false })
+        .where(
+          and(
+            eq(schema.teamMemberTable.userId, person.userId),
+            eq(schema.teamMemberTable.isLead, true),
+          ),
+        )
+        .returning({ teamId: schema.teamMemberTable.teamId });
+      for (const { teamId } of demoted) {
+        const [team] = await tx
+          .select({ workspaceId: schema.teamTable.workspaceId })
+          .from(schema.teamTable)
+          .where(eq(schema.teamTable.id, teamId))
+          .limit(1);
+        if (!team) continue;
+        await appendAuditLog(tx, {
+          actorId: null,
+          actorType: "system",
+          workspaceId: team.workspaceId,
+          action: "team.member_updated",
+          entityType: "team",
+          entityId: teamId,
+          before: { personId: person.id, isLead: true },
+          after: {
+            personId: person.id,
+            isLead: false,
+            reason: "person_deactivated",
+          },
+        });
+      }
     }
     const externalIds = discovered
       .filter((grant) => grant.sourceKind !== "direct")
@@ -2844,10 +3577,23 @@ type GroupWrite = {
   displayName: string;
   active: boolean;
   memberIds: readonly string[];
+  /**
+   * Recomputes displayName, active and members from the group state read after the row lock,
+   * so a read-modify-write PATCH cannot overwrite a concurrent one (IP-22).
+   */
+  patch?: (current: {
+    displayName: string;
+    active: boolean;
+    memberIds: string[];
+  }) => {
+    displayName: string;
+    active: boolean;
+    memberIds: string[];
+  } | null;
 };
 
 /** Store directory state and apply only currently valid mapped-role grants. */
-export async function writeScimGroup(input: GroupWrite) {
+export async function writeScimGroup(request: GroupWrite) {
   let pendingActionAuditFailures = 0;
   const result = await retryIdentityGrantClosure(async () =>
     db.transaction(async (tx) => {
@@ -2871,7 +3617,7 @@ export async function writeScimGroup(input: GroupWrite) {
             schema.identityConnectionTable.id,
           ),
         )
-        .where(eq(schema.identityConnectionTable.id, input.connectionId))
+        .where(eq(schema.identityConnectionTable.id, request.connectionId))
         .limit(1);
       if (
         !connection?.connectionEnabled ||
@@ -2890,18 +3636,20 @@ export async function writeScimGroup(input: GroupWrite) {
         .from(schema.scimGroupTable)
         .where(
           and(
-            eq(schema.scimGroupTable.scimConnectionId, input.connectionId),
-            input.groupId
-              ? eq(schema.scimGroupTable.id, input.groupId)
-              : eq(schema.scimGroupTable.externalId, input.externalId),
+            eq(schema.scimGroupTable.scimConnectionId, request.connectionId),
+            request.groupId
+              ? eq(schema.scimGroupTable.id, request.groupId)
+              : eq(schema.scimGroupTable.externalId, request.externalId),
           ),
         )
-        .limit(1);
-      if (input.groupId && !group)
+        .limit(1)
+        // Serialises concurrent writers of one group: everything below reads fresh state.
+        .for("update");
+      if (request.groupId && !group)
         throw new ScimGroupWriteError(404, "notFound");
-      if (input.createOnly && group)
+      if (request.createOnly && group)
         throw new ScimGroupWriteError(409, "uniqueness");
-      if (group && group.externalId !== input.externalId)
+      if (group && group.externalId !== request.externalId)
         throw new ScimGroupWriteError(400, "invalidValue");
       const initiallyActiveMembers = group
         ? await tx
@@ -2914,13 +3662,26 @@ export async function writeScimGroup(input: GroupWrite) {
               and(
                 eq(
                   schema.scimGroupDirectoryMemberTable.scimConnectionId,
-                  input.connectionId,
+                  request.connectionId,
                 ),
                 eq(schema.scimGroupDirectoryMemberTable.scimGroupId, group.id),
                 eq(schema.scimGroupDirectoryMemberTable.active, true),
               ),
             )
         : [];
+
+      const patched =
+        group && request.patch
+          ? request.patch({
+              displayName: group.displayName,
+              active: group.active,
+              memberIds: initiallyActiveMembers.map(
+                (member) => member.externalIdentityId,
+              ),
+            })
+          : undefined;
+      if (patched === null) throw new ScimGroupWriteError(400, "invalidValue");
+      const input: GroupWrite = patched ? { ...request, ...patched } : request;
 
       const [mapping] = await tx
         .select({

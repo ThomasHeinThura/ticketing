@@ -109,14 +109,14 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
       workspaceId: victim.workspace.id,
       name: "Victim's project",
       icon: "Folder",
-      slug: "ACME-VICTIM",
+      slug: "ACMEVICT",
     });
     expect(victimCreate.status).toBe(200);
 
     // And the happy path keeps working end to end: a work item can be created and its
     // key uses the victim's own, non-colliding slug.
     const created = (await victimCreate.json()) as { id: string; slug: string };
-    expect(created.slug).toBe("ACME-VICTIM");
+    expect(created.slug).toBe("ACMEVICT");
   });
 
   it("rejects (409) updating a project's slug to one already taken by a project in a different workspace", async () => {
@@ -127,7 +127,7 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
       workspaceId: first.workspace.id,
       name: "First project",
       icon: "Folder",
-      slug: "taken-slug",
+      slug: "TAKEN",
     });
 
     // `admin`, not the default `member` -- the legacy `project` statement set
@@ -140,7 +140,7 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
       workspaceId: second.workspace.id,
       name: "Second project",
       icon: "Folder",
-      slug: "its-own-slug",
+      slug: "ITSOWN",
     });
     expect(secondCreate.status).toBe(200);
     const secondProject = (await secondCreate.json()) as { id: string };
@@ -149,7 +149,7 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
     const update = await updateProjectRequest(secondApp, secondProject.id, {
       name: "Second project",
       icon: "Folder",
-      slug: "taken-slug",
+      slug: "TAKEN",
       description: "",
     });
 
@@ -158,6 +158,6 @@ describe("API integration: project.slug uniqueness (#261 F1)", () => {
     const stillOwnSlug = await db.query.projectTable.findFirst({
       where: eq(schema.projectTable.id, secondProject.id),
     });
-    expect(stillOwnSlug?.slug).toBe("its-own-slug");
+    expect(stillOwnSlug?.slug).toBe("ITSOWN");
   });
 });

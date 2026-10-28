@@ -1,0 +1,28 @@
+{
+	"recordedAt": "2026-10-25T12:25:01.880444+00:00",
+	"event": "Unwrapped integration command interrupted before test results; database writes paused for investigation.",
+	"checks": {
+		"launcherDatabaseEnvironmentPresent": false,
+		"dotenvDatabaseUrlPresent": false,
+		"derivedFallbackDatabase": "taskdesk_ticketing_v2_test",
+		"derivedFallbackPort": 5432,
+		"fallbackTestCredentials": "rejected with PostgreSQL28P01",
+		"integrationSetupGuard": "explicitly rejects taskdesk_browser_journey_1022_test before database management",
+		"protectedLiveReadOnlyCensus": {
+			"people": 4,
+			"workItems": 17,
+			"projects": 1,
+			"teams": 1,
+			"migrations": 130
+		},
+		"auditCopyReadOnlyCensus": {
+			"people": 10,
+			"workItems": 25,
+			"projects": 2,
+			"teams": 35,
+			"migrations": 175
+		}
+	},
+	"conclusion": "No evidence that a reset reached a runtime database. Expected live and audit census unchanged; the configured fallback is separate and rejects the test credentials.",
+	"action": "Resumed only dedicated-wrapper integration commands; no restore, reset or reseed performed."
+}

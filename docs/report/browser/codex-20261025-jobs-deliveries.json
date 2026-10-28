@@ -1,0 +1,582 @@
+{
+	"generatedAt": "2026-10-25T08:13:24.807Z",
+	"tlsVerification": "enabled",
+	"routes": {
+		"jobs": {
+			"status": 200,
+			"count": 22,
+			"metricsSnapshot": {
+				"name": "metrics-snapshot",
+				"pattern": "0 * * * *",
+				"defaultPattern": "0 * * * *",
+				"enabled": true,
+				"version": 0,
+				"timezone": null,
+				"nextRunAt": "2026-10-25T08:30:00.000Z",
+				"manualRunAllowed": true,
+				"lastRun": null,
+				"effectivePattern": "0 * * * *",
+				"effectiveScheduleSource": "registered default",
+				"storedConfiguration": {
+					"pattern": null,
+					"enabled": true,
+					"version": 2,
+					"verifiedAfterUiRestore": true,
+					"verification": "read-only configuration row query"
+				}
+			},
+			"secretsRekeyListedButNotManuallyRunnable": true,
+			"nextScheduledLabelVisible": true
+		},
+		"deliveries": {
+			"status": 200,
+			"counts": {
+				"events": {
+					"pending": 0,
+					"dead": 0
+				},
+				"notifications": {
+					"pending": 0,
+					"delivered": 0,
+					"suppressed": 0,
+					"dead": 0
+				},
+				"digests": {
+					"collecting": 0,
+					"pending": 0,
+					"delivered": 0,
+					"suppressed": 0,
+					"dead": 0
+				},
+				"webhooks": {
+					"pending": 0,
+					"delivered": 0,
+					"dead": 0,
+					"skippedOutOfReach": 0,
+					"cancelled": 0
+				}
+			},
+			"itemCount": 50,
+			"sample": [
+				{
+					"kind": "event",
+					"eventKind": "work_item.commented",
+					"state": "delivered",
+					"attempts": 1,
+					"createdAt": "2026-10-25T06:55:24.880Z",
+					"deliveredAt": null,
+					"statusCode": null,
+					"durationMs": null,
+					"errorPresent": false,
+					"children": null
+				},
+				{
+					"kind": "event",
+					"eventKind": "work_item.mentioned",
+					"state": "delivered",
+					"attempts": 1,
+					"createdAt": "2026-10-25T06:55:24.880Z",
+					"deliveredAt": null,
+					"statusCode": null,
+					"durationMs": null,
+					"errorPresent": false,
+					"children": null
+				},
+				{
+					"kind": "event",
+					"eventKind": "work_item.commented",
+					"state": "delivered",
+					"attempts": 1,
+					"createdAt": "2026-10-25T06:54:38.443Z",
+					"deliveredAt": null,
+					"statusCode": null,
+					"durationMs": null,
+					"errorPresent": false,
+					"children": null
+				},
+				{
+					"kind": "event",
+					"eventKind": "work_item.commented",
+					"state": "delivered",
+					"attempts": 1,
+					"createdAt": "2026-10-25T06:54:36.497Z",
+					"deliveredAt": null,
+					"statusCode": null,
+					"durationMs": null,
+					"errorPresent": false,
+					"children": null
+				},
+				{
+					"kind": "event",
+					"eventKind": "work_item.assigned",
+					"state": "delivered",
+					"attempts": 1,
+					"createdAt": "2026-10-25T06:54:35.156Z",
+					"deliveredAt": null,
+					"statusCode": null,
+					"durationMs": null,
+					"errorPresent": false,
+					"children": null
+				}
+			],
+			"headingVisible": true
+		},
+		"memberDenied": {
+			"jobsStatus": 403,
+			"deliveriesStatus": 403,
+			"denialScreen": true,
+			"denialTitle": "Access denied",
+			"uiCheck": "confirmed on both Jobs and Deliveries with separate member session",
+			"uiStatus": {
+				"jobs": 200,
+				"deliveries": 200
+			}
+		}
+	},
+	"layout": [
+		{
+			"route": "jobs",
+			"width": 390,
+			"theme": "light",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-jobs-390-light.png",
+			"viewportWidth": 390,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "jobs",
+			"width": 390,
+			"theme": "dark",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-jobs-390-dark.png",
+			"viewportWidth": 390,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "jobs",
+			"width": 768,
+			"theme": "light",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-jobs-768-light.png",
+			"viewportWidth": 768,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "jobs",
+			"width": 768,
+			"theme": "dark",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-jobs-768-dark.png",
+			"viewportWidth": 768,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "jobs",
+			"width": 1440,
+			"theme": "light",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-jobs-1440-light.png",
+			"viewportWidth": 1440,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "jobs",
+			"width": 1440,
+			"theme": "dark",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-jobs-1440-dark.png",
+			"viewportWidth": 1440,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "deliveries",
+			"width": 390,
+			"theme": "light",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-deliveries-390-light.png",
+			"viewportWidth": 390,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "deliveries",
+			"width": 390,
+			"theme": "dark",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-deliveries-390-dark.png",
+			"viewportWidth": 390,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "deliveries",
+			"width": 768,
+			"theme": "light",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-deliveries-768-light.png",
+			"viewportWidth": 768,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "deliveries",
+			"width": 768,
+			"theme": "dark",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-deliveries-768-dark.png",
+			"viewportWidth": 768,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "deliveries",
+			"width": 1440,
+			"theme": "light",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-deliveries-1440-light.png",
+			"viewportWidth": 1440,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		},
+		{
+			"route": "deliveries",
+			"width": 1440,
+			"theme": "dark",
+			"status": 200,
+			"screenshot": "screens/codex-20261025-deliveries-1440-dark.png",
+			"viewportWidth": 1440,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"documentOverflow": false,
+			"visibleHeading": "Settings",
+			"inspected": true
+		}
+	],
+	"operations": {
+		"scheduleEdit": {
+			"outcome": "saved",
+			"fromPattern": "0 * * * *",
+			"temporaryPattern": "15 */6 * * *",
+			"fromVersion": 0,
+			"editedVersion": 1
+		},
+		"scheduleRestore": {
+			"outcome": "restored",
+			"pattern": "0 * * * *",
+			"version": 2,
+			"versionIsMonotonic": true,
+			"storedPattern": null,
+			"enabled": true,
+			"effectiveSource": "registered default",
+			"note": "UI restored the default by saving its default-pattern value; the API stored NULL. Version remains monotonic."
+		},
+		"metricsSnapshotManualRun": {
+			"responseStatus": 202,
+			"queued": true,
+			"idMatchesPersistedLatestRun": true,
+			"lastRun": {
+				"trigger": "manual",
+				"state": "succeeded",
+				"requestedAt": "2026-10-25T08:13:37.843Z",
+				"startedAt": "2026-10-25T08:13:38.453Z",
+				"finishedAt": "2026-10-25T08:13:38.522Z",
+				"durationMs": 66,
+				"errorCode": null
+			}
+		}
+	},
+	"errors": {
+		"page": 0,
+		"failedHttp": [
+			{
+				"method": "GET",
+				"path": "/api/instance/jobs",
+				"status": 403
+			},
+			{
+				"method": "GET",
+				"path": "/api/instance/deliveries",
+				"status": 403
+			}
+		]
+	},
+	"verification": {
+		"strictTls": true,
+		"adminReadRoutes": 200,
+		"memberApiDenials": 403,
+		"memberUiDenials": true,
+		"manualTriggerScope": "metrics-snapshot only",
+		"triggeredDestructiveOrExternalDeliveryJob": false,
+		"configRestoredToDefault": true,
+		"configStoredPatternNull": true,
+		"screenshotsInspected": 12,
+		"documentOverflow": false,
+		"apiHistoryRetentionAfterFinish": {
+			"testPassed": true,
+			"finishedWithin30DaysRetained": true,
+			"finishedOver30DaysPruned": true
+		},
+		"latestExecutionIgnoresNewerQueuedRequest": {
+			"testPassed": true
+		}
+	},
+	"coordinatorVisualCheck": {
+		"status": "scoped_pass_after_fix",
+		"inspected": [
+			"Six original Delivery captures",
+			"Six corrected Jobs captures at390,768,1440px in both themes"
+		],
+		"finding": "Jobs schedule, enable and save controls fit the card. The history table scrolls locally on narrow screens. Original clipping screenshots remain diagnostic evidence.",
+		"phaseReview": false
+	},
+	"responsiveJobsRetest": {
+		"recordedAt": "2026-10-25",
+		"method": "Strict-TLS real browser; authorized admin session; read-only GET /api/instance/jobs.",
+		"themeIsolation": "Each theme used a separate ephemeral browser context; no user theme preference was persisted.",
+		"result": "All cron, enabled and Save schedule controls are visible inside the metrics-snapshot card at 390, 768 and 1440 px in both themes.",
+		"captures": [
+			{
+				"route": "jobs",
+				"theme": "light",
+				"viewport": "390x844",
+				"screenshot": "../screens/codex-20261025-jobs-responsive-390-light.png",
+				"job": "metrics-snapshot",
+				"card": {
+					"width": 300,
+					"visibleInViewport": true
+				},
+				"cron": {
+					"value": "0 * * * *",
+					"disabled": false,
+					"boundedInCard": true
+				},
+				"enabled": {
+					"checked": true,
+					"boundedInCard": true
+				},
+				"saveSchedule": {
+					"disabled": true,
+					"boundedInCard": true
+				},
+				"allControlsWithinCard": true,
+				"documentWidth": 390,
+				"bodyOverflow": false,
+				"table": {
+					"viewportWidth": 258,
+					"contentWidth": 720,
+					"horizontalScroll": true
+				},
+				"screenshotInspected": true
+			},
+			{
+				"route": "jobs",
+				"theme": "light",
+				"viewport": "768x1000",
+				"screenshot": "../screens/codex-20261025-jobs-responsive-768-light.png",
+				"job": "metrics-snapshot",
+				"card": {
+					"width": 374,
+					"visibleInViewport": true
+				},
+				"cron": {
+					"value": "0 * * * *",
+					"disabled": false,
+					"boundedInCard": true
+				},
+				"enabled": {
+					"checked": true,
+					"boundedInCard": true
+				},
+				"saveSchedule": {
+					"disabled": true,
+					"boundedInCard": true
+				},
+				"allControlsWithinCard": true,
+				"documentWidth": 768,
+				"bodyOverflow": false,
+				"table": {
+					"viewportWidth": 332,
+					"contentWidth": 720,
+					"horizontalScroll": true
+				},
+				"screenshotInspected": true
+			},
+			{
+				"route": "jobs",
+				"theme": "light",
+				"viewport": "1440x1000",
+				"screenshot": "../screens/codex-20261025-jobs-responsive-1440-light.png",
+				"job": "metrics-snapshot",
+				"card": {
+					"width": 1046,
+					"visibleInViewport": true
+				},
+				"cron": {
+					"value": "0 * * * *",
+					"disabled": false,
+					"boundedInCard": true
+				},
+				"enabled": {
+					"checked": true,
+					"boundedInCard": true
+				},
+				"saveSchedule": {
+					"disabled": true,
+					"boundedInCard": true
+				},
+				"allControlsWithinCard": true,
+				"documentWidth": 1440,
+				"bodyOverflow": false,
+				"table": {
+					"viewportWidth": 1004,
+					"contentWidth": 1004,
+					"horizontalScroll": false
+				},
+				"screenshotInspected": true
+			},
+			{
+				"route": "jobs",
+				"theme": "dark",
+				"viewport": "390x844",
+				"screenshot": "../screens/codex-20261025-jobs-responsive-390-dark.png",
+				"job": "metrics-snapshot",
+				"card": {
+					"width": 300,
+					"visibleInViewport": true
+				},
+				"cron": {
+					"value": "0 * * * *",
+					"disabled": false,
+					"boundedInCard": true
+				},
+				"enabled": {
+					"checked": true,
+					"boundedInCard": true
+				},
+				"saveSchedule": {
+					"disabled": true,
+					"boundedInCard": true
+				},
+				"allControlsWithinCard": true,
+				"documentWidth": 390,
+				"bodyOverflow": false,
+				"table": {
+					"viewportWidth": 258,
+					"contentWidth": 720,
+					"horizontalScroll": true
+				},
+				"screenshotInspected": true
+			},
+			{
+				"route": "jobs",
+				"theme": "dark",
+				"viewport": "768x1000",
+				"screenshot": "../screens/codex-20261025-jobs-responsive-768-dark.png",
+				"job": "metrics-snapshot",
+				"card": {
+					"width": 374,
+					"visibleInViewport": true
+				},
+				"cron": {
+					"value": "0 * * * *",
+					"disabled": false,
+					"boundedInCard": true
+				},
+				"enabled": {
+					"checked": true,
+					"boundedInCard": true
+				},
+				"saveSchedule": {
+					"disabled": true,
+					"boundedInCard": true
+				},
+				"allControlsWithinCard": true,
+				"documentWidth": 768,
+				"bodyOverflow": false,
+				"table": {
+					"viewportWidth": 332,
+					"contentWidth": 720,
+					"horizontalScroll": true
+				},
+				"screenshotInspected": true
+			},
+			{
+				"route": "jobs",
+				"theme": "dark",
+				"viewport": "1440x1000",
+				"screenshot": "../screens/codex-20261025-jobs-responsive-1440-dark.png",
+				"job": "metrics-snapshot",
+				"card": {
+					"width": 1046,
+					"visibleInViewport": true
+				},
+				"cron": {
+					"value": "0 * * * *",
+					"disabled": false,
+					"boundedInCard": true
+				},
+				"enabled": {
+					"checked": true,
+					"boundedInCard": true
+				},
+				"saveSchedule": {
+					"disabled": true,
+					"boundedInCard": true
+				},
+				"allControlsWithinCard": true,
+				"documentWidth": 1440,
+				"bodyOverflow": false,
+				"table": {
+					"viewportWidth": 1004,
+					"contentWidth": 1004,
+					"horizontalScroll": false
+				},
+				"screenshotInspected": true
+			}
+		],
+		"apiMethods": ["GET", "GET"],
+		"mutationRequests": [],
+		"manualRunClicked": false,
+		"scheduleChanged": false,
+		"oldLayoutCapturesRetainedAsDiagnostics": true
+	}
+}

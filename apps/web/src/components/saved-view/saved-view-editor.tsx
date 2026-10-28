@@ -1,27 +1,21 @@
-import {
-  Button,
-  Card,
-  CardContent,
-  Input,
-  Select,
-  SelectItem,
-  SelectPopup,
-  SelectTrigger,
-  SelectValue,
-} from "@taskdesk/ui";
+import { Button, Card, CardContent, Input } from "@taskdesk/ui";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
+import { PickerPopover } from "@/components/common/picker-popover";
 import { SavedViewAudienceFields } from "@/components/saved-view/saved-view-audience-fields";
 import type {
   SavedViewVisibility,
   ShareableViewTeam,
 } from "@/fetchers/saved-views";
+import { useCustomFields } from "@/hooks/queries/custom-field/use-custom-fields";
 import {
+  isWorkItemSearchSortField,
   WORK_ITEM_SEARCH_COLUMNS,
   WORK_ITEM_SEARCH_SORT_FIELDS,
   type WorkItemFilterMode,
   type WorkItemSearchColumn,
   type WorkItemSearchSortField,
+  type WorkItemSort,
   type WorkItemSortDirection,
 } from "@/lib/routes";
 
@@ -57,6 +51,7 @@ export function SavedViewEditor({
   currentVisibility,
   teams,
   query,
+  workspaceId,
 }: {
   name: string;
   onNameChange: (name: string) => void;
@@ -66,6 +61,7 @@ export function SavedViewEditor({
   onTeamChange: (teamId: string) => void;
   canShare: boolean;
   canManageSettings: boolean;
+  workspaceId?: string;
   currentVisibility?: SavedViewVisibility;
   teams: {
     data: ShareableViewTeam[] | undefined;
@@ -76,6 +72,7 @@ export function SavedViewEditor({
   query?: {
     sort: WorkItemSearchSortField;
     dir: WorkItemSortDirection;
+    sorts: WorkItemSort[];
     filter: string;
     filterMode: WorkItemFilterMode;
     columns: WorkItemSearchColumn[] | undefined;
@@ -83,12 +80,25 @@ export function SavedViewEditor({
       sort: WorkItemSearchSortField,
       dir: WorkItemSortDirection,
     ) => void;
+    onSortsChange: (sorts: WorkItemSort[]) => void;
     onFilterModeChange: (mode: WorkItemFilterMode) => void;
     onFilterApply: (filter: string) => void;
     onColumnsChange: (columns: WorkItemSearchColumn[]) => void;
   };
 }) {
   const { t } = useTranslation("savedViews");
+  const customFields = useCustomFields(workspaceId ?? "");
+  const selectedColumns = query?.columns ?? WORK_ITEM_SEARCH_COLUMNS;
+  const availableSortFields = [
+    ...WORK_ITEM_SEARCH_SORT_FIELDS.filter((field) =>
+      selectedColumns.includes(field),
+    ),
+    ...(customFields.data?.data ?? [])
+      .filter((field) =>
+        selectedColumns.some((column) => column === `cf.${field.key}`),
+      )
+      .map((field) => `cf.${field.key}` as WorkItemSearchSortField),
+  ];
   return (
     <Card>
       <CardContent className="grid gap-4 py-4">
@@ -110,52 +120,106 @@ export function SavedViewEditor({
         />
         {query ? (
           <>
-            <div className="flex flex-wrap gap-3">
-              <Select
-                value={query.sort}
-                items={WORK_ITEM_SEARCH_SORT_FIELDS.map((field) => ({
-                  value: field,
-                  label: t(`sortField.${field}`),
-                }))}
-                onValueChange={(value) =>
-                  value &&
-                  query.onSortChange(
-                    value as WorkItemSearchSortField,
-                    query.dir,
-                  )
-                }
+            {query.sorts.map((sort, index) => {
+              const fields = [sort.field, ...availableSortFields]
+                .filter(isWorkItemSearchSortField)
+                .filter(
+                  (field) =>
+                    !query.sorts.some(
+                      (entry, entryIndex) =>
+                        entryIndex !== index && entry.field === field,
+                    ),
+                );
+              const fieldLabel = (field: WorkItemSearchSortField) =>
+                field.startsWith("cf.")
+                  ? (customFields.data?.data.find(
+                      (candidate) => `cf.${candidate.key}` === field,
+                    )?.name ?? t("sort"))
+                  : t(`sortField.${field}`);
+              return (
+                <div
+                  className="flex flex-wrap items-center gap-3"
+                  key={sort.field}
+                >
+                  <PickerPopover
+                    value={sort.field}
+                    ariaLabel={t("sort")}
+                    options={fields.map((field) => ({
+                      value: field,
+                      label: fieldLabel(field),
+                    }))}
+                    onChange={(value) => {
+                      query.onSortsChange(
+                        query.sorts.map((entry, entryIndex) =>
+                          entryIndex === index
+                            ? {
+                                ...entry,
+                                field: value as WorkItemSearchSortField,
+                              }
+                            : entry,
+                        ),
+                      );
+                    }}
+                  />
+                  <PickerPopover
+                    value={sort.order}
+                    ariaLabel={t("directionLabel")}
+                    options={[
+                      { value: "asc", label: t("direction.asc") },
+                      { value: "desc", label: t("direction.desc") },
+                    ]}
+                    onChange={(value) => {
+                      query.onSortsChange(
+                        query.sorts.map((entry, entryIndex) =>
+                          entryIndex === index
+                            ? {
+                                ...entry,
+                                order: value as WorkItemSortDirection,
+                              }
+                            : entry,
+                        ),
+                      );
+                    }}
+                  />
+                  {query.sorts.length > 1 ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={t("removeSort", { priority: index + 1 })}
+                      onClick={() =>
+                        query.onSortsChange(
+                          query.sorts.filter(
+                            (_, entryIndex) => entryIndex !== index,
+                          ),
+                        )
+                      }
+                    >
+                      {t("common:actions.remove")}
+                    </Button>
+                  ) : null}
+                </div>
+              );
+            })}
+            {query.sorts.length < 5 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const available = availableSortFields.find(
+                    (field) =>
+                      !query.sorts.some((sort) => sort.field === field),
+                  );
+                  if (available)
+                    query.onSortsChange([
+                      ...query.sorts,
+                      { field: available, order: "asc" },
+                    ]);
+                }}
+                disabled={query.sorts.length >= availableSortFields.length}
               >
-                <SelectTrigger aria-label={t("sort")}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectPopup>
-                  {WORK_ITEM_SEARCH_SORT_FIELDS.map((field) => (
-                    <SelectItem key={field} value={field}>
-                      {t(`sortField.${field}`)}
-                    </SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-              <Select
-                value={query.dir}
-                items={[
-                  { value: "asc", label: t("direction.asc") },
-                  { value: "desc", label: t("direction.desc") },
-                ]}
-                onValueChange={(value) =>
-                  value &&
-                  query.onSortChange(query.sort, value as WorkItemSortDirection)
-                }
-              >
-                <SelectTrigger aria-label={t("directionLabel")}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectPopup>
-                  <SelectItem value="asc">{t("direction.asc")}</SelectItem>
-                  <SelectItem value="desc">{t("direction.desc")}</SelectItem>
-                </SelectPopup>
-              </Select>
-            </div>
+                {t("addSort")}
+              </Button>
+            ) : null}
             <Suspense fallback={null}>
               <WorkItemFilterEditor
                 filter={query.filter}
@@ -178,7 +242,10 @@ export function SavedViewEditor({
                       variant={pressed ? "default" : "outline"}
                       aria-pressed={pressed}
                       // A view always shows at least one column.
-                      disabled={pressed && selected.length === 1}
+                      disabled={
+                        (pressed && selected.length === 1) ||
+                        (!pressed && selected.length >= 100)
+                      }
                       onClick={() =>
                         query.onColumnsChange(
                           pressed
@@ -191,6 +258,39 @@ export function SavedViewEditor({
                     </Button>
                   );
                 })}
+                {(customFields.data?.data ?? [])
+                  .filter(
+                    (field) =>
+                      !field.deletedAt &&
+                      field.visibility.some((row) => row.visible),
+                  )
+                  .map((field) => {
+                    const column = `cf.${field.key}` as WorkItemSearchColumn;
+                    const selected =
+                      query.columns ?? DEFAULT_SAVED_VIEW_COLUMNS;
+                    const pressed = selected.includes(column);
+                    return (
+                      <Button
+                        key={column}
+                        type="button"
+                        variant={pressed ? "default" : "outline"}
+                        aria-pressed={pressed}
+                        disabled={
+                          (pressed && selected.length === 1) ||
+                          (!pressed && selected.length >= 100)
+                        }
+                        onClick={() =>
+                          query.onColumnsChange(
+                            pressed
+                              ? selected.filter((value) => value !== column)
+                              : [...selected, column],
+                          )
+                        }
+                      >
+                        {field.name}
+                      </Button>
+                    );
+                  })}
               </div>
             </fieldset>
           </>

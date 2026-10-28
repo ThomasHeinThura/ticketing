@@ -2,7 +2,7 @@ import { validateReparent } from "@taskdesk/domain";
 import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { workItemTable } from "../../database/schema";
+import { workItemTable, workItemTypeTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { isRaiseException } from "../../utils/is-raise-exception";
 import {
@@ -19,6 +19,7 @@ import { ancestorChain, descendantDepth } from "../hierarchy";
 import { WORK_ITEM_HIERARCHY_LOCK_NAMESPACE } from "../hierarchy-lock";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
+import { WorkItemVersionConflictError } from "./update-work-item";
 
 /**
  * `POST /api/work-items/{key}/parent` (`work_item:update`, required on both ends --
@@ -79,6 +80,7 @@ export async function setWorkItemParent(
   parentKey: string,
   actorId: string,
   actorType: ActivityActorType,
+  assertedVersion?: number,
 ) {
   // Read TWICE, deliberately -- the same shape `accept-invitation.ts`'s own doc comment
   // documents for its own advisory lock. This first read (outside any lock, outside the
@@ -128,6 +130,9 @@ export async function setWorkItemParent(
       // matching #481's own guard on the parent lookup just below.
       assertWorkItemStillLive(item);
       await assertProjectStillLive(tx, item.projectId);
+      if (assertedVersion !== undefined && item.version !== assertedVersion) {
+        throw new WorkItemVersionConflictError(assertedVersion, item.version);
+      }
 
       const [parent] = await tx
         .select()
@@ -163,6 +168,22 @@ export async function setWorkItemParent(
         throw new HTTPException(409, {
           message:
             "Could not set parent -- the work item's project changed concurrently; reload and retry",
+        });
+      }
+
+      // `RH-13`: a type marked `is_epic` is a hierarchy root -- it may have children but
+      // never a parent. Read inside the locked transaction (type row shared-locked, so a
+      // concurrent type edit cannot slip between this check and the write).
+      const [itemType] = await tx
+        .select({ isEpic: workItemTypeTable.isEpic })
+        .from(workItemTypeTable)
+        .where(eq(workItemTypeTable.id, item.typeId))
+        .for("share")
+        .limit(1);
+      if (itemType?.isEpic) {
+        throw new HTTPException(422, {
+          message:
+            "An epic is a hierarchy root and cannot have a parent work item (RH-13)",
         });
       }
 

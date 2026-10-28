@@ -3,9 +3,11 @@ import {
   validateScimAdminRequest,
 } from "@taskdesk/domain";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import type { Context } from "hono";
+import { setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import { auth } from "../auth";
 import db, { schema } from "../database";
 import {
@@ -24,15 +26,31 @@ import {
 } from "../identity/oidc-group-mapping-contract";
 import { loadEntraDiscovery } from "../identity/oidc-provider";
 import {
+  consumeOidcStepUpEvidence,
+  createOidcStepUpStart,
+  getOidcStepUpStatus,
+  oidcStepUpStateCookieName,
+  oidcStepUpStateCookieOptions,
+} from "../identity/oidc-step-up";
+import {
   getOidcGroupMappingById,
   getOidcMappingAdminConnection,
   validateOidcMappingRole,
 } from "../identity/repository";
+import { checkImpersonationTarget } from "../instance/impersonation/eligibility";
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { withEnlistedLocalFactorVerification } from "../pending-action/credential-invalidation";
+import {
+  isStepUpPendingDeletion,
+  pendingDeletionStepUpAccess,
+} from "../pending-action/deletion-targets";
+import { isHardPurgePendingAction as isHardPurgeAction } from "../pending-action/hard-purge-executor";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import { dbNowUtc } from "../utils/db-time";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { findWebhookWorkspace } from "../webhook/repository";
+import { getRoleWithHolderCount } from "../workspace/role.repository";
 import {
   type LocalFactorState,
   loadLocalFactorState,
@@ -55,6 +73,24 @@ import {
   appendPendingActionStepUpAudit,
   appendStepUpAudit,
 } from "./step-up-audit";
+import {
+  createExtChallenge,
+  type ExtInput,
+  type ExtOperation,
+  extAuthority,
+  extChallengeSchemas,
+  extProveSchemas,
+  extSsoProveSchemas,
+  isExtOperation,
+  issueExtToken,
+} from "./step-up-ext";
+import {
+  checkStepUpProofBudget,
+  consumeStepUpChallengeBudget,
+  reserveStepUpProofAttempt,
+  type StepUpBudgetDecision,
+  settleStepUpProofAttempt,
+} from "./step-up-limits";
 import {
   createIdentityConnectionChallenge,
   createInstanceAdminGrantChallenge,
@@ -80,6 +116,7 @@ import {
   STEP_UP_CHALLENGE_WINDOW_MINUTES,
   StepUpAttemptLimitError,
 } from "./step-up-service";
+import { isFreshSignedAuthTime } from "./step-up-sso";
 
 const versionSchema = z.number().int().positive().safe();
 const challengeResponse = z.object({
@@ -105,6 +142,171 @@ const suspendRequestSchema = z
       ctx.addIssue({ code: "custom", path: ["reason"], message: "too_long" });
     }
   });
+
+const ssoProofFields = {
+  challengeId: z.string(),
+  nonce: z.string().length(43),
+  method: z.literal("sso_prompt_login"),
+} as const;
+
+const ssoCoreProveSchemas = [
+  z
+    .object({
+      kind: z.literal("operation"),
+      operation: z.literal("metrics_token_rotate"),
+      version: versionSchema,
+      ...ssoProofFields,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("operation"),
+      operation: z.literal("mfa_reset"),
+      userId: z.string().min(1),
+      verificationNote: z.string().trim().min(12).max(1000),
+      ...ssoProofFields,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("operation"),
+      operation: z.literal("scim_admin_update"),
+      connectionId: z.string().min(1),
+      request: z.record(z.string(), z.unknown()),
+      ...ssoProofFields,
+    })
+    .strict(),
+  ...(["scim_token_rotate", "scim_token_revoke"] as const).map((operation) =>
+    z
+      .object({
+        kind: z.literal("operation"),
+        operation: z.literal(operation),
+        connectionId: z.string().min(1),
+        version: versionSchema,
+        ...ssoProofFields,
+      })
+      .strict(),
+  ),
+  z
+    .object({
+      kind: z.literal("operation"),
+      operation: z.literal(OIDC_GROUP_MAPPING_CREATE_OPERATION),
+      connectionId: z.string().min(1).max(128),
+      request: oidcGroupMappingCreateRequestSchema,
+      ...ssoProofFields,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("operation"),
+      operation: z.literal(OIDC_GROUP_MAPPING_UPDATE_OPERATION),
+      connectionId: z.string().min(1).max(128),
+      mappingId: z.string().min(1).max(128),
+      request: oidcGroupMappingUpdateRequestSchema,
+      ...ssoProofFields,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("operation"),
+      operation: z.literal(IDENTITY_CONNECTION_CREATE_OPERATION),
+      request: identityConnectionCreateRequestSchema,
+      ...ssoProofFields,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("operation"),
+      operation: z.literal(IDENTITY_CONNECTION_CONFIGURE_OPERATION),
+      connectionId: z.string().min(1).max(128),
+      request: identityConnectionConfigureRequestSchema,
+      ...ssoProofFields,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("operation"),
+      operation: z.literal("instance_admin_grant"),
+      targetUserId: z.string().min(1),
+      ...ssoProofFields,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("operation"),
+      operation: z.literal("instance_admin_suspend"),
+      targetUserId: z.string().min(1),
+      request: suspendRequestSchema,
+      ...ssoProofFields,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("pending_action"),
+      pendingActionId: z.string().min(1).max(64),
+      ...ssoProofFields,
+    })
+    .strict(),
+];
+
+const ssoStartRoute = createRoute({
+  method: "post",
+  operationId: "startSsoStepUp",
+  path: "/step-up/sso/start",
+  tags: ["Authentication"],
+  summary: "Start a session-bound SSO step-up",
+  middleware: [requireSessionOnly()] as const,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              challengeId: z.string().min(1),
+              nonce: z.string().length(43),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "SSO authorization URL",
+      z.object({ authorizationUrl: z.string().url() }),
+    ),
+    403: jsonResponse(
+      "SSO step-up unavailable",
+      z.object({ message: z.string() }),
+    ),
+  },
+});
+
+const ssoStatusRoute = createRoute({
+  method: "post",
+  operationId: "getSsoStepUpStatus",
+  path: "/step-up/sso/status",
+  tags: ["Authentication"],
+  summary: "Read the current session's SSO step-up status",
+  middleware: [requireSessionOnly()] as const,
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z.object({ challengeId: z.string().min(1) }).strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "SSO step-up status",
+      z.object({ status: z.enum(["pending", "verified", "failed"]) }),
+    ),
+  },
+});
 
 function requireScimAdminRequest(
   request: ScimAdminRequest | undefined,
@@ -255,6 +457,7 @@ const challengeRoute = createRoute({
                   pendingActionId: z.string().min(1).max(64),
                 })
                 .strict(),
+              ...extChallengeSchemas,
             ])
             .openapi({}, { unionPreferredType: "oneOf" }),
         },
@@ -587,6 +790,9 @@ const proveRoute = createRoute({
                 })
                 .strict(),
             ),
+            ...extProveSchemas,
+            ...extSsoProveSchemas,
+            ...ssoCoreProveSchemas,
           ]),
         },
       },
@@ -618,22 +824,70 @@ const routes = apiRouter()
     c.header("Cache-Control", "no-store");
     const actor = await requireCurrentAgentSession(c);
     const input = c.req.valid("json");
+    // PA-15 / P0R1-02: one budget per session, person and address across every pending
+    // action and operation, so cancelling and re-requesting cannot reset the allowance.
+    const challengeBudget = await consumeStepUpChallengeBudget({
+      personId: actor.factor.personId,
+      sessionId: actor.session.id,
+      clientIp: clientIpForContext(c),
+    });
+    if (!challengeBudget.allowed) {
+      c.header("Retry-After", String(challengeBudget.retryAfterSeconds));
+      return c.json(
+        {
+          message: "step_up_attempt_limit" as const,
+          limit: challengeBudget.limit,
+          windowMinutes: STEP_UP_CHALLENGE_WINDOW_MINUTES,
+        },
+        429,
+      );
+    }
     if (input.kind === "pending_action") {
       const [action] = await getPendingActionForStepUp(
         input.pendingActionId,
         actor.factor.personId,
         new Date(),
       );
+      const isBulk =
+        action !== undefined &&
+        isStepUpPendingDeletion({
+          action: action.action,
+          targetType: action.targetType,
+          routeKey: action.routeKey,
+          confirmation: action.confirmation,
+        });
+      const isHardPurge =
+        action !== undefined &&
+        isHardPurgeAction({
+          action: action.action,
+          targetType: action.targetType,
+          routeKey: action.routeKey,
+          confirmation: action.confirmation,
+        });
       if (
-        action?.action !== "delete" ||
-        action.targetType !== "user" ||
-        action.confirmation !== "typed_name_step_up" ||
-        action.routeKey !== "POST /api/instance/users/{id}/deactivate"
+        !isBulk &&
+        !isHardPurge &&
+        (action?.action !== "delete" ||
+          action.targetType !== "user" ||
+          action.confirmation !== "typed_name_step_up" ||
+          action.routeKey !== "POST /api/instance/users/{id}/deactivate")
       ) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(404, { message: "Pending action unavailable" });
       }
-      if (!(await isCurrentInstanceAdmin(c.get("userId")))) {
+      if (
+        isBulk
+          ? !(await pendingDeletionStepUpAccess(
+              db,
+              {
+                id: input.pendingActionId,
+                requesterPersonId: actor.factor.personId,
+                sessionId: actor.session.id,
+              },
+              { readOnly: true },
+            ))
+          : !(await isCurrentInstanceAdmin(c.get("userId")))
+      ) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(403, { message: "Forbidden" });
       }
@@ -671,6 +925,81 @@ const routes = apiRouter()
         actorId: c.get("userId"),
         personId: actor.factor.personId,
         pendingActionId: input.pendingActionId,
+        traceId: c.req.header("x-request-id"),
+      });
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json(
+        {
+          challengeId: challenge.id,
+          nonce: challenge.nonce,
+          expiresAt: challenge.expiresAt,
+        },
+        200,
+      );
+    }
+    if (isExtOperation((input as { operation?: unknown }).operation)) {
+      const ext = input as unknown as ExtInput;
+      if (!(await extAuthority(ext, c.get("userId"), db))) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, { message: "Forbidden" });
+      }
+      if (ext.operation === "impersonation_start") {
+        const refusal = await checkImpersonationTarget(
+          c.get("userId"),
+          ext.targetUserId,
+        );
+        if (refusal)
+          throw new HTTPException(refusal.status, {
+            message: refusal.message,
+          });
+      }
+      if (
+        ext.operation === "webhook_update_url" ||
+        ext.operation === "webhook_rotate_secret"
+      ) {
+        const row = await findWebhookWorkspace(ext.webhookId);
+        if (!row || row.workspaceId !== ext.workspaceId)
+          throw new HTTPException(404, { message: "Webhook not found" });
+      }
+      if (ext.operation === "workspace_role_update") {
+        const role = await getRoleWithHolderCount(
+          db,
+          ext.workspaceId,
+          ext.roleId,
+        );
+        if (!role) throw new HTTPException(404, { message: "Role not found" });
+      }
+      let challenge: Awaited<ReturnType<typeof createExtChallenge>>;
+      try {
+        challenge = await createExtChallenge(
+          { personId: actor.factor.personId, sessionId: actor.session.id },
+          ext,
+        );
+      } catch (error) {
+        if (error instanceof StepUpAttemptLimitError) {
+          await appendStepUpAudit(db, {
+            action: "auth.step_up_denied",
+            actorId: c.get("userId"),
+            personId: actor.factor.personId,
+            operation: ext.operation,
+            traceId: c.req.header("x-request-id"),
+          });
+          return c.json(
+            {
+              message: "step_up_attempt_limit" as const,
+              limit: STEP_UP_CHALLENGE_LIMIT,
+              windowMinutes: STEP_UP_CHALLENGE_WINDOW_MINUTES,
+            },
+            429,
+          );
+        }
+        throw error;
+      }
+      await appendStepUpAudit(db, {
+        action: "auth.step_up_issued",
+        actorId: c.get("userId"),
+        personId: actor.factor.personId,
+        operation: ext.operation,
         traceId: c.req.header("x-request-id"),
       });
       setShadowLegacyAuthorization(c, "allowed");
@@ -1165,6 +1494,8 @@ const routes = apiRouter()
         200,
       );
     }
+    // Every other operation was answered above; what remains is the metrics-token rotation.
+    const rotationVersion = (input as unknown as { version: number }).version;
     const [setting] = await db
       .select({
         version: schema.instanceSettingTable.observabilityConfigVersion,
@@ -1174,7 +1505,7 @@ const routes = apiRouter()
       .limit(1);
     if (!setting)
       throw new HTTPException(503, { message: "Step-up unavailable" });
-    if (setting.version !== input.version) {
+    if (setting.version !== rotationVersion) {
       await appendStepUpAudit(db, {
         action: "auth.step_up_denied",
         actorId: c.get("userId"),
@@ -1196,7 +1527,7 @@ const routes = apiRouter()
       challenge = await createRotationChallenge({
         personId: actor.factor.personId,
         sessionId: actor.session.id,
-        version: input.version,
+        version: rotationVersion,
       });
     } catch (error) {
       if (error instanceof StepUpAttemptLimitError) {
@@ -1228,17 +1559,101 @@ const routes = apiRouter()
       200,
     );
   })
-  .openapi(proveRoute, async (c) => {
+  .openapi(ssoStartRoute, async (c) => {
     c.header("Cache-Control", "no-store");
     const actor = await requireCurrentAgentSession(c);
-    if (!(await isCurrentInstanceAdmin(c.get("userId")))) {
+    if (actor.factor.enabled || actor.factor.required) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "step_up_unavailable" });
     }
     const input = c.req.valid("json");
-    const operationInput = input as Extract<
-      typeof input,
-      { kind: "operation" }
+    const start = await createOidcStepUpStart({
+      challengeId: input.challengeId,
+      nonce: input.nonce,
+      sessionId: actor.session.id,
+      userId: c.get("userId"),
+      personId: actor.factor.personId,
+    });
+    if (!start) {
+      setShadowLegacyAuthorization(c, "denied");
+      throw new HTTPException(403, { message: "step_up_unavailable" });
+    }
+    setCookie(
+      c,
+      oidcStepUpStateCookieName(start.secure),
+      start.state,
+      oidcStepUpStateCookieOptions(start.secure),
+    );
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json({ authorizationUrl: start.authorizationUrl }, 200);
+  })
+  .openapi(ssoStatusRoute, async (c) => {
+    c.header("Cache-Control", "no-store");
+    const actor = await requireCurrentAgentSession(c);
+    const input = c.req.valid("json");
+    const status = await getOidcStepUpStatus({
+      challengeId: input.challengeId,
+      sessionId: actor.session.id,
+      userId: c.get("userId"),
+      personId: actor.factor.personId,
+    });
+    setShadowLegacyAuthorization(c, status === "failed" ? "denied" : "allowed");
+    return c.json({ status }, 200);
+  })
+  .openapi(proveRoute, async (c) => {
+    c.header("Cache-Control", "no-store");
+    const actor = await requireCurrentAgentSession(c);
+    const input = c.req.valid("json");
+    const budgetSubject = {
+      personId: actor.factor.personId,
+      sessionId: actor.session.id,
+      clientIp: clientIpForContext(c),
+    };
+    // PA-15 / P0R1-02: failed credential proofs are budgeted per session, person and
+    // address across every challenge, so a fresh challenge never resets the budget.
+    const proofBudget = await checkStepUpProofBudget(budgetSubject);
+    if (!proofBudget.allowed) {
+      c.header("Retry-After", String(proofBudget.retryAfterSeconds));
+      throw new HTTPException(429, { message: "step_up_attempt_limit" });
+    }
+    const isBulkPendingAction =
+      input.kind === "pending_action" &&
+      (await pendingDeletionStepUpAccess(
+        db,
+        {
+          id: input.pendingActionId,
+          requesterPersonId: actor.factor.personId,
+          sessionId: actor.session.id,
+        },
+        { readOnly: true },
+      ));
+    const [stepUpAction] =
+      input.kind === "pending_action"
+        ? await getPendingActionForStepUp(
+            input.pendingActionId,
+            actor.factor.personId,
+            new Date(),
+          )
+        : [];
+    const isHardPurge =
+      stepUpAction !== undefined && isHardPurgeAction(stepUpAction);
+    const ext =
+      input.kind === "operation" &&
+      isExtOperation((input as { operation?: unknown }).operation)
+        ? (input as unknown as ExtInput)
+        : null;
+    if (
+      !isBulkPendingAction &&
+      !(ext
+        ? await extAuthority(ext, c.get("userId"), db)
+        : await isCurrentInstanceAdmin(c.get("userId")))
+    ) {
+      setShadowLegacyAuthorization(c, "denied");
+      throw new HTTPException(403, { message: "step_up_unavailable" });
+    }
+    const operationInput = input as Exclude<
+      Extract<typeof input, { kind: "operation" }>,
+      { operation: ExtOperation }
     >;
     const connectionInput = operationInput as typeof operationInput & {
       request:
@@ -1402,11 +1817,11 @@ const routes = apiRouter()
         );
     }
     let authenticatedPersonId = actor.factor.personId;
-    const verifyAuthentication = async (
+    const verifyCredential = async (
       executor: StepUpExecutor,
     ): Promise<VerifiedStepUpAuthentication | null> => {
       const proofInput = input as {
-        method: "password" | "totp" | "backup_code";
+        method: "password" | "totp" | "backup_code" | "sso_prompt_login";
         password?: string;
         code?: string;
       };
@@ -1415,6 +1830,171 @@ const routes = apiRouter()
         executor,
       );
       authenticatedPersonId = currentFactor.personId;
+      if (proofInput.method === "sso_prompt_login") {
+        if (
+          currentFactor.required ||
+          currentFactor.enabled ||
+          currentFactor.personId !== actor.factor.personId
+        )
+          return null;
+        const evidence = await consumeOidcStepUpEvidence({
+          challengeId: input.challengeId,
+          sessionId: actor.session.id,
+          userId: c.get("userId"),
+          personId: actor.factor.personId,
+          executor,
+        });
+        if (!evidence) return null;
+        return {
+          authMethod: "sso_prompt_login" as const,
+          authenticatedAt: evidence.authTime,
+          revalidate: async (finalExecutor: StepUpExecutor) => {
+            const factor = await loadLocalFactorState(
+              c.get("userId"),
+              finalExecutor,
+            );
+            const [challenge] = await finalExecutor
+              .select({
+                createdAt: schema.stepUpConfirmationTable.createdAt,
+                expiresAt: schema.stepUpConfirmationTable.challengeExpiresAt,
+              })
+              .from(schema.stepUpConfirmationTable)
+              .where(
+                and(
+                  eq(schema.stepUpConfirmationTable.id, input.challengeId),
+                  eq(
+                    schema.stepUpConfirmationTable.personId,
+                    actor.factor.personId,
+                  ),
+                  eq(
+                    schema.stepUpConfirmationTable.sessionId,
+                    actor.session.id,
+                  ),
+                  eq(schema.stepUpConfirmationTable.state, "challenge"),
+                  gt(
+                    schema.stepUpConfirmationTable.challengeExpiresAt,
+                    dbNowUtc(),
+                  ),
+                ),
+              )
+              .for("update")
+              .limit(1);
+            const [identity] = await finalExecutor
+              .select({
+                sessionId: schema.sessionTable.id,
+                userId: schema.sessionTable.userId,
+                connectionId: schema.sessionTable.identityConnectionId,
+                personId: schema.personTable.id,
+                subject: schema.externalIdentityTable.subject,
+                issuer: schema.identityConnectionTable.issuer,
+                clientId: schema.identityConnectionTable.clientId,
+                configVersion: schema.identityConnectionTable.configVersion,
+                mfaUpstreamMode: schema.identityConnectionTable.mfaUpstreamMode,
+              })
+              .from(schema.sessionTable)
+              .innerJoin(
+                schema.personTable,
+                and(
+                  eq(schema.personTable.userId, schema.sessionTable.userId),
+                  eq(schema.personTable.id, actor.factor.personId),
+                  eq(schema.personTable.active, true),
+                  eq(schema.personTable.side, "staff"),
+                ),
+              )
+              .innerJoin(
+                schema.identityConnectionTable,
+                and(
+                  eq(
+                    schema.identityConnectionTable.id,
+                    schema.sessionTable.identityConnectionId,
+                  ),
+                  eq(schema.identityConnectionTable.enabled, true),
+                  eq(schema.identityConnectionTable.portalScope, "agent"),
+                ),
+              )
+              .innerJoin(
+                schema.externalIdentityTable,
+                and(
+                  eq(
+                    schema.externalIdentityTable.identityConnectionId,
+                    schema.identityConnectionTable.id,
+                  ),
+                  eq(
+                    schema.externalIdentityTable.userId,
+                    schema.sessionTable.userId,
+                  ),
+                  eq(
+                    schema.externalIdentityTable.personId,
+                    schema.personTable.id,
+                  ),
+                  eq(schema.externalIdentityTable.issuer, evidence.issuer),
+                  eq(schema.externalIdentityTable.subject, evidence.subject),
+                  eq(schema.externalIdentityTable.active, true),
+                ),
+              )
+              .where(
+                and(
+                  eq(schema.sessionTable.id, actor.session.id),
+                  eq(schema.sessionTable.userId, c.get("userId")),
+                  eq(schema.sessionTable.portal, "agent"),
+                  gt(schema.sessionTable.expiresAt, dbNowUtc()),
+                  isNull(schema.sessionTable.impersonatedBy),
+                  eq(schema.identityConnectionTable.id, evidence.connectionId),
+                  eq(schema.identityConnectionTable.issuer, evidence.issuer),
+                  eq(
+                    schema.identityConnectionTable.configVersion,
+                    evidence.configVersion,
+                  ),
+                  eq(schema.identityConnectionTable.mfaUpstreamMode, "off"),
+                ),
+              )
+              .for("update")
+              .limit(1);
+            const authorityValid =
+              isBulkPendingAction && input.kind === "pending_action"
+                ? await pendingDeletionStepUpAccess(finalExecutor, {
+                    id: input.pendingActionId,
+                    requesterPersonId: actor.factor.personId,
+                    sessionId: actor.session.id,
+                  })
+                : ext
+                  ? await extAuthority(ext, c.get("userId"), finalExecutor)
+                  : await isCurrentInstanceAdminForStepUp(
+                      c.get("userId"),
+                      finalExecutor,
+                    );
+            const bound = Boolean(
+              challenge &&
+                challenge.expiresAt > evidence.callbackReceivedAt &&
+                identity?.sessionId === actor.session.id &&
+                identity.userId === c.get("userId") &&
+                identity.connectionId === evidence.connectionId &&
+                identity.personId === actor.factor.personId &&
+                identity.subject === evidence.subject &&
+                identity.issuer === evidence.issuer &&
+                Boolean(identity.clientId) &&
+                identity.configVersion === evidence.configVersion &&
+                identity.mfaUpstreamMode === "off" &&
+                factor.personId === actor.factor.personId &&
+                !factor.required &&
+                !factor.enabled &&
+                (await hasLiveStepUpSession(
+                  finalExecutor,
+                  actor.session.id,
+                  c.get("userId"),
+                )) &&
+                authorityValid &&
+                isFreshSignedAuthTime({
+                  authTime: evidence.authTime,
+                  challengeCreatedAt: challenge.createdAt,
+                  callbackReceivedAt: evidence.callbackReceivedAt,
+                }),
+            );
+            if (!bound) return false;
+            return true;
+          },
+        };
+      }
       if (proofInput.method === "password") {
         if (currentFactor.required || currentFactor.enabled) return null;
         const [credential] = await getPasswordCredential(
@@ -1449,10 +2029,18 @@ const routes = apiRouter()
                 actor.session.id,
                 c.get("userId"),
               )) &&
-              (await isCurrentInstanceAdminForStepUp(
-                c.get("userId"),
-                finalExecutor,
-              ))
+              (isBulkPendingAction && input.kind === "pending_action"
+                ? await pendingDeletionStepUpAccess(finalExecutor, {
+                    id: input.pendingActionId,
+                    requesterPersonId: actor.factor.personId,
+                    sessionId: actor.session.id,
+                  })
+                : ext
+                  ? await extAuthority(ext, c.get("userId"), finalExecutor)
+                  : await isCurrentInstanceAdminForStepUp(
+                      c.get("userId"),
+                      finalExecutor,
+                    ))
             );
           },
         };
@@ -1497,16 +2085,51 @@ const routes = apiRouter()
                 actor.session.id,
                 c.get("userId"),
               )) &&
-              (await isCurrentInstanceAdminForStepUp(
-                c.get("userId"),
-                finalExecutor,
-              ))
+              (isBulkPendingAction && input.kind === "pending_action"
+                ? await pendingDeletionStepUpAccess(finalExecutor, {
+                    id: input.pendingActionId,
+                    requesterPersonId: actor.factor.personId,
+                    sessionId: actor.session.id,
+                  })
+                : ext
+                  ? await extAuthority(ext, c.get("userId"), finalExecutor)
+                  : await isCurrentInstanceAdminForStepUp(
+                      c.get("userId"),
+                      finalExecutor,
+                    ))
             );
           },
         };
       } catch {
         return null;
       }
+    };
+    let proofBudgetRefusal: StepUpBudgetDecision | null = null;
+    const verifyAuthentication = async (
+      executor: StepUpExecutor,
+    ): Promise<VerifiedStepUpAuthentication | null> => {
+      // P0R2-01: the failed-proof slot is reserved atomically before the credential is
+      // checked, so concurrent proofs cannot all slip past the early check above. The counters
+      // live outside the verification transaction on purpose: a failed proof stays counted
+      // even though the lifecycle transaction rolls back.
+      const reservation = await reserveStepUpProofAttempt(budgetSubject);
+      if (!reservation.allowed) {
+        proofBudgetRefusal = reservation;
+        return null;
+      }
+      const verified = await verifyCredential(executor);
+      await settleStepUpProofAttempt(
+        budgetSubject,
+        reservation,
+        verified !== null,
+      );
+      return verified;
+    };
+    const refuseSpentProofBudget = () => {
+      if (!proofBudgetRefusal) return;
+      c.header("Retry-After", String(proofBudgetRefusal.retryAfterSeconds));
+      setShadowLegacyAuthorization(c, "denied");
+      throw new HTTPException(429, { message: "step_up_attempt_limit" });
     };
     if (input.kind === "pending_action") {
       const [action] = await getPendingActionForStepUp(
@@ -1515,10 +2138,13 @@ const routes = apiRouter()
         new Date(),
       );
       if (
-        action?.action !== "delete" ||
-        action.targetType !== "user" ||
-        action.confirmation !== "typed_name_step_up" ||
-        action.routeKey !== "POST /api/instance/users/{id}/deactivate"
+        !action ||
+        (!isBulkPendingAction &&
+          !isHardPurge &&
+          (action.action !== "delete" ||
+            action.targetType !== "user" ||
+            action.confirmation !== "typed_name_step_up" ||
+            action.routeKey !== "POST /api/instance/users/{id}/deactivate"))
       ) {
         setShadowLegacyAuthorization(c, "denied");
         throw new HTTPException(404, { message: "Pending action unavailable" });
@@ -1532,15 +2158,16 @@ const routes = apiRouter()
           userId: c.get("userId"),
           pendingActionId: input.pendingActionId,
           expectedPendingAction: {
-            action: "delete",
-            targetType: "user",
-            confirmation: "typed_name_step_up",
-            routeKey: "POST /api/instance/users/{id}/deactivate",
+            action: action.action,
+            targetType: action.targetType,
+            confirmation: action.confirmation,
+            routeKey: action.routeKey,
           },
         },
         verifyAuthentication,
       );
       if (!token) {
+        refuseSpentProofBudget();
         await appendPendingActionStepUpAudit(db, {
           action: "auth.step_up_denied",
           actorId: c.get("userId"),
@@ -1561,58 +2188,55 @@ const routes = apiRouter()
       setShadowLegacyAuthorization(c, "allowed");
       return c.json({ token: token.token, expiresAt: token.expiresAt }, 200);
     }
-    const token = oidcMappingBinding
-      ? await issueOidcGroupMappingToken(
+    const token = ext
+      ? await issueExtToken(
           {
             id: input.challengeId,
             nonce: input.nonce,
             personId: actor.factor.personId,
             sessionId: actor.session.id,
             userId: c.get("userId"),
-            ...oidcMappingBinding,
           },
+          ext,
           verifyAuthentication,
         )
-      : operationInput.operation === IDENTITY_CONNECTION_CREATE_OPERATION ||
-          operationInput.operation === IDENTITY_CONNECTION_CONFIGURE_OPERATION
-        ? await issueIdentityConnectionToken(
+      : oidcMappingBinding
+        ? await issueOidcGroupMappingToken(
             {
               id: input.challengeId,
               nonce: input.nonce,
               personId: actor.factor.personId,
               sessionId: actor.session.id,
               userId: c.get("userId"),
-              connectionId:
-                operationInput.operation ===
-                IDENTITY_CONNECTION_CONFIGURE_OPERATION
-                  ? (operationInput.connectionId as string)
-                  : undefined,
-              request: connectionInput.request as unknown as Record<
-                string,
-                unknown
-              >,
-              operation: operationInput.operation,
+              ...oidcMappingBinding,
             },
             verifyAuthentication,
           )
-        : operationInput.operation === "scim_token_rotate" ||
-            operationInput.operation === "scim_token_revoke"
-          ? await issueScimTokenToken(
+        : operationInput.operation === IDENTITY_CONNECTION_CREATE_OPERATION ||
+            operationInput.operation === IDENTITY_CONNECTION_CONFIGURE_OPERATION
+          ? await issueIdentityConnectionToken(
               {
                 id: input.challengeId,
                 nonce: input.nonce,
                 personId: actor.factor.personId,
                 sessionId: actor.session.id,
                 userId: c.get("userId"),
-                connectionId: operationInput.connectionId,
-                version:
-                  "version" in operationInput ? operationInput.version : 1,
+                connectionId:
+                  operationInput.operation ===
+                  IDENTITY_CONNECTION_CONFIGURE_OPERATION
+                    ? (operationInput.connectionId as string)
+                    : undefined,
+                request: connectionInput.request as unknown as Record<
+                  string,
+                  unknown
+                >,
                 operation: operationInput.operation,
               },
               verifyAuthentication,
             )
-          : operationInput.operation === "scim_admin_update"
-            ? await issueScimAdminToken(
+          : operationInput.operation === "scim_token_rotate" ||
+              operationInput.operation === "scim_token_revoke"
+            ? await issueScimTokenToken(
                 {
                   id: input.challengeId,
                   nonce: input.nonce,
@@ -1620,25 +2244,27 @@ const routes = apiRouter()
                   sessionId: actor.session.id,
                   userId: c.get("userId"),
                   connectionId: operationInput.connectionId,
-                  request: requireScimAdminRequest(scimAdminRequest),
+                  version:
+                    "version" in operationInput ? operationInput.version : 1,
+                  operation: operationInput.operation,
                 },
                 verifyAuthentication,
               )
-            : operationInput.operation === "instance_admin_suspend"
-              ? await issueInstanceAdminSuspendToken(
+            : operationInput.operation === "scim_admin_update"
+              ? await issueScimAdminToken(
                   {
                     id: input.challengeId,
                     nonce: input.nonce,
                     personId: actor.factor.personId,
                     sessionId: actor.session.id,
                     userId: c.get("userId"),
-                    targetUserId: operationInput.targetUserId,
-                    request: operationInput.request,
+                    connectionId: operationInput.connectionId,
+                    request: requireScimAdminRequest(scimAdminRequest),
                   },
                   verifyAuthentication,
                 )
-              : operationInput.operation === "instance_admin_grant"
-                ? await issueInstanceAdminGrantToken(
+              : operationInput.operation === "instance_admin_suspend"
+                ? await issueInstanceAdminSuspendToken(
                     {
                       id: input.challengeId,
                       nonce: input.nonce,
@@ -1646,37 +2272,51 @@ const routes = apiRouter()
                       sessionId: actor.session.id,
                       userId: c.get("userId"),
                       targetUserId: operationInput.targetUserId,
+                      request: operationInput.request,
                     },
                     verifyAuthentication,
                   )
-                : operationInput.operation === "mfa_reset"
-                  ? await issueMfaResetToken(
+                : operationInput.operation === "instance_admin_grant"
+                  ? await issueInstanceAdminGrantToken(
                       {
                         id: input.challengeId,
                         nonce: input.nonce,
                         personId: actor.factor.personId,
                         sessionId: actor.session.id,
                         userId: c.get("userId"),
-                        targetUserId: operationInput.userId,
-                        verificationNote: operationInput.verificationNote,
+                        targetUserId: operationInput.targetUserId,
                       },
                       verifyAuthentication,
                     )
-                  : await issueRotationToken(
-                      {
-                        id: input.challengeId,
-                        nonce: input.nonce,
-                        personId: actor.factor.personId,
-                        sessionId: actor.session.id,
-                        userId: c.get("userId"),
-                        version:
-                          "version" in operationInput
-                            ? operationInput.version
-                            : 1,
-                      },
-                      verifyAuthentication,
-                    );
+                  : operationInput.operation === "mfa_reset"
+                    ? await issueMfaResetToken(
+                        {
+                          id: input.challengeId,
+                          nonce: input.nonce,
+                          personId: actor.factor.personId,
+                          sessionId: actor.session.id,
+                          userId: c.get("userId"),
+                          targetUserId: operationInput.userId,
+                          verificationNote: operationInput.verificationNote,
+                        },
+                        verifyAuthentication,
+                      )
+                    : await issueRotationToken(
+                        {
+                          id: input.challengeId,
+                          nonce: input.nonce,
+                          personId: actor.factor.personId,
+                          sessionId: actor.session.id,
+                          userId: c.get("userId"),
+                          version:
+                            "version" in operationInput
+                              ? operationInput.version
+                              : 1,
+                        },
+                        verifyAuthentication,
+                      );
     if (!token) {
+      refuseSpentProofBudget();
       await appendStepUpAudit(db, {
         action: "auth.step_up_denied",
         actorId: c.get("userId"),

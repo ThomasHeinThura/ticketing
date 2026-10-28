@@ -57,7 +57,7 @@ describe("i18n group mode on the work list", () => {
 
   it("paints with the first-paint namespaces and defers every other one until after first paint", async () => {
     const { i18n } = await importInGroupMode();
-    await flush();
+    await vi.waitFor(() => expect(i18n.hasLoadedNamespace("tasks")).toBe(true));
 
     expect(i18n.t("workItems:list.heading")).not.toBe("workItems:list.heading");
     expect(i18n.t("navigation:page.projectsTitle")).not.toBe(
@@ -65,7 +65,7 @@ describe("i18n group mode on the work list", () => {
     );
     expect(rest.requests).toBe(0);
     expect(i18n.hasLoadedNamespace("settings")).toBe(false);
-    expect(i18n.hasLoadedNamespace("tasks")).toBe(false);
+    expect(i18n.hasLoadedNamespace("tasks")).toBe(true);
 
     afterPaint.release();
     await vi.waitFor(() => expect(rest.requests).toBeGreaterThan(0));
@@ -80,6 +80,20 @@ describe("i18n group mode on the work list", () => {
     const { i18n, whenAllNamespacesLoaded } = await importInGroupMode();
     await whenAllNamespacesLoaded();
     expect(i18n.hasLoadedNamespace("settings")).toBe(true);
+  });
+
+  it("whenAllNamespacesLoaded also loads every namespace into scoped terminology instances", async () => {
+    const { createScopedI18n, whenAllNamespacesLoaded } =
+      await importInGroupMode();
+    const before = await createScopedI18n("en-US");
+    expect(before.hasLoadedNamespace("settings")).toBe(false);
+    await whenAllNamespacesLoaded();
+    expect(before.hasLoadedNamespace("settings")).toBe(true);
+    expect(before.t("settings:workspaceGeneral.title")).not.toBe(
+      "settings:workspaceGeneral.title",
+    );
+    const after = await createScopedI18n("en-US");
+    expect(after.hasLoadedNamespace("settings")).toBe(true);
   });
 
   it("retries once, then falls back to the full catalog, never leaving keys unresolved", async () => {

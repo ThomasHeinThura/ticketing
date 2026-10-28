@@ -1,44 +1,30 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
+import { HttpError } from "@/lib/http-error";
 import type {
   WorkItemSearchColumn,
+  WorkItemSort,
   WorkItemSortDirection,
   WorkItemSortField,
 } from "@/lib/routes";
+import {
+  fetchWorkItemsListPage,
+  usesWorkItemSearch,
+  workItemsListQueryKey,
+} from "./work-items-list-query";
 
-/**
- * `sort`/`dir` are part of the query key (#310): the server now sorts server-side, so
- * changing either must refetch rather than just re-render a client-side sort of
- * already-cached data.
- *
- * `placeholderData` keeps the PREVIOUS SORT's rows on screen while a new sort loads,
- * for the SAME project only -- without it, changing `sort`/`dir` changes the query key
- * to one React Query has never fetched, so it would fall back to `isLoading` (no data
- * at all) for the round trip and the screen would flash to the loading-skeleton state
- * on every sort click, a layout shift (G13) this list never had before #310 (the old
- * client-side sort was instant, same data, no refetch).
- *
- * It must NOT reuse data across a PROJECT switch. A bare `placeholderData:
- * keepPreviousData` (the first version of this hook) reuses the previous result for
- * ANY key change, `projectId` included -- an independent review reproduced this live:
- * navigating from project A to project B left `isLoading: false` and `data` still
- * holding A's rows (`isPlaceholderData: true`) until B's fetch resolved, and
- * `work.tsx` rendered them under B's page with no guard against it. The function form
- * below only returns the previous data when `previousQuery`'s own query key names the
- * SAME `projectId` this call is for (`previousQuery.queryKey[1]`, matching this hook's
- * own `queryKey` shape one line down) -- a project switch's `previousQuery` names a
- * DIFFERENT project, so this returns `undefined`, and `useQuery` falls back to its
- * normal `isLoading` state exactly as if no placeholder were configured at all. Signature
- * per the installed `@tanstack/query-core` (5.101.4): `(previousData, previousQuery) =>
- * TData | undefined`.
- *
- * A non-empty `filter` (the structured filter text from the URL, `SV-11`) switches the read
- * to `POST /api/work-items/search`, scoped to this project and the active workspace; without
- * one the list route is used exactly as before. The filter and the chosen `columns` are part
- * of the query key after the project, sort and direction, so every `["work-items",
- * projectId]` invalidation (realtime, mutations) still reaches both reads.
- */
+/** The structured-search fetcher, loaded only when a list needs it. */
+async function loadSearchWorkItems() {
+  const { default: searchWorkItems } = await import(
+    "@/fetchers/work-item/search-work-items"
+  );
+  return searchWorkItems;
+}
+
+/** Canonical list and structured search retain independent cursor caches beneath the
+ * project invalidation prefix. Previous ordering is a same-project placeholder only;
+ * it must never become a writable rank ordering or appear under a different project. */
 function useGetWorkItems({
   projectId,
   projectSlug,
@@ -47,6 +33,7 @@ function useGetWorkItems({
   columns,
   sort,
   dir,
+  sorts,
   realtimeStatus = "connecting",
   enabled = true,
 }: {
@@ -59,57 +46,75 @@ function useGetWorkItems({
   columns?: WorkItemSearchColumn[];
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
+  sorts?: WorkItemSort[];
   /** Stay on the conservative foreground polling fallback until list realtime is ready. */
   realtimeStatus?: WorkItemRealtimeStatus;
   /** False while another layout (the board) owns the fetch for this project. */
   enabled?: boolean;
 }) {
+  const queryClient = useQueryClient();
   const structuredFilter = filter?.trim() ? filter : undefined;
+  const effectiveSorts = sorts?.length ? sorts : [{ field: sort, order: dir }];
+  const useSearch = usesWorkItemSearch({ filter, columns, sort, dir, sorts });
   const readEnabled = !!projectId && enabled;
   const refetchInterval = realtimeStatus === "available" ? false : 30_000;
-  const keepSameProject = (
-    previousData: WorkItemsResult | undefined,
-    previousQuery: { queryKey: readonly unknown[] } | undefined,
-  ) => (previousQuery?.queryKey[1] === projectId ? previousData : undefined);
-
-  const listQuery = useQuery({
-    queryKey: ["work-items", projectId, sort, dir],
-    queryFn: async () => {
-      const { default: getWorkItems } = await import(
-        "@/fetchers/work-item/get-work-items"
-      );
-      return getWorkItems(projectId as string, sort, dir);
+  const listQueryKey = workItemsListQueryKey(projectId, sort, dir);
+  const searchQueryKey = [
+    "work-items",
+    projectId,
+    sort,
+    dir,
+    effectiveSorts,
+    "search",
+    structuredFilter ?? "",
+    workspaceId ?? "",
+    columns ?? null,
+  ] as const;
+  const listQuery = useInfiniteQuery({
+    queryKey: listQueryKey,
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      fetchWorkItemsListPage(projectId as string, sort, dir, pageParam),
+    getNextPageParam: (last, _pages, _lastParam, pageParams) =>
+      last.hasMore && last.nextCursor && !pageParams.includes(last.nextCursor)
+        ? last.nextCursor
+        : undefined,
+    select: (data): WorkItemsResult => {
+      const seen = new Set<string>();
+      const last = data.pages.at(-1);
+      return {
+        items: data.pages
+          .flatMap((page) => page.items)
+          .filter((item) => {
+            if (seen.has(item.id)) return false;
+            seen.add(item.id);
+            return true;
+          }),
+        hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
+        hasMore: last?.hasMore ?? false,
+      };
     },
-    enabled: readEnabled && !structuredFilter,
+    enabled: readEnabled && !useSearch,
     refetchInterval,
     refetchIntervalInBackground: false,
-    placeholderData: keepSameProject,
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === projectId ? previousData : undefined,
   });
 
   // A structured filter reads pages of `POST /api/work-items/search` and follows the cursor
   // on demand, so a filter matching more than one page is never silently cut off.
   const searchQuery = useInfiniteQuery({
-    queryKey: [
-      "work-items",
-      projectId,
-      sort,
-      dir,
-      "search",
-      structuredFilter ?? "",
-      workspaceId ?? "",
-      columns ?? null,
-    ],
+    queryKey: searchQueryKey,
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
-      const { default: searchWorkItems } = await import(
-        "@/fetchers/work-item/search-work-items"
-      );
+      const searchWorkItems = await loadSearchWorkItems();
       return searchWorkItems({
         workspaceId: workspaceId as string,
         projectSlug: projectSlug as string,
-        filter: structuredFilter as string,
+        filter: structuredFilter ?? "",
         sort,
         dir,
+        sorts: effectiveSorts,
         columns,
         cursor: pageParam,
       });
@@ -118,28 +123,59 @@ function useGetWorkItems({
       last.hasMore ? (last.nextCursor ?? undefined) : undefined,
     select: (data): WorkItemsResult => {
       const last = data.pages.at(-1);
+      const customFieldColumns = data.pages.find(
+        (page) => page.customFieldColumns,
+      )?.customFieldColumns;
+      const people = new Map(
+        data.pages
+          .flatMap((page) => page.customFieldPeople ?? [])
+          .map((person) => [`${person.projectId}\0${person.personId}`, person]),
+      );
       return {
         items: data.pages.flatMap((page) => page.items),
         hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
         hasMore: last?.hasMore ?? false,
+        ...(customFieldColumns ? { customFieldColumns } : {}),
+        ...(people.size > 0 ? { customFieldPeople: [...people.values()] } : {}),
       };
     },
-    enabled:
-      readEnabled && !!structuredFilter && !!workspaceId && !!projectSlug,
+    enabled: readEnabled && useSearch && !!workspaceId && !!projectSlug,
     refetchInterval,
     refetchIntervalInBackground: false,
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === projectId ? previousData : undefined,
   });
 
-  const active = structuredFilter ? searchQuery : listQuery;
+  const active = useSearch ? searchQuery : listQuery;
+  const accessDenied =
+    active.error instanceof HttpError &&
+    [401, 403, 404].includes(active.error.status);
+  const isCursorChanged =
+    active.error instanceof HttpError &&
+    active.error.status === 409 &&
+    active.error.message === "cursor_changed";
   return {
     ...active,
-    hasNextPage: structuredFilter ? searchQuery.hasNextPage : false,
-    isFetchingNextPage: structuredFilter
-      ? searchQuery.isFetchingNextPage
-      : false,
-    fetchNextPage: searchQuery.fetchNextPage,
+    // React Query deliberately retains cached pages after a failed refresh. A fresh
+    // authorization denial must hide them; a recoverable paging failure must not.
+    data: accessDenied ? undefined : active.data,
+    isError: active.isError && (accessDenied || !active.data),
+    isLoadMoreError:
+      !accessDenied &&
+      (active.isFetchNextPageError ||
+        (!active.isPlaceholderData &&
+          Boolean(active.data?.hasMore) &&
+          !active.hasNextPage)),
+    isCursorChanged,
+    restartFromFirstPage: () =>
+      queryClient.resetQueries({
+        queryKey: useSearch ? searchQueryKey : listQueryKey,
+        exact: true,
+      }),
+    hasNextPage:
+      !accessDenied && !active.isPlaceholderData && active.hasNextPage,
+    isFetchingNextPage: active.isFetchingNextPage,
+    fetchNextPage: active.fetchNextPage,
     realtimeStatus,
     isRealtimeUnavailable: realtimeStatus === "unavailable",
   };

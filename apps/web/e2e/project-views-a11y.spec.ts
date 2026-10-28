@@ -63,6 +63,19 @@ async function mountProjectAdminApp(page: Page) {
   await page.route("**/api/invitation/pending", (route) => json(route, []));
   await page.route("**/api/notification**", (route) => json(route, []));
   await page.route("**/api/workflow-rule/**", (route) => json(route, []));
+  // P4R1-M2: Calendar and Gantt render only while feature.calendar /
+  // feature.timeline resolve on (GET /api/features/resolved?project=); an
+  // unanswered read fails closed to the feature-off state.
+  await page.route("**/api/features/resolved**", (route) =>
+    json(route, {
+      features: ["feature.calendar", "feature.timeline"].map((key) => ({
+        key,
+        enabled: true,
+        source: "project",
+        locked: false,
+      })),
+    }),
+  );
 }
 
 async function seriousOrCriticalViolations(page: Page) {
@@ -125,6 +138,13 @@ for (const [name, path] of [
         }),
       ).toBeVisible();
     }
+    if (name === "board") {
+      await expect(page.getByTestId("work-item-board")).toBeVisible();
+      await expect(
+        page.getByText("Seeded work item 1", { exact: true }),
+      ).toBeVisible();
+      await expect(page.getByTestId("work-item-board-error")).toHaveCount(0);
+    }
     // WCAG 2.5.3: the Select trigger name contains its visible text.
     if (name === "project settings general")
       await expect(
@@ -134,9 +154,46 @@ for (const [name, path] of [
       await expect(
         page.locator('ul > li [data-slot="input"]').first(),
       ).toBeVisible();
+    if (name === "calendar") {
+      const viewport = page
+        .getByRole("region")
+        .locator('[data-slot="scroll-area-viewport"]');
+      await viewport.focus();
+      await expect(viewport).toBeFocused();
+      await viewport.press("ArrowDown");
+      await expect
+        .poll(() => viewport.evaluate((element) => element.scrollTop))
+        .toBeGreaterThan(0);
+    }
     expect(await seriousOrCriticalViolations(page)).toEqual([]);
   });
 }
+
+test("mobile project navigation retains keyboard calendar and Gantt journeys @a11y", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountProjectAdminApp(page);
+  await page.goto(`${PROJECT_VIEW}/calendar`);
+  await page.getByRole("button", { name: "Project navigation" }).press("Enter");
+  await page.getByRole("button", { name: "Gantt", exact: true }).press("Enter");
+  await expect(page).toHaveURL(new RegExp(`${PROJECT_VIEW}/gantt`));
+  await expect(
+    page.getByRole("heading", { name: "Gantt Timeline" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Project navigation" }).press("Enter");
+  await page
+    .getByRole("button", { name: "Calendar", exact: true })
+    .press("Enter");
+  await expect(page).toHaveURL(new RegExp(`${PROJECT_VIEW}/calendar`));
+  await expect(
+    page
+      .getByRole("main")
+      .getByRole("region")
+      .locator('[data-slot="scroll-area-viewport"]'),
+  ).toBeVisible();
+  expect(await seriousOrCriticalViolations(page)).toEqual([]);
+});
 
 test("board at 200% zoom has no serious or critical axe violations @a11y", async ({
   page,
@@ -144,6 +201,6 @@ test("board at 200% zoom has no serious or critical axe violations @a11y", async
   await page.setViewportSize({ width: 640, height: 360 });
   await mountProjectAdminApp(page);
   await page.goto(`${PROJECT_VIEW}/board`);
-  await expect(page.getByTestId("g13-board-content")).toBeVisible();
+  await expect(page.getByTestId("work-item-board")).toBeVisible();
   expect(await seriousOrCriticalViolations(page)).toEqual([]);
 });

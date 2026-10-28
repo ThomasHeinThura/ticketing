@@ -13,6 +13,11 @@ import {
   grantProjectManageAccess,
   grantProjectRole,
 } from "./helpers/fixtures";
+import {
+  approvePendingDeletion,
+  ensureAgentSession,
+  type PendingDeletionBody,
+} from "./helpers/pending-deletion";
 
 async function listMilestones(projectId: string) {
   const { app } = createApp();
@@ -83,6 +88,7 @@ describe("API integration: project milestones", () => {
     await grantProjectManageAccess(member.user.id, project.id);
     await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
+    await ensureAgentSession(member.user.id);
 
     const createResponse = await createMilestone(project.id, {
       name: "Kick-off",
@@ -120,8 +126,19 @@ describe("API integration: project milestones", () => {
     };
     expect(clearedReached.reachedAt).toBeNull();
 
+    // DELETE only requests: 202 and the milestone survives until the requester approves.
     const deleteResponse = await deleteMilestone(project.id, created.id);
-    expect(deleteResponse.status).toBe(200);
+    expect(deleteResponse.status).toBe(202);
+    const pending = (await deleteResponse.json()) as PendingDeletionBody;
+    const stillListed = (await (
+      await listMilestones(project.id)
+    ).json()) as Array<{
+      id: string;
+    }>;
+    expect(stillListed.map((row) => row.id)).toEqual([created.id]);
+    const { app } = createApp();
+    const approved = await approvePendingDeletion(app, member.user.id, pending);
+    expect(approved.status, await approved.clone().text()).toBe(200);
 
     const secondDelete = await deleteMilestone(project.id, created.id);
     expect(secondDelete.status).toBe(404);

@@ -6,15 +6,11 @@ import {
 } from "./git-baseline.mjs";
 import { readText, repoRoot } from "./repo.mjs";
 
-/**
- * docs/04-engineering/ci-cd.md holds the authoritative list of paths whose change requires
- * a recorded GPT-6 Sol security review — it says so itself: "this list is the authoritative
- * scope; sdlc.md and security-model.md cite it and do not restate it".
- *
- * So the list is parsed out of that document rather than copied here. If the block cannot
- * be found the parser throws, and the check fails closed rather than reviewing nothing.
- */
-export const CI_CD_RELATIVE_PATH = "docs/04-engineering/ci-cd.md";
+/** Maintained security-sensitive path scope. Callers retain their current enforcement;
+ * relocating this input must not narrow the merge-base/HEAD union or disable a gate.
+ * The single consolidated phase-review rule lives in AGENTS.md and the maintained
+ * CI contract; ordinary integration does not claim phase completion. */
+export const CI_CD_RELATIVE_PATH = "docs/technical/ci-gates.md";
 export const ciCdPath = path.join(repoRoot, CI_CD_RELATIVE_PATH);
 
 /** The parser needs at least this many globs before it believes it read the whole list. */
@@ -119,8 +115,17 @@ export function parseSecurityReviewPaths(source, origin = String(ciCdPath)) {
  *
  * @returns {Promise<{ globs: string[], matches: (file: string) => boolean }>}
  */
+function includeMaintainedScope(globs) {
+  // Relocating the table must preserve protection of the table itself.
+  return globs.includes("docs/04-engineering/ci-cd.md")
+    ? [...new Set([...globs, CI_CD_RELATIVE_PATH])]
+    : globs;
+}
+
 export async function readSecurityReviewPaths() {
-  const globs = parseSecurityReviewPaths(await readText(ciCdPath));
+  const globs = includeMaintainedScope(
+    parseSecurityReviewPaths(await readText(ciCdPath)),
+  );
   const expressions = globs.map(globToRegExp);
   return {
     globs,
@@ -136,7 +141,7 @@ export async function readSecurityReviewPaths() {
  * just written. That is self-referential, and it inverts the F15 fix it was built on:
  *
  *   1. one commit removes `scripts/ci/**`, `.github/**` and
- *      `docs/04-engineering/ci-cd.md` from the block in ci-cd.md;
+ *      `docs/technical/ci-gates.md` from the block in ci-cd.md;
  *   2. the same commit edits `scripts/ci/check-pr-template.mjs`;
  *   3. the checker parses the SHRUNK list, finds nothing in the diff matching it, and
  *      prints "no security-review path touched".
@@ -179,9 +184,11 @@ export async function readSecurityReviewPaths() {
  * }>}
  */
 export async function readSecurityReviewScope() {
-  const current = parseSecurityReviewPaths(
-    await readText(ciCdPath),
-    `${CI_CD_RELATIVE_PATH} (working tree)`,
+  const current = includeMaintainedScope(
+    parseSecurityReviewPaths(
+      await readText(ciCdPath),
+      `${CI_CD_RELATIVE_PATH} (working tree)`,
+    ),
   );
 
   const base = resolveMergeBase();
@@ -201,7 +208,13 @@ export async function readSecurityReviewScope() {
   let previous = null;
   let source;
   try {
-    source = readTextAtCommit(base.sha, CI_CD_RELATIVE_PATH);
+    source =
+      readTextAtCommit(base.sha, CI_CD_RELATIVE_PATH) ??
+      readTextAtCommit(base.sha, "docs/04-engineering/ci-cd.md") ??
+      readTextAtCommit(
+        base.sha,
+        "archive/2026-10-22/docs/04-engineering/ci-cd.md",
+      );
   } catch (error) {
     if (!(error instanceof BaselineHistoryUnavailableError)) throw error;
     throw new SecurityScopeUnavailableError(error.message);

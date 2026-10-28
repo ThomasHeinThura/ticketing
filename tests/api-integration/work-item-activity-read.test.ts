@@ -11,6 +11,7 @@
 import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { encodeCommentVersionCursor } from "../../apps/api/src/work-item/controllers/list-comment-versions";
@@ -21,6 +22,7 @@ import {
   createWorkspaceMember,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -75,6 +77,11 @@ async function setupProjectWithDefaultState() {
   await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const state = await makeDefaultState(creator.workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: creator.workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, project, type, state };
 }
 
@@ -134,11 +141,29 @@ function postCommentRequest(
   });
 }
 
-function deleteCommentRequest(
+/** Activity tombstone cases complete the durable request and explicit HTTP approval. */
+async function requestAndApproveCommentDeletion(
   app: ReturnType<typeof createApp>["app"],
   id: string,
 ) {
-  return app.request(`/api/comments/${id}`, { method: "DELETE" });
+  const current = await auth.api.getSession({ headers: new Headers() });
+  if (current)
+    await db
+      .insert(schema.sessionTable)
+      .values({ ...current.session, portal: "agent" })
+      .onConflictDoNothing();
+  const response = await app.request(`/api/comments/${id}`, {
+    method: "DELETE",
+  });
+  if (response.status !== 202) return response;
+  const { pendingActionId } = (await response.json()) as {
+    pendingActionId: string;
+  };
+  return app.request(`/api/me/pending-actions/${pendingActionId}/approve`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
 }
 
 function updateCommentRequest(
@@ -457,7 +482,7 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
         visibility: "internal",
       });
       const comment = (await commentResponse.json()) as { id: string };
-      await deleteCommentRequest(app, comment.id);
+      await requestAndApproveCommentDeletion(app, comment.id);
 
       const response = await activityRequest(app, created.key);
       const body = (await response.json()) as {
@@ -558,7 +583,9 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       ]);
       expect(versionPage.data.every((version) => version.createdAt)).toBe(true);
 
-      expect((await deleteCommentRequest(app, comment.id)).status).toBe(200);
+      expect(
+        (await requestAndApproveCommentDeletion(app, comment.id)).status,
+      ).toBe(200);
       const deletedResponse = await activityRequest(app, created.key);
       const deleted = (await deletedResponse.json()) as {
         data: Array<Record<string, unknown>>;

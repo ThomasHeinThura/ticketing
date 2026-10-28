@@ -7,6 +7,7 @@
  * individually (create grant, member removal, leave, account erasure, project delete,
  * workspace delete). Mutating a writer must turn exactly that writer's test red.
  */
+
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -29,10 +30,10 @@ import deleteAccountData from "../../apps/api/src/user/controllers/delete-accoun
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
-import {
-  createWorkspaceNative,
-  deleteWorkspaceNative,
-} from "./helpers/workspace-write-http";
+import { deleteThroughApprovalAsCookie } from "./helpers/pending-deletion";
+import { projectKey } from "./helpers/project-key";
+import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
+import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 type App = ReturnType<typeof createApp>["app"];
 type Actor = Awaited<ReturnType<typeof signUpUser>>;
@@ -124,15 +125,17 @@ async function createProject(
   actor: Actor,
   workspaceId = world.workspaceId,
 ) {
+  const slug = projectKey();
   const response = await call(world.app, actor.cookie, "POST", "/api/project", {
     workspaceId,
     name: "P",
     icon: "Folder",
-    slug: `p-${randomUUID().slice(0, 8)}`,
+    slug,
   });
   return {
     status: response.status,
     id: ((response.json as { id?: string } | null)?.id ?? "") as string,
+    slug,
   };
 }
 
@@ -316,7 +319,7 @@ describe("a project's creator holds a project-lead membership", () => {
   it("a manager creates a project, then reads, lists, updates and works items in it; created_by, grant, membership and audit row are written", async () => {
     const world = await newWorld();
     const manager = await addManager(world);
-    const slug = `m-${randomUUID().slice(0, 8)}`;
+    const slug = projectKey();
     const response = await call(
       world.app,
       manager.cookie,
@@ -357,7 +360,7 @@ describe("a project's creator holds a project-lead membership", () => {
   it("a member is refused (403) on project creation and receives no creator grant (#708)", async () => {
     const world = await newWorld();
     const member = await addMember(world, "member");
-    const slug = `mm-${randomUUID().slice(0, 8)}`;
+    const slug = projectKey();
     const response = await call(
       world.app,
       member.cookie,
@@ -395,12 +398,12 @@ describe("a project's creator holds a project-lead membership", () => {
     expect(await projectStatus(world, admin, adminProject.id)).toBe(200);
   });
 
-  it("a legacy custom workspace_role without a built-in project:create capability is refused (403) (#708)", async () => {
+  it("a custom workspace role without the project:create capability is refused (403) (#708)", async () => {
     const world = await newWorld();
-    await db.insert(schema.workspaceRoleTable).values({
-      workspaceId: world.workspaceId,
-      role: "project-starter",
-      permission: JSON.stringify({ project: ["create"] }),
+    // Owner decision, 23 Oct: a custom role's capabilities live in the canonical `role` row, so
+    // `project:create` itself is what decides; a role that holds only `project:read` is refused.
+    await upsertWorkspaceRoleRows(world.workspaceId, "project-starter", {
+      project: ["read"],
     });
     const actor = await signUpUser(world.app);
     const added = await call(
@@ -663,13 +666,14 @@ describe("a project's creator holds a project-lead membership", () => {
       ),
     ).toBe(0);
     expect((await creatorGrants(personId, doomed.id))[0]?.revokedAt).toBeNull();
-    const deleted = await call(
+    // DELETE only requests; the creator grant is revoked when the owner approves.
+    expect((await creatorGrants(personId, doomed.id))[0]?.revokedAt).toBeNull();
+    await deleteThroughApprovalAsCookie(
       world.app,
       world.owner.cookie,
-      "DELETE",
       `/api/project/${doomed.id}`,
+      { typedName: doomed.slug },
     );
-    expect(deleted.status).toBe(200);
     const doomedRows = await creatorGrants(personId, doomed.id);
     expect(doomedRows).toHaveLength(1);
     expect(doomedRows[0]?.revokedAt).toEqual(expect.any(Date));
@@ -727,12 +731,12 @@ describe("a project's creator holds a project-lead membership", () => {
     const otherManager = await addManager(other);
     const mine = await createProject(world, manager);
     const theirs = await createProject(other, otherManager);
-    const deleted = await deleteWorkspaceNative(
+    await deleteThroughApprovalAsCookie(
       world.app,
       world.owner.cookie,
-      world.workspaceId,
+      `/api/workspace/${world.workspaceId}`,
+      { typedName: "Acme" },
     );
-    expect(deleted.status).toBe(200);
     const personId = await personIdOf(manager.user.id);
     expect(await creatorGrants(personId, mine.id)).toEqual([]);
     expect(await projectMemberships(personId, mine.id)).toEqual([]);
@@ -749,32 +753,57 @@ describe("a project's creator holds a project-lead membership", () => {
     expect(await projectStatus(other, otherManager, theirs.id)).toBe(200);
   });
 
-  it("a creator with no staff person still creates the project (created_by NULL, no grant)", async () => {
+  it("fails closed without a current person actor and rolls project creation back", async () => {
     const world = await newWorld();
     const manager = await addManager(world);
     await db
       .delete(schema.personTable)
       .where(eq(schema.personTable.userId, manager.user.id));
-    const created = await createProjectCtrl(
-      world.workspaceId,
-      "P",
-      "Folder",
-      `np-${randomUUID().slice(0, 8)}`,
-      {
-        kind: "project",
-        supportLevel: null,
-        serviceCalendarId: null,
-        organisationId: null,
-      },
-      manager.user.id,
+    const slug = `np-${randomUUID().slice(0, 8)}`;
+    const before = await Promise.all([
+      db.select().from(schema.projectTable),
+      db.select().from(schema.projectSlugClaimTable),
+      db.select().from(schema.columnTable),
+      db.select().from(schema.stateTable),
+      db.select().from(schema.membershipTable),
+      db.select().from(schema.membershipGrantTable),
+      db.select().from(schema.auditLogTable),
+      db.select().from(schema.outboxTable),
+    ]);
+    await expect(
+      createProjectCtrl(
+        world.workspaceId,
+        "P",
+        "Folder",
+        slug,
+        {
+          kind: "project",
+          supportLevel: null,
+          serviceCalendarId: null,
+          organisationId: null,
+        },
+        manager.user.id,
+      ),
+    ).rejects.toThrow("Could not resolve project-created person actor");
+    const after = await Promise.all([
+      db.select().from(schema.projectTable),
+      db.select().from(schema.projectSlugClaimTable),
+      db.select().from(schema.columnTable),
+      db.select().from(schema.stateTable),
+      db.select().from(schema.membershipTable),
+      db.select().from(schema.membershipGrantTable),
+      db.select().from(schema.auditLogTable),
+      db.select().from(schema.outboxTable),
+    ]);
+    expect(after.map((rows) => rows.length)).toEqual(
+      before.map((rows) => rows.length),
     );
-    expect(created?.createdBy).toBeNull();
     expect(
       await db
-        .select({ id: schema.membershipGrantTable.id })
-        .from(schema.membershipGrantTable)
-        .where(eq(schema.membershipGrantTable.scopeId, created?.id ?? "")),
-    ).toEqual([]);
+        .select()
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.slug, slug)),
+    ).toHaveLength(0);
   });
 
   it("created_by is set null if the creator's person row is erased (ON DELETE SET NULL)", async () => {

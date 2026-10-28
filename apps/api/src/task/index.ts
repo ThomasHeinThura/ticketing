@@ -21,6 +21,10 @@ import {
 } from "../storage";
 import { callerReach } from "../utils/caller-reach";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
+import {
+  applyLegacyDeletionGoneHeaders,
+  legacyDeletionGoneResponseHeaders,
+} from "../utils/legacy-deletion-gone";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
 import { markReach } from "../utils/reach-mark";
 import { requirePublicAppOrigin } from "../utils/request-origin";
@@ -29,10 +33,11 @@ import { requireWorkspacePermission } from "../utils/require-workspace-permissio
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { lockTaskAndAssertProjectLiveForIdentity } from "./assert-task-project-live";
 import bulkUpdateTasks, {
+  BULK_TASK_DELETION_GONE_MESSAGE,
   type BulkCallerReach,
 } from "./controllers/bulk-update-tasks";
 import createTask from "./controllers/create-task";
-import deleteTask from "./controllers/delete-task";
+import { LEGACY_TASK_DELETION_GONE_MESSAGE } from "./controllers/delete-task";
 import exportTasks from "./controllers/export-tasks";
 import getTask from "./controllers/get-task";
 import getTasks from "./controllers/get-tasks";
@@ -127,6 +132,8 @@ const listTasksRoute = createRoute({
   },
 });
 
+const BULK_TASK_DELETION_SUCCESSOR = "/api/work-items/bulk";
+
 const bulkUpdateTasksRoute = createRoute({
   method: "patch",
   operationId: "bulkUpdateTasks",
@@ -134,7 +141,8 @@ const bulkUpdateTasksRoute = createRoute({
   tags: ["Tasks"],
   summary: "Bulk update tasks",
   description:
-    "Apply one operation to many tasks at once. Every task must be in the same workspace.",
+    "Apply one operation to many tasks at once. Every task must be in the same workspace. " +
+    "Operation `delete` is removed: it used to hard-delete tasks with no approval and now answers 410 Gone (after the same reach and permission checks). Request deletion through POST /api/work-items/bulk, which records a pending action.",
   middleware: [
     workspaceAccess.fromTasks("taskIds", { requireProjectReach: true }),
     requireWorkspaceMembership,
@@ -162,6 +170,12 @@ const bulkUpdateTasksRoute = createRoute({
     // whether the ids don't exist at all or exist in a workspace the caller can't
     // reach (`workspaceAccess.fromTasks()`), never a distinguishing 403.
     404: errorResponse("No tasks found"),
+    410: {
+      ...errorResponse(
+        "Removed: operation `delete`; use POST /api/work-items/bulk (pending action)",
+      ),
+      headers: legacyDeletionGoneResponseHeaders(BULK_TASK_DELETION_SUCCESSOR),
+    },
   },
 });
 
@@ -279,8 +293,31 @@ const legacyTaskResponseHeaders = {
   },
 } as const;
 
+// DELETE has no `/api/v2/task/{id}` successor, so it carries its own Link to the work-item route.
+const legacyTaskDeletionDeprecationHeaders: MiddlewareHandler<{
+  Variables: BaseVariables & { workspaceId: string };
+}> = async (c, next) => {
+  c.header("Deprecation", "@1790812800");
+  c.header("Sunset", "Thu, 01 Apr 2027 00:00:00 GMT");
+  c.header("Link", '</api/work-items/{key}>; rel="successor-version"');
+  await next();
+};
+
+const legacyTaskDeletionResponseHeaders = {
+  Deprecation: legacyTaskResponseHeaders.Deprecation,
+  Sunset: legacyTaskResponseHeaders.Sunset,
+  Link: {
+    description: "Successor operation (a work-item key, not this task id).",
+    schema: {
+      type: "string",
+      example: '</api/work-items/{key}>; rel="successor-version"',
+    },
+  },
+} as const;
+
 async function runFullTaskUpdate(input: {
   identity: ResolvedIdentity;
+  apiKeyId?: string | null;
   id: string;
   assertedVersion: number | undefined;
   title: string;
@@ -310,6 +347,7 @@ async function runFullTaskUpdate(input: {
         input.position,
         input.userId,
         input.currentUserId,
+        input.apiKeyId,
       ),
     };
   } catch (error) {
@@ -470,10 +508,15 @@ const deleteTaskRoute = createRoute({
   operationId: "deleteTask",
   path: "/{id}",
   tags: ["Tasks"],
-  summary: "Delete task",
+  deprecated: true,
+  summary: "Delete task (removed; 410)",
   description:
-    "Permanently delete a task and its comments, labels, and time entries.",
+    "Removed. This route used to hard-delete a task and its comments, labels, time entries " +
+    "and stored assets with no approval. It now answers 410 Gone (after the same reach and " +
+    "permission checks) under the compatibility Deprecation/Sunset headers. Request deletion " +
+    "through DELETE /api/work-items/{key}, which records a pending action for approval.",
   middleware: [
+    legacyTaskDeletionDeprecationHeaders,
     workspaceAccess.fromTask("id", {
       requireProjectReach: true,
       deferApiKeyCapability: true,
@@ -482,10 +525,24 @@ const deleteTaskRoute = createRoute({
   ] as const,
   request: { params: taskParam },
   responses: {
-    200: jsonResponse("The deleted task", taskSchema),
-    400: errorResponse("id must not contain a NUL (\\u0000) byte"),
-    403: errorResponse("Missing work_item:delete permission"),
-    404: errorResponse("Task not found"),
+    400: {
+      ...errorResponse("id must not contain a NUL (\\u0000) byte"),
+      headers: legacyTaskDeletionResponseHeaders,
+    },
+    403: {
+      ...errorResponse("Missing work_item:delete permission"),
+      headers: legacyTaskDeletionResponseHeaders,
+    },
+    404: {
+      ...errorResponse("Task not found"),
+      headers: legacyTaskDeletionResponseHeaders,
+    },
+    410: {
+      ...errorResponse(
+        "Removed: use DELETE /api/work-items/{key} (pending action)",
+      ),
+      headers: legacyTaskDeletionResponseHeaders,
+    },
   },
 });
 
@@ -756,6 +813,12 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     if (!userId) {
       throw new HTTPException(401, { message: "Unauthorized" });
     }
+    // PA-1: reach/permission middleware has already run, so an unauthorised caller still gets
+    // 403/404; an authorised one is told to use the pending-action route. Nothing is deleted.
+    if (operation === "delete") {
+      applyLegacyDeletionGoneHeaders(c, BULK_TASK_DELETION_SUCCESSOR);
+      return c.text(BULK_TASK_DELETION_GONE_MESSAGE, 410);
+    }
 
     markShadowLegacyAuthorizationUnknown(c);
     const identity = await requireTaskIdentity(c);
@@ -766,6 +829,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         operation,
         value,
         identity,
+        apiKeyId: c.get("apiKey")?.id,
         userId,
         workspaceId: c.get("workspaceId"),
         reach: (c as unknown as Context).get(
@@ -789,6 +853,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await createTask({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       projectId,
       currentUserId: c.get("userId"),
       userId: userId,
@@ -816,6 +881,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const result = await moveTask({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       taskId: id,
       destinationProjectId,
       destinationStatus,
@@ -855,6 +921,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       position,
       userId,
       currentUserId,
+      apiKeyId: c.get("apiKey")?.id,
     });
     if ("conflict" in result) return c.json(result.conflict, 409);
     return c.json(result.task, 200);
@@ -879,22 +946,14 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       projectId,
       tasks,
       currentUserId,
+      c.get("apiKey")?.id,
     );
 
     return c.json(result, 200);
   })
-  .openapi(deleteTaskRoute, async (c) => {
-    const { id } = c.req.valid("param");
-
-    const currentUserId = c.get("userId");
-    const task = await deleteTask(
-      await requireTaskIdentity(c),
-      id,
-      currentUserId,
-    );
-
-    return c.json(task, 200);
-  })
+  .openapi(deleteTaskRoute, (c) =>
+    c.text(LEGACY_TASK_DELETION_GONE_MESSAGE, 410),
+  )
   .openapi(updateTaskStatusRoute, async (c) => {
     const { id } = c.req.valid("param");
     const { status } = c.req.valid("json");
@@ -902,6 +961,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskStatus({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       status,
       currentUserId,
@@ -916,6 +976,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskPriority({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       priority,
       currentUserId,
@@ -930,6 +991,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskAssignee({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       userId,
       currentUserId,
@@ -944,6 +1006,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskDueDate({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       dueDate,
       currentUserId,
@@ -958,6 +1021,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskTitle({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       title,
       currentUserId,
@@ -1110,6 +1174,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskDescription({
       identity: await requireTaskIdentity(c),
+      apiKeyId: c.get("apiKey")?.id,
       id,
       description,
       currentUserId,
@@ -1149,6 +1214,7 @@ export const taskV2 = apiRouter<
     position,
     userId,
     currentUserId: c.get("userId"),
+    apiKeyId: c.get("apiKey")?.id,
   });
   if ("conflict" in result) return c.json(result.conflict, 409);
   return c.json(result.task, 200);

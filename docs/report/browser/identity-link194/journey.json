@@ -1,0 +1,167 @@
+{
+	"recordedAt": "2026-10-26T06:26:27.221Z",
+	"scope": "Explicit account linking between two local signed-provider connections on isolatedSSOcopy; real Entra remains pending Thomas",
+	"strictTls": true,
+	"checks": [
+		{
+			"name": "Saved normal SSO session readable",
+			"pass": true
+		},
+		{
+			"name": "Own synthetic SSO user",
+			"pass": true
+		},
+		{
+			"name": "Current session authenticated through source A",
+			"pass": true
+		},
+		{
+			"name": "One existing person and no target identity/account",
+			"pass": true
+		},
+		{
+			"name": "Callback returns opaque confirmation intent",
+			"pass": true
+		},
+		{
+			"name": "Provider proof creates no session",
+			"pass": true
+		},
+		{
+			"name": "Provider proof creates no identity or account",
+			"pass": true
+		},
+		{
+			"name": "Provider proof grants no membership",
+			"pass": true
+		},
+		{
+			"name": "Consent 375 light fits page",
+			"pass": true
+		},
+		{
+			"name": "Consent 768 light fits page",
+			"pass": true
+		},
+		{
+			"name": "Consent 1440 light fits page",
+			"pass": true
+		},
+		{
+			"name": "Consent 375 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "Consent 768 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "Consent 1440 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "Explicit owner confirmation succeeds",
+			"pass": true
+		},
+		{
+			"name": "Exactly one target identity and account",
+			"pass": true
+		},
+		{
+			"name": "Confirmation creates no session",
+			"pass": true
+		},
+		{
+			"name": "Confirmation creates no person",
+			"pass": true
+		},
+		{
+			"name": "Confirmation grants no membership",
+			"pass": true
+		},
+		{
+			"name": "Original A session retained",
+			"pass": true
+		},
+		{
+			"name": "Link audited without subject or email",
+			"pass": true
+		},
+		{
+			"name": "Consumed intent cannot be read again",
+			"pass": true
+		},
+		{
+			"name": "No browser JavaScript errors",
+			"pass": true
+		}
+	],
+	"screenshots": [
+		"consent-375-light.png",
+		"consent-768-light.png",
+		"consent-1440-light.png",
+		"consent-375-dark.png",
+		"consent-768-dark.png",
+		"consent-1440-dark.png"
+	],
+	"outcome": "passed",
+	"authTrace": [
+		{
+			"path": "/api/me/identity-links/sso-browser-link-target/start",
+			"status": 200,
+			"destination": "/api/me/identity-links/sso-browser-link-target/undefined"
+		},
+		{
+			"path": "/authorize/continue",
+			"status": 303,
+			"destination": "/api/auth/identity/sso-browser-link-target/callback"
+		},
+		{
+			"path": "/api/auth/identity/sso-browser-link-target/callback",
+			"status": 302,
+			"destination": "/dashboard/settings/account/security"
+		},
+		{
+			"path": "/api/me/identity-links/intents/wc5r284DqrbIlXFVrOL7GvxyALk-0fMjWg5MUNYy-io",
+			"status": 200,
+			"destination": "/api/me/identity-links/intents/undefined"
+		},
+		{
+			"path": "/api/me/identity-links/intents/wc5r284DqrbIlXFVrOL7GvxyALk-0fMjWg5MUNYy-io",
+			"status": 200,
+			"destination": "/api/me/identity-links/intents/undefined"
+		},
+		{
+			"path": "/api/me/identity-links/intents/wc5r284DqrbIlXFVrOL7GvxyALk-0fMjWg5MUNYy-io",
+			"status": 200,
+			"destination": "/api/me/identity-links/intents/undefined"
+		},
+		{
+			"path": "/api/me/identity-links/intents/wc5r284DqrbIlXFVrOL7GvxyALk-0fMjWg5MUNYy-io",
+			"status": 200,
+			"destination": "/api/me/identity-links/intents/undefined"
+		},
+		{
+			"path": "/api/me/identity-links/intents/wc5r284DqrbIlXFVrOL7GvxyALk-0fMjWg5MUNYy-io",
+			"status": 200,
+			"destination": "/api/me/identity-links/intents/undefined"
+		},
+		{
+			"path": "/api/me/identity-links/intents/wc5r284DqrbIlXFVrOL7GvxyALk-0fMjWg5MUNYy-io",
+			"status": 200,
+			"destination": "/api/me/identity-links/intents/undefined"
+		},
+		{
+			"path": "/api/me/identity-links/intents/wc5r284DqrbIlXFVrOL7GvxyALk-0fMjWg5MUNYy-io",
+			"status": 200,
+			"destination": "/api/me/identity-links/intents/undefined"
+		},
+		{
+			"path": "/api/me/identity-links/intents/wc5r284DqrbIlXFVrOL7GvxyALk-0fMjWg5MUNYy-io/confirm",
+			"status": 200,
+			"destination": "/api/me/identity-links/intents/wc5r284DqrbIlXFVrOL7GvxyALk-0fMjWg5MUNYy-io/undefined"
+		}
+	],
+	"httpFailures": [],
+	"callbackSentAgentCookie": true
+}

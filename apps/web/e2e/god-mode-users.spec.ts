@@ -93,7 +93,14 @@ test("God Mode users directory supports filters and audited account actions", as
     if (path === "/api/project" && method === "GET") return json([]);
     if (/^\/api\/workspace\/[^/]+\/members$/u.test(path) && method === "GET")
       return json([]);
-    if (path === "/api/notification" && method === "GET") return json([]);
+    // The shell's notification bell reads the paged agent inbox.
+    if (path === "/api/notification/inbox" && method === "GET")
+      return json({
+        data: [],
+        unreadCount: 0,
+        hasMore: false,
+        nextCursor: null,
+      });
     if (path === "/api/invitation/pending") return json([]);
     if (path === "/api/me/security/factors") {
       return json({
@@ -101,6 +108,8 @@ test("God Mode users directory supports filters and audited account actions", as
         required: false,
         bootstrapRequired: false,
         policyMode: "optional",
+        // Matches GET /api/me/security/factors for an enrolled authenticator.
+        availableMethods: ["totp", "backup_code"],
       });
     }
     if (path === "/api/me/csrf-token")
@@ -373,7 +382,7 @@ test("God Mode users directory supports filters and audited account actions", as
   expect(received).toContain(
     "POST /api/me/pending-actions/pending-deactivation-1/approve",
   );
-  expect(received).toContain("GET /api/notification");
+  expect(received).toContain("GET /api/notification/inbox");
   expect(received).toContain(
     "POST /api/instance/users/staff-user-1/grant-admin",
   );

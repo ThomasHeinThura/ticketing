@@ -4,11 +4,14 @@ import { projectViewRoutes } from "./project-view-routes";
 import {
   buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
+  parseAccountSecuritySearch,
   parseAgentGlobalSearch,
+  parseAgentHomeSearch,
   parseAgentInboxSearch,
   parseAgentMyWorkSearch,
   parseCannedResponseSearch,
   parseGeneratedRouteUrl,
+  parseGodModeImportsSearch,
   parseGodModeUsersSearch,
   parseIdentityConnectionEditorSearch,
   parseIdentityConnectionEditorSearchFromQueryString,
@@ -28,6 +31,8 @@ import {
   parseWorkItemDetailSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
+  parseWorkItemTemplateSearch,
+  parseWorkItemWorkSearch,
   routes,
   type SavedViewUrlSearch,
   toggleWorkItemSortDirection,
@@ -144,6 +149,22 @@ describe("routes.workItemList", () => {
       expect(toggleWorkItemSortDirection("asc")).toBe("desc");
       expect(toggleWorkItemSortDirection("desc")).toBe("asc");
     });
+  });
+});
+
+describe("routes.agentHome", () => {
+  it("round-trips the explicit recovery mode and drops unknown values", () => {
+    const url = routes.agentHome.build({ recovery: "deleted" });
+    expect(url).toBe("/agent?recovery=deleted");
+    expect(
+      parseAgentHomeSearch({
+        recovery: new URL(url, "https://example.test").searchParams.get(
+          "recovery",
+        ),
+      }),
+    ).toEqual({ recovery: "deleted" });
+    expect(parseAgentHomeSearch({ recovery: "anything-else" })).toEqual({});
+    expect(routes.agentHome.build({})).toBe("/agent");
   });
 });
 
@@ -370,6 +391,7 @@ describe("G5 route metadata", () => {
     expect(generatedRouteMetadata.agent).toContain(
       "/agent/settings/request-types",
     );
+    expect(generatedRouteMetadata.agent).toContain("/agent/settings/workflows");
     expect(generatedRouteMetadata.agent).toContain("/agent/triage");
     expect(generatedRouteMetadata.portal).toContain("/catalogue");
     expect(generatedRouteMetadata.portal).toContain("/sign-in");
@@ -431,6 +453,54 @@ describe("routes.workItemDetail", () => {
 });
 
 describe("canonical intake URLs", () => {
+  it("inherits a saved queue state only when the URL has no explicit state", () => {
+    expect(parseIntakeSearch({ queue: "pair-17" })).not.toHaveProperty("state");
+    expect(routes.intakeQueue.build({ queue: "pair-17" })).toBe(
+      "/agent/triage?queue=pair-17",
+    );
+    expect(
+      parseIntakeSearch({ queue: "pair-17", state: "accepted" }),
+    ).toMatchObject({ state: "accepted" });
+    expect(parseIntakeSearch({})).toEqual({ state: "new" });
+  });
+  it("round-trips canonical paired work-item query overrides", () => {
+    const url = routes.intakeQueue.build({
+      queue: "pair-17",
+      workItemFilter: "priority:high",
+      workItemSorts: [{ field: "title", order: "desc" }],
+      workItemColumns: ["key", "title"],
+      workItemFilterMode: "text",
+    });
+    const parsed = parseIntakeSearch(
+      Object.fromEntries(new URL(url, "https://example.test").searchParams),
+    );
+    expect(parsed.workItemSorts).toEqual([{ field: "title", order: "desc" }]);
+    expect(parsed.workItemColumns).toEqual(["key", "title"]);
+    expect(routes.intakeQueue.build(parsed)).toBe(url);
+  });
+  it("preserves a bounded saved queue association alongside submission filters", () => {
+    const url = routes.intakeQueue.build({
+      state: "clarifying",
+      queue: "queue_pair-17",
+      assignee: "claimed",
+      age: "7d",
+    });
+    const parsed = parseIntakeSearch(
+      Object.fromEntries(new URL(url, "https://example.test").searchParams),
+    );
+    expect(parsed).toMatchObject({
+      queue: "queue_pair-17",
+      state: "clarifying",
+      assignee: "claimed",
+      age: "7d",
+    });
+    expect(routes.intakeQueue.build(parsed)).toBe(url);
+    expect(parseIntakeSearch({ queue: "x".repeat(129) })).not.toHaveProperty(
+      "queue",
+    );
+    expect(parseIntakeSearch({ queue: "bad/id" })).not.toHaveProperty("queue");
+  });
+
   it("round-trips queue filters and selected submission through the URL", () => {
     const url = routes.intakeQueue.build({
       state: "clarifying",
@@ -440,6 +510,29 @@ describe("canonical intake URLs", () => {
     const parsed = parseIntakeSearch(search);
     expect(parsed).toEqual({ state: "clarifying", ref: "SUB-12" });
     expect(routes.intakeQueue.build(parsed)).toBe(url);
+  });
+
+  it("round-trips the richer triage filters and drops invalid ones", () => {
+    const url = routes.intakeQueue.build({
+      state: "new",
+      requestType: "rt_1",
+      assignee: "unclaimed",
+      age: "3d",
+    });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    const parsed = parseIntakeSearch(search);
+    expect(parsed).toEqual({
+      state: "new",
+      requestType: "rt_1",
+      assignee: "unclaimed",
+      age: "3d",
+    });
+    expect(routes.intakeQueue.build(parsed)).toBe(url);
+    expect(
+      parseIntakeSearch({ assignee: "me", age: "2y", requestType: "" }),
+    ).toEqual({
+      state: "new",
+    });
   });
 
   it("round-trips request type selection through the editor URL", () => {
@@ -773,6 +866,52 @@ describe("routes.savedViews", () => {
   });
 });
 
+describe("God Mode import routes", () => {
+  it("round-trips selected workspace for history and encoded run-detail URLs", () => {
+    expect(routes.godModeImports.build()).toBe("/agent/god-mode/imports");
+    expect(routes.godModeImports.build({ workspaceId: "workspace/one" })).toBe(
+      "/agent/god-mode/imports?workspaceId=workspace%2Fone",
+    );
+    expect(routes.godModeImportRun.build({ id: "run/with spaces" })).toBe(
+      "/agent/god-mode/imports/run%2Fwith%20spaces",
+    );
+    expect(
+      routes.godModeImportRun.build(
+        { id: "run-1" },
+        { workspaceId: "workspace-1" },
+      ),
+    ).toBe("/agent/god-mode/imports/run-1?workspaceId=workspace-1");
+    expect(parseGodModeImportsSearch({ workspaceId: "workspace-1" })).toEqual({
+      workspaceId: "workspace-1",
+    });
+    expect(parseGodModeImportsSearch({ workspaceId: "x".repeat(201) })).toEqual(
+      {},
+    );
+    expect(generatedRouteMetadata.agent).toContain(routes.godModeImports.path);
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.godModeImportRun.path,
+    );
+  });
+
+  it("keeps the import wizard step in the URL and drops unknown steps", () => {
+    expect(
+      routes.godModeImportRun.build(
+        { id: "run-1" },
+        { workspaceId: "workspace-1", step: "mapping" },
+      ),
+    ).toBe(
+      "/agent/god-mode/imports/run-1?workspaceId=workspace-1&step=mapping",
+    );
+    expect(routes.godModeImports.build({ step: "connect" })).toBe(
+      "/agent/god-mode/imports?step=connect",
+    );
+    expect(parseGodModeImportsSearch({ step: "dry-run" })).toEqual({
+      step: "dry-run",
+    });
+    expect(parseGodModeImportsSearch({ step: "nope" })).toEqual({});
+  });
+});
+
 describe("routes.projectBacklog and ?item={key} side pane URL state (VW-4)", () => {
   it("round-trips ?item={key} on routes.workItemList, routes.projectBacklog, and routes.savedView", () => {
     const workUrl = routes.workItemList.build(
@@ -835,6 +974,7 @@ describe("P1 agent core, project overview, and settings routes", () => {
       routes.workspaceStates.path,
       routes.workspaceLabels.path,
       routes.workspaceCannedResponses.path,
+      routes.workspaceWorkItemTemplates.path,
       routes.workspaceDangerZone.path,
       routes.projectSettings.path,
       routes.projectMembers.path,
@@ -857,6 +997,15 @@ describe("P1 agent core, project overview, and settings routes", () => {
       filter: "unread",
     });
     expect(parseAgentInboxSearch({ filter: "invalid" })).toEqual({});
+    expect(routes.agentInbox.build({ filter: "mentions" })).toBe(
+      "/agent/inbox?filter=mentions",
+    );
+    expect(routes.agentInbox.build({ filter: "assignments" })).toBe(
+      "/agent/inbox?filter=assignments",
+    );
+    expect(parseAgentInboxSearch({ filter: "assignments" })).toEqual({
+      filter: "assignments",
+    });
 
     const myWorkUrl = routes.agentMyWork.build({
       lens: "watching",
@@ -881,6 +1030,15 @@ describe("P1 agent core, project overview, and settings routes", () => {
       scope: "work-items",
     });
     expect(searchUrl).toBe("/agent/search?q=billing&scope=work-items");
+    expect(
+      routes.workspaceSearch.build(
+        { workspaceId: "w 1" },
+        { q: "HELP-24", scope: "projects" },
+      ),
+    ).toBe("/dashboard/workspace/w%201/search?q=HELP-24&scope=projects");
+    expect(routes.workspaceSearch.build({ workspaceId: "w1" })).toBe(
+      "/dashboard/workspace/w1/search",
+    );
     expect(
       parseAgentGlobalSearch({ q: "billing", scope: "work-items" }),
     ).toEqual({
@@ -917,6 +1075,24 @@ describe("P1 agent core, project overview, and settings routes", () => {
     expect(
       parseCannedResponseSearch({ action: "delete", q: "  reset  " }),
     ).toEqual({ q: "reset" });
+  });
+
+  it("round-trips work-item template search, editor and library", () => {
+    for (const search of [
+      { q: "bug" },
+      { id: "new" },
+      { id: "tpl/1", library: "checklists" as const },
+    ]) {
+      const url = new URL(
+        routes.workspaceWorkItemTemplates.build(search),
+        "https://example.test",
+      );
+      expect(
+        parseWorkItemTemplateSearch(Object.fromEntries(url.searchParams)),
+      ).toEqual(search);
+    }
+    expect(parseWorkItemTemplateSearch({ id: "bad\u0000id" })).toEqual({});
+    expect(parseWorkItemTemplateSearch({ library: "other" })).toEqual({});
   });
 
   it("builds project overview and project settings URLs with encoded projectKey", () => {
@@ -973,5 +1149,188 @@ describe("label catalogue dialog URLs", () => {
     expect(
       parseLabelCatalogueSearch({ action: "create", label: "stale" }),
     ).toEqual({ action: "create" });
+  });
+});
+
+describe("item-scoped Kaneo disclosure URLs", () => {
+  it("retains detail sections alongside the comment and activity selection", () => {
+    const sections = {
+      itemKey: "HELP-4",
+      open: ["sla", "approvals"] as ("sla" | "approvals")[],
+    };
+    const url = routes.workItemDetail.build(
+      { key: "HELP-4" },
+      { sections, comment: "comment-1", activity: "comments" },
+    );
+    expect(
+      parseWorkItemDetailSearch(
+        Object.fromEntries(new URLSearchParams(url.split("?")[1])),
+      ),
+    ).toEqual({ sections, comment: "comment-1", activity: "comments" });
+  });
+  it("retains disclosure state on the board without losing its order or item", () => {
+    const sections = {
+      itemKey: "HELP-4",
+      open: ["attachments"] as "attachments"[],
+    };
+    const url = routes.workItemList.build(
+      { projectKey: "HELP" },
+      {
+        layout: "board",
+        sort: "position",
+        dir: "asc",
+        item: "HELP-4",
+        sections,
+      },
+    );
+    expect(parseWorkItemListSearchFromQueryString(url.split("?")[1])).toEqual({
+      layout: "board",
+      sort: "position",
+      dir: "asc",
+      item: "HELP-4",
+      sections,
+    });
+  });
+  it("does not preserve unsupported section names from a shared URL", () => {
+    expect(
+      parseWorkItemDetailSearch({
+        sections: JSON.stringify({ itemKey: "HELP-4", open: ["secrets"] }),
+      }),
+    ).toEqual({});
+  });
+});
+
+describe("work route grouping URL state (VW-13, VW-1)", () => {
+  it.each(["label", "cf.business_impact", "cf.constructor"] as const)(
+    "round-trips the registered grouping syntax %s",
+    (group) => {
+      const url = routes.workItemList.build(
+        { projectKey: "PROJ" },
+        { layout: "board", group },
+      );
+      const params = new URLSearchParams(url.split("?")[1]);
+      expect(params.get("group")).toBe(group);
+      expect(parseWorkItemWorkSearch(Object.fromEntries(params)).group).toBe(
+        group,
+      );
+    },
+  );
+
+  it.each(["cf.", "cf.business-impact", "cf.__proto__", "cf.a/b"])(
+    "rejects malformed custom grouping syntax %s",
+    (group) => {
+      expect(parseWorkItemWorkSearch({ group })).not.toHaveProperty("group");
+    },
+  );
+
+  it("parses a valid group, ignores an invalid one, and never invents one", () => {
+    expect(
+      parseWorkItemWorkSearch({ layout: "board", group: "assignee" }),
+    ).toMatchObject({
+      layout: "board",
+      group: "assignee",
+    });
+    expect(parseWorkItemWorkSearch({ group: "priority" }).group).toBe(
+      "priority",
+    );
+    expect(parseWorkItemWorkSearch({ group: "cycle" })).not.toHaveProperty(
+      "group",
+    );
+    expect(parseWorkItemWorkSearch({})).not.toHaveProperty("group");
+    expect(parseWorkItemWorkSearch(null)).toMatchObject({ layout: "list" });
+  });
+
+  it("round-trips combined board scope and clears it outside board layout", () => {
+    const url = new URL(
+      routes.workItemList.build(
+        { projectKey: "PROJ" },
+        { layout: "board", combined: "descendants", group: "priority" },
+      ),
+      "https://ticketing.invalid",
+    );
+    expect(
+      parseWorkItemWorkSearch(Object.fromEntries(url.searchParams)),
+    ).toMatchObject({
+      layout: "board",
+      combined: "descendants",
+      group: "priority",
+    });
+    expect(
+      parseWorkItemWorkSearch({ layout: "table", combined: "descendants" }),
+    ).not.toHaveProperty("combined");
+    expect(
+      parseWorkItemWorkSearch({ layout: "board", combined: "all" }),
+    ).not.toHaveProperty("combined");
+  });
+
+  it("writes the group into the builder, but never the default state grouping", () => {
+    const url = routes.workItemList.build(
+      { projectKey: "PROJ" },
+      { layout: "board", group: "assignee" },
+    );
+    expect(new URLSearchParams(url.split("?")[1]).get("group")).toBe(
+      "assignee",
+    );
+    expect(
+      routes.workItemList.build({ projectKey: "PROJ" }, { group: "state" }),
+    ).not.toContain("group=");
+    expect(routes.workItemList.build({ projectKey: "PROJ" })).not.toContain(
+      "group=",
+    );
+  });
+
+  it("round-trips the group through build then parse, with the list state beside it", () => {
+    const url = routes.workItemList.build(
+      { projectKey: "PROJ" },
+      {
+        layout: "board",
+        sort: "priority",
+        dir: "desc",
+        group: "priority",
+        filter: "x = 1",
+      },
+    );
+    const params = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    expect(parseWorkItemWorkSearch(params)).toMatchObject({
+      layout: "board",
+      sort: "priority",
+      dir: "desc",
+      group: "priority",
+      filter: "x = 1",
+    });
+  });
+});
+
+describe("account security URL state", () => {
+  it("preserves enrollment and a bounded opaque linking intent on reload", () => {
+    const intent = "opaque_link_intent_123456789";
+    const url = routes.accountSecurity.build({
+      enrollmentRequired: true,
+      identityLinkIntent: intent,
+    });
+    const parsed = parseAccountSecuritySearch(
+      Object.fromEntries(
+        new URL(url, "https://ticketing.localhost").searchParams,
+      ),
+    );
+    expect(parsed).toEqual({
+      enrollmentRequired: true,
+      identityLinkIntent: intent,
+    });
+  });
+  it("rejects paths, control bytes, arrays and oversized intent state", () => {
+    for (const value of [
+      "../other",
+      "x".repeat(129),
+      ["opaque_link_intent_123456789"],
+      "opaque_link_intent_\\n",
+      "https://elsewhere.invalid/",
+    ])
+      expect(
+        parseAccountSecuritySearch({
+          identityLinkIntent: value,
+          arbitrary: "ignored",
+        }),
+      ).toEqual({});
   });
 });

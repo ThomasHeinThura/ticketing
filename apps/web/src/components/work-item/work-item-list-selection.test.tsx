@@ -11,6 +11,16 @@ import { translate } from "@/test/en-translation";
 import type { WorkItemField, WorkItemRow } from "@/types/work-item";
 import WorkItemList from "./work-item-list";
 
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    isCheckingPermissions: false,
+    canUpdateTasks: () => false,
+    canAssignTasks: () => false,
+    canTransitionTasks: () => false,
+    canSetPriorityTasks: () => false,
+  }),
+}));
+
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({
     preloadRoute: vi.fn().mockResolvedValue(undefined),
@@ -85,7 +95,9 @@ describe("work item list selection (bulk assign, VW-3)", () => {
     mount({ canBulkAssign: true });
     await screen.findByRole("checkbox", { name: "Select WLP-1" });
     expect(
-      screen.getByRole("checkbox", { name: "Select all work items" }),
+      screen.getByRole("checkbox", {
+        name: translate("workItems:bulk.selectAll"),
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Select WLP-1" }),
@@ -111,7 +123,9 @@ describe("work item list selection (bulk assign, VW-3)", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Select WLP-2" }));
     expect(onSelectionChange).toHaveBeenCalledWith("WLP-2", true);
     fireEvent.click(
-      screen.getByRole("checkbox", { name: "Select all work items" }),
+      screen.getByRole("checkbox", {
+        name: translate("workItems:bulk.selectAll"),
+      }),
     );
     expect(onSelectAll).toHaveBeenCalledWith(true);
   });
@@ -120,13 +134,17 @@ describe("work item list selection (bulk assign, VW-3)", () => {
     mount({ canBulkAssign: true, selectedKeys: ["WLP-1", "WLP-2"] });
     await screen.findByRole("checkbox", { name: "Select WLP-1" });
     expect(
-      screen.getByRole("checkbox", { name: "Select all work items" }),
+      screen.getByRole("checkbox", {
+        name: translate("workItems:bulk.selectAll"),
+      }),
     ).toBeChecked();
     cleanup();
     mount({ canBulkAssign: true, selectedKeys: ["WLP-1"] });
     await screen.findByRole("checkbox", { name: "Select WLP-1" });
     expect(
-      screen.getByRole("checkbox", { name: "Select all work items" }),
+      screen.getByRole("checkbox", {
+        name: translate("workItems:bulk.selectAll"),
+      }),
     ).not.toBeChecked();
   });
 });

@@ -378,7 +378,7 @@ describe("approvals: scoping, sessions and notification rows", () => {
     expect((await approvalRows(t.workItem.id))[0]?.state).toBe("pending");
   });
 
-  it("no inbox row is written for a customer approver or requester", async () => {
+  it("a customer approver gets only the approval request in their inbox, never their own decision (AP-21, P2R1-04)", async () => {
     const t = await buildTenant("customer-rows");
     const customer = await addCustomer(t);
     const created = await request(t, t.requester, {
@@ -386,17 +386,20 @@ describe("approvals: scoping, sessions and notification rows", () => {
       approverId: customer.person.id,
     });
     expect(created.status).toBe(200);
-    expect(
-      await db
-        .select()
-        .from(schema.notificationTable)
-        .where(
-          and(
-            eq(schema.notificationTable.userId, customer.user.id),
-            eq(schema.notificationTable.resourceType, "approval"),
-          ),
-        ),
-    ).toEqual([]);
+    const customerApprovalKinds = async () =>
+      (
+        await db
+          .select({ kind: schema.notificationTable.kind })
+          .from(schema.notificationTable)
+          .where(
+            and(
+              eq(schema.notificationTable.userId, customer.user.id),
+              eq(schema.notificationTable.resourceType, "approval"),
+            ),
+          )
+      ).map((row) => row.kind);
+    // AP-21 (P2R1-04): pending approvals reach the addressed customer approver's inbox.
+    expect(await customerApprovalKinds()).toEqual(["approval.requested"]);
     // A decision by the customer notifies the staff requester, never the customer.
     const decided = await portalRequest(
       t,
@@ -405,11 +408,11 @@ describe("approvals: scoping, sessions and notification rows", () => {
       { method: "POST", body: { action: "approve" } },
     );
     expect(decided.status, await decided.clone().text()).toBe(200);
+    expect(await customerApprovalKinds()).toEqual(["approval.requested"]);
     const rows = await db
       .select()
       .from(schema.notificationTable)
       .where(eq(schema.notificationTable.resourceType, "approval"));
-    expect(rows.every((r) => r.userId !== customer.user.id)).toBe(true);
     expect(rows.some((r) => r.userId === t.requester.user.id)).toBe(true);
   });
 });

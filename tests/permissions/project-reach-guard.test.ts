@@ -10,10 +10,13 @@ import {
   requireLabelRowTaskReach,
 } from "../../apps/api/src/utils/task-target-reach";
 import {
+  PROJECT_AGILE_ROUTE_KEYS,
   PROJECT_BODY_TARGET_ROUTE_KEYS,
   PROJECT_LABEL_ROUTE_KEYS,
   PROJECT_LIST_ROUTE_KEYS,
+  PROJECT_PAGES_ROUTE_KEYS,
   PROJECT_READ_ROUTE_KEYS,
+  PROJECT_RECOVERY_ROUTE_KEYS,
   PROJECT_SOCKET_ROUTE_KEYS,
   PROJECT_WRITE_ROUTE_KEYS,
   TASK_TARGET_ROUTE_KEYS,
@@ -112,19 +115,23 @@ function findDerivedProjectLookupProblems(
  * A stale entry, or one that also carries the declaration, fails.
  */
 const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
+  "GET /api/workspace/{workspaceId}/project-settings":
+    "workspace-owned SLA/calendar defaults and enabled state-template ids, gated by current workspace access and workspace:manage_settings; no project or work-item rows",
+  "GET /api/workspace/{workspaceId}/state-templates":
+    "workspace-owned state definitions, gated by current workspace access and workspace:manage_settings; no project or work-item rows",
   "GET /api/canned-responses/manage":
     "workspace snippet definitions, gated by workspace:manage_settings and current workspace reach in SQL; no work item or project content. Composer listing remains independently item-scoped",
 
   "GET /api/project/organisations":
     "customer organisations (project:create picker); organisation rows, not project rows",
+  "GET /api/request-type-groups/order":
+    "request-type group ordering configuration only (labels and version), gated by current workspace reach and request_type:read; no project or work-item rows",
   "GET /api/request-types":
     "intake request-type definitions; configuration rows. They expose a default project id only, behind request_type:read",
   "GET /api/service-calendars":
     "SLA calendar definitions; configuration rows, not project rows",
   "GET /api/sla-policies":
     "SLA policy definitions; configuration rows, not project rows",
-  "GET /api/submissions":
-    "the intake queue, gated by intake:triage; rows carry the reference, form summary, state, claim, request type, requester and organisation, with no work item or project id, name, key or title (verified in #742 review)",
   "GET /api/views/team-audiences":
     "teams the caller belongs to; team rows, not project rows",
   "GET /api/workflows":
@@ -147,10 +154,92 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
     "workspace members; no project rows",
   "GET /api/workspace/{workspaceId}/roles":
     "workspace role definitions; no project rows",
+  "GET /api/workspace/{workspaceId}/roles/{roleId}":
+    "one workspace role definition; no project rows",
+  "GET /api/workspace/{workspaceId}/roles/{roleId}/holders":
+    "the people holding one workspace role (name, email, state); workspace membership rows, not project rows",
+  "GET /api/workspace/{workspaceId}/roles/{roleId}/history":
+    "the audit history of one workspace role; role-definition rows, not project rows",
   "GET /api/workspace/{workspaceId}/work-item-types":
     "work-item type definitions; configuration rows, not project rows",
+  "GET /api/workspace/{workspaceId}/work-item-templates":
+    "live work item template picker (id, name, type, title, checklist flag); workspace configuration rows, not project rows",
+  "GET /api/workspace/{workspaceId}/work-item-templates/manage":
+    "work item template definitions for settings (workspace:manage_settings); configuration rows, not project rows",
+  "GET /api/workspace/{workspaceId}/checklist-templates":
+    "checklist template definitions for settings (workspace:manage_settings); configuration rows, not project rows",
+  "GET /api/custom-field-sections":
+    "custom field section definitions; workspace configuration rows, not project rows",
+  "GET /api/custom-fields":
+    "custom field definitions with aggregate usage counts; workspace configuration rows, no work item or project ids, names or titles",
+  "GET /api/teams":
+    "team rows with member names (team:read); people and team definitions, no project rows",
+  "GET /api/teams/{id}":
+    "one team with its members; people rows, no project rows",
+  "GET /api/webhooks":
+    "webhook definitions (URL, event kinds, state, owner) behind webhook:manage; configuration rows with no project or work item content",
+  "GET /api/webhooks/{id}/deliveries":
+    "delivery attempts; each request and response body is redacted per row unless its entity is in the reader's reach (WH-6), so no hidden project content is returned",
+  "GET /api/workspaces/{id}/api-keys":
+    "service key summaries (prefix, capabilities, expiry, last use) behind api_key:manage; credential metadata, not project rows",
+  "GET /api/workspaces/{id}/automations":
+    "workspace-level rules only (project_id null), behind workspace:manage_settings; project rules are listed by the project route. Rows carry no work item content",
+  "GET /api/workspaces/{workspaceId}/terminology":
+    "workspace terminology configuration only, gated by workspace:manage_settings and current workspace reach; closed term forms and ETag, no project or work-item rows",
+  "GET /api/workspaces/{workspaceId}/terminology/runtime":
+    "effective agent noun forms for a currently reachable workspace, gated by workspace:read; only closed terminology keys, locale, forms and ETag, no project or work-item content",
+  "GET /api/workspaces/{workspaceId}/features":
+    "workspace feature-flag overrides; configuration rows, not project rows",
+  "GET /api/workspaces/{workspaceId}/features/resolved":
+    "effective on/off values of the workspace's feature flags for navigation; configuration values, no project rows",
   "GET /api/workspaces/{workspaceId}/audit":
     "audit rows are filtered by project reach inside the audit reader (#319/#334)",
+  // P5 service management, change management and releases.
+  "GET /api/service-catalogue/status":
+    "feature flag and the caller's own manage capabilities; no rows",
+  "GET /api/services":
+    "service definitions (name, category, owner team, status); links to projects are only on the detail route, which is reach-filtered. Incident and open-change counts are workspace-wide per-service aggregates (SVC-3), with no project or work item ids, names or titles",
+  "GET /api/change-freezes":
+    "freeze window definitions (name, reason, start, end); workspace configuration rows, not project rows",
+  "GET /api/releases":
+    "release rows (name, service, planned date, status) with change and checklist counts; the changes themselves, their keys and titles, are only on the reach-filtered detail route, which also reports a hidden count",
+  "GET /api/change-cab-template":
+    "whether the workspace has adopted the CAB workflow template; configuration status, no rows",
+  // P5 reports and dashboards.
+  "GET /api/reports":
+    "the static report catalogue (key, title, options, feature availability); definitions, not data. The data routes (/reports/{key}, /items, widget data) declare reach filtering",
+  "GET /api/dashboards":
+    "the caller's own and workspace dashboard definitions (name, layout, widget count); a widget filter may hold a project id but no project content, and the data behind a widget is only served by the reach-filtered widget data route",
+  "GET /api/dashboards/{id}":
+    "one dashboard definition with its widget configuration (report key, chart type, filters as ids); no report data. Widget data is served by the reach-filtered widget data route",
+  // P5 time tracking.
+  "GET /api/time-activities":
+    "workspace activity definitions (name, billable default, archived); configuration rows, not project rows",
+  "GET /api/time-settings":
+    "workspace-level time settings (backdating limit, rounding, caller's time zone and capabilities) plus, with a projectId query, one reach-filtered project row (id, defaultBillable) that is omitted when the project is outside the caller's reach; no other project content",
+  "GET /api/rates":
+    "hourly rate cards behind time_entry:manage_rates with cost tracking on; rows name a person and, for a per-project override, carry a project id only, never a project name, key or work item",
+  "GET /api/cost-types":
+    "workspace cost type definitions (name, unit, default rate, currency, billable flag, archived); configuration rows with no project, work item or entry content",
+  "GET /api/available-hours":
+    "per-person weekly available hours with effective dates; rows carry a person id and hours only, never project content, and others' rows need time_entry:read_any",
+  "GET /api/report-exports":
+    "the caller's own export requests only (requester-scoped, another person's export is a 404); the export content is rendered under the requester's reach at generation time",
+  "GET /api/report-exports/{id}":
+    "a single export request of the caller; another person's or workspace's export is a 404, no project rows are returned by this route",
+  "GET /api/report-exports/{id}/download":
+    "downloads the caller's own rendered export; another person's export is a 404 and a render made with wider rights is refused once those rights are lost",
+  // P5 knowledge base.
+  "GET /api/kb/settings":
+    "workspace knowledge base settings (feature options); configuration, no article or project rows",
+  // P5 service calendars.
+  "GET /api/service-calendars/{id}/holidays/presets":
+    "the bundled country holiday dataset that ships with the release; static reference data, no workspace rows",
+  // P5 customer invitations.
+  "GET /api/workspace/{workspaceId}/customer-organisations":
+    "customer organisation names an invitation may target (member:invite); organisation rows, not project rows",
+  "GET /api/workspace/{workspaceId}/organisations/{organisationId}/invitations":
+    "one organisation's customer invitations (address, status, dates; never the accept credential); invitation rows, no project rows",
 };
 
 /** Pure, so the negative cases can prove the check is not vacuous. */
@@ -193,8 +282,6 @@ function findListReachProblems(
  * other.
  */
 const SUBMISSION_ROUTE_EXEMPT: Readonly<Record<string, string>> = {
-  "GET /api/submissions":
-    "the intake queue; rows carry no work item id, project or comment (list schema picks without workItemId)",
   "POST /api/submissions/{ref}/claim":
     "returns the claim fields only (id, ref, state, claimedBy, claimedAt); reads no work item",
   "POST /api/submissions/{ref}/decline":
@@ -450,7 +537,10 @@ describe("project reach guard: the real router", () => {
         new Set<string>([
           ...PROJECT_WRITE_ROUTE_KEYS,
           ...PROJECT_READ_ROUTE_KEYS,
+          ...PROJECT_RECOVERY_ROUTE_KEYS,
           ...PROJECT_LABEL_ROUTE_KEYS,
+          ...PROJECT_AGILE_ROUTE_KEYS,
+          ...PROJECT_PAGES_ROUTE_KEYS,
         ]),
         PROJECT_REACH_EXEMPT,
       ),

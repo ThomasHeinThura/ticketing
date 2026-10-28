@@ -1,3 +1,31 @@
+import {
+  type DashboardSearch,
+  parseDashboardSearch,
+  parseReportBuilderSearch,
+  parseReportsIndexSearch,
+  type ReportBuilderSearch,
+  type ReportSearch,
+  type ReportsIndexSearch,
+  reportQuery,
+} from "./report-search";
+import { isCalendarDate, weekStart } from "./time-minutes";
+import {
+  parseWorkItemApprovalRequestSearch,
+  type WorkItemApprovalRequestSearch,
+} from "./work-item-approval-request-search";
+import {
+  parseWorkItemDetailSectionsSearch,
+  type WorkItemDetailSectionsSearch,
+} from "./work-item-detail-sections-search";
+import {
+  parseWorkItemHierarchySearch,
+  type WorkItemHierarchySearch,
+} from "./work-item-hierarchy-search";
+import {
+  parseWorkItemRelationsSearch,
+  type WorkItemRelationsSearch,
+} from "./work-item-relations-search";
+
 // Canonical route helpers (AGENTS.md rule 4): every screen has a URL, and
 // any filter/sort state it carries lives in the query string so a reload reproduces it
 // exactly. `generatedRouteMetadata` is produced from both TanStack trees and checked
@@ -17,6 +45,47 @@ import {
 } from "./work-item-list-search";
 
 export * from "./work-item-list-search";
+
+import { parseWorkItemGroup, type WorkItemGroup } from "./project-board-search";
+
+/**
+ * The `/work` route's search: the shared work-item list state plus the board's grouping
+ * (`VW-13`, `VW-1`). `group` lives here, not in the shared list codec, because saved views
+ * share that codec and a grouping is not part of a saved query. `state` is the default and a
+ * link that names it still parses; the builder never writes it.
+ */
+export type WorkItemWorkSearch = WorkItemListSearch & {
+  group?: WorkItemGroup;
+  combined?: "descendants";
+};
+
+export function parseWorkItemWorkSearch(raw: unknown): WorkItemWorkSearch {
+  const group = parseWorkItemGroup((raw as { group?: unknown } | null)?.group);
+  const list = parseWorkItemListSearch(raw);
+  const combined = (raw as { combined?: unknown } | null)?.combined;
+  return {
+    ...list,
+    ...(group ? { group } : {}),
+    ...(list.layout === "board" && combined === "descendants"
+      ? { combined: "descendants" as const }
+      : {}),
+  };
+}
+
+/**
+ * Cycle and module detail search (P5 agile): the work surface under the burndown or progress
+ * panel is the project's board or list. `board` is the default and is never written.
+ */
+export type AgileDetailSearch = { layout?: "list" };
+
+export function parseAgileDetailSearch(raw: unknown): AgileDetailSearch {
+  const layout = (raw as { layout?: unknown } | null)?.layout;
+  return layout === "list" ? { layout: "list" } : {};
+}
+
+function agileDetailQuery(search: AgileDetailSearch) {
+  return search.layout === "list" ? "?layout=list" : "";
+}
 
 export type LabelCatalogueSearch = {
   action?: "create" | "edit" | "delete";
@@ -96,9 +165,13 @@ export function parseGeneratedRouteUrl(
 }
 
 export type WorkItemActivityFilter = "everything" | "comments" | "public";
-export type WorkItemDetailSearch = {
-  activity?: Exclude<WorkItemActivityFilter, "everything">;
-};
+export type WorkItemDetailSearch = WorkItemApprovalRequestSearch &
+  WorkItemHierarchySearch &
+  WorkItemRelationsSearch &
+  WorkItemDetailSectionsSearch & {
+    activity?: Exclude<WorkItemActivityFilter, "everything">;
+    comment?: string;
+  };
 export type ProjectRouteParams = { workspaceId: string; projectId: string };
 
 export const PROJECT_BACKLOG_PATH =
@@ -112,8 +185,33 @@ export const PROJECT_GANTT_PATH =
 
 export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
-  return candidate.activity === "comments" || candidate.activity === "public"
-    ? { activity: candidate.activity }
+  return {
+    ...parseWorkItemHierarchySearch(candidate),
+    ...parseWorkItemRelationsSearch(candidate),
+    ...parseWorkItemDetailSectionsSearch(candidate),
+    ...parseWorkItemApprovalRequestSearch(candidate),
+    ...(typeof candidate.comment === "string" &&
+    /^[A-Za-z0-9_-]{1,256}$/u.test(candidate.comment)
+      ? { comment: candidate.comment }
+      : {}),
+    ...(candidate.activity === "comments" || candidate.activity === "public"
+      ? { activity: candidate.activity }
+      : {}),
+  };
+}
+
+export type GodModeOrganisationsSearch = { organisationId?: string };
+
+export function parseGodModeOrganisationsSearch(
+  raw: unknown,
+): GodModeOrganisationsSearch {
+  if (!raw || typeof raw !== "object") return {};
+  const id = (raw as Record<string, unknown>).organisationId;
+  return typeof id === "string" &&
+    id.trim().length > 0 &&
+    id.length <= 128 &&
+    !/\p{Cc}/u.test(id)
+    ? { organisationId: id }
     : {};
 }
 
@@ -134,6 +232,7 @@ export const GOD_MODE_USER_ACTIONS = [
   "reset-mfa",
   "sign-out",
   "deactivate",
+  "impersonate",
 ] as const;
 export type GodModeUserAction = (typeof GOD_MODE_USER_ACTIONS)[number];
 
@@ -200,6 +299,22 @@ export function parseIdentityConnectionEditorSearchFromQueryString(
 }
 
 export type PendingActionsSearch = { cursor?: string };
+export const IMPORT_WIZARD_STEPS = [
+  "connect",
+  "discover",
+  "mapping",
+  "dry-run",
+  "execute",
+  "reconcile",
+] as const;
+export type ImportWizardStep = (typeof IMPORT_WIZARD_STEPS)[number];
+/** Workspace selected in the God Mode import history and retained on run detail links; `step` is the open import-wizard step. */
+export type GodModeImportsSearch = {
+  workspaceId?: string;
+  step?: ImportWizardStep;
+};
+/** Workspace customer invitations: which customer organisation is selected (CP-20). */
+export type CustomerInvitationsSearch = { organisation?: string };
 export type SavedViewsSearch = { query?: string };
 /**
  * The URL form of a saved view (`SV-19`): the view's context (`workspaceId`, `scope`,
@@ -233,6 +348,17 @@ export function parsePendingActionsSearch(raw: unknown): PendingActionsSearch {
   return { cursor };
 }
 
+export function parseCustomerInvitationsSearch(
+  raw: unknown,
+): CustomerInvitationsSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return typeof value.organisation === "string" &&
+    value.organisation.length > 0 &&
+    value.organisation.length <= 128
+    ? { organisation: value.organisation }
+    : {};
+}
+
 export function parseSavedViewsSearch(raw: unknown): SavedViewsSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
   return {
@@ -248,6 +374,26 @@ function boundedId(value: unknown): string | undefined {
     : undefined;
 }
 
+export function parseGodModeImportsSearch(raw: unknown): GodModeImportsSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const workspaceId = boundedId(value.workspaceId);
+  const step = (IMPORT_WIZARD_STEPS as readonly unknown[]).includes(value.step)
+    ? (value.step as ImportWizardStep)
+    : undefined;
+  return {
+    ...(workspaceId ? { workspaceId } : {}),
+    ...(step ? { step } : {}),
+  };
+}
+
+function godModeImportsQuery(search: GodModeImportsSearch) {
+  const resolved = parseGodModeImportsSearch(search);
+  const query = new URLSearchParams();
+  if (resolved.workspaceId) query.set("workspaceId", resolved.workspaceId);
+  if (resolved.step) query.set("step", resolved.step);
+  return query.size ? `?${query}` : "";
+}
+
 /**
  * Parses a saved view's URL. Total and bounded like every route parser: each property that is
  * absent or invalid is simply omitted, and no default is added, so a link keeps meaning what
@@ -255,7 +401,7 @@ function boundedId(value: unknown): string | undefined {
  */
 export function parseSavedViewUrlSearch(raw: unknown): SavedViewUrlSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  const { sort, ...rest } = parseWorkItemQueryState(value);
+  const { sort, sorts, ...rest } = parseWorkItemQueryState(value);
   const workspaceId = boundedId(value.workspaceId);
   const scopeId = boundedId(value.scopeId);
   return {
@@ -268,6 +414,7 @@ export function parseSavedViewUrlSearch(raw: unknown): SavedViewUrlSearch {
       ? { layout: value.layout as string }
       : {}),
     ...(isWorkItemSearchSortField(sort) ? { sort } : {}),
+    ...(sorts ? { sorts } : {}),
     ...rest,
   };
 }
@@ -283,23 +430,43 @@ export function parseSavedViewUrlSearchFromQueryString(queryString: string) {
     filterMode: params.get("filterMode") ?? undefined,
     sort: params.get("sort") ?? undefined,
     dir: params.get("dir") ?? undefined,
+    sorts: params.get("sorts") ?? undefined,
     columns: params.get("columns") ?? undefined,
     item: params.get("item") ?? undefined,
+    hierarchy: params.get("hierarchy") ?? undefined,
+    relations: params.get("relations") ?? undefined,
+    approvalRequest: params.get("approvalRequest") ?? undefined,
+    sections: params.get("sections") ?? undefined,
   });
 }
 
-export type ProjectBacklogSearch = {
-  filter?: string;
-  filterMode?: "visual" | "text";
-  item?: string;
-};
+export type ProjectBacklogSearch = WorkItemApprovalRequestSearch &
+  WorkItemHierarchySearch &
+  WorkItemRelationsSearch &
+  WorkItemDetailSectionsSearch & {
+    filter?: string;
+    filterMode?: "visual" | "text";
+    item?: string;
+  };
 
 export function parseProjectBacklogSearch(raw: unknown): ProjectBacklogSearch {
-  const { filter, filterMode, item } = parseWorkItemQueryState(raw);
+  const {
+    filter,
+    filterMode,
+    item,
+    hierarchy,
+    relations,
+    approvalRequest,
+    sections,
+  } = parseWorkItemQueryState(raw);
   return {
     ...(filter ? { filter } : {}),
     ...(filterMode ? { filterMode } : {}),
     ...(item ? { item } : {}),
+    ...(hierarchy ? { hierarchy } : {}),
+    ...(relations ? { relations } : {}),
+    ...(approvalRequest ? { approvalRequest } : {}),
+    ...(sections ? { sections } : {}),
   };
 }
 
@@ -311,17 +478,47 @@ export function parseProjectBacklogSearchFromQueryString(
     filter: params.get("filter") ?? undefined,
     filterMode: params.get("filterMode") ?? undefined,
     item: params.get("item") ?? undefined,
+    hierarchy: params.get("hierarchy") ?? undefined,
+    relations: params.get("relations") ?? undefined,
+    approvalRequest: params.get("approvalRequest") ?? undefined,
+    sections: params.get("sections") ?? undefined,
   });
 }
 
-export type AgentInboxFilter = "all" | "unread";
+export const AGENT_INBOX_FILTERS = [
+  "all",
+  "unread",
+  "mentions",
+  "assignments",
+] as const;
+export type AgentInboxFilter = (typeof AGENT_INBOX_FILTERS)[number];
 export type AgentInboxSearch = {
   filter?: Exclude<AgentInboxFilter, "all">;
 };
 
+export type AgentHomeSearch = { recovery?: "deleted" };
+
+export function parseAgentHomeSearch(raw: unknown): AgentHomeSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return value.recovery === "deleted" ? { recovery: "deleted" } : {};
+}
+
+export function parseAgentHomeSearchFromQueryString(
+  queryString: string,
+): AgentHomeSearch {
+  const params = new URLSearchParams(queryString);
+  return parseAgentHomeSearch({
+    recovery: params.get("recovery") ?? undefined,
+  });
+}
+
 export function parseAgentInboxSearch(raw: unknown): AgentInboxSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  return value.filter === "unread" ? { filter: "unread" } : {};
+  return value.filter === "unread" ||
+    value.filter === "mentions" ||
+    value.filter === "assignments"
+    ? { filter: value.filter }
+    : {};
 }
 
 export function parseAgentInboxSearchFromQueryString(
@@ -332,15 +529,19 @@ export function parseAgentInboxSearchFromQueryString(
 }
 
 export type AgentMyWorkLens = "assigned" | "watching" | "approvals";
-export type AgentMyWorkSearch = {
-  lens?: Exclude<AgentMyWorkLens, "assigned">;
-  q?: string;
-  item?: string;
-};
+export type AgentMyWorkSearch = WorkItemApprovalRequestSearch &
+  WorkItemHierarchySearch &
+  WorkItemRelationsSearch &
+  WorkItemDetailSectionsSearch & {
+    lens?: Exclude<AgentMyWorkLens, "assigned">;
+    q?: string;
+    item?: string;
+  };
 
 export function parseAgentMyWorkSearch(raw: unknown): AgentMyWorkSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  const { item } = parseWorkItemQueryState(raw);
+  const { item, hierarchy, relations, approvalRequest, sections } =
+    parseWorkItemQueryState(raw);
   const q =
     typeof value.q === "string" && value.q.trim()
       ? value.q.trim().slice(0, 200)
@@ -351,6 +552,10 @@ export function parseAgentMyWorkSearch(raw: unknown): AgentMyWorkSearch {
       : {}),
     ...(q ? { q } : {}),
     ...(item ? { item } : {}),
+    ...(hierarchy ? { hierarchy } : {}),
+    ...(relations ? { relations } : {}),
+    ...(approvalRequest ? { approvalRequest } : {}),
+    ...(sections ? { sections } : {}),
   };
 }
 
@@ -362,6 +567,10 @@ export function parseAgentMyWorkSearchFromQueryString(
     lens: params.get("lens") ?? undefined,
     q: params.get("q") ?? undefined,
     item: params.get("item") ?? undefined,
+    hierarchy: params.get("hierarchy") ?? undefined,
+    relations: params.get("relations") ?? undefined,
+    approvalRequest: params.get("approvalRequest") ?? undefined,
+    sections: params.get("sections") ?? undefined,
   });
 }
 
@@ -419,6 +628,83 @@ export function parseCannedResponseSearch(raw: unknown): CannedResponseSearch {
           ...(value.action === "delete" ? { action: "delete" as const } : {}),
         }
       : {}),
+  };
+}
+
+/** Team detail: `inactive=1` also lists deactivated members (kept for history, TM-8). */
+export type TeamDetailSearch = { inactive?: boolean };
+export function parseTeamDetailSearch(raw: unknown): TeamDetailSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return value.inactive === true ||
+    value.inactive === "1" ||
+    value.inactive === 1
+    ? { inactive: true }
+    : {};
+}
+
+/** Role editor tabs (RL-1..RL-13); `capabilities` is the default and is never written. */
+export const ROLE_DETAIL_TABS = [
+  "capabilities",
+  "summary",
+  "preview",
+  "compare",
+  "people",
+  "history",
+] as const;
+export type RoleDetailTab = (typeof ROLE_DETAIL_TABS)[number];
+/** Role editor: the open tab and, on `compare`, the role being compared with (RL-13). */
+export type RoleDetailSearch = { tab?: RoleDetailTab; compare?: string };
+export function parseRoleDetailSearch(raw: unknown): RoleDetailSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const tab = ROLE_DETAIL_TABS.find(
+    (candidate) => candidate === value.tab && candidate !== "capabilities",
+  );
+  const compare =
+    typeof value.compare === "string" &&
+    value.compare.length > 0 &&
+    value.compare.length <= 128 &&
+    !value.compare.includes("\0")
+      ? value.compare
+      : undefined;
+  return {
+    ...(tab ? { tab } : {}),
+    ...(compare ? { compare } : {}),
+  };
+}
+
+/** Custom field list: `deleted=1` shows deleted fields inside their 30 day restore window (CF-8). */
+export type CustomFieldListSearch = { deleted?: boolean };
+export function parseCustomFieldListSearch(
+  raw: unknown,
+): CustomFieldListSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return value.deleted === true || value.deleted === "1" || value.deleted === 1
+    ? { deleted: true }
+    : {};
+}
+
+export type WorkItemTemplateSearch = SettingsTextFilterSearch & {
+  /** The template being edited; `new` opens the create form. */
+  id?: string;
+  /** Which library the page shows; templates are the default. */
+  library?: "checklists";
+};
+export function parseWorkItemTemplateSearch(
+  raw: unknown,
+): WorkItemTemplateSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const id =
+    typeof value.id === "string" &&
+    value.id.length <= 200 &&
+    !value.id.includes("\u0000")
+      ? value.id.trim()
+      : undefined;
+  return {
+    ...parseSettingsTextFilterSearch(raw),
+    ...(value.library === "checklists"
+      ? { library: "checklists" as const }
+      : {}),
+    ...(id ? { id } : {}),
   };
 }
 
@@ -497,23 +783,206 @@ export function parseServiceCalendarListSearchFromQueryString(
 }
 
 export type IntakeQueueSearch = {
-  state:
+  state?:
     | "new"
     | "clarifying"
     | "accepted"
     | "declined"
     | "duplicate"
     | "withdrawn";
+  /** IQ19/21: opaque association of two persisted saved views. */
+  queue?: string;
+  /** Canonical work-item filter text for the paired half. */
+  workItemFilter?: string;
+  workItemSorts?: WorkItemQueryState["sorts"];
+  workItemColumns?: WorkItemQueryState["columns"];
+  workItemFilterMode?: WorkItemQueryState["filterMode"];
   ref?: string;
   cursor?: string;
+  /** `IQ-19`/`IQ-21`: request type id. */
+  requestType?: string;
+  /** `IQ-21`: whether a triager has claimed the submission. */
+  assignee?: IntakeAssigneeFilter;
+  /** `IQ-21`: only submissions at least this old. */
+  age?: IntakeAgeFilter;
 };
+export const INTAKE_ASSIGNEE_FILTERS = ["claimed", "unclaimed"] as const;
+export type IntakeAssigneeFilter = (typeof INTAKE_ASSIGNEE_FILTERS)[number];
+export const INTAKE_AGE_FILTERS = ["1d", "3d", "7d", "30d"] as const;
+export type IntakeAgeFilter = (typeof INTAKE_AGE_FILTERS)[number];
 export type RequestTypeEditorSearch = { requestTypeId?: string };
+export type WorkflowSettingsSearch = { workflowId?: string };
 export type PortalCatalogueSearch = { q?: string; key?: string };
-export type PortalSignInStage = "email" | "password" | "factor";
+/**
+ * Timesheet (`TC-*`): the week is a Monday (`YYYY-MM-DD`); the current week is never written.
+ * `scope=everyone` is the read-only people-by-day view for `time_entry:read_any` holders.
+ */
+export type TimesheetSearch = { week?: string; scope?: "everyone" };
+export function parseTimesheetSearch(raw: unknown): TimesheetSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const week = isCalendarDate(value.week) ? weekStart(value.week) : undefined;
+  return {
+    ...(week ? { week } : {}),
+    ...(value.scope === "everyone" ? { scope: "everyone" as const } : {}),
+  };
+}
+/** Knowledge base list (`KB-13`/`KB-14`/`KB-16`): one screen, three views, all in the URL. */
+export const KB_LIST_VIEWS = ["articles", "categories", "report"] as const;
+export const KB_STATES = [
+  "draft",
+  "in_review",
+  "published",
+  "archived",
+] as const;
+export type KbListSearch = {
+  view?: (typeof KB_LIST_VIEWS)[number];
+  q?: string;
+  state?: (typeof KB_STATES)[number];
+  category?: string;
+  overdue?: boolean;
+};
+export const KB_ARTICLE_TABS = ["article", "versions", "feedback"] as const;
+export type KbArticleSearch = {
+  tab?: (typeof KB_ARTICLE_TABS)[number];
+  /** Version number shown in the history tab. */
+  version?: number;
+};
+export type KbEditorSearch = { preview?: boolean };
+export type PortalKbSearch = { q?: string; category?: string };
+
+function kbText(value: unknown, max = 200) {
+  return typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= max &&
+    !value.includes("\u0000")
+    ? value
+    : undefined;
+}
+export function parseKbListSearch(raw: unknown): KbListSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const view = KB_LIST_VIEWS.find((candidate) => candidate === value.view);
+  const state = KB_STATES.find((candidate) => candidate === value.state);
+  const q = kbText(value.q);
+  const category = kbText(value.category);
+  return {
+    ...(view && view !== "articles" ? { view } : {}),
+    ...(q ? { q } : {}),
+    ...(state ? { state } : {}),
+    ...(category ? { category } : {}),
+    ...(value.overdue === true || value.overdue === "1"
+      ? { overdue: true }
+      : {}),
+  };
+}
+export function parseKbArticleSearch(raw: unknown): KbArticleSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const tab = KB_ARTICLE_TABS.find((candidate) => candidate === value.tab);
+  const version = Number(value.version);
+  return {
+    ...(tab && tab !== "article" ? { tab } : {}),
+    ...(Number.isInteger(version) && version >= 1 && version <= 100000
+      ? { version }
+      : {}),
+  };
+}
+export function parseKbEditorSearch(raw: unknown): KbEditorSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return value.preview === true || value.preview === "1"
+    ? { preview: true }
+    : {};
+}
+export function parsePortalKbSearch(raw: unknown): PortalKbSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const q = kbText(value.q);
+  const category = kbText(value.category);
+  return { ...(q ? { q } : {}), ...(category ? { category } : {}) };
+}
+function kbQuery(entries: Record<string, string | undefined>) {
+  const query = new URLSearchParams();
+  for (const [key, entry] of Object.entries(entries))
+    if (entry) query.set(key, entry);
+  const suffix = query.toString();
+  return suffix ? `?${suffix}` : "";
+}
+
+/** Service management (P5 `SVC-*`, `CH-*`, `REL-*`): every filter lives in the URL. */
+export type ServiceListSearch = { q?: string };
+export const CHANGE_CALENDAR_TABS = [
+  "calendar",
+  "freezes",
+  "overrides",
+] as const;
+export type ChangeCalendarSearch = {
+  /** First day of the visible month, `YYYY-MM`; the current month when absent. */
+  month?: string;
+  tab?: (typeof CHANGE_CALENDAR_TABS)[number];
+};
+export type ReleaseListSearch = { serviceId?: string };
+
+function serviceManagementText(value: unknown, max = 200) {
+  return typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= max &&
+    !value.includes("\u0000")
+    ? value
+    : undefined;
+}
+export function parseServiceListSearch(raw: unknown): ServiceListSearch {
+  const q = serviceManagementText((raw as { q?: unknown } | null)?.q, 120);
+  return q ? { q } : {};
+}
+export function parseChangeCalendarSearch(raw: unknown): ChangeCalendarSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  const month =
+    typeof value.month === "string" &&
+    /^\d{4}-(0[1-9]|1[0-2])$/u.test(value.month)
+      ? value.month
+      : undefined;
+  const tab = CHANGE_CALENDAR_TABS.find((candidate) => candidate === value.tab);
+  return {
+    ...(month ? { month } : {}),
+    ...(tab && tab !== "calendar" ? { tab } : {}),
+  };
+}
+export function parseReleaseListSearch(raw: unknown): ReleaseListSearch {
+  const serviceId = serviceManagementText(
+    (raw as { serviceId?: unknown } | null)?.serviceId,
+    128,
+  );
+  return serviceId ? { serviceId } : {};
+}
+function serviceManagementQuery(entries: Record<string, string | undefined>) {
+  const query = new URLSearchParams();
+  for (const [key, entry] of Object.entries(entries))
+    if (entry) query.set(key, entry);
+  const suffix = query.toString();
+  return suffix ? `?${suffix}` : "";
+}
+
+export type PortalInboxSearch = { filter?: "all" | "unread" | "mentions" };
+
+export function parsePortalInboxSearch(raw: unknown): PortalInboxSearch {
+  const filter = (raw as { filter?: unknown } | null)?.filter;
+  return filter === "unread" || filter === "mentions" ? { filter } : {};
+}
+
+export type PortalSignInStage = "email" | "password" | "factor" | "otp";
 export type PortalSignInSearch = {
   stage: PortalSignInStage;
   factor: "totp" | "backup";
+  invitationId?: string;
 };
+
+export function parseWorkflowSettingsSearch(
+  raw: unknown,
+): WorkflowSettingsSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return typeof value.workflowId === "string" &&
+    value.workflowId.length > 0 &&
+    value.workflowId.length <= 200
+    ? { workflowId: value.workflowId }
+    : {};
+}
 
 export function parseRequestTypeEditorSearch(
   raw: unknown,
@@ -535,7 +1004,7 @@ export function parseIntakeSearch(raw: unknown): IntakeQueueSearch {
     "duplicate",
     "withdrawn",
   ] as const;
-  const state = states.find((candidate) => candidate === value.state) ?? "new";
+  const explicitState = states.find((candidate) => candidate === value.state);
   const ref =
     typeof value.ref === "string" && /^SUB-[1-9]\d{0,9}$/u.test(value.ref)
       ? value.ref
@@ -544,7 +1013,53 @@ export function parseIntakeSearch(raw: unknown): IntakeQueueSearch {
     typeof value.cursor === "string" && value.cursor.length <= 2048
       ? value.cursor
       : undefined;
-  return { state, ...(ref ? { ref } : {}), ...(cursor ? { cursor } : {}) };
+  const requestType =
+    typeof value.requestType === "string" &&
+    value.requestType.length > 0 &&
+    value.requestType.length <= 200
+      ? value.requestType
+      : undefined;
+  const assignee = INTAKE_ASSIGNEE_FILTERS.find(
+    (candidate) => candidate === value.assignee,
+  );
+  const age = INTAKE_AGE_FILTERS.find((candidate) => candidate === value.age);
+  const queue =
+    typeof value.queue === "string" &&
+    /^[A-Za-z0-9_-]{1,128}$/u.test(value.queue)
+      ? value.queue
+      : undefined;
+  const workItemQuery = parseWorkItemQueryState({
+    filter: value.workItemFilter,
+    sorts:
+      typeof value.workItemSorts === "string" &&
+      value.workItemSorts.length > 2000
+        ? undefined
+        : value.workItemSorts,
+    columns:
+      typeof value.workItemColumns === "string" &&
+      value.workItemColumns.length > 16384
+        ? undefined
+        : value.workItemColumns,
+    filterMode: value.workItemFilterMode,
+  });
+  const state = explicitState ?? (queue ? undefined : "new");
+  return {
+    ...(state ? { state } : {}),
+    ...(queue ? { queue } : {}),
+    ...(workItemQuery.filter ? { workItemFilter: workItemQuery.filter } : {}),
+    ...(workItemQuery.sorts ? { workItemSorts: workItemQuery.sorts } : {}),
+    ...(workItemQuery.columns
+      ? { workItemColumns: workItemQuery.columns }
+      : {}),
+    ...(workItemQuery.filterMode
+      ? { workItemFilterMode: workItemQuery.filterMode }
+      : {}),
+    ...(ref ? { ref } : {}),
+    ...(cursor ? { cursor } : {}),
+    ...(requestType ? { requestType } : {}),
+    ...(assignee ? { assignee } : {}),
+    ...(age ? { age } : {}),
+  };
 }
 
 export function parsePortalCatalogueSearch(
@@ -561,16 +1076,83 @@ export function parsePortalCatalogueSearch(
 
 export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  const stage = ["email", "password", "factor"].find(
+  const stage = ["email", "password", "factor", "otp"].find(
     (candidate) => candidate === value.stage,
   ) as PortalSignInStage | undefined;
   return {
     stage: stage ?? "email",
     factor: value.factor === "backup" ? "backup" : "totp",
+    ...(typeof value.invitationId === "string" &&
+    /^[A-Za-z0-9_-]{1,128}$/.test(value.invitationId)
+      ? { invitationId: value.invitationId }
+      : {}),
+  };
+}
+
+/** Existing Kaneo account security, including an opaque session-bound linking intent. */
+export type AccountSecuritySearch = {
+  enrollmentRequired?: boolean;
+  identityLinkIntent?: string;
+};
+export function parseAccountSecuritySearch(
+  raw: unknown,
+): AccountSecuritySearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    ...(value.enrollmentRequired === true || value.enrollmentRequired === "true"
+      ? { enrollmentRequired: true }
+      : {}),
+    ...(typeof value.identityLinkIntent === "string" &&
+    /^[A-Za-z0-9_-]{16,128}$/.test(value.identityLinkIntent)
+      ? { identityLinkIntent: value.identityLinkIntent }
+      : {}),
   };
 }
 
 export const routes = {
+  accountSecurity: {
+    path: "/dashboard/settings/account/security" as const,
+    build: (search: AccountSecuritySearch = {}) => {
+      const resolved = parseAccountSecuritySearch(search);
+      const query = new URLSearchParams();
+      if (resolved.enrollmentRequired) query.set("enrollmentRequired", "true");
+      if (resolved.identityLinkIntent)
+        query.set("identityLinkIntent", resolved.identityLinkIntent);
+      return `/dashboard/settings/account/security${query.size ? `?${query}` : ""}`;
+    },
+  },
+  /** `docs/screens.md` "Workspace — webhooks". */
+  webhooks: { path: "/agent/settings/webhooks" as const },
+  /** `docs/screens.md` "Webhook editor"; `new` creates. */
+  webhookEditor: {
+    path: "/agent/settings/webhooks/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/webhooks/${encodeURIComponent(params.id)}`,
+  },
+  /** `docs/screens.md` "Webhook delivery history". */
+  webhookDeliveries: {
+    path: "/agent/settings/webhooks/$id/deliveries" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/webhooks/${encodeURIComponent(params.id)}/deliveries`,
+  },
+  /** `docs/screens.md` "Workspace — automations". */
+  automations: { path: "/agent/settings/automations" as const },
+  /** `docs/screens.md` "Workspace — customer invitations" (CP-20..CP-23). */
+  customerInvitations: {
+    path: "/agent/settings/customer-invitations" as const,
+    build: (search: CustomerInvitationsSearch = {}) => {
+      const resolved = parseCustomerInvitationsSearch(search);
+      return resolved.organisation
+        ? `/agent/settings/customer-invitations?organisation=${encodeURIComponent(resolved.organisation)}`
+        : "/agent/settings/customer-invitations";
+    },
+  },
+  /** `docs/screens.md` "Project — automations" (redirects into the Kaneo project settings). */
+  projectAutomations: {
+    path: "/agent/projects/$projectKey/settings/automations" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/automations`,
+  },
   /** `docs/02-design/screen-inventory.md` "Workspace — service calendars". */
   serviceCalendars: {
     path: "/agent/settings/calendars" as const,
@@ -620,17 +1202,101 @@ export const routes = {
         : "/agent/settings/request-types";
     },
   },
+  /** `WF-9`: workflow versions, validation and publish, in the settings frame. */
+  workflowSettings: {
+    path: "/agent/settings/workflows" as const,
+    build: (search: WorkflowSettingsSearch = {}) => {
+      const resolved = parseWorkflowSettingsSearch(search);
+      return resolved.workflowId
+        ? `/agent/settings/workflows?workflowId=${encodeURIComponent(resolved.workflowId)}`
+        : "/agent/settings/workflows";
+    },
+  },
   intakeQueue: {
     path: "/agent/triage" as const,
     build: (search: IntakeQueueSearch = { state: "new" }) => {
       const resolved = parseIntakeSearch(search);
-      const query = new URLSearchParams({ state: resolved.state });
+      const query = new URLSearchParams();
+      if (resolved.state) query.set("state", resolved.state);
+      if (resolved.workItemFilter)
+        query.set("workItemFilter", resolved.workItemFilter);
+      if (resolved.workItemSorts)
+        query.set("workItemSorts", JSON.stringify(resolved.workItemSorts));
+      if (resolved.workItemColumns)
+        query.set("workItemColumns", JSON.stringify(resolved.workItemColumns));
+      if (resolved.workItemFilterMode)
+        query.set("workItemFilterMode", resolved.workItemFilterMode);
+      if (resolved.queue) query.set("queue", resolved.queue);
       if (resolved.ref) query.set("ref", resolved.ref);
       if (resolved.cursor) query.set("cursor", resolved.cursor);
+      if (resolved.requestType) query.set("requestType", resolved.requestType);
+      if (resolved.assignee) query.set("assignee", resolved.assignee);
+      if (resolved.age) query.set("age", resolved.age);
       return `/agent/triage?${query.toString()}`;
     },
   },
-  /** Customer portal's P0 disabled landing page, rooted on its separate origin. */
+  /** `docs/screens.md` "Knowledge base", "Article view" and "Article editor" (P5, `KB-*`). */
+  kb: {
+    path: "/agent/kb" as const,
+    build: (search: KbListSearch = {}) => {
+      const resolved = parseKbListSearch(search);
+      return `/agent/kb${kbQuery({
+        view: resolved.view,
+        q: resolved.q,
+        state: resolved.state,
+        category: resolved.category,
+        overdue: resolved.overdue ? "1" : undefined,
+      })}`;
+    },
+  },
+  kbArticle: {
+    path: "/agent/kb/$id" as const,
+    build: (params: { id: string }, search: KbArticleSearch = {}) => {
+      const resolved = parseKbArticleSearch(search);
+      return `/agent/kb/${encodeURIComponent(params.id)}${kbQuery({
+        tab: resolved.tab,
+        version: resolved.version ? String(resolved.version) : undefined,
+      })}`;
+    },
+  },
+  kbArticleEdit: {
+    path: "/agent/kb/$id/edit" as const,
+    build: (params: { id: string }, search: KbEditorSearch = {}) =>
+      `/agent/kb/${encodeURIComponent(params.id)}/edit${kbQuery({
+        preview: parseKbEditorSearch(search).preview ? "1" : undefined,
+      })}`,
+  },
+  /** `docs/screens.md` "Services list" and "Service detail" (P5, `SVC-*`). */
+  serviceManagementServices: {
+    path: "/agent/service-management/services" as const,
+    build: (search: ServiceListSearch = {}) =>
+      `/agent/service-management/services${serviceManagementQuery({ q: parseServiceListSearch(search).q })}`,
+  },
+  serviceManagementServiceDetail: {
+    path: "/agent/service-management/services/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/service-management/services/${encodeURIComponent(params.id)}`,
+  },
+  /** `docs/screens.md` "Change calendar" (P5, `CH-4`, `CH-5`): calendar, freezes and the override report. */
+  serviceManagementChanges: {
+    path: "/agent/service-management/changes" as const,
+    build: (search: ChangeCalendarSearch = {}) => {
+      const resolved = parseChangeCalendarSearch(search);
+      return `/agent/service-management/changes${serviceManagementQuery({ month: resolved.month, tab: resolved.tab })}`;
+    },
+  },
+  /** `docs/screens.md` "Releases" (P5, `REL-*`). */
+  serviceManagementReleases: {
+    path: "/agent/service-management/releases" as const,
+    build: (search: ReleaseListSearch = {}) =>
+      `/agent/service-management/releases${serviceManagementQuery({ serviceId: parseReleaseListSearch(search).serviceId })}`,
+  },
+  serviceManagementReleaseDetail: {
+    path: "/agent/service-management/releases/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/service-management/releases/${encodeURIComponent(params.id)}`,
+  },
+  /** Customer portal home, rooted on its separate origin. */
   portalHome: {
     path: "/" as const,
     build: () => "/",
@@ -641,10 +1307,38 @@ export const routes = {
     build: (search: Partial<PortalSignInSearch> = {}) => {
       const resolved = parsePortalSignInSearch(search);
       const query = new URLSearchParams({ stage: resolved.stage });
+      if (resolved.invitationId)
+        query.set("invitationId", resolved.invitationId);
       if (resolved.stage === "factor" && resolved.factor === "backup")
         query.set("factor", "backup");
       return `/sign-in?${query.toString()}`;
     },
+  },
+  /** Portal knowledge base, host-root like every portal route. */
+  portalKb: {
+    path: "/kb" as const,
+    build: (search: PortalKbSearch = {}) => {
+      const resolved = parsePortalKbSearch(search);
+      return `/kb${kbQuery({ q: resolved.q, category: resolved.category })}`;
+    },
+  },
+  portalKbArticle: {
+    path: "/kb/$id" as const,
+    build: (params: { id: string }) => `/kb/${encodeURIComponent(params.id)}`,
+  },
+  portalReleases: {
+    path: "/releases" as const,
+    build: (search: { cursor?: string } = {}) => {
+      const { cursor } = parsePortalReleasesSearch(search);
+      return cursor
+        ? `/releases?${new URLSearchParams({ cursor })}`
+        : "/releases";
+    },
+  },
+  portalRelease: {
+    path: "/releases/$id" as const,
+    build: (params: { id: string }) =>
+      `/releases/${encodeURIComponent(params.id)}`,
   },
   portalCatalogue: {
     path: "/catalogue" as const,
@@ -657,6 +1351,47 @@ export const routes = {
       return suffix ? `/catalogue?${suffix}` : "/catalogue";
     },
   },
+  portalInbox: {
+    path: "/notifications" as const,
+    build: (search: PortalInboxSearch = {}) => {
+      const { filter } = parsePortalInboxSearch(search);
+      return filter
+        ? `/notifications?${new URLSearchParams({ filter })}`
+        : "/notifications";
+    },
+  },
+  portalRequests: {
+    path: "/requests" as const,
+    build: (search: { cursor?: string; view?: "backlog" } = {}) => {
+      const { cursor, view } = parsePortalRequestsSearch(search);
+      const params = new URLSearchParams();
+      if (view) params.set("view", view);
+      if (cursor) params.set("cursor", cursor);
+      return params.size ? `/requests?${params}` : "/requests";
+    },
+  },
+  portalAccount: {
+    path: "/account" as const,
+    build: () => "/account",
+  },
+  portalApprovals: {
+    path: "/approvals" as const,
+    build: (search: { approval?: string } = {}) => {
+      const { approval } = parsePortalApprovalsSearch(search);
+      return approval
+        ? `/approvals?${new URLSearchParams({ approval })}`
+        : "/approvals";
+    },
+  },
+  /**
+   * `docs/screens.md` "Accept invitation" (CP-24). Host root on the portal origin. The accept
+   * credential travels in the URL fragment (`#t=`), never in the path or query string.
+   */
+  portalInvite: {
+    path: "/invite/$id" as const,
+    build: (params: { id: string }) =>
+      `/invite/${encodeURIComponent(params.id)}`,
+  },
   portalSubmission: {
     path: "/submissions/$ref" as const,
     build: (params: { ref: string }) =>
@@ -667,19 +1402,27 @@ export const routes = {
     path: "/agent/projects/$projectKey/work" as const,
     build: (
       params: { projectKey: string },
-      search: Partial<WorkItemListSearch> = {},
+      search: Partial<WorkItemWorkSearch> = {},
     ) => {
-      const resolved = parseWorkItemListSearch(search);
+      const resolved = parseWorkItemWorkSearch(search);
       const query = new URLSearchParams({
         layout: resolved.layout,
         sort: resolved.sort,
         dir: resolved.dir,
       });
+      if (resolved.group && resolved.group !== "state")
+        query.set("group", resolved.group);
+      if (resolved.combined) query.set("combined", resolved.combined);
       appendWorkItemQueryState(query, {
         filter: resolved.filter,
         filterMode: resolved.filterMode,
+        sorts: resolved.sorts,
         columns: resolved.columns,
         item: resolved.item,
+        hierarchy: resolved.hierarchy,
+        relations: resolved.relations,
+        approvalRequest: resolved.approvalRequest,
+        sections: resolved.sections,
       });
       return `/agent/projects/${encodeURIComponent(params.projectKey)}/work?${query.toString()}`;
     },
@@ -696,6 +1439,14 @@ export const routes = {
       if (resolved.filter) query.set("filter", resolved.filter);
       if (resolved.filterMode) query.set("filterMode", resolved.filterMode);
       if (resolved.item) query.set("item", resolved.item);
+      if (resolved.hierarchy)
+        query.set("hierarchy", JSON.stringify(resolved.hierarchy));
+      if (resolved.relations)
+        query.set("relations", JSON.stringify(resolved.relations));
+      if (resolved.approvalRequest)
+        query.set("approvalRequest", JSON.stringify(resolved.approvalRequest));
+      if (resolved.sections)
+        query.set("sections", JSON.stringify(resolved.sections));
       const suffix = query.toString();
       const base = `/agent/projects/${encodeURIComponent(params.projectKey)}/backlog`;
       return suffix ? `${base}?${suffix}` : base;
@@ -717,6 +1468,15 @@ export const routes = {
       const resolved = parseWorkItemDetailSearch(search);
       const query = new URLSearchParams();
       if (resolved.activity) query.set("activity", resolved.activity);
+      if (resolved.comment) query.set("comment", resolved.comment);
+      if (resolved.hierarchy)
+        query.set("hierarchy", JSON.stringify(resolved.hierarchy));
+      if (resolved.relations)
+        query.set("relations", JSON.stringify(resolved.relations));
+      if (resolved.approvalRequest)
+        query.set("approvalRequest", JSON.stringify(resolved.approvalRequest));
+      if (resolved.sections)
+        query.set("sections", JSON.stringify(resolved.sections));
       const suffix = query.toString();
       return `/agent/work-items/${encodeURIComponent(params.key)}${suffix ? `?${suffix}` : ""}`;
     },
@@ -752,6 +1512,83 @@ export const routes = {
     },
   },
   /** God Mode Users directory and its query-string-backed selection/filters. */
+  notificationProvider: {
+    path: "/agent/god-mode/notifications" as const,
+    build: () => "/agent/god-mode/notifications",
+  },
+  /** God Mode home: the Health landing page. */
+  godModeHealth: {
+    path: "/agent/god-mode" as const,
+    build: () => "/agent/god-mode",
+  },
+  /** God Mode General and Storage settings (`instance_setting`). */
+  godModeGeneral: {
+    path: "/agent/god-mode/general" as const,
+    build: () => "/agent/god-mode/general",
+  },
+  /** `ST-1`, `ST-2`: God Mode instance feature switches and locks. */
+  godModeFeatures: {
+    path: "/agent/god-mode/features" as const,
+    build: () => "/agent/god-mode/features",
+  },
+  /** `AK-7`: God Mode inventory of every API key on the instance. */
+  godModeWebhooks: {
+    path: "/agent/god-mode/webhooks" as const,
+    build: () => "/agent/god-mode/webhooks",
+  },
+  godModeJobs: {
+    path: "/agent/god-mode/jobs" as const,
+    build: () => "/agent/god-mode/jobs",
+  },
+  godModePlugins: {
+    path: "/agent/god-mode/plugins" as const,
+    build: () => "/agent/god-mode/plugins",
+  },
+  godModeStorage: {
+    path: "/agent/god-mode/storage" as const,
+    build: () => "/agent/god-mode/storage",
+  },
+  godModeMcpUsage: {
+    path: "/agent/god-mode/mcp" as const,
+    build: () => "/agent/god-mode/mcp",
+  },
+  godModeImports: {
+    path: "/agent/god-mode/imports" as const,
+    build: (search: GodModeImportsSearch = {}) =>
+      `/agent/god-mode/imports${godModeImportsQuery(search)}`,
+  },
+  godModeImportRun: {
+    path: "/agent/god-mode/imports/$id" as const,
+    build: (params: { id: string }, search: GodModeImportsSearch = {}) =>
+      `/agent/god-mode/imports/${encodeURIComponent(params.id)}${godModeImportsQuery(search)}`,
+  },
+  godModeDeliveries: {
+    path: "/agent/god-mode/deliveries" as const,
+    build: () => "/agent/god-mode/deliveries",
+  },
+  godModeApiKeys: {
+    path: "/agent/god-mode/api-keys" as const,
+    build: () => "/agent/god-mode/api-keys",
+  },
+  godModeAudit: {
+    path: "/agent/god-mode/audit" as const,
+    build: (search: { action?: string; limit?: number } = {}) => {
+      const resolved = parseInstanceAuditSearch(search);
+      const params = new URLSearchParams({ limit: String(resolved.limit) });
+      if (resolved.action) params.set("action", resolved.action);
+      return `/agent/god-mode/audit?${params}`;
+    },
+  },
+  godModeOrganisations: {
+    path: "/agent/god-mode/organisations" as const,
+    build: (search: GodModeOrganisationsSearch = {}) => {
+      const resolved = parseGodModeOrganisationsSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.organisationId)
+        query.set("organisationId", resolved.organisationId);
+      return `/agent/god-mode/organisations${query.size ? `?${query}` : ""}`;
+    },
+  },
   godModeUsers: {
     path: "/agent/god-mode/users" as const,
     build: (search: Partial<GodModeUsersSearch> = {}) => {
@@ -795,6 +1632,24 @@ export const routes = {
       return suffix ? `${path}?${suffix}` : path;
     },
   },
+  /** God Mode organisation "Identity" tab (CP-17, IP-5): the customer organisation's own OIDC connection and SCIM. */
+  organisationIdentity: {
+    path: "/agent/god-mode/organisations/$id/identity" as const,
+    build: (
+      params: { id: string },
+      search: IdentityConnectionEditorSearch = {},
+    ) => {
+      const resolved = parseIdentityConnectionEditorSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.tab) query.set("tab", resolved.tab);
+      if (resolved.eventsCursor)
+        query.set("eventsCursor", resolved.eventsCursor);
+      if (resolved.mapping) query.set("mapping", resolved.mapping);
+      const suffix = query.toString();
+      const path = `/agent/god-mode/organisations/${encodeURIComponent(params.id)}/identity`;
+      return suffix ? `${path}?${suffix}` : path;
+    },
+  },
   /** PA-6 requester-owned browser approval list and item. */
   pendingActions: {
     path: "/agent/settings/profile/pending-actions" as const,
@@ -815,14 +1670,19 @@ export const routes = {
   },
   agentHome: {
     path: "/agent" as const,
-    build: () => "/agent",
+    build: (search: AgentHomeSearch = {}) => {
+      const resolved = parseAgentHomeSearch(search);
+      return resolved.recovery === "deleted"
+        ? "/agent?recovery=deleted"
+        : "/agent";
+    },
   },
   agentInbox: {
     path: "/agent/inbox" as const,
     build: (search: AgentInboxSearch = {}) => {
       const resolved = parseAgentInboxSearch(search);
-      return resolved.filter === "unread"
-        ? "/agent/inbox?filter=unread"
+      return resolved.filter
+        ? `/agent/inbox?filter=${resolved.filter}`
         : "/agent/inbox";
     },
   },
@@ -834,6 +1694,14 @@ export const routes = {
       if (resolved.lens) query.set("lens", resolved.lens);
       if (resolved.q) query.set("q", resolved.q);
       if (resolved.item) query.set("item", resolved.item);
+      if (resolved.hierarchy)
+        query.set("hierarchy", JSON.stringify(resolved.hierarchy));
+      if (resolved.relations)
+        query.set("relations", JSON.stringify(resolved.relations));
+      if (resolved.approvalRequest)
+        query.set("approvalRequest", JSON.stringify(resolved.approvalRequest));
+      if (resolved.sections)
+        query.set("sections", JSON.stringify(resolved.sections));
       const suffix = query.toString();
       return suffix ? `/agent/my-work?${suffix}` : "/agent/my-work";
     },
@@ -849,6 +1717,23 @@ export const routes = {
       return suffix ? `/agent/search?${suffix}` : "/agent/search";
     },
   },
+  // The page behind /agent/search: Kaneo's workspace search screen, now over canonical work
+  // items. `q` and `scope` round-trip through the redirect and the page's own URL state.
+  workspaceSearch: {
+    path: "/dashboard/workspace/$workspaceId/search" as const,
+    build: (
+      params: { workspaceId: string },
+      search: AgentGlobalSearch = {},
+    ) => {
+      const resolved = parseAgentGlobalSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.q) query.set("q", resolved.q);
+      if (resolved.scope) query.set("scope", resolved.scope);
+      const suffix = query.toString();
+      const base = `/dashboard/workspace/${encodeURIComponent(params.workspaceId)}/search`;
+      return suffix ? `${base}?${suffix}` : base;
+    },
+  },
   projectOverview: {
     path: "/agent/projects/$projectKey" as const,
     build: (params: { projectKey: string }) =>
@@ -858,6 +1743,10 @@ export const routes = {
     path: "/agent/settings/profile" as const,
     build: () => "/agent/settings/profile",
   },
+  profileNotifications: {
+    path: "/agent/settings/profile/notifications" as const,
+    build: () => "/agent/settings/profile/notifications",
+  },
   profileAppearance: {
     path: "/agent/settings/profile/appearance" as const,
     build: () => "/agent/settings/profile/appearance",
@@ -865,6 +1754,14 @@ export const routes = {
   workspaceSettings: {
     path: "/agent/settings" as const,
     build: () => "/agent/settings",
+  },
+  workspaceTerminology: {
+    path: "/dashboard/settings/workspace/terminology" as const,
+    build: () => "/dashboard/settings/workspace/terminology",
+  },
+  workspaceFeatures: {
+    path: "/dashboard/settings/workspace/features" as const,
+    build: () => "/dashboard/settings/workspace/features",
   },
   workspaceMembers: {
     path: "/agent/settings/members" as const,
@@ -891,6 +1788,131 @@ export const routes = {
       const query = new URLSearchParams(resolved).toString();
       return `/agent/settings/canned-responses${query ? `?${query}` : ""}`;
     },
+  },
+  workspaceWorkItemTemplates: {
+    path: "/agent/settings/work-item-templates" as const,
+    build: (search: WorkItemTemplateSearch = {}) => {
+      const resolved = parseWorkItemTemplateSearch(search);
+      const query = new URLSearchParams(resolved).toString();
+      return `/agent/settings/work-item-templates${query ? `?${query}` : ""}`;
+    },
+  },
+  /** `docs/screens.md` "Timesheet": the week grid (P5 time and cost). */
+  timesheet: {
+    path: "/agent/timesheet" as const,
+    build: (search: TimesheetSearch = {}) => {
+      const resolved = parseTimesheetSearch(search);
+      const query = new URLSearchParams(resolved as Record<string, string>);
+      return `/agent/timesheet${query.size ? `?${query}` : ""}`;
+    },
+  },
+  /** `docs/screens.md` "Reports index" (P5 reports, `RP-*`): the directory of reports. */
+  reports: {
+    path: "/agent/reports" as const,
+    build: (search: ReportsIndexSearch = {}) => {
+      const resolved = parseReportsIndexSearch(search);
+      return resolved.category
+        ? `/agent/reports?category=${resolved.category}`
+        : "/agent/reports";
+    },
+  },
+  /** "Report detail": the whole filter state is in the query string (`RP-8`). */
+  reportDetail: {
+    path: "/agent/reports/$key" as const,
+    build: (params: { key: string }, search: ReportSearch = {}) => {
+      const query = reportQuery(search).toString();
+      return `/agent/reports/${encodeURIComponent(params.key)}${query ? `?${query}` : ""}`;
+    },
+  },
+  /**
+   * "Report export" (`RP-10`, P5-R3-01): the page the "export ready" email links to. It shows the
+   * queued export's status and offers the authenticated download; signed out, it signs in first.
+   */
+  reportExport: {
+    path: "/agent/reports/exports/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/reports/exports/${encodeURIComponent(params.id)}`,
+  },
+  /** "Report builder" (tier 3); `view` opens a saved report. */
+  reportBuilder: {
+    path: "/agent/reports/new" as const,
+    build: (search: ReportBuilderSearch = {}) => {
+      const resolved = parseReportBuilderSearch(search);
+      return resolved.view
+        ? `/agent/reports/new?view=${encodeURIComponent(resolved.view)}`
+        : "/agent/reports/new";
+    },
+  },
+  /** "Dashboard" and "Dashboard editor": `id` names a dashboard, the default otherwise. */
+  agentDashboard: {
+    path: "/agent/dashboard" as const,
+    build: (search: DashboardSearch = {}) => {
+      const resolved = parseDashboardSearch(search);
+      return resolved.id
+        ? `/agent/dashboard?id=${encodeURIComponent(resolved.id)}`
+        : "/agent/dashboard";
+    },
+  },
+  agentDashboardEdit: {
+    path: "/agent/dashboard/edit" as const,
+    build: (search: DashboardSearch = {}) => {
+      const resolved = parseDashboardSearch(search);
+      return resolved.id
+        ? `/agent/dashboard/edit?id=${encodeURIComponent(resolved.id)}`
+        : "/agent/dashboard/edit";
+    },
+  },
+  /** `docs/screens.md` "Workspace — rates" and "Workspace — time activities". */
+  workspaceRates: {
+    path: "/agent/settings/rates" as const,
+    build: () => "/agent/settings/rates",
+  },
+  workspaceTimeActivities: {
+    path: "/agent/settings/time-activities" as const,
+    build: () => "/agent/settings/time-activities",
+  },
+  /** `docs/screens.md` "Workspace — teams" and "Team detail". */
+  workspaceTeams: {
+    path: "/agent/settings/teams" as const,
+    build: () => "/agent/settings/teams",
+  },
+  workspaceTeamDetail: {
+    path: "/agent/settings/teams/$id" as const,
+    build: (params: { id: string }, search: TeamDetailSearch = {}) => {
+      const base = `/agent/settings/teams/${encodeURIComponent(params.id)}`;
+      return parseTeamDetailSearch(search).inactive
+        ? `${base}?inactive=1`
+        : base;
+    },
+  },
+  /** `docs/screens.md` "Workspace — roles" and "Role editor". */
+  workspaceRoles: {
+    path: "/agent/settings/roles" as const,
+    build: () => "/agent/settings/roles",
+  },
+  workspaceRoleDetail: {
+    path: "/agent/settings/roles/$id" as const,
+    build: (params: { id: string }, search: RoleDetailSearch = {}) => {
+      const base = `/agent/settings/roles/${encodeURIComponent(params.id)}`;
+      const query = new URLSearchParams(
+        parseRoleDetailSearch(search) as Record<string, string>,
+      ).toString();
+      return query ? `${base}?${query}` : base;
+    },
+  },
+  /** `docs/screens.md` "Workspace — custom fields (incl. sections)". */
+  workspaceCustomFields: {
+    path: "/agent/settings/custom-fields" as const,
+    build: (search: CustomFieldListSearch = {}) =>
+      parseCustomFieldListSearch(search).deleted
+        ? "/agent/settings/custom-fields?deleted=1"
+        : "/agent/settings/custom-fields",
+  },
+  /** `docs/screens.md` "Custom field editor"; `new` opens the create form. */
+  workspaceCustomFieldEditor: {
+    path: "/agent/settings/custom-fields/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/custom-fields/${encodeURIComponent(params.id)}`,
   },
   workspaceDangerZone: {
     path: "/agent/settings/danger" as const,
@@ -919,6 +1941,65 @@ export const routes = {
     ) =>
       `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/labels${labelCatalogueQuery(search)}`,
   },
+  /** `ST-1`: per-project feature switches (redirects to Kaneo's project settings). */
+  projectFeatures: {
+    path: "/agent/projects/$projectKey/settings/features" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/features`,
+  },
+  /** `CY-1`..`CY-9` (P5): cycles list, shown only while `feature.cycles` resolves on. */
+  projectCycles: {
+    path: "/agent/projects/$projectKey/cycles" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/cycles`,
+  },
+  /** Cycle detail: burndown above the project's board or list, filtered to the cycle. */
+  projectCycleDetail: {
+    path: "/agent/projects/$projectKey/cycles/$cycleId" as const,
+    build: (
+      params: { projectKey: string; cycleId: string },
+      search: AgileDetailSearch = {},
+    ) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/cycles/${encodeURIComponent(params.cycleId)}${agileDetailQuery(search)}`,
+  },
+  /** `MO-1`..`MO-4` (P5): modules list, shown only while `feature.modules` resolves on. */
+  projectModules: {
+    path: "/agent/projects/$projectKey/modules" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/modules`,
+  },
+  projectModuleDetail: {
+    path: "/agent/projects/$projectKey/modules/$moduleId" as const,
+    build: (
+      params: { projectKey: string; moduleId: string },
+      search: AgileDetailSearch = {},
+    ) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/modules/${encodeURIComponent(params.moduleId)}${agileDetailQuery(search)}`,
+  },
+  /** `PG-1`..`PG-8` (P5): staff-only project pages, a tree of long-form documents. */
+  projectPages: {
+    path: "/agent/projects/$projectKey/pages" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/pages`,
+  },
+  /** One page: view or edit, with the version history in a side panel. */
+  projectPage: {
+    path: "/agent/projects/$projectKey/pages/$pageId" as const,
+    build: (params: { projectKey: string; pageId: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/pages/${encodeURIComponent(params.pageId)}`,
+  },
+  /** `ES-1`..`ES-3`: estimate system and cycle completion default (redirects to Kaneo's project settings). */
+  projectEstimates: {
+    path: "/agent/projects/$projectKey/settings/estimates" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/estimates`,
+  },
+  /** `TC-15`..`TC-19`: project budgets (redirects to Kaneo's project settings). */
+  projectBudget: {
+    path: "/agent/projects/$projectKey/settings/budget" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/budget`,
+  },
   projectDangerZone: {
     path: "/agent/projects/$projectKey/settings/danger" as const,
     build: (params: { projectKey: string }) =>
@@ -940,9 +2021,64 @@ export function parseWorkItemListSearchFromQueryString(
     layout: params.get("layout") ?? undefined,
     sort: params.get("sort") ?? undefined,
     dir: params.get("dir") ?? undefined,
+    sorts: params.get("sorts") ?? undefined,
     filter: params.get("filter") ?? undefined,
     filterMode: params.get("filterMode") ?? undefined,
     columns: params.get("columns") ?? undefined,
     item: params.get("item") ?? undefined,
+    hierarchy: params.get("hierarchy") ?? undefined,
+    relations: params.get("relations") ?? undefined,
+    approvalRequest: params.get("approvalRequest") ?? undefined,
+    sections: params.get("sections") ?? undefined,
   });
+}
+
+/** Opaque portal request cursors remain URL state; malformed values are discarded. */
+export function parsePortalRequestsSearch(raw: unknown): {
+  cursor?: string;
+  view?: "backlog";
+} {
+  if (!raw || typeof raw !== "object") return {};
+  const candidate = raw as Record<string, unknown>;
+  const cursor = candidate.cursor;
+  return {
+    ...(candidate.view === "backlog" ? { view: "backlog" as const } : {}),
+    ...(typeof cursor === "string" &&
+    cursor.length > 0 &&
+    cursor.length <= 2048 &&
+    /^[A-Za-z0-9_-]+$/u.test(cursor)
+      ? { cursor }
+      : {}),
+  };
+}
+
+export function parsePortalReleasesSearch(raw: unknown): { cursor?: string } {
+  const { cursor } = parsePortalRequestsSearch(raw);
+  return cursor ? { cursor } : {};
+}
+
+export function parsePortalApprovalsSearch(raw: unknown): {
+  approval?: string;
+} {
+  if (!raw || typeof raw !== "object") return {};
+  const approval = (raw as Record<string, unknown>).approval;
+  return typeof approval === "string" &&
+    approval.length > 0 &&
+    approval.length <= 256 &&
+    /^[A-Za-z0-9_-]+$/u.test(approval)
+    ? { approval }
+    : {};
+}
+
+export function parseInstanceAuditSearch(raw: unknown): {
+  action: string;
+  limit: number;
+} {
+  const value =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const limit = Number(value.limit);
+  return {
+    action: typeof value.action === "string" ? value.action.slice(0, 256) : "",
+    limit: [25, 50, 100, 200].includes(limit) ? limit : 50,
+  };
 }

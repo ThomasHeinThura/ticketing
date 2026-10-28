@@ -1,4 +1,10 @@
+import db from "../database";
+import { publishEvent } from "../events";
 import createNotification from "../notification/controllers/create-notification";
+import {
+  assertJobExecutionOwned,
+  JobExecutionReservationLostError,
+} from "./leader-lock";
 import { REMINDER_WINDOW_MINUTES } from "./reminder-timing";
 import {
   insertReminderSent,
@@ -48,33 +54,34 @@ async function processReminder(
   notificationType: "due_date_reminder" | "task_overdue",
 ) {
   if (!task.userId) return;
+  const userId = task.userId;
 
-  // Insert sent record first; if it already exists, skip notification
-  try {
-    const inserted = await insertReminderSent(task.id, reminderType);
-
-    if (!inserted) return;
-  } catch (error) {
-    console.error("Failed to record due date reminder", {
-      taskId: task.id,
-      reminderType,
-      error,
+  // P0R1-04: the sent marker and the notification row commit together. A failure after the
+  // marker rolls both back, so the next run retries; a committed marker always has its
+  // notification (or a deliberate preference/reach skip). The realtime publish follows commit.
+  const notification = await db.transaction(async (tx) => {
+    const inserted = await insertReminderSent(task.id, reminderType, tx);
+    if (!inserted) return null;
+    return createNotification({
+      userId,
+      type: notificationType,
+      eventData: {
+        taskTitle: task.title,
+        reminderType,
+        leadTimeMinutes: task.leadTimeMinutes ?? 1440,
+        dueDate: task.dueDate?.toISOString() ?? null,
+      },
+      resourceId: task.id,
+      resourceType: "task",
+      executor: tx,
     });
-    return;
-  }
-
-  await createNotification({
-    userId: task.userId,
-    type: notificationType,
-    eventData: {
-      taskTitle: task.title,
-      reminderType,
-      leadTimeMinutes: task.leadTimeMinutes ?? 1440,
-      dueDate: task.dueDate?.toISOString() ?? null,
-    },
-    resourceId: task.id,
-    resourceType: "task",
   });
+  if (notification) {
+    await publishEvent("notification.created", {
+      notificationId: notification.id,
+      userId,
+    }).catch(() => {});
+  }
 }
 
 export async function checkDueDateReminders(): Promise<{ degraded: boolean }> {
@@ -83,6 +90,7 @@ export async function checkDueDateReminders(): Promise<{ degraded: boolean }> {
   let degraded = false;
 
   for (const window of Object.values(windows)) {
+    await assertJobExecutionOwned();
     try {
       const tasks = await getTasksNeedingReminder(
         window.start,
@@ -91,9 +99,13 @@ export async function checkDueDateReminders(): Promise<{ degraded: boolean }> {
       );
 
       for (const task of tasks) {
+        // A reminder is one unit from its sent marker through notification
+        // creation. Check only before beginning the next task.
+        await assertJobExecutionOwned();
         try {
           await processReminder(task, window.type, window.notificationType);
         } catch (error) {
+          if (error instanceof JobExecutionReservationLostError) throw error;
           degraded = true;
           console.error("Failed to process due date reminder", {
             taskId: task.id,
@@ -103,6 +115,7 @@ export async function checkDueDateReminders(): Promise<{ degraded: boolean }> {
         }
       }
     } catch (error) {
+      if (error instanceof JobExecutionReservationLostError) throw error;
       degraded = true;
       console.error("Failed to query tasks for due date reminders", {
         reminderType: window.type,

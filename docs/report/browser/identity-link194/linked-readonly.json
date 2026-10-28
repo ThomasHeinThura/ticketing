@@ -1,0 +1,96 @@
+{
+	"recordedAt": "2026-10-26T06:32:02.091Z",
+	"scope": "Fresh saved linked-account screen after confirmation animation; own account only",
+	"strictTls": true,
+	"checks": [
+		{
+			"name": "Own synthetic user",
+			"pass": true
+		},
+		{
+			"name": "Saved 375 light correct theme",
+			"pass": true
+		},
+		{
+			"name": "Saved 375 light fits page",
+			"pass": true
+		},
+		{
+			"name": "Saved 375 light no confirmation overlay",
+			"pass": true
+		},
+		{
+			"name": "Saved 768 light correct theme",
+			"pass": true
+		},
+		{
+			"name": "Saved 768 light fits page",
+			"pass": true
+		},
+		{
+			"name": "Saved 768 light no confirmation overlay",
+			"pass": true
+		},
+		{
+			"name": "Saved 1440 light correct theme",
+			"pass": true
+		},
+		{
+			"name": "Saved 1440 light fits page",
+			"pass": true
+		},
+		{
+			"name": "Saved 1440 light no confirmation overlay",
+			"pass": true
+		},
+		{
+			"name": "Saved 375 dark correct theme",
+			"pass": true
+		},
+		{
+			"name": "Saved 375 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "Saved 375 dark no confirmation overlay",
+			"pass": true
+		},
+		{
+			"name": "Saved 768 dark correct theme",
+			"pass": true
+		},
+		{
+			"name": "Saved 768 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "Saved 768 dark no confirmation overlay",
+			"pass": true
+		},
+		{
+			"name": "Saved 1440 dark correct theme",
+			"pass": true
+		},
+		{
+			"name": "Saved 1440 dark fits page",
+			"pass": true
+		},
+		{
+			"name": "Saved 1440 dark no confirmation overlay",
+			"pass": true
+		},
+		{
+			"name": "No JavaScript errors",
+			"pass": true
+		}
+	],
+	"screenshots": [
+		"saved-375-light.png",
+		"saved-768-light.png",
+		"saved-1440-light.png",
+		"saved-375-dark.png",
+		"saved-768-dark.png",
+		"saved-1440-dark.png"
+	],
+	"outcome": "passed"
+}

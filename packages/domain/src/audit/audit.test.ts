@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { canonicalRowHash, reconstructAt, ZERO_HASH } from "./audit.js";
+import {
+  activityFieldChanges,
+  canonicalRowHash,
+  reconstructAt,
+  ZERO_HASH,
+} from "./audit.js";
 import type { ActivityRow, AuditLogRow, JsonValue } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -632,5 +637,150 @@ describe("reconstructAt", () => {
     const before = [...rows];
     reconstructAt(rows, utc(2026, 1, 3));
     expect(rows).toEqual(before);
+  });
+});
+
+describe("reconstructAt: transitions, creation values and project moves (AU-9)", () => {
+  const created: ActivityRow = {
+    sequence: 1,
+    createdAt: utc(2026, 1, 1),
+    field: null,
+    verb: "created",
+    oldValue: null,
+    newValue: null,
+  };
+  const transitioned = (
+    sequence: number,
+    createdAt: Date,
+    from: string,
+    to: string,
+  ): ActivityRow => ({
+    sequence,
+    createdAt,
+    field: null,
+    verb: "transitioned",
+    oldValue: from,
+    newValue: to,
+  });
+
+  it("maps a transitioned row (no field) to stateId", () => {
+    expect(
+      activityFieldChanges(transitioned(2, utc(2026, 1, 2), "s_open", "s_wip")),
+    ).toEqual([{ field: "stateId", oldValue: "s_open", newValue: "s_wip" }]);
+    expect(activityFieldChanges(created)).toEqual([]);
+  });
+
+  it("answers state at several instants from the transitions alone", () => {
+    const rows = [
+      created,
+      transitioned(2, utc(2026, 1, 5), "s_open", "s_wip"),
+      transitioned(3, utc(2026, 1, 9), "s_wip", "s_done"),
+    ];
+    const current = { stateId: "s_done" };
+    const state = (at: Date) =>
+      reconstructAt(rows, at, { current })?.fields.stateId;
+    expect(state(utc(2026, 1, 1))).toBe("s_open"); // creation value = first old value
+    expect(state(utc(2026, 1, 4))).toBe("s_open");
+    expect(state(utc(2026, 1, 5))).toBe("s_wip"); // inclusive
+    expect(state(utc(2026, 1, 8))).toBe("s_wip");
+    expect(state(utc(2026, 1, 9))).toBe("s_done");
+    expect(state(utc(2026, 6, 1))).toBe("s_done");
+    expect(reconstructAt(rows, utc(2025, 12, 31), { current })).toBeNull();
+  });
+
+  it("a created-and-never-changed item takes its current values as creation values", () => {
+    expect(
+      reconstructAt([created], utc(2026, 2, 1), {
+        current: { stateId: "s_open", assigneeId: null, title: "Printer" },
+      }),
+    ).toEqual({
+      fields: { stateId: "s_open", assigneeId: null, title: "Printer" },
+    });
+  });
+
+  it("seeds a field first edited after the instant from that edit's old value", () => {
+    const rows: ActivityRow[] = [
+      created,
+      {
+        sequence: 2,
+        createdAt: utc(2026, 3, 1),
+        field: "priority",
+        verb: "updated",
+        oldValue: "low",
+        newValue: "high",
+      },
+    ];
+    expect(
+      reconstructAt(rows, utc(2026, 2, 1), { current: { priority: "high" } }),
+    ).toEqual({ fields: { priority: "low" } });
+    expect(
+      reconstructAt(rows, utc(2026, 3, 1), { current: { priority: "high" } }),
+    ).toEqual({ fields: { priority: "high" } });
+  });
+
+  it("treats assignee and assigneeId as one field", () => {
+    const rows: ActivityRow[] = [
+      created,
+      {
+        sequence: 2,
+        createdAt: utc(2026, 1, 2),
+        field: "assignee",
+        verb: "updated",
+        oldValue: null,
+        newValue: "p1",
+      },
+      {
+        sequence: 3,
+        createdAt: utc(2026, 1, 3),
+        field: "assigneeId",
+        verb: "updated",
+        oldValue: "p1",
+        newValue: "p2",
+      },
+    ];
+    expect(reconstructAt(rows, utc(2026, 1, 2))?.fields.assigneeId).toBe("p1");
+    expect(reconstructAt(rows, utc(2026, 1, 3))?.fields.assigneeId).toBe("p2");
+    expect(reconstructAt(rows, utc(2026, 1, 1))?.fields.assigneeId).toBeNull();
+  });
+
+  it("follows a cross-project move: project and the remapped state", () => {
+    const move: ActivityRow = {
+      sequence: 3,
+      createdAt: utc(2026, 1, 10),
+      field: "project",
+      verb: "updated",
+      oldValue: '{"projectId":"pa","key":"A-1"}',
+      newValue: '{"projectId":"pb","key":"B-7"}',
+      payload: { fromStateId: "a_wip", toStateId: "b_wip" },
+    };
+    const rows = [
+      created,
+      transitioned(2, utc(2026, 1, 5), "a_open", "a_wip"),
+      move,
+      transitioned(4, utc(2026, 1, 12), "b_wip", "b_done"),
+    ];
+    const current = { stateId: "b_done" };
+    const at = (d: Date) => reconstructAt(rows, d, { current })?.fields;
+    expect(at(utc(2026, 1, 6))).toMatchObject({
+      stateId: "a_wip",
+      project: '{"projectId":"pa","key":"A-1"}',
+    });
+    expect(at(utc(2026, 1, 10))).toMatchObject({
+      stateId: "b_wip",
+      project: '{"projectId":"pb","key":"B-7"}',
+    });
+    expect(at(utc(2026, 1, 12))?.stateId).toBe("b_done");
+    expect(at(utc(2026, 1, 1))?.stateId).toBe("a_open");
+  });
+
+  it("a move without payload state ids changes only the project field", () => {
+    expect(
+      activityFieldChanges({
+        sequence: 1,
+        createdAt: utc(2026, 1, 1),
+        field: "project",
+        newValue: "x",
+      }),
+    ).toEqual([{ field: "project", oldValue: undefined, newValue: "x" }]);
   });
 });

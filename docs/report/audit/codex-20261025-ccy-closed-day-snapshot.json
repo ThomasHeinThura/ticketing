@@ -1,0 +1,21 @@
+{
+	"recordedAt": "2026-10-25T07:14:45.643Z",
+	"method": "Existing hourly snapshot writer, explicitly limited to owned CCY workspace and one closed day; workspace transaction fence retained",
+	"date": "2026-10-24",
+	"result": {
+		"days": 1,
+		"rows": 1
+	},
+	"coverageVersion": 2,
+	"before": {
+		"people": 10,
+		"work_items": 25,
+		"time_entries": 3
+	},
+	"after": {
+		"people": 10,
+		"work_items": 25,
+		"time_entries": 3
+	},
+	"sourceCountsPreserved": true
+}

@@ -147,6 +147,14 @@ export type ScopeTarget = {
    * authority; the id itself only matters to reach.
    */
   readonly workItemProjectId?: string;
+  /**
+   * The target project's ancestors, nearest first, as loaded by the API for THIS workspace
+   * (`PR-2`/`PR-3`). Authority only: when the caller holds no project-scope grant on the
+   * target project itself, the nearest ancestor on which they hold one acts as the project
+   * override, so a role narrowed on a parent is never widened on its children by a workspace
+   * role. The evaluator trusts the list as already workspace-bounded; it never loads one.
+   */
+  readonly ancestorProjectIds?: readonly string[];
 };
 
 /** A `capability` is unknown to this build: log it, treat it as absent, never wildcard-expand it. */

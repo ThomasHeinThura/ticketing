@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createPendingActionProof } from "./pending-actions";
+import {
+  approveOwnPendingAction,
+  createPendingActionProof,
+} from "./pending-actions";
 
 const mocks = vi.hoisted(() => ({
   challengePost: vi.fn(),
   proofPost: vi.fn(),
+  approvePost: vi.fn(),
 }));
 
 vi.mock("@taskdesk/libs", () => ({
@@ -13,7 +17,7 @@ vi.mock("@taskdesk/libs", () => ({
         challenges: { $post: mocks.challengePost },
         $post: mocks.proofPost,
       },
-      "pending-actions": {},
+      "pending-actions": { ":id": { approve: { $post: mocks.approvePost } } },
     },
   },
 }));
@@ -100,4 +104,33 @@ describe("createPendingActionProof", () => {
       expect(outgoingProof).not.toHaveProperty("expiresAt");
     },
   );
+});
+
+describe("approveOwnPendingAction", () => {
+  it("sends exact typed count and binds fresh proof through the dedicated header", async () => {
+    mocks.approvePost.mockResolvedValue(
+      Response.json({ id: "pa", state: "executed" }),
+    );
+    await approveOwnPendingAction({
+      id: "pa",
+      typedCount: "51",
+      stepUpToken: "batch-proof",
+    });
+    expect(mocks.approvePost).toHaveBeenLastCalledWith({
+      param: { id: "pa" },
+      header: { "x-taskdesk-step-up-token": "batch-proof" },
+      json: { typedCount: "51" },
+    });
+  });
+  it("preserves empty click-confirmation bodies", async () => {
+    mocks.approvePost.mockResolvedValue(
+      Response.json({ id: "pa", state: "executed" }),
+    );
+    await approveOwnPendingAction({ id: "pa" });
+    expect(mocks.approvePost).toHaveBeenLastCalledWith({
+      param: { id: "pa" },
+      header: {},
+      json: {},
+    });
+  });
 });

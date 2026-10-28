@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { CanonicalMentionPreference } from "@/components/account/canonical-mention-preference";
 import { NotificationPreferencesSettings } from "@/components/account/notification-preferences-settings";
+import { QuietHoursPreference } from "@/components/account/quiet-hours-preference";
 import PageTitle from "@/components/page-title";
 
 export const Route = createFileRoute(
@@ -25,6 +27,8 @@ function RouteComponent() {
           </p>
         </div>
 
+        <CanonicalMentionPreference />
+        <QuietHoursPreference />
         <NotificationPreferencesSettings />
       </div>
     </>

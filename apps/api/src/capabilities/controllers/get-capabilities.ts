@@ -12,6 +12,7 @@ import { CAPABILITY_CHECKS, type CapabilityName } from "../capability-checks";
 export type CapabilityMap = Record<CapabilityName, boolean> & {
   manageServiceCalendars: boolean;
   shareSavedViews: boolean;
+  triageIntake: boolean;
   manageWorkspaceSettings: boolean;
   // Strict canonical checks (rbac.md `work_item:transition`, `work_item:rank`,
   // `project:manage_settings`): never derived from the legacy better-auth statement map,
@@ -21,8 +22,22 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   exportTasks: boolean;
   setPriorityTasks: boolean;
   manageProjectSettings: boolean;
+  // Per-area settings capabilities, exactly what each settings API enforces, so navigation and
+  // pages follow the server instead of the broader `workspace:manage_settings`.
+  manageRoles: boolean;
+  manageWebhooks: boolean;
+  manageCustomFields: boolean;
+  // P5: time_entry:manage_rates (Rates), workflow:manage (Workflows, CAB template) and
+  // budget:read (project Budget), exactly what those APIs enforce.
+  manageRates: boolean;
+  manageWorkflows: boolean;
+  readBudgets: boolean;
+  // time_entry:create (log time, run the timer): the Timesheet entry and the work item Time
+  // section, exactly what the time APIs enforce (the built-in Viewer role lacks it).
+  logTime: boolean;
   bindProjectOrganisation: boolean;
   manageLabels: boolean;
+  createAttachments: boolean;
 };
 
 /**
@@ -39,6 +54,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     results,
     manageServiceCalendars,
     shareSavedViews,
+    triageIntake,
     manageWorkspaceSettings,
     transitionTasks,
     rankTasks,
@@ -47,6 +63,14 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     manageProjectSettings,
     bindProjectOrganisation,
     manageLabels,
+    createAttachments,
+    manageRoles,
+    manageWebhooks,
+    manageCustomFields,
+    manageRates,
+    manageWorkflows,
+    readBudgets,
+    logTime,
   ] = await Promise.all([
     Promise.all(
       entries.map(async ([name, permissions]) => {
@@ -75,6 +99,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     ),
     hasServiceCalendarManageCapability(c),
     hasCanonicalCapability(c, "saved_view:share"),
+    hasCanonicalCapability(c, "intake:triage"),
     hasCanonicalCapability(c, "workspace:manage_settings"),
     hasCanonicalCapability(c, "work_item:transition"),
     hasCanonicalCapability(c, "work_item:rank"),
@@ -83,6 +108,14 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "project:manage_settings"),
     hasCanonicalCapability(c, "project:create"),
     hasCanonicalCapability(c, "label:manage"),
+    hasCanonicalCapability(c, "attachment:create"),
+    hasCanonicalCapability(c, "workspace:manage_roles"),
+    hasCanonicalCapability(c, "webhook:manage"),
+    hasCanonicalCapability(c, "custom_field:manage"),
+    hasCanonicalCapability(c, "time_entry:manage_rates"),
+    hasCanonicalCapability(c, "workflow:manage"),
+    hasCanonicalCapability(c, "budget:read"),
+    hasCanonicalCapability(c, "time_entry:create"),
   ]);
   // The agent API refuses customer principals on item-scoped routes (403), so the UI must not
   // be told it may rank or comment publicly there. Same predicate the routes use
@@ -100,20 +133,30 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     ...flags,
     manageServiceCalendars,
     shareSavedViews,
+    triageIntake: agentOnly(triageIntake),
     manageWorkspaceSettings,
     transitionTasks,
     rankTasks: agentOnly(rankTasks),
     exportTasks: agentOnly(exportTasks),
     setPriorityTasks: agentOnly(setPriorityTasks),
     manageProjectSettings,
+    manageRoles,
+    manageWebhooks,
+    manageCustomFields,
+    manageRates,
+    manageWorkflows,
+    readBudgets,
+    logTime,
     bindProjectOrganisation,
     manageLabels,
+    createAttachments: agentOnly(createAttachments),
   } as CapabilityMap;
 }
 
 async function hasCanonicalCapability(
   c: Context,
   capability:
+    | "intake:triage"
     | "saved_view:share"
     | "workspace:manage_settings"
     | "work_item:transition"
@@ -122,7 +165,15 @@ async function hasCanonicalCapability(
     | "work_item:set_priority"
     | "project:manage_settings"
     | "project:create"
-    | "label:manage",
+    | "label:manage"
+    | "attachment:create"
+    | "workspace:manage_roles"
+    | "webhook:manage"
+    | "custom_field:manage"
+    | "time_entry:manage_rates"
+    | "workflow:manage"
+    | "budget:read"
+    | "time_entry:create",
 ): Promise<boolean> {
   const workspaceId = c.get("workspaceId");
   const userId = c.get("userId");

@@ -1,4 +1,7 @@
-import type { ProjectReachFacts } from "@taskdesk/permissions";
+import {
+  isCapabilityPolicy,
+  type ProjectReachFacts,
+} from "@taskdesk/permissions";
 import {
   and,
   eq,
@@ -18,6 +21,10 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import {
+  loadProjectAncestorIdsForRequest,
+  loadProjectOwnerTeamId,
+} from "../project/hierarchy.repository";
 import { callerReach } from "./caller-reach";
 import {
   projectCapabilityRefused,
@@ -26,6 +33,12 @@ import {
 import { isCustomerPrincipal } from "./is-customer-principal";
 import { WORK_ITEM_REACH_MARK, type WorkItemReachMark } from "./reach-mark";
 import { rejectNulByte } from "./reject-nul-byte";
+import {
+  registeredPolicyOfRequest,
+  type ServiceKeyFacts,
+  serviceKeyHolds,
+  serviceKeyOfRequest,
+} from "./service-key-gate";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
 // T4 (independent Opus security review of PR #271, delta round): a NUL byte in an id
@@ -147,6 +160,8 @@ type WorkspaceAccessMiddlewareConfig = {
    * (`time-entry/policy.ts`), so adding reach does not silently change who may act.
    */
   deferCapability?: boolean;
+  /** Require a live project for an explicit legacy-task mutation lookup. */
+  requireLiveProjectForTask?: true;
   /**
    * For the saved-view lookup (#740): a view scoped to a project names that project, so a
    * project-scoped view whose project the caller does not reach is answered exactly like a
@@ -159,6 +174,7 @@ type ReachOptions = {
   readonly requireProjectReach?: boolean;
   readonly deferApiKeyCapability?: boolean;
   readonly deferCapability?: boolean;
+  readonly requireLiveProjectForTask?: true;
 };
 
 type ShadowResourceAnchor = {
@@ -231,17 +247,25 @@ async function assertSavedViewProjectReach(
   }
 }
 
-function currentProjectReachFacts(
+async function currentProjectReachFacts(
+  request: object,
   projectId: string,
   workspaceId: string,
   organisationId: string | null,
-): ProjectReachFacts {
+): Promise<ProjectReachFacts> {
   return {
     projectId,
     workspaceId,
     organisationId,
-    ancestorProjectIds: [],
-    ownerTeamId: null,
+    // PR-2: inherited project membership, evaluated at read time.
+    ancestorProjectIds: await loadProjectAncestorIdsForRequest(
+      request,
+      db,
+      workspaceId,
+      projectId,
+    ),
+    // TM-4 / reach step 5.
+    ownerTeamId: await loadProjectOwnerTeamId(db, workspaceId, projectId),
   };
 }
 
@@ -255,11 +279,79 @@ async function readJsonObjectBody(
   return raw as Record<string, unknown>;
 }
 
+/**
+ * AK-7: a workspace SERVICE key names its workspace by request (path, query or body) and may
+ * only name its own. Row-addressed sources (a project, task, label, view ... looked up by id)
+ * need project reach, which a service key does not hold, so they answer like a missing row.
+ */
+async function serviceKeyWorkspaceAccess(
+  c: Context,
+  config: WorkspaceAccessMiddlewareConfig,
+  service: ServiceKeyFacts,
+) {
+  if (config.sources.some((source) => source.type.startsWith("lookup"))) {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(404, { message: "Not found" });
+  }
+  let workspaceId: string | null = null;
+  for (const source of config.sources) {
+    let raw: string | null = null;
+    if (source.type === "query") raw = c.req.query(source.key) || null;
+    else if (source.type === "param") raw = c.req.param(source.key) || null;
+    else if (source.type === "body") {
+      const value = (await readJsonObjectBody(c))[source.key];
+      raw = typeof value === "string" ? value : null;
+    }
+    if (raw) {
+      rejectNulByte(raw, NUL_BYTE_LABEL);
+      workspaceId = raw;
+      break;
+    }
+  }
+  if (!workspaceId)
+    throw new HTTPException(400, {
+      message: "Workspace ID could not be determined",
+    });
+  if (workspaceId !== service.workspaceId) {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(403, {
+      message: "You don't have access to this workspace",
+    });
+  }
+  // The route's registered policy decides what a key may do here, whatever legacy gates follow:
+  // only a workspace-scope capability policy whose capability is in the key's stored subset.
+  // Self, instance, organisation and project policies are never a service key's (no person, no
+  // instance authority, no project reach), so a route that is "any member may" stays closed.
+  const policy = registeredPolicyOfRequest(c);
+  if (
+    !policy ||
+    !isCapabilityPolicy(policy) ||
+    policy.scope !== "workspace" ||
+    !serviceKeyHolds(service, workspaceId, policy.capability)
+  ) {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(403, { message: "Insufficient permissions" });
+  }
+  setShadowLegacyAuthorization(c, "allowed");
+  c.set("workspaceId", workspaceId);
+  c.set("workspaceIdSource", "request");
+}
+
 export function workspaceAccessMiddleware(
   config: WorkspaceAccessMiddlewareConfig,
 ) {
   const middleware = async (c: Context, next: Next) => {
     markShadowLegacyAuthorizationUnknown(c);
+    if (config.requireLiveProjectForTask && c.req.method === "GET") {
+      throw new HTTPException(500, {
+        message: "Live work-item access is only valid for mutations",
+      });
+    }
+    const service = serviceKeyOfRequest(c);
+    if (service) {
+      await serviceKeyWorkspaceAccess(c, config, service);
+      return next();
+    }
     const userId = c.get("userId");
 
     if (!userId) {
@@ -344,10 +436,14 @@ export function workspaceAccessMiddleware(
           if (source.resource === "project") c.set("projectIdFromRequest", id);
           reachResource = source.resource;
           const resolved = await lookupWorkspaceId(
+            c,
             source.resource,
             id,
             userId,
             apiKeyId,
+            {
+              requireLiveProjectForTask: config.requireLiveProjectForTask,
+            },
           );
           if (
             !resolved &&
@@ -365,11 +461,15 @@ export function workspaceAccessMiddleware(
               id,
             };
             const observerRow = await lookupWorkspaceId(
+              c,
               anchor.resource,
               anchor.id,
               userId,
               apiKeyId,
-              { observerOnly: true },
+              {
+                observerOnly: true,
+                requireLiveProjectForTask: config.requireLiveProjectForTask,
+              },
             );
             if (observerRow) {
               setShadowLegacyAuthorization(c, "denied");
@@ -679,6 +779,7 @@ export function reachableWorkspacePredicate(
 }
 
 async function lookupWorkspaceId(
+  request: object,
   resource:
     | "project"
     | "task"
@@ -694,7 +795,10 @@ async function lookupWorkspaceId(
   id: string,
   userId: string,
   apiKeyId?: string,
-  options: { readonly observerOnly?: boolean } = {},
+  options: {
+    readonly observerOnly?: boolean;
+    readonly requireLiveProjectForTask?: true;
+  } = {},
 ): Promise<WorkspaceRowScope | null> {
   const reach = (workspaceId: SQLWrapper) => {
     const nativePredicate = reachableWorkspacePredicate(
@@ -735,7 +839,8 @@ async function lookupWorkspaceId(
           ? {
               workspaceId: project.workspaceId,
               projectId: project.projectId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 project.projectId,
                 project.workspaceId,
                 project.organisationId,
@@ -766,6 +871,9 @@ async function lookupWorkspaceId(
               eq(schema.taskTable.id, id),
               reach(schema.projectTable.workspaceId),
               isNull(schema.projectTable.deletedAt),
+              ...(options.requireLiveProjectForTask
+                ? [isNull(schema.projectTable.archivedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -774,7 +882,8 @@ async function lookupWorkspaceId(
               workspaceId: task.workspaceId,
               projectId: task.projectId,
               workItemId: task.workItemId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 task.projectId,
                 task.workspaceId,
                 task.organisationId,
@@ -808,10 +917,10 @@ async function lookupWorkspaceId(
             workItemId: schema.taskTable.id,
             organisationId: schema.workspaceTable.organisationId,
           })
-          .from(schema.timeEntryTable)
+          .from(schema.taskTimeEntryTable)
           .innerJoin(
             schema.taskTable,
-            eq(schema.timeEntryTable.taskId, schema.taskTable.id),
+            eq(schema.taskTimeEntryTable.taskId, schema.taskTable.id),
           )
           .innerJoin(
             schema.projectTable,
@@ -823,9 +932,12 @@ async function lookupWorkspaceId(
           )
           .where(
             and(
-              eq(schema.timeEntryTable.id, id),
+              eq(schema.taskTimeEntryTable.id, id),
               reach(schema.projectTable.workspaceId),
               isNull(schema.projectTable.deletedAt),
+              ...(options.requireLiveProjectForTask
+                ? [isNull(schema.projectTable.archivedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -834,7 +946,8 @@ async function lookupWorkspaceId(
               workspaceId: timeEntry.workspaceId,
               projectId: timeEntry.projectId,
               workItemId: timeEntry.workItemId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 timeEntry.projectId,
                 timeEntry.workspaceId,
                 timeEntry.organisationId,
@@ -877,7 +990,8 @@ async function lookupWorkspaceId(
               workspaceId: activity.workspaceId,
               projectId: activity.projectId,
               workItemId: activity.workItemId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 activity.projectId,
                 activity.workspaceId,
                 activity.organisationId,
@@ -921,7 +1035,8 @@ async function lookupWorkspaceId(
               workspaceId: comment.workspaceId,
               projectId: comment.projectId,
               workItemId: comment.workItemId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 comment.projectId,
                 comment.workspaceId,
                 comment.organisationId,
@@ -958,7 +1073,8 @@ async function lookupWorkspaceId(
           ? {
               workspaceId: column.workspaceId,
               projectId: column.projectId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 column.projectId,
                 column.workspaceId,
                 column.organisationId,
@@ -995,7 +1111,8 @@ async function lookupWorkspaceId(
           ? {
               workspaceId: workflowRule.workspaceId,
               projectId: workflowRule.projectId,
-              projectReachFacts: currentProjectReachFacts(
+              projectReachFacts: await currentProjectReachFacts(
+                request,
                 workflowRule.projectId,
                 workflowRule.workspaceId,
                 workflowRule.organisationId,
@@ -1130,6 +1247,7 @@ export const workspaceAccess = {
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
       deferCapability: options.deferCapability,
+      requireLiveProjectForTask: options.requireLiveProjectForTask,
     }),
 
   fromTaskId: (idKey = "taskId", options: ReachOptions = {}) =>
@@ -1138,6 +1256,7 @@ export const workspaceAccess = {
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
       deferCapability: options.deferCapability,
+      requireLiveProjectForTask: options.requireLiveProjectForTask,
     }),
 
   fromTasks: (idKey = "taskIds", options: ReachOptions = {}) =>
@@ -1157,6 +1276,7 @@ export const workspaceAccess = {
       requireProjectReach: options.requireProjectReach,
       deferApiKeyCapability: options.deferApiKeyCapability,
       deferCapability: options.deferCapability,
+      requireLiveProjectForTask: options.requireLiveProjectForTask,
     }),
 
   fromActivity: (idKey = "id", options: ReachOptions = {}) =>

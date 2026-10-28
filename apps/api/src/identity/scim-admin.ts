@@ -8,6 +8,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
+import { publishCommittedAuthConfigurationReload } from "../auth/configuration-reload";
 import { appendStepUpAudit } from "../auth/step-up-audit";
 import {
   consumeScimAdminProof,
@@ -813,6 +814,7 @@ const routes = apiRouter()
       return c.json(error(409, "Duplicate group mapping"), 409);
     if (result.kind === "invalid")
       return c.json(error(422, result.message), 422);
+    await publishCommittedAuthConfigurationReload();
     await reportPendingActionAuditFailures(pendingActionAuditFailures);
     if (auditFailed) {
       recordAuditWriteFailure("mutation");
@@ -1016,6 +1018,7 @@ async function mutateScimToken(
     };
   });
   if (result.kind !== "updated") return result;
+  await publishCommittedAuthConfigurationReload();
   if (auditFailed) {
     recordAuditWriteFailure("mutation");
     await notifyCurrentInstanceAdminsOfAuditFailure("mutation");

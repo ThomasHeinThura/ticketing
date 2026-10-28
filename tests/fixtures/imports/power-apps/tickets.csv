@@ -1,0 +1,105 @@
+Ticket Number,Subject,Details,Status,Category,Severity,Assigned To Email,Requester Email,Created On,Due Date,Resolved On,Resolution Notes,cf_Department,Modified By
+TKT-2026-0001,Ticket 1: printer on floor 1,"User reports issue 1
+Steps tried: restart.",Open,Software,Medium,ben.okafor@example.test,user1@example.test,2026-05-02T08:00:00Z,2026-06-02,,,IT,Power Automate
+TKT-2026-0002,Ticket 2: printer on floor 2,"User reports issue 2
+Steps tried: restart.",In Progress,Access,High,chi.nguyen@example.test,user2@example.test,2026-05-03T08:00:00Z,2026-06-03,,,IT,Power Automate
+TKT-2026-0003,"Ünïcode ""quoted"", subject","User reports issue 3
+Steps tried: restart.",Resolved,Network,Critical,,user3@example.test,2026-05-04T08:00:00Z,2026-06-04,2026-05-30T10:00:00Z,Replaced toner cartridge,Finance,Power Automate
+TKT-2026-0004,Ticket 4: printer on floor 4,"User reports issue 4
+Steps tried: restart.",Closed,Hardware,Low,ana.lopez@example.test,user4@example.test,2026-05-05T08:00:00Z,2026-06-05,2026-05-30T10:00:00Z,,IT,Power Automate
+TKT-2026-0005,Ticket 5: printer on floor 0,"User reports issue 5
+Steps tried: restart.",Cancelled,Software,Medium,ben.okafor@example.test,user5@example.test,2026-05-06T08:00:00Z,2026-06-06,,,IT,Power Automate
+TKT-2026-0006,Ticket 6: printer on floor 1,"User reports issue 6
+Steps tried: restart.",On hold,Access,High,chi.nguyen@example.test,user6@example.test,2026-05-07T08:00:00Z,2026-06-07,,,Finance,Power Automate
+TKT-2026-0007,Ticket 7: printer on floor 2,"User reports issue 7
+Steps tried: restart.",New,Network,Critical,,user7@example.test,2026-05-08T08:00:00Z,2026-06-08,,,IT,Power Automate
+TKT-2026-0008,Ticket 8: printer on floor 3,"User reports issue 8
+Steps tried: restart.",Open,Hardware,Low,ana.lopez@example.test,user8@example.test,2026-05-09T08:00:00Z,2026-06-09,,,IT,Power Automate
+TKT-2026-0009,Ticket 9: printer on floor 4,"User reports issue 9
+Steps tried: restart.",In Progress,Software,Medium,ben.okafor@example.test,user0@example.test,yesterday,2026-06-10,,,Finance,Power Automate
+TKT-2026-0010,Ticket 10: printer on floor 0,"User reports issue 10
+Steps tried: restart.",Awaiting customer,Access,High,chi.nguyen@example.test,user1@example.test,2026-05-11T08:00:00Z,2026-06-11,2026-05-30T10:00:00Z,Replaced toner cartridge,IT,Power Automate
+,Ticket 11: printer on floor 1,"User reports issue 11
+Steps tried: restart.",Closed,Network,Critical,,user2@example.test,2026-05-12T08:00:00Z,2026-06-12,2026-05-30T10:00:00Z,,IT,Power Automate
+TKT-2026-0012,Ticket 12: printer on floor 2,"User reports issue 12
+Steps tried: restart.",Cancelled,Hardware,Low,bad@@mail,user3@example.test,2026-05-13T08:00:00Z,2026-06-13,,,Finance,Power Automate
+TKT-2026-0013,Ticket 13: printer on floor 3,"User reports issue 13
+Steps tried: restart.",On hold,Software,Medium,ben.okafor@example.test,user4@example.test,2026-05-14T08:00:00Z,2026-06-14,,,IT,Power Automate
+TKT-2026-0014,Ticket 14: printer on floor 4,"User reports issue 14
+Steps tried: restart.",New,Access,High,chi.nguyen@example.test,user5@example.test,2026-05-15T08:00:00Z,2026-06-15,,,IT,Power Automate
+TKT-2026-0015,Ticket 15: printer on floor 0,"User reports issue 15
+Steps tried: restart.",Open,Network,Critical,,user6@example.test,2026-05-16T08:00:00Z,2026-06-16,,,Finance,Power Automate
+TKT-2026-0016,Ticket 16: printer on floor 1,"User reports issue 16
+Steps tried: restart.",In Progress,Hardware,Low,ana.lopez@example.test,user7@example.test,2026-05-17T08:00:00Z,2026-06-17,,,IT,Power Automate
+TKT-2026-0017,Ticket 17: printer on floor 2,"User reports issue 17
+Steps tried: restart.",Resolved,Software,Medium,ben.okafor@example.test,user8@example.test,2026-05-18T08:00:00Z,2026-06-18,2026-05-30T10:00:00Z,Replaced toner cartridge,IT,Power Automate
+TKT-2026-0018,Ticket 18: printer on floor 3,"User reports issue 18
+Steps tried: restart.",Closed,Access,High,chi.nguyen@example.test,user0@example.test,2026-05-19T08:00:00Z,2026-06-19,2026-05-30T10:00:00Z,,Finance,Power Automate
+TKT-2026-0019,Ticket 19: printer on floor 4,"User reports issue 19
+Steps tried: restart.",Cancelled,Network,Critical,,user1@example.test,2026-05-20T08:00:00Z,2026-06-20,,,IT,Power Automate
+TKT-2026-0020,Ticket 20: printer on floor 0,"User reports issue 20
+Steps tried: restart.",On hold,Hardware,Low,ana.lopez@example.test,user2@example.test,2026-05-21T08:00:00Z,2026-06-21,,,IT,Power Automate
+TKT-2026-0021,Ticket 21: printer on floor 1,"User reports issue 21
+Steps tried: restart.",New,Software,Medium,ben.okafor@example.test,user3@example.test,2026-05-22T08:00:00Z,2026-06-22,,,Finance,Power Automate
+TKT-2026-0022,Ticket 22: printer on floor 2,"User reports issue 22
+Steps tried: restart.",Open,Access,High,chi.nguyen@example.test,user4@example.test,2026-05-23T08:00:00Z,2026-06-23,,,IT,Power Automate
+TKT-2026-0023,Ticket 23: printer on floor 3,"User reports issue 23
+Steps tried: restart.",In Progress,Network,Critical,,user5@example.test,2026-05-24T08:00:00Z,2026-06-24,,,IT,Power Automate
+TKT-2026-0024,Ticket 24: printer on floor 4,"User reports issue 24
+Steps tried: restart.",Resolved,Hardware,Low,ana.lopez@example.test,user6@example.test,2026-05-25T08:00:00Z,2026-06-25,2026-05-30T10:00:00Z,Replaced toner cartridge,Finance,Power Automate
+TKT-2026-0025,Ticket 25: printer on floor 0,"User reports issue 25
+Steps tried: restart.",Closed,Software,Medium,ben.okafor@example.test,user7@example.test,2026-05-26T08:00:00Z,2026-06-26,2026-05-30T10:00:00Z,,IT,Power Automate
+TKT-2026-0026,Ticket 26: printer on floor 1,"User reports issue 26
+Steps tried: restart.",Cancelled,Access,High,chi.nguyen@example.test,user8@example.test,2026-05-27T08:00:00Z,2026-06-27,,,IT,Power Automate
+TKT-2026-0027,Ticket 27: printer on floor 2,"User reports issue 27
+Steps tried: restart.",On hold,Network,Critical,,user0@example.test,2026-05-01T08:00:00Z,2026-06-01,,,Finance,Power Automate
+TKT-2026-0028,Ticket 28: printer on floor 3,"User reports issue 28
+Steps tried: restart.",New,Hardware,Low,ana.lopez@example.test,user1@example.test,2026-05-02T08:00:00Z,2026-06-02,,,IT,Power Automate
+TKT-2026-0029,Ticket 29: printer on floor 4,"User reports issue 29
+Steps tried: restart.",Open,Software,Medium,ben.okafor@example.test,user2@example.test,2026-05-03T08:00:00Z,2026-06-03,,,IT,Power Automate
+TKT-2026-0030,Ticket 30: printer on floor 0,"User reports issue 30
+Steps tried: restart.",In Progress,Access,High,chi.nguyen@example.test,user3@example.test,2026-05-04T08:00:00Z,2026-06-04,,,Finance,Power Automate
+TKT-2026-0031,Ticket 31: printer on floor 1,"User reports issue 31
+Steps tried: restart.",Resolved,Network,Critical,,user4@example.test,2026-05-05T08:00:00Z,2026-06-05,2026-05-30T10:00:00Z,Replaced toner cartridge,IT,Power Automate
+TKT-2026-0032,Ticket 32: printer on floor 2,"User reports issue 32
+Steps tried: restart.",Closed,Hardware,Low,ana.lopez@example.test,user5@example.test,2026-05-06T08:00:00Z,2026-06-06,2026-05-30T10:00:00Z,,IT,Power Automate
+TKT-2026-0033,Ticket 33: printer on floor 3,"User reports issue 33
+Steps tried: restart.",Cancelled,Software,Medium,ben.okafor@example.test,user6@example.test,2026-05-07T08:00:00Z,2026-06-07,,,Finance,Power Automate
+TKT-2026-0034,Ticket 34: printer on floor 4,"User reports issue 34
+Steps tried: restart.",On hold,Access,High,chi.nguyen@example.test,user7@example.test,2026-05-08T08:00:00Z,2026-06-08,,,IT,Power Automate
+TKT-2026-0035,Ticket 35: printer on floor 0,"User reports issue 35
+Steps tried: restart.",New,Network,Critical,,user8@example.test,2026-05-09T08:00:00Z,2026-06-09,,,IT,Power Automate
+TKT-2026-0036,Ticket 36: printer on floor 1,"User reports issue 36
+Steps tried: restart.",Open,Hardware,Low,ana.lopez@example.test,user0@example.test,2026-05-10T08:00:00Z,2026-06-10,,,Finance,Power Automate
+TKT-2026-0037,Ticket 37: printer on floor 2,"User reports issue 37
+Steps tried: restart.",In Progress,Software,Medium,ben.okafor@example.test,user1@example.test,2026-05-11T08:00:00Z,2026-06-11,,,IT,Power Automate
+TKT-2026-0038,Ticket 38: printer on floor 3,"User reports issue 38
+Steps tried: restart.",Resolved,Access,High,chi.nguyen@example.test,user2@example.test,2026-05-12T08:00:00Z,2026-06-12,2026-05-30T10:00:00Z,Replaced toner cartridge,IT,Power Automate
+TKT-2026-0039,Ticket 39: printer on floor 4,"User reports issue 39
+Steps tried: restart.",Closed,Network,Critical,,user3@example.test,2026-05-13T08:00:00Z,2026-06-13,2026-05-30T10:00:00Z,,Finance,Power Automate
+TKT-2026-0040,Ticket 40: printer on floor 0,"User reports issue 40
+Steps tried: restart.",Cancelled,Hardware,Low,ana.lopez@example.test,user4@example.test,2026-05-14T08:00:00Z,2026-06-14,,,IT,Power Automate
+TKT-2026-0041,Ticket 41: printer on floor 1,"User reports issue 41
+Steps tried: restart.",On hold,Software,Medium,ben.okafor@example.test,user5@example.test,2026-05-15T08:00:00Z,2026-06-15,,,IT,Power Automate
+TKT-2026-0042,Ticket 42: printer on floor 2,"User reports issue 42
+Steps tried: restart.",New,Access,High,chi.nguyen@example.test,user6@example.test,2026-05-16T08:00:00Z,2026-06-16,,,Finance,Power Automate
+TKT-2026-0043,Ticket 43: printer on floor 3,"User reports issue 43
+Steps tried: restart.",Open,Network,Critical,,user7@example.test,2026-05-17T08:00:00Z,2026-06-17,,,IT,Power Automate
+TKT-2026-0044,Ticket 44: printer on floor 4,"User reports issue 44
+Steps tried: restart.",In Progress,Hardware,Low,ana.lopez@example.test,user8@example.test,2026-05-18T08:00:00Z,2026-06-18,,,IT,Power Automate
+TKT-2026-0045,Ticket 45: printer on floor 0,"User reports issue 45
+Steps tried: restart.",Resolved,Software,Medium,ben.okafor@example.test,user0@example.test,2026-05-19T08:00:00Z,2026-06-19,2026-05-30T10:00:00Z,Replaced toner cartridge,Finance,Power Automate
+TKT-2026-0046,Ticket 46: printer on floor 1,"User reports issue 46
+Steps tried: restart.",Closed,Access,High,chi.nguyen@example.test,user1@example.test,2026-05-20T08:00:00Z,2026-06-20,2026-05-30T10:00:00Z,,IT,Power Automate
+TKT-2026-0047,Ticket 47: printer on floor 2,"User reports issue 47
+Steps tried: restart.",Cancelled,Network,Critical,,user2@example.test,2026-05-21T08:00:00Z,2026-06-21,,,IT,Power Automate
+TKT-2026-0048,Ticket 48: printer on floor 3,"User reports issue 48
+Steps tried: restart.",On hold,Hardware,Low,ana.lopez@example.test,user3@example.test,2026-05-22T08:00:00Z,2026-06-22,,,Finance,Power Automate
+TKT-2026-0049,Ticket 49: printer on floor 4,"User reports issue 49
+Steps tried: restart.",New,Software,Medium,ben.okafor@example.test,user4@example.test,2026-05-23T08:00:00Z,2026-06-23,,,IT,Power Automate
+TKT-2026-0050,Ticket 50: printer on floor 0,"User reports issue 50
+Steps tried: restart.",Open,Access,High,chi.nguyen@example.test,user5@example.test,2026-05-24T08:00:00Z,2026-06-24,,,IT,Power Automate
+TKT-2026-0051,Ticket 51: printer on floor 1,"User reports issue 51
+Steps tried: restart.",In Progress,Network,Critical,,user6@example.test,2026-05-25T08:00:00Z,2026-06-25,,,Finance,Power Automate
+TKT-2026-0052,Ticket 52: printer on floor 2,"User reports issue 52
+Steps tried: restart.",Resolved,Hardware,Low,ana.lopez@example.test,user7@example.test,2026-05-26T08:00:00Z,2026-06-26,2026-05-30T10:00:00Z,Replaced toner cartridge,IT,Power Automate

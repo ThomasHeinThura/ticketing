@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Notification } from "@/types/notification";
 import {
+  getApiKeyNotificationHref,
   getNotificationContent,
   getNotificationTitle,
+  getPendingActionNotificationHref,
+  getWebhookNotificationHref,
 } from "./notification-dropdown";
 
 const t = (key: string, options?: Record<string, unknown>) => {
@@ -64,5 +67,74 @@ describe("notification display content", () => {
     expect(getNotificationContent(item, t)).toBe(
       "New comment on Launch website: Ready for review",
     );
+  });
+});
+
+describe("pending action notification deep link", () => {
+  it("opens the approval page for pending_action resources", () => {
+    expect(
+      getPendingActionNotificationHref({
+        resourceType: "pending_action",
+        resourceId: "pa/1",
+      }),
+    ).toBe("/agent/settings/profile/pending-actions/pa%2F1");
+  });
+
+  it("ignores other resources and missing ids", () => {
+    expect(
+      getPendingActionNotificationHref({
+        resourceType: "task",
+        resourceId: "t1",
+      }),
+    ).toBeNull();
+    expect(
+      getPendingActionNotificationHref({
+        resourceType: "pending_action",
+        resourceId: null,
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("webhook auto-disable notification deep link", () => {
+  it("opens the canonical webhook editor route", () => {
+    expect(
+      getWebhookNotificationHref({
+        deepLink: { type: "webhook", id: "hook/1" },
+      }),
+    ).toBe("/agent/settings/webhooks/hook%2F1");
+  });
+
+  it("ignores missing or unsupported deep links", () => {
+    expect(getWebhookNotificationHref({ deepLink: null })).toBeNull();
+    expect(
+      getWebhookNotificationHref({
+        deepLink: { type: "webhook", id: "" },
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("API key auto-disable notification deep link", () => {
+  it("opens the canonical developer settings page", () => {
+    expect(
+      getApiKeyNotificationHref({
+        deepLink: { type: "api_key", id: "key/1" },
+      }),
+    ).toBe("/dashboard/settings/account/developer");
+  });
+
+  it("ignores missing, empty, or unsupported links", () => {
+    expect(getApiKeyNotificationHref({ deepLink: null })).toBeNull();
+    expect(
+      getApiKeyNotificationHref({
+        deepLink: { type: "api_key", id: "" },
+      }),
+    ).toBeNull();
+    expect(
+      getApiKeyNotificationHref({
+        deepLink: { type: "webhook", id: "hook/1" },
+      }),
+    ).toBeNull();
   });
 });

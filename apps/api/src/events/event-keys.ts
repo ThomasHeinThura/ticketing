@@ -34,6 +34,7 @@ export const EVENT_KEYS = new Set<string>([
   "approval.expiring",
   "approval.requested",
   "approval.withdrawn",
+  "automation.notification_sent",
   "automation.run_failed",
   "budget.threshold_reached",
   "identity.deprovisioned",
@@ -78,3 +79,67 @@ export const EVENT_KEYS = new Set<string>([
   "work_item.updated",
   "workspace.created",
 ]);
+
+/**
+ * Published Kaneo task mutation keys retained only as an outbox compatibility bridge.
+ * These are intentionally separate from `EVENT_KEYS`: neither webhook nor automation
+ * configuration may subscribe to them, and they are not the canonical event vocabulary.
+ */
+export const LEGACY_TASK_COMPATIBILITY_KEY_VALUES = [
+  "comment.created",
+  "comment.updated",
+  "task.assignee_changed",
+  "task.created",
+  "task.deleted",
+  "task.description_changed",
+  "task.due_date_changed",
+  "task.label_assigned",
+  "task.label_created",
+  "task.label_deleted",
+  "task.label_unassigned",
+  "task.moved",
+  "task.priority_changed",
+  "task.status_changed",
+  "task.title_changed",
+  "task.unassigned",
+  "task.updated",
+  "task-relation.created",
+  "time-entry.created",
+] as const;
+
+export type LegacyTaskCompatibilityKey =
+  (typeof LEGACY_TASK_COMPATIBILITY_KEY_VALUES)[number];
+
+export const LEGACY_TASK_COMPATIBILITY_KEYS: ReadonlySet<string> = new Set(
+  LEGACY_TASK_COMPATIBILITY_KEY_VALUES,
+);
+
+export function isLegacyTaskCompatibilityKey(
+  value: string,
+): value is LegacyTaskCompatibilityKey {
+  return LEGACY_TASK_COMPATIBILITY_KEYS.has(value);
+}
+
+/** The stable common envelope payload for compatibility events. */
+export function isLegacyTaskCompatibilityPayload(
+  payload: unknown,
+  scope: unknown,
+): boolean {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload))
+    return false;
+  if (!scope || typeof scope !== "object" || Array.isArray(scope)) return false;
+  const data = payload as Record<string, unknown>;
+  const eventScope = scope as Record<string, unknown>;
+  return (
+    typeof data.taskId === "string" &&
+    data.taskId.length > 0 &&
+    data.key === data.taskId &&
+    typeof data.projectId === "string" &&
+    data.projectId.length > 0 &&
+    typeof data.url === "string" &&
+    data.url.startsWith("/dashboard/workspace/") &&
+    typeof eventScope.workspaceId === "string" &&
+    eventScope.workspaceId.length > 0 &&
+    eventScope.projectId === data.projectId
+  );
+}

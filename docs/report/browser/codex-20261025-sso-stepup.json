@@ -1,0 +1,45 @@
+{
+	"recordedAt": "2026-10-25T06:42:46+00:00",
+	"journey": "PA-15 SSO step-up using local signed OIDC provider",
+	"strictTls": true,
+	"positive": {
+		"initialOidcLogin": "passed",
+		"freshSsoStepUp": "protected connection edit persisted and reloaded",
+		"stepUpSessionOrJitEffect": "none observed"
+	},
+	"staleAuthTime": {
+		"callback": "denied",
+		"proof": "not issued",
+		"protectedWrite": "unchanged",
+		"sessionOrJitEffect": "none observed"
+	},
+	"requiredLocalFactor": {
+		"factorStatus": "required=true; availableMethods=[]",
+		"protectedEditor": "redirected to account/security; form absent; name unchanged"
+	},
+	"passwordlessLocalFactorEnrollment": {
+		"account": "synthetic SSO-only user; no password credential",
+		"securityUi": "enrollment completed without a password field",
+		"factor": "TOTP enrolled and verified through existing Kaneo security UI",
+		"authSessionInvalidation": "7 sessions before enrollment; 6 prior sessions invalidated; 1 session remained",
+		"connectionName": "preserved"
+	},
+	"totpProtectedOperation": {
+		"operation": "metrics token rotation",
+		"status": 200,
+		"serverAvailableMethods": ["totp", "backup_code"],
+		"ssoPromptLoginAvailable": false,
+		"sessionIdentityEffect": "none; 1 session and 1 identity before and after",
+		"factorPolicy": "optional; unchanged",
+		"tokenMaterial": "not retained"
+	},
+	"syntheticDatabaseState": {
+		"sessions": 1,
+		"identities": 1,
+		"factorEnabled": true,
+		"policy": "optional"
+	},
+	"sessionCountNote": "Six earlier diagnostic sessions plus one enrollment login; factor enrollment invalidated the six older sessions. Saved browser session was reused for TOTP protected-operation verification; that continuation created no session.",
+	"realEntra": "External validation remains with Thomas",
+	"independentPhaseReview": "pending; no review round consumed"
+}

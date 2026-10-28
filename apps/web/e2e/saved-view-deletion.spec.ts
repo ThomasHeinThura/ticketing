@@ -43,7 +43,11 @@ type Calls = {
   pins: string[];
   approvals: number;
   cancels: number;
+  listReads: number;
 };
+
+const viewName = (id: string) =>
+  views.find((view) => view.id === id)?.name ?? id;
 
 async function mockViewsApi(
   page: Page,
@@ -58,7 +62,11 @@ async function mockViewsApi(
     pins: [],
     approvals: 0,
     cancels: 0,
+    listReads: 0,
   };
+  // The server's list: an executed deletion removes the view from it.
+  let liveViews = [...views];
+  let target = "view-pinned-e2e";
   let state = "pending";
   let pendingId = "pending-view-delete-1-e2e";
   let requested = 0;
@@ -106,7 +114,8 @@ async function mockViewsApi(
       return json(route, { pinnedViewIds: [] });
     }
     if (request.method() === "DELETE") {
-      calls.deletions.push(path.split("/").at(-1) ?? "");
+      target = path.split("/").at(-1) ?? "";
+      calls.deletions.push(target);
       if (deleteStatus !== 202)
         return json(
           route,
@@ -121,7 +130,7 @@ async function mockViewsApi(
         {
           pendingActionId: pendingId,
           action: "delete",
-          summary: { name: "Escalations" },
+          summary: { name: viewName(target) },
           confirmation: "click",
           expiresAt: "2026-10-30T00:00:00.000Z",
           approveUrl: `/api/me/pending-actions/${pendingId}/approve`,
@@ -139,7 +148,10 @@ async function mockViewsApi(
         updatedAt: "2026-10-07T00:00:00.000Z",
       });
     }
-    if (path.endsWith("/api/views")) return json(route, views);
+    if (path.endsWith("/api/views")) {
+      calls.listReads += 1;
+      return json(route, liveViews);
+    }
     return json(
       route,
       views.find((view) => path.endsWith(view.id)) ?? views[0],
@@ -157,6 +169,7 @@ async function mockViewsApi(
       if (url.endsWith("/approve")) {
         calls.approvals += 1;
         state = "executed";
+        liveViews = liveViews.filter((view) => view.id !== target);
         return json(route, { id: pendingId, state });
       }
       return json(route, {
@@ -164,8 +177,8 @@ async function mockViewsApi(
         action: "delete",
         origin: "web",
         targetType: "saved_view",
-        targetIds: ["view-pinned-e2e"],
-        summary: { name: "Escalations" },
+        targetIds: [target],
+        summary: { name: viewName(target) },
         confirmation: "click",
         approvalSupported: true,
         state,
@@ -207,29 +220,62 @@ test("a saved view deletion is a request that enters the pending-action review f
   await page
     .getByRole("button", { name: "Request deletion of Escalations" })
     .click();
-  await expect(page).toHaveURL(/pending-actions\/pending-view-delete-1-e2e/u);
+  // The request opens its approval in place; the index stays where it was.
+  const approval = page
+    .getByRole("dialog")
+    .filter({ hasText: "view-pinned-e2e" });
+  await expect(approval).toBeVisible();
+  await expect(approval.getByText("Pending", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/agent\/views$/u);
   // Nothing was deleted by the request: it is only a pending action to review.
   expect(calls.deletions).toEqual(["view-pinned-e2e"]);
-  await expect(
-    page.getByRole("heading", { name: "Pending action" }),
-  ).toBeVisible();
-  await expect(page.getByText("view-pinned-e2e")).toBeVisible();
+  expect(calls.approvals).toBe(0);
+  await expect(approval.getByText("view-pinned-e2e")).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("saved-view-pending-action.png"),
   });
-  await page.getByRole("button", { name: "Delete" }).click();
-  await expect.poll(() => calls.approvals).toBe(1);
-
-  await page.goto("/agent/views");
-  await page
-    .getByRole("button", { name: "Request deletion of Escalations" })
-    .click();
-  await expect(page).toHaveURL(/pending-actions\/pending-view-delete-2-e2e/u);
-  await page.getByRole("button", { name: "Cancel request" }).click();
+  // The approval is titled with the translated action, never the raw API word.
   await expect(
-    page.getByText("The pending action was cancelled."),
+    approval.getByRole("heading", { name: "Delete saved view", exact: true }),
+  ).toBeVisible();
+  await expect(
+    approval.getByRole("heading", { name: "delete", exact: true }),
+  ).toHaveCount(0);
+  const listReadsBeforeApproval = calls.listReads;
+  await approval.getByRole("button", { name: "Delete" }).click();
+  await expect.poll(() => calls.approvals).toBe(1);
+  await expect(page.getByText("Deletion approved.")).toBeVisible();
+  await expect(approval).not.toBeVisible();
+  // The executed deletion refreshes the index: the list is read again and the view is gone.
+  await expect
+    .poll(() => calls.listReads)
+    .toBeGreaterThan(listReadsBeforeApproval);
+  await expect(page.getByRole("heading", { name: "Escalations" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("heading", { name: "Everything open" }),
+  ).toBeVisible();
+
+  await page
+    .getByRole("button", { name: "Request deletion of Everything open" })
+    .click();
+  const secondApproval = page
+    .getByRole("dialog")
+    .filter({ hasText: "view-workspace-e2e" });
+  await expect(
+    secondApproval.getByText("Pending", { exact: true }),
+  ).toBeVisible();
+  expect(calls.deletions).toEqual(["view-pinned-e2e", "view-workspace-e2e"]);
+  await secondApproval.getByRole("button", { name: "Cancel request" }).click();
+  await expect(page.getByText("Deletion request cancelled.")).toBeVisible();
+  await expect(secondApproval).not.toBeVisible();
+  // A cancelled request deletes nothing: the view stays listed.
+  await expect(
+    page.getByRole("heading", { name: "Everything open" }),
   ).toBeVisible();
   expect(calls.cancels).toBe(1);
+  expect(calls.approvals).toBe(1);
 });
 
 test("a refused deletion request keeps the list and says why", async ({

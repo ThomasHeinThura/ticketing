@@ -1,0 +1,67 @@
+{
+	"requirement": "VW-27",
+	"checkpoint": "Coordinated local SIT build 179; strict TLS; same-origin API",
+	"status": "passed",
+	"fixture": {
+		"existingChild": "CCY-2",
+		"createdEpic": "CCY-5",
+		"epicTypeWasAuthoritativelyMarkedIsEpic": true,
+		"createdEpicRetainedAsClearlyNamedOwnedFixture": true
+	},
+	"parentLink": {
+		"before": null,
+		"setThroughNormalApiWithIfMatch": true,
+		"restoredThroughNormalApiWithFreshIfMatch": true,
+		"after": null,
+		"otherCheckedChildFieldsPreserved": true
+	},
+	"checks": {
+		"noEpicBeforeParentLink": true,
+		"childGroupedByEpicAfterLink": true,
+		"epicRootGroupsWithItself": true,
+		"urlReloadPreservesGrouping": true,
+		"assigneeMode": "SIT Audit member",
+		"moduleMode": "No module",
+		"noEpicAfterParentRestore": true,
+		"otherProjectItemsOpenedOrChanged": false
+	},
+	"responsive": [
+		{
+			"width": 390,
+			"theme": "light",
+			"bodyAndHtmlFitViewport": true,
+			"screenshot": "vw27-179-epic-light-390.png"
+		},
+		{
+			"width": 768,
+			"theme": "light",
+			"bodyAndHtmlFitViewport": true,
+			"screenshot": "vw27-179-epic-light-768.png"
+		},
+		{
+			"width": 1440,
+			"theme": "light",
+			"bodyAndHtmlFitViewport": true,
+			"screenshot": "vw27-179-epic-light-1440.png"
+		},
+		{
+			"width": 390,
+			"theme": "dark",
+			"bodyAndHtmlFitViewport": true,
+			"screenshot": "vw27-179-epic-dark-390.png"
+		},
+		{
+			"width": 768,
+			"theme": "dark",
+			"bodyAndHtmlFitViewport": true,
+			"screenshot": "vw27-179-epic-dark-768.png"
+		},
+		{
+			"width": 1440,
+			"theme": "dark",
+			"bodyAndHtmlFitViewport": true,
+			"screenshot": "vw27-179-epic-dark-1440.png"
+		}
+	],
+	"errors": []
+}

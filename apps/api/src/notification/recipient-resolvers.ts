@@ -1,8 +1,19 @@
 import { can, type ProjectReachFacts, reaches } from "@taskdesk/permissions";
 import type { DbTransaction, DomainEventEnvelope } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import type { NotificationRecipientCandidate } from "./fanout";
 import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
+import { CUSTOMER_APPROVAL_EVENT_KINDS } from "./customer-event-audience";
+import type { NotificationRecipientCandidate } from "./fanout";
+import { configuredMentionChannels } from "./fanout.repository";
+import {
+  findPendingActionNotificationContext,
+  type PendingActionNotificationContext,
+} from "./pending-action-recipient.repository";
+import {
+  findApiKeyAutoDisableOwner,
   findApprovalNotificationContext,
   findCurrentNotificationResource,
   findNotificationPerson,
@@ -69,6 +80,18 @@ export async function resolveMentionEventRecipient(
       projectId: resource.projectId,
       workspaceId: resource.workspaceId,
       organisationId: resource.organisationId,
+      ancestorProjectIds: await projectAncestryFor(
+        tx,
+        identity,
+        resource.workspaceId,
+        resource.projectId,
+      ),
+      ownerTeamId: await projectOwnerTeamFor(
+        tx,
+        identity,
+        resource.workspaceId,
+        resource.projectId,
+      ),
       visibleToPersonIds:
         identity.side === "customer" ? resource.visibleToPersonIds : null,
     })
@@ -82,7 +105,7 @@ export async function resolveMentionEventRecipient(
       resourceId: commentId,
       title: "You were mentioned",
       body: `You were mentioned in a comment on ${key}.`,
-      channels: [],
+      channels: await configuredMentionChannels(tx),
     },
   ];
 }
@@ -146,13 +169,44 @@ export async function resolveApprovalEventRecipients(
     visibleToPersonIds,
   };
   const candidates: NotificationRecipientCandidate[] = [];
+  const channels = await configuredMentionChannels(tx);
   for (const personId of new Set(personIds)) {
     const person = await findNotificationPerson(tx, personId);
     if (!person?.active || !person.userId) continue;
-    // Only staff are written an inbox row: the approval inbox read predicate admits staff
-    // recipients only, so a customer's row could never be read. A customer approver is
-    // served by the portal approvals list instead.
-    if (person.side !== "staff") continue;
+    // AP-21 / AP-13 (`P2R1-04`): a customer is notified only as the addressed approver of a
+    // customer approval. Their reach is the approval's own customer rule (the portal Approvals
+    // list's check), and their inbox row is read through the portal inbox.
+    if (person.side !== "staff") {
+      if (
+        person.side !== "customer" ||
+        !CUSTOMER_APPROVAL_EVENT_KINDS.has(event.kind) ||
+        personId !== row.approverId ||
+        row.kind !== "customer" ||
+        !(await isApprovalApproverStillValid(tx, row))
+      )
+        continue;
+      const customer = await resolveIdentity(
+        { userId: person.userId, credential: "session" },
+        tx,
+      );
+      if (customer?.side !== "customer" || customer.personId !== personId)
+        continue;
+      // Loaded lazily: the approval repository builds table aliases at import time, and this
+      // resolver module is imported by notification code that runs without the full schema.
+      const { loadApprovalTargetByApprovalId } = await import(
+        "../approval/repository"
+      );
+      if (
+        !(await loadApprovalTargetByApprovalId(row.id, customer, {
+          executor: tx,
+        }))
+      )
+        continue;
+      candidates.push(
+        approvalCandidate(event.kind, personId, row.id, channels, true),
+      );
+      continue;
+    }
     // A named approver must still be valid for this workspace (0120 check 4).
     if (
       personId === row.approverId &&
@@ -163,36 +217,64 @@ export async function resolveApprovalEventRecipients(
       { userId: person.userId, credential: "session" },
       tx,
     );
-    if (!identity || !reaches(identity, reachFacts)) continue;
-    candidates.push({
-      personId,
-      resourceType: "approval",
-      resourceId: row.id,
-      title:
-        event.kind === "approval.requested"
-          ? "Approval requested"
-          : event.kind === "approval.expiring"
-            ? "Approval expiring soon"
-            : event.kind === "approval.expired"
-              ? "Approval expired"
-              : event.kind === "approval.withdrawn"
-                ? "Approval withdrawn"
-                : "Approval decision recorded",
-      body:
-        event.kind === "approval.requested"
-          ? "A work item needs your approval."
-          : event.kind === "approval.expiring"
-            ? "An approval request is nearing its expiry."
-            : event.kind === "approval.expired"
-              ? "An approval request has expired."
-              : event.kind === "approval.withdrawn"
-                ? "An approval request was withdrawn."
-                : "An approval request was decided.",
-      // External channel adapters and their registry stay with the notification worker slice.
-      channels: [],
-    });
+    if (!identity) continue;
+    const ancestorProjectIds = await projectAncestryFor(
+      tx,
+      identity,
+      reachFacts.workspaceId,
+      reachFacts.projectId,
+    );
+    const ownerTeamId = await projectOwnerTeamFor(
+      tx,
+      identity,
+      reachFacts.workspaceId,
+      reachFacts.projectId,
+    );
+    if (!reaches(identity, { ...reachFacts, ancestorProjectIds, ownerTeamId }))
+      continue;
+    candidates.push(approvalCandidate(event.kind, personId, row.id, channels));
   }
   return candidates;
+}
+
+/** The approval inbox row; the configured email channel follows the recipient's preference. */
+function approvalCandidate(
+  kind: string,
+  personId: string,
+  approvalId: string,
+  channels: readonly string[],
+  customer = false,
+): NotificationRecipientCandidate {
+  const event = { kind };
+  // A customer's copy never uses the internal "work item" term (EV-5).
+  const subject = customer ? "A request" : "A work item";
+  return {
+    personId,
+    resourceType: "approval",
+    resourceId: approvalId,
+    title:
+      event.kind === "approval.requested"
+        ? "Approval requested"
+        : event.kind === "approval.expiring"
+          ? "Approval expiring soon"
+          : event.kind === "approval.expired"
+            ? "Approval expired"
+            : event.kind === "approval.withdrawn"
+              ? "Approval withdrawn"
+              : "Approval decision recorded",
+    body:
+      event.kind === "approval.requested"
+        ? `${subject} needs your approval.`
+        : event.kind === "approval.expiring"
+          ? "An approval request is nearing its expiry."
+          : event.kind === "approval.expired"
+            ? "An approval request has expired."
+            : event.kind === "approval.withdrawn"
+              ? "An approval request was withdrawn."
+              : "An approval request was decided.",
+    // AP-21: pending approvals reach the inbox and, per preference, email.
+    channels,
+  };
 }
 
 /**
@@ -249,5 +331,232 @@ export async function resolveWorkspaceCreatedRecipient(
         eventKind: event.kind,
       }),
     },
+  ];
+}
+
+/**
+ * WH-7: notify the webhook's current stored owner. Current capability and reach are
+ * eligibility gates; workspace managers are not added as recipients by this event.
+ */
+export async function resolveWebhookAutoDisabledRecipients(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  if (event.kind !== "webhook.auto_disabled") return [];
+  const webhookId = event.payload.webhookId;
+  if (
+    typeof webhookId !== "string" ||
+    !webhookId ||
+    !("workspaceId" in event.scope) ||
+    !event.scope.workspaceId
+  )
+    return [];
+
+  const workspaceId = event.scope.workspaceId;
+  const resource = await findCurrentNotificationResource(tx, {
+    resourceType: "webhook",
+    resourceId: webhookId,
+    eventKind: event.kind,
+    workspaceId,
+  });
+  if (
+    !resource ||
+    resource.workspaceId !== workspaceId ||
+    resource.projectId !== null ||
+    resource.customerVisible ||
+    !resource.staffUrl ||
+    (event.scope.organisationId ?? null) !== resource.organisationId
+  )
+    return [];
+
+  if (!resource.ownerPersonId) return [];
+  const channels = await configuredMentionChannels(tx);
+  const recipients: NotificationRecipientCandidate[] = [];
+
+  const person = await findNotificationPerson(tx, resource.ownerPersonId);
+  if (!person?.active || !person.userId || person.side !== "staff") return [];
+  const identity = await resolveIdentity(
+    { userId: person.userId, credential: "session" },
+    tx,
+  );
+  if (
+    !identity ||
+    identity.personId !== resource.ownerPersonId ||
+    identity.side !== "staff" ||
+    !can(identity, "workspace:read", "workspace", { workspaceId }) ||
+    !can(identity, "webhook:manage", "workspace", { workspaceId })
+  )
+    return [];
+
+  recipients.push({
+    personId: resource.ownerPersonId,
+    resourceType: "webhook",
+    resourceId: webhookId,
+    title: "Webhook disabled",
+    body: "A webhook was disabled and needs your attention.",
+    channels,
+  });
+  return recipients;
+}
+
+/** MC-22: the current owner of a personal MCP key is the sole auto-disable recipient. */
+export async function resolveApiKeyAutoDisabledRecipient(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  if (event.kind !== "api_key.auto_disabled") return [];
+  if (
+    !event.scope ||
+    typeof event.scope !== "object" ||
+    Object.keys(event.scope).length !== 0
+  )
+    return [];
+
+  const apiKeyId = event.payload.apiKeyId;
+  if (
+    typeof apiKeyId !== "string" ||
+    !apiKeyId ||
+    event.payload.key !== apiKeyId ||
+    event.payload.url !== "/agent/settings/profile/api-keys" ||
+    event.payload.reason !== "mcp_burst_threshold_exceeded"
+  )
+    return [];
+
+  const owner = await findApiKeyAutoDisableOwner(tx, apiKeyId);
+  if (!owner) return [];
+  const identity = await resolveIdentity(
+    { userId: owner.userId, credential: "session" },
+    tx,
+  );
+  if (identity?.side !== "staff" || identity.personId !== owner.personId)
+    return [];
+
+  return [
+    {
+      personId: owner.personId,
+      resourceType: "api_key",
+      resourceId: apiKeyId,
+      title: "MCP API key disabled",
+      body: "An MCP API key was automatically disabled after a burst of write attempts.",
+      channels: [],
+    },
+  ];
+}
+
+const MAX_KEY_NAME_LENGTH = 80;
+
+function pendingActionTargetLabel(
+  context: PendingActionNotificationContext,
+): string {
+  const summary =
+    context.payloadSummary &&
+    typeof context.payloadSummary === "object" &&
+    !Array.isArray(context.payloadSummary)
+      ? (context.payloadSummary as Record<string, unknown>)
+      : {};
+  const count = context.targetIds.length;
+  // Only the work item's own key is named; no titles, bodies or comment text.
+  if (
+    context.targetType === "work_item" &&
+    count === 1 &&
+    typeof summary.key === "string" &&
+    summary.key
+  )
+    return summary.key;
+  const noun = context.targetType.replaceAll("_", " ");
+  return count === 1 ? `a ${noun}` : `${count} ${noun}s`;
+}
+
+export type PendingActionRecipientDependencies = {
+  findContext: typeof findPendingActionNotificationContext;
+  resolveRequesterIdentity: (
+    tx: DbTransaction,
+    userId: string,
+  ) => Promise<{ personId: string } | null>;
+};
+
+const defaultPendingActionRecipientDependencies: PendingActionRecipientDependencies =
+  {
+    findContext: findPendingActionNotificationContext,
+    resolveRequesterIdentity: (tx, userId) =>
+      resolveIdentity({ userId, credential: "session" }, tx),
+  };
+
+/**
+ * NO-21 `pending_action` recipients (feature-contracts-p4.md): the requester only.
+ * `pending_action.requested` notifies only for an `api`/`mcp` origin made with the
+ * requester's own key ("An agent using your key … asked to delete …"), never for `web`;
+ * `pending_action.executed` notifies only on `outcome: failed`. An unresolved requester,
+ * key or row fails closed; no administrator or event actor is ever substituted.
+ */
+export async function resolvePendingActionEventRecipients(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+  dependencies: PendingActionRecipientDependencies = defaultPendingActionRecipientDependencies,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  const pendingActionId = event.payload.pendingActionId;
+  if (typeof pendingActionId !== "string" || !pendingActionId) return [];
+  if (event.kind === "pending_action.requested") {
+    if (event.payload.origin !== "api" && event.payload.origin !== "mcp")
+      return [];
+  } else if (event.kind === "pending_action.executed") {
+    if (event.payload.outcome !== "failed") return [];
+  } else {
+    return [];
+  }
+
+  const context = await dependencies.findContext(tx, pendingActionId);
+  if (!context) return [];
+  const eventWorkspaceId =
+    "workspaceId" in event.scope ? (event.scope.workspaceId ?? null) : null;
+  if ((context.workspaceId ?? null) !== eventWorkspaceId) return [];
+  if (
+    !context.requesterActive ||
+    !context.requesterUserId ||
+    context.requesterSide !== "staff"
+  )
+    return [];
+
+  let keyName: string | null = null;
+  if (event.kind === "pending_action.requested") {
+    if (
+      context.origin !== event.payload.origin ||
+      context.credentialType !== "api_key" ||
+      !context.credentialId ||
+      context.keyOwnerUserId !== context.requesterUserId
+    )
+      return [];
+    keyName = context.keyName?.trim().slice(0, MAX_KEY_NAME_LENGTH) || null;
+  } else if (context.state !== "failed") {
+    return [];
+  }
+
+  const identity = await dependencies.resolveRequesterIdentity(
+    tx,
+    context.requesterUserId,
+  );
+  if (!identity || identity.personId !== context.requestedByPersonId) return [];
+
+  const target = pendingActionTargetLabel(context);
+  return [
+    event.kind === "pending_action.requested"
+      ? {
+          personId: context.requestedByPersonId,
+          resourceType: "pending_action",
+          resourceId: context.id,
+          title: "Deletion awaiting your approval",
+          body: keyName
+            ? `An agent using your key ${keyName} asked to delete ${target}.`
+            : `An agent using one of your API keys asked to delete ${target}.`,
+          channels: [],
+        }
+      : {
+          personId: context.requestedByPersonId,
+          resourceType: "pending_action",
+          resourceId: context.id,
+          title: "Approved deletion failed",
+          body: `The deletion of ${target} you approved could not be completed. Nothing was deleted.`,
+          channels: [],
+        },
   ];
 }

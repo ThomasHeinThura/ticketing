@@ -1,0 +1,3020 @@
+{
+	"phase": "P2",
+	"items": [
+		{
+			"id": "WF-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema.ts (workflow workspace_id, work_item_type.workflow_id); apps/api/src/workflow/repository.ts; tests/api-integration/workflow.test.ts",
+			"gap": "No workflow authoring screen in apps/web (only Kaneo column/workflow-rule editor) (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/workflow.test.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/workflows.test.tsx:232"
+				],
+				"assertions": [
+					"workflow editor saves a new draft after transition removal"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/workflows.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:68"
+			}
+		},
+		{
+			"id": "WF-2",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/work-item/workflow-transition-context.ts; tests/api-integration/work-item-transition.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/work-item-transition.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/workflow/workflow.ts",
+					"apps/api/src/work-item/workflow-transition-context.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:71"
+			}
+		},
+		{
+			"id": "WF-3",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; tests/api-integration/work-item-transition.test.ts (role-gated transition)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/work-item-transition.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/workflow/workflow.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:96"
+			}
+		},
+		{
+			"id": "WF-4",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/work-item/policy.ts; tests/api-integration/work-item-transition.test.ts (403 / 409 cases)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/work-item-transition.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/workflow/workflow.ts",
+					"apps/api/src/work-item/policy.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:98"
+			}
+		},
+		{
+			"id": "WF-5",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts",
+			"gap": "Null-from (Cancel) covered by domain test only (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/workflow/workflow.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/workflow/workflow.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:103"
+			}
+		},
+		{
+			"id": "WF-6",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/workflow/controllers/create-workflow-version.ts; tests/api-integration/workflow-publish-shape.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/workflow-publish-shape.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/workflow/workflow.ts",
+					"apps/api/src/workflow/controllers/create-workflow-version.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:108"
+			}
+		},
+		{
+			"id": "WF-7",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/workflow/controllers/publish-workflow-version.ts; tests/api-integration/workflow-publish-shape.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/workflow-publish-shape.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/workflow/workflow.ts",
+					"apps/api/src/workflow/controllers/publish-workflow-version.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:109"
+			}
+		},
+		{
+			"id": "WF-8",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts (activity workflowVersionId); tests/api-integration/work-item-transition.test.ts; tests/api-integration/work-item-activity-read.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-transition.test.ts",
+					"tests/api-integration/work-item-activity-read.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/work-item/controllers/transition-work-item.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:115"
+			}
+		},
+		{
+			"id": "WF-9",
+			"state": "partial",
+			"evidence": "apps/api/src/workflow/repository.ts; apps/api/src/workflow/controllers/validate-workflow-version.ts; tests/api-integration/workflow-validate.test.ts; tests/api-integration/workflow.test.ts",
+			"gap": "API returns stuckWorkItemKeys; no web workflow editor lists affected items",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/workflow-validate.test.ts",
+					"tests/api-integration/workflow.test.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/workflows.test.tsx:196"
+				],
+				"assertions": ["publish validation lists linked stranded work items"],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/workflow/workflow-validation-dialog.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:117"
+			}
+		},
+		{
+			"id": "WF-10",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/work-item/controllers/transition-work-item.ts; tests/api-integration/work-item-transition.test.ts (WF-10 422 then success); apps/web/src/components/work-item/work-item-properties.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/work-item-transition.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/workflow/workflow.ts",
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"apps/web/src/components/work-item/work-item-properties.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:129"
+			}
+		},
+		{
+			"id": "WF-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts (visibility: match.noteVisibility); tests/api-integration/work-item-transition.test.ts (asserts comment visibility)",
+			"gap": "Only public visibility asserted; internal path untested (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-transition.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/work-item/controllers/transition-work-item.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:130"
+			}
+		},
+		{
+			"id": "WF-12",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts (activityId: transitionActivity.id); tests/api-integration/work-item-transition.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-transition.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/work-item/controllers/transition-work-item.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:132"
+			}
+		},
+		{
+			"id": "WF-13",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts; apps/api/src/approval/repository.ts; tests/api-integration/approval-gate-semantics.test.ts; tests/api-integration/approval-closure-and-clock.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/approval-gate-semantics.test.ts",
+					"tests/api-integration/approval-closure-and-clock.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"apps/api/src/approval/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:138"
+			}
+		},
+		{
+			"id": "WF-14",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/work-item/controllers/transition-work-item.ts; tests/api-integration/approval-gate-semantics.test.ts (requires_cab-only)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/approval-gate-semantics.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/workflow/workflow.ts",
+					"apps/api/src/work-item/controllers/transition-work-item.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:142"
+			}
+		},
+		{
+			"id": "WF-15",
+			"state": "partial",
+			"evidence": "packages/domain/src/workflow/types.ts; apps/api/src/work-item/workflow-transition-context.ts; tests/api-integration/work-item-transition.test.ts; tests/api-integration/work-item-blockers.test.ts",
+			"gap": "field_required and change_risk_at_most fail closed (no custom-field/change-risk store)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-transition.test.ts",
+					"tests/api-integration/work-item-blockers.test.ts",
+					"tests/api-integration/p5-service-changes.test.ts:132",
+					"packages/domain/src/workflow/workflow.test.ts:554"
+				],
+				"assertions": [
+					"risk and rollback plan feed guards",
+					"native/custom/satellite field guards evaluated"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Old no-store gap is stale; real custom-field/change-risk context is now loaded."
+				],
+				"paths": [
+					"apps/api/src/work-item/workflow-transition-context.ts",
+					"apps/api/src/work-item/controllers/transition-work-item.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:144"
+			}
+		},
+		{
+			"id": "WF-16",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/work-item/response.ts; tests/api-integration/work-item-transition.test.ts (GET /transitions disabled with reason)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/work-item-transition.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/workflow/workflow.ts",
+					"apps/api/src/work-item/response.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:157"
+			}
+		},
+		{
+			"id": "WF-17",
+			"state": "partial",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/work-item/controllers/transition-work-item.ts; tests/api-integration/work-item-transition.test.ts",
+			"gap": "resolved_at set; sla_pause reason=resolved continuity held (see SLA-11)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/work-item-transition.test.ts"
+				],
+				"assertions": ["completed-group transition sets resolved_at"],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Resolved SLA pause is explicitly held in the current contract, not an implementation miss."
+				],
+				"paths": ["apps/api/src/work-item/controllers/transition-work-item.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:167"
+			}
+		},
+		{
+			"id": "WF-18",
+			"state": "partial",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/work-item/controllers/transition-work-item.ts; tests/api-integration/work-item-transition.test.ts (WF-18 clears resolved_at)",
+			"gap": "Closing resolved pause and continuing clock not implemented (owner hold)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/work-item-transition.test.ts"
+				],
+				"assertions": ["leaving completed group clears resolved_at"],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Resolved SLA pause continuity is explicitly held in the current contract."
+				],
+				"paths": ["apps/api/src/work-item/controllers/transition-work-item.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:169"
+			}
+		},
+		{
+			"id": "WF-19",
+			"state": "partial",
+			"evidence": "packages/domain/src/assignment/assignment.ts; apps/api/src/work-item/controllers/transition-work-item.ts; tests/api-integration/work-item-transition.test.ts (set_assignee, schedule_transition row)",
+			"gap": "scheduled_transition rows are inserted but no scheduler job executes them (apps/api/src/scheduler/index.ts)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-transition.test.ts",
+					"tests/api-integration/system-transition-real-executor.test.ts:182",
+					"tests/api-integration/system-transition-real-executor.test.ts:198"
+				],
+				"assertions": [
+					"due stored concrete hop applies once as system actor",
+					"concurrent runs execute once"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/scheduler/scheduled-transition.ts",
+					"apps/api/src/scheduler/reminder-scan.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:171"
+			}
+		},
+		{
+			"id": "WF-20",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts (enqueueOutboxEvent + publishEvent work_item.transitioned); tests/api-integration/work-item-transition.test.ts",
+			"gap": "Outbox has no dispatcher, so webhooks/automations never consume it (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-transition.test.ts"],
+				"assertions": ["transition inserts outbox event with state change"],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Parent consumer now exists; historical absent-dispatcher note is stale."
+				],
+				"paths": [
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"apps/api/src/events/outbox-consumer.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:195"
+			}
+		},
+		{
+			"id": "WF-21",
+			"state": "partial",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/work-item/controllers/transition-work-item.ts (doc comment: no portal caller)",
+			"gap": "No customer reopen call sites, no system-actor execution, no flagged activity fallback",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/customer-upload-reopen.test.ts",
+					"tests/api-integration/system-transition-real-executor.test.ts"
+				],
+				"assertions": [
+					"resolved item reopens through is_reopen as system actor",
+					"missing edge yields staff warning"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/workflow/customer-reopen.ts",
+					"apps/api/src/intake/portal-actions.ts",
+					"apps/api/src/intake/repository.ts",
+					"apps/api/src/attachment/controllers/complete-submission-attachment.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:197",
+				"executionScope": "Customer upload reopen suite passed 3/3 on isolated PostgreSQL; whole-phase execution pending.",
+				"repairReconciledAt": "2026-10-24T20:30:35.726227+00:00",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "WF-22",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/workflow/workflow.ts; packages/domain/src/workflow/workflow.test.ts; apps/api/src/workflow/schema.ts; tests/api-integration/workflow.test.ts (held set_field refused)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/workflow/workflow.test.ts",
+					"tests/api-integration/workflow.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/workflow/workflow.ts",
+					"apps/api/src/workflow/schema.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:203"
+			}
+		},
+		{
+			"id": "SLA-1",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/sla/policy.ts; packages/domain/src/sla/policy.test.ts; apps/api/src/work-item/controllers/create-work-item.ts; apps/api/src/intake/repository.ts",
+			"gap": "API resolution chain (type->project->workspace; request type at acceptance) not integration-tested per level (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/sla/policy.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/sla/policy.ts",
+					"apps/api/src/work-item/controllers/create-work-item.ts",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:399"
+			}
+		},
+		{
+			"id": "SLA-2",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/sla/sla.ts; packages/domain/src/sla/sla.test.ts; packages/domain/src/sla/policy.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/sla/sla.test.ts",
+					"packages/domain/src/sla/policy.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/sla/sla.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:401"
+			}
+		},
+		{
+			"id": "SLA-3",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/sla/policy.ts; apps/api/src/work-item/controllers/create-work-item.ts; tests/api-integration/sla-scan.test.ts (binding edits do not repin)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/sla-scan.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/sla/policy.ts",
+					"apps/api/src/work-item/controllers/create-work-item.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:402"
+			}
+		},
+		{
+			"id": "SLA-4",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/sla/sla.ts; packages/domain/src/sla/sla.test.ts; apps/api/src/sla-policy/evaluation.ts; tests/api-integration/intake-atomic-conversion.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/sla/sla.test.ts",
+					"tests/api-integration/intake-atomic-conversion.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/sla/sla.ts",
+					"apps/api/src/sla-policy/evaluation.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:410"
+			}
+		},
+		{
+			"id": "SLA-5",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/sla/sla.ts; packages/domain/src/sla/sla.test.ts; packages/domain/src/calendar/calendar.ts; packages/domain/src/calendar/calendar.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/sla/sla.test.ts",
+					"packages/domain/src/calendar/calendar.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/sla/sla.ts",
+					"packages/domain/src/calendar/calendar.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:414"
+			}
+		},
+		{
+			"id": "SLA-6",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/sla/sla.test.ts (24x7 SLA-6)",
+			"gap": "Domain-level only (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/sla/sla.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/sla/sla.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:416"
+			}
+		},
+		{
+			"id": "SLA-7",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/sla/sla.ts; packages/domain/src/sla/sla.test.ts; apps/api/src/work-item/controllers/create-comment.ts; tests/api-integration/work-item-comment.test.ts (SLA-7)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/sla/sla.test.ts",
+					"tests/api-integration/work-item-comment.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/sla/sla.ts",
+					"apps/api/src/work-item/controllers/create-comment.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:417"
+			}
+		},
+		{
+			"id": "SLA-8",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/sla/sla.ts; packages/domain/src/sla/sla.test.ts; apps/api/src/work-item/controllers/transition-work-item.ts; tests/api-integration/sla-scan.test.ts (completion emits met/missed)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/sla/sla.test.ts",
+					"tests/api-integration/sla-scan.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/sla/sla.ts",
+					"apps/api/src/work-item/controllers/transition-work-item.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:425"
+			}
+		},
+		{
+			"id": "SLA-9",
+			"state": "partial",
+			"evidence": "packages/domain/src/sla/sla.ts; packages/domain/src/sla/sla.test.ts (reopen resumes, domain)",
+			"gap": "Spec itself defers: resolved-pause continuity held, reopened metrics not guaranteed",
+			"currentAssessment": {
+				"implementation": "partial",
+				"testFiles": ["packages/domain/src/sla/sla.test.ts"],
+				"assertions": ["domain resumed-clock calculation"],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Contract explicitly holds resolved-pause continuity and disclaims correct reopened resolution metrics for this release; keep incomplete, but do not treat as an unapproved regression."
+				],
+				"paths": [
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"packages/domain/src/sla/sla.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:426"
+			}
+		},
+		{
+			"id": "SLA-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts; tests/api-integration/work-item-transition.test.ts (SLA-10/11 tests)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-transition.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/work-item/controllers/transition-work-item.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:433"
+			}
+		},
+		{
+			"id": "SLA-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts; packages/domain/src/sla/policy.test.ts; tests/api-integration/work-item-transition.test.ts (duplicate pause 409 rollback)",
+			"gap": "Manual pause/resume held by owner, as spec states (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/sla/policy.test.ts",
+					"tests/api-integration/work-item-transition.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/work-item/controllers/transition-work-item.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:438"
+			}
+		},
+		{
+			"id": "SLA-12",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/sla/sla.ts; packages/domain/src/sla/sla.test.ts (SLA-12); tests/api-integration/sla-scan.test.ts (paused time freezes alerts)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/sla/sla.test.ts",
+					"tests/api-integration/sla-scan.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/sla/sla.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:445"
+			}
+		},
+		{
+			"id": "SLA-13",
+			"state": "partial",
+			"evidence": "packages/domain/src/sla/sla.ts; packages/domain/src/sla/sla.test.ts (open pause freezes state); apps/web/src/components/work-item/work-item-sla.tsx",
+			"gap": "UI does not render \"Paused - waiting on customer since ...\"; pauses returned by API are ignored",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/sla/sla.test.ts",
+					"apps/web/src/components/work-item/work-item-sla.test.tsx:77"
+				],
+				"assertions": ["open pause reason and start rendered"],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/web/src/components/work-item/work-item-sla.tsx"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:446"
+			}
+		},
+		{
+			"id": "SLA-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/scheduler/index.ts (sla-scan */5); apps/api/src/scheduler/sla-scan.ts; tests/api/scheduler/sla-scan-schedule.test.ts; tests/api-integration/sla-scan.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/scheduler/sla-scan-schedule.test.ts",
+					"tests/api-integration/sla-scan.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/scheduler/index.ts",
+					"apps/api/src/scheduler/sla-scan.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:451"
+			}
+		},
+		{
+			"id": "SLA-15",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/sla/scan.ts; apps/api/src/scheduler/sla-scan.ts; tests/api-integration/sla-scan.test.ts (emits exactly once)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/sla-scan.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/sla/scan.ts",
+					"apps/api/src/scheduler/sla-scan.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:453"
+			}
+		},
+		{
+			"id": "SLA-16",
+			"state": "partial",
+			"evidence": "apps/api/src/scheduler/sla-scan.ts (enqueueOutboxEvent only); apps/api/src/events/outbox.ts; apps/api/src/notification/fanout.ts",
+			"gap": "sla.* events only inserted into outbox; no outbox dispatcher -> no notification/webhook/escalation fan-out",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/sla-notifications-and-escalation.test.ts:130",
+					"tests/api-integration/sla-notifications-and-escalation.test.ts:159"
+				],
+				"assertions": [
+					"SLA event fans out to assignee, reachable lead and first stakeholder.",
+					"Customer person is never notified by staff SLA escalation."
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Outbox consumers and notification recipient resolver now exist; historical no-dispatcher gap is stale."
+				],
+				"paths": [
+					"apps/api/src/scheduler/sla-escalation.ts",
+					"apps/api/src/events/outbox-consumer.ts",
+					"apps/api/src/notification/sla-recipients.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:460"
+			}
+		},
+		{
+			"id": "SLA-17",
+			"state": "missing",
+			"evidence": "apps/api/src/project/schema.ts (escalationOrder/escalationWaitMinutes fields only); tests/api-integration/project-stakeholders.test.ts",
+			"gap": "No escalation engine/job walking stakeholder order on sla.breached",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/sla-notifications-and-escalation.test.ts:198",
+					"tests/api-integration/sla-notifications-and-escalation.test.ts:220"
+				],
+				"assertions": [
+					"Escalation advances to next stakeholder after configured wait.",
+					"Stakeholders at the same order receive one step together."
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/scheduler/sla-escalation.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:461"
+			}
+		},
+		{
+			"id": "SLA-15a",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts; packages/domain/src/sla/scan.ts; tests/api-integration/sla-scan.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/sla-scan.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"packages/domain/src/sla/scan.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:465"
+			}
+		},
+		{
+			"id": "SLA-18",
+			"state": "missing",
+			"evidence": "apps/web/src/components/work-item/work-item-kaneo-list.tsx; apps/web/src/components/work-item/work-item-list.tsx; apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx (no SLA field)",
+			"gap": "No compact SLA badge on list/board/queue surfaces",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-sla-badge.test.tsx:34",
+					"apps/web/src/components/work-item/work-item-board.test.tsx:223"
+				],
+				"assertions": [
+					"open item badge shows remaining time and metric",
+					"board card renders badge"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-sla-badge.tsx",
+					"apps/web/src/components/work-item/work-item-board.tsx",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:472"
+			}
+		},
+		{
+			"id": "SLA-19",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-sla.tsx; apps/web/src/components/work-item/work-item-sla.test.tsx",
+			"gap": "Bar, remaining and due date shown; no at-risk marker on bar, no explicit viewer-timezone instant",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-sla.test.tsx",
+					"apps/web/src/components/work-item/work-item-sla.test.tsx:44",
+					"apps/web/src/components/work-item/work-item-sla.test.tsx:119"
+				],
+				"assertions": [
+					"at-risk bar and due instant with timezone",
+					"calendar name and positional marker"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/web/src/components/work-item/work-item-sla.tsx"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:473"
+			}
+		},
+		{
+			"id": "SLA-20",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-sla.tsx (Badge text label + Progress aria-label); apps/web/src/components/work-item/work-item-sla.test.tsx",
+			"gap": "Covers detail only; list badge absent (SLA-18) (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-sla.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/web/src/components/work-item/work-item-sla.tsx"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:475"
+			}
+		},
+		{
+			"id": "SLA-21",
+			"state": "missing",
+			"evidence": "apps/web/src/routes/portal/requests.tsx; apps/web/src/routes/portal/submissions/$ref.tsx (no SLA); no portal SLA endpoint in apps/api/src/intake",
+			"gap": "Customers see no SLA state/due time",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/portal-p3-lifecycle.test.ts:587"],
+				"assertions": [
+					"portal list/detail expose customer-safe state and dueAt only"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/portal-sla.ts",
+					"apps/web/src/components/portal/portal-sla-status.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:476"
+			}
+		},
+		{
+			"id": "CAL-1",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/calendar/calendar.ts; packages/domain/src/calendar/calendar.test.ts; tests/api-integration/service-calendar.test.ts (CAL-1-CAL-7)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/calendar/calendar.test.ts",
+					"tests/api-integration/service-calendar.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/calendar/calendar.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:733"
+			}
+		},
+		{
+			"id": "CAL-2",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/calendar/calendar.ts; packages/domain/src/calendar/calendar.test.ts; tests/api-integration/service-calendar.test.ts (CAL-2 rejects overlapping)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/calendar/calendar.test.ts",
+					"tests/api-integration/service-calendar.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/calendar/calendar.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:734"
+			}
+		},
+		{
+			"id": "CAL-3",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/calendar/calendar.ts; packages/domain/src/calendar/calendar.test.ts; apps/web/src/lib/service-calendar-form.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/calendar/calendar.test.ts",
+					"apps/web/src/lib/service-calendar-form.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/calendar/calendar.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:735"
+			}
+		},
+		{
+			"id": "CAL-4",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/calendar/calendar.ts; packages/domain/src/calendar/calendar.test.ts; packages/domain/src/sla/sla.test.ts (holiday inside range not covered)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/calendar/calendar.test.ts",
+					"packages/domain/src/sla/sla.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/calendar/calendar.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:738"
+			}
+		},
+		{
+			"id": "CAL-5",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/calendar/calendar.ts; packages/domain/src/calendar/calendar.test.ts; apps/web/src/components/service-calendar/coverage-preview-card.tsx",
+			"gap": "Save-time warning UI untested (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/calendar/calendar.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/calendar/calendar.ts",
+					"apps/web/src/components/service-calendar/coverage-preview-card.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:739"
+			}
+		},
+		{
+			"id": "CAL-6",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/calendar/calendar.ts; packages/domain/src/calendar/calendar.test.ts; apps/api/src/service-calendar/schema.ts (isIanaTimeZone); tests/api-integration/service-calendar.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/calendar/calendar.test.ts",
+					"tests/api-integration/service-calendar.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/calendar/calendar.ts",
+					"apps/api/src/service-calendar/schema.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:742"
+			}
+		},
+		{
+			"id": "CAL-7",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/calendar/calendar.ts; packages/domain/src/calendar/calendar.test.ts; tests/api-integration/service-calendar.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/calendar/calendar.test.ts",
+					"tests/api-integration/service-calendar.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/calendar/calendar.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:744"
+			}
+		},
+		{
+			"id": "CAL-8",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/sla-policy/evaluation.ts; tests/api-integration/sla-policy.test.ts (CAL-8); apps/web/src/hooks/use-service-calendar-editor.ts (timezone confirm)",
+			"gap": "Timezone-change confirmation untested (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/sla-policy.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/sla-policy/evaluation.ts",
+					"apps/web/src/hooks/use-service-calendar-editor.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:746"
+			}
+		},
+		{
+			"id": "CAL-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/service-calendar/repository.ts; apps/web/src/components/service-calendar/calendar-usage-card.tsx; tests/api-integration/service-calendar-usage-delete.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/service-calendar-usage-delete.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-calendar/repository.ts",
+					"apps/web/src/components/service-calendar/calendar-usage-card.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:754"
+			}
+		},
+		{
+			"id": "CAL-10",
+			"state": "partial",
+			"evidence": "apps/api/src/service-calendar/index.ts (manual + .ics import); apps/web/src/components/service-calendar/holiday-import-panel.tsx",
+			"gap": "No country preset endpoint (POST .../holidays/preset) or bundled dataset",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/service-calendar/holiday-preset-panel.test.tsx:90"
+				],
+				"assertions": [
+					"preview lists bundled preset and leaves data unchanged"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-calendar/index.ts",
+					"apps/web/src/components/service-calendar/holiday-preset-panel.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:763"
+			}
+		},
+		{
+			"id": "CAL-11",
+			"state": "missing",
+			"evidence": "searched apps/api/src/service-calendar, packages/domain/src/calendar for preset/country",
+			"gap": "No shipped country presets",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/service-calendar/holiday-preset-panel.test.tsx:106"
+				],
+				"assertions": ["confirmation required before preset append"],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/service-calendar/index.ts",
+					"apps/web/src/components/service-calendar/holiday-preset-panel.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:767"
+			}
+		},
+		{
+			"id": "CAL-12",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/calendar/calendar.ts; packages/domain/src/calendar/calendar.test.ts; tests/api-integration/service-calendar.test.ts (CAL-12 recurring/leap day)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/calendar/calendar.test.ts",
+					"tests/api-integration/service-calendar.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/calendar/calendar.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:769"
+			}
+		},
+		{
+			"id": "CAL-13",
+			"state": "missing",
+			"evidence": "searched service-calendar API/web for affected/retroactive count",
+			"gap": "No retroactive-holiday warning with affected-item count",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/service-calendar-retroactive-impact.test.ts:132",
+					"tests/api-integration/service-calendar-retroactive-impact.test.ts:167"
+				],
+				"assertions": [
+					"PATCH returns affected-open-item count",
+					"import returns count"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx",
+					"apps/api/src/service-calendar/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:773"
+			}
+		},
+		{
+			"id": "CAL-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/service-calendar/index.ts; tests/api-integration/service-calendar.test.ts (CAL-14); tests/api-integration/service-calendar-usage-delete.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/service-calendar.test.ts",
+					"tests/api-integration/service-calendar-usage-delete.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/service-calendar/index.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:775"
+			}
+		},
+		{
+			"id": "CAL-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/service-calendar/index.ts; tests/api-integration/service-calendar.test.ts (CAL-15 If-Match)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/service-calendar.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/service-calendar/index.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:784"
+			}
+		},
+		{
+			"id": "CAL-16",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/service-calendar/repository.ts; tests/api-integration/service-calendar.test.ts (CAL-16 paging)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/service-calendar.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/service-calendar/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:792"
+			}
+		},
+		{
+			"id": "CAL-17",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/calendar/holiday-import.ts; packages/domain/src/calendar/holiday-import.test.ts; tests/api-integration/service-calendar.test.ts; apps/web/e2e/service-calendar-persisted.spec.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/calendar/holiday-import.test.ts",
+					"tests/api-integration/service-calendar.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/calendar/holiday-import.ts",
+					"apps/web/e2e/service-calendar-persisted.spec.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:804"
+			}
+		},
+		{
+			"id": "RT-0",
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/intake/repository.ts (createRequestType key: createId())",
+			"gap": "No test asserts key immutability/independence from name",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "no_decisive_assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"No dedicated key-immutability assertion found in inspected tests; implementation source generates a separate opaque route key."
+				],
+				"paths": [
+					"apps/api/src/intake/repository.ts",
+					"apps/api/src/database/schema.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1045"
+			}
+		},
+		{
+			"id": "RT-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema.ts (request_type.work_item_type_id notNull); tests/api-integration/intake-rt6-snapshot.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-rt6-snapshot.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/database/schema.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1048"
+			}
+		},
+		{
+			"id": "RT-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema.ts (request_type.sla_policy_id); apps/api/src/intake/repository.ts; tests/api-integration/intake-rt6-snapshot.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-rt6-snapshot.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1049"
+			}
+		},
+		{
+			"id": "RT-3",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/request-type.ts; packages/domain/src/intake/intake.test.ts; tests/api-integration/intake-atomic-conversion.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/intake/intake.test.ts",
+					"tests/api-integration/intake-atomic-conversion.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/intake/request-type.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1050"
+			}
+		},
+		{
+			"id": "RT-4",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/request-type.ts; packages/domain/src/intake/intake.test.ts",
+			"gap": "mapsTo translation tested at domain level only (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/intake/intake.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/intake/request-type.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1052"
+			}
+		},
+		{
+			"id": "RT-5",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/request-type.ts; apps/web/src/lib/intake-visibility.ts; apps/web/src/lib/intake-visibility.test.ts; tests/api-integration/intake-atomic-conversion.test.ts (hidden mapped fields)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/lib/intake-visibility.test.ts",
+					"tests/api-integration/intake-atomic-conversion.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/intake/request-type.ts",
+					"apps/web/src/lib/intake-visibility.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1054"
+			}
+		},
+		{
+			"id": "RT-6",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts (publishRequestType); tests/api-integration/intake-rt6-snapshot.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-rt6-snapshot.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1056"
+			}
+		},
+		{
+			"id": "RT-7",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/request-type.ts; apps/api/src/intake/repository.ts (portalCatalogue); tests/api-integration/intake-reach-negative.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-reach-negative.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/intake/request-type.ts",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1079"
+			}
+		},
+		{
+			"id": "RT-8",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/request-type.ts; tests/api-integration/intake-reach-negative.test.ts; tests/api-integration/intake-feature-gate.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-reach-negative.test.ts",
+					"tests/api-integration/intake-feature-gate.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/intake/request-type.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1084"
+			}
+		},
+		{
+			"id": "RT-9",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts (request_type.position, group text); packages/domain/src/intake/intake.test.ts",
+			"gap": "Items have position but groups have no manual order; no reorder UI in settings/request-types.tsx",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/intake/intake.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/repository.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1092",
+				"verificationRemaining": [
+					"Independent group order save/reload, portal order, stale CAS and restoration pass; eight width/theme captures include375px. Full phase matrix remains pending."
+				],
+				"browserEvidence": "docs/report/browser/request-type-group-order/evidence.json"
+			}
+		},
+		{
+			"id": "RT-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts (portalCatalogue query); apps/web/src/routes/portal/catalogue.tsx; apps/web/src/routes/portal/catalogue.test.tsx",
+			"gap": "P2 request-type search only; KB half is P5-gated (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["apps/web/src/routes/portal/catalogue.test.tsx"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/repository.ts",
+					"apps/web/src/routes/portal/catalogue.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1093"
+			}
+		},
+		{
+			"id": "RT-11",
+			"state": "missing",
+			"evidence": "searched apps/api, apps/web for deflection/kb",
+			"gap": "KB deflection suggestions absent; depends on P5 knowledge base",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-portal.test.ts:419"],
+				"assertions": ["inline summary suggestions returned"],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"P5-gated KB feature now supplies the route and suggestion UI."
+				],
+				"paths": [
+					"apps/api/src/kb/index.ts",
+					"apps/web/src/components/kb/portal/portal-kb-deflection.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1105"
+			}
+		},
+		{
+			"id": "RT-12",
+			"state": "missing",
+			"evidence": "apps/api/src/database/schema.ts (no deflection_event)",
+			"gap": "No deflection_event table/recording; depends on P5 KB",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-portal.test.ts:419"],
+				"assertions": [
+					"Inline suggestion can be opened to record a candidate; abandoning the form counts a deflection."
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/kb/portal-repository.ts",
+					"apps/api/src/kb/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1108"
+			}
+		},
+		{
+			"id": "RT-13",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/portal/catalogue.tsx",
+			"gap": "Vacuously true (no deflection flow exists); cannot be verified until RT-11",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/p5-kb-portal.test.ts:419"],
+				"assertions": ["deflection suggestion offered without blocking form"],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/kb/portal/portal-kb-deflection.tsx",
+					"apps/web/src/routes/portal/catalogue.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1113"
+			}
+		},
+		{
+			"id": "RT-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema.ts (submission.number serial unique); packages/domain/src/intake/submission.ts; tests/api-integration/intake-staff-response-shape.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-staff-response-shape.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"packages/domain/src/intake/submission.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1118"
+			}
+		},
+		{
+			"id": "RT-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts (requireAutoAcceptProject); tests/api-integration/intake-atomic-conversion.test.ts (auto-accept)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-atomic-conversion.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1122"
+			}
+		},
+		{
+			"id": "RT-16",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/routes/portal/catalogue.tsx (localStorage key per user/type/version); apps/web/src/routes/portal/catalogue.test.tsx (saved draft)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["apps/web/src/routes/portal/catalogue.test.tsx"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/web/src/routes/portal/catalogue.tsx"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1140"
+			}
+		},
+		{
+			"id": "IQ-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts (createSubmission); tests/e2e/intake-primary-journey.spec.ts; tests/api-integration/intake-portal-response-shape.test.ts",
+			"gap": "Inbound email is roadmap (P8), not scheduled (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-portal-response-shape.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1284"
+			}
+		},
+		{
+			"id": "IQ-2",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/submission.ts; packages/domain/src/intake/intake.test.ts; apps/api/src/intake/repository.ts (SUB-n parse)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/intake/intake.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/intake/submission.ts",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1289"
+			}
+		},
+		{
+			"id": "IQ-3",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/routes/portal/submissions/$ref.tsx; apps/api/src/intake/repository.ts (findPortalSubmission); tests/api-integration/intake-reach-negative.test.ts (durable page)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-reach-negative.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/portal/submissions/$ref.tsx",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1292"
+			}
+		},
+		{
+			"id": "IQ-4",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts; tests/api-integration/intake-atomic-conversion.test.ts (auto-accept publish refusal, system attribution)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-atomic-conversion.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1300"
+			}
+		},
+		{
+			"id": "IQ-5",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx; apps/web/src/routes/agent/_layout/_authenticated/agent/triage.test.tsx",
+			"gap": "Queue lacks age column and per-row suggested duplicates (duplicates only in detail)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-queue-duplicate-suggestions.test.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.test.tsx"
+				],
+				"assertions": [
+					"Persisted inline suggestions exclude foreign/unreadable/archived/stale items.",
+					"Owned SUB-7 displays real HELP-22/HELP-23 links in ordinary and paired queue browser UI."
+				],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/duplicate-suggestions.ts",
+					"apps/api/src/intake/index.ts",
+					"apps/web/src/components/intake/submission-queue-table.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1314",
+				"browserEvidence": [
+					"docs/report/browser/intake-queues184/journey-post-fix-browser-closure-20261026.json",
+					"docs/report/browser/intake-queues184/iq5-duplicate-suggestions.json"
+				],
+				"verificationRemaining": [
+					"Cancel/Close/Filter/Status source label fixes need rebuilt-browser verification. Team-publication and full role/flag matrix, final local gates and independent phase review remain pending."
+				]
+			}
+		},
+		{
+			"id": "IQ-6",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/submission.ts; packages/domain/src/intake/intake.test.ts; tests/api-integration/intake-staff-response-shape.test.ts (claim, clarify, accept, duplicate, decline)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/intake/intake.test.ts",
+					"tests/api-integration/intake-staff-response-shape.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/intake/submission.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1316"
+			}
+		},
+		{
+			"id": "IQ-5a",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts (suggestDuplicateWorkItems reach); tests/api-integration/intake-attachment-duplicate-reach.test.ts; tests/api-integration/intake-triage-negative.test.ts (#743)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-attachment-duplicate-reach.test.ts",
+					"tests/api-integration/intake-triage-negative.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1318"
+			}
+		},
+		{
+			"id": "IQ-7",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/submission.ts; packages/domain/src/intake/intake.test.ts; apps/api/src/intake/repository.ts (acceptSubmission); tests/api-integration/intake-rt6-snapshot.test.ts; tests/api-integration/intake-atomic-conversion.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/intake/intake.test.ts",
+					"tests/api-integration/intake-rt6-snapshot.test.ts",
+					"tests/api-integration/intake-atomic-conversion.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/intake/submission.ts",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1325"
+			}
+		},
+		{
+			"id": "IQ-8",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/request-type.ts; packages/domain/src/intake/submission.ts; packages/domain/src/intake/intake.test.ts; tests/api-integration/intake-atomic-conversion.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/intake/intake.test.ts",
+					"tests/api-integration/intake-atomic-conversion.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/intake/request-type.ts",
+					"packages/domain/src/intake/submission.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1327"
+			}
+		},
+		{
+			"id": "IQ-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts (attachment.submission_id transfer); tests/api-integration/intake-atomic-conversion.test.ts; tests/api-integration/intake-triage-negative.test.ts (attachment transfer rollback)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-atomic-conversion.test.ts",
+					"tests/api-integration/intake-triage-negative.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1330"
+			}
+		},
+		{
+			"id": "IQ-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts (comment createdAt: message.createdAt); tests/api-integration/intake-atomic-conversion.test.ts (transfers comments)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-atomic-conversion.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1333"
+			}
+		},
+		{
+			"id": "IQ-11",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/routes/portal/submissions/$ref.tsx (workItem state on same ref URL); apps/api/src/intake/repository.ts (findPortalSubmission merges comments); apps/web/src/routes/portal/submissions/$ref.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["apps/web/src/routes/portal/submissions/$ref.test.tsx"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/portal/submissions/$ref.tsx",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1338"
+			}
+		},
+		{
+			"id": "IQ-12",
+			"state": "partial",
+			"evidence": "apps/api/src/intake/repository.ts (postSubmissionMessage -> enqueueOutboxEvent submission.replied); apps/api/src/events/outbox.ts",
+			"gap": "Message posted, but no outbox dispatcher so the customer is never notified",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-triage-negative.test.ts"],
+				"assertions": [
+					"clarification message persists and notification event is enqueued"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Durable customer notification fanout is now called in the clarification transaction."
+				],
+				"paths": [
+					"apps/api/src/intake/repository.ts",
+					"apps/api/src/notification/fanout.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1343"
+			}
+		},
+		{
+			"id": "IQ-13",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/submission.ts; packages/domain/src/intake/intake.test.ts; apps/api/src/intake/repository.ts; tests/api-integration/intake-staff-response-shape.test.ts (reply)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/intake/intake.test.ts",
+					"tests/api-integration/intake-staff-response-shape.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/intake/submission.ts",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1345"
+			}
+		},
+		{
+			"id": "IQ-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts (slaStartedAt: submission.createdAt); tests/api-integration/intake-atomic-conversion.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-atomic-conversion.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1346"
+			}
+		},
+		{
+			"id": "IQ-15",
+			"state": "partial",
+			"evidence": "packages/domain/src/intake/submission.ts; packages/domain/src/intake/intake.test.ts (clarifying state machine)",
+			"gap": "No instance_setting.clarification_window_days and no reminder-scan auto-decline/customer reopen",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/intake/intake.test.ts",
+					"tests/api-integration/portal-p3-lifecycle.test.ts:370"
+				],
+				"assertions": [
+					"auto-declined submission can reopen, staff decline cannot"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/auto-decline.ts",
+					"apps/api/src/scheduler/reminder-scan.ts",
+					"apps/api/src/intake/portal-actions.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1357"
+			}
+		},
+		{
+			"id": "IQ-16",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/submission.ts; packages/domain/src/intake/intake.test.ts; apps/api/src/intake/repository.ts (declineSubmission); tests/api-integration/intake-triage-negative.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/intake/intake.test.ts",
+					"tests/api-integration/intake-triage-negative.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/intake/submission.ts",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1367"
+			}
+		},
+		{
+			"id": "IQ-16a",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/submission.ts; packages/domain/src/intake/intake.test.ts; apps/api/src/intake/repository.ts (withdrawSubmission); tests/api-integration/intake-triage-negative.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/intake/intake.test.ts",
+					"tests/api-integration/intake-triage-negative.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/intake/submission.ts",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1369"
+			}
+		},
+		{
+			"id": "IQ-17",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/submission.ts; packages/domain/src/intake/intake.test.ts; apps/api/src/intake/repository.ts (markSubmissionDuplicate + watcher insert); tests/api-integration/intake-staff-response-shape.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/intake/intake.test.ts",
+					"tests/api-integration/intake-staff-response-shape.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/intake/submission.ts",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1383"
+			}
+		},
+		{
+			"id": "IQ-18",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/intake/duplicate.ts; apps/api/src/intake/repository.ts (pg_trgm similarity); packages/domain/src/intake/intake.test.ts",
+			"gap": "Threshold SQL path not separately integration-tested (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/intake/intake.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/intake/duplicate.ts",
+					"apps/api/src/intake/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1385"
+			}
+		},
+		{
+			"id": "IQ-19",
+			"state": "partial",
+			"evidence": "apps/api/src/view/schema.ts (entity string); apps/web/src/lib/saved-view-query.test.ts",
+			"gap": "No queue concept grouping submission+work_item saved views; triage is a fixed page",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-queues.test.ts",
+					"apps/web/src/components/intake/queue-picker.test.tsx",
+					"apps/web/src/components/intake/queue-panel.test.tsx"
+				],
+				"assertions": [
+					"Exactly two persisted saved-view documents, per-entity CAS, ordinary saved-view entity dispatch and private/team authority tested in7 PostgreSQL cases.",
+					"26 browser checks cover persisted URL filter override, untouched paired query, restore to new, stale409, private denial, local-only sorting, keyboard/focus and six size/theme captures."
+				],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/queues/service.ts",
+					"apps/api/src/view/controllers/run-view.ts",
+					"apps/web/src/components/intake/queue-picker.tsx",
+					"apps/web/src/components/intake/queue-panel.tsx",
+					"apps/web/src/lib/routes.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1393",
+				"browserEvidence": [
+					"docs/report/browser/intake-queues184/journey-post-fix-browser-closure-20261026.json",
+					"docs/report/browser/intake-queues184/iq5-duplicate-suggestions.json"
+				],
+				"verificationRemaining": [
+					"Cancel/Close/Filter/Status source label fixes need rebuilt-browser verification. Team-publication and full role/flag matrix, final local gates and independent phase review remain pending."
+				]
+			}
+		},
+		{
+			"id": "IQ-20",
+			"state": "partial",
+			"evidence": "apps/api/src/view/schema.ts (private/team visibility)",
+			"gap": "Saved views shareable, but no team-owned queue object",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-queues.test.ts",
+					"apps/web/src/components/intake/queue-picker.test.tsx",
+					"apps/web/src/components/intake/queue-panel.test.tsx"
+				],
+				"assertions": [
+					"Exactly two persisted saved-view documents, per-entity CAS, ordinary saved-view entity dispatch and private/team authority tested in7 PostgreSQL cases.",
+					"26 browser checks cover persisted URL filter override, untouched paired query, restore to new, stale409, private denial, local-only sorting, keyboard/focus and six size/theme captures."
+				],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/queues/service.ts",
+					"apps/api/src/view/controllers/run-view.ts",
+					"apps/web/src/components/intake/queue-picker.tsx",
+					"apps/web/src/components/intake/queue-panel.tsx",
+					"apps/web/src/lib/routes.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1398",
+				"browserEvidence": [
+					"docs/report/browser/intake-queues184/journey-post-fix-browser-closure-20261026.json",
+					"docs/report/browser/intake-queues184/iq5-duplicate-suggestions.json"
+				],
+				"verificationRemaining": [
+					"Cancel/Close/Filter/Status source label fixes need rebuilt-browser verification. Team-publication and full role/flag matrix, final local gates and independent phase review remain pending."
+				]
+			}
+		},
+		{
+			"id": "IQ-21",
+			"state": "partial",
+			"evidence": "apps/web/src/lib/routes.ts (parseIntakeSearch: state/ref/cursor)",
+			"gap": "Only state filter addressable; no richer filters or queue URLs",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-queues.test.ts",
+					"apps/web/src/components/intake/queue-picker.test.tsx",
+					"apps/web/src/components/intake/queue-panel.test.tsx"
+				],
+				"assertions": [
+					"Exactly two persisted saved-view documents, per-entity CAS, ordinary saved-view entity dispatch and private/team authority tested in7 PostgreSQL cases.",
+					"26 browser checks cover persisted URL filter override, untouched paired query, restore to new, stale409, private denial, local-only sorting, keyboard/focus and six size/theme captures."
+				],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/queues/service.ts",
+					"apps/api/src/view/controllers/run-view.ts",
+					"apps/web/src/components/intake/queue-picker.tsx",
+					"apps/web/src/components/intake/queue-panel.tsx",
+					"apps/web/src/lib/routes.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1399",
+				"browserEvidence": [
+					"docs/report/browser/intake-queues184/journey-post-fix-browser-closure-20261026.json",
+					"docs/report/browser/intake-queues184/iq5-duplicate-suggestions.json"
+				],
+				"verificationRemaining": [
+					"Cancel/Close/Filter/Status source label fixes need rebuilt-browser verification. Team-publication and full role/flag matrix, final local gates and independent phase review remain pending."
+				]
+			}
+		},
+		{
+			"id": "AP-1",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; apps/api/src/approval/service.ts; apps/api/src/approval/authoring-service.ts; tests/api-integration/approval-authoring.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api-integration/approval-authoring.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/approvals/approvals.ts",
+					"apps/api/src/approval/service.ts",
+					"apps/api/src/approval/authoring-service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1559"
+			}
+		},
+		{
+			"id": "AP-2",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; tests/api-integration/approval-gate-semantics.test.ts (customer cannot request CAB); tests/e2e/customer-cannot-request-cab.spec.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api-integration/approval-gate-semantics.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/approvals/approvals.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1561"
+			}
+		},
+		{
+			"id": "AP-3",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/approval/authoring-repository.ts; tests/api-integration/approval-gate-semantics.test.ts; tests/api-integration/approval-tenant-checks.test.ts (check 4)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/approval-gate-semantics.test.ts",
+					"tests/api-integration/approval-tenant-checks.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/approval/authoring-repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1565"
+			}
+		},
+		{
+			"id": "AP-4",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; apps/api/src/approval/repository.ts (approvalDefaultExpiryDays)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/approvals/approvals.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/approvals/approvals.ts",
+					"apps/api/src/approval/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1567"
+			}
+		},
+		{
+			"id": "AP-5",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; apps/api/src/work-item/controllers/transition-work-item.ts; tests/api-integration/approval-gate-semantics.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api-integration/approval-gate-semantics.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/approvals/approvals.ts",
+					"apps/api/src/work-item/controllers/transition-work-item.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1570"
+			}
+		},
+		{
+			"id": "AP-6",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; apps/api/src/approval/service.ts (withdrawApproval); apps/web/src/components/work-item/work-item-approvals.test.tsx; apps/web/e2e/approval-withdrawal.spec.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"apps/web/src/components/work-item/work-item-approvals.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/approvals/approvals.ts",
+					"apps/api/src/approval/service.ts",
+					"apps/web/e2e/approval-withdrawal.spec.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1584"
+			}
+		},
+		{
+			"id": "AP-7",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; tests/api-integration/approval-tenant-checks.test.ts (check 6); tests/api-integration/approval-gate-semantics.test.ts (instance-admin withdrawal)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api-integration/approval-tenant-checks.test.ts",
+					"tests/api-integration/approval-gate-semantics.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/approvals/approvals.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1589"
+			}
+		},
+		{
+			"id": "AP-8",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts (evaluateApprovalDecision used in apps/api/src/approval/service.ts); tests/e2e/requester-cannot-self-approve.spec.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/approvals/approvals.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/approvals/approvals.ts",
+					"apps/api/src/approval/service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1597"
+			}
+		},
+		{
+			"id": "AP-9",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; apps/api/src/approval/service.ts (422 note_required); tests/api-integration/approval-portal.test.ts; apps/web/src/routes/portal/approvals.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api-integration/approval-portal.test.ts",
+					"apps/web/src/routes/portal/approvals.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/approvals/approvals.ts",
+					"apps/api/src/approval/service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1599"
+			}
+		},
+		{
+			"id": "AP-10",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; tests/api-integration/approval-tenant-checks.test.ts (decide once)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api-integration/approval-tenant-checks.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/approvals/approvals.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1600"
+			}
+		},
+		{
+			"id": "AP-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/approval/service.ts (activity, approval.decided, audit); apps/api/src/notification/recipient-resolvers.ts (requester+watchers); tests/api-integration/approval-lifecycle.test.ts; tests/api-integration/approval-tenant-checks.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/approval-lifecycle.test.ts",
+					"tests/api-integration/approval-tenant-checks.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/approval/service.ts",
+					"apps/api/src/notification/recipient-resolvers.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1601"
+			}
+		},
+		{
+			"id": "AP-12",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; apps/api/src/approval/reminder-scan.ts; tests/api-integration/approval-scan-ahead-utc.test.ts; tests/api-integration/approval-scan-behind-utc.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api-integration/approval-scan-ahead-utc.test.ts",
+					"tests/api-integration/approval-scan-behind-utc.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/approvals/approvals.ts",
+					"apps/api/src/approval/reminder-scan.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1606"
+			}
+		},
+		{
+			"id": "AP-13",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; apps/api/src/scheduler/reminder-timing.ts; tests/api/scheduler/reminder-timing.test.ts; tests/api/scheduler/reminder-scan-schedule.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api/scheduler/reminder-timing.test.ts",
+					"tests/api/scheduler/reminder-scan-schedule.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/approvals/approvals.ts",
+					"apps/api/src/scheduler/reminder-timing.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1612"
+			}
+		},
+		{
+			"id": "AP-14",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; tests/api-integration/approval-gate-semantics.test.ts (expired ignored)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api-integration/approval-gate-semantics.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/approvals/approvals.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1616"
+			}
+		},
+		{
+			"id": "AP-15",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; apps/api/src/work-item/controllers/transition-work-item.ts; tests/api-integration/approval-gate-semantics.test.ts; tests/api-integration/approval-closure-and-clock.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api-integration/approval-gate-semantics.test.ts",
+					"tests/api-integration/approval-closure-and-clock.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/approvals/approvals.ts",
+					"apps/api/src/work-item/controllers/transition-work-item.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1620"
+			}
+		},
+		{
+			"id": "AP-16",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts; apps/api/src/work-item/controllers/transition-work-item.ts; tests/api-integration/approval-gate-semantics.test.ts (requires_cab-only)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/approvals/approvals.test.ts",
+					"tests/api-integration/approval-gate-semantics.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/approvals/approvals.ts",
+					"apps/api/src/work-item/controllers/transition-work-item.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1623"
+			}
+		},
+		{
+			"id": "AP-17",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; tests/api-integration/approval-gate-semantics.test.ts (AP-17)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/approval-gate-semantics.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/approvals/approvals.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1624"
+			}
+		},
+		{
+			"id": "AP-18",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/approvals/approvals.ts; packages/domain/src/approvals/approvals.test.ts",
+			"gap": "Negative behaviour; domain-tested only (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/approvals/approvals.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["packages/domain/src/approvals/approvals.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1626"
+			}
+		},
+		{
+			"id": "AP-19",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/my-work.tsx; apps/web/src/fetchers/approval/get-my-approvals.ts; apps/web/src/routes/portal/approvals.tsx; tests/api-integration/approval-closure-and-clock.test.ts (/me/approvals, /portal/approvals); apps/web/src/routes/portal/approvals.test.tsx",
+			"gap": "docs/audit.md \"portal approvals absent\" is stale (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/approval-closure-and-clock.test.ts",
+					"apps/web/src/routes/portal/approvals.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/my-work.tsx",
+					"apps/web/src/fetchers/approval/get-my-approvals.ts",
+					"apps/web/src/routes/portal/approvals.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1632"
+			}
+		},
+		{
+			"id": "AP-20",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-approvals.tsx; apps/web/src/components/work-item/work-item-approvals.test.tsx; apps/web/src/components/work-item/work-item-approval-request.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-approvals.test.tsx",
+					"apps/web/src/components/work-item/work-item-approval-request.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/web/src/components/work-item/work-item-approvals.tsx"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1634"
+			}
+		},
+		{
+			"id": "AP-21",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/approval/service.ts (enqueueNotificationEvent); tests/api-integration/approval-notifications.test.ts",
+			"gap": "Email-by-preference for approval kinds not specifically tested (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/approval-notifications.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/approval/service.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1636"
+			}
+		},
+		{
+			"id": "AU-1",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/audit/audit.ts; apps/api/src/audit/audit-writer.ts; apps/api/src/database/schema.ts; tests/api-integration/audit-log.test.ts",
+			"gap": "Not every writer verified to pass IP/UA/trace (tests present, not executed in this audit)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/audit-log.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/audit/audit.ts",
+					"apps/api/src/audit/audit-writer.ts",
+					"apps/api/src/database/schema.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1821"
+			}
+		},
+		{
+			"id": "AU-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/audit/audit-writer.ts; tests/api-integration/audit-log.test.ts (refuses secret value)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/audit-log.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/audit/audit-writer.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1823"
+			}
+		},
+		{
+			"id": "AU-3",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/append-only-tables.ts; apps/api/src/database/ensure-application-role.ts; apps/api/drizzle/0067_audit_log_table.sql; tests/api-integration/db-application-role.test.ts; tests/api-integration/audit-log.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/db-application-role.test.ts",
+					"tests/api-integration/audit-log.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/append-only-tables.ts",
+					"apps/api/src/database/ensure-application-role.ts",
+					"apps/api/drizzle/0067_audit_log_table.sql"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1847"
+			}
+		},
+		{
+			"id": "AU-4",
+			"state": "partial",
+			"evidence": "apps/api/src/audit/audit-writer.ts (impersonatorId); packages/domain/src/audit/audit.ts",
+			"gap": "Column/hash exist; audited impersonation flow incomplete (P4)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/god-mode-p4-operations.test.ts:364"
+				],
+				"assertions": [
+					"Impersonated comment audit row records impersonator id separately from acting user."
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/audit/audit-writer.ts",
+					"apps/api/src/audit/controllers/audit-read-common.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1882"
+			}
+		},
+		{
+			"id": "AU-5",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/audit/audit-writer.ts (actorType system/automation); tests/api-integration/intake-atomic-conversion.test.ts (auto-accept attributed to system)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-atomic-conversion.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/audit/audit-writer.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1883"
+			}
+		},
+		{
+			"id": "AU-6",
+			"state": "missing",
+			"evidence": "apps/api/src/audit/actions.ts (audit.purged action only); apps/api/src/audit/verify-audit-chain.ts (notes purge not landed); apps/api/src/scheduler/index.ts",
+			"gap": "No audit-purge retention job",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/audit-purge.test.ts:54",
+					"tests/api-integration/audit-purge.test.ts:107"
+				],
+				"assertions": [
+					"purge anchors oldest prefix and audits itself",
+					"legal hold stops prefix"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/audit/purge.ts",
+					"apps/api/src/scheduler/audit-purge.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1884"
+			}
+		},
+		{
+			"id": "AU-7",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema.ts (organisation_id ON DELETE SET NULL); tests/api-integration/audit-log.test.ts (AU-7 tombstone)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/audit-log.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/database/schema.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1886"
+			}
+		},
+		{
+			"id": "AU-8",
+			"state": "partial",
+			"evidence": "packages/domain/src/audit/audit.ts; packages/domain/src/audit/audit.test.ts",
+			"gap": "Reconstruction is a domain function only; no API/UI caller",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/audit/audit.test.ts",
+					"tests/api-integration/system-transition-real-executor.test.ts:464"
+				],
+				"assertions": [
+					"state reconstructed at creation, transitions and project move"
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Contract says domain function over activity; API exposure also exists now."
+				],
+				"paths": [
+					"apps/api/src/audit/index.ts",
+					"apps/api/src/audit/work-item-history.repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1911"
+			}
+		},
+		{
+			"id": "AU-9",
+			"state": "partial",
+			"evidence": "packages/domain/src/audit/audit.ts; packages/domain/src/audit/audit.test.ts",
+			"gap": "Work-item reconstruction not exposed via API/UI",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/audit/audit.test.ts",
+					"tests/api-integration/system-transition-real-executor.test.ts:464"
+				],
+				"assertions": ["work-item point-in-time reconstruction"],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/audit/index.ts",
+					"apps/api/src/audit/work-item-history.repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1912"
+			}
+		},
+		{
+			"id": "AU-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/audit/repository.ts; apps/api/src/audit/controllers/list-workspace-audit.ts; tests/api-integration/audit-read.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/audit-read.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/audit/repository.ts",
+					"apps/api/src/audit/controllers/list-workspace-audit.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1917"
+			}
+		},
+		{
+			"id": "AU-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/audit/controllers/list-instance-audit.ts; tests/api-integration/audit-read.test.ts; apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/audit-read.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/audit/controllers/list-instance-audit.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1918"
+			}
+		},
+		{
+			"id": "AU-12",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/audit/policy.ts; tests/api-integration/audit-read.test.ts (AU-12)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/audit-read.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/audit/policy.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1919"
+			}
+		},
+		{
+			"id": "AU-13",
+			"state": "partial",
+			"evidence": "apps/api/src/audit/actions.ts; apps/api/src/audit/controllers/list-workspace-audit.ts; tests/api-integration/audit-read.test.ts",
+			"gap": "No audit-log export endpoint, so export auditing is absent; read auditing tested",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/audit-read.test.ts:62",
+					"tests/api/audit-export.test.ts:29"
+				],
+				"assertions": [
+					"Successful instance audit read appends an audit.read row.",
+					"CSV export serializer writes a stable header and CRLF-terminated rows."
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Audit export route and audit.exported writer exist, but no current API-level assertion for audit.exported on export was inspected; source-only implementation assessment."
+				],
+				"paths": [
+					"apps/api/src/audit/controllers/export-instance-audit.ts",
+					"apps/api/src/audit/controllers/audit-read-common.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1921"
+			}
+		},
+		{
+			"id": "AU-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/audit/audit-writer.ts; tests/api-integration/audit-failure-notifier.test.ts; tests/api-integration/service-calendar.test.ts (CAL-14)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/audit-failure-notifier.test.ts",
+					"tests/api-integration/service-calendar.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/audit/audit-writer.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1928"
+			}
+		},
+		{
+			"id": "AU-15",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/audit/audit.ts; apps/api/src/audit/verify-audit-chain.ts; packages/domain/src/audit/audit.test.ts; tests/api-integration/audit-log.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/audit/audit.test.ts",
+					"tests/api-integration/audit-log.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/audit/audit.ts",
+					"apps/api/src/audit/verify-audit-chain.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p2.md:1942"
+			}
+		}
+	],
+	"top_gaps": [
+		"Domain-event outbox written by enqueueOutboxEvent (apps/api/src/events/outbox.ts) has no consumer; the registered outbox-drain job (apps/api/src/scheduler/outbox-drain.ts -> notification/outbox-drain.ts) delivers notification-delivery rows only, so sla.at_risk/breached, submission.replied and outbox work_item.transitioned never reach notifications/webhooks/escalation (SLA-16, IQ-12, WF-20)",
+		"SLA escalation along project stakeholder order is unimplemented; project escalationOrder fields exist but nothing consumes them (SLA-17). Engagement coordination (milestones/stakeholders) has API tests but no verified Kaneo UI",
+		"SLA UI incomplete: no list/board/queue SLA badge (SLA-18), no paused explanation (SLA-13), no at-risk marker (SLA-19), nothing on the customer portal (SLA-21)",
+		"scheduled_transition rows are written but no job executes them (WF-19); resolved-pause continuity is held (WF-17/18, SLA-9)",
+		"Intake gaps: clarification-window auto-decline missing (IQ-15); queue lacks age and duplicate columns (IQ-5); no team-owned saved-view queues or full URL filters (IQ-19/20/21)",
+		"Audit gaps: no audit-purge retention job (AU-6); reconstruction exists only in the domain package (AU-8/9); impersonation dual-identity flow is incomplete (AU-4)",
+		"Calendar gaps: no country holiday presets (CAL-10/11) and no retroactive-holiday affected-count warning (CAL-13)",
+		"No web authoring UI for versioned workflows (API only). P2 admin screens live in the separate /agent/settings frame, not the Kaneo dashboard settings shell. No raw button/input/select/textarea/dialog found on P2 surfaces (scripts/ci/check-ui.mjs --raw-elements)"
+	],
+	"tonight_actions": [
+		"Add a domain-event outbox consumer job (separate from the notification outbox-drain) that claims unprocessed outbox rows and routes sla.at_risk/sla.breached/submission.replied through materializeNotificationFanout with resolvers; integration test in a dedicated DB (never the live browser DB)",
+		"Implement a scheduled-transition executor job (every minute, leader-locked) that runs due scheduled_transition rows through transitionWorkItem as a system actor; tests/api/scheduler registration and integration tests",
+		"Add a compact SLA badge (Badge + icon + remaining text) to work-item-kaneo-list/board card/triage rows from work_item_sla_cache; render pause reason/since and an at-risk marker in work-item-sla.tsx; extend work-item-sla.test.tsx",
+		"Add instance_setting.clarification_window_days (migration, default 14) and an auto-decline branch in the 15-minute reminder-scan with customer-reopenable state; domain plus integration tests",
+		"Add age and suggested-duplicate count columns to triage.tsx using the existing Table and duplicate endpoint; extend triage.test.tsx",
+		"Add an audit-purge job (configurable retention, writes audit.purged with count, anchors the chain) and a GET work-item reconstruction endpoint over packages/domain/src/audit reconstruct",
+		"Add the SLA escalation path: on sla.breached, walk project stakeholders by escalationOrder with escalationWaitMinutes (no-op when none); integration test",
+		"Expose customer-safe SLA state/due time on portal submission/work-item detail (SLA-21) with an isolation test that no policy internals leak"
+	],
+	"currentAssessment": {
+		"sourceHead": "aea5d5702ea9ac553573f598e02f425cd79cde87",
+		"method": "Read-only clause/source audit against all 137 indexed P2 IDs. Historical state/evidence/gap preserved. Test files on unchanged rows are historical locators; only testEvidenceStatus=assertion_inspected records assertions read in this pass. No tests or browser journeys executed.",
+		"historicalStatesNotCurrentVerdicts": true,
+		"browser": "pending",
+		"executedTests": false,
+		"sourceWorktree": "Shared mutable working tree at audit time; sourceHead is the base commit, not a claim that all inspected files were committed."
+	}
+}

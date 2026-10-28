@@ -289,11 +289,11 @@ async function setupDeactivation(label: string) {
 
 describe("approve route PA-15 negatives", () => {
   it.each([
-    ["missing", async () => undefined],
-    ["malformed", async () => "not-a-real-token"],
+    ["missing", async () => undefined, "step_up_required"],
+    ["malformed", async () => "not-a-real-token", "step_up_expired"],
   ])(
-    "refuses a %s token with 403 step_up_expired and audits the denial",
-    async (_name, tokenFor) => {
+    "refuses a %s token with 403 and audits the denial",
+    async (_name, tokenFor, expectedMessage) => {
       const { admin, target, app, pendingId } =
         await setupDeactivation("neg-a");
       const response = await approve(
@@ -303,7 +303,7 @@ describe("approve route PA-15 negatives", () => {
         await tokenFor(),
       );
       expect(response.status).toBe(403);
-      expect(await response.text()).toContain("step_up_expired");
+      expect(await response.text()).toContain(expectedMessage);
       expect(await actionState(pendingId)).toMatchObject({ state: "pending" });
       expect(await personActive(target.user.id)).toBe(true);
       expect(await auditActions(pendingId)).toContain("auth.step_up_denied");
@@ -437,10 +437,8 @@ describe("approve route PA-15 negatives", () => {
       await change(admin.user.id);
       const response = await approve(app, pendingId, target.user.email, token);
       if (_name === "demoted") {
-        expect(response.status).toBe(409);
-        expect(await response.text()).toContain(
-          "pending_action_target_changed",
-        );
+        // PA-6 step 2 (P0R1-06): an approver who lost access gets 404, not 409.
+        expect(response.status).toBe(404);
         expect(await actionState(pendingId)).toEqual({
           state: "invalidated",
           reason: "capability_removed",
@@ -465,7 +463,7 @@ describe("approve route PA-15 negatives", () => {
       } else {
         // A banned or deactivated requester is already refused by the request identity
         // layer (401/403) before the service runs; nothing executes either way.
-        expect([401, 403, 409]).toContain(response.status);
+        expect([401, 403, 404]).toContain(response.status);
         expect((await actionState(pendingId))?.state).not.toBe("executed");
       }
       expect(await personActive(target.user.id)).toBe(true);
@@ -682,6 +680,51 @@ describe("last-administrator and self-target guard", () => {
       },
     );
     expect(suspend.status).toBe(200);
+  });
+
+  it("suspending an administrator ends the impersonation sessions they are running (P4R1-M3)", async () => {
+    const actor = await makeAdmin("guard-imp-actor");
+    const victim = await makeTarget("guard-imp-victim", "admin");
+    const impersonated = await makeTarget("guard-imp-target");
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: "imp-session",
+      token: "imp-token",
+      userId: impersonated.user.id,
+      impersonatedBy: victim.user.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 1_800_000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const unrelated = await seedSession(impersonated.user.id, "-own");
+    mockAuthenticatedSession(actor.user);
+    const { app } = createApp();
+    const request = { reason: "security review" };
+    const token = await suspendToken(app, victim.user.id, request);
+    const suspend = await agentRequest(
+      app,
+      `/api/instance/users/${victim.user.id}/suspend`,
+      {
+        method: "POST",
+        headers: { ...json, "x-taskdesk-step-up-token": token },
+        body: JSON.stringify(request),
+      },
+    );
+    expect(suspend.status, await suspend.clone().text()).toBe(200);
+    const left = await db
+      .select({ id: schema.sessionTable.id })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, impersonated.user.id));
+    expect(left.map((row) => row.id)).toEqual([unrelated]);
+    const [ended] = await db
+      .select({ after: schema.auditLogTable.after })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "impersonation.ended"));
+    expect(ended?.after).toMatchObject({
+      sessionId: "imp-session",
+      reason: "impersonator_suspended",
+    });
   });
 
   it("refuses an approval whose target is the approver", async () => {

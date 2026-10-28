@@ -47,10 +47,12 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
+import PageTitle from "@/components/page-title";
 import CreateProjectModal from "@/components/shared/modals/create-project-modal";
 import icons from "@/constants/project-icons";
 import { shortcuts } from "@/constants/shortcuts";
 import useReorderProjects from "@/hooks/mutations/project/use-reorder-projects";
+import useRestoreProject from "@/hooks/mutations/project/use-restore-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -112,14 +114,34 @@ function SortableProjectRow({
   );
 }
 
-export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
+export default function ProjectsPage({
+  workspaceId,
+  recoveryMode = false,
+  onRecoveryModeChange,
+}: {
+  workspaceId: string;
+  recoveryMode?: boolean;
+  onRecoveryModeChange?: (showDeleted: boolean) => void;
+}) {
   const { t } = useTranslation();
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const navigate = useNavigate();
-  const { data: projects, isLoading } = useGetProjects({
+  const { data: listedProjects, isLoading } = useGetProjects({
     workspaceId,
+    includeArchived: recoveryMode,
+    includeDeleted: recoveryMode,
   });
+  const projects = recoveryMode
+    ? listedProjects?.filter((project) => project.deletedAt !== null)
+    : listedProjects;
   const reorderProjects = useReorderProjects();
+  const restoreProject = useRestoreProject();
+  // PR-1: a child project names its parent next to its own name. The list keeps its flat,
+  // draggable sidebar order; hierarchy is shown, not imposed on the ordering.
+  const projectNameById = useMemo(
+    () => new Map((projects ?? []).map((item) => [item.id, item.name])),
+    [projects],
+  );
 
   // React state, not the query cache: dnd-kit clears its transforms with a
   // setState in the same handler, while a cache write notifies a task later,
@@ -151,6 +173,16 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
   // Matches the API, which gates /project/reorder on `project: ["update"]`
   // alone — not the create+update+delete bundle.
   const canReorder = canUpdateProjects();
+
+  const handleRestoreProject = (projectId: string) => {
+    restoreProject.mutate(
+      { id: projectId },
+      {
+        onSuccess: () => toast.success(t("workspace:projects.restoreSuccess")),
+        onError: () => toast.error(t("workspace:projects.restoreFailed")),
+      },
+    );
+  };
 
   // Below these thresholds the row is still a link and the page still scrolls;
   // above them the gesture becomes a drag.
@@ -214,6 +246,7 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
     navigate({
       to: "/agent/projects/$projectKey/work",
       params: { projectKey },
+      search: { layout: "board", sort: "position", dir: "asc" },
     });
   };
 
@@ -274,6 +307,101 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
             ))}
           </TableBody>
         </Table>
+        <PageTitle title={t("workspace:projects.pageTitle")} />
+      </WorkspaceLayout>
+    );
+  }
+
+  if (recoveryMode) {
+    return (
+      <WorkspaceLayout
+        title={t("workspace:projects.pageTitle")}
+        headerActions={
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => onRecoveryModeChange?.(false)}
+          >
+            {t("workspace:projects.showActive")}
+          </Button>
+        }
+      >
+        {!projects || projects.length === 0 ? (
+          <Empty className="min-h-[60vh]">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <LayoutGrid />
+              </EmptyMedia>
+              <EmptyTitle>
+                {t("workspace:projects.deletedEmptyTitle")}
+              </EmptyTitle>
+              <EmptyDescription>
+                {t("workspace:projects.deletedEmptyDescription")}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <Table data-testid="workspace-projects-recovery">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.title")}
+                </TableHead>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.status")}
+                </TableHead>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.actions")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {projects.map((project) => {
+                const IconComponent =
+                  icons[project.icon as keyof typeof icons] || icons.Layout;
+                return (
+                  <TableRow key={project.id}>
+                    <TableCell className="py-3">
+                      <div className="flex items-center gap-3">
+                        <IconComponent className="w-5 h-5 text-muted-foreground" />
+                        <span className="font-medium">{project.name}</span>
+                        <Badge variant="outline">
+                          {t("workspace:projects.deletedBadge")}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      {project.archivedAt ? (
+                        <Badge variant="secondary">
+                          {t("workspace:projects.archived")}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {project.deletedAt
+                            ? formatDateMedium(project.deletedAt)
+                            : "—"}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-3">
+                      {canUpdateProjects() && (
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          disabled={restoreProject.isPending}
+                          onClick={() => handleRestoreProject(project.id)}
+                        >
+                          {t("workspace:projects.restore")}
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+        <PageTitle title={t("workspace:projects.pageTitle")} />
       </WorkspaceLayout>
     );
   }
@@ -284,17 +412,26 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
         <WorkspaceLayout
           title={t("workspace:projects.pageTitle")}
           headerActions={
-            canCreate ? (
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="xs"
-                onClick={handleCreateProject}
-                className="gap-1"
+                onClick={() => onRecoveryModeChange?.(true)}
               >
-                <Plus className="w-3 h-3" />
-                {t("workspace:projects.createProject")}
+                {t("workspace:projects.showDeleted")}
               </Button>
-            ) : null
+              {canCreate && (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={handleCreateProject}
+                  className="gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  {t("workspace:projects.createProject")}
+                </Button>
+              )}
+            </div>
           }
         >
           <Empty className="min-h-[60vh]">
@@ -318,6 +455,7 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
               )}
             </EmptyContent>
           </Empty>
+          <PageTitle title={t("workspace:projects.pageTitle")} />
         </WorkspaceLayout>
 
         <CreateProjectModal
@@ -333,17 +471,26 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
       <WorkspaceLayout
         title={t("workspace:projects.pageTitle")}
         headerActions={
-          canCreate ? (
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="xs"
-              onClick={handleCreateProject}
-              className="gap-1"
+              onClick={() => onRecoveryModeChange?.(true)}
             >
-              <Plus className="w-3 h-3" />
-              {t("workspace:projects.createProject")}
+              {t("workspace:projects.showDeleted")}
             </Button>
-          ) : null
+            {canCreate && (
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={handleCreateProject}
+                className="gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                {t("workspace:projects.createProject")}
+              </Button>
+            )}
+          </div>
         }
       >
         <DndContext
@@ -410,17 +557,60 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
                         <div className="flex items-center gap-3">
                           <IconComponent className="w-5 h-5 text-muted-foreground" />
                           <span className="font-medium">{project.name}</span>
+                          {project.parentId &&
+                            projectNameById.has(project.parentId) && (
+                              <Badge
+                                variant="outline"
+                                data-testid="project-parent-badge"
+                              >
+                                {t("workspace:projects.inParent", {
+                                  name: projectNameById.get(project.parentId),
+                                })}
+                              </Badge>
+                            )}
                         </div>
                       </TableCell>
                       <TableCell className="py-3">
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={project.statistics.completionPercentage}
-                            className="w-16 h-2"
-                          />
-                          <span className="text-sm text-muted-foreground">
-                            {project.statistics.completionPercentage}%
-                          </span>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <Progress
+                              value={project.statistics.completionPercentage}
+                              className="w-16 h-2"
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {project.statistics.completionPercentage}%
+                            </span>
+                          </div>
+                          {project.descendantStatistics ? (
+                            <div
+                              className="flex items-center gap-2"
+                              data-testid="project-visible-tree-progress"
+                            >
+                              <Progress
+                                aria-label={t(
+                                  "workspace:projects.visibleTreeStatistics",
+                                  { defaultValue: "Visible project tree" },
+                                )}
+                                value={
+                                  project.descendantStatistics
+                                    .completionPercentage
+                                }
+                                className="w-16 h-2"
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                {t("workspace:projects.visibleTreeStatistics", {
+                                  defaultValue: "Visible project tree",
+                                })}
+                                {": "}
+                                {
+                                  project.descendantStatistics
+                                    .completionPercentage
+                                }
+                                %{" · "}
+                                {project.descendantStatistics.totalTasks}
+                              </span>
+                            </div>
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell className="py-3">
@@ -442,6 +632,7 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
             </TableBody>
           </Table>
         </DndContext>
+        <PageTitle title={t("workspace:projects.pageTitle")} />
       </WorkspaceLayout>
 
       <CreateProjectModal

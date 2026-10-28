@@ -1,13 +1,18 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import { appendAuditLog } from "../audit/audit-writer";
+import { auditOriginForApiKey } from "../audit/mcp-origin";
+import { auditRequestContext } from "../audit/request-context";
+import { applyWorkItemFieldValues } from "../custom-field/repository";
 import db from "../database";
 import {
   membershipTable,
   personTable,
   workItemTable,
 } from "../database/schema";
+import { requireProjectFeature } from "../feature-flag/enforce";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import {
@@ -19,7 +24,21 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { requestBulkWorkItemDeletion } from "../pending-action/bulk-work-item-deletion-target";
+import {
+  pendingBulkDeletionRequestSchema,
+  pendingDeletionRequestSchema,
+} from "../pending-action/response";
+import {
+  createPendingAction,
+  requirePendingActionRequesterIdentity,
+} from "../pending-action/service";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
+import {
+  loadProjectAncestorIds,
+  loadProjectAncestorIdsFor,
+  loadProjectOwnerTeamIdFor,
+} from "../project/hierarchy.repository";
 import {
   hasProjectReadCapability,
   resolveCallerIdentity,
@@ -42,14 +61,13 @@ import {
   createCommentBody,
   updateCommentBody,
 } from "./comment-schema";
+import archiveWorkItem from "./controllers/archive-work-item";
 import assignWorkItem, {
   WorkItemAssigneeConflictError,
 } from "./controllers/assign-work-item";
 import bulkWorkItems from "./controllers/bulk-work-items";
 import createComment from "./controllers/create-comment";
 import createWorkItem from "./controllers/create-work-item";
-import deleteComment from "./controllers/delete-comment";
-import deleteWorkItem from "./controllers/delete-work-item";
 import detachWorkItemParent from "./controllers/detach-work-item-parent";
 import getWorkItemByKey from "./controllers/get-work-item";
 import { getWorkItemSla } from "./controllers/get-work-item-sla";
@@ -60,7 +78,11 @@ import listWorkItemActivity from "./controllers/list-work-item-activity";
 import listWorkItemTransitions from "./controllers/list-work-item-transitions";
 import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
+import moveWorkItem, {
+  authoriseMoveTarget,
+} from "./controllers/move-work-item";
 import rankWorkItem from "./controllers/rank-work-item";
+import { restoreWorkItem } from "./controllers/restore-work-item";
 import setWorkItemParent from "./controllers/set-work-item-parent";
 import transitionWorkItem, {
   NoMatchingTransitionError,
@@ -80,6 +102,7 @@ import {
   findWorkItemMentionContext,
 } from "./mention-access";
 import { requireCommentReach } from "./require-comment-reach";
+import { requireDeletedWorkItemReach } from "./require-deleted-work-item-reach";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
   assignablePeopleSchema,
@@ -87,8 +110,8 @@ import {
   bulkWorkItemsResponseSchema,
   commentMentionCandidatesSchema,
   commentMentionPreflightResponseSchema,
-  deletedWorkItemSchema,
   hierarchyChildrenResponseSchema,
+  moveWorkItemResponseSchema,
   rankWorkItemResponseSchema,
   transitionedWorkItemSchema,
   unassignWorkItemResponseSchema,
@@ -114,6 +137,7 @@ import {
   ifMatchHeader,
   listWorkItemActivityQuery,
   listWorkItemsQuery,
+  moveWorkItemBody,
   projectIdParam,
   rankWorkItemBody,
   setWorkItemParentBody,
@@ -136,7 +160,31 @@ import {
   validateWorkItemSearchQuery,
 } from "./search/query";
 import { searchWorkItems } from "./search/repository";
+import { workItemSearchRequestSchema } from "./search/request-schema";
 import { workItemSlaSchema } from "./sla-response";
+import {
+  applyTemplateInTransaction,
+  loadTemplateForCreate,
+} from "./templates/apply";
+import {
+  checklistTemplateListSchema,
+  checklistTemplateSchema,
+  workItemTemplateListSchema,
+  workItemTemplateOptionListSchema,
+  workItemTemplateSchema,
+} from "./templates/response";
+import {
+  createChecklistTemplateBody,
+  createWorkItemTemplateBody,
+  templateListQuery,
+  templateParams,
+  updateChecklistTemplateBody,
+  updateWorkItemTemplateBody,
+} from "./templates/schema";
+import {
+  checklistTemplateService,
+  workItemTemplateService,
+} from "./templates/service";
 
 /**
  * #23's first slice: minimal create + read + list for `work_item`
@@ -262,7 +310,8 @@ const listWorkItemsRoute = createRoute({
     "filters (`docs/01-architecture/api-design.md`'s collection convention; " +
     "`sort`/`dir` match #306's own URL param names: `key | title | priority | " +
     "dueDate`, `asc | desc`, default `key`/`asc`). Archived and deleted items are " +
-    "excluded by default. Each row also carries the resolved `stateName`, " +
+    "excluded by default; set the explicit `lifecycle` filter to reveal them (WI-21). " +
+    "Each row also carries the resolved `stateName`, " +
     "`stateCategory` and `assigneeName` (#310) alongside the raw ids.",
   middleware: [
     workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
@@ -341,30 +390,7 @@ const searchWorkItemsRoute = createRoute({
       required: true,
       content: {
         "application/json": {
-          schema: z
-            .object({
-              workspaceId: z.string().min(1),
-              query: z
-                .object({
-                  entity: z.string(),
-                  filter: z.unknown().optional(),
-                  sort: z
-                    .array(
-                      z
-                        .object({ field: z.string(), order: z.string() })
-                        .strict(),
-                    )
-                    .max(1)
-                    .optional(),
-                  columns: z.array(z.string()).optional(),
-                  groupBy: z.unknown().optional(),
-                  aggregate: z.unknown().optional(),
-                })
-                .strict(),
-              limit: z.number().int().min(1).max(200).optional(),
-              cursor: z.string().max(4096).nullable().optional(),
-            })
-            .strict(),
+          schema: workItemSearchRequestSchema,
         },
       },
     },
@@ -495,7 +521,9 @@ const getWorkItemRoute = createRoute({
     "Get a single work item by its permanent key, e.g. PROJ-123. The detail response " +
     "includes the project's CA-2 `defaultCommentVisibility`; creating a comment still " +
     "requires the caller to submit an explicit visibility.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse("The work item", workItemDetailSchema),
@@ -513,7 +541,7 @@ const getWorkItemLabelsRoute = createRoute({
   tags: ["Work items"],
   summary: "List available labels and work-item assignments",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
@@ -542,8 +570,11 @@ const getWorkItemSlaRoute = createRoute({
   tags: ["Work items"],
   summary: "Evaluate a work item's pinned SLA policy version",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
     requireWorkspaceCapability("work_item:read"),
+    // The SLA panel is hidden while `feature.sla` is off for the item's project (ST-1, P4R2-M2;
+    // ST-11: no persisted record is deleted).
+    requireProjectFeature("feature.sla"),
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
@@ -709,18 +740,18 @@ const deleteWorkItemRoute = createRoute({
   tags: ["Work items"],
   summary: "Delete work item",
   description:
-    "Soft-deletes a work item (`WI-21`). KNOWN DEVIATION from `pending-actions.md`'s " +
-    "`WI-23` (this route deletes immediately rather than returning a `202` pending " +
-    "action awaiting browser approval) -- matches every OTHER existing delete route in " +
-    "this codebase today (e.g. `DELETE /api/projects/{id}`), none of which implement " +
-    "that mechanism yet. Tracked on issue #428.",
+    "Requests durable click-confirmed deletion. The item remains intact until its requester approves in a current browser session; execution revalidates credential, version, scope and permissions.",
   middleware: [
     requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:delete"),
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
-    200: jsonResponse("The deleted work item", deletedWorkItemSchema),
+    202: jsonResponse(
+      "Pending deletion; item unchanged",
+      pendingDeletionRequestSchema,
+    ),
+    409: errorResponse("An equivalent deletion is already pending"),
     403: errorResponse(
       "No workspace access, or missing work_item:delete permission",
     ),
@@ -759,6 +790,9 @@ const rankWorkItemRoute = createRoute({
       "No workspace access, or missing work_item:rank permission",
     ),
     404: errorResponse("Work item not found"),
+    409: errorResponse(
+      "Rank precision exhausted or item state changed while awaiting partition lock",
+    ),
   },
 });
 
@@ -772,13 +806,14 @@ const setWorkItemParentRoute = createRoute({
     "Attach a work item into a hierarchy under `parentKey` (`relations-and-hierarchy.md` " +
     "`RH-5`..`RH-8`). Rejected at 422 when the proposed parent is the item itself, is a " +
     "descendant of it (a cycle, at any distance), or would exceed the maximum hierarchy " +
-    "depth of 5. Parent and child must be in the same project (`RH-6`).",
+    "depth of 5. Parent and child must be in the same project (`RH-6`). Supplied If-Match is checked; first-party clients use the strict /v2 route (WI-7).",
   middleware: [
     requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:update"),
   ] as const,
   request: {
     params: workItemKeyParam,
+    headers: ifMatchHeader.partial(),
     body: {
       required: true,
       content: { "application/json": { schema: setWorkItemParentBody } },
@@ -793,9 +828,13 @@ const setWorkItemParentRoute = createRoute({
       "No workspace access, or missing work_item:update permission",
     ),
     404: errorResponse("Work item or parent work item not found"),
-    409: errorResponse(
-      "A concurrent change affected this hierarchy -- reload and retry",
-    ),
+    409: {
+      description: "Version mismatch or concurrent hierarchy change",
+      content: {
+        "application/json": { schema: workItemVersionConflictSchema },
+        "text/plain": { schema: z.string() },
+      },
+    },
     422: errorResponse(
       "The proposed parent is the item itself, a descendant of it, or would exceed the " +
         "maximum hierarchy depth of 5",
@@ -816,13 +855,347 @@ const detachWorkItemParentRoute = createRoute({
     requireWorkItemReach("key", { deferApiKeyCapability: true }),
     requireWorkspaceCapability("work_item:update"),
   ] as const,
-  request: { params: workItemKeyParam },
+  request: { params: workItemKeyParam, headers: ifMatchHeader.partial() },
   responses: {
+    400: errorResponse("Missing or malformed If-Match header"),
+    409: jsonResponse("Version mismatch", workItemVersionConflictSchema),
     200: jsonResponse("The work item with its parent cleared", workItemSchema),
     403: errorResponse(
       "No workspace access, or missing work_item:update permission",
     ),
     404: errorResponse("Work item not found"),
+  },
+});
+
+// Compatibility endpoints retain omission behavior; the first-party UI uses these
+// strict versioned routes. Authorization and transaction logic are identical.
+const setWorkItemParentV2Route = createRoute({
+  ...setWorkItemParentRoute,
+  operationId: "setWorkItemParentV2",
+  path: "/v2/work-items/{key}/parent",
+  summary: "Set work item parent with optimistic concurrency",
+  description:
+    "Requires If-Match with the current work-item version (WI-7). Uses the same reach, hierarchy and update authorization as the compatibility route.",
+  request: { ...setWorkItemParentRoute.request, headers: ifMatchHeader },
+});
+const detachWorkItemParentV2Route = createRoute({
+  ...detachWorkItemParentRoute,
+  operationId: "detachWorkItemParentV2",
+  path: "/v2/work-items/{key}/parent",
+  summary: "Detach work item parent with optimistic concurrency",
+  description:
+    "Requires If-Match with the current work-item version (WI-7), including an already-detached no-op. Uses the compatibility route's authorization and transaction.",
+  request: { ...detachWorkItemParentRoute.request, headers: ifMatchHeader },
+});
+
+const templateManagementErrors = {
+  400: errorResponse("Invalid body, or workspace ID could not be determined"),
+  403: errorResponse(
+    "No workspace access, or missing workspace:manage_settings permission",
+  ),
+} as const;
+
+const listWorkItemTemplatesRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemTemplates",
+  path: "/workspace/{workspaceId}/work-item-templates",
+  tags: ["Work items"],
+  summary: "List live work item templates",
+  description:
+    "Live (not archived) templates a create dialog offers (`WI-5`). Using a template needs only `work_item:create` on the target project.",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:read"),
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse("Live templates", workItemTemplateOptionListSchema),
+    400: errorResponse("Workspace ID could not be determined"),
+    403: errorResponse("No access to the workspace"),
+  },
+});
+const manageWorkItemTemplatesRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemTemplatesForManagement",
+  path: "/workspace/{workspaceId}/work-item-templates/manage",
+  tags: ["Work items"],
+  summary: "List work item templates for settings",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: { params: workspaceIdParam, query: templateListQuery },
+  responses: {
+    200: jsonResponse("Templates", workItemTemplateListSchema),
+    ...templateManagementErrors,
+  },
+});
+const createWorkItemTemplateRoute = createRoute({
+  method: "post",
+  operationId: "createWorkItemTemplate",
+  path: "/workspace/{workspaceId}/work-item-templates",
+  tags: ["Work items"],
+  summary: "Create work item template",
+  description: "Requires `workspace:manage_settings` (`WI-5`).",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: {
+    params: workspaceIdParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: createWorkItemTemplateBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The created template", workItemTemplateSchema),
+    ...templateManagementErrors,
+    409: errorResponse("A template with this name already exists"),
+    422: errorResponse("Unknown type, label or checklist template"),
+  },
+});
+const updateWorkItemTemplateRoute = createRoute({
+  method: "patch",
+  operationId: "updateWorkItemTemplate",
+  path: "/workspace/{workspaceId}/work-item-templates/{id}",
+  tags: ["Work items"],
+  summary: "Update work item template",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: {
+    params: templateParams,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateWorkItemTemplateBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The updated template", workItemTemplateSchema),
+    ...templateManagementErrors,
+    404: errorResponse("Template not found or archived"),
+    409: errorResponse("A template with this name already exists"),
+    422: errorResponse("Unknown type, label or checklist template"),
+  },
+});
+const archiveWorkItemTemplateRoute = createRoute({
+  method: "post",
+  operationId: "archiveWorkItemTemplate",
+  path: "/workspace/{workspaceId}/work-item-templates/{id}/archive",
+  tags: ["Work items"],
+  summary: "Archive work item template",
+  description:
+    "Archives the template; work items already created from it are unaffected.",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: { params: templateParams },
+  responses: {
+    200: jsonResponse("The archived template", workItemTemplateSchema),
+    ...templateManagementErrors,
+    404: errorResponse("Template not found or already archived"),
+  },
+});
+const listChecklistTemplatesRoute = createRoute({
+  method: "get",
+  operationId: "listChecklistTemplates",
+  path: "/workspace/{workspaceId}/checklist-templates",
+  tags: ["Work items"],
+  summary: "List checklist templates for settings",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: { params: workspaceIdParam, query: templateListQuery },
+  responses: {
+    200: jsonResponse("Checklist templates", checklistTemplateListSchema),
+    ...templateManagementErrors,
+  },
+});
+const createChecklistTemplateRoute = createRoute({
+  method: "post",
+  operationId: "createChecklistTemplate",
+  path: "/workspace/{workspaceId}/checklist-templates",
+  tags: ["Work items"],
+  summary: "Create checklist template",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: {
+    params: workspaceIdParam,
+    body: {
+      required: true,
+      content: {
+        "application/json": { schema: createChecklistTemplateBody },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "The created checklist template",
+      checklistTemplateSchema,
+    ),
+    ...templateManagementErrors,
+    409: errorResponse("A checklist template with this name already exists"),
+  },
+});
+const updateChecklistTemplateRoute = createRoute({
+  method: "patch",
+  operationId: "updateChecklistTemplate",
+  path: "/workspace/{workspaceId}/checklist-templates/{id}",
+  tags: ["Work items"],
+  summary: "Update checklist template",
+  description:
+    "Renames and/or replaces the items. Items already copied onto work items are independent and unchanged.",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: {
+    params: templateParams,
+    body: {
+      required: true,
+      content: {
+        "application/json": { schema: updateChecklistTemplateBody },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "The updated checklist template",
+      checklistTemplateSchema,
+    ),
+    ...templateManagementErrors,
+    404: errorResponse("Checklist template not found or archived"),
+    409: errorResponse("A checklist template with this name already exists"),
+  },
+});
+const archiveChecklistTemplateRoute = createRoute({
+  method: "post",
+  operationId: "archiveChecklistTemplate",
+  path: "/workspace/{workspaceId}/checklist-templates/{id}/archive",
+  tags: ["Work items"],
+  summary: "Archive checklist template",
+  middleware: [
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceCapability("workspace:manage_settings"),
+  ] as const,
+  request: { params: templateParams },
+  responses: {
+    200: jsonResponse(
+      "The archived checklist template",
+      checklistTemplateSchema,
+    ),
+    ...templateManagementErrors,
+    404: errorResponse("Checklist template not found or already archived"),
+    409: errorResponse("A live work item template still uses it"),
+  },
+});
+
+const moveWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "moveWorkItem",
+  path: "/v2/work-items/{key}/move",
+  tags: ["Work items"],
+  summary: "Move work item to another project",
+  description:
+    "Moves a work item to another project of the same workspace (`RH-12`). `moveChildren: true` moves the whole subtree; " +
+    "`false` detaches the direct children, which stay in the source project with no parent. The moved item's own parent link is always removed. " +
+    "The item gets a new key in the target project and the old key is recorded as an alias. States are remapped by state template; " +
+    "project-scoped labels follow by name or are dropped; pending workflow timers are discarded. Requires reach plus `work_item:update` on the " +
+    "source and reach plus `work_item:create` and `work_item:update` on the target, and `If-Match` with the current version (`WI-7`).",
+  middleware: [
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    headers: ifMatchHeader,
+    body: {
+      required: true,
+      content: { "application/json": { schema: moveWorkItemBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The moved work item", moveWorkItemResponseSchema),
+    400: errorResponse("Invalid body or malformed If-Match header"),
+    403: errorResponse(
+      "Missing work_item:update on the source or work_item:create / work_item:update on the target",
+    ),
+    404: errorResponse(
+      "Work item or target project not found (including another workspace or an unreachable project)",
+    ),
+    409: {
+      description:
+        "Version mismatch, or a concurrent change to the item, target or hierarchy",
+      content: {
+        "application/json": { schema: workItemVersionConflictSchema },
+        "text/plain": { schema: z.string() },
+      },
+    },
+    422: errorResponse(
+      "Same project, subtree over 200 items, target lacks a matching state, assignee not on the target roster, or an organisation-visible item crossing customer organisations",
+    ),
+  },
+});
+
+const archiveWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "archiveWorkItem",
+  path: "/v2/work-items/{key}/archive",
+  tags: ["Work items"],
+  summary: "Archive work item",
+  description:
+    "Hides the work item from default list, board and search views while preserving it and its history (`WI-20`). " +
+    "Archiving is independent of soft deletion and does not start the 30-day purge timer (`WI-21`). " +
+    "Requires `work_item:update` on the project and `If-Match` with the current version (`WI-7`).",
+  middleware: [
+    requireWorkItemReach("key", { deferApiKeyCapability: true }),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: { params: workItemKeyParam, headers: ifMatchHeader },
+  responses: {
+    200: jsonResponse("The archived work item", workItemSchema),
+    400: errorResponse("Missing or malformed If-Match header"),
+    403: errorResponse(
+      "No workspace access, or missing work_item:update permission",
+    ),
+    404: errorResponse("Work item not found, or already archived or deleted"),
+    409: jsonResponse("Version mismatch", workItemVersionConflictSchema),
+  },
+});
+
+const restoreWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "restoreWorkItem",
+  path: "/v2/work-items/{key}/restore",
+  tags: ["Work items"],
+  summary: "Restore a soft-deleted work item",
+  description:
+    "Clears the work item's soft-delete marker within WI-21's 30-day recovery window. " +
+    "Requires current project reach, `work_item:update`, and `If-Match`. An archived " +
+    "work item remains archived after its soft deletion is restored.",
+  middleware: [
+    requireDeletedWorkItemReach("key"),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: { params: workItemKeyParam, headers: ifMatchHeader },
+  responses: {
+    200: jsonResponse("The restored work item", workItemSchema),
+    400: errorResponse("Missing or malformed If-Match header"),
+    403: errorResponse("Missing work_item:update permission"),
+    404: errorResponse("Work item not found or out of reach"),
+    409: jsonResponse(
+      "Version conflict or restore-window rejection",
+      z.union([
+        workItemVersionConflictSchema,
+        z.object({ message: z.string() }),
+      ]),
+    ),
   },
 });
 
@@ -832,7 +1205,9 @@ const hierarchyChildrenRoute = createRoute({
   path: "/work-items/{key}/children",
   tags: ["Work items"],
   summary: "Page direct children and whole-subtree progress",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: workItemKeyParam, query: hierarchyChildrenQuery },
   responses: {
     200: jsonResponse(
@@ -857,7 +1232,9 @@ const getWorkItemTreeRoute = createRoute({
     "descendant beneath it, with the requested item's own node flagged `isCurrent`. " +
     "Capped in total size (`truncated: true` when the real subtree is larger than the " +
     "response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: workItemKeyParam },
   responses: {
     200: jsonResponse("The hierarchy tree", workItemTreeResponseSchema),
@@ -922,7 +1299,7 @@ const bulkWorkItemsRoute = createRoute({
   tags: ["Work items"],
   summary: "Bulk work item operation",
   description:
-    "Runs one operation (`delete`, `assign`, `set_priority`, `archive`, or `transition`) " +
+    "Bulk delete returns durable approval with typed count and step-up above 50 affected targets. Nothing is deleted until browser approval. Other operations (`assign`, `set_priority`, `set_due_date`, `add_label`, `remove_label`, `archive`, or `transition`) run " +
     "over multiple work items, transactional PER ITEM (`WI-25`): a partial failure reports " +
     "per-item reasons rather than rolling back the whole batch. `workspaceId` scopes the " +
     "batch; every id is re-checked for reach and capability the same way a single-item call " +
@@ -935,8 +1312,16 @@ const bulkWorkItemsRoute = createRoute({
     },
   },
   responses: {
-    200: jsonResponse("Per-item results", bulkWorkItemsResponseSchema),
+    200: jsonResponse(
+      "Per-item results (or deletion with no eligible targets)",
+      bulkWorkItemsResponseSchema,
+    ),
+    202: jsonResponse(
+      "Pending bulk deletion; items unchanged",
+      pendingBulkDeletionRequestSchema,
+    ),
     400: errorResponse("Invalid body"),
+    409: errorResponse("An equivalent deletion is already pending"),
     403: errorResponse(
       "No workspace access, or missing the operation's own capability " +
         "(work_item:delete, work_item:assign, work_item:set_priority, work_item:update, or work_item:transition)",
@@ -955,21 +1340,23 @@ const listWorkItemActivityRoute = createRoute({
     'activity.md`\'s "one stream showing everything"), newest first, cursor-' +
     'paginated. Each row in `data` carries `kind`: `"activity"` for an `activity` ' +
     'table row (issue #292) or `"comment"` for a posted `comment` row (issue #452) -- ' +
-    "merged and sorted together, not two separate lists. Every row is returned " +
+    "merged and sorted together, not two separate lists. Optional comment anchors the first page at that scoped comment, including a deleted comment's tombstone; subsequent requests retain comment and its bound cursor. Every row is returned " +
     "regardless of `visibility` -- see the controller's own doc comment for why no " +
     "caller-type filtering is applied yet. A tombstone includes its `deletedBy` actor id.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: { params: workItemKeyParam, query: listWorkItemActivityQuery },
   responses: {
     200: jsonResponse(
-      "A page of the work item's activity",
+      "A page of activity, optionally starting at the scoped comment anchor",
       workItemActivityListResponseSchema,
     ),
     400: errorResponse("Invalid query, e.g. a malformed cursor"),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
     ),
-    404: errorResponse("Work item not found"),
+    404: errorResponse("Work item or scoped comment not found"),
   },
 });
 
@@ -1026,8 +1413,8 @@ const transitionWorkItemRoute = createRoute({
     "Move a work item to a new state through its type's active workflow version " +
     "(`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see " +
     "`GET .../transitions`). Approval and CAB gates use persisted matching approval " +
-    "rows. Guard resolution is " +
-    "also partial today: `no_open_blockers` (no `work_item_relation` table yet), " +
+    "rows. `no_open_blockers` reads live canonical relation edges. Guard resolution " +
+    "remains partial for " +
     "`field_required` (no custom-field/satellite value store yet) and " +
     "`change_risk_at_most` (no change-risk column yet) always fail closed (blocked), " +
     "never fabricated as satisfied. `pause_sla`/`resume_sla` apply the automatic " +
@@ -1134,7 +1521,9 @@ const commentMentionCandidatesRoute = createRoute({
     "List people in this work item's workspace who can be considered for a comment mention. " +
     "Customer candidates are available only for public comments and only when they currently " +
     "reach this work item.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: {
     params: workItemKeyParam,
     query: commentMentionCandidatesQuery,
@@ -1214,13 +1603,17 @@ const deleteCommentRoute = createRoute({
   tags: ["Comments"],
   summary: "Delete comment",
   description:
-    "Delete a comment (`CA-18`): sets a tombstone, clears the body, keeps the row. " +
+    "Request comment deletion (`CA-18`). Explicit pending-action confirmation tombstones the comment; the request preserves its body. " +
     "`comment:delete_own` deletes the author's own; `comment:delete_any` deletes " +
     "anyone's. Idempotent on an already-deleted comment.",
   middleware: [requireCommentReach()] as const,
   request: { params: commentIdParam },
   responses: {
-    200: jsonResponse("The deleted (tombstoned) comment", commentSchema),
+    202: jsonResponse(
+      "Deletion awaits explicit requester confirmation",
+      pendingDeletionRequestSchema,
+    ),
+    409: errorResponse("A deletion approval is already pending"),
     403: errorResponse(
       "Not the author, or missing comment:delete_own/comment:delete_any",
     ),
@@ -1229,23 +1622,69 @@ const deleteCommentRoute = createRoute({
 });
 
 const workItem = apiRouter<
-  BaseVariables & { workspaceId: string; workItemId: string }
+  BaseVariables & {
+    workspaceId: string;
+    workItemId: string;
+    projectId: string;
+  }
 >()
   .openapi(createWorkItemRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const { typeId, title, description, priority } = c.req.valid("json");
+    const {
+      typeId,
+      title,
+      description,
+      priority,
+      startDate,
+      dueDate,
+      labelIds,
+      assigneeId,
+      templateId,
+      customFields,
+    } = c.req.valid("json");
     const { actorId, actorType } = resolveActor(
       c.get("userId"),
       c.get("apiKey"),
     );
+    // `WI-5`: explicit fields win; the template only fills what the request left out.
+    const template = templateId
+      ? await loadTemplateForCreate(workspaceId, templateId, typeId)
+      : undefined;
     const created = await createWorkItem({
       projectId,
       workspaceId,
       typeId,
       title,
-      description,
+      description:
+        description === undefined && template
+          ? (template.description ?? undefined)
+          : description,
       priority,
+      startDate,
+      dueDate,
+      labelIds,
+      assigneeId,
+      afterInsert: async (tx, inserted) => {
+        if (template)
+          await applyTemplateInTransaction(tx, template, inserted, {
+            applyLabels: labelIds === undefined,
+            actorId,
+            actorType,
+          });
+        // CF-4/CF-5: required fields block creation; defaults fill what was left out.
+        await applyWorkItemFieldValues(tx, inserted, customFields, {
+          create: true,
+          enforceRequired: true,
+        });
+      },
+      authorization: {
+        userId: c.get("userId"),
+        apiKey: c.get("apiKey"),
+        impersonatedBy: (
+          c.get("session") as { impersonatedBy?: string | null } | null
+        )?.impersonatedBy,
+      },
       actorId,
       actorType,
     });
@@ -1350,11 +1789,13 @@ const workItem = apiRouter<
     const toExportRows = (rows: typeof firstPage.data) =>
       rows.map((row) => ({
         key: row.key,
+        projectId: row.projectId,
         title: row.title,
         stateName: row.stateName,
         assigneeName: row.assigneeName,
         priority: row.priority,
         dueDate: row.dueDate?.toISOString().slice(0, 10) ?? null,
+        customFieldValues: row.customFieldValues,
       }));
 
     const encoder = new TextEncoder();
@@ -1367,10 +1808,16 @@ const workItem = apiRouter<
 
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
-        controller.enqueue(encoder.encode(workItemsCsvHeader(columns)));
+        controller.enqueue(
+          encoder.encode(
+            workItemsCsvHeader(columns, firstPage.customFieldColumns),
+          ),
+        );
         const firstChunk = workItemsCsvRows(
           toExportRows(firstPage.data),
           columns,
+          firstPage.customFieldColumns,
+          firstPage.customFieldPeople,
         );
         if (firstChunk) controller.enqueue(encoder.encode(firstChunk));
         if (!cursor) controller.close();
@@ -1392,7 +1839,12 @@ const workItem = apiRouter<
           }),
           deadline,
         );
-        const chunk = workItemsCsvRows(toExportRows(page.data), columns);
+        const chunk = workItemsCsvRows(
+          toExportRows(page.data),
+          columns,
+          page.customFieldColumns,
+          page.customFieldPeople,
+        );
         if (chunk) controller.enqueue(encoder.encode(chunk));
         cursor = page.page.hasMore
           ? (page.page.nextCursor ?? undefined)
@@ -1422,7 +1874,9 @@ const workItem = apiRouter<
   })
   .openapi(getWorkItemLabelsRoute, async (c) =>
     c.json(
-      await listWorkItemLabels(c.req.valid("param").key, c.get("workspaceId")),
+      await listWorkItemLabels(c.req.valid("param").key, c.get("workspaceId"), {
+        allowArchivedForRead: true,
+      }),
       200,
     ),
   )
@@ -1441,8 +1895,15 @@ const workItem = apiRouter<
     const workspaceId = c.get("workspaceId");
     const { "if-match": ifMatch } = c.req.valid("header");
     const assertedVersion = Number(ifMatch.replaceAll('"', ""));
-    const { title, description, priority, startDate, dueDate, labelIds } =
-      c.req.valid("json");
+    const {
+      title,
+      description,
+      priority,
+      startDate,
+      dueDate,
+      labelIds,
+      customFields,
+    } = c.req.valid("json");
 
     // Field-level authority, on top of the route's `work_item:update` gate above: rbac.md
     // scopes `priority` specifically to `work_item:set_priority`, not `work_item:update` --
@@ -1478,6 +1939,11 @@ const workItem = apiRouter<
           startDate,
           dueDate,
           labelIds,
+          customFields,
+        },
+        {
+          apiKeyId: c.get("apiKey")?.id ?? null,
+          origin: auditOriginForApiKey(c.get("apiKey")),
         },
       );
       return c.json(updated, 200);
@@ -1511,6 +1977,11 @@ const workItem = apiRouter<
     // reachable today. The resolution above is kept anyway, because it makes the id the
     // self branch uses the SAME fact the roster is built from (staff, on this roster),
     // instead of relying on a constraint defined in another file to stay deterministic.
+    // PR-2: a member of an ancestor project is on this project's roster too.
+    const rosterProjectIds = [
+      projectId,
+      ...(await loadProjectAncestorIds(db, workspaceId, projectId)),
+    ];
     const [callerPerson] = await db
       .select({ id: personTable.id })
       .from(personTable)
@@ -1520,7 +1991,7 @@ const workItem = apiRouter<
           eq(personTable.userId, userId),
           eq(personTable.side, "staff"),
           eq(membershipTable.scope, "project"),
-          eq(membershipTable.scopeId, projectId),
+          inArray(membershipTable.scopeId, rosterProjectIds),
         ),
       )
       .orderBy(personTable.createdAt)
@@ -1528,6 +1999,9 @@ const workItem = apiRouter<
 
     // Match write authority: workspace capability, project override and key ceiling.
     const identity = await resolveCallerIdentity(c, userId);
+    const ancestorProjectIds = identity
+      ? await loadProjectAncestorIdsFor(c, db, identity, workspaceId, projectId)
+      : [];
     const canAssign = async (
       capability: "work_item:assign" | "work_item:update",
     ) => {
@@ -1536,8 +2010,14 @@ const workItem = apiRouter<
         !hasProjectReadCapability(identity, capability, "work_item", {
           projectId,
           workspaceId,
-          ancestorProjectIds: [],
-          ownerTeamId: null,
+          // PR-2/PR-3: assignment authority follows the same ancestor chain as the route.
+          ancestorProjectIds,
+          ownerTeamId: await loadProjectOwnerTeamIdFor(
+            db,
+            identity,
+            workspaceId,
+            projectId,
+          ),
           organisationId: null,
         })
       )
@@ -1608,7 +2088,11 @@ const workItem = apiRouter<
         actorId,
         actorType,
         callerPerson?.id ?? null,
-        { assigneeId, expectedCurrentAssigneeId },
+        {
+          assigneeId,
+          expectedCurrentAssigneeId,
+          auditOrigin: auditOriginForApiKey(c.get("apiKey")),
+        },
       );
       return c.json(assigned, 200);
     } catch (error) {
@@ -1628,36 +2112,327 @@ const workItem = apiRouter<
   .openapi(setWorkItemParentRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const assertedVersion =
+      ifMatch === undefined ? undefined : Number(ifMatch.replaceAll('"', ""));
     const { parentKey } = c.req.valid("json");
     const { actorId, actorType } = resolveActor(
       c.get("userId"),
       c.get("apiKey"),
     );
 
-    const updated = await setWorkItemParent(
-      key,
-      workspaceId,
-      parentKey,
-      actorId,
-      actorType,
-    );
-    return c.json(updated, 200);
+    try {
+      const updated = await setWorkItemParent(
+        key,
+        workspaceId,
+        parentKey,
+        actorId,
+        actorType,
+        assertedVersion,
+      );
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
   })
   .openapi(detachWorkItemParentRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const assertedVersion =
+      ifMatch === undefined ? undefined : Number(ifMatch.replaceAll('"', ""));
     const { actorId, actorType } = resolveActor(
       c.get("userId"),
       c.get("apiKey"),
     );
 
-    const updated = await detachWorkItemParent(
-      key,
-      workspaceId,
-      actorId,
-      actorType,
+    try {
+      const updated = await detachWorkItemParent(
+        key,
+        workspaceId,
+        actorId,
+        actorType,
+        assertedVersion,
+      );
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(setWorkItemParentV2Route, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const assertedVersion = Number(ifMatch.replaceAll('"', ""));
+    const { parentKey } = c.req.valid("json");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
     );
-    return c.json(updated, 200);
+
+    try {
+      const updated = await setWorkItemParent(
+        key,
+        workspaceId,
+        parentKey,
+        actorId,
+        actorType,
+        assertedVersion,
+      );
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(detachWorkItemParentV2Route, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const assertedVersion = Number(ifMatch.replaceAll('"', ""));
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+
+    try {
+      const updated = await detachWorkItemParent(
+        key,
+        workspaceId,
+        actorId,
+        actorType,
+        assertedVersion,
+      );
+      return c.json(updated, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(listWorkItemTemplatesRoute, async (c) => {
+    const rows = await workItemTemplateService.listLive(c.get("workspaceId"));
+    return c.json(
+      rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        typeId: row.typeId,
+        title: row.title,
+        hasChecklist: row.checklistTemplateId !== null,
+      })),
+      200,
+    );
+  })
+  .openapi(manageWorkItemTemplatesRoute, async (c) => {
+    const { includeArchived } = c.req.valid("query");
+    return c.json(
+      await workItemTemplateService.listForManagement(
+        c.get("workspaceId"),
+        includeArchived === "true",
+      ),
+      200,
+    );
+  })
+  .openapi(createWorkItemTemplateRoute, async (c) =>
+    c.json(
+      await workItemTemplateService.create(
+        c.get("workspaceId"),
+        c.req.valid("json"),
+      ),
+      200,
+    ),
+  )
+  .openapi(updateWorkItemTemplateRoute, async (c) =>
+    c.json(
+      await workItemTemplateService.update(
+        c.get("workspaceId"),
+        c.req.valid("param").id,
+        c.req.valid("json"),
+      ),
+      200,
+    ),
+  )
+  .openapi(archiveWorkItemTemplateRoute, async (c) =>
+    c.json(
+      await workItemTemplateService.archive(
+        c.get("workspaceId"),
+        c.req.valid("param").id,
+      ),
+      200,
+    ),
+  )
+  .openapi(listChecklistTemplatesRoute, async (c) =>
+    c.json(
+      await checklistTemplateService.list(
+        c.get("workspaceId"),
+        c.req.valid("query").includeArchived === "true",
+      ),
+      200,
+    ),
+  )
+  .openapi(createChecklistTemplateRoute, async (c) => {
+    const { name, items } = c.req.valid("json");
+    return c.json(
+      await checklistTemplateService.create(c.get("workspaceId"), name, items),
+      200,
+    );
+  })
+  .openapi(updateChecklistTemplateRoute, async (c) =>
+    c.json(
+      await checklistTemplateService.update(
+        c.get("workspaceId"),
+        c.req.valid("param").id,
+        c.req.valid("json"),
+      ),
+      200,
+    ),
+  )
+  .openapi(archiveChecklistTemplateRoute, async (c) =>
+    c.json(
+      await checklistTemplateService.archive(
+        c.get("workspaceId"),
+        c.req.valid("param").id,
+      ),
+      200,
+    ),
+  )
+  .openapi(moveWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const { targetProjectId, moveChildren } = c.req.valid("json");
+    const userId = c.get("userId");
+    const { actorId, actorType } = resolveActor(userId, c.get("apiKey"));
+    const target = await authoriseMoveTarget(
+      c,
+      userId,
+      workspaceId,
+      targetProjectId,
+    );
+    try {
+      const moved = await moveWorkItem({
+        key,
+        workspaceId,
+        authorisedSourceProjectId: c.get("projectId"),
+        target,
+        moveChildren,
+        assertedVersion: Number(ifMatch.replaceAll('"', "")),
+        actorId,
+        actorType,
+      });
+      return c.json(moved, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(archiveWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+    try {
+      const archived = await archiveWorkItem(
+        key,
+        workspaceId,
+        actorId,
+        actorType,
+        { assertedVersion: Number(ifMatch.replaceAll('"', "")) },
+      );
+      return c.json(archived, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(restoreWorkItemRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { "if-match": ifMatch } = c.req.valid("header");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+    try {
+      const restored = await restoreWorkItem(
+        key,
+        workspaceId,
+        Number(ifMatch.replaceAll('"', "")),
+        actorId,
+        actorType,
+      );
+      return c.json(restored, 200);
+    } catch (error) {
+      if (error instanceof WorkItemVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
   })
   .openapi(hierarchyChildrenRoute, async (c) => {
     const { key } = c.req.valid("param");
@@ -1677,7 +2452,7 @@ const workItem = apiRouter<
       identity,
       key,
       c.get("workspaceId"),
-      c.req.valid("query"),
+      { ...c.req.valid("query"), allowArchivedForRead: true },
     );
     return c.json(result, 200);
   })
@@ -1690,12 +2465,29 @@ const workItem = apiRouter<
   .openapi(deleteWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const { actorId, actorType } = resolveActor(
-      c.get("userId"),
-      c.get("apiKey"),
+    const userId = c.get("userId");
+    const apiKey = c.get("apiKey");
+    const session = c.get("session");
+    const requesterPersonId = await requirePendingActionRequesterIdentity(
+      userId,
+      apiKey,
     );
-    const deleted = await deleteWorkItem(key, workspaceId, actorId, actorType);
-    return c.json(deleted, 200);
+    const pending = await createPendingAction({
+      requesterPersonId,
+      credentialType: apiKey ? "api_key" : "session",
+      credentialId: apiKey?.id ?? session?.id ?? null,
+      origin: apiKey ? "api" : "web",
+      action: "delete",
+      routeKey: "DELETE /api/work-items/{key}",
+      targetType: "work_item",
+      targetIds: [key],
+      workspaceId,
+      actorId: userId,
+      actorType: apiKey ? "api_key" : "person",
+      actorIp: clientIpForContext(c),
+      userAgent: c.req.header("user-agent") ?? null,
+    });
+    return c.json(pendingDeletionRequestSchema.parse(pending), 202);
   })
   .openapi(rankWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
@@ -1735,6 +2527,9 @@ const workItem = apiRouter<
       assigneeId,
       priority,
       toStateTemplateId,
+      expectedCurrentAssigneeIds,
+      labelId,
+      dueDate,
     } = c.req.valid("json");
     const userId = c.get("userId");
 
@@ -1755,7 +2550,9 @@ const workItem = apiRouter<
           ? "work_item:assign"
           : operation === "set_priority"
             ? "work_item:set_priority"
-            : operation === "archive"
+            : ["archive", "add_label", "remove_label", "set_due_date"].includes(
+                  operation,
+                )
               ? "work_item:update"
               : "work_item:transition";
 
@@ -1775,16 +2572,48 @@ const workItem = apiRouter<
       c.get("apiKey"),
     );
 
-    let bulkOp: Parameters<typeof bulkWorkItems>[4];
     if (operation === "delete") {
-      bulkOp = { operation: "delete" };
-    } else if (operation === "assign") {
-      bulkOp = { operation: "assign", assigneeId: assigneeId as string };
+      const apiKey = c.get("apiKey");
+      const requesterPersonId = await requirePendingActionRequesterIdentity(
+        userId,
+        apiKey,
+      );
+      const result = await requestBulkWorkItemDeletion({
+        requesterPersonId,
+        credentialType: apiKey ? "api_key" : "session",
+        credentialId: apiKey?.id ?? c.get("session")?.id ?? null,
+        origin: apiKey ? "api" : "web",
+        action: "bulk_delete",
+        routeKey: "POST /api/work-items/bulk",
+        targetType: "work_item",
+        targetIds: workItemKeys,
+        workspaceId,
+        actorId,
+        actorType: apiKey ? "api_key" : "person",
+        actorIp: clientIpForContext(c),
+        userAgent: c.req.header("user-agent") ?? null,
+      });
+      if (result.kind === "empty") return c.json(result.data, 200);
+      return c.json(pendingBulkDeletionRequestSchema.parse(result.data), 202);
+    }
+
+    const bulkAudit = auditRequestContext(c);
+    let bulkOp: Parameters<typeof bulkWorkItems>[4];
+    if (operation === "assign") {
+      bulkOp = {
+        operation: "assign",
+        assigneeId: assigneeId as string,
+        expectedCurrentAssigneeIds,
+      };
     } else if (operation === "set_priority") {
       bulkOp = {
         operation: "set_priority",
         priority: priority ?? null,
       };
+    } else if (operation === "add_label" || operation === "remove_label") {
+      bulkOp = { operation, labelId: labelId as string };
+    } else if (operation === "set_due_date") {
+      bulkOp = { operation, dueDate: dueDate ?? null };
     } else if (operation === "archive") {
       bulkOp = { operation: "archive" };
     } else {
@@ -1803,6 +2632,12 @@ const workItem = apiRouter<
         operation: "transition",
         toStateTemplateId: toStateTemplateId as string,
         identity,
+        // P2R1-16: the same request facts the single-item transition route records.
+        request: {
+          auditOrigin: auditOriginForApiKey(c.get("apiKey")),
+          apiKey: c.get("apiKey"),
+          audit: bulkAudit,
+        },
       };
     }
 
@@ -1813,16 +2648,27 @@ const workItem = apiRouter<
       workItemKeys,
       bulkOp,
       await workItemBulkAuthoriser(c, userId, workspaceId, operationCapability),
+      bulkAudit,
     );
     return c.json(result, 200);
   })
   .openapi(listWorkItemActivityRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const { cursor, limit } = c.req.valid("query");
+    const { cursor, limit, comment } = c.req.valid("query");
     const activity = await listWorkItemActivity(key, workspaceId, {
       cursor,
       limit,
+      comment,
+      allowArchivedForRead: true,
+      viewer: {
+        userId: c.get("userId"),
+        apiKey: c.get("apiKey"),
+        impersonated: Boolean(
+          (c.get("session") as { impersonatedBy?: string | null } | null)
+            ?.impersonatedBy,
+        ),
+      },
     });
     return c.json(activity, 200);
   })
@@ -1945,7 +2791,13 @@ const workItem = apiRouter<
         identity.personId,
         actorId,
         actorType,
-        { toStateTemplateId, note },
+        {
+          toStateTemplateId,
+          note,
+          auditOrigin: auditOriginForApiKey(c.get("apiKey")),
+          apiKey: c.get("apiKey"),
+          audit: auditRequestContext(c),
+        },
       );
       return c.json(transitioned, 200);
     } catch (error) {
@@ -2002,13 +2854,18 @@ const workItem = apiRouter<
       actorType,
       { body, visibility },
       c.get("apiKey"),
+      auditRequestContext(c),
     );
     return c.json(created, 200);
   })
   .openapi(commentMentionCandidatesRoute, async (c) => {
     const { visibility } = c.req.valid("query");
     const candidates = await db.transaction(async (tx) => {
-      const context = await findWorkItemMentionContext(tx, c.get("workItemId"));
+      const context = await findWorkItemMentionContext(
+        tx,
+        c.get("workItemId"),
+        { allowArchivedForRead: true },
+      );
       if (!context || context.workspaceId !== c.get("workspaceId")) {
         throw new HTTPException(404, { message: "Work item not found" });
       }
@@ -2064,19 +2921,38 @@ const workItem = apiRouter<
       c.get("userId"),
       body,
       c.get("apiKey"),
+      Boolean(
+        (c.get("session") as { impersonatedBy?: string | null } | null)
+          ?.impersonatedBy,
+      ),
     );
     return c.json(updated, 200);
   })
   .openapi(deleteCommentRoute, async (c) => {
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const deleted = await deleteComment(
-      id,
-      workspaceId,
-      c.get("userId"),
-      c.get("apiKey"),
+    const userId = c.get("userId");
+    const apiKey = c.get("apiKey");
+    const requesterPersonId = await requirePendingActionRequesterIdentity(
+      userId,
+      apiKey,
     );
-    return c.json(deleted, 200);
+    const pending = await createPendingAction({
+      requesterPersonId,
+      credentialType: apiKey ? "api_key" : "session",
+      credentialId: apiKey?.id ?? c.get("session")?.id ?? null,
+      origin: apiKey ? "api" : "web",
+      action: "delete",
+      routeKey: "DELETE /api/comments/{id}",
+      targetType: "comment",
+      targetIds: [id],
+      workspaceId,
+      actorId: userId,
+      actorType: apiKey ? "api_key" : "person",
+      actorIp: clientIpForContext(c),
+      userAgent: c.req.header("user-agent") ?? null,
+    });
+    return c.json(pendingDeletionRequestSchema.parse(pending), 202);
   });
 
 export default workItem;

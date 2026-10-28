@@ -1,4 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
+import {
+  captureWorkspaceServiceKeyAuthority,
+  markServiceKeysForAuthorityLoss,
+} from "../../api-key/authority-loss";
 import { schema } from "../../database";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
 import { revokeProjectCreatorGrantsForMember } from "../../project/project-creator-grant";
@@ -65,6 +69,12 @@ async function leaveWorkspace(
       }
     }
 
+    const authorityBefore = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      userId,
+      workspaceId,
+    );
+
     await tx
       .delete(schema.workspaceUserTable)
       .where(
@@ -75,6 +85,16 @@ async function leaveWorkspace(
       );
 
     await syncWorkspaceAdminReach(tx, workspaceId, userId);
+    const authorityAfter = await captureWorkspaceServiceKeyAuthority(
+      tx,
+      userId,
+      workspaceId,
+    );
+    await markServiceKeysForAuthorityLoss(tx, {
+      before: authorityBefore,
+      after: authorityAfter,
+      now: new Date(),
+    });
     // Decision log 2026-10-14: creator project-lead grants end with the membership.
     await revokeProjectCreatorGrantsForMember(tx, workspaceId, userId);
 

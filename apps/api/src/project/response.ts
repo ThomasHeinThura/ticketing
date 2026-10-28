@@ -26,6 +26,29 @@ export const projectSchema = z
       .nullable()
       .openapi({ enum: ["L1", "L2", "L3"] }),
     serviceCalendarId: z.string().nullable(),
+    slaPolicyId: z.string().nullable(),
+    parentId: z.string().nullable().openapi({
+      description:
+        "PR-1: the parent project in the same workspace; null for a root project.",
+    }),
+    ownerTeamId: z.string().nullable().openapi({
+      description:
+        "TM-4: the team whose active members reach this project (reach only, never a capability); null when none.",
+    }),
+    managerId: z.string().nullable().openapi({
+      description:
+        "PR-6: the project manager (a person); null when none is set.",
+    }),
+    startDate: z.string().nullable().openapi({
+      description: "PR-10: calendar date, YYYY-MM-DD.",
+    }),
+    endDate: z.string().nullable().openapi({
+      description: "Optional calendar date, YYYY-MM-DD.",
+    }),
+    defaultAssigneeId: z.string().nullable().openapi({
+      description:
+        "AS-11: person assigned to work items created with none, when active and on the roster.",
+    }),
     organisationId: z.string().nullable().openapi({
       description:
         "The customer organisation this project serves; null for an internal project.",
@@ -57,6 +80,21 @@ export const projectSchema = z
   })
   .openapi("Project");
 
+// A flat object rather than `projectSchema.extend(...)`: extending the registered "Project"
+// component emits `allOf: [Project, {...}]` with no top-level type, which oasdiff reads as
+// every Project property being dropped from GET /project/{id}. Same payload, same RPC type.
+export const projectDetailSchema = z
+  .object({
+    ...projectSchema.shape,
+    compositionWarnings: z.array(z.enum(["PR-6", "PR-7", "PR-10"])).openapi({
+      description:
+        "Warning-only composition rules the project currently violates (PR-6 no " +
+        "manager, PR-7 no team member, PR-10 no start date). The save never fails " +
+        "on these; the overview shows them as a banner.",
+    }),
+  })
+  .openapi("ProjectDetail");
+
 export const projectStatisticsSchema = z
   .object({
     completionPercentage: z.number(),
@@ -70,6 +108,8 @@ export const projectStatisticsSchema = z
 export const projectListItemSchema = projectSchema
   .extend({
     statistics: projectStatisticsSchema,
+    /** PR-5: exact work-item statistics for the caller-visible project subtree. */
+    descendantStatistics: projectStatisticsSchema.optional(),
     // Legacy, always empty. Fetch the board via GET /task/tasks/{id}.
     archivedTasks: z
       .array(boardTaskSchema)
@@ -101,6 +141,29 @@ export const projectStateSchema = z
     isDefault: z.boolean(),
   })
   .openapi("ProjectState");
+
+export const projectStateTemplateSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    group: z.enum([
+      "backlog",
+      "unstarted",
+      "started",
+      "completed",
+      "cancelled",
+    ]),
+    inUse: z.boolean().openapi({
+      description:
+        "The project already has an active concrete state for this template.",
+    }),
+    hasOutboundTransition: z.boolean().openapi({
+      description:
+        "PR-17/WF-2: a workflow used by the workspace's work item types has a transition " +
+        "out of this template. A state cannot be created for a template without one.",
+    }),
+  })
+  .openapi("ProjectStateTemplate");
 
 // Issue #25's bounded slice.
 export const milestoneSchema = z

@@ -1,0 +1,45 @@
+{
+	"run": "organisation-lifecycle-181",
+	"result": "passed",
+	"fixture": "one owned Codex QA organisation and one owned project",
+	"initialContact": "skipped",
+	"screenshots": [
+		"new-defaults-20261025T182446.png",
+		"cas-conflict-20261025T182446.png",
+		"organisation-lifecycle-375-light-20261025T182446.png",
+		"organisation-lifecycle-375-dark-20261025T182446.png",
+		"organisation-lifecycle-768-light-20261025T182446.png",
+		"organisation-lifecycle-768-dark-20261025T182446.png",
+		"organisation-lifecycle-1440-light-20261025T182446.png",
+		"organisation-lifecycle-1440-dark-20261025T182446.png"
+	],
+	"localMailpitConfirmed": false,
+	"initialContactReason": "SMTP was not confirmed as local Mailpit",
+	"lifecycle": "create, edit, reload, stale CAS conflict, identity route, suspend, reactivate passed",
+	"preExistingDirectory": {
+		"countBefore": 1,
+		"countAfterExcludingQAFixture": 1,
+		"mappingsAndProfilesUnchanged": true,
+		"digest": "5b364d452dded55fb75d1da21d5fd9a1208b478ee9a65729869ba1fd77fc3dca"
+	},
+	"projectListProbe": {
+		"method": "GET",
+		"path": "/api/project?workspaceId=ws-taskdesk-sit",
+		"status": 200,
+		"traceId": null,
+		"matchingOwnedProjectFound": true
+	},
+	"projectDefaults": {
+		"projectCreatedThroughKaneoModal": true,
+		"workspaceName": "TaskDesk Service Desk",
+		"serviceCalendarCopied": "SIT continuous support",
+		"slaPolicyCopied": "SIT support response",
+		"serviceCalendarPersisted": true,
+		"slaPolicyPersisted": true
+	},
+	"responsive": {
+		"widths": [375, 768, 1440],
+		"themes": ["light", "dark"],
+		"actualLabelsVisible": true
+	}
+}

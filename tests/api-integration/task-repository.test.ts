@@ -35,7 +35,6 @@ const advanceProjectTaskNumber = scopedExecutor(
 );
 const clearTaskReminders = scopedExecutor(taskRepository.clearTaskReminders);
 const countProjectTasks = scoped(taskRepository.countProjectTasks);
-const deleteTaskById = scopedExecutor(taskRepository.deleteTaskById);
 const findColumnBySlug = scopedExecutor(
   taskRepository.findColumnBySlugForIdentity,
 );
@@ -397,11 +396,9 @@ describe("legacy task repository (#580 b9a)", () => {
     const left = await db.select().from(schema.taskReminderSentTable);
     expect(left.map((r) => r.taskId)).toEqual([t3.id]);
 
-    expect((await deleteTaskById(db, t3.id))?.id).toBe(t3.id);
-    expect(await deleteTaskById(db, t3.id)).toBeUndefined();
     expect(
       (await db.select().from(schema.taskTable)).map((t) => t.id).sort(),
-    ).toEqual([t1.id, t2.id].sort());
+    ).toEqual([t1.id, t2.id, t3.id].sort());
   });
 
   it("asset helpers insert and update by id", async () => {

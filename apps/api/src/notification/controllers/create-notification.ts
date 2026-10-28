@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
+import type { Executor } from "../../database/executor";
 import { publishEvent } from "../../events";
-import { deliverNotification } from "../../notification-preferences/delivery";
+import { QUIET_HOURS_HOLD_KEY } from "../../notification-preferences/delivery.repository";
 import {
   findNotificationPreferenceRow,
   insertNotificationRow,
@@ -15,6 +16,7 @@ async function createNotification({
   eventData,
   resourceId,
   resourceType,
+  executor,
 }: {
   userId: string;
   title?: string | null;
@@ -23,10 +25,15 @@ async function createNotification({
   eventData?: Record<string, unknown> | null;
   resourceId?: string;
   resourceType?: string;
+  /**
+   * Write inside the caller's transaction. The realtime `notification.created` publish is then
+   * the caller's job after commit, so nothing is announced for a row that rolls back.
+   */
+  executor?: Executor;
 }) {
   if (
     resourceType === "task" &&
-    (!resourceId || !(await userCanReachTask(userId, resourceId)))
+    (!resourceId || !(await userCanReachTask(userId, resourceId, executor)))
   ) {
     return null;
   }
@@ -43,34 +50,34 @@ async function createNotification({
             : null;
 
   if (preferenceKey) {
-    const preference = await findNotificationPreferenceRow(userId);
+    const preference = await findNotificationPreferenceRow(userId, executor);
 
     if (preference?.[preferenceKey] === false) {
       return null;
     }
   }
 
-  const notification = await insertNotificationRow({
-    id: createId(),
-    userId,
-    title: title ?? null,
-    content: content ?? null,
-    type: type || "info",
-    eventData: eventData ?? null,
-    resourceId: resourceId || null,
-    resourceType: resourceType || null,
-  });
+  const notification = await insertNotificationRow(
+    {
+      id: createId(),
+      userId,
+      title: title ?? null,
+      content: content ?? null,
+      type: type || "info",
+      eventData: {
+        ...(eventData ?? {}),
+        [QUIET_HOURS_HOLD_KEY]: new Date().toISOString(),
+      },
+      resourceId: resourceId || null,
+      resourceType: resourceType || null,
+    },
+    executor,
+  );
 
-  if (notification) {
+  if (notification && !executor) {
     await publishEvent("notification.created", {
       notificationId: notification.id,
       userId,
-    });
-    void deliverNotification(notification.id).catch((error) => {
-      console.error("Failed to deliver notification", {
-        notificationId: notification.id,
-        error,
-      });
     });
   }
 

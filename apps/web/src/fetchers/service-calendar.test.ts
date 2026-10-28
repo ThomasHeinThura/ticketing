@@ -97,10 +97,21 @@ describe("service calendar usage and deletion", () => {
       status: 202,
       json: async () => pending,
     });
-    await expect(requestServiceCalendarDeletion("cal-1")).resolves.toEqual(
-      pending,
-    );
+    await expect(requestServiceCalendarDeletion("cal-1")).resolves.toEqual({
+      pendingActionId: "pa-1",
+    });
     expect(mocks.del).toHaveBeenCalledWith({ param: { id: "cal-1" } });
+  });
+
+  it("reopens the requester's own pending deletion on a 409", async () => {
+    mocks.del.mockResolvedValue({
+      ok: false,
+      status: 409,
+      text: async () => JSON.stringify({ message: "pending_approval: pa-9" }),
+    });
+    await expect(requestServiceCalendarDeletion("cal-1")).resolves.toEqual({
+      pendingActionId: "pa-9",
+    });
   });
 
   it("surfaces the server message when the calendar is still in use", async () => {

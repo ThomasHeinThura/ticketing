@@ -6,13 +6,9 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * Work-item routes retain their attachment policies. IQ-9 adds submission parent routes
  * under the existing `intake:triage` and `own_submission` policies.
  *
- * Every route below runs the SAME transitional shape `comment/policy.ts`/
- * `work-item/policy.ts` already document: the declared capability is the TARGET
- * vocabulary (`attachment:create`/`attachment:delete_own`, `docs/01-architecture/rbac.md`
- * § Attachments), and the RUNTIME gate is `requireWorkspacePermission({ work_item:
- * ["update"|"read"] })` against the caller's legacy workspace role -- the declarative
- * `packages/permissions` evaluator is still not wired into the live request path
- * anywhere in this codebase (issue #8's remaining runtime-integration work).
+ * Upload/complete retain their existing workspace gates. Deletion creates a durable
+ * pending action; request and approval resolve current canonical identity, scoped
+ * authority, uploader ownership and the originating credential ceiling.
  *
  * `scopeSource: "row"` throughout: every route resolves its work item (directly, or via
  * the attachment's own `work_item_id`) with a genuine DB lookup before the handler runs
@@ -20,13 +16,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * feature and `work-item/`, per this project's "partition by file" guidance rather than
  * editing the shared `workspace-access-middleware.ts`.
  *
- * **Delete ownership is enforced structurally, not by a declared `orOwner` branch** --
- * same reasoning `comment/policy.ts`'s file comment gives for `comment:update_own`/
- * `comment:delete_own`. `delete-attachment.ts`'s `WHERE uploaded_by = caller` is
- * unconditional, so declaring the broader `attachment:delete_any` here (rbac.md's
- * `manager`/`lead` capability) would overclaim what this ONE route can actually do --
- * the "any" variant is a different, not-yet-built route, a product question this policy
- * entry does not decide.
+ * Delete uses the retained delete-any capability or canonical uploader ownership with
+ * delete-own. Request and approval both enforce these same facts with current credentials.
  */
 export const attachmentPolicies = {
   "POST /api/portal/submissions/{ref}/attachments/presign": {
@@ -45,6 +36,10 @@ export const attachmentPolicies = {
     portal: "customer",
     predicate: "own_submission",
   },
+  "GET /api/portal/submissions/{ref}/attachments/{id}/preview": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
   "GET /api/submissions/{ref}/attachments": {
     capability: "intake:triage",
     scope: "workspace",
@@ -52,6 +47,12 @@ export const attachmentPolicies = {
     reach: "required",
   },
   "GET /api/submissions/{ref}/attachments/{id}": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/submissions/{ref}/attachments/{id}/preview": {
     capability: "intake:triage",
     scope: "workspace",
     scopeSource: "row",
@@ -90,13 +91,34 @@ export const attachmentPolicies = {
     scopeSource: "row",
     reach: "required",
   },
-
-  // AT-7: soft delete. See this file's own comment for why `attachment:delete_own`, not
-  // `attachment:delete_any`, is the declared capability.
-  "DELETE /api/attachments/{id}": {
-    capability: "attachment:delete_own",
+  "GET /api/attachments/{id}/preview": {
+    capability: "work_item:read",
     scope: "work_item",
     scopeSource: "row",
     reach: "required",
+  },
+
+  // AT-7: explicit requester-confirmed soft deletion.
+  "DELETE /api/attachments/{id}": {
+    capability: "attachment:delete_any",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orOwner: {
+      predicate: "row.person_id === identity.personId",
+      capability: "attachment:delete_own",
+    },
+  },
+  // AT-7: restore an attachment during its one-day soft-delete window. Reuses the
+  // same delete-any or uploader+delete-own authority as the original action.
+  "POST /api/attachments/{id}/restore": {
+    capability: "attachment:delete_any",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orOwner: {
+      predicate: "row.person_id === identity.personId",
+      capability: "attachment:delete_own",
+    },
   },
 } as const satisfies PolicyMap;

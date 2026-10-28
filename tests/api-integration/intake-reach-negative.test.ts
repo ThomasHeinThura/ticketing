@@ -95,6 +95,12 @@ describe("IQ-3: a submission reference is not a credential", () => {
   it("refuses the durable page with no session, and for another requester or organisation", async () => {
     const s = await seedIntake("iq3");
     const ref = await submitAs(s, s.customer);
+    // CP-16: an organisation colleague may read an `organisation`-visible request (the
+    // default), so this reference-is-not-a-credential case uses a `private` one.
+    await db
+      .update(schema.submissionTable)
+      .set({ customerVisibility: "private" })
+      .where(eq(schema.submissionTable.id, (await submissionRow(ref)).id));
     const sameOrgOther = await addCustomer(s.t);
     const otherTenant = await buildTenant("iq3-foreign");
     const foreign = await addCustomer(otherTenant);

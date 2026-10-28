@@ -16,6 +16,7 @@
  */
 import { createId } from "@paralleldrive/cuid2";
 import { canonicalRowHash, type JsonValue, ZERO_HASH } from "@taskdesk/domain";
+import { currentImpersonatorId } from "../auth/impersonation-context";
 import type { Executor } from "../database/executor";
 import { EVENT_KEYS } from "../events/event-keys";
 import { AUDIT_ACTIONS_NOT_YET_WIRED, AUDIT_ONLY_ACTIONS } from "./actions";
@@ -302,6 +303,13 @@ export async function appendAuditLog(
 ): Promise<AuditLogRowResult> {
   validateAction(input.action);
 
+  // GM-8: an explicit `impersonatorId` (including `null`) wins; otherwise the request-scoped
+  // impersonator, if any, is recorded.
+  const impersonatorId =
+    input.impersonatorId === undefined
+      ? currentImpersonatorId()
+      : input.impersonatorId;
+
   const before = truncateIfOversized(input.before);
   const after = truncateIfOversized(input.after);
 
@@ -369,7 +377,7 @@ export async function appendAuditLog(
         actorId: input.actorId,
         actorType: input.actorType,
         apiKeyId: input.apiKeyId ?? null,
-        impersonatorId: input.impersonatorId ?? null,
+        impersonatorId,
         actorIp: input.actorIp ?? null,
         userAgent: input.userAgent ?? null,
         traceId: input.traceId ?? null,
@@ -424,7 +432,7 @@ export async function appendAuditLog(
       actorId: input.actorId,
       actorType: input.actorType,
       apiKeyId: input.apiKeyId ?? null,
-      impersonatorId: input.impersonatorId ?? null,
+      impersonatorId,
       actorIp: input.actorIp ?? null,
       userAgent: input.userAgent ?? null,
       traceId: input.traceId ?? null,

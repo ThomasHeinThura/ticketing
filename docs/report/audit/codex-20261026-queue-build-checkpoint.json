@@ -1,0 +1,31 @@
+{
+	"recordedAt": "2026-10-25T20:18:39.828587+00:00",
+	"scope": "Queue/duplicate-suggestion/plugin-form source checkpoint; not phase sign-off",
+	"webBuild": "pass: agent, portal, sandbox PDF",
+	"webTypecheck": "pass",
+	"apiTypecheck": "pass after NO20 imports completed; invitation provenance edits follow",
+	"focusedWebTests": 113,
+	"focusedPostgresTests": 5,
+	"queuePanelAndCanonicalTriageRegressionTests": 18,
+	"permissionTests": {
+		"passed": 118,
+		"failed": 0,
+		"matrixChange": "Exactly five new intake queue routes; no old route decisions or capability sets changed"
+	},
+	"rawUi": "pass: zero raw JSX elements",
+	"bundlesGzipKB": {
+		"agent": 260.5,
+		"workList": 348.6,
+		"portal": 192.3
+	},
+	"bundlePurity": "pass",
+	"contrast": "pass: all403 source-grounded pairs meet thresholds in both built themes; no pair removed",
+	"migration": "Stopped before0183 on one owned accepted customer membership lacking grant provenance; repair in progress",
+	"formalReviewsUsed": 0,
+	"fullWebUnitTests": {
+		"files": 450,
+		"passed": 2949,
+		"failed": 0,
+		"durationSeconds": 122.52
+	}
+}

@@ -1,0 +1,986 @@
+{
+	"count": 20,
+	"value": [
+		{
+			"id": 4122,
+			"rev": 3,
+			"fields": {
+				"System.Id": 4122,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Epic",
+				"System.Title": "Self-service checkout",
+				"System.State": "Active",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-11-17T08:54:00.000Z",
+				"System.ChangedDate": "2025-10-08T10:14:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"System.Rev": 3,
+				"System.AssignedTo": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"System.Tags": "checkout; q1-goal",
+				"Microsoft.VSTS.Common.Priority": 1,
+				"System.Description": "<div>Self-service checkout.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4125",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4128",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4140",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4144",
+					"attributes": {
+						"name": "Child"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4122"
+		},
+		{
+			"id": 4125,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4125,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Feature",
+				"System.Title": "Saved payment methods",
+				"System.State": "Active",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-11-20T11:15:00.000Z",
+				"System.ChangedDate": "2025-10-11T13:35:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Tags": "payments",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"System.Description": "<div><b>Context</b></div><ul><li>Requested by support</li><li>Seen by 4 customers</li></ul><p>See <a href=\"https://wiki.contoso.example/x/4125\">the wiki page</a>.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4122",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4132",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4134",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4180",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "Hyperlink",
+					"url": "https://wiki.contoso.example/x/4125",
+					"attributes": {
+						"comment": "wiki"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4125"
+		},
+		{
+			"id": 4128,
+			"rev": 4,
+			"fields": {
+				"System.Id": 4128,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Feature",
+				"System.Title": "Guest checkout",
+				"System.State": "Closed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 11",
+				"System.CreatedDate": "2025-11-23T14:36:00.000Z",
+				"System.ChangedDate": "2025-10-14T16:56:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"System.Rev": 4,
+				"System.AssignedTo": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"System.Tags": "checkout",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Common.ClosedDate": "2025-10-09T11:21:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-10-24T08:06:00.000Z",
+				"Custom.CustomerImpact": "High",
+				"System.Description": "<div>Guest checkout.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4122",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4137",
+					"attributes": {
+						"name": "Child"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4128"
+		},
+		{
+			"id": 4132,
+			"rev": 3,
+			"fields": {
+				"System.Id": 4132,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "User Story",
+				"System.Title": "As a shopper I can save a card",
+				"System.State": "Active",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-11-27T09:04:00.000Z",
+				"System.ChangedDate": "2025-10-18T11:24:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Rev": 3,
+				"System.AssignedTo": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Tags": "payments; ux",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Scheduling.StoryPoints": 5,
+				"Custom.CustomerImpact": "Low",
+				"System.Description": "<p>As a shopper I can save a card &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4125",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4149",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4152",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4156",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4164",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Related",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4164",
+					"attributes": {
+						"name": "Related"
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/000070fc-1111-4222-8333-00000000d1d4",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30396,
+						"resourceCreatedDate": "2025-11-29T11:18:00.000Z",
+						"comment": ""
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4132"
+		},
+		{
+			"id": 4134,
+			"rev": 1,
+			"fields": {
+				"System.Id": 4134,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "User Story",
+				"System.Title": "As a shopper I can remove a saved card",
+				"System.State": "New",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 13",
+				"System.CreatedDate": "2025-11-29T11:18:00.000Z",
+				"System.ChangedDate": "2025-10-20T13:38:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Rev": 1,
+				"System.AssignedTo": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Tags": "payments",
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Scheduling.StoryPoints": 3,
+				"System.Description": "<div>As a shopper I can remove a saved card.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4125",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Dependency-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4132",
+					"attributes": {
+						"name": "Successor"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4134"
+		},
+		{
+			"id": 4137,
+			"rev": 5,
+			"fields": {
+				"System.Id": 4137,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "User Story",
+				"System.Title": "Guest can check out with email only",
+				"System.State": "Closed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 11",
+				"System.CreatedDate": "2025-12-02T14:39:00.000Z",
+				"System.ChangedDate": "2025-10-23T16:59:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"System.Rev": 5,
+				"System.AssignedTo": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"System.Tags": "checkout",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Scheduling.StoryPoints": 8,
+				"Microsoft.VSTS.Common.ClosedDate": "2025-10-18T11:24:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-11-02T08:09:00.000Z",
+				"System.Description": "<div>Guest can check out with email only.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4128",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4158",
+					"attributes": {
+						"name": "Child"
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/0000711f-1111-4222-8333-00000000d215",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30411,
+						"resourceCreatedDate": "2025-12-04T16:53:00.000Z",
+						"comment": ""
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/00007120-1111-4222-8333-00000000d216",
+					"attributes": {
+						"name": "console-log.txt",
+						"resourceSize": 30412,
+						"resourceCreatedDate": "2025-12-04T16:53:00.000Z",
+						"comment": ""
+					}
+				},
+				{
+					"rel": "ArtifactLink",
+					"url": "vstfs:///Git/Commit/aaaa%2fbbbb%2f4137",
+					"attributes": {
+						"name": "Fixed in Commit"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4137"
+		},
+		{
+			"id": 4140,
+			"rev": 4,
+			"fields": {
+				"System.Id": 4140,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "User Story",
+				"System.Title": "Show delivery estimate on cart",
+				"System.State": "Resolved",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Cart",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-10-06T08:00:00.000Z",
+				"System.ChangedDate": "2025-10-26T10:20:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Rev": 4,
+				"System.AssignedTo": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Tags": "cart",
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Scheduling.StoryPoints": 3,
+				"Microsoft.VSTS.Common.ResolvedDate": "2025-10-18T11:24:00.000Z",
+				"Custom.CustomerImpact": "Low",
+				"System.Description": "<div><b>Context</b></div><ul><li>Requested by support</li><li>Seen by 1 customers</li></ul><p>See <a href=\"https://wiki.contoso.example/x/4140\">the wiki page</a>.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4122",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Hierarchy-Forward",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4161",
+					"attributes": {
+						"name": "Child"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4140"
+		},
+		{
+			"id": 4144,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4144,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "User Story",
+				"System.Title": "Legacy wishlist sync",
+				"System.State": "Removed",
+				"System.Reason": "Removed from the backlog",
+				"System.AreaPath": "Contoso Web\\Frontend",
+				"System.IterationPath": "Contoso Web",
+				"System.CreatedDate": "2025-10-10T12:28:00.000Z",
+				"System.ChangedDate": "2025-10-30T14:48:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Project Collection Build Service (contoso)",
+					"uniqueName": "Build\\a1b2c3d4"
+				},
+				"System.Rev": 2,
+				"System.Tags": "legacy",
+				"Microsoft.VSTS.Common.Priority": 4,
+				"Microsoft.VSTS.Scheduling.StoryPoints": 5,
+				"Custom.CustomerImpact": "High",
+				"System.Description": "<p>Legacy wishlist sync &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4122",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "ArtifactLink",
+					"url": "vstfs:///Git/Commit/aaaa%2fbbbb%2f4144",
+					"attributes": {
+						"name": "Fixed in Commit"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4144"
+		},
+		{
+			"id": 4146,
+			"rev": 3,
+			"fields": {
+				"System.Id": 4146,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "User Story",
+				"System.Title": "Order history filters",
+				"System.State": "Resolved",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Account",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-10-12T14:42:00.000Z",
+				"System.ChangedDate": "2025-11-01T16:02:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"System.Rev": 3,
+				"System.AssignedTo": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"System.Tags": "account",
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Scheduling.StoryPoints": 2,
+				"Microsoft.VSTS.Common.ResolvedDate": "2025-10-24T08:06:00.000Z",
+				"System.Description": "<div>Order history filters.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4146"
+		},
+		{
+			"id": 4149,
+			"rev": 3,
+			"fields": {
+				"System.Id": 4149,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Task",
+				"System.Title": "Design card form states",
+				"System.State": "Closed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-10-15T08:03:00.000Z",
+				"System.ChangedDate": "2025-11-04T10:23:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Rev": 3,
+				"System.AssignedTo": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Tags": "design",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 0,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 8,
+				"Microsoft.VSTS.Common.ClosedDate": "2025-10-30T14:48:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-11-14T11:33:00.000Z",
+				"System.Description": "<div>Design card form states.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4132",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/00007173-1111-4222-8333-00000000d2b1",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30447,
+						"resourceCreatedDate": "2025-10-17T10:17:00.000Z",
+						"comment": ""
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4149"
+		},
+		{
+			"id": 4152,
+			"rev": 3,
+			"fields": {
+				"System.Id": 4152,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Task",
+				"System.Title": "Implement tokenised card API call",
+				"System.State": "Active",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-10-18T11:24:00.000Z",
+				"System.ChangedDate": "2025-11-07T13:44:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Rev": 3,
+				"System.AssignedTo": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Tags": "payments",
+				"Microsoft.VSTS.Common.Priority": 1,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 4,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 4,
+				"Custom.CustomerImpact": "High",
+				"System.Description": "<div>Implement tokenised card API call.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4132",
+					"attributes": {
+						"name": "Parent"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4152"
+		},
+		{
+			"id": 4156,
+			"rev": 1,
+			"fields": {
+				"System.Id": 4156,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Task",
+				"System.Title": "Write card form unit tests",
+				"System.State": "New",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-10-22T15:52:00.000Z",
+				"System.ChangedDate": "2025-11-11T08:12:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Rev": 1,
+				"System.AssignedTo": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 4,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 4,
+				"Custom.CustomerImpact": "Low",
+				"System.Description": "<p>Write card form unit tests &amp; related work.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4132",
+					"attributes": {
+						"name": "Parent"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4156"
+		},
+		{
+			"id": 4158,
+			"rev": 3,
+			"fields": {
+				"System.Id": 4158,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Task",
+				"System.Title": "Guest email validation",
+				"System.State": "Closed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 11",
+				"System.CreatedDate": "2025-10-24T08:06:00.000Z",
+				"System.ChangedDate": "2025-11-13T10:26:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"System.Rev": 3,
+				"System.AssignedTo": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 3,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 0,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 8,
+				"Microsoft.VSTS.Common.ClosedDate": "2025-11-08T14:51:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-11-23T11:36:00.000Z",
+				"System.Description": "<div>Guest email validation.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4137",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "ArtifactLink",
+					"url": "vstfs:///Git/Commit/aaaa%2fbbbb%2f4158",
+					"attributes": {
+						"name": "Fixed in Commit"
+					}
+				},
+				{
+					"rel": "Hyperlink",
+					"url": "https://wiki.contoso.example/x/4158",
+					"attributes": {
+						"comment": "wiki"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4158"
+		},
+		{
+			"id": 4161,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4161,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Task",
+				"System.Title": "Delivery estimate component",
+				"System.State": "Removed",
+				"System.Reason": "Removed from the backlog",
+				"System.AreaPath": "Contoso Web\\Frontend\\Cart",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-10-27T11:27:00.000Z",
+				"System.ChangedDate": "2025-11-16T13:47:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Elena Garcia",
+					"uniqueName": "elena.garcia@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 4,
+				"Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+				"Microsoft.VSTS.Scheduling.RemainingWork": 4,
+				"Microsoft.VSTS.Scheduling.CompletedWork": 4,
+				"System.Description": "<div>Delivery estimate component.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4140",
+					"attributes": {
+						"name": "Parent"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4161"
+		},
+		{
+			"id": 4164,
+			"rev": 4,
+			"fields": {
+				"System.Id": 4164,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Bug",
+				"System.Title": "Card number field loses focus on iOS",
+				"System.State": "Active",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-10-30T14:48:00.000Z",
+				"System.ChangedDate": "2025-11-19T16:08:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Rev": 4,
+				"System.AssignedTo": {
+					"displayName": "Bob Carter",
+					"uniqueName": "bob.carter@contoso.example"
+				},
+				"System.Tags": "ios; regression",
+				"Microsoft.VSTS.Common.Priority": 1,
+				"Microsoft.VSTS.Common.Severity": "2 - High",
+				"Custom.CustomerImpact": "Low",
+				"System.Description": "<div>Card number field loses focus on iOS.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4132",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "System.LinkTypes.Duplicate-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4168",
+					"attributes": {
+						"name": "Duplicate Of"
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/000071dc-1111-4222-8333-00000000d374",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30492,
+						"resourceCreatedDate": "2025-11-01T16:02:00.000Z",
+						"comment": ""
+					}
+				},
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/000071dd-1111-4222-8333-00000000d375",
+					"attributes": {
+						"name": "console-log.txt",
+						"resourceSize": 30493,
+						"resourceCreatedDate": "2025-11-01T16:02:00.000Z",
+						"comment": ""
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4164"
+		},
+		{
+			"id": 4168,
+			"rev": 5,
+			"fields": {
+				"System.Id": 4168,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Bug",
+				"System.Title": "Keyboard dismisses while typing card number",
+				"System.State": "Closed",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 11",
+				"System.CreatedDate": "2025-11-03T09:16:00.000Z",
+				"System.ChangedDate": "2025-11-23T11:36:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"System.Rev": 5,
+				"System.AssignedTo": {
+					"displayName": "Chitra Rao",
+					"uniqueName": "chitra.rao@contoso.example"
+				},
+				"System.Tags": "ios",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Common.Severity": "3 - Medium",
+				"Microsoft.VSTS.Common.ClosedDate": "2025-11-18T15:01:00.000Z",
+				"Microsoft.VSTS.Scheduling.TargetDate": "2025-12-03T12:46:00.000Z",
+				"Custom.CustomerImpact": "High",
+				"System.Description": "<p>Keyboard dismisses while typing card number &amp; related work.</p>"
+			},
+			"relations": [],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4168"
+		},
+		{
+			"id": 4170,
+			"rev": 4,
+			"fields": {
+				"System.Id": 4170,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Bug",
+				"System.Title": "Totals rounding off by one cent",
+				"System.State": "Resolved",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Cart",
+				"System.IterationPath": "Contoso Web\\Sprint 12",
+				"System.CreatedDate": "2025-11-05T11:30:00.000Z",
+				"System.ChangedDate": "2025-11-25T13:50:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"System.Rev": 4,
+				"System.AssignedTo": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"System.Tags": "pricing",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Common.Severity": "2 - High",
+				"Microsoft.VSTS.Common.ResolvedDate": "2025-11-17T14:54:00.000Z",
+				"System.Description": "<div><b>Context</b></div><ul><li>Requested by support</li><li>Seen by 4 customers</li></ul><p>See <a href=\"https://wiki.contoso.example/x/4170\">the wiki page</a>.</p>"
+			},
+			"relations": [
+				{
+					"rel": "AttachedFile",
+					"url": "https://dev.azure.com/contoso/_apis/wit/attachments/00007206-1111-4222-8333-00000000d3c2",
+					"attributes": {
+						"name": "checkout-flow.png",
+						"resourceSize": 30510,
+						"resourceCreatedDate": "2025-11-07T13:44:00.000Z",
+						"comment": ""
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4170"
+		},
+		{
+			"id": 4173,
+			"rev": 1,
+			"fields": {
+				"System.Id": 4173,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Bug",
+				"System.Title": "Cart badge shows stale count",
+				"System.State": "New",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Cart",
+				"System.IterationPath": "Contoso Web",
+				"System.CreatedDate": "2025-11-08T14:51:00.000Z",
+				"System.ChangedDate": "2025-11-28T16:11:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Project Collection Build Service (contoso)",
+					"uniqueName": "Build\\a1b2c3d4"
+				},
+				"System.Rev": 1,
+				"Microsoft.VSTS.Common.Severity": "4 - Low",
+				"System.Description": "<div>Cart badge shows stale count.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4173"
+		},
+		{
+			"id": 4176,
+			"rev": 2,
+			"fields": {
+				"System.Id": 4176,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "Bug",
+				"System.Title": "Duplicate of badge issue",
+				"System.State": "Removed",
+				"System.Reason": "Removed from the backlog",
+				"System.AreaPath": "Contoso Web\\Frontend\\Cart",
+				"System.IterationPath": "Contoso Web\\Sprint 11",
+				"System.CreatedDate": "2025-11-11T08:12:00.000Z",
+				"System.ChangedDate": "2025-12-01T10:32:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"System.Rev": 2,
+				"System.AssignedTo": {
+					"displayName": "Alice Nguyen",
+					"uniqueName": "alice.nguyen@contoso.example"
+				},
+				"Microsoft.VSTS.Common.Priority": 4,
+				"Microsoft.VSTS.Common.Severity": "4 - Low",
+				"Custom.CustomerImpact": "High",
+				"System.Description": "<div>Duplicate of badge issue.<br>Acceptance: behaves as agreed in refinement.</div>"
+			},
+			"relations": [],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4176"
+		},
+		{
+			"id": 4180,
+			"rev": 1,
+			"fields": {
+				"System.Id": 4180,
+				"System.TeamProject": "Contoso Web",
+				"System.WorkItemType": "User Story",
+				"System.Title": "Apple Pay on mobile web",
+				"System.State": "New",
+				"System.Reason": "Implementation started",
+				"System.AreaPath": "Contoso Web\\Frontend\\Checkout",
+				"System.IterationPath": "Contoso Web\\Sprint 13",
+				"System.CreatedDate": "2025-11-15T12:40:00.000Z",
+				"System.ChangedDate": "2025-10-06T14:00:00.000Z",
+				"System.CreatedBy": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Rev": 1,
+				"System.AssignedTo": {
+					"displayName": "Dmitri Volkov",
+					"uniqueName": "dmitri.volkov@contoso.example"
+				},
+				"System.Tags": "payments; mobile",
+				"Microsoft.VSTS.Common.Priority": 2,
+				"Microsoft.VSTS.Scheduling.StoryPoints": 13,
+				"Custom.CustomerImpact": "Low",
+				"System.Description": "<div><b>Context</b></div><ul><li>Requested by support</li><li>Seen by 5 customers</li></ul><p>See <a href=\"https://wiki.contoso.example/x/4180\">the wiki page</a>.</p>"
+			},
+			"relations": [
+				{
+					"rel": "System.LinkTypes.Hierarchy-Reverse",
+					"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4125",
+					"attributes": {
+						"name": "Parent"
+					}
+				},
+				{
+					"rel": "Hyperlink",
+					"url": "https://wiki.contoso.example/x/4180",
+					"attributes": {
+						"comment": "wiki"
+					}
+				}
+			],
+			"url": "https://dev.azure.com/contoso/_apis/wit/workItems/4180"
+		}
+	]
+}

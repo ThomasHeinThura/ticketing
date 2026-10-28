@@ -80,10 +80,8 @@ import {
 type ApiKeyContextValue = AuthenticatedApiKey | undefined;
 
 function credentialKindFor(apiKey: ApiKeyContextValue): CredentialKind {
-  // Known gap (resolve-identity.ts KNOWN GAP 2, S315): `mcp_key` cannot be distinguished
-  // from `api_key` yet — no schema column carries `is_mcp`. Every key-credentialed request
-  // resolves to `"api_key"` here, the same limitation Slice 1's own loader documents.
-  return apiKey ? "api_key" : "session";
+  // MC-14: `is_mcp` is read from the key's `api_key` extension row at authentication.
+  return apiKey ? (apiKey.isMcp ? "mcp_key" : "api_key") : "session";
 }
 
 /** Best-effort router group for the per-router summary: the registry's own source label. */

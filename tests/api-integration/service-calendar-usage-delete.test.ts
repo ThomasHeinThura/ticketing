@@ -50,7 +50,8 @@ afterEach(async () => disarmCalendarDeleteAuditFailure());
 async function makeCalendar(workspaceId: string, actorId: string) {
   return createCalendar({
     workspaceId,
-    name: "Unused calendar",
+    // Catalogue keys derive from the name and are unique per workspace (0193).
+    name: `Unused calendar ${randomUUID().slice(0, 8)}`,
     timezone: "UTC",
     windows,
     holidays: [],
@@ -108,6 +109,8 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
       .set({
         kind: "managed_service",
         supportLevel: "L1",
+        // A direct project reference is an override; inherit would use the workspace default.
+        serviceCalendarMode: "override",
         serviceCalendarId: calendar.id,
       })
       .where(eq(schema.projectTable.id, project.id));
@@ -236,6 +239,8 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
       .set({
         kind: "managed_service",
         supportLevel: "L1",
+        // A direct project reference is an override; inherit would use the workspace default.
+        serviceCalendarMode: "override",
         serviceCalendarId: calendar.id,
       })
       .where(eq(schema.projectTable.id, project.id));
@@ -312,6 +317,8 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
       .set({
         kind: "managed_service",
         supportLevel: "L1",
+        // A direct project reference is an override; inherit would use the workspace default.
+        serviceCalendarMode: "override",
         serviceCalendarId: calendar.id,
       })
       .where(eq(schema.projectTable.id, project.id));
@@ -333,7 +340,12 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
 
     await db
       .update(schema.projectTable)
-      .set({ kind: "project", supportLevel: null, serviceCalendarId: null })
+      .set({
+        kind: "project",
+        supportLevel: null,
+        serviceCalendarMode: "inherit",
+        serviceCalendarId: null,
+      })
       .where(eq(schema.projectTable.id, project.id));
     const approved = await app.request(
       `/api/me/pending-actions/${pending.pendingActionId}/approve`,
@@ -618,6 +630,8 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
       .set({
         kind: "managed_service",
         supportLevel: "L1",
+        // A direct project reference is an override; inherit would use the workspace default.
+        serviceCalendarMode: "override",
         serviceCalendarId: used.id,
       })
       .where(eq(schema.projectTable.id, project.id));
@@ -658,6 +672,8 @@ describe("API integration: service-calendar usage and CAL-9 deletion", () => {
       .set({
         kind: "managed_service",
         supportLevel: "L1",
+        // A direct project reference is an override; inherit would use the workspace default.
+        serviceCalendarMode: "override",
         serviceCalendarId: calendar.id,
       })
       .where(eq(schema.projectTable.id, project.id));

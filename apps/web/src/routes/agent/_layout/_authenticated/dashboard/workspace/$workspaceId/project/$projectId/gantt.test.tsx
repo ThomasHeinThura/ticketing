@@ -1,4 +1,3 @@
-import enUS from "@i18n/en-US.json";
 import {
   act,
   cleanup,
@@ -10,6 +9,8 @@ import {
 import type { ComponentType, ReactNode } from "react";
 import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
+import { translate } from "@/test/en-translation";
 import type Task from "@/types/task";
 import { Route } from "./gantt";
 
@@ -84,9 +85,43 @@ vi.mock("@tanstack/react-router", () => ({
     },
 }));
 
+// P5: the timeline reads the resolved feature flags (module grouping) and, only when asked,
+// the module list and the dependency edges. `agile` holds what those queries return.
+const agile = vi.hoisted(() => ({
+  modules: false,
+  moduleList: [] as Array<{ id: string; name: string }>,
+  edges: [] as Array<{
+    id: string;
+    type: "blocks" | "precedes";
+    sourceKey: string;
+    targetKey: string;
+  }>,
+  queryKeys: [] as unknown[][],
+}));
+vi.mock("@/hooks/queries/agile/use-agile-features", () => ({
+  default: () => ({
+    features: { cycles: false, modules: agile.modules, estimates: false },
+    isLoading: false,
+  }),
+}));
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQuery: (options: { queryKey: unknown[]; enabled?: boolean }) => {
+      if (options.enabled !== false) agile.queryKeys.push(options.queryKey);
+      if (options.enabled === false) return { data: undefined };
+      if (options.queryKey[1] === "modules")
+        return { data: { data: agile.moduleList } };
+      if (options.queryKey[1] === "dependencies") return { data: agile.edges };
+      return { data: undefined };
+    },
+  };
+});
+
 const useGetTasks = vi.fn();
-vi.mock("@/hooks/queries/task/use-get-tasks", () => ({
-  useGetTasks: (projectId: string) => useGetTasks(projectId),
+vi.mock("@/hooks/queries/work-item/use-schedule-project", () => ({
+  useScheduleProject: (projectId: string) => useGetTasks(projectId),
 }));
 
 vi.mock("@taskdesk/ui", async (importOriginal) => {
@@ -100,11 +135,30 @@ vi.mock("@/store/user-preferences", () => ({
   ) => selector({ weekStartsOn: 0 }),
 }));
 
+const viewFeature = vi.hoisted(() => ({
+  enabled: true as boolean | undefined,
+}));
+// Locale files are regenerated from i18n/en-US.json by the coordinator; the state itself is
+// covered by FeatureOff's own keys.
+vi.mock("@/components/agile/feature-off", () => ({
+  FeatureOff: ({ feature }: { feature: string }) => (
+    <div data-testid={`feature-off-${feature}`} />
+  ),
+}));
+vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
+  useProjectFeatureState: () => viewFeature.enabled,
+}));
 vi.mock("@/components/common/project-layout", () => ({
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/components/task/task-details-sheet", () => ({
+vi.mock("@/components/work-item/work-item-side-pane", () => ({
+  default: () => null,
+}));
+
+// The lazy selection switch needs a query client and the capability queries; these tests are
+// about the timeline, and an async test would otherwise let that chunk load and fail.
+vi.mock("@/components/work-item/work-item-selection-toggle", () => ({
   default: () => null,
 }));
 
@@ -112,8 +166,8 @@ vi.mock("@/components/page-title", () => ({
   default: () => null,
 }));
 
-vi.mock("@/components/gantt/gantt-task-bar", () => ({
-  GanttTaskBar: ({ task }: { task: { title: string } }) => (
+vi.mock("@/components/gantt/canonical-gantt-task-bar", () => ({
+  CanonicalGanttTaskBar: ({ task }: { task: { title: string } }) => (
     <div>{task.title}</div>
   ),
 }));
@@ -121,30 +175,27 @@ vi.mock("@/components/gantt/gantt-task-bar", () => ({
 // Resolves against the real en-US bundle, so the assertions fail if the
 // jumpToToday key (or its interpolated siblings) stops matching what the
 // component actually requests.
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async () => ({
+  ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
-      const [namespace, path] = key.split(":");
-      const source = path
-        .split(".")
-        .reduce<unknown>(
-          (accumulator, part) =>
-            (accumulator as Record<string, unknown> | undefined)?.[part],
-          (enUS as Record<string, unknown>)[namespace],
-        );
-
-      if (typeof source !== "string") return key;
-
-      return source.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
-        String(options?.[name] ?? `{{${name}}}`),
-      );
+      return translate(key, options);
     },
   }),
 }));
 
+const agentWorkItems = getDefaultAgentTerm(undefined, "work_item", 2);
+const agentEpic = getDefaultAgentTerm(undefined, "epic", 1);
+const agentModule = getDefaultAgentTerm(undefined, "module", 1);
+
 const GanttRoute = (Route as unknown as { component: ComponentType }).component;
 
-function makeTask(overrides: Partial<Task>): Task {
+type TestScheduleTask = Task & {
+  epic: { id: string; key: string; title: string } | null;
+  epicAvailable: boolean;
+};
+
+function makeTask(overrides: Partial<TestScheduleTask>): TestScheduleTask {
   return {
     id: "task-1",
     title: "Task",
@@ -161,6 +212,8 @@ function makeTask(overrides: Partial<Task>): Task {
     assigneeId: null,
     assigneeName: null,
     projectId: "project-1",
+    epic: null,
+    epicAvailable: true,
     ...overrides,
   };
 }
@@ -188,6 +241,10 @@ beforeEach(() => {
   vi.setSystemTime(new Date(2026, 7, 31));
   window.history.replaceState({}, "", "/gantt");
   routeState.search = {};
+  agile.modules = false;
+  agile.moduleList = [];
+  agile.edges = [];
+  agile.queryKeys = [];
 });
 
 afterEach(() => {
@@ -210,6 +267,18 @@ function syncRouteSearchFromUrl() {
   };
   for (const listener of routeState.listeners) listener();
 }
+
+describe("timeline feature flag (P4R1-M2)", () => {
+  it("shows the feature-off state instead of the view while the flag is off", () => {
+    viewFeature.enabled = false;
+    try {
+      render(<GanttRoute />);
+      expect(screen.getByTestId("feature-off-timeline")).toBeInTheDocument();
+    } finally {
+      viewFeature.enabled = true;
+    }
+  });
+});
 
 describe("Gantt jump-to-today", () => {
   it("centers a new project after a search stops hiding its timeline", () => {
@@ -360,7 +429,7 @@ describe("Gantt jump-to-today", () => {
       screen.getByPlaceholderText("Search scheduled tickets..."),
     ).toHaveValue("no such task");
     expect(
-      screen.getByText('No scheduled tasks match "no such task"'),
+      screen.getByText(`No scheduled ${agentWorkItems} match "no such task"`),
     ).toBeInTheDocument();
     expect(button).toBeDisabled();
   });
@@ -382,7 +451,7 @@ describe("Gantt jump-to-today", () => {
     const search = screen.getByPlaceholderText("Search scheduled tickets...");
     expect(search).toHaveValue("no such task");
     expect(
-      screen.getByText('No scheduled tasks match "no such task"'),
+      screen.getByText(`No scheduled ${agentWorkItems} match "no such task"`),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
@@ -479,5 +548,321 @@ describe("Gantt jump-to-today", () => {
     // component is correct.
     const container = screen.getByTestId("gantt-scroll-container");
     expect(container.style.scrollPaddingLeft).toBe("20rem");
+  });
+});
+
+describe("Gantt loading, error, empty and filter states (VW-7, VW-34)", () => {
+  it("shows a row skeleton while the schedule loads, not the empty state", () => {
+    useGetTasks.mockReturnValue({ data: undefined, isLoading: true });
+    render(<GanttRoute />);
+
+    expect(screen.getByTestId("gantt-loading")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    expect(screen.queryByTestId("gantt-empty")).not.toBeInTheDocument();
+  });
+
+  it("shows an error alert with a working retry when the load fails", () => {
+    const refetch = vi.fn();
+    useGetTasks.mockReturnValue({ data: undefined, isError: true, refetch });
+    render(<GanttRoute />);
+
+    expect(screen.getByTestId("gantt-error")).toBeInTheDocument();
+    expect(screen.queryByTestId("gantt-empty")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the plain empty state for a project with nothing scheduled", () => {
+    useGetTasks.mockReturnValue({
+      data: {
+        id: "project-1",
+        name: "Roadmap",
+        slug: "RM",
+        columns: [],
+        plannedTasks: [],
+        archivedTasks: [],
+      },
+    });
+    render(<GanttRoute />);
+
+    expect(screen.getByTestId("gantt-empty")).toHaveTextContent(
+      `No scheduled ${agentWorkItems}`,
+    );
+    expect(
+      screen.queryByTestId("schedule-filter-chips"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says the view is filtered, with a removable chip, when the URL filter matches nothing", () => {
+    routeState.search = { filter: "priority:high" };
+    useGetTasks.mockReturnValue({
+      data: {
+        id: "project-1",
+        name: "Roadmap",
+        slug: "RM",
+        columns: [],
+        plannedTasks: [],
+        archivedTasks: [],
+      },
+    });
+    render(<GanttRoute />);
+
+    expect(screen.getByTestId("gantt-empty")).toHaveTextContent(
+      `No ${agentWorkItems} match this filter`,
+    );
+    expect(screen.getByTestId("schedule-filter-chips")).toHaveTextContent(
+      "Priority",
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove Priority filter" }),
+    );
+    expect(routeState.search).not.toHaveProperty("filter");
+  });
+});
+
+describe("Gantt grouping (VW-27, VW-1)", () => {
+  function mockAssignedTasks() {
+    useGetTasks.mockReturnValue({
+      data: {
+        id: "project-1",
+        name: "Roadmap",
+        slug: "RM",
+        columns: [
+          {
+            id: "col-1",
+            name: "In Progress",
+            tasks: [
+              makeTask({
+                id: "t-1",
+                title: "Bo task",
+                number: 1,
+                assigneeId: "p-bo",
+                assigneeName: "Bo",
+                startDate: "2026-08-28",
+                dueDate: "2026-09-02",
+              }),
+              makeTask({
+                id: "t-2",
+                title: "Loose task",
+                number: 2,
+                startDate: "2026-08-29",
+                dueDate: "2026-09-03",
+              }),
+              makeTask({
+                id: "t-3",
+                title: "Ann task",
+                number: 3,
+                assigneeId: "p-ann",
+                assigneeName: "Ann",
+                startDate: "2026-08-30",
+                dueDate: "2026-09-04",
+              }),
+            ],
+          },
+        ],
+        plannedTasks: [],
+        archivedTasks: [],
+      },
+    });
+  }
+
+  it("shows no group headings by default", () => {
+    mockAssignedTasks();
+    render(<GanttRoute />);
+    expect(screen.queryAllByTestId("gantt-group-row")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Group" })).toBeInTheDocument();
+  });
+
+  it("groups the bars by assignee from the URL, unassigned last", () => {
+    routeState.search = { group: "assignee" };
+    mockAssignedTasks();
+    render(<GanttRoute />);
+    const headings = screen
+      .getAllByTestId("gantt-group-row")
+      .map((row) => row.querySelector("h2")?.textContent);
+    expect(headings).toEqual(["Ann", "Bo", "Unassigned"]);
+    expect(
+      screen.getByRole("button", { name: "Assignee" }),
+    ).toBeInTheDocument();
+  });
+
+  it("groups by the server-resolved epic, keeps None last, and exposes unavailable ancestry", () => {
+    routeState.search = { group: "epic" };
+    useGetTasks.mockReturnValue({
+      data: {
+        id: "project-1",
+        name: "Roadmap",
+        slug: "RM",
+        columns: [
+          {
+            id: "col-1",
+            name: "In Progress",
+            tasks: [
+              makeTask({
+                id: "RM-1",
+                title: "Epic root",
+                number: 1,
+                epic: { id: "epic-1", key: "RM-1", title: "Launch" },
+                epicAvailable: true,
+                startDate: "2026-08-28",
+                dueDate: "2026-09-02",
+              }),
+              makeTask({
+                id: "RM-2",
+                title: "Child",
+                number: 2,
+                epic: { id: "epic-1", key: "RM-1", title: "Launch" },
+                epicAvailable: true,
+                startDate: "2026-08-29",
+                dueDate: "2026-09-03",
+              }),
+              makeTask({
+                id: "RM-3",
+                title: "Hidden ancestor",
+                number: 3,
+                epic: null,
+                epicAvailable: false,
+                startDate: "2026-08-30",
+                dueDate: "2026-09-04",
+              }),
+              makeTask({
+                id: "RM-4",
+                title: "No epic",
+                number: 4,
+                epic: null,
+                epicAvailable: true,
+                startDate: "2026-08-31",
+                dueDate: "2026-09-05",
+              }),
+            ],
+          },
+        ],
+        plannedTasks: [],
+        archivedTasks: [],
+      },
+    });
+    render(<GanttRoute />);
+    const headings = screen
+      .getAllByTestId("gantt-group-row")
+      .map((row) => row.querySelector("h2")?.textContent);
+    expect(headings).toEqual([
+      "Launch",
+      `Unavailable ${agentEpic}`,
+      `No ${agentEpic}`,
+    ]);
+    expect(screen.getAllByText("Epic root")).toHaveLength(2);
+    expect(screen.getAllByText("Child")).toHaveLength(2);
+    expect(screen.getAllByText("Hidden ancestor")).toHaveLength(2);
+  });
+
+  it("writes the grouping to the URL and removes it again when set back to none", async () => {
+    // The menu opens asynchronously, which the faked clock would never advance.
+    vi.useRealTimers();
+    mockAssignedTasks();
+    render(<GanttRoute />);
+    fireEvent.click(screen.getByRole("button", { name: "Group" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Assignee" }));
+    expect(routeState.search).toMatchObject({ group: "assignee" });
+    fireEvent.click(screen.getByRole("button", { name: "Assignee" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "None" }));
+    expect(routeState.search).not.toHaveProperty("group");
+  });
+});
+
+describe("Gantt module grouping and dependency arrows (VW-27, VW-28)", () => {
+  function mockModuleTasks() {
+    useGetTasks.mockReturnValue({
+      data: {
+        id: "project-1",
+        name: "Roadmap",
+        slug: "RM",
+        columns: [
+          {
+            id: "col-1",
+            name: "In Progress",
+            tasks: [
+              makeTask({
+                id: "RM-1",
+                title: "First",
+                number: 1,
+                moduleId: "m-checkout",
+                startDate: "2026-08-28",
+                dueDate: "2026-09-02",
+              }),
+              makeTask({
+                id: "RM-2",
+                title: "Loose",
+                number: 2,
+                startDate: "2026-08-29",
+                dueDate: "2026-09-03",
+              }),
+            ],
+          },
+        ],
+        plannedTasks: [],
+        archivedTasks: [],
+      },
+    });
+  }
+
+  it("groups by module when feature.modules is on, with the no-module bucket last", () => {
+    agile.modules = true;
+    agile.moduleList = [{ id: "m-checkout", name: "Checkout" }];
+    routeState.search = { group: "module" };
+    mockModuleTasks();
+    render(<GanttRoute />);
+    const headings = screen
+      .getAllByTestId("gantt-group-row")
+      .map((row) => row.querySelector("h2")?.textContent);
+    expect(headings).toEqual(["Checkout", `No ${agentModule}`]);
+  });
+
+  it("ignores group=module when the modules feature is off", () => {
+    agile.modules = false;
+    routeState.search = { group: "module" };
+    mockModuleTasks();
+    render(<GanttRoute />);
+    expect(screen.queryAllByTestId("gantt-group-row")).toHaveLength(0);
+  });
+
+  it("does not load or draw dependencies by default", () => {
+    mockModuleTasks();
+    render(<GanttRoute />);
+    expect(agile.queryKeys.some((key) => key[1] === "dependencies")).toBe(
+      false,
+    );
+    expect(screen.queryByTestId("gantt-dependency-arrows")).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Dependencies" })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+  });
+
+  it("loads the edges when deps=1 and the toggle is pressed", () => {
+    routeState.search = { deps: "1" };
+    agile.edges = [
+      { id: "e1", type: "blocks", sourceKey: "RM-1", targetKey: "RM-2" },
+    ];
+    mockModuleTasks();
+    render(<GanttRoute />);
+    expect(agile.queryKeys.some((key) => key[1] === "dependencies")).toBe(true);
+    expect(
+      screen
+        .getByRole("button", { name: "Dependencies" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("writes deps=1 to the URL and removes it again", () => {
+    mockModuleTasks();
+    render(<GanttRoute />);
+    fireEvent.click(screen.getByRole("button", { name: "Dependencies" }));
+    expect(routeState.search).toMatchObject({ deps: "1" });
+    fireEvent.click(screen.getByRole("button", { name: "Dependencies" }));
+    expect(routeState.search).not.toHaveProperty("deps");
   });
 });

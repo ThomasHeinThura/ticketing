@@ -12,7 +12,16 @@ import {
   submitAs,
 } from "./helpers/intake-http";
 
-const MESSAGE_KEYS = ["actorType", "authorId", "body", "createdAt", "id"];
+// `P2R1-05`: a system message carries its stable reason code and parameters (null otherwise).
+const MESSAGE_KEYS = [
+  "actorType",
+  "authorId",
+  "body",
+  "createdAt",
+  "id",
+  "reasonCode",
+  "reasonParams",
+];
 const WORK_ITEM_KEYS = [
   "id",
   "key",
@@ -58,6 +67,8 @@ describe("staff intake responses expose only declared fields", () => {
       "requestType",
       "requester",
       "submission",
+      // IQ-6 duplicate suggestions on each queue row.
+      "suggestedDuplicates",
       "summary",
     ]);
     expect(sortedKeys(row.submission)).toEqual([
@@ -87,6 +98,7 @@ describe("staff intake responses expose only declared fields", () => {
       "messages",
       "ref",
       "requestType",
+      "satisfaction",
       "submission",
       "version",
     ]);

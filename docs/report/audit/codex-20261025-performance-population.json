@@ -1,0 +1,43 @@
+{
+	"recordedAt": "2026-10-25T03:06:47.085Z",
+	"method": "Read-only identity-guarded query on an isolated empty performance database; canonical createWorkItem service populated owned fixtures.",
+	"database": {
+		"name": "taskdesk_codex_performance_20261025_test",
+		"port": 62871
+	},
+	"total": 10000,
+	"unique_keys": 10000,
+	"unique_titles": 10000,
+	"first_number": 1,
+	"last_number": 10000,
+	"priorities": [
+		{
+			"priority": "high",
+			"count": 2500
+		},
+		{
+			"priority": "low",
+			"count": 2500
+		},
+		{
+			"priority": "medium",
+			"count": 2500
+		},
+		{
+			"priority": "urgent",
+			"count": 2500
+		}
+	],
+	"creation": {
+		"parallelAttempt": "Four-worker sustained same-project writes reached documented controlled409after119commits; no product concurrency limits changed.",
+		"sequentialResume": 9881,
+		"originalCustomerRowsCopied": 0,
+		"sessionsCopied": 0
+	},
+	"runtime": "Separate port1443 strictTLS Docker runtime using recorded security-image base and mounted current compiled bundles; not a final shipping-image claim.",
+	"browserStatus": "pending",
+	"limitations": [
+		"CLI creator published no live WebSocket frames because its adapter was not initialized; bounded realtime.failure messages retained privately, durable mutations/outbox committed.",
+		"The browser API paginates; a persisted10kpopulation is distinct from the currently loaded client rows."
+	]
+}

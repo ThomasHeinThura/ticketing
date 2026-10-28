@@ -190,16 +190,10 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
         ),
       ),
   );
-  const legacyReadableRoles = Object.entries(BUILT_IN_ROLES)
-    .filter(
-      ([key, role]) =>
-        key !== "instance_admin" &&
-        role.scope === "workspace" &&
-        expandCapabilities(role.capabilities, {
-          tier: roleScopeTier("workspace"),
-        }).has("work_item:read"),
-    )
-    .map(([key]) => key);
+  // The `workspace_member.role` key points at a canonical workspace-scope `role` row (owner
+  // decision, 23 Oct): `owner` stays compiled, every other key reads its row's capabilities. A
+  // custom row squatting on a built-in key is never trusted as that built-in (issue #318).
+  const builtInKeys = Object.keys(BUILT_IN_ROLES);
   const legacyWorkspaceRoleCanRead = exists(
     executor
       .select({ id: schema.workspaceUserTable.id })
@@ -208,20 +202,71 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
         and(
           eq(schema.workspaceUserTable.userId, userId),
           eq(schema.workspaceUserTable.workspaceId, projectTable.workspaceId),
-          sql`${schema.workspaceUserTable.role} in (${sql.join(
-            legacyReadableRoles.map((key) => sql`${key}`),
-            sql`, `,
-          )})`,
           sql`not exists (select 1 from ${schema.workspaceUserTable} duplicate_member
           where duplicate_member.user_id = ${userId}
           and duplicate_member.workspace_id = ${projectTable.workspaceId}
           and duplicate_member.id <> ${schema.workspaceUserTable.id})`,
-          sql`(${schema.workspaceUserTable.role} = 'owner' or exists (
-          select 1 from ${schema.workspaceRoleTable} legacy_role
-          where legacy_role.workspace_id = ${projectTable.workspaceId}
-          and legacy_role.role = ${schema.workspaceUserTable.role}
-          and legacy_role.is_system = true
-        ))`,
+          or(
+            eq(schema.workspaceUserTable.role, "owner"),
+            exists(
+              executor
+                .select({ id: schema.roleTable.id })
+                .from(schema.roleTable)
+                .where(
+                  and(
+                    eq(schema.roleTable.scope, "workspace"),
+                    eq(schema.roleTable.workspaceId, projectTable.workspaceId),
+                    eq(schema.roleTable.key, schema.workspaceUserTable.role),
+                    or(
+                      eq(schema.roleTable.isSystem, true),
+                      sql`${schema.roleTable.key} not in (${sql.join(
+                        builtInKeys.map((key) => sql`${key}`),
+                        sql`, `,
+                      )})`,
+                    ),
+                    storedTaskRead(
+                      schema.roleTable.capabilities,
+                      roleScopeTier("workspace"),
+                    ),
+                  ),
+                ),
+            ),
+          ),
+        ),
+      ),
+  );
+  // PR-2/PR-3: a project row on an ANCESTOR is the override for this project when there is
+  // none here, so the workspace role must not stand in for it. This SQL does not evaluate the
+  // inherited role itself (conservative: such a caller is simply not matched here, never
+  // widened to their workspace role); the native work-item paths do evaluate it.
+  const ancestorMembership = exists(
+    executor
+      .select({ id: schema.membershipTable.id })
+      .from(schema.membershipTable)
+      .innerJoin(
+        schema.personTable,
+        eq(schema.personTable.id, schema.membershipTable.personId),
+      )
+      .where(
+        and(
+          eq(schema.personTable.userId, userId),
+          eq(schema.membershipTable.scope, "project"),
+          sql`${schema.membershipTable.scopeId} IN (
+            WITH RECURSIVE reach_chain(id, parent_id, depth) AS (
+              SELECT chain_start.id, chain_start.parent_id, 1
+              FROM ${projectTable} AS chain_start
+              WHERE chain_start.id = ${projectTable.id}
+                AND chain_start.workspace_id = ${projectTable.workspaceId}
+              UNION ALL
+              SELECT chain_next.id, chain_next.parent_id, reach_chain.depth + 1
+              FROM ${projectTable} AS chain_next
+              INNER JOIN reach_chain ON chain_next.id = reach_chain.parent_id
+              WHERE chain_next.workspace_id = ${projectTable.workspaceId}
+                AND chain_next.deleted_at IS NULL
+                AND reach_chain.depth < 4
+            )
+            SELECT reach_chain.id FROM reach_chain WHERE reach_chain.depth > 1
+          )`,
         ),
       ),
   );
@@ -229,6 +274,7 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
     projectRoleCanRead,
     and(
       sql`not ${projectMembership}`,
+      sql`not ${ancestorMembership}`,
       or(workspaceRoleCanRead, legacyWorkspaceRoleCanRead),
     ),
   );
@@ -334,8 +380,9 @@ export function reachableTaskNotificationPredicate(
 export async function userCanReachTask(
   userId: string,
   taskId: string,
+  executor: Executor = db,
 ): Promise<boolean> {
-  const [row] = await db
+  const [row] = await executor
     .select({ id: taskTable.id })
     .from(taskTable)
     .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
@@ -343,7 +390,7 @@ export async function userCanReachTask(
       and(
         eq(taskTable.id, taskId),
         isNull(projectTable.deletedAt),
-        projectReachPredicate(userId, db),
+        projectReachPredicate(userId, executor),
       ),
     )
     .limit(1);

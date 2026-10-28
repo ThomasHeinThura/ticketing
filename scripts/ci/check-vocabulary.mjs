@@ -1,29 +1,17 @@
 #!/usr/bin/env node
 /**
- * check:vocabulary — every identifier is registered in its authority document.
+ * check:vocabulary — workspace table declarations must be in the maintained schema contract.
+ * Capabilities/roles/elevated routes and complete feature defaults have exact permission
+ * contract tests; the dedicated vocabulary tests also inspect scheduler job registration.
  *
- * AGENTS.md do-not 11: never name a table, column, capability, feature flag, event key or
- * job that is not in its single authoritative document. CLAUDE.md restates the mapping:
+ * Tables: docs/technical/data-model.md
+ * Permissions: docs/technical/permissions.md
+ * Features/plugins: docs/technical/features.md
+ * Events: docs/technical/events.md
+ * Jobs: docs/technical/background-jobs.md
  *
- *   Tables and columns          docs/01-architecture/data-model.md
- *   Capabilities, policy kinds  docs/01-architecture/rbac.md
- *   Feature flags, plugin kinds docs/01-architecture/plugin-architecture.md
- *   Event keys                  docs/01-architecture/events.md
- *   Background jobs             docs/01-architecture/background-jobs.md
- *
- * **Today this checks tables only**, because a table is the one identifier class the
- * repository actually declares in code right now: `pgTable("name", …)`. Capabilities live
- * in packages/permissions (#7), event keys and job names in code that does not exist yet.
- * Each becomes a `classes` entry below the moment its declaration site lands — nothing
- * else about this script changes. Reporting that honestly is deliberate: a gate that scans
- * for identifiers no file declares would pass vacuously and look like coverage.
- *
- * Like check:env, this is a ratchet over the inherited kaneo names. See
- * scripts/ci/vocabulary-baseline.json.
- *
- * Usage:
- *   node scripts/ci/check-vocabulary.mjs
- *   node scripts/ci/check-vocabulary.mjs --prune
+ * Inherited table names retain the existing shrink-only, history-bound baseline.
+ * Usage: node scripts/ci/check-vocabulary.mjs [--prune]
  */
 
 import fs from "node:fs/promises";
@@ -59,7 +47,7 @@ const baselinePath = path.join(repoRoot, "scripts/ci/vocabulary-baseline.json");
 const classes = [
   {
     identifier: "table",
-    authority: "docs/01-architecture/data-model.md",
+    authority: "docs/technical/data-model.md",
     roots: null, // the workspace roots; resolved in main()
     declaration: /pgTable\(\s*["']([^"']+)["']/g,
   },
@@ -139,7 +127,7 @@ async function main() {
         violation(
           locations.join(", "),
           `${group.identifier} \`${name}\` is not named in ${group.authority}. ` +
-            "Add it there first, in the same change (AGENTS.md do-not 11).",
+            "Update the maintained contract in the same change.",
         ),
       );
     }
@@ -179,7 +167,7 @@ async function main() {
                   `${base.sha.slice(0, 9)} (${base.ref}). This list only ever shrinks: ` +
                   `${label} is inherited debt, and appending to it is how a new ` +
                   "violation ships green. Name the identifier in its authority document " +
-                  "instead (AGENTS.md do-not 11).",
+                  "instead.",
               ),
             );
           }
@@ -234,7 +222,7 @@ async function main() {
     );
   }
   warnings.push(
-    "tables only — capabilities, feature flags, event keys and background jobs are added to `classes` as soon as the code that declares them exists.",
+    "table registration checked here; permission, feature, event and scheduler contracts have dedicated checks.",
   );
 
   finish({

@@ -8,9 +8,27 @@ export type Json =
   | Json[]
   | { [key: string]: Json };
 
+/**
+ * A failed API call. `message` is trusted (path and HTTP status only); `detail` is the
+ * server-supplied error text, which can echo user input, so it is carried separately and
+ * wrapped as untrusted content at the output boundary (PA-10).
+ */
+export class TaskDeskApiError extends Error {
+  constructor(
+    message: string,
+    readonly detail: string | null = null,
+    /** HTTP status of the failed call; absent for errors raised by the tool itself. */
+    readonly status: number | null = null,
+  ) {
+    super(message);
+    this.name = "TaskDeskApiError";
+  }
+}
+
 export class TaskDeskClient {
   readonly baseUrl: string;
   private readonly auth: AuthService;
+  private telemetryInFlight = 0;
 
   constructor(options: { baseUrl: string; auth: AuthService }) {
     this.baseUrl = options.baseUrl;
@@ -58,7 +76,7 @@ export class TaskDeskClient {
       }
     }
     if (!res.ok) {
-      let detail: string;
+      let detail: string | null = null;
       if (
         typeof body === "object" &&
         body !== null &&
@@ -68,11 +86,58 @@ export class TaskDeskClient {
         detail = (body as { message: string }).message;
       } else if (typeof body === "string" && body.length > 0) {
         detail = body.length > 500 ? `${body.slice(0, 500)}…` : body;
-      } else {
-        detail = `HTTP ${res.status}`;
       }
-      throw new Error(`${path}: ${detail}`);
+      throw new TaskDeskApiError(
+        `${path}: HTTP ${res.status}`,
+        detail,
+        res.status,
+      );
     }
     return body as T;
+  }
+
+  /** Best-effort bounded client telemetry; failures never affect the tool result. */
+  async reportToolInvocation(input: {
+    invocationId: string;
+    toolName: string;
+    durationMs: number;
+    outcome: "success" | "error";
+  }): Promise<void> {
+    if (!this.auth.usingApiKey || this.telemetryInFlight >= 8) return;
+    this.telemetryInFlight += 1;
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<void>((resolve) => {
+      timeout = setTimeout(() => {
+        controller.abort();
+        resolve();
+      }, 750);
+    });
+    const reporting = (async () => {
+      try {
+        const token = await this.auth.getAccessToken();
+        if (controller.signal.aborted) return;
+        const headers = new Headers({
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        });
+        const response = await fetch(`${this.baseUrl}/api/mcp/tool-reports`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(input),
+          signal: controller.signal,
+        });
+        await response.body?.cancel().catch(() => undefined);
+      } catch {
+        // Client-reported metrics are optional and contain no execution authority.
+      }
+    })();
+    // Keep the slot until the underlying auth/fetch promise settles. The deadline only
+    // detaches the tool call; it must not let permanently hung work evade the cap.
+    void reporting.finally(() => {
+      if (timeout !== undefined) clearTimeout(timeout);
+      this.telemetryInFlight -= 1;
+    });
+    await Promise.race([reporting, timedOut]);
   }
 }

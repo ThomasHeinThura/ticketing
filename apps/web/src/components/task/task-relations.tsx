@@ -1,9 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   Command,
   CommandCollection,
   CommandDialog,
@@ -23,14 +20,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@taskdesk/ui";
-import {
-  ChevronDown,
-  ChevronRight,
-  Link2,
-  Plus,
-  Search,
-  X,
-} from "lucide-react";
+import { Link2, Search, X } from "lucide-react";
 import { Fragment, memo, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
@@ -42,11 +32,13 @@ import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import useGetTaskRelations from "@/hooks/queries/task-relation/use-get-task-relations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getColumnIcon } from "@/lib/column";
 import { getInitials } from "@/lib/get-initials";
 import { toast } from "@/lib/toast";
 import type Task from "@/types/task";
+import RelationsSection from "./relations-section";
 import SubtaskAssigneePopover from "./subtask-assignee-popover";
 import SubtaskStatusPopover from "./subtask-status-popover";
 
@@ -54,6 +46,8 @@ type TaskRelationsProps = {
   taskId: string;
   projectId: string;
   workspaceId: string;
+  /** The work item number; with the project slug it forms the key relation removal needs. */
+  taskNumber?: number | null;
 };
 
 type TaskItem = {
@@ -69,7 +63,12 @@ type TaskGroup = {
   items: TaskItem[];
 };
 
-function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
+function TaskRelations({
+  taskId,
+  projectId,
+  workspaceId,
+  taskNumber,
+}: TaskRelationsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(true);
@@ -92,7 +91,8 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
     workspace?.id ?? "",
   );
   const createRelation = useCreateTaskRelation();
-  const deleteRelation = useDeleteTaskRelation(taskId);
+  const deleteRelation = useDeleteTaskRelation();
+  const openPendingAction = useOpenPendingAction();
   const { canUpdateTasks } = useWorkspacePermission();
   const canEdit = canUpdateTasks();
 
@@ -202,8 +202,25 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
     }
   };
 
-  const handleRemoveRelation = (relationId: string) => {
-    deleteRelation.mutate(relationId);
+  const handleRemoveRelation = async (relationId: string) => {
+    if (!project?.slug || taskNumber == null) {
+      toast.error(t("common:pendingDeletion.requestFailed"));
+      return;
+    }
+    try {
+      // Removal is only requested; the relation stays until the requester approves it.
+      const pendingAction = await deleteRelation.mutateAsync({
+        key: `${project.slug}-${taskNumber}`,
+        id: relationId,
+      });
+      await openPendingAction(pendingAction);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("common:pendingDeletion.requestFailed"),
+      );
+    }
   };
 
   const handleNavigateToTask = (linkedTaskId: string) => {
@@ -244,154 +261,126 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                type="button"
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {isOpen ? (
-                  <ChevronDown className="size-4" />
-                ) : (
-                  <ChevronRight className="size-4" />
-                )}
-                <span>{t("tasks:relations.title")}</span>
-              </Button>
-            </CollapsibleTrigger>
-            {totalCount > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {totalCount}
-              </span>
-            )}
-          </div>
-          {canEdit && (
-            <Button
-              variant="ghost"
-              size="xs"
-              className="text-muted-foreground"
-              onClick={() => setCommandOpen(true)}
-            >
-              <Plus className="size-3.5" />
-            </Button>
-          )}
-        </div>
+      <RelationsSection
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        count={totalCount}
+        title={t("tasks:relations.title")}
+        canEdit={canEdit}
+        addLabel={t("tasks:relations.selectTask")}
+        onAdd={() => setCommandOpen(true)}
+      >
+        {Object.entries(groupedRelations).map(([type, items]) => (
+          <div key={type} className="mt-1.5">
+            <span className="text-[11px] text-muted-foreground px-2">
+              {t(`tasks:relations.types.${type}`, {
+                defaultValue: type.replace(/_/g, " "),
+              })}
+            </span>
+            <div className="flex flex-col mt-0.5">
+              {items.map((item) => {
+                const assignee = getAssignee(item.task.userId);
+                const taskObj = buildTaskObject(item);
 
-        <CollapsibleContent>
-          {Object.entries(groupedRelations).map(([type, items]) => (
-            <div key={type} className="mt-1.5">
-              <span className="text-[11px] text-muted-foreground px-2">
-                {t(`tasks:relations.types.${type}`, {
-                  defaultValue: type.replace(/_/g, " "),
-                })}
-              </span>
-              <div className="flex flex-col mt-0.5">
-                {items.map((item) => {
-                  const assignee = getAssignee(item.task.userId);
-                  const taskObj = buildTaskObject(item);
-
-                  return (
-                    <ContextMenu key={item.id}>
-                      <ContextMenuTrigger asChild>
-                        <div className="group flex items-center gap-2 py-1 px-2 rounded-md hover:bg-accent/50 transition-colors cursor-default">
-                          <SubtaskStatusPopover
-                            tasks={[taskObj]}
-                            projectId={projectId}
-                          >
-                            <Button
-                              variant="ghost"
-                              type="button"
-                              className="shrink-0 flex items-center justify-center rounded p-0.5 transition-colors outline-none [&_svg]:text-muted-foreground hover:[&_svg]:text-foreground"
-                            >
-                              {getColumnIcon(
-                                item.task.status,
-                                finalStatusSlugs.has(item.task.status),
-                                columnIconBySlug.get(item.task.status),
-                              )}
-                            </Button>
-                          </SubtaskStatusPopover>
-
+                return (
+                  <ContextMenu key={item.id}>
+                    <ContextMenuTrigger asChild>
+                      <div className="group flex items-center gap-2 py-1 px-2 rounded-md hover:bg-accent/50 transition-colors cursor-default">
+                        <SubtaskStatusPopover
+                          tasks={[taskObj]}
+                          projectId={projectId}
+                        >
                           <Button
                             variant="ghost"
                             type="button"
-                            className="flex-1 min-w-0 text-left outline-none"
-                            onClick={() => handleNavigateToTask(item.task.id)}
+                            className="shrink-0 flex items-center justify-center rounded p-0.5 transition-colors outline-none [&_svg]:text-muted-foreground hover:[&_svg]:text-foreground"
                           >
-                            <span
-                              className={`text-sm truncate block ${finalStatusSlugs.has(item.task.status) ? "line-through text-muted-foreground" : "text-foreground"}`}
-                            >
-                              {item.task.title}
-                            </span>
+                            {getColumnIcon(
+                              item.task.status,
+                              finalStatusSlugs.has(item.task.status),
+                              columnIconBySlug.get(item.task.status),
+                            )}
                           </Button>
+                        </SubtaskStatusPopover>
 
-                          <SubtaskAssigneePopover
-                            tasks={[taskObj]}
-                            workspaceId={workspaceId}
-                          >
-                            <Button
-                              variant="ghost"
-                              type="button"
-                              className="shrink-0 flex items-center justify-center rounded p-0.5 transition-colors outline-none"
-                            >
-                              {item.task.userId && assignee ? (
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage
-                                    src={assignee?.user?.image ?? ""}
-                                    alt={assignee?.user?.name || ""}
-                                  />
-                                  <AvatarFallback className="text-[9px] font-medium border border-border/30">
-                                    {getInitials(assignee?.user?.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                              ) : (
-                                <div
-                                  className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-border/70"
-                                  title={t("tasks:popover.assignee.unassigned")}
-                                >
-                                  <span className="text-[9px] font-medium text-muted-foreground">
-                                    ?
-                                  </span>
-                                </div>
-                              )}
-                            </Button>
-                          </SubtaskAssigneePopover>
-                        </div>
-                      </ContextMenuTrigger>
-
-                      <ContextMenuContent className="w-40">
-                        <ContextMenuItem
+                        <Button
+                          variant="ghost"
+                          type="button"
+                          className="flex-1 min-w-0 text-left outline-none"
                           onClick={() => handleNavigateToTask(item.task.id)}
                         >
-                          <span>{t("tasks:relations.openTask")}</span>
-                        </ContextMenuItem>
-                        {canEdit && (
-                          <>
-                            <ContextMenuSeparator />
-                            <ContextMenuItem
-                              className="text-destructive"
-                              onClick={() => handleRemoveRelation(item.id)}
-                            >
-                              <span>{t("tasks:relations.removeRelation")}</span>
-                            </ContextMenuItem>
-                          </>
-                        )}
-                      </ContextMenuContent>
-                    </ContextMenu>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+                          <span
+                            className={`text-sm truncate block ${finalStatusSlugs.has(item.task.status) ? "line-through text-muted-foreground" : "text-foreground"}`}
+                          >
+                            {item.task.title}
+                          </span>
+                        </Button>
 
-          {totalCount === 0 && (
-            <p className="text-xs text-muted-foreground px-2 py-1">
-              {t("tasks:relations.empty")}
-            </p>
-          )}
-        </CollapsibleContent>
-      </Collapsible>
+                        <SubtaskAssigneePopover
+                          tasks={[taskObj]}
+                          workspaceId={workspaceId}
+                        >
+                          <Button
+                            variant="ghost"
+                            type="button"
+                            className="shrink-0 flex items-center justify-center rounded p-0.5 transition-colors outline-none"
+                          >
+                            {item.task.userId && assignee ? (
+                              <Avatar className="h-5 w-5">
+                                <AvatarImage
+                                  src={assignee?.user?.image ?? ""}
+                                  alt={assignee?.user?.name || ""}
+                                />
+                                <AvatarFallback className="text-[9px] font-medium border border-border/30">
+                                  {getInitials(assignee?.user?.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : (
+                              <div
+                                className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-border/70"
+                                title={t("tasks:popover.assignee.unassigned")}
+                              >
+                                <span className="text-[9px] font-medium text-muted-foreground">
+                                  ?
+                                </span>
+                              </div>
+                            )}
+                          </Button>
+                        </SubtaskAssigneePopover>
+                      </div>
+                    </ContextMenuTrigger>
+
+                    <ContextMenuContent className="w-40">
+                      <ContextMenuItem
+                        onClick={() => handleNavigateToTask(item.task.id)}
+                      >
+                        <span>{t("tasks:relations.openTask")}</span>
+                      </ContextMenuItem>
+                      {canEdit && (
+                        <>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem
+                            className="text-destructive"
+                            onClick={() => void handleRemoveRelation(item.id)}
+                          >
+                            <span>{t("tasks:relations.removeRelation")}</span>
+                          </ContextMenuItem>
+                        </>
+                      )}
+                    </ContextMenuContent>
+                  </ContextMenu>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {totalCount === 0 && (
+          <p className="text-xs text-muted-foreground px-2 py-1">
+            {t("tasks:relations.empty")}
+          </p>
+        )}
+      </RelationsSection>
 
       <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
         <CommandDialogPopup>

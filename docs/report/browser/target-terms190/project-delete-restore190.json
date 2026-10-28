@@ -1,0 +1,15 @@
+{
+	"recordedAt": "2026-10-26T02:02:09.989Z",
+	"strictTls": true,
+	"exactOwnFixtureGuard": true,
+	"passwordStepUpAndApprovalStatus": 200,
+	"softDeletePersisted": true,
+	"apiRestoreStatus": 200,
+	"sameProjectAndKeyRestored": true,
+	"originalBusinessTablesUnchanged": 8,
+	"scope": "Browser approval and persisted API restore on own QA project; restore GUI not claimed",
+	"wrongTypedKeyAndMissingPasswordBlocked": true,
+	"wrongTypedKeyBlockedWithPasswordPresent": true,
+	"correctTypedKeyAndPasswordEnabled": true,
+	"validationPendingRequestCancelled": true
+}

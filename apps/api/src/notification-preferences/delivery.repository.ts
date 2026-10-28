@@ -1,7 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import db from "../database";
 import {
+  instanceSettingTable,
   notificationTable,
+  personTable,
   projectTable,
   taskTable,
   userNotificationPreferenceTable,
@@ -14,6 +16,18 @@ import { reachableWorkspacePredicate } from "../utils/workspace-access-middlewar
 export async function findDeliveryNotification(notificationId: string) {
   return await db.query.notificationTable.findFirst({
     where: eq(notificationTable.id, notificationId),
+  });
+}
+
+export async function findDeliveryEventNotification(
+  eventId: string,
+  personId: string,
+) {
+  return await db.query.notificationTable.findFirst({
+    where: and(
+      eq(notificationTable.eventId, eventId),
+      eq(notificationTable.personId, personId),
+    ),
   });
 }
 
@@ -65,6 +79,14 @@ export async function findDeliveryUser(userId: string) {
     .limit(1);
 }
 
+export async function findDeliveryPersonSide(personId: string) {
+  return db
+    .select({ side: personTable.side, locale: personTable.locale })
+    .from(personTable)
+    .where(eq(personTable.id, personId))
+    .limit(1);
+}
+
 export async function findDeliveryPreference(userId: string) {
   return await db.query.userNotificationPreferenceTable.findFirst({
     where: eq(userNotificationPreferenceTable.userId, userId),
@@ -84,4 +106,91 @@ export async function findDeliveryWorkspaceRule(
       selectedProjects: true,
     },
   });
+}
+
+/**
+ * `NO-3`: the recipient's quiet-hours window (on the `person` row of this user) and the instance
+ * zone it falls back to. Null fields when the user has no person row or none is configured.
+ */
+export async function findDeliveryQuietHours(userId: string) {
+  const [person] = await db
+    .select({
+      start: personTable.quietHoursStart,
+      end: personTable.quietHoursEnd,
+      timezone: personTable.quietHoursTimezone,
+    })
+    .from(personTable)
+    .where(eq(personTable.userId, userId))
+    .limit(1);
+  const [instance] = await db
+    .select({ timezone: instanceSettingTable.timezone })
+    .from(instanceSettingTable)
+    .where(eq(instanceSettingTable.id, "singleton"))
+    .limit(1);
+  return {
+    setting: {
+      start: person?.start ?? null,
+      end: person?.end ?? null,
+      timezone: person?.timezone ?? null,
+    },
+    fallbackTimezone: instance?.timezone ?? "UTC",
+  };
+}
+
+/**
+ * Durable compatibility queue and quiet-hours hold for the legacy delivery path. New eligible
+ * legacy rows start with this marker due immediately; quiet-hours evaluation may move it to a
+ * later deadline. The marker lives in existing `notification.event_data` jsonb (no new table),
+ * and `scheduler/notification-digest-release.ts` claims it after a restart or at the deadline.
+ */
+export const QUIET_HOURS_HOLD_KEY = "quietHoursHeldUntil";
+
+/** Hold a notification's external delivery until `until`. */
+export async function holdDeliveryUntil(notificationId: string, until: Date) {
+  await db.execute(sql`
+    UPDATE notification
+    SET event_data = CASE WHEN event_data IS NULL OR jsonb_typeof(event_data) <> 'object'
+        THEN '{}'::jsonb ELSE event_data END
+        || jsonb_build_object(${QUIET_HOURS_HOLD_KEY}::text, ${until.toISOString()}::text)
+    WHERE id = ${notificationId}`);
+}
+
+/**
+ * Claims up to `limit` held notifications that are due at `now`. The claim pushes the marker
+ * `leaseMs` forward instead of deleting it, so a replica that dies mid-delivery leaves the row
+ * to be retried rather than lost. Concurrent replicas skip each other's rows.
+ */
+export async function claimDueHeldDeliveries(
+  now: Date,
+  leaseMs: number,
+  limit: number,
+  maxAgeMs: number,
+): Promise<Array<{ id: string; lease: string }>> {
+  const lease = new Date(now.getTime() + leaseMs).toISOString();
+  const oldest = new Date(now.getTime() - maxAgeMs);
+  const result = await db.execute<{ id: string }>(sql`
+    UPDATE notification
+    SET event_data = event_data || jsonb_build_object(${QUIET_HOURS_HOLD_KEY}::text, ${lease}::text)
+    WHERE id IN (
+      SELECT id FROM notification
+      WHERE created_at > ${oldest}
+        AND jsonb_typeof(event_data) = 'object'
+        AND event_data->>${QUIET_HOURS_HOLD_KEY} IS NOT NULL
+        AND (event_data->>${QUIET_HOURS_HOLD_KEY})::timestamptz <= ${now.toISOString()}::timestamptz
+      ORDER BY created_at
+      LIMIT ${limit}
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING id`);
+  return result.rows.map((row) => ({ id: row.id, lease }));
+}
+
+/** Drops the hold marker, but only when it is still the lease this releaser took. */
+export async function clearDeliveryHold(notificationId: string, lease: string) {
+  await db.execute(sql`
+    UPDATE notification
+    SET event_data = NULLIF(event_data - ${QUIET_HOURS_HOLD_KEY}::text, '{}'::jsonb)
+    WHERE id = ${notificationId}
+      AND jsonb_typeof(event_data) = 'object'
+      AND event_data->>${QUIET_HOURS_HOLD_KEY} = ${lease}`);
 }

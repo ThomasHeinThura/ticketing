@@ -17,7 +17,17 @@ import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
 import { appendAuditLog } from "./audit/audit-writer";
 import { authConfigurationVersion } from "./auth/configuration-version";
+import {
+  IMPERSONATION_SESSION_SECONDS,
+  isSanctionedAdminEndpoint,
+} from "./auth/impersonation-context";
 import { loadLocalFactorState } from "./auth/local-factor-service";
+import {
+  auditPortalSignInRefusal,
+  markUserCreatedInRequest,
+  userRowIsDisposable,
+  wasUserCreatedInRequest,
+} from "./auth/portal-sign-in-refusal";
 import {
   completeFirstUserSetup,
   countAuthUsers,
@@ -28,11 +38,28 @@ import {
   getIdentityConnectionConfigVersions,
   getSetupCompletionMarker,
   getStoredAuthPluginConfigRows,
+  hasCustomerSidePerson,
   lockFirstUserPromotion,
   promoteFirstAuthUser,
   updateSessionActiveOrganizationId,
   updateSessionPortal,
 } from "./auth/repository";
+import {
+  establishVerifiedLocalStaffPerson,
+  verifiedLocalEmailClaimMethod,
+} from "./auth/verified-placeholder-claim";
+import { readCustomerInvitationContinuationContext } from "./customer-invitation/continuation-context";
+import {
+  acceptCustomerInvitation,
+  acceptCustomerInvitationFromContinuation,
+  validateCustomerInvitationContinuation,
+} from "./customer-invitation/service";
+import {
+  auditSignUpRefusal,
+  INVITE_SIGN_UP_REFUSED,
+  readInviteSignUpBody,
+  verifyInviteSignUp,
+} from "./customer-invitation/signup";
 import db from "./database";
 import {
   bindTwoFactorOidcSession,
@@ -67,6 +94,7 @@ import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
 import { getDefaultCookieAttributes } from "./utils/get-default-cookie-attributes";
 import { getGithubSsoOAuthCredentials } from "./utils/github-sso-env";
+import { consumeAnonymousInvitationRateLimit } from "./utils/invitation-anonymous-rate-limit";
 import { isCloud } from "./utils/is-cloud";
 import { isDisposableEmail } from "./utils/is-disposable-email";
 import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
@@ -103,6 +131,21 @@ function normalizeInvitationId(value: unknown): string | undefined {
 function isOAuthCallbackPath(path: unknown): boolean {
   if (typeof path !== "string") return false;
   return path.startsWith("/callback/") || path.startsWith("/oauth2/callback/");
+}
+
+function customerInvitationContextFromAuthRequest(ctx: {
+  headers?: Headers | null;
+  body?: Record<string, unknown> | null;
+  query?: Record<string, unknown> | null;
+}) {
+  return readCustomerInvitationContinuationContext({
+    headers: ctx.headers,
+    invitationId:
+      ctx.body?.invitationId ??
+      ctx.query?.invitationId ??
+      ctx.headers?.get("x-taskdesk-invitation-id"),
+    callbackURL: ctx.body?.callbackURL ?? ctx.query?.callbackURL,
+  });
 }
 
 export type AuthPortal = "agent" | "customer";
@@ -406,7 +449,10 @@ function createAuth(
     },
     emailAndPassword: {
       enabled: localAuthProviders.password,
-      disableSignUp: portal === "customer",
+      // The portal's sign-up door is open only to an invitation-gated request: the `before` hook
+      // and the user-create guard below refuse every customer sign-up that does not carry a live
+      // customer invitation credential for the same address (CP-12, CP-24).
+      disableSignUp: false,
       autoSignIn: true,
       password: {
         hash: async (password) => {
@@ -445,7 +491,9 @@ function createAuth(
       ...(localAuthProviders.magicLink
         ? [
             magicLink({
-              disableSignUp: portal === "customer",
+              // Customer account creation is gated in the user-create hook by a live
+              // browser-bound invitation continuation and exact verified address.
+              disableSignUp: false,
               sendMagicLink: async ({ email, url }) => {
                 try {
                   const locale = await getUserLocale(email);
@@ -469,6 +517,10 @@ function createAuth(
       twoFactorPlugin({
         issuer: "TaskDesk",
         skipVerificationOnEnable: false,
+        // Better Auth checks for a stored credential password when this is
+        // enabled. SSO-only accounts can enroll a local factor without a
+        // password they never had; credential accounts still have to verify it.
+        allowPasswordless: true,
         // Trusted-device cookies would create a factor bypass across session
         // revocation and runtime policy changes. Every protected login must verify.
         trustDeviceMaxAge: 0,
@@ -476,7 +528,9 @@ function createAuth(
       ...(localAuthProviders.emailOtp && !isEmailOtpSignInDisabled
         ? [
             emailOTP({
-              disableSignUp: portal === "customer",
+              // Customer account creation is gated in the user-create hook by a live
+              // browser-bound invitation continuation and exact verified address.
+              disableSignUp: false,
               async sendVerificationOTP({ email, otp, type }) {
                 if (type === "sign-in") {
                   const locale = await getUserLocale(email);
@@ -530,6 +584,9 @@ function createAuth(
               // the two removed above.
               enableSessionForAPIKeys: false,
               apiKeyHeaders: "x-api-key",
+              // AK-8: keys authenticate as `Authorization: Bearer tdk_…`. Keys issued through
+              // `/api/me/api-keys` carry the same prefix (`api-key/service.ts`).
+              defaultPrefix: "tdk_",
               rateLimit: {
                 enabled: true,
                 maxRequests: 100,
@@ -547,6 +604,10 @@ function createAuth(
             adminPlugin({
               defaultRole: "user",
               adminRoles: ["admin"],
+              // GM-7: an impersonation session is capped at 30 minutes. Administrators are
+              // never impersonable (GM-10), so `allowImpersonatingAdmins` stays at its
+              // default of false.
+              impersonationSessionDuration: IMPERSONATION_SESSION_SECONDS,
             }),
           ]
         : []),
@@ -665,6 +726,39 @@ function createAuth(
             }
 
             if (portal === "customer") {
+              const creationPath =
+                ctx?.path === "/sign-up/email" ||
+                ctx?.path === "/magic-link/verify" ||
+                ctx?.path === "/sign-in/email-otp";
+              const invitationContext = creationPath
+                ? customerInvitationContextFromAuthRequest(ctx)
+                : null;
+              if (
+                invitationContext &&
+                (await validateCustomerInvitationContinuation({
+                  ...invitationContext,
+                  email: user.email,
+                }))
+              ) {
+                // The invite fragment proves this address was invited. For password signup it is
+                // the email-link proof; the OTP/magic-link plugins reach user creation only after
+                // verifying their own address possession. The OIDC callback has its own explicit
+                // email_verified check and does not pass through this Better Auth hook.
+                // This hook only runs when no row exists, so the row is this request's own: a
+                // refused sign-in may clean up only what it created (P3-R1-01).
+                markUserCreatedInRequest(ctx, user.email);
+                return { data: { ...user, emailVerified: true } };
+              }
+              if (ctx?.path === "/sign-up/email") {
+                const verdict = await verifyInviteSignUp({
+                  body: ctx.body,
+                  email: user.email,
+                });
+                if (verdict.ok) {
+                  markUserCreatedInRequest(ctx, user.email);
+                  return { data: { ...user, emailVerified: true } };
+                }
+              }
               throw new APIError("FORBIDDEN", {
                 message: "Customer accounts must be invited or provisioned.",
               });
@@ -836,7 +930,10 @@ function createAuth(
         // the matched endpoint path, so encoding/case/slash variants either
         // resolve to this same path (and are refused) or match nothing (404).
         // Authority for these operations lives in `/api/instance/*`.
-        if (ctx.path === "/admin" || ctx.path.startsWith("/admin/")) {
+        if (
+          (ctx.path === "/admin" || ctx.path.startsWith("/admin/")) &&
+          !isSanctionedAdminEndpoint(ctx.path)
+        ) {
           throw new APIError("NOT_FOUND", { message: "Not found" });
         }
 
@@ -875,6 +972,51 @@ function createAuth(
             message:
               "Local sign-in is disabled. Please use a configured social or OIDC sign-in method.",
           });
+        }
+
+        if (portal === "customer" && ctx.path === "/sign-up/email") {
+          const invitationContext =
+            customerInvitationContextFromAuthRequest(ctx);
+          const continuationValid =
+            invitationContext !== null &&
+            (await validateCustomerInvitationContinuation({
+              ...invitationContext,
+              email: ctx.body?.email,
+            }));
+          if (!continuationValid) {
+            // CP-26 retains the legacy raw-credential flow's trusted-IP budget. A verified
+            // one-use continuation has already consumed that same budget at its public handoff.
+            let invitationRate: Awaited<
+              ReturnType<typeof consumeAnonymousInvitationRateLimit>
+            >;
+            try {
+              invitationRate = await consumeAnonymousInvitationRateLimit(
+                ctx.headers?.get(TRUSTED_CLIENT_IP_HEADER) ?? null,
+              );
+            } catch {
+              throw new APIError("SERVICE_UNAVAILABLE", {
+                message: "Invitation rate limit unavailable",
+              });
+            }
+            if (!invitationRate.allowed)
+              throw new APIError("TOO_MANY_REQUESTS", {
+                message: "Too many requests. Please try again later.",
+              });
+            const verdict = await verifyInviteSignUp({
+              body: ctx.body,
+              email: ctx.body?.email,
+            });
+            if (!verdict.ok) {
+              await auditSignUpRefusal(
+                verdict,
+                readInviteSignUpBody(ctx.body)?.invitationId ?? null,
+              );
+              throw new APIError("FORBIDDEN", {
+                message: INVITE_SIGN_UP_REFUSED,
+              });
+            }
+          }
+          return;
         }
 
         const isSignUpPath =
@@ -971,12 +1113,110 @@ function createAuth(
         }
         if (!newSession) return;
 
+        const customerInvitationCreationPath =
+          ctx.path === "/sign-up/email" ||
+          ctx.path === "/sign-in/email-otp" ||
+          ctx.path === "/magic-link/verify";
+        const verifiedClaimMethod = verifiedLocalEmailClaimMethod(ctx.path);
+        if (portal === "customer" && customerInvitationCreationPath) {
+          // Provider proof and the browser-bound invite context must both still be valid. The
+          // existing acceptance transaction creates the customer person/grant and consumes the
+          // invitation before this request can return its customer session.
+          const invitationContext =
+            customerInvitationContextFromAuthRequest(ctx);
+          // A returning admitted customer needs fresh provider proof, not a new
+          // invitation. New identities still require the bound invitation below.
+          let accepted =
+            !invitationContext &&
+            (await hasCustomerPortalIdentity(newSession.user.id));
+          if (invitationContext) {
+            try {
+              await acceptCustomerInvitationFromContinuation({
+                userId: newSession.user.id,
+                ...invitationContext,
+                ...(verifiedClaimMethod ? { verifiedClaimMethod } : {}),
+                ...(ctx.path === "/sign-up/email"
+                  ? { via: "sign_up" as const }
+                  : {}),
+              });
+              accepted = true;
+            } catch {
+              accepted = false;
+            }
+          } else if (ctx.path === "/sign-up/email") {
+            const presented = readInviteSignUpBody(ctx.body);
+            if (presented) {
+              try {
+                await acceptCustomerInvitation({
+                  userId: newSession.user.id,
+                  invitationId: presented.invitationId,
+                  credential: presented.credential,
+                  via: "sign_up",
+                });
+                accepted = true;
+              } catch {
+                accepted = false;
+              }
+            }
+          }
+          if (!accepted) {
+            // Only a row inserted by this very request and carrying no other data may be removed.
+            // An existing account (staff, instance admin, deactivated customer, customer whose
+            // organisation lost portal access) keeps its row, keys and memberships: its new
+            // session is revoked and the refusal audited (P3-R1-01).
+            if (
+              wasUserCreatedInRequest(ctx, newSession.user.email) &&
+              Date.now() - new Date(newSession.user.createdAt).getTime() <
+                60_000 &&
+              (await userRowIsDisposable(newSession.user.id)) &&
+              !(await hasCustomerPortalIdentity(newSession.user.id))
+            ) {
+              await ctx.context.internalAdapter.deleteUser(newSession.user.id);
+            } else {
+              await ctx.context.internalAdapter.deleteSession(
+                newSession.session.token,
+              );
+              await auditPortalSignInRefusal(
+                newSession.user.id,
+                "customer_identity_unavailable",
+              );
+            }
+            deleteSessionCookie(ctx, true);
+            ctx.context.setNewSession(null);
+            throw new APIError("FORBIDDEN", {
+              message: INVITE_SIGN_UP_REFUSED,
+            });
+          }
+        }
+
         if (
           portal === "customer" &&
           !(await hasCustomerPortalIdentity(newSession.user.id))
         ) {
           await ctx.context.internalAdapter.deleteSession(
             newSession.session.token,
+          );
+          await auditPortalSignInRefusal(
+            newSession.user.id,
+            "customer_identity_unavailable",
+          );
+          deleteSessionCookie(ctx, true);
+          ctx.context.setNewSession(null);
+          return;
+        }
+
+        if (
+          portal === "agent" &&
+          (await hasCustomerSidePerson(newSession.user.id))
+        ) {
+          // A customer-side person never holds an agent session: the agent host admits staff
+          // only (P3-R1-08). The account itself is untouched.
+          await ctx.context.internalAdapter.deleteSession(
+            newSession.session.token,
+          );
+          await auditPortalSignInRefusal(
+            newSession.user.id,
+            "customer_on_agent_host",
           );
           deleteSessionCookie(ctx, true);
           ctx.context.setNewSession(null);
@@ -1010,6 +1250,24 @@ function createAuth(
           ctx.path === "/two-factor/verify-totp"
             ? currentTotpEnrollmentTransaction()
             : null;
+        if (portal === "agent" && verifiedClaimMethod) {
+          try {
+            await establishVerifiedLocalStaffPerson({
+              userId: newSession.user.id,
+              verifiedEmail: newSession.user.email,
+              method: verifiedClaimMethod,
+            });
+          } catch {
+            await ctx.context.internalAdapter.deleteSession(
+              newSession.session.token,
+            );
+            deleteSessionCookie(ctx, true);
+            ctx.context.setNewSession(null);
+            throw new APIError("FORBIDDEN", {
+              message: "Sign-in is unavailable for this account.",
+            });
+          }
+        }
         const sessionWriter = totpTransaction ?? db;
         await updateSessionPortal(sessionWriter, newSession.session.id, portal);
 
@@ -1231,6 +1489,28 @@ export function isCustomerLocalAuthEndpoint(
     method === "POST" &&
     (path === "/api/auth/sign-in/email-otp" ||
       path === "/api/auth/email-otp/send-verification-otp")
+  );
+}
+
+/** Public, non-secret methods enabled on the current customer-host auth instance. */
+export function customerLocalAuthMethods(): LocalAuthProviders {
+  return { ...customerLocalAuthProviders };
+}
+
+/**
+ * The portal's invitation-gated sign-up (CP-12): admitted at the host only while the customer
+ * password provider is enabled. The Better Auth hooks then require a live customer invitation
+ * credential for the sign-up address, so this does not open general registration.
+ */
+export function isCustomerInviteSignUpEndpoint(
+  method: string,
+  path: string,
+  providers: LocalAuthProviders = customerLocalAuthProviders,
+): boolean {
+  return (
+    providers.password &&
+    method === "POST" &&
+    path === "/api/auth/sign-up/email"
   );
 }
 

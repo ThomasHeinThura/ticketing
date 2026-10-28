@@ -1,0 +1,29 @@
+{
+	"name": "SIT Audit 20261025 burst 1792891481388",
+	"phase": "persisted disabled state",
+	"checks": [
+		{
+			"name": "MCP key created through UI with writes disabled",
+			"passed": true
+		},
+		{
+			"name": "Read-only burst produced only denials",
+			"passed": true,
+			"threshold": 300,
+			"statusCounts": {
+				"401": 1,
+				"403": 30,
+				"429": 270
+			}
+		},
+		{
+			"name": "Own MCP key auto-disabled in persisted owner list",
+			"passed": true
+		},
+		{
+			"name": "Original effective MCP feature value restored",
+			"passed": true,
+			"note": "An explicit instance override/audit history can remain after UI restore."
+		}
+	]
+}

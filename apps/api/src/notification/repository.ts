@@ -1,8 +1,18 @@
+import { formatSubmissionReference } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { schema } from "../database";
-import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
+import {
+  currentProjectReachPredicate,
+  currentWorkspaceReachPredicate,
+} from "../database/repositories/identity-scope.repository";
+import {
+  apiKeyExtensionTable,
+  apikeyTable,
+  webhookTable,
+} from "../database/schema";
 import type { DbTransaction } from "../events/outbox";
+import { findLinkedRequestOwnerPersonIds } from "./customer-request-scope";
 import { isSupportedNotificationResourceEvent } from "./resource-contract";
 
 export type CurrentNotificationResource = {
@@ -13,10 +23,16 @@ export type CurrentNotificationResource = {
   visibleToPersonIds: readonly string[] | null;
   customerVisible: boolean;
   staffUrl: string | null;
+  /** Customer-host route only; never contains a staff key or internal resource id. */
+  portalUrl: string | null;
+  /** Server-side creator identity for events whose recipient rule includes the creator. */
+  ownerPersonId?: string | null;
+  /** Current requester ids for structurally linked, non-archived requests. */
+  customerRequestOwnerPersonIds?: readonly string[];
 };
 
 export type NativeNotificationResourceRequest = {
-  resourceType: "work_item" | "comment";
+  resourceType: "work_item" | "comment" | "webhook";
   resourceId: string;
   eventKind: string;
 };
@@ -75,6 +91,13 @@ export async function findCurrentNotificationResources(
     ...new Set(
       valid
         .filter((request) => request.resourceType === "comment")
+        .map(({ resourceId }) => resourceId),
+    ),
+  ];
+  const webhookIds = [
+    ...new Set(
+      valid
+        .filter((request) => request.resourceType === "webhook")
         .map(({ resourceId }) => resourceId),
     ),
   ];
@@ -163,6 +186,31 @@ export async function findCurrentNotificationResources(
           ),
         )
     : [];
+  const webhooks = webhookIds.length
+    ? await tx
+        .select({
+          id: webhookTable.id,
+          workspaceId: webhookTable.workspaceId,
+          ownerPersonId: webhookTable.createdBy,
+          organisationId: schema.workspaceTable.organisationId,
+        })
+        .from(webhookTable)
+        .innerJoin(
+          schema.workspaceTable,
+          eq(schema.workspaceTable.id, webhookTable.workspaceId),
+        )
+        .where(
+          and(
+            inArray(webhookTable.id, webhookIds),
+            isNull(schema.workspaceTable.deletedAt),
+            currentWorkspaceReachPredicate(
+              identity,
+              schema.workspaceTable.id,
+              tx,
+            ),
+          ),
+        )
+    : [];
   const privateWorkItemIds = [
     ...new Set([
       ...workItems
@@ -194,6 +242,12 @@ export async function findCurrentNotificationResources(
     people.push(participant.personId);
     peopleByWorkItem.set(participant.workItemId, people);
   }
+  const linkedRequestOwners = await findLinkedRequestOwnerPersonIds(tx, [
+    ...new Set([
+      ...workItems.map(({ id }) => id),
+      ...comments.map(({ workItemId }) => workItemId),
+    ]),
+  ]);
   const facts = new Map<string, CurrentNotificationResource>();
   for (const row of workItems) {
     const resource: CurrentNotificationResource = {
@@ -206,8 +260,10 @@ export async function findCurrentNotificationResources(
         row.customerVisibility,
         peopleByWorkItem.get(row.id) ?? [],
       ),
+      customerRequestOwnerPersonIds: linkedRequestOwners.get(row.id) ?? [],
       customerVisible: true,
       staffUrl: `/agent/work-items/${encodeURIComponent(row.key)}`,
+      portalUrl: "/requests",
     };
     facts.set(resourceKey("work_item", row.id), resource);
     facts.set(resourceKey("work_item", row.key), resource);
@@ -224,8 +280,23 @@ export async function findCurrentNotificationResources(
         row.customerVisibility,
         peopleByWorkItem.get(row.workItemId) ?? [],
       ),
+      customerRequestOwnerPersonIds:
+        linkedRequestOwners.get(row.workItemId) ?? [],
       customerVisible: row.visibility === "public",
-      staffUrl: null,
+      staffUrl: `/agent/work-items/${encodeURIComponent(row.key)}?comment=${encodeURIComponent(row.id)}`,
+      portalUrl: row.visibility === "public" ? "/requests" : null,
+    });
+  }
+  for (const row of webhooks) {
+    facts.set(resourceKey("webhook", row.id), {
+      workspaceId: row.workspaceId,
+      projectId: null,
+      organisationId: row.organisationId,
+      visibleToPersonIds: null,
+      customerVisible: false,
+      staffUrl: `/agent/settings/webhooks/${encodeURIComponent(row.id)}`,
+      portalUrl: null,
+      ownerPersonId: row.ownerPersonId,
     });
   }
   return facts;
@@ -263,6 +334,9 @@ async function findWorkItemResource(
       ({ personId }) => personId,
     );
   }
+  const linkedRequestOwners = await findLinkedRequestOwnerPersonIds(tx, [
+    row.id,
+  ]);
   return {
     workItemId: row.id,
     workspaceId: row.workspaceId,
@@ -273,8 +347,10 @@ async function findWorkItemResource(
       row.customerVisibility,
       participantIds,
     ),
+    customerRequestOwnerPersonIds: linkedRequestOwners.get(row.id) ?? [],
     customerVisible: true,
     staffUrl: `/agent/work-items/${encodeURIComponent(row.key)}`,
+    portalUrl: "/requests",
   };
 }
 
@@ -317,7 +393,33 @@ export async function findCurrentNotificationResource(
         participantRows.map(({ personId }) => personId),
       ),
       customerVisible: true,
-      staffUrl: null,
+      // AP-21 (`P2R1-04`): an approval email links to the work item for staff and to the
+      // portal Approvals screen for a customer approver; never a staff key on the portal.
+      staffUrl: `/agent/work-items/${encodeURIComponent(context.workItemKey)}`,
+      portalUrl: "/approvals",
+    };
+  }
+
+  // IQ-12 / IQ-15 (`P2R1-05`): a submission reply or decline links to the submission itself.
+  // Recipient eligibility is re-checked by `isCurrentSubmissionNotificationRecipient`.
+  if (
+    input.resourceType === "submission" &&
+    isSupportedNotificationResourceEvent(input.resourceType, input.eventKind)
+  ) {
+    const submission = await findSubmissionNotificationResource(
+      tx,
+      input.resourceId,
+    );
+    if (!submission) return null;
+    const ref = formatSubmissionReference(submission.number);
+    return {
+      workspaceId: submission.workspaceId,
+      projectId: null,
+      organisationId: submission.organisationId,
+      visibleToPersonIds: [submission.requesterId],
+      customerVisible: true,
+      staffUrl: `/agent/triage?ref=${encodeURIComponent(ref)}`,
+      portalUrl: `/submissions/${encodeURIComponent(ref)}`,
     };
   }
 
@@ -349,7 +451,10 @@ export async function findCurrentNotificationResource(
       ? {
           ...resource,
           customerVisible: row.visibility === "public",
-          staffUrl: null,
+          staffUrl: resource.staffUrl
+            ? `${resource.staffUrl}?comment=${encodeURIComponent(input.resourceId)}`
+            : null,
+          portalUrl: row.visibility === "public" ? resource.portalUrl : null,
         }
       : null;
   }
@@ -367,10 +472,119 @@ export async function findCurrentNotificationResource(
       visibleToPersonIds: null,
       customerVisible: true,
       staffUrl: null,
+      portalUrl: null,
+    };
+  }
+
+  if (
+    input.resourceType === "webhook" &&
+    input.workspaceId &&
+    isSupportedNotificationResourceEvent(input.resourceType, input.eventKind)
+  ) {
+    const [webhook] = await tx
+      .select({
+        id: webhookTable.id,
+        workspaceId: webhookTable.workspaceId,
+        ownerPersonId: webhookTable.createdBy,
+        organisationId: schema.workspaceTable.organisationId,
+      })
+      .from(webhookTable)
+      .innerJoin(
+        schema.workspaceTable,
+        eq(schema.workspaceTable.id, webhookTable.workspaceId),
+      )
+      .where(
+        and(
+          eq(webhookTable.id, input.resourceId),
+          eq(webhookTable.workspaceId, input.workspaceId),
+          isNull(schema.workspaceTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!webhook) return null;
+    return {
+      workspaceId: webhook.workspaceId,
+      projectId: null,
+      organisationId: webhook.organisationId,
+      visibleToPersonIds: null,
+      customerVisible: false,
+      staffUrl: `/agent/settings/webhooks/${encodeURIComponent(webhook.id)}`,
+      portalUrl: null,
+      ownerPersonId: webhook.ownerPersonId,
     };
   }
 
   return null;
+}
+
+/** Current owner facts for the instance-scoped MCP-key auto-disable notification. */
+export async function findApiKeyAutoDisableOwner(
+  tx: DbTransaction,
+  apiKeyId: string,
+): Promise<{ userId: string; personId: string } | null> {
+  const [row] = await tx
+    .select({
+      userId: apikeyTable.userId,
+      personId: apiKeyExtensionTable.personId,
+    })
+    .from(apikeyTable)
+    .innerJoin(
+      apiKeyExtensionTable,
+      eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+    )
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.id, apiKeyExtensionTable.personId),
+    )
+    .where(
+      and(
+        eq(apikeyTable.id, apiKeyId),
+        eq(apikeyTable.referenceId, apikeyTable.userId),
+        eq(schema.personTable.userId, apikeyTable.userId),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+        isNull(apiKeyExtensionTable.workspaceId),
+        eq(apiKeyExtensionTable.isMcp, true),
+      ),
+    )
+    .limit(1);
+  return row?.userId && row.personId
+    ? { userId: row.userId, personId: row.personId }
+    : null;
+}
+
+/** Only current, active staff owners can read their personal MCP-key alert. */
+export async function findCurrentOwnedApiKeyAutoDisableIds(
+  tx: DbTransaction,
+  identity: ResolvedIdentity,
+  apiKeyIds: readonly string[],
+): Promise<Set<string>> {
+  if (identity.side !== "staff" || apiKeyIds.length === 0) return new Set();
+  const rows = await tx
+    .select({ id: apikeyTable.id })
+    .from(apikeyTable)
+    .innerJoin(
+      apiKeyExtensionTable,
+      eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+    )
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.id, apiKeyExtensionTable.personId),
+    )
+    .where(
+      and(
+        inArray(apikeyTable.id, [...new Set(apiKeyIds)]),
+        eq(apikeyTable.userId, identity.userId),
+        eq(apikeyTable.referenceId, identity.userId),
+        eq(apiKeyExtensionTable.personId, identity.personId),
+        eq(schema.personTable.userId, identity.userId),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+        isNull(apiKeyExtensionTable.workspaceId),
+        eq(apiKeyExtensionTable.isMcp, true),
+      ),
+    );
+  return new Set(rows.map(({ id }) => id));
 }
 
 export async function findNotificationPerson(
@@ -382,14 +596,29 @@ export async function findNotificationPerson(
       userId: schema.personTable.userId,
       side: schema.personTable.side,
       active: schema.personTable.active,
+      locale: schema.userTable.locale,
       quietHoursStart: schema.personTable.quietHoursStart,
       quietHoursEnd: schema.personTable.quietHoursEnd,
       quietHoursTimezone: schema.personTable.quietHoursTimezone,
     })
     .from(schema.personTable)
+    .leftJoin(
+      schema.userTable,
+      eq(schema.userTable.id, schema.personTable.userId),
+    )
     .where(eq(schema.personTable.id, personId))
     .limit(1);
   return person ?? null;
+}
+
+/** The instance IANA zone (`instance_setting.timezone`), the quiet-hours/digest fallback. */
+export async function findInstanceTimezone(tx: DbTransaction): Promise<string> {
+  const [row] = await tx
+    .select({ timezone: schema.instanceSettingTable.timezone })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+  return row?.timezone ?? "UTC";
 }
 
 export async function findNotificationWorkspace(
@@ -429,6 +658,7 @@ export async function findApprovalNotificationContext(
       requestedBy: schema.approvalTable.requestedBy,
       approverId: schema.approvalTable.approverId,
       workItemId: schema.workItemTable.id,
+      workItemKey: schema.workItemTable.key,
       workspaceId: schema.approvalTable.workspaceId,
       projectId: schema.workItemTable.projectId,
       organisationId: schema.workspaceTable.organisationId,
@@ -468,10 +698,169 @@ export async function listApprovalWatcherPersonIds(
   tx: DbTransaction,
   workItemId: string,
 ) {
+  return (
+    tx
+      .select({ personId: schema.watcherTable.personId })
+      .from(schema.watcherTable)
+      // `WI-29`: `muted` is the suppression flag an implicit watcher sets to opt out; a muted
+      // watcher is never an approval-notification recipient.
+      .where(
+        and(
+          eq(schema.watcherTable.workItemId, workItemId),
+          eq(schema.watcherTable.muted, false),
+        ),
+      )
+  );
+}
+
+/** Every watcher row of a work item with its mute flag; the caller decides who is told. */
+export async function listWorkItemWatchers(
+  tx: DbTransaction,
+  workItemId: string,
+) {
   return tx
-    .select({ personId: schema.watcherTable.personId })
+    .select({
+      personId: schema.watcherTable.personId,
+      muted: schema.watcherTable.muted,
+    })
     .from(schema.watcherTable)
     .where(eq(schema.watcherTable.workItemId, workItemId));
+}
+
+/**
+ * The stored facts `submission.replied` recipients are resolved from: owner, last handler and
+ * the workspace the submission's request type belongs to.
+ */
+export async function findSubmissionNotificationContext(
+  tx: DbTransaction,
+  number: number,
+) {
+  const [row] = await tx
+    .select({
+      id: schema.submissionTable.id,
+      requesterId: schema.submissionTable.requesterId,
+      claimedBy: schema.submissionTable.claimedBy,
+      workspaceId: schema.requestTypeTable.workspaceId,
+    })
+    .from(schema.submissionTable)
+    .innerJoin(
+      schema.requestTypeTable,
+      eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+    )
+    .where(eq(schema.submissionTable.number, number))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * `submission.replied` by the customer goes to "whoever last handled it" (feature-contracts-p4.md
+ * NO-21): the author of the latest triager message on the thread (a clarification or any staff
+ * message), else the triager who claimed it. Since `P2R1-08` keeps the first claim while another
+ * triager clarifies, the claim alone would route the reply to someone who never asked
+ * (`P2R2-02`). Shared by the fan-out resolver and the send-time recipient check.
+ */
+export async function findSubmissionLastHandlerId(
+  tx: DbTransaction,
+  submission: { id: string; claimedBy: string | null },
+): Promise<string | null> {
+  const [latest] = await tx
+    .select({ authorId: schema.submissionMessageTable.authorId })
+    .from(schema.submissionMessageTable)
+    .where(
+      and(
+        eq(schema.submissionMessageTable.submissionId, submission.id),
+        eq(schema.submissionMessageTable.actorType, "triager"),
+      ),
+    )
+    .orderBy(
+      desc(schema.submissionMessageTable.createdAt),
+      desc(schema.submissionMessageTable.id),
+    )
+    .limit(1);
+  return latest?.authorId ?? submission.claimedBy;
+}
+
+/** The submission behind a `submission` notification resource, for send-time resolution. */
+export async function findSubmissionNotificationResource(
+  tx: DbTransaction,
+  submissionId: string,
+) {
+  const [row] = await tx
+    .select({
+      number: schema.submissionTable.number,
+      organisationId: schema.submissionTable.organisationId,
+      requesterId: schema.submissionTable.requesterId,
+      workspaceId: schema.requestTypeTable.workspaceId,
+    })
+    .from(schema.submissionTable)
+    .innerJoin(
+      schema.requestTypeTable,
+      eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+    )
+    .where(eq(schema.submissionTable.id, submissionId))
+    .limit(1);
+  return row ?? null;
+}
+
+/** The work item's current assignee person id (null when unassigned or missing). */
+export async function findWorkItemAssigneeId(
+  tx: DbTransaction,
+  workItemId: string,
+): Promise<string | null> {
+  const [row] = await tx
+    .select({ assigneeId: schema.workItemTable.assigneeId })
+    .from(schema.workItemTable)
+    .where(eq(schema.workItemTable.id, workItemId))
+    .limit(1);
+  return row?.assigneeId ?? null;
+}
+
+/**
+ * NO-21 "project leads": persons holding the system `project-lead` role at this project's own
+ * scope (`membership.scope = 'project'`). The role is resolved per workspace by key, never by
+ * display name; a deactivated person is filtered by the caller's active check.
+ */
+export async function listProjectLeadPersonIds(
+  tx: DbTransaction,
+  input: { projectId: string; workspaceId: string },
+): Promise<string[]> {
+  const rows = await tx
+    .select({ personId: schema.membershipTable.personId })
+    .from(schema.membershipTable)
+    .innerJoin(
+      schema.roleTable,
+      eq(schema.roleTable.id, schema.membershipTable.roleId),
+    )
+    .where(
+      and(
+        eq(schema.membershipTable.scope, "project"),
+        eq(schema.membershipTable.scopeId, input.projectId),
+        eq(schema.roleTable.scope, "project"),
+        eq(schema.roleTable.workspaceId, input.workspaceId),
+        eq(schema.roleTable.key, "project-lead"),
+      ),
+    );
+  return [...new Set(rows.map(({ personId }) => personId))];
+}
+
+/** The project's stakeholder rows for the escalation walk, ordered (SLA-17 / NO-22). */
+export async function listProjectStakeholders(
+  tx: DbTransaction,
+  projectId: string,
+) {
+  return tx
+    .select({
+      personId: schema.stakeholderTable.personId,
+      escalationOrder: schema.stakeholderTable.escalationOrder,
+      escalationWaitMinutes: schema.stakeholderTable.escalationWaitMinutes,
+      active: schema.stakeholderTable.active,
+    })
+    .from(schema.stakeholderTable)
+    .where(eq(schema.stakeholderTable.projectId, projectId))
+    .orderBy(
+      asc(schema.stakeholderTable.escalationOrder),
+      asc(schema.stakeholderTable.personId),
+    );
 }
 
 export async function listApprovalParticipantPersonIds(

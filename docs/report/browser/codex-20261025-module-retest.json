@@ -1,0 +1,12 @@
+{
+	"method": "Real Chromium UI writes on isolated persisted audit copy. Only newly named audit records are modified; TLS exception as documented.",
+	"results": [
+		{
+			"name": "create-module-reload",
+			"persisted": true,
+			"outcome": "passed",
+			"finalPath": "/agent/projects/HELP/modules",
+			"screenshot": "docs/report/screens/codex-20261025-flow-create-module-reload.png"
+		}
+	]
+}

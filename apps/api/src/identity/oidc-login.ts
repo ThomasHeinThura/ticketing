@@ -18,8 +18,21 @@ import { setSessionCookie } from "better-auth/cookies";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { appendAuditLog } from "../audit/audit-writer";
+import {
+  customerInvitationContinuationCookieName,
+  readCustomerInvitationContinuationContext,
+} from "../customer-invitation/continuation-context";
+import {
+  acceptCustomerInvitationContinuationInTransaction,
+  finalizeCustomerInvitationAcceptance,
+  validateCustomerInvitationContinuation,
+} from "../customer-invitation/service";
 import db, { schema } from "../database";
-import type { DbTransaction } from "../events/outbox";
+import {
+  type DbTransaction,
+  enqueueOutboxEvent,
+  eventScope,
+} from "../events/outbox";
 import { logTaskDesk } from "../instance/observability/runtime";
 import {
   lockPendingActionLifecycle,
@@ -32,6 +45,10 @@ import {
 import { dbNowUtc } from "../utils/db-time";
 import { ensureInternalOrganisation } from "../utils/seed-internal-organisation";
 import { invalidateNativeAuthorization } from "../ws";
+import {
+  type AccountLinkOidcContext,
+  accountLinkOidcContextSchema,
+} from "./account-link-contract";
 import { decryptIdentityClientSecret } from "./client-secret";
 import { IdentityGrantClosureChangedError } from "./errors";
 import { retryIdentityGrantClosure } from "./grant-closure-retry";
@@ -41,6 +58,11 @@ import {
   loadEntraDiscovery,
   loadEntraJwks,
 } from "./oidc-provider";
+import {
+  completeOidcStepUpCallback,
+  isOidcStepUpState,
+  oidcStepUpStateCookieName,
+} from "./oidc-step-up";
 import { validateEntraIdToken } from "./oidc-token";
 import {
   findOidcEmailOwner,
@@ -126,7 +148,7 @@ function equalSecret(left: string, right: string) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-function stateCookieName(secure: boolean) {
+export function oidcStateCookieName(secure: boolean) {
   return secure ? STATE_COOKIE : DEV_STATE_COOKIE;
 }
 
@@ -138,43 +160,288 @@ function originForPortal(portal: "agent" | "customer") {
   return new URL(configured).origin;
 }
 
-function parseFlow(value: string) {
+export type ParsedOidcFlow = {
+  connectionId: string;
+  portal: "agent" | "customer";
+  nonce: string;
+  codeVerifier: string;
+  redirectUri: string;
+  organisationId: string | null;
+  invitationId?: string;
+  purpose: "login" | "account_link";
+  accountLink?: AccountLinkOidcContext;
+};
+
+export function parseOidcFlow(value: string): ParsedOidcFlow | null {
   try {
     const parsed: unknown = JSON.parse(value);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+      return null;
+    const flow = parsed as Record<string, unknown>;
     if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      !Array.isArray(parsed) &&
-      "connectionId" in parsed &&
-      typeof parsed.connectionId === "string" &&
-      "portal" in parsed &&
-      (parsed.portal === "agent" || parsed.portal === "customer") &&
-      "nonce" in parsed &&
-      typeof parsed.nonce === "string" &&
-      "codeVerifier" in parsed &&
-      typeof parsed.codeVerifier === "string" &&
-      "redirectUri" in parsed &&
-      typeof parsed.redirectUri === "string"
+      typeof flow.connectionId !== "string" ||
+      (flow.portal !== "agent" && flow.portal !== "customer") ||
+      typeof flow.nonce !== "string" ||
+      typeof flow.codeVerifier !== "string" ||
+      typeof flow.redirectUri !== "string" ||
+      !(
+        typeof flow.organisationId === "string" || flow.organisationId === null
+      ) ||
+      (flow.invitationId !== undefined &&
+        (typeof flow.invitationId !== "string" ||
+          !/^[A-Za-z0-9_-]{1,128}$/u.test(flow.invitationId)))
     )
-      return parsed as {
-        connectionId: string;
-        portal: "agent" | "customer";
-        nonce: string;
-        codeVerifier: string;
-        redirectUri: string;
+      return null;
+    // Old unexpired rows predate the discriminator and remain ordinary login state. Every
+    // newly created row is explicitly tagged; malformed link state never falls back to login.
+    const purpose = flow.purpose ?? "login";
+    if (purpose === "login") {
+      if (flow.accountLink !== undefined) return null;
+      return {
+        connectionId: flow.connectionId,
+        portal: flow.portal,
+        nonce: flow.nonce,
+        codeVerifier: flow.codeVerifier,
+        redirectUri: flow.redirectUri,
+        organisationId: flow.organisationId,
+        ...(typeof flow.invitationId === "string"
+          ? { invitationId: flow.invitationId }
+          : {}),
+        purpose,
       };
+    }
+    if (purpose !== "account_link") return null;
+    const link = accountLinkOidcContextSchema.safeParse(flow.accountLink);
+    if (
+      !link.success ||
+      link.data.purpose !== "account_link" ||
+      flow.connectionId === link.data.sourceConnectionId
+    )
+      return null;
+    return {
+      connectionId: flow.connectionId,
+      portal: flow.portal,
+      nonce: flow.nonce,
+      codeVerifier: flow.codeVerifier,
+      redirectUri: flow.redirectUri,
+      organisationId: flow.organisationId,
+      purpose,
+      accountLink: link.data,
+    };
   } catch {
     // Stored flow values are untrusted; treat malformed rows as invalid.
   }
   return null;
 }
 
-function safeFailure(ctx: { redirect(url: string): unknown }): never {
-  throw ctx.redirect("/auth/sign-in?identity_error=sign_in_failed");
+async function safeFailure(
+  ctx: { redirect(url: string): unknown },
+  portal: "agent" | "customer" = "agent",
+  audit?: {
+    connectionId?: string;
+    kind: OidcFailureKind;
+    reason: OidcFailureReason;
+  },
+): Promise<never> {
+  if (audit)
+    await recordOidcFailure(audit.connectionId, audit.kind, audit.reason);
+  safeFailureContexts.add(ctx);
+  throw ctx.redirect(
+    portal === "customer"
+      ? "/sign-in?identity_error=sign_in_failed"
+      : "/auth/sign-in?identity_error=sign_in_failed",
+  );
+}
+
+type OidcFailureKind = "auth.failed" | "request.denied";
+type OidcFailureReason =
+  | "callback_invalid"
+  | "state_invalid"
+  | "connection_unavailable"
+  | "configuration_invalid"
+  | "provider_failure"
+  | "token_invalid"
+  | "identity_denied";
+
+const safeFailureContexts = new WeakSet<object>();
+
+/** Bounded IP-24 failure record; never persists request, state, claims, or provider text. */
+async function recordOidcFailure(
+  connectionId: string | undefined,
+  kind: OidcFailureKind,
+  reason: OidcFailureReason,
+) {
+  try {
+    const [connection] = connectionId
+      ? await db
+          .select({ id: schema.identityConnectionTable.id })
+          .from(schema.identityConnectionTable)
+          .where(eq(schema.identityConnectionTable.id, connectionId))
+          .limit(1)
+      : [];
+    await db.insert(schema.provisioningEventTable).values({
+      // Callback state/path values are untrusted until the server-side OIDC flow is
+      // consumed and matched. A missing/unresolved connection stays instance-only.
+      identityConnectionId: connection?.id ?? null,
+      kind,
+      outcome: kind === "auth.failed" ? "failed" : "denied",
+      detail: { reason },
+      actorType: "oidc",
+    });
+  } catch {
+    logTaskDesk({
+      module: "auth",
+      message: "auth.failure",
+      level: "error",
+      result: "degraded",
+    });
+  }
 }
 
 const OIDC_SESSION_SOURCE_PREFIX = "oidc-session-source:";
 export const OIDC_PENDING_SESSION_COOKIE = "taskdesk_oidc_pending_session";
+
+export type OidcAuthorizationStart = {
+  authorizationUrl: string;
+  state: string;
+  secure: boolean;
+};
+
+export type OidcStartConnection = Pick<
+  typeof schema.identityConnectionTable.$inferSelect,
+  | "id"
+  | "organisationId"
+  | "portalScope"
+  | "enabled"
+  | "tenantId"
+  | "defaultWorkspaceId"
+  | "issuer"
+  | "clientId"
+  | "redirectUri"
+  | "scopes"
+  | "claimMapping"
+  | "jitPolicy"
+>;
+
+/** Shared, server-side OIDC initiation for both legacy by-id and fixed home-realm routes. */
+export async function createOidcAuthorizationStart(input: {
+  connection: OidcStartConnection;
+  portal: "agent" | "customer";
+  invitationId?: string;
+  accountLink?: AccountLinkOidcContext;
+  revalidate?: () => Promise<boolean>;
+}): Promise<OidcAuthorizationStart | null> {
+  const { connection, portal } = input;
+  const jit = parseIdentityJitPolicy(connection.jitPolicy);
+  if (
+    connection.portalScope !== portal ||
+    !connection.enabled ||
+    !connection.tenantId ||
+    (portal === "customer" && !connection.organisationId) ||
+    !jit.ok ||
+    (portal === "agent" &&
+      jit.value.enabled &&
+      !connection.defaultWorkspaceId) ||
+    !parseIdentityClaimMapping(connection.claimMapping).ok
+  ) {
+    await recordOidcFailure(
+      connection.id,
+      "request.denied",
+      "configuration_invalid",
+    );
+    return null;
+  }
+
+  const origin = originForPortal(portal);
+  const callback = `${origin}/api/auth/identity/${connection.id}/callback`;
+  if (connection.redirectUri !== callback) {
+    await recordOidcFailure(
+      connection.id,
+      "request.denied",
+      "configuration_invalid",
+    );
+    return null;
+  }
+  let discovery: Awaited<ReturnType<typeof loadEntraDiscovery>>;
+  try {
+    discovery = await loadEntraDiscovery(connection.tenantId);
+  } catch {
+    logTaskDesk({
+      module: "auth",
+      message: "auth.failure",
+      level: "warn",
+      result: "failed",
+    });
+    await recordOidcFailure(connection.id, "auth.failed", "provider_failure");
+    return null;
+  }
+  if (discovery.issuer !== connection.issuer) {
+    await recordOidcFailure(
+      connection.id,
+      "request.denied",
+      "configuration_invalid",
+    );
+    return null;
+  }
+  if (input.revalidate && !(await input.revalidate())) {
+    await recordOidcFailure(
+      connection.id,
+      "request.denied",
+      "connection_unavailable",
+    );
+    return null;
+  }
+
+  const state = randomBytes(32).toString("base64url");
+  const nonce = randomBytes(32).toString("base64url");
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256")
+    .update(verifier, "utf8")
+    .digest("base64url");
+  const secure = origin.startsWith("https://");
+  const expiresAt = new Date(Date.now() + FLOW_TTL_MS);
+  await db.insert(schema.verificationTable).values({
+    identifier: `oidc-state:${digest(state)}`,
+    value: JSON.stringify({
+      connectionId: connection.id,
+      portal,
+      nonce,
+      codeVerifier: verifier,
+      redirectUri: callback,
+      organisationId: connection.organisationId ?? null,
+      purpose: input.accountLink ? "account_link" : "login",
+      ...(input.invitationId ? { invitationId: input.invitationId } : {}),
+      ...(input.accountLink ? { accountLink: input.accountLink } : {}),
+    }),
+    expiresAt,
+  });
+
+  const authorize = new URL(discovery.authorizationEndpoint);
+  authorize.search = new URLSearchParams({
+    client_id: connection.clientId,
+    response_type: "code",
+    response_mode: "query",
+    redirect_uri: callback,
+    scope: [
+      ...new Set(["openid", "profile", "email", ...connection.scopes]),
+    ].join(" "),
+    state,
+    nonce,
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+  }).toString();
+  return { authorizationUrl: authorize.toString(), state, secure };
+}
+
+export function oidcStateCookieOptions(secure: boolean) {
+  return {
+    httpOnly: true,
+    secure,
+    sameSite: "Lax" as const,
+    path: secure ? "/" : "/api/auth",
+    maxAge: FLOW_TTL_MS / 1000,
+  };
+}
 
 /**
  * Bind a just-created Better Auth session to the validated connection before its
@@ -295,86 +562,40 @@ export function identityOidcPlugin(
     "/identity/:connectionId/start",
     {
       method: "GET",
-      query: z.object({ returnTo: z.string().max(2048).optional() }),
+      query: z.object({
+        returnTo: z.string().max(2048).optional(),
+        invitationId: z
+          .string()
+          .regex(/^[A-Za-z0-9_-]{1,128}$/u)
+          .optional(),
+      }),
     },
     async (ctx: GenericEndpointContext) => {
       const connectionId = ctx.params?.connectionId;
-      if (!connectionId) return safeFailure(ctx);
-      const [connection] = await getOidcConnectionForStart(connectionId);
-      const startJit = connection
-        ? parseIdentityJitPolicy(connection.jitPolicy)
-        : null;
-      if (
-        !connection ||
-        connection.portalScope !== portal ||
-        !connection.enabled ||
-        !connection.tenantId ||
-        !startJit?.ok ||
-        (portal === "agent" &&
-          startJit.value.enabled &&
-          !connection.defaultWorkspaceId) ||
-        !parseIdentityClaimMapping(connection.claimMapping).ok
-      )
-        return safeFailure(ctx);
-
-      const origin = originForPortal(portal);
-      const callback = `${origin}/api/auth/identity/${connectionId}/callback`;
-      if (connection.redirectUri !== callback) return safeFailure(ctx);
-      let discovery: Awaited<ReturnType<typeof loadEntraDiscovery>>;
-      try {
-        discovery = await loadEntraDiscovery(connection.tenantId);
-      } catch {
-        logTaskDesk({
-          module: "auth",
-          message: "auth.failure",
-          level: "warn",
-          result: "failed",
+      if (!connectionId || portal === "customer")
+        return safeFailure(ctx, portal, {
+          ...(connectionId ? { connectionId } : {}),
+          kind: "request.denied",
+          reason: "connection_unavailable",
         });
-        return safeFailure(ctx);
-      }
-      if (discovery.issuer !== connection.issuer) return safeFailure(ctx);
-
-      const state = randomBytes(32).toString("base64url");
-      const nonce = randomBytes(32).toString("base64url");
-      const verifier = randomBytes(32).toString("base64url");
-      const challenge = createHash("sha256")
-        .update(verifier, "utf8")
-        .digest("base64url");
-      const secure = origin.startsWith("https://");
-      const cookieName = stateCookieName(secure);
-      ctx.setCookie(cookieName, state, {
-        httpOnly: true,
-        secure,
-        sameSite: "Lax",
-        path: secure ? "/" : "/api/auth",
-        maxAge: FLOW_TTL_MS / 1000,
-      });
-      await db.insert(schema.verificationTable).values({
-        identifier: `oidc-state:${digest(state)}`,
-        value: JSON.stringify({
+      const [connection] = await getOidcConnectionForStart(connectionId);
+      if (!connection || connection.portalScope !== portal)
+        return safeFailure(ctx, portal, {
           connectionId,
-          portal,
-          nonce,
-          codeVerifier: verifier,
-          redirectUri: callback,
-        }),
-        expiresAt: new Date(Date.now() + FLOW_TTL_MS),
+          kind: "request.denied",
+          reason: "connection_unavailable",
+        });
+      const start = await createOidcAuthorizationStart({
+        connection,
+        portal,
       });
-      const authorize = new URL(discovery.authorizationEndpoint);
-      authorize.search = new URLSearchParams({
-        client_id: connection.clientId,
-        response_type: "code",
-        response_mode: "query",
-        redirect_uri: callback,
-        scope: [
-          ...new Set(["openid", "profile", "email", ...connection.scopes]),
-        ].join(" "),
-        state,
-        nonce,
-        code_challenge: challenge,
-        code_challenge_method: "S256",
-      }).toString();
-      return ctx.redirect(authorize.toString());
+      if (!start) return safeFailure(ctx, portal);
+      ctx.setCookie(
+        oidcStateCookieName(start.secure),
+        start.state,
+        oidcStateCookieOptions(start.secure),
+      );
+      return ctx.redirect(start.authorizationUrl);
     },
   );
 
@@ -390,12 +611,54 @@ export function identityOidcPlugin(
     },
     async (ctx: GenericEndpointContext) => {
       const connectionId = ctx.params?.connectionId;
-      if (!connectionId) return safeFailure(ctx);
+      if (!connectionId)
+        return safeFailure(ctx, portal, {
+          kind: "auth.failed",
+          reason: "callback_invalid",
+        });
       const state = ctx.query.state;
-      if (!state || ctx.query.error || !ctx.query.code) return safeFailure(ctx);
+      if (isOidcStepUpState(state) && portal === "agent") {
+        const origin = originForPortal(portal);
+        const secure = origin.startsWith("https://");
+        const cookieName = oidcStepUpStateCookieName(secure);
+        const cookieState = ctx.getCookie(cookieName);
+        ctx.setCookie(cookieName, "", {
+          httpOnly: true,
+          secure,
+          sameSite: "Lax",
+          path: secure ? "/" : "/api/auth",
+          maxAge: 0,
+        });
+        // The external identity callback does not run the session middleware that populates
+        // `ctx.context.session`; resolve the existing browser session from its request cookies.
+        const { authForHost } = await import("../auth");
+        const requestHeaders = ctx.request?.headers;
+        const callbackAuth = requestHeaders
+          ? authForHost(requestHeaders.get("host"))
+          : null;
+        const current =
+          callbackAuth && requestHeaders
+            ? await callbackAuth.api.getSession({ headers: requestHeaders })
+            : null;
+        await completeOidcStepUpCallback({
+          state,
+          cookieState: cookieState ?? undefined,
+          code: ctx.query.code,
+          providerError: ctx.query.error,
+          connectionId,
+          sessionId: current?.session?.id ?? undefined,
+          userId: current?.user?.id,
+        });
+        return ctx.redirect(`${origin}/agent`);
+      }
+      if (!state || ctx.query.error || !ctx.query.code)
+        return safeFailure(ctx, portal, {
+          kind: "auth.failed",
+          reason: "callback_invalid",
+        });
       const origin = originForPortal(portal);
       const secure = origin.startsWith("https://");
-      const cookieName = stateCookieName(secure);
+      const cookieName = oidcStateCookieName(secure);
       const cookieState = ctx.getCookie(cookieName);
       ctx.setCookie(cookieName, "", {
         httpOnly: true,
@@ -405,38 +668,61 @@ export function identityOidcPlugin(
         maxAge: 0,
       });
       if (!cookieState || !equalSecret(cookieState, state))
-        return safeFailure(ctx);
+        return safeFailure(ctx, portal, {
+          kind: "auth.failed",
+          reason: "state_invalid",
+        });
 
       const identifier = `oidc-state:${digest(state)}`;
-      const consumed = await db.transaction(async (tx) => {
+      const consumedState = await db.transaction(async (tx) => {
         const [row] = await lockOidcVerification(tx, identifier);
         if (!row || row.expiresAt <= new Date()) return null;
         await tx
           .delete(schema.verificationTable)
           .where(eq(schema.verificationTable.id, row.id));
-        return parseFlow(row.value);
+        return { flow: parseOidcFlow(row.value), expiresAt: row.expiresAt };
       });
+      const consumed = consumedState?.flow;
       if (
         !consumed ||
         consumed.connectionId !== connectionId ||
         consumed.portal !== portal ||
         consumed.redirectUri !==
-          `${origin}/api/auth/identity/${connectionId}/callback`
+          `${origin}/api/auth/identity/${connectionId}/callback` ||
+        (portal === "customer" && !consumed.organisationId)
       )
-        return safeFailure(ctx);
+        return safeFailure(ctx, portal, {
+          kind: "auth.failed",
+          reason: "state_invalid",
+        });
 
       const [connection] = await getOidcConnectionForCallback(connectionId);
       if (
         !connection?.enabled ||
         connection.portalScope !== portal ||
         !connection.tenantId ||
-        connection.redirectUri !== consumed.redirectUri
+        connection.redirectUri !== consumed.redirectUri ||
+        connection.organisationId !== consumed.organisationId
       )
-        return safeFailure(ctx);
+        return safeFailure(ctx, portal, {
+          connectionId,
+          kind: "request.denied",
+          reason: "connection_unavailable",
+        });
       const jitPolicy = parseIdentityJitPolicy(connection.jitPolicy);
-      if (!jitPolicy.ok) return safeFailure(ctx);
+      if (!jitPolicy.ok)
+        return safeFailure(ctx, portal, {
+          connectionId,
+          kind: "request.denied",
+          reason: "configuration_invalid",
+        });
       const claimMapping = parseIdentityClaimMapping(connection.claimMapping);
-      if (!claimMapping.ok) return safeFailure(ctx);
+      if (!claimMapping.ok)
+        return safeFailure(ctx, portal, {
+          connectionId,
+          kind: "request.denied",
+          reason: "configuration_invalid",
+        });
 
       try {
         const secret = decryptIdentityClientSecret(
@@ -444,7 +730,12 @@ export function identityOidcPlugin(
           connection.clientSecret,
         );
         const discovery = await loadEntraDiscovery(connection.tenantId);
-        if (discovery.issuer !== connection.issuer) return safeFailure(ctx);
+        if (discovery.issuer !== connection.issuer)
+          return safeFailure(ctx, portal, {
+            connectionId,
+            kind: "request.denied",
+            reason: "configuration_invalid",
+          });
         const tokens = await exchangeEntraCode({
           tokenEndpoint: discovery.tokenEndpoint,
           clientId: connection.clientId,
@@ -460,7 +751,120 @@ export function identityOidcPlugin(
           clientId: connection.clientId,
           nonce: consumed.nonce,
         });
-        if (!verified.ok) return safeFailure(ctx);
+        if (!verified.ok)
+          return safeFailure(ctx, portal, {
+            connectionId,
+            kind: "auth.failed",
+            reason: "token_invalid",
+          });
+        if (consumed.purpose === "account_link") {
+          const link = consumed.accountLink;
+          const subject = verified.claims.oid;
+          const tenant = verified.claims.tid;
+          const domainOwners = await listEnabledOidcDomainOwners();
+          const normalized = normaliseEntraClaims(
+            verified.claims as VerifiedEntraClaims,
+            {
+              identityConnectionId: connection.id,
+              issuer: connection.issuer,
+              tenantId: connection.tenantId,
+            },
+            domainOwners,
+            {
+              claimMapping: connection.claimMapping,
+              jitPolicy: connection.jitPolicy,
+              enforceAdmission: false,
+            },
+          );
+          const admission = validateEntraAdmission(
+            verified.claims as VerifiedEntraClaims,
+            jitPolicy.value,
+          );
+          if (
+            !link ||
+            portal !== "agent" ||
+            typeof subject !== "string" ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
+              subject,
+            ) ||
+            tenant !== connection.tenantId ||
+            !normalized.ok ||
+            !admission.ok
+          )
+            return safeFailure(ctx, portal, {
+              connectionId,
+              kind: "request.denied",
+              reason: "identity_denied",
+            });
+          const requestHeaders = ctx.request?.headers;
+          const { authForHost } = await import("../auth");
+          const callbackAuth = requestHeaders
+            ? authForHost(requestHeaders.get("host"))
+            : null;
+          const current =
+            callbackAuth && requestHeaders
+              ? await callbackAuth.api.getSession({ headers: requestHeaders })
+              : null;
+          if (
+            !current?.session?.id ||
+            !current.user?.id ||
+            current.session.id !== link.sessionId ||
+            current.user.id !== link.userId
+          )
+            return safeFailure(ctx, portal, {
+              connectionId,
+              kind: "request.denied",
+              reason: "identity_denied",
+            });
+          const { storeAccountLinkCandidate } = await import("./account-link");
+          const intentId = await storeAccountLinkCandidate({
+            link,
+            portal,
+            organisationId: connection.organisationId,
+            targetConnectionId: connection.id,
+            issuer: connection.issuer,
+            subject: normalized.identity.subject.oid,
+            accountLabel: normalized.identity.address,
+            displayName: normalized.identity.displayName ?? null,
+            expiresAt: consumedState.expiresAt,
+          });
+          if (!intentId)
+            return safeFailure(ctx, portal, {
+              connectionId,
+              kind: "request.denied",
+              reason: "identity_denied",
+            });
+          return ctx.redirect(
+            `${origin}/dashboard/settings/account/security?identityLinkIntent=${encodeURIComponent(intentId)}`,
+          );
+        }
+        if (consumed.purpose !== "login" || consumed.accountLink)
+          return safeFailure(ctx, portal, {
+            connectionId,
+            kind: "auth.failed",
+            reason: "state_invalid",
+          });
+        let invitationContext: { invitationId: string; nonce: string } | null =
+          null;
+        if (portal === "customer" && consumed.invitationId) {
+          invitationContext = readCustomerInvitationContinuationContext({
+            headers: ctx.request?.headers,
+            invitationId: consumed.invitationId,
+          });
+          if (
+            verified.claims.email_verified !== true ||
+            !invitationContext ||
+            !(await validateCustomerInvitationContinuation({
+              ...invitationContext,
+              email: String(verified.claims.email ?? ""),
+            }))
+          )
+            return safeFailure(ctx, portal, {
+              connectionId,
+              kind: "request.denied",
+              reason: "identity_denied",
+            });
+        }
         const domainOwners = await listEnabledOidcDomainOwners();
         const normalized = normaliseEntraClaims(
           verified.claims as VerifiedEntraClaims,
@@ -476,30 +880,87 @@ export function identityOidcPlugin(
             enforceAdmission: false,
           },
         );
-        if (!normalized.ok) return safeFailure(ctx);
+        if (!normalized.ok)
+          return safeFailure(ctx, portal, {
+            connectionId,
+            kind:
+              normalized.reason === "domain_bound_elsewhere" ||
+              normalized.reason === "ambiguous_domain_binding"
+                ? "request.denied"
+                : "auth.failed",
+            reason:
+              normalized.reason === "domain_bound_elsewhere" ||
+              normalized.reason === "ambiguous_domain_binding"
+                ? "identity_denied"
+                : "token_invalid",
+          });
         const signedIn = await signInAdmittedIdentity({
           ctx,
           portal,
           connection,
           identity: normalized.identity,
           claims: verified.claims as VerifiedEntraClaims,
+          initiatedOrganisationId: consumed.organisationId,
+          ...(invitationContext ? { invitationContext } : {}),
         });
-        if (signedIn.kind === "denied") return safeFailure(ctx);
+        if (signedIn.kind === "denied")
+          return safeFailure(ctx, portal, {
+            connectionId,
+            kind: "request.denied",
+            reason: "identity_denied",
+          });
         if (signedIn.kind === "two_factor")
           return ctx.redirect("/auth/two-factor");
         await setSessionCookie(ctx, {
           session: signedIn.session,
           user: signedIn.user,
         });
-        return ctx.redirect(portal === "agent" ? "/agent" : "/");
-      } catch {
+        if (signedIn.invitationAccepted && consumed.invitationId) {
+          ctx.setCookie(
+            customerInvitationContinuationCookieName(consumed.invitationId),
+            "",
+            {
+              httpOnly: true,
+              secure,
+              sameSite: "Lax",
+              path: "/",
+              maxAge: 0,
+            },
+          );
+        }
+        return ctx.redirect(
+          portal === "agent"
+            ? "/agent"
+            : signedIn.invitationAccepted
+              ? "/catalogue"
+              : consumed.invitationId
+                ? `/invite/${encodeURIComponent(consumed.invitationId)}`
+                : "/",
+        );
+      } catch (error) {
+        if (safeFailureContexts.has(ctx)) {
+          safeFailureContexts.delete(ctx);
+          throw error;
+        }
         logTaskDesk({
           module: "auth",
           message: "auth.failure",
           level: "warn",
           result: "failed",
         });
-        return safeFailure(ctx);
+        return safeFailure(ctx, portal, {
+          connectionId,
+          kind:
+            error instanceof IdentityGrantClosureChangedError
+              ? "request.denied"
+              : "auth.failed",
+          reason:
+            error instanceof IdentityGrantClosureChangedError
+              ? "connection_unavailable"
+              : error instanceof APIError
+                ? "identity_denied"
+                : "provider_failure",
+        });
       }
     },
   );
@@ -516,8 +977,11 @@ async function signInAdmittedIdentity(input: {
   connection: typeof schema.identityConnectionTable.$inferSelect;
   identity: NormalisedEntraIdentity;
   claims: VerifiedEntraClaims;
+  initiatedOrganisationId: string | null;
+  invitationContext?: { invitationId: string; nonce: string };
 }) {
-  const { ctx, portal, connection, identity, claims } = input;
+  const { ctx, portal, connection, identity, claims, initiatedOrganisationId } =
+    input;
   const now = new Date();
   const subject = identity.subject.oid;
   const result = await retryIdentityGrantClosure(() =>
@@ -585,7 +1049,9 @@ async function signInAdmittedIdentity(input: {
         currentConnection.issuer !== connection.issuer ||
         currentConnection.tenantId !== connection.tenantId ||
         currentConnection.clientId !== connection.clientId ||
-        currentConnection.configVersion !== observedConnection.configVersion
+        currentConnection.configVersion !== observedConnection.configVersion ||
+        currentConnection.organisationId !== initiatedOrganisationId ||
+        (portal === "customer" && !initiatedOrganisationId)
       )
         throw new IdentityGrantClosureChangedError();
       const currentJit = parseIdentityJitPolicy(currentConnection.jitPolicy);
@@ -719,6 +1185,8 @@ async function signInAdmittedIdentity(input: {
             ),
           ],
           pendingActionAuditFailures,
+          invitationAccepted: false,
+          acceptedDeliveries: [],
         };
       }
       if (!observedIdentity && existing)
@@ -727,6 +1195,10 @@ async function signInAdmittedIdentity(input: {
       let personId = existing?.personId;
       let userId = existing?.userId ?? existing?.personUserId ?? null;
       let externalIdentityId = existing?.id;
+      let invitationAccepted = false;
+      let acceptedDeliveries: string[] = [];
+      const invitedCustomer =
+        portal === "customer" && input.invitationContext !== undefined;
       if (existing) {
         if (
           !existing.active ||
@@ -755,7 +1227,7 @@ async function signInAdmittedIdentity(input: {
             id: createId(),
             name: identity.displayName ?? identity.address,
             email: identity.address,
-            emailVerified: false,
+            emailVerified: invitedCustomer,
             createdAt: now,
             updatedAt: now,
           };
@@ -775,7 +1247,7 @@ async function signInAdmittedIdentity(input: {
             .where(eq(schema.personTable.id, existing.personId));
         }
       } else {
-        if (!jitPolicy.enabled)
+        if (!jitPolicy.enabled && !invitedCustomer)
           throw new APIError("UNAUTHORIZED", {
             message: "Identity sign-in failed",
           });
@@ -784,91 +1256,115 @@ async function signInAdmittedIdentity(input: {
           throw new APIError("UNAUTHORIZED", {
             message: "Identity sign-in failed",
           });
-        const [role] = await lockOidcDefaultRole(
-          tx,
-          jitPolicy.default_role_id ?? "",
-        );
-        const roleScope = portal === "agent" ? "workspace" : "organisation";
-        if (
-          !role ||
-          role.scope !== roleScope ||
-          role.rank < 0 ||
-          (portal === "agent" &&
-            (currentConnection.maxRoleRank === null ||
-              role.rank > currentConnection.maxRoleRank ||
-              !currentConnection.defaultWorkspaceId ||
-              role.workspaceId !== currentConnection.defaultWorkspaceId ||
-              role.key === "admin" ||
-              role.key === "owner" ||
-              !Array.isArray(role.capabilities))) ||
-          (portal === "customer" &&
-            (role.key !== "customer" || role.workspaceId !== null))
-        )
-          throw new APIError("UNAUTHORIZED", {
-            message: "Identity sign-in failed",
-          });
+        if (!invitedCustomer) {
+          const [role] = await lockOidcDefaultRole(
+            tx,
+            jitPolicy.default_role_id ?? "",
+          );
+          const roleScope = portal === "agent" ? "workspace" : "organisation";
+          if (
+            !role ||
+            role.scope !== roleScope ||
+            role.rank < 0 ||
+            (portal === "agent" &&
+              (currentConnection.maxRoleRank === null ||
+                role.rank > currentConnection.maxRoleRank ||
+                !currentConnection.defaultWorkspaceId ||
+                role.workspaceId !== currentConnection.defaultWorkspaceId ||
+                role.key === "admin" ||
+                role.key === "owner" ||
+                !Array.isArray(role.capabilities))) ||
+            (portal === "customer" &&
+              (role.key !== "customer" || role.workspaceId !== null))
+          )
+            throw new APIError("UNAUTHORIZED", {
+              message: "Identity sign-in failed",
+            });
+        }
         const internal =
-          portal === "agent" ? await ensureInternalOrganisation(tx) : null;
+          portal === "agent" && !invitedCustomer
+            ? await ensureInternalOrganisation(tx)
+            : null;
         const organisationId =
           portal === "agent" ? internal?.id : currentConnection.organisationId;
         if (!organisationId)
           throw new APIError("UNAUTHORIZED", {
             message: "Identity sign-in failed",
           });
-        const scopeId =
-          roleScope === "workspace"
-            ? currentConnection.defaultWorkspaceId
-            : organisationId;
-        if (!scopeId)
-          throw new APIError("UNAUTHORIZED", {
-            message: "Identity sign-in failed",
-          });
-        if (
-          !(await validateOidcMappingRole(tx, {
-            providerType: currentConnection.providerType,
-            portalScope: portal,
-            // The agent branch of the shared validator requires a null organisation: the
-            // internal organisation is implied by the workspace and is checked there.
-            organisationId: portal === "agent" ? null : organisationId,
-            maxRoleRank: currentConnection.maxRoleRank,
-            scope: roleScope,
-            scopeId,
-            roleId: role.id,
-          }))
-        )
-          throw new APIError("UNAUTHORIZED", {
-            message: "Identity sign-in failed",
-          });
-        if (roleScope === "workspace") {
-          const [target] = await lockOidcDefaultWorkspace(tx, scopeId);
-          if (!target)
+        if (!invitedCustomer) {
+          const roleScope = portal === "agent" ? "workspace" : "organisation";
+          const scopeId =
+            roleScope === "workspace"
+              ? currentConnection.defaultWorkspaceId
+              : organisationId;
+          if (!scopeId)
             throw new APIError("UNAUTHORIZED", {
               message: "Identity sign-in failed",
             });
+          const [role] = await lockOidcDefaultRole(
+            tx,
+            jitPolicy.default_role_id ?? "",
+          );
+          if (
+            !role ||
+            !(await validateOidcMappingRole(tx, {
+              providerType: currentConnection.providerType,
+              portalScope: portal,
+              // The agent branch of the shared validator requires a null organisation: the
+              // internal organisation is implied by the workspace and is checked there.
+              organisationId: portal === "agent" ? null : organisationId,
+              maxRoleRank: currentConnection.maxRoleRank,
+              scope: roleScope,
+              scopeId,
+              roleId: role.id,
+            }))
+          )
+            throw new APIError("UNAUTHORIZED", {
+              message: "Identity sign-in failed",
+            });
+          if (roleScope === "workspace") {
+            const [target] = await lockOidcDefaultWorkspace(tx, scopeId);
+            if (!target)
+              throw new APIError("UNAUTHORIZED", {
+                message: "Identity sign-in failed",
+              });
+          }
         }
         const user = {
           id: createId(),
           name: identity.displayName ?? identity.address,
           email: identity.address,
-          emailVerified: false,
+          emailVerified: invitedCustomer,
           createdAt: now,
           updatedAt: now,
         };
         await tx.insert(schema.userTable).values(user);
-        personId = createId();
-        externalIdentityId = createId();
         userId = user.id;
-        await tx.insert(schema.personTable).values({
-          id: personId,
-          userId,
-          organisationId,
-          side: portal === "agent" ? "staff" : "customer",
-          displayName: identity.displayName ?? null,
-          active: true,
-          isPlaceholder: false,
-          createdAt: now,
-          updatedAt: now,
-        });
+        if (invitedCustomer && input.invitationContext) {
+          const acceptance =
+            await acceptCustomerInvitationContinuationInTransaction(tx, {
+              userId,
+              ...input.invitationContext,
+              expectedOrganisationId: organisationId,
+            });
+          personId = acceptance.accepted.personId;
+          acceptedDeliveries = acceptance.acceptedDeliveries;
+          invitationAccepted = true;
+        } else {
+          personId = createId();
+          await tx.insert(schema.personTable).values({
+            id: personId,
+            userId,
+            organisationId,
+            side: portal === "agent" ? "staff" : "customer",
+            displayName: identity.displayName ?? null,
+            active: true,
+            isPlaceholder: false,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+        externalIdentityId = createId();
         await tx.insert(schema.accountTable).values({
           id: createId(),
           accountId: identityAccountId(connection.issuer, subject),
@@ -896,10 +1392,59 @@ async function signInAdmittedIdentity(input: {
           externalIdentityId,
           kind: "user.created",
           outcome: "success",
-          detail: { source: "jit", portal },
+          detail: {
+            source: invitationAccepted ? "customer_invitation" : "jit",
+            portal,
+          },
           actorType: "oidc",
           createdAt: now,
         });
+        await enqueueOutboxEvent(tx, {
+          id: `evt_${createId()}`,
+          kind: "identity.provisioned",
+          occurredAt: now.toISOString(),
+          actor: { type: "system", id: null, name: "TaskDesk OIDC" },
+          scope: eventScope({
+            workspaceId:
+              currentConnection.portalScope === "agent"
+                ? currentConnection.defaultWorkspaceId
+                : null,
+            organisationId: null,
+            projectId: null,
+          }),
+          payload: {
+            identityConnectionId: connection.id,
+            personId,
+            via: "jit",
+            organisationId,
+          },
+          causationId: null,
+          depth: 0,
+          originAutomationId: null,
+        });
+      }
+      if (invitedCustomer && input.invitationContext && !invitationAccepted) {
+        // A verified provider claim is sufficient to mark the matching stored address verified;
+        // the shared acceptance transaction still checks the exact user email and organization.
+        await tx
+          .update(schema.userTable)
+          .set({ emailVerified: true, updatedAt: now })
+          .where(
+            and(
+              eq(schema.userTable.id, userId as string),
+              eq(schema.userTable.email, identity.address),
+            ),
+          );
+        const acceptance =
+          await acceptCustomerInvitationContinuationInTransaction(tx, {
+            userId: userId as string,
+            ...input.invitationContext,
+            expectedOrganisationId:
+              currentConnection.organisationId ?? undefined,
+          });
+        personId = acceptance.accepted.personId;
+        acceptedDeliveries = acceptance.acceptedDeliveries;
+        invitationAccepted = true;
       }
       if (!personId || !userId || !externalIdentityId)
         throw new APIError("UNAUTHORIZED", {
@@ -952,10 +1497,9 @@ async function signInAdmittedIdentity(input: {
         externalIdentityId,
       });
 
-      const mappings = await listOidcMappingsForReconciliation(
-        tx,
-        connection.id,
-      );
+      const mappings = invitationAccepted
+        ? []
+        : await listOidcMappingsForReconciliation(tx, connection.id);
       const validMappings = [] as typeof mappings;
       const eligibleMappings = [] as typeof mappings;
       const groupIds = new Set(
@@ -993,7 +1537,8 @@ async function signInAdmittedIdentity(input: {
       const eligibleMappingIds = new Set(
         eligibleMappings.map((mapping) => mapping.id),
       );
-      const wantedJit = currentJit.value.enabled && Boolean(roleScopeId);
+      const wantedJit =
+        !invitationAccepted && currentJit.value.enabled && Boolean(roleScopeId);
       const [jitRole] = wantedJit
         ? await lockOidcDefaultRole(tx, currentJit.value.default_role_id ?? "")
         : [];
@@ -1197,6 +1742,7 @@ async function signInAdmittedIdentity(input: {
       }
       return {
         denied:
+          !invitationAccepted &&
           currentConnection.portalScope === "customer" &&
           currentJit.value.enabled &&
           !validJit,
@@ -1210,9 +1756,13 @@ async function signInAdmittedIdentity(input: {
           ),
         ],
         pendingActionAuditFailures,
+        invitationAccepted,
+        acceptedDeliveries,
       };
     }),
   );
+  if (result.acceptedDeliveries.length)
+    finalizeCustomerInvitationAcceptance(result.acceptedDeliveries);
   await reportPendingActionAuditFailures(result.pendingActionAuditFailures);
   if (result.denied) {
     if (result.changed) {
@@ -1232,7 +1782,9 @@ async function signInAdmittedIdentity(input: {
   if (!user)
     throw new APIError("UNAUTHORIZED", { message: "Identity sign-in failed" });
   const [factorState] = await getOidcUserFactorState(user.id);
-  if (factorState?.enabled) {
+  // The agent-only /auth/two-factor challenge never applies to a customer portal session
+  // (customers are exempt from the local-factor policy, P3-R1-04).
+  if (portal === "agent" && factorState?.enabled) {
     const maxAge = 600;
     const cookie = ctx.context.createAuthCookie("two_factor", { maxAge });
     const identifier = `2fa-${randomBytes(20).toString("base64url")}`;
@@ -1289,7 +1841,16 @@ async function signInAdmittedIdentity(input: {
     }))
   ) {
     if (session) await ctx.context.internalAdapter.deleteSession(session.token);
-    return safeFailure(ctx);
+    return safeFailure(ctx, portal, {
+      connectionId: connection.id,
+      kind: "request.denied",
+      reason: "connection_unavailable",
+    });
   }
-  return { kind: "session" as const, session, user };
+  return {
+    kind: "session" as const,
+    session,
+    user,
+    invitationAccepted: result.invitationAccepted,
+  };
 }

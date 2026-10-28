@@ -10,7 +10,9 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
+import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
 
 // Pinned literally against the existing client permission keys and the two
 // optional comment-choice response names. This prevents either side from
@@ -389,6 +391,49 @@ describe("GET /api/capabilities", () => {
     expect(viewerCapabilities.manageWorkspaceSettings).toBe(false);
   });
 
+  it("exposes the per-area settings capabilities the APIs enforce (M9)", async () => {
+    const { app } = createApp();
+    const read = async (role: "owner" | "manager" | "viewer") => {
+      const member = await createWorkspaceMember({ role });
+      mockAuthenticatedSession(member.user);
+      const response = await app.request(
+        `/api/capabilities?workspaceId=${member.workspace.id}`,
+      );
+      return response.json();
+    };
+    const owner = await read("owner");
+    expect([
+      owner.manageRoles,
+      owner.manageWebhooks,
+      owner.manageCustomFields,
+    ]).toEqual([true, true, true]);
+    // A manager manages webhooks and custom fields, but not role definitions.
+    const manager = await read("manager");
+    expect([
+      manager.manageRoles,
+      manager.manageWebhooks,
+      manager.manageCustomFields,
+    ]).toEqual([false, true, true]);
+    const viewer = await read("viewer");
+    expect([
+      viewer.manageRoles,
+      viewer.manageWebhooks,
+      viewer.manageCustomFields,
+    ]).toEqual([false, false, false]);
+    // P5 entries follow their own API capability: manage_rates (finance/admin), workflow:manage
+    // and budget:read (a viewer reads budgets, but never manages rates or workflows).
+    expect([
+      owner.manageRates,
+      owner.manageWorkflows,
+      owner.readBudgets,
+    ]).toEqual([true, true, true]);
+    expect([
+      viewer.manageRates,
+      viewer.manageWorkflows,
+      typeof viewer.readBudgets,
+    ]).toEqual([false, false, "boolean"]);
+  });
+
   it("scopes to the requested workspace -- same user, different roles in two workspaces, different answers (A1-P4)", async () => {
     const owner = await createWorkspaceMember({
       workspaceName: "Workspace Owner-side",
@@ -519,14 +564,11 @@ describe("project-scoped work capability introspection", () => {
     });
   });
 
-  it("does not turn legacy custom workspace statements into strict write authority", async () => {
+  it("a custom workspace role's capabilities (the canonical role row) are the strict authority, and a project role still decides inside its project", async () => {
     const actor = await createWorkspaceMember({ role: "custom-editor" });
-    await db.insert(schema.workspaceRoleTable).values({
-      workspaceId: actor.workspace.id,
-      role: "custom-editor",
-      permission: JSON.stringify({ work_item: ["read", "update"] }),
-      isSystem: false,
-      createdAt: new Date(),
+    // Owner decision, 23 Oct: a custom role's capabilities live in the canonical `role` row.
+    await upsertWorkspaceRoleRows(actor.workspace.id, "custom-editor", {
+      work_item: ["read", "update"],
     });
     const { project } = await createProjectFixture({
       workspaceId: actor.workspace.id,
@@ -562,7 +604,7 @@ describe("project-scoped work capability introspection", () => {
       `/api/capabilities?workspaceId=${actor.workspace.id}&projectId=${project.id}`,
     );
     expect(scoped.status).toBe(200);
-    expect((await scoped.json()).updateTasks).toBe(false);
+    expect((await scoped.json()).updateTasks).toBe(true);
   });
 
   it("makes missing, deleted and other-workspace projects indistinguishable", async () => {
@@ -591,5 +633,58 @@ describe("project-scoped work capability introspection", () => {
       expect(response.status).toBe(404);
       expect(await response.text()).toBe("Project not found");
     }
+  });
+});
+
+describe("time and budget capabilities (R6-02, R6-08)", () => {
+  it("reports logTime from time_entry:create: the built-in viewer lacks it, a member holds it", async () => {
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const member = await createWorkspaceMember({ role: "member" });
+    const { app } = createApp();
+    const read = async (user: typeof viewer.user, workspaceId: string) => {
+      mockAuthenticatedSession(user);
+      const response = await app.request(
+        `/api/capabilities?workspaceId=${workspaceId}`,
+      );
+      expect(response.status).toBe(200);
+      return (await response.json()) as Record<string, boolean>;
+    };
+    expect((await read(viewer.user, viewer.workspace.id)).logTime).toBe(false);
+    expect((await read(member.user, member.workspace.id)).logTime).toBe(true);
+  });
+
+  it("resolves readBudgets for the selected project when projectId is given", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const memberProject = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const viewerProject = await createProjectFixture({
+      workspaceId: viewer.workspace.id,
+    });
+    await grantProjectRole(member.user.id, memberProject.project.id, [
+      "project:read",
+      "budget:read",
+    ]);
+    await grantProjectRole(viewer.user.id, viewerProject.project.id, [
+      "project:read",
+    ]);
+    const { app } = createApp();
+    mockAuthenticatedSession(member.user);
+    const allowed = await app.request(
+      `/api/capabilities?workspaceId=${member.workspace.id}&projectId=${memberProject.project.id}`,
+    );
+    expect(allowed.status).toBe(200);
+    expect(
+      ((await allowed.json()) as { readBudgets: boolean }).readBudgets,
+    ).toBe(true);
+    mockAuthenticatedSession(viewer.user);
+    const denied = await app.request(
+      `/api/capabilities?workspaceId=${viewer.workspace.id}&projectId=${viewerProject.project.id}`,
+    );
+    expect(denied.status).toBe(200);
+    expect(
+      ((await denied.json()) as { readBudgets: boolean }).readBudgets,
+    ).toBe(false);
   });
 });

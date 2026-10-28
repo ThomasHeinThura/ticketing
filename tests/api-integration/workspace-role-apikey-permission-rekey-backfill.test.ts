@@ -10,6 +10,7 @@
  * already exist at the current schema head. The same statements the deployment runs are
  * therefore exercised here.
  */
+
 import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -26,6 +27,7 @@ import {
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 import { signUpUser } from "./helpers/organization-http";
+import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
 import {
   listWorkspaceRolesNative,
   updateWorkspaceRoleNative,
@@ -70,11 +72,9 @@ async function seedRawWorkspaceRolePermission(
         eq(schema.workspaceRoleTable.role, role),
       ),
     );
-  await db.insert(schema.workspaceRoleTable).values({
-    workspaceId,
-    role,
-    permission: rawPermissionJson,
-  });
+  // The legacy row of a built-in default is the genuine (`is_system`) statement row the legacy
+  // gates read; a non-default name is a custom role, whose capabilities live in `role`.
+  await upsertWorkspaceRoleRows(workspaceId, role, rawPermissionJson);
 }
 
 function hashApiKeyForTest(key: string): string {
@@ -210,7 +210,8 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     const [row] = await db
       .select({ permissions: schema.apikeyTable.permissions })
       .from(schema.apikeyTable)
-      .where(eq(schema.apikeyTable.key, hashed));
+      // AK-2: the first request rewrote the stored hash to Argon2id, so find the row by owner.
+      .where(eq(schema.apikeyTable.userId, member.user.id));
     expect(row).toBeDefined();
     const parsed = JSON.parse(row?.permissions ?? "{}") as Record<
       string,
@@ -255,6 +256,23 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     );
     await replayMigration0071();
 
+    // Step 1b: migration 0145 translates the (now work_item-keyed) legacy statements into the
+    // canonical role row; do the same here, from the legacy row as it now stands.
+    const [legacyRow] = await db
+      .select({ permission: schema.workspaceRoleTable.permission })
+      .from(schema.workspaceRoleTable)
+      .where(
+        and(
+          eq(schema.workspaceRoleTable.workspaceId, workspaceId),
+          eq(schema.workspaceRoleTable.role, "member"),
+        ),
+      );
+    await upsertWorkspaceRoleRows(
+      workspaceId,
+      "member",
+      legacyRow?.permission ?? "{}",
+    );
+
     // Step 2: list roles exactly as the settings UI does, and locate the migrated row.
     const listResponse = await listWorkspaceRolesNative(
       app,
@@ -265,32 +283,32 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     const roles = (await listResponse.json()) as Array<{
       id: string;
       role: string;
+      capabilities: string[];
       permission: Record<string, string[]>;
     }>;
     const memberRole = roles.find((r) => r.role === "member");
     expect(memberRole).toBeDefined();
 
-    // Before the fix this failed: the list response included `task`, and PROVES THE TEST HAS
-    // TEETH — reverting the `parsePermission` filter reproduces this exact failure.
+    // The list shows the derived statement view of the canonical capabilities: never the
+    // legacy `task` key.
     expect(memberRole?.permission.task).toBeUndefined();
-    expect(memberRole?.permission.work_item).toEqual(["create", "read"]);
+    expect(memberRole?.permission.work_item).toEqual(
+      expect.arrayContaining(["create", "read"]),
+    );
 
     // Step 3: save the role back UNCHANGED, exactly as clicking "Save" on an untouched form
-    // would — the real regression: this used to 400 with "Unknown permission resource(s):
-    // task" because the client had round-tripped the (unfiltered) `task` key it was given.
+    // would. The editor round-trips `capabilities` (the canonical set), so the legacy `task`
+    // key can no longer make the save fail; an unchanged set is accepted.
     const saveResponse = await updateWorkspaceRoleNative(
       app,
       ownerSignup.cookie,
       workspaceId,
       memberRole!.id,
-      { permission: memberRole!.permission },
+      { capabilities: memberRole!.capabilities },
     );
-    expect(saveResponse.status).toBe(200);
+    expect(saveResponse.status, await saveResponse.clone().text()).toBe(200);
 
-    // Step 4 (F2, Opus delta review of #392): update-workspace-role.ts REPLACES the stored
-    // permission with exactly what was sent — a future change to merge instead of replace
-    // would silently resurrect `task` from the row's prior state. Assert what actually landed
-    // in the database, not just the HTTP status.
+    // Step 4: an unchanged save leaves the legacy statement row exactly as it was.
     const [savedRow] = await db
       .select({ permission: schema.workspaceRoleTable.permission })
       .from(schema.workspaceRoleTable)
@@ -299,7 +317,6 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
       string,
       unknown
     >;
-    expect(savedPermission.task).toBeUndefined();
     expect(savedPermission.work_item).toEqual(["create", "read"]);
   });
 });

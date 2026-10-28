@@ -1,5 +1,10 @@
 import type db from "../database";
-import { EVENT_KEYS } from "./event-keys";
+import { currentAutomationContext } from "./automation-context";
+import {
+  EVENT_KEYS,
+  isLegacyTaskCompatibilityPayload,
+  LEGACY_TASK_COMPATIBILITY_KEYS,
+} from "./event-keys";
 import { insertOutboxEvent } from "./outbox.repository";
 
 export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -44,12 +49,44 @@ export function eventScope(input: {
   return {};
 }
 
+/**
+ * `EV-3`: an event written while an automation action is executing carries the chain facts
+ * (`depth`, `causationId`, `originAutomationId`), whatever the producer passed. Outside an
+ * automation context the envelope is returned untouched.
+ */
+export function withAutomationContext<Payload extends Record<string, unknown>>(
+  event: DomainEventEnvelope<Payload>,
+): DomainEventEnvelope<Payload> {
+  const context = currentAutomationContext();
+  if (!context) return event;
+  return {
+    ...event,
+    // `AM-4`: produced by the rule, attributed to it by id and name.
+    actor: {
+      type: "automation",
+      id: context.automationId,
+      name: context.automationName,
+    },
+    depth: Math.max(event.depth, context.depth),
+    causationId: event.causationId ?? context.causationId,
+    originAutomationId: event.originAutomationId ?? context.automationId,
+  };
+}
+
 /** Persists the complete events.md envelope inside the mutation's transaction. */
 export async function enqueueOutboxEvent<
   Payload extends Record<string, unknown>,
->(tx: DbTransaction, event: DomainEventEnvelope<Payload>): Promise<void> {
-  if (!EVENT_KEYS.has(event.kind)) {
+>(tx: DbTransaction, input: DomainEventEnvelope<Payload>): Promise<void> {
+  const event = withAutomationContext(input);
+  const isLegacyTaskEvent = LEGACY_TASK_COMPATIBILITY_KEYS.has(event.kind);
+  if (!EVENT_KEYS.has(event.kind) && !isLegacyTaskEvent) {
     throw new TypeError(`Unknown domain event kind: ${event.kind}`);
+  }
+  if (
+    isLegacyTaskEvent &&
+    !isLegacyTaskCompatibilityPayload(event.payload, event.scope)
+  ) {
+    throw new TypeError("Invalid legacy task compatibility event payload");
   }
   if (!event.scope.workspaceId) {
     const instanceScopedKeys = new Set([
@@ -57,6 +94,9 @@ export async function enqueueOutboxEvent<
       "pending_action.decided",
       "pending_action.executed",
       "identity.deprovisioned",
+      "identity.provisioned",
+      "api_key.auto_disabled",
+      "import.chunk_completed",
     ]);
     if (
       Object.keys(event.scope).length > 0 ||

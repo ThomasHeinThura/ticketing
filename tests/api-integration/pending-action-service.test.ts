@@ -259,7 +259,12 @@ describe("pending-action service persistence", () => {
         key: "SUP-1",
         title: "Test request",
         projectName: "Integration Project",
-        requesterName: "Pending Action Requester",
+        childrenAffected: 0,
+        requestedByName: "Pending Action Requester",
+        customerRequesterName: null,
+        customerVisibility: "private",
+        portalRemoval: "removed_on_approval",
+        recoveryDays: 30,
       },
       confirmation: "click",
       approveUrl: `/agent/settings/profile/pending-actions/${response.pendingActionId}`,
@@ -320,10 +325,15 @@ describe("pending-action service persistence", () => {
     } as Parameters<typeof createPendingAction>[0]);
 
     expect(response.summary).toEqual({
+      childrenAffected: 0,
       key: "SUP-1",
       title: "Test request",
       projectName: "Integration Project",
-      requesterName: "Pending Action Requester",
+      requestedByName: "Pending Action Requester",
+      customerRequesterName: null,
+      customerVisibility: "private",
+      portalRemoval: "removed_on_approval",
+      recoveryDays: 30,
     });
     const [row] = await db
       .select({ summary: schema.pendingActionTable.payloadSummary })
@@ -366,7 +376,7 @@ describe("pending-action service persistence", () => {
     } as Parameters<typeof createPendingAction>[0];
 
     await expect(createPendingAction(input)).rejects.toThrow(
-      /Pending-action route must be DELETE \/api\/work-items\/\{key\}/,
+      /Pending action target\/action\/route is unsupported/,
     );
     const rows = await db.select().from(schema.pendingActionTable);
     expect(rows).toHaveLength(0);
@@ -686,6 +696,7 @@ describe("pending-action service persistence", () => {
       confirmationRequired: pending.confirmationRequired,
       payload: pending.payload,
       payloadHash: pending.payloadHash,
+      targetVersions: pending.targetVersions,
     } satisfies ActionRequiredAccessInput;
     const creationCredentialCheck = await db.transaction((tx) =>
       evaluateActionRequiredAccess(tx, input),

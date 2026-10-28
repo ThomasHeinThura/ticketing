@@ -1,0 +1,72 @@
+{
+	"recordedAt": "2026-10-26T01:57:06.481Z",
+	"results": [
+		{
+			"width": 375,
+			"theme": "light",
+			"pageTargetTerm": true,
+			"dialogTargetTerm": true,
+			"typedDraftPreserved": true,
+			"escapeFocusRestored": true,
+			"noApprovalSubmitted": true,
+			"noPageOverflow": true,
+			"errors": []
+		},
+		{
+			"width": 375,
+			"theme": "dark",
+			"pageTargetTerm": true,
+			"dialogTargetTerm": true,
+			"typedDraftPreserved": true,
+			"escapeFocusRestored": true,
+			"noApprovalSubmitted": true,
+			"noPageOverflow": true,
+			"errors": []
+		},
+		{
+			"width": 768,
+			"theme": "light",
+			"pageTargetTerm": true,
+			"dialogTargetTerm": true,
+			"typedDraftPreserved": true,
+			"escapeFocusRestored": true,
+			"noApprovalSubmitted": true,
+			"noPageOverflow": true,
+			"errors": []
+		},
+		{
+			"width": 768,
+			"theme": "dark",
+			"pageTargetTerm": true,
+			"dialogTargetTerm": true,
+			"typedDraftPreserved": true,
+			"escapeFocusRestored": true,
+			"noApprovalSubmitted": true,
+			"noPageOverflow": true,
+			"errors": []
+		},
+		{
+			"width": 1440,
+			"theme": "light",
+			"pageTargetTerm": true,
+			"dialogTargetTerm": true,
+			"typedDraftPreserved": true,
+			"escapeFocusRestored": true,
+			"noApprovalSubmitted": true,
+			"noPageOverflow": true,
+			"errors": []
+		},
+		{
+			"width": 1440,
+			"theme": "dark",
+			"pageTargetTerm": true,
+			"dialogTargetTerm": true,
+			"typedDraftPreserved": true,
+			"escapeFocusRestored": true,
+			"noApprovalSubmitted": true,
+			"noPageOverflow": true,
+			"errors": []
+		}
+	],
+	"scope": "Own QA project only; no approval or deletion submitted"
+}

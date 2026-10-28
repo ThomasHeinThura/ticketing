@@ -1,26 +1,16 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  Button,
-  ContextMenu,
-  ContextMenuTrigger,
-} from "@taskdesk/ui";
+import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { format } from "date-fns";
 import { Calendar, CalendarClock, CalendarX } from "lucide-react";
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { cn } from "@/lib/cn";
 import {
   dueDateStatusColors,
@@ -63,8 +53,8 @@ export default function BacklogTaskRow({ task }: BacklogTaskRowProps) {
     showLabels,
     showTaskNumbers,
   } = useUserPreferencesStore();
-  const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
   const { mutateAsync: deleteTask } = useDeleteTask();
+  const openPendingAction = useOpenPendingAction();
   const { toggleSelection, isSelected, isFocused } =
     useBacklogBulkSelectionStore();
   const isTaskSelected = isSelected(task.id);
@@ -120,8 +110,10 @@ export default function BacklogTaskRow({ task }: BacklogTaskRowProps) {
 
   const handleDeleteTask = async () => {
     try {
-      await deleteTask(task.id);
-      toast.success(t("tasks:delete.success"));
+      if (!project?.slug) throw new Error(t("tasks:delete.error"));
+      // Deletion is only requested; the task stays until the requester approves it.
+      const pendingAction = await deleteTask(`${project.slug}-${task.number}`);
+      await openPendingAction(pendingAction);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t("tasks:delete.error"),
@@ -228,40 +220,10 @@ export default function BacklogTaskRow({ task }: BacklogTaskRowProps) {
               projectId: project.id,
               worskpaceId: workspace.id,
             }}
-            onDeleteClick={() => setIsDeleteTaskModalOpen(true)}
+            onDeleteClick={() => void handleDeleteTask()}
           />
         )}
       </ContextMenu>
-
-      <AlertDialog
-        open={isDeleteTaskModalOpen}
-        onOpenChange={setIsDeleteTaskModalOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("tasks:delete.title")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("tasks:delete.description")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" size="sm" />}>
-              {t("common:actions.cancel")}
-            </AlertDialogClose>
-            <AlertDialogClose
-              render={
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDeleteTask}
-                />
-              }
-            >
-              {t("tasks:delete.action")}
-            </AlertDialogClose>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

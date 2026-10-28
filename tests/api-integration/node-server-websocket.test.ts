@@ -36,6 +36,7 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 import { signUpUser } from "./helpers/organization-http";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import { removeWorkspaceMemberNative } from "./helpers/workspace-membership-write-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
@@ -537,6 +538,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       stateTemplateId: template.id,
       isDefault: true,
     });
+    await ensureCreationWorkflow({
+      workspaceId: member.workspace.id,
+      projectId: project.project.id,
+      typeId: type.id,
+    });
     const item = await createWorkItem({
       projectId: project.project.id,
       workspaceId: member.workspace.id,
@@ -557,7 +563,9 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       authorizeNativeTopic(credential, `work_item:${item.key}`),
     ).resolves.not.toBeNull();
 
-    await archiveProject(project.project.id, member.workspace.id);
+    await archiveProject(project.project.id, member.workspace.id, {
+      userId: member.user.id,
+    });
 
     await expect(
       authorizeNativeTopic(credential, `project:${project.project.id}`),
@@ -600,6 +608,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       projectId: project.project.id,
       stateTemplateId: template.id,
       isDefault: true,
+    });
+    await ensureCreationWorkflow({
+      workspaceId: owner.workspace.id,
+      projectId: project.project.id,
+      typeId: type.id,
     });
     const item = await createWorkItem({
       projectId: project.project.id,
@@ -805,7 +818,9 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     });
 
     const denied = nextMessage(socket);
-    await archiveProject(project.project.id, member.workspace.id);
+    await archiveProject(project.project.id, member.workspace.id, {
+      userId: member.user.id,
+    });
     await expect(denied).resolves.toEqual({ type: "subscription_denied" });
 
     const closed = new Promise<void>((resolve) =>
@@ -1050,6 +1065,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       projectId: project.project.id,
       stateTemplateId: stateTemplate.id,
       isDefault: true,
+    });
+    await ensureCreationWorkflow({
+      workspaceId: first.workspace.id,
+      projectId: project.project.id,
+      typeId: type.id,
     });
 
     const { app } = createApp();
@@ -1970,7 +1990,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         workspaceId: member.workspace.id,
         name: "Real listener JSON body",
         icon: "FolderKanban",
-        slug: "real-listener-json-body",
+        slug: "REALLIST",
       }),
       { "x-taskdesk-csrf": csrfToken },
     );
@@ -1980,7 +2000,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     expect(JSON.parse(created.body)).toMatchObject({
       workspaceId: member.workspace.id,
       name: "Real listener JSON body",
-      slug: "real-listener-json-body",
+      slug: "REALLIST",
     });
 
     const socket = await openSocket(

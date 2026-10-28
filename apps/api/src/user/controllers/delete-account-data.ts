@@ -19,6 +19,7 @@ import {
   projectTable,
   workspaceTable,
 } from "../../database/schema";
+import { importPlaceholderClaimTable } from "../../database/schema-imports";
 import {
   AccountDeletionRetryError,
   currentAccountDeletionTransaction,
@@ -28,6 +29,10 @@ import {
 } from "../../pending-action/credential-invalidation";
 import { revokeProjectCreatorGrantsForMember } from "../../project/project-creator-grant";
 import { isLockNotAvailable } from "../../utils/is-lock-not-available";
+import {
+  isWorkspaceUnderOpenLegalHold,
+  lockLegalHolds,
+} from "../../utils/workspace-legal-hold";
 import {
   deleteWorkspaceRoleDependents,
   WorkspaceInUseByIdentityConnectionError,
@@ -149,6 +154,46 @@ async function workspacesWithOtherAccess(
   return blocked;
 }
 
+export const LEGAL_HOLD_ERASURE_MESSAGE =
+  "Your account cannot be deleted while a legal hold covers it, its organisation or a workspace that would be erased with it. Nothing was deleted; contact your administrator.";
+
+/**
+ * PA-12 (data-model.md: an open hold suspends hard delete of held data in scope; operations
+ * 'erasure checks legal hold first'). Refuses with 409 `legal_hold` when an open hold covers the
+ * erasing person, their organisation, or any workspace this erasure would hard-delete. Takes the
+ * hold-table lock so no hold can be placed between the check and the commit.
+ */
+async function refuseIfUnderLegalHold(
+  tx: Transaction,
+  userId: string,
+  workspaceIds: readonly string[],
+): Promise<void> {
+  await lockLegalHolds(tx);
+  const personHeld = await tx.execute<{ held: boolean }>(sql`
+    SELECT EXISTS (
+      SELECT 1 FROM "legal_hold" lh
+      WHERE lh."lifted_at" IS NULL
+        AND (
+          (lh."scope" = 'person' AND lh."scope_id" IN (
+            SELECT pe."id" FROM "person" pe WHERE pe."user_id" = ${userId}))
+          OR (lh."scope" = 'organisation' AND lh."scope_id" IN (
+            SELECT pe."organisation_id" FROM "person" pe WHERE pe."user_id" = ${userId}))
+        )
+    ) AS held
+  `);
+  let held = personHeld.rows[0]?.held === true;
+  for (const workspaceId of workspaceIds) {
+    if (held) break;
+    held = await isWorkspaceUnderOpenLegalHold(tx, workspaceId);
+  }
+  if (held) {
+    throw new APIError("CONFLICT", {
+      code: "legal_hold",
+      message: LEGAL_HOLD_ERASURE_MESSAGE,
+    });
+  }
+}
+
 /** Longest this request waits for the identity-table write lock below. */
 export const ERASURE_LOCK_TIMEOUT_MS = 3000;
 const ERASURE_LOCK_BUSY_MESSAGE =
@@ -261,7 +306,26 @@ async function deleteAccountDataInTransaction(
   // Re-run under the lock (a no-op repeat when no workspace is being deleted).
   if (plan.workspaceIdsToDelete.length > 0) await refuseIfOthersHaveAccess();
 
-  if (accountDeletion) await invalidateAccountDeletionCredentials(userId, tx);
+  // Before credentials are invalidated or anything is deleted: a hold on the person, their
+  // organisation or a workspace erased with them refuses the whole erasure.
+  await refuseIfUnderLegalHold(tx, userId, plan.workspaceIdsToDelete);
+
+  if (accountDeletion) {
+    await invalidateAccountDeletionCredentials(userId, tx);
+    // Authored history retains its person ID after account erasure, but not a
+    // verified address copied into private import claim provenance.
+    await tx
+      .delete(importPlaceholderClaimTable)
+      .where(
+        inArray(
+          importPlaceholderClaimTable.personId,
+          tx
+            .select({ id: personTable.id })
+            .from(personTable)
+            .where(eq(personTable.userId, userId)),
+        ),
+      );
+  }
 
   if (plan.workspaceIdsToDelete.length > 0) {
     try {

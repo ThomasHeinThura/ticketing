@@ -1,0 +1,2304 @@
+{
+	"phase": "P1",
+	"items": [
+		{
+			"id": "WI-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema.ts (work_item.project_id/type_id NOT NULL, composite FKs); apps/api/src/work-item/controllers/create-work-item.ts; tests/api-integration/work-item-create-read-list.test.ts; tests/api-integration/work-item-types.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-create-read-list.test.ts",
+					"tests/api-integration/work-item-types.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"apps/api/src/work-item/controllers/create-work-item.ts",
+					"tests/api-integration/work-item-create-read-list.test.ts",
+					"tests/api-integration/work-item-types.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:75"
+			}
+		},
+		{
+			"id": "WI-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/claim-work-item-number.ts; work_item_key_claim in apps/api/src/database/schema.ts; tests/api-integration/work-item-create-read-list.test.ts (WI-2 concurrent numbering); tests/api-integration/work-item-schema-integrity.test.ts",
+			"gap": "Key prefix is project.slug, not a validated 2-8 uppercase key (see PR-13)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-create-read-list.test.ts",
+					"tests/api-integration/work-item-schema-integrity.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Key prefix is project.slug, not a validated 2-8 uppercase key (see PR-13)"
+				],
+				"paths": [
+					"apps/api/src/work-item/controllers/claim-work-item-number.ts",
+					"apps/api/src/database/schema.ts",
+					"tests/api-integration/work-item-create-read-list.test.ts",
+					"tests/api-integration/work-item-schema-integrity.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:76"
+			}
+		},
+		{
+			"id": "WI-3",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/schema.ts (min 1/max 500); tests/api-integration/work-item-create-read-list.test.ts (WI-3 empty/501/500)",
+			"gap": "Custom-field 'required per type' not applicable yet (custom fields absent, P4)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-create-read-list.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/schema.ts",
+					"tests/api-integration/work-item-create-read-list.test.ts",
+					"apps/api/src/work-item/index.ts",
+					"apps/api/src/custom-field/repository.ts",
+					"apps/web/src/components/work-item/work-item-custom-fields.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:79",
+				"repairReconciliation": "The obsolete P4-not-built carry was checked against persisted custom-field create/update implementation; final required-field browser case still pending."
+			}
+		},
+		{
+			"id": "WI-4",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/create-preparation.ts; apps/api/src/utils/seed-project-states.ts; apps/api/src/workflow/controllers/validate-workflow-version.ts; tests/api-integration/work-item-create-read-list.test.ts (no default state); tests/api-integration/work-item-integrity-constraints.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-create-read-list.test.ts",
+					"tests/api-integration/work-item-integrity-constraints.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/create-preparation.ts",
+					"apps/api/src/utils/seed-project-states.ts",
+					"apps/api/src/workflow/controllers/validate-workflow-version.ts",
+					"tests/api-integration/work-item-create-read-list.test.ts",
+					"tests/api-integration/work-item-integrity-constraints.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:81"
+			}
+		},
+		{
+			"id": "WI-5",
+			"state": "missing",
+			"evidence": "Searched apps/api/src, apps/web/src, packages/domain/src, tests for work_item_template/checklist_template/template: no table, route or UI",
+			"gap": "No work-item templates or checklist templates at all",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-templates.test.ts"],
+				"assertions": [
+					{
+						"path": "tests/api-integration/work-item-templates.test.ts:61",
+						"finding": "Creation copies description, labels and checklist while omitting assignee/dates."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/create-preparation.ts",
+					"tests/api-integration/work-item-templates.test.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/work-item-templates.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:86"
+			}
+		},
+		{
+			"id": "WI-6",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/activity.ts; tests/api-integration/work-item-activity-wiring.test.ts; tests/api-integration/work-item-update.test.ts; tests/api-integration/work-item-activity-read.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-activity-wiring.test.ts",
+					"tests/api-integration/work-item-update.test.ts",
+					"tests/api-integration/work-item-activity-read.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/activity.ts",
+					"tests/api-integration/work-item-activity-wiring.test.ts",
+					"tests/api-integration/work-item-update.test.ts",
+					"tests/api-integration/work-item-activity-read.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:94"
+			}
+		},
+		{
+			"id": "WI-7",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/update-work-item.ts, rank-work-item.ts (rank exempt); tests/api-integration/work-item-update.test.ts (stale If-Match 409, concurrent race); tests/api-integration/work-item-hierarchy.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-update.test.ts",
+					"tests/api-integration/work-item-hierarchy.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/update-work-item.ts",
+					"tests/api-integration/work-item-update.test.ts",
+					"tests/api-integration/work-item-hierarchy.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:95"
+			}
+		},
+		{
+			"id": "WI-7a",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/task/index.ts (PUT /api/v2/task, legacy PUT + Deprecation header); tests/api-integration/task-update-concurrency.test.ts (WI-7a x4); apps/web/src/components/task/task-properties-controls.freshness.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/task-update-concurrency.test.ts",
+					"apps/web/src/components/task/task-properties-controls.freshness.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/task/index.ts",
+					"tests/api-integration/task-update-concurrency.test.ts",
+					"apps/web/src/components/task/task-properties-controls.freshness.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:100"
+			}
+		},
+		{
+			"id": "WI-8",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/policy.ts (work_item:set_priority); apps/api/src/work-item/controllers/update-work-item.ts; tests/api-integration/work-item-update.test.ts (WI-8, F-A priority 403/200)",
+			"gap": "Custom-field editing not present (P4); labels via separate label routes",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-update.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/policy.ts",
+					"apps/api/src/work-item/controllers/update-work-item.ts",
+					"tests/api-integration/work-item-update.test.ts",
+					"apps/api/src/work-item/index.ts",
+					"apps/api/src/custom-field/repository.ts",
+					"apps/web/src/components/work-item/work-item-custom-fields.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:115",
+				"repairReconciliation": "The obsolete P4-not-built carry was checked against persisted custom-field create/update implementation; final required-field browser case still pending."
+			}
+		},
+		{
+			"id": "WI-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts; update body excludes state (apps/api/src/work-item/controllers/update-work-item.ts header); tests/api-integration/work-item-transition.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-transition.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"apps/api/src/work-item/controllers/update-work-item.ts",
+					"tests/api-integration/work-item-transition.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:119"
+			}
+		},
+		{
+			"id": "WI-10",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/assign-work-item.ts, unassign-work-item.ts; tests/api-integration/work-item-assign.test.ts; tests/api-integration/work-item-unassign.test.ts",
+			"gap": "See AS-3 notification gap",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-unassign.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": ["See AS-3 notification gap"],
+				"paths": [
+					"apps/api/src/work-item/controllers/assign-work-item.ts",
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-unassign.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:121"
+			}
+		},
+		{
+			"id": "WI-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/rank-work-item.ts; tests/api-integration/work-item-rank.test.ts (WI-11)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-rank.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/rank-work-item.ts",
+					"tests/api-integration/work-item-rank.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:125"
+			}
+		},
+		{
+			"id": "WI-12",
+			"state": "partial",
+			"evidence": "apps/api/src/scheduler/position-rebalance.ts (gap < 1e-6); inline repair in rank-work-item.ts; startup recovery in apps/api/src/index.ts; tests/api-integration/work-item-rank.test.ts (WI-12); tests/api/boot-position-recovery.test.ts",
+			"gap": "Rebalance runs inline on rank + bounded startup scan; no scheduled 'position-rebalance' job registered in apps/api/src/scheduler/index.ts",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-rank.test.ts",
+					"tests/api/boot-position-recovery.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/scheduler/position-rebalance.ts",
+					"apps/api/src/index.ts",
+					"tests/api-integration/work-item-rank.test.ts",
+					"tests/api/boot-position-recovery.test.ts",
+					"apps/api/src/scheduler/position-rebalance-job.ts",
+					"apps/api/src/scheduler/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:127"
+			}
+		},
+		{
+			"id": "WI-13",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/policy.ts comment (WI-13 'NOT enforced here'); apps/api/src/work-item/controllers/rank-work-item.ts",
+			"gap": "Customer organisation-scoped backlog re-rank not implemented; no portal backlog ranking",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/policy.ts",
+					"apps/api/src/work-item/controllers/rank-work-item.ts",
+					"apps/api/src/work-item/require-work-item-reach.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:131",
+				"verificationRemaining": [
+					"Owned portal fixtures pass persisted rank, keyboard focus, reload, restoration and375px controls without scrolling; full phase screen/role/flag matrix remains pending."
+				],
+				"browserEvidence": "docs/report/browser/wi13-180-backlog-focus.json"
+			}
+		},
+		{
+			"id": "WI-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/set-work-item-parent.ts, detach-work-item-parent.ts, list-hierarchy-children.ts; tests/api-integration/work-item-hierarchy.test.ts (RH-5, RH-11/12); apps/web/e2e/work-item-parent.spec.ts (not run)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"apps/web/e2e/work-item-parent.spec.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/set-work-item-parent.ts",
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"apps/web/e2e/work-item-parent.spec.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:135"
+			}
+		},
+		{
+			"id": "WI-15",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts composite (project_id,parent_id) FK; tests/api-integration/work-item-hierarchy.test.ts (RH-6 cross-project 400)",
+			"gap": "Cross-project move of a work item does not exist (work_item_key_alias table only); detach-children-on-move unimplemented",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"tests/api-integration/work-item-move-archive.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "tests/api-integration/work-item-move-archive.test.ts:186",
+						"finding": "Whole subtree project ids move together and parent links remain."
+					},
+					{
+						"path": "tests/api-integration/work-item-move-archive.test.ts:218",
+						"finding": "moveChildren:false reports detached child key."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"apps/api/src/work-item/controllers/move-work-item.ts",
+					"tests/api-integration/work-item-move-archive.test.ts",
+					"apps/web/src/components/work-item/move-work-item-dialog.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:136"
+			}
+		},
+		{
+			"id": "WI-16",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema.ts (work_item_parent_not_self CHECK + work_item_reject_parent_cycle trigger); tests/api-integration/work-item-parent-cycle-guard.test.ts; tests/api-integration/work-item-hierarchy.test.ts (RH-8)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-parent-cycle-guard.test.ts",
+					"tests/api-integration/work-item-hierarchy.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"tests/api-integration/work-item-parent-cycle-guard.test.ts",
+					"tests/api-integration/work-item-hierarchy.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:138"
+			}
+		},
+		{
+			"id": "WI-17",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/hierarchy.ts; tests/api-integration/work-item-hierarchy.test.ts (RH-7 depth 5 + concurrency)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-hierarchy.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/hierarchy.ts",
+					"tests/api-integration/work-item-hierarchy.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:139"
+			}
+		},
+		{
+			"id": "WI-18",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/workflow-transition-context.ts (children_closed guard); apps/api/src/work-item/controllers/transition-work-item.ts",
+			"gap": "No warn-and-list-open-children response/UI when closing a parent; only an optional children_closed workflow guard",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-properties.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/workflow-transition-context.ts",
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"apps/web/src/components/work-item/open-children-warning.tsx",
+					"apps/web/src/components/work-item/work-item-properties.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:140"
+			}
+		},
+		{
+			"id": "WI-19",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/hierarchy-page.repository.ts hierarchyProgressQuery (recursive subtree, state_template.group completed/cancelled); tests/api-integration/work-item-hierarchy-pagination.test.ts (progress 602/402)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-hierarchy-pagination.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/hierarchy-page.repository.ts",
+					"tests/api-integration/work-item-hierarchy-pagination.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:142"
+			}
+		},
+		{
+			"id": "WI-20",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/controllers/bulk-work-items.ts ('archive'); apps/api/src/work-item/controllers/list-work-items.ts excludes archivedAt; tests/api-integration/work-item-bulk.test.ts (archive); tests/api-integration/work-item-create-read-list.test.ts (excludes archived)",
+			"gap": "Archive only via bulk; no single-item archive/unarchive route; no explicit filter to reveal archived items",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-bulk.test.ts",
+					"tests/api-integration/work-item-create-read-list.test.ts",
+					"tests/api-integration/work-item-move-archive.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/bulk-work-items.ts",
+					"apps/api/src/work-item/controllers/list-work-items.ts",
+					"tests/api-integration/work-item-bulk.test.ts",
+					"tests/api-integration/work-item-create-read-list.test.ts",
+					"apps/api/src/work-item/controllers/archive-work-item.ts",
+					"tests/api-integration/work-item-move-archive.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:150"
+			}
+		},
+		{
+			"id": "WI-21",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/controllers/delete-work-item.ts (deleted_at); list/search exclude deleted (apps/api/src/work-item/search/repository.ts); tests/api-integration/work-item-delete.test.ts",
+			"gap": "No 30-day purge job (not in apps/api/src/scheduler/index.ts); no explicit reveal-deleted filter; no restore route",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-recovery.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/delete-work-item.ts",
+					"apps/api/src/work-item/search/repository.ts",
+					"tests/api-integration/work-item-delete.test.ts",
+					"apps/api/src/scheduler/soft-delete-purge.repository.ts",
+					"apps/api/src/scheduler/soft-delete-purge.ts",
+					"apps/api/src/work-item/controllers/list-work-items.ts",
+					"apps/api/src/work-item/require-work-item-reach.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:152",
+				"executionScope": "Recovery source implemented; integration includes current capability/reach, expiry and parent prerequisite; archived read graph repaired and tested. Browser retest pending.",
+				"repairReconciledAt": "2026-10-24T21:33:20.913306+00:00",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "WI-21a",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/pending-action/work-item-deletion-target.ts (afterCommit publishWorkItemDeletion); tests/api-integration/work-item-delete.test.ts (one durable deletion event, expiry does not delete); tests/api-integration/pending-action-bulk-work-item-deletion.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-delete.test.ts",
+					"tests/api-integration/pending-action-bulk-work-item-deletion.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pending-action/work-item-deletion-target.ts",
+					"tests/api-integration/work-item-delete.test.ts",
+					"tests/api-integration/pending-action-bulk-work-item-deletion.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:157"
+			}
+		},
+		{
+			"id": "WI-22",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/pending-action/work-item-deletion-target.ts (childrenAffected in summary); tests/api-integration/work-item-delete.test.ts (preserves children through restore window); childrenAffected rendered in apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+			"gap": "Children keep stored parent_id (hidden as deleted parent) rather than being nulled; confirm intended 'orphan' semantics",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-delete.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pending-action/work-item-deletion-target.ts",
+					"tests/api-integration/work-item-delete.test.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:161",
+				"ownerDecision": "23 Oct children retain parent_id during the recovery window and detach at purge, docs/technical/design-and-decisions.md:3466."
+			}
+		},
+		{
+			"id": "WI-23",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/controllers/delete-work-item.ts; apps/api/src/pending-action/work-item-deletion-target.ts, bulk-work-item-deletion-target.ts (typed_count); tests/api-integration/work-item-delete.test.ts (WI-23); tests/api-integration/work-item-bulk.test.ts",
+			"gap": "Legacy DELETE /api/task/{id} (apps/api/src/task/controllers/delete-task.ts) hard-deletes with 200 and MCP delete_task (packages/mcp/src/tools/register.ts) uses it; summary lacks requester/portal-visibility impact",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-delete.test.ts",
+					"tests/api-integration/pending-action-service.test.ts",
+					"apps/web/src/components/pending-action/pending-action-approval-executed.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/delete-work-item.ts",
+					"apps/api/src/pending-action/work-item-deletion-target.ts",
+					"tests/api-integration/work-item-delete.test.ts",
+					"tests/api-integration/work-item-bulk.test.ts",
+					"apps/api/src/pending-action/bulk-work-item-deletion-target.ts",
+					"apps/web/src/components/pending-action/pending-action-approval.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:162",
+				"executionScope": "Scoped deletion impact/key integration 92 and UI 9 passed before consolidated run. Locked summary now distinguishes actor requestedByName from customerRequesterName, includes customerVisibility/portalRemoval/recoveryDays. Full run exposed obsolete summary assertions still under repair; browser pending.",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "WI-24",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/bulk-work-items.ts (transition, assign, set_priority, add/remove_label, archive, set_due_date, delete via pending action); tests/api-integration/work-item-bulk.test.ts; apps/web/src/components/work-item/bulk-assign-toolbar.test.tsx",
+			"gap": "Cycle/module moves are P5 (not expected)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-bulk.test.ts",
+					"apps/web/src/components/work-item/bulk-assign-toolbar.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/bulk-work-items.ts",
+					"tests/api-integration/work-item-bulk.test.ts",
+					"apps/web/src/components/work-item/bulk-assign-toolbar.test.tsx",
+					"apps/web/src/components/agile/bulk-agile-actions.tsx",
+					"apps/web/src/components/agile/bulk-agile-dialog.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:171",
+				"repairReconciliation": "Cycle/module bulk UI/API exists in P5; the P1-only exclusion no longer applies. Complete bulk browser case remains pending."
+			}
+		},
+		{
+			"id": "WI-25",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/bulk-reach.ts; tests/api-integration/work-item-bulk.test.ts (WI-25 partial failure, identical not-found/out-of-reach)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-bulk.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/bulk-reach.ts",
+					"tests/api-integration/work-item-bulk.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:174"
+			}
+		},
+		{
+			"id": "WI-26",
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/work-item/controllers/bulk-work-items.ts ('transition' per item); apps/web/src/components/work-item/bulk-assign-toolbar.test.tsx (client only)",
+			"gap": "No API integration test for per-item illegal transition in a bulk batch",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/bulk-assign-toolbar.test.tsx",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/bulk-work-items.ts",
+					"apps/web/src/components/work-item/bulk-assign-toolbar.test.tsx",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:178"
+			}
+		},
+		{
+			"id": "WI-27",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/bulk-work-items.ts; tests/api-integration/work-item-bulk.test.ts (per-item + bulk.performed summary)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-bulk.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/bulk-work-items.ts",
+					"tests/api-integration/work-item-bulk.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:180"
+			}
+		},
+		{
+			"id": "WI-28",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/controllers/watch-work-item.ts; tests/api-integration/work-item-watch.test.ts (WI-28)",
+			"gap": "Watcher notifications only wired for approvals (apps/api/src/notification/repository.ts listApprovalWatcherPersonIds); no general watcher fan-out per preferences",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-watch.test.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/watch-work-item.ts",
+					"tests/api-integration/work-item-watch.test.ts",
+					"apps/api/src/notification/work-item-recipients.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:184"
+			}
+		},
+		{
+			"id": "WI-29",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/controllers/watch-work-item.ts (mute implicit); apps/api/src/intake/repository.ts (implicit requester watcher); tests/api-integration/work-item-watch.test.ts (WI-29)",
+			"gap": "Assign does not create implicit assignee watcher; approval notification watcher query ignores watcher.muted",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-watch.test.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/watch-work-item.ts",
+					"apps/api/src/intake/repository.ts",
+					"tests/api-integration/work-item-watch.test.ts",
+					"apps/api/src/work-item/implicit-watcher.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:186"
+			}
+		},
+		{
+			"id": "VW-1",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/lib/work-item-list-search.ts; apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx; apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-structured-filter.test.tsx; apps/web/src/lib/project-layout-navigation.test.ts; apps/web/e2e/work-item-structured-search.spec.ts (not run)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-structured-filter.test.tsx",
+					"apps/web/src/lib/project-layout-navigation.test.ts",
+					"apps/web/e2e/work-item-structured-search.spec.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/lib/work-item-list-search.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-structured-filter.test.tsx",
+					"apps/web/src/lib/project-layout-navigation.test.ts",
+					"apps/web/e2e/work-item-structured-search.spec.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:372"
+			}
+		},
+		{
+			"id": "VW-2",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/lib/project-layout-preference.ts; apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx; apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-board.test.tsx (VW-2)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-board.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/lib/project-layout-preference.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-board.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:373"
+			}
+		},
+		{
+			"id": "VW-3",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx; apps/web/src/components/work-item/work-item-list-selection.test.tsx; apps/web/src/components/work-item/work-item-board.test.tsx (selection)",
+			"gap": "Calendar and Gantt layouts (apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx, gantt.tsx) have no multi-select/bulk bar",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-list-selection.test.tsx",
+					"apps/web/src/components/work-item/work-item-board.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/bulk-assign-toolbar.tsx",
+					"apps/web/src/components/work-item/work-item-list-selection.test.tsx",
+					"apps/web/src/components/work-item/work-item-board.test.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:375"
+			}
+		},
+		{
+			"id": "VW-4",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-side-pane.tsx (used by work.tsx, calendar.tsx, gantt.tsx); apps/web/src/lib/project-layout-navigation.test.ts (VW-4); apps/web/src/components/work-item/work-item-side-pane.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/lib/project-layout-navigation.test.ts",
+					"apps/web/src/components/work-item/work-item-side-pane.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx",
+					"apps/web/src/lib/project-layout-navigation.test.ts",
+					"apps/web/src/components/work-item/work-item-side-pane.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:376"
+			}
+		},
+		{
+			"id": "VW-5",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/hooks/use-native-work-item-realtime.ts (list, board, project-layout); apps/web/src/hooks/use-native-work-item-realtime.test.tsx; apps/web/e2e/realtime.spec.ts (not run); tests/api-integration/ws-project-reach.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/hooks/use-native-work-item-realtime.test.tsx",
+					"apps/web/e2e/realtime.spec.ts",
+					"tests/api-integration/ws-project-reach.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/hooks/use-native-work-item-realtime.ts",
+					"apps/web/src/hooks/use-native-work-item-realtime.test.tsx",
+					"apps/web/e2e/realtime.spec.ts",
+					"tests/api-integration/ws-project-reach.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:378"
+			}
+		},
+		{
+			"id": "VW-6",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/hooks/use-density-preference.ts; apps/web/src/components/providers/user-preferences-effects.tsx (html.compact-mode); packages/ui/src/styles/density.css; apps/web/src/hooks/use-density-preference.test.tsx",
+			"gap": "Global CSS class only; per-layout compact rendering not verified",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["apps/web/src/hooks/use-density-preference.test.tsx"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Global CSS class only; per-layout compact rendering not verified"
+				],
+				"paths": [
+					"apps/web/src/hooks/use-density-preference.ts",
+					"apps/web/src/components/providers/user-preferences-effects.tsx",
+					"packages/ui/src/styles/density.css",
+					"apps/web/src/hooks/use-density-preference.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:379"
+			}
+		},
+		{
+			"id": "VW-7",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-board.tsx, work-item-list-loading.tsx; apps/web/src/components/work-item/work-item-board.test.tsx (loading/empty/error)",
+			"gap": "Calendar/Gantt designed empty/loading/error states not tested",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-board.test.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.test.tsx"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-board.test.tsx:247",
+						"finding": "Loading skeleton, retryable error and no-states empty view asserted."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-board.tsx",
+					"apps/web/src/components/work-item/work-item-board.test.tsx",
+					"apps/web/src/components/work-item/work-item-list-loading.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:380"
+			}
+		},
+		{
+			"id": "VW-8",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-board.tsx (Kaneo ColumnShell/TaskCard); apps/web/src/components/work-item/work-item-board.test.tsx (VW-8); tests/api-integration/project.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-board.test.tsx",
+					"tests/api-integration/project.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-board.test.tsx:197",
+						"finding": "State columns render in configured order, including empty state."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-board.tsx",
+					"apps/web/src/components/work-item/work-item-board.test.tsx",
+					"tests/api-integration/project.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:409"
+			}
+		},
+		{
+			"id": "VW-9",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/use-work-item-drag-drop.ts; apps/web/src/components/work-item/work-item-board.test.tsx (VW-9 blocked edge, refusal)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-board.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/use-work-item-drag-drop.ts",
+					"apps/web/src/components/work-item/work-item-board.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:410"
+			}
+		},
+		{
+			"id": "VW-10",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-board.test.tsx (VW-10); tests/api-integration/work-item-list-sort-pagination.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-board.test.tsx",
+					"tests/api-integration/work-item-list-sort-pagination.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "scoped_current_pass",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-board.test.tsx",
+					"tests/api-integration/work-item-list-sort-pagination.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:412",
+				"browserEvidence": [
+					"docs/report/browser/codex-20261025-keyboard-final-acceptance.json",
+					"docs/report/browser/codex-20261025-keyboard-group-field-acceptance.json"
+				],
+				"independentReview": "pending",
+				"latestEvidence": "Persisted 10k-item browser checks pass for paced and rapid keyboard board/list ranking, grouped priority changes, reload, Escape and idle Enter. Fixtures restored. Full phase matrix and independent review remain pending."
+			}
+		},
+		{
+			"id": "VW-11",
+			"state": "missing",
+			"evidence": "No virtualisation library in apps/web/package.json; board uses cursor 'Load more' (apps/web/src/components/work-item/work-item-board.tsx)",
+			"gap": "Board columns do not virtualise above 50 cards",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/package.json",
+					"apps/web/src/components/work-item/work-item-board.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:413",
+				"latestEvidence": "Per-column virtualization above50 is implemented. On the separate10k fixture,200 loaded board rows used9\u201313 mounted rows and moved the window on scroll. Full role/transition matrix pending.",
+				"browserEvidence": "docs/report/browser/codex-20261025-performance-10k.json",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "VW-12",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-board.tsx (columnCount label, showTaskItemCounts)",
+			"gap": "No work-in-progress limit or amber-on-exceed",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-board.test.tsx"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-board.test.tsx:241",
+						"finding": "Column count accessible name asserted; WIP threshold not asserted."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-board-view.tsx",
+					"apps/api/src/agile/wip.repository.ts",
+					"apps/web/src/components/project/state-wip-limit-field.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:414",
+				"latestEvidence": "Board route reads persisted useWipLimits(project.slug) and passes the state limits to the existing column header. Historical no-wiring claim was stale. Dedicated current browser verification pending.",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "VW-13",
+			"state": "missing",
+			"evidence": "Searched components/work-item, kanban-board, work.tsx for groupBy/grouping: none",
+			"gap": "Board grouping by assignee/priority/label/custom field and drag-to-set-field absent",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-grouped-board.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:416",
+				"verificationRemaining": [
+					"All-label and configured custom-field grouping with CAS field-setting drops are implemented. Labels, text, number and boolean browser flows pass. Remaining: other field formats and full role/feature-flag matrix."
+				],
+				"browserEvidence": "docs/report/browser/codex-20261025-vw13-grouping.json"
+			}
+		},
+		{
+			"id": "VW-14",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-board.tsx (KeyboardSensor, announcements); apps/web/src/components/work-item/work-item-board.test.tsx (keyboard drag announce/cancel/focus)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-board.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "scoped_current_pass",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-board.tsx",
+					"apps/web/src/components/work-item/work-item-board.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:419",
+				"browserEvidence": [
+					"docs/report/browser/codex-20261025-keyboard-final-acceptance.json",
+					"docs/report/browser/codex-20261025-keyboard-group-field-acceptance.json"
+				],
+				"independentReview": "pending",
+				"latestEvidence": "Persisted 10k-item browser checks pass for paced and rapid keyboard board/list ranking, grouped priority changes, reload, Escape and idle Enter. Fixtures restored. Full phase matrix and independent review remain pending."
+			}
+		},
+		{
+			"id": "VW-15",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-kaneo-list.tsx (ListColumnSection grouped by state, collapse); apps/web/src/components/work-item/work-item-kaneo-list.test.tsx",
+			"gap": "Collapsed group state is local useState, not persisted",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.test.tsx"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-kaneo-list.test.tsx:222",
+						"finding": "Collapse preference persists and restored aria-expanded state asserted."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx",
+					"apps/web/src/components/work-item/work-item-kaneo-list.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:424"
+			}
+		},
+		{
+			"id": "VW-16",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-list.tsx (key/title/priority/dueDate/state/assignee); apps/web/src/components/list-view/task-row.tsx",
+			"gap": "No SLA badge in list/table rows",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.test.tsx",
+					"apps/web/src/components/work-item/work-item-board.test.tsx"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-board.test.tsx:208",
+						"finding": "SLA badge appears only on row with SLA."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-list.tsx",
+					"apps/web/src/components/list-view/task-row.tsx",
+					"apps/web/src/components/work-item/work-item-kaneo-list.test.tsx",
+					"apps/web/src/components/work-item/work-item-board.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:425"
+			}
+		},
+		{
+			"id": "VW-17",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-context-menu-content.tsx (state/priority/assign via context menu)",
+			"gap": "No inline row editors for state/assignee/priority; edits via context menu or detail pane",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-context-menu-content.tsx",
+					"apps/web/src/components/work-item/work-item-list.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:426",
+				"latestEvidence": "Canonical Kaneo list now supplies optional inline state/priority/assignee controls. Existing workflow, required note, open-child guard, reassignment and CAS paths retained;33 focused tests pass. Persisted browser check pending.",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "VW-18",
+			"state": "missing",
+			"evidence": "No virtualizer in apps/web/src/components/work-item/work-item-list.tsx or kaneo-list; cursor pagination of 50",
+			"gap": "List not virtualised above 100 rows",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-list.tsx",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:427",
+				"latestEvidence": "List virtualization above100 is implemented;150 loaded rows used26\u201331 mounted rows with a moving scroll window. Keyboard/drop verification remains a separate open clause.",
+				"browserEvidence": "docs/report/browser/codex-20261025-performance-10k.json",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "VW-19",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-list-controls.tsx; apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx (columns in URL); apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-structured-filter.test.tsx (VW-19)",
+			"gap": "Column choice lives only in URL, not persisted per project per user; no custom-field columns",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-structured-filter.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-list-controls.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-structured-filter.test.tsx",
+					"apps/web/src/components/work-item/work-item-list.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:431",
+				"verificationRemaining": [
+					"Custom-field column metadata, URL state and per-user/project preferences are implemented. Scoped persisted edits and widths pass. Remaining: full column-choice, saved-view and role matrix."
+				],
+				"browserEvidence": "docs/report/browser/codex-20261025-custom-field-table.json"
+			}
+		},
+		{
+			"id": "VW-20",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-list.tsx (SORTABLE_COLUMNS key/title/priority/dueDate)",
+			"gap": "State/assignee not sortable; no multi-column modifier-click sort",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/lib/work-item-list-search.test.ts",
+					"apps/web/src/components/work-item/work-item-list-controls.test.tsx",
+					"tests/api-integration/work-item-custom-columns.test.ts"
+				],
+				"assertions": [
+					"Ordered native/custom multi-column sorts preserve a unique ID tie-breaker; typed/compact cursors detect changed anchors.",
+					"Modifier-click sorts retain registered URL/profile state."
+				],
+				"testEvidenceStatus": "scoped_execution_passed",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": ["apps/web/src/components/work-item/work-item-list.tsx"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:433",
+				"verificationRemaining": [
+					"Browser modifier-click, saved-view and custom-column sort journeys remain pending."
+				]
+			}
+		},
+		{
+			"id": "VW-21",
+			"state": "missing",
+			"evidence": "apps/web/src/components/work-item/work-item-list.tsx (fixed COLUMN_WIDTH_CLASSES)",
+			"gap": "No draggable/persisted column widths",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": ["apps/web/src/components/work-item/work-item-list.tsx"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:434",
+				"latestEvidence": "Thomas approved columnWidths.<projectId>, registered-column integer64\u2013800px map up to100entries. API persistence29 tests, whitelist6 and UI preference/resize49 focused tests pass. Full and virtual tables use pixel widths; refusal rolls back, cancellation does not write. Final build/browser pending.",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "VW-22",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-context-menu-content.tsx",
+			"gap": "Table has no inline cell editing",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-context-menu-content.tsx",
+					"apps/web/src/components/work-item/work-item-list.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:435",
+				"browserEvidence": "docs/report/browser/codex-20261025-custom-field-table.json",
+				"verificationRemaining": [
+					"Title, due-date and custom-field inline editors are implemented. Persisted edits, reload and Escape pass scoped browser checks. Remaining: full viewer/permission matrix."
+				]
+			}
+		},
+		{
+			"id": "VW-23",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/search/csv.ts; apps/api/src/work-item/policy.ts (POST /api/work-items/export, work_item:export); tests/api-integration/work-item-export.test.ts; tests/api/work-item-export-csv.test.ts; apps/web/src/components/work-item/work-item-list-controls.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-export.test.ts",
+					"tests/api/work-item-export-csv.test.ts",
+					"apps/web/src/components/work-item/work-item-list-controls.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/search/csv.ts",
+					"apps/api/src/work-item/policy.ts",
+					"tests/api-integration/work-item-export.test.ts",
+					"tests/api/work-item-export-csv.test.ts",
+					"apps/web/src/components/work-item/work-item-list-controls.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:436"
+			}
+		},
+		{
+			"id": "VW-24",
+			"state": "missing",
+			"evidence": "No virtualisation found in table layout (apps/web/src/components/work-item/work-item-list.tsx)",
+			"gap": "Rows and columns not virtualised",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": ["apps/web/src/components/work-item/work-item-list.tsx"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:448",
+				"latestEvidence": "Rows and horizontal columns virtualize using the approved TanStack dependency; browser sample150 loaded rows rendered26 rows and4of6 columns. Full focus interaction matrix pending.",
+				"browserEvidence": "docs/report/browser/codex-20261025-performance-10k.json",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "VW-25",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx; apps/web/src/components/calendar/month-grid-model.ts (start-date spanning); apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.test.tsx; apps/web/src/components/calendar/month-grid-model.test.ts",
+			"gap": "Month view only; no week/day views",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.test.tsx",
+					"apps/web/src/components/calendar/month-grid-model.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx",
+					"apps/web/src/components/calendar/month-grid-model.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.test.tsx",
+					"apps/web/src/components/calendar/month-grid-model.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:452"
+			}
+		},
+		{
+			"id": "VW-26",
+			"state": "missing",
+			"evidence": "apps/web/src/components/calendar/calendar-task-bar.tsx, month-grid.tsx (no drag handlers)",
+			"gap": "Calendar drag-to-change-date absent",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/calendar/calendar-task-bar.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:454"
+			}
+		},
+		{
+			"id": "VW-27",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx; apps/web/src/components/gantt/canonical-gantt-task-bar.tsx",
+			"gap": "Bars render but no grouping by assignee/module/epic",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.tsx",
+					"apps/web/src/components/gantt/canonical-gantt-task-bar.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:458",
+				"verificationRemaining": [
+					"Persisted epic grouping, self grouping, No epic, assignee/module modes and six width/theme captures pass; full timeline role/flag/common-screen matrix remains pending."
+				],
+				"browserEvidence": "docs/report/browser/vw27-179-browser.json"
+			}
+		},
+		{
+			"id": "VW-28",
+			"state": "missing",
+			"evidence": "Searched gantt.tsx, components/gantt for arrow/dependency/precedes/blocks: none",
+			"gap": "No dependency arrows or toggle",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/gantt/gantt-dependency-arrows.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:459"
+			}
+		},
+		{
+			"id": "VW-29",
+			"state": "implemented_untested",
+			"evidence": "apps/web/src/components/gantt/gantt-task-bar.tsx (move + left/right resize pointer handlers); apps/web/src/components/gantt/canonical-gantt-task-bar.tsx (PATCH with version)",
+			"gap": "No test covers bar drag/edge resize persistence; gantt.test.tsx covers centring/search only",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["apps/web/src/components/gantt/gantt-task-bar.test.tsx"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/gantt/gantt-task-bar.tsx",
+					"apps/web/src/components/gantt/canonical-gantt-task-bar.tsx",
+					"apps/web/src/components/gantt/gantt-task-bar.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:461"
+			}
+		},
+		{
+			"id": "VW-30",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-properties.tsx (date pickers via @taskdesk/ui Calendar); apps/web/src/components/work-item/work-item-dates.test.ts; apps/web/src/components/work-item/work-item-properties.test.tsx",
+			"gap": "Not linked from Gantt/Calendar as explicit accessible alternative",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-dates.test.ts",
+					"apps/web/src/components/work-item/work-item-properties.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Not linked from Gantt/Calendar as explicit accessible alternative"
+				],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-properties.tsx",
+					"apps/web/src/components/work-item/work-item-dates.test.ts",
+					"apps/web/src/components/work-item/work-item-properties.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:462"
+			}
+		},
+		{
+			"id": "VW-31",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/search/query.ts, repository.ts (422 for unavailable fields); tests/api-integration/work-item-structured-search.test.ts; tests/api/work-item-search-query.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-structured-search.test.ts",
+					"tests/api/work-item-search-query.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/search/query.ts",
+					"tests/api-integration/work-item-structured-search.test.ts",
+					"tests/api/work-item-search-query.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:470"
+			}
+		},
+		{
+			"id": "VW-32",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/search/query.ts (assignee eq @me, watcher contains @me); tests/api/work-item-search-query.test.ts; apps/web/src/components/work-item/work-item-filter-editor.test.tsx",
+			"gap": "Requester @me unavailable (requester filter 422)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/work-item-search-query.test.ts",
+					"tests/api-integration/work-item-structured-search.test.ts",
+					"apps/web/src/lib/work-item-filter.test.ts",
+					"apps/web/src/components/work-item/work-item-filter-editor.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "scoped_current_pass",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/search/query.ts",
+					"tests/api/work-item-search-query.test.ts",
+					"apps/web/src/components/work-item/work-item-filter-editor.test.tsx",
+					"apps/web/src/components/work-item/work-item-filter-editor.tsx",
+					"apps/api/src/work-item/search/repository.ts",
+					"apps/web/src/lib/work-item-filter.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:482",
+				"independentReview": "pending",
+				"latestEvidence": "12 API, 51 web and 3 PostgreSQL tests pass. Browser visual/text requester:@me filters return the lead requester item; the same saved-view URL resolves against a different member and returns zero. Reload and hidden-project filtering verified; fixture requester restored. Independent phase review pending.",
+				"browserEvidence": "docs/report/browser/codex-20261025-requester-filter.json"
+			}
+		},
+		{
+			"id": "VW-33",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/search/query.ts (and/or nesting); apps/web/src/components/work-item/work-item-filter-editor.tsx (matchAny); tests/api/work-item-search-query.test.ts (nested OR)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api/work-item-search-query.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/search/query.ts",
+					"apps/web/src/components/work-item/work-item-filter-editor.tsx",
+					"tests/api/work-item-search-query.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:484"
+			}
+		},
+		{
+			"id": "VW-34",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx; apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-structured-filter.test.tsx (VW-34)",
+			"gap": "Chips on Calendar/Gantt not verified",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-structured-filter.test.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work-structured-filter.test.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt.test.tsx",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:485"
+			}
+		},
+		{
+			"id": "PR-1",
+			"state": "missing",
+			"evidence": "apps/api/src/database/schema.ts projectTable (no parent_id; comment says PR-1..PR-5 not in slice)",
+			"gap": "No project hierarchy",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"apps/api/src/project/hierarchy.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:714"
+			}
+		},
+		{
+			"id": "PR-2",
+			"state": "missing",
+			"evidence": "apps/api/src/database/schema.ts membership.inherited_from column; apps/api/src/permissions/resolve-identity.ts reads it; no writer found",
+			"gap": "No inheritance from parent projects (no project parents)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-inherited-membership.test.ts",
+					"tests/api-integration/project-inherited-membership.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "tests/api-integration/project-inherited-membership.test.ts:110",
+						"finding": "After parent role grant, child membership row count remains zero."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"apps/api/src/permissions/resolve-identity.ts",
+					"apps/api/src/project/hierarchy.repository.ts",
+					"apps/api/src/project/members/roster.ts",
+					"tests/api-integration/project-inherited-membership.test.ts",
+					"apps/api/src/database/schema.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:715",
+				"ownerDecision": "23 Oct read-time inheritance from nearest ancestor, docs/technical/design-and-decisions.md:3468; no materialized child grant required."
+			}
+		},
+		{
+			"id": "PR-3",
+			"state": "missing",
+			"evidence": "apps/api/src/work-item/controllers/list-assignable-people.ts comment only",
+			"gap": "No inherited-role override",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-inherited-membership.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "tests/api-integration/project-inherited-membership.test.ts:121",
+						"finding": "Explicit child grant prevents parent update capability from applying to child."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/list-assignable-people.ts",
+					"apps/api/src/project/hierarchy.repository.ts",
+					"tests/api-integration/project-inherited-membership.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:717"
+			}
+		},
+		{
+			"id": "PR-4",
+			"state": "missing",
+			"evidence": "No code path writes or protects inherited memberships",
+			"gap": "Removal rule unimplemented",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-inherited-membership.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/project/members/roster.ts",
+					"tests/api-integration/project-inherited-membership.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:718"
+			}
+		},
+		{
+			"id": "PR-5",
+			"state": "missing",
+			"evidence": "No parent aggregation/combined board found",
+			"gap": "Depends on PR-1",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-list-descendant-statistics.test.ts:188",
+					"apps/web/src/components/work-item/use-work-item-drag-drop.test.tsx:243"
+				],
+				"assertions": [
+					"parent own and visible descendant statistics differ; child has no descendantStatistics",
+					"combined board refuses cross-project rank drops while preserving source-project transitions"
+				],
+				"testEvidenceStatus": "scoped_execution",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/project/controllers/get-projects.ts",
+					"apps/web/src/components/work-item/work-item-board-view.tsx",
+					"apps/web/src/components/work-item/work-item-board.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:720",
+				"testEvidence": "docs/report/browser/codex-20261026-pr5-combined-and-visible-tree.json",
+				"browserEvidence": "docs/report/browser/codex-20261026-pr5-combined-and-visible-tree.json",
+				"verificationRemaining": [
+					"Two known-answer integration tests passed and the persisted parent/child browser journey passed at three widths in light and dark themes; browser due dates were null, while the integration case covered earliest non-null rollup.",
+					"Full final-tree gates, broader reach matrix and phase review remain pending."
+				]
+			}
+		},
+		{
+			"id": "PR-6",
+			"state": "missing",
+			"evidence": "projectTable has no manager_id; apps/api/src/project/schema.ts has no manager field",
+			"gap": "No project manager or warning",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "tests/api-integration/project-hierarchy-settings.test.ts:219",
+						"finding": "Missing manager produces PR-6 warning; manager assignment clears it."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/project/schema.ts",
+					"apps/api/src/project/controllers/get-project.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:736"
+			}
+		},
+		{
+			"id": "PR-7",
+			"state": "missing",
+			"evidence": "No team-member validation/warning in apps/api/src/project/controllers/create-project.ts or update-project.ts",
+			"gap": "No at-least-one-member warning",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/project/controllers/create-project.ts",
+					"apps/api/src/project/controllers/get-project.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:738"
+			}
+		},
+		{
+			"id": "PR-8",
+			"state": "implemented_tested",
+			"evidence": "packages/permissions/src/roles.ts (customer only organisation-scoped); packages/permissions/src/roles.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/permissions/src/roles.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/permissions/src/roles.ts",
+					"packages/permissions/src/roles.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:739"
+			}
+		},
+		{
+			"id": "PR-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/project/index.ts; tests/api-integration/project-managed-service.test.ts; apps/web/src/components/project/project-engagement-settings.test.tsx; apps/web/e2e/project-managed-service.spec.ts (not run)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-managed-service.test.ts",
+					"apps/web/src/components/project/project-engagement-settings.test.tsx",
+					"apps/web/e2e/project-managed-service.spec.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/project/index.ts",
+					"tests/api-integration/project-managed-service.test.ts",
+					"apps/web/src/components/project/project-engagement-settings.test.tsx",
+					"apps/web/e2e/project-managed-service.spec.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:746"
+			}
+		},
+		{
+			"id": "PR-10",
+			"state": "missing",
+			"evidence": "projectTable has no start_date/end_date; none in apps/api/src/project/schema.ts",
+			"gap": "No project start date or warning",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "tests/api-integration/project-hierarchy-settings.test.ts:219",
+						"finding": "Missing start produces PR-10 warning; setting start clears it."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/project/schema.ts",
+					"apps/api/src/project/controllers/get-project.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:778"
+			}
+		},
+		{
+			"id": "PR-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/project/index.ts (no portal route; staff project:update); tests/api-integration/project-prerequisites.test.ts (role without project:update refused)",
+			"gap": "No agent UI for prerequisites found",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/project-prerequisites.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": ["No agent UI for prerequisites found"],
+				"paths": [
+					"apps/api/src/project/index.ts",
+					"tests/api-integration/project-prerequisites.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:798"
+			}
+		},
+		{
+			"id": "PR-12",
+			"state": "partial",
+			"evidence": "apps/api/src/project/controllers/stand-down-stakeholder.ts; tests/api-integration/project-stakeholders.test.ts (stands down, never deletes)",
+			"gap": "No stakeholder UI/pickers found to prove count/picker exclusion",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/project-stakeholders.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/project/controllers/stand-down-stakeholder.ts",
+					"tests/api-integration/project-stakeholders.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:805"
+			}
+		},
+		{
+			"id": "PR-13",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts project_slug_unique; tests/api-integration/project-slug-unique.test.ts; apps/api/src/project/schema.ts slug z.string()",
+			"gap": "No server 2-8 uppercase validation; client only max(8) in dashboard/settings/projects/$projectId/general.tsx",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-slug-unique.test.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"tests/api-integration/project-slug-unique.test.ts",
+					"apps/api/src/project/schema.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:814"
+			}
+		},
+		{
+			"id": "PR-14",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx (slug autosave); stored work_item.key keeps old prefix",
+			"gap": "No warning/confirmation before key rename",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:817"
+			}
+		},
+		{
+			"id": "PR-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/project/controllers/archive-project.ts, unarchive-project.ts; includeArchived in apps/api/src/project/schema.ts; tests/api-integration/project-archive-freeze-legacy.test.ts; tests/api-integration/project-list.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-archive-freeze-legacy.test.ts",
+					"tests/api-integration/project-list.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/project/controllers/archive-project.ts",
+					"apps/api/src/project/schema.ts",
+					"tests/api-integration/project-archive-freeze-legacy.test.ts",
+					"tests/api-integration/project-list.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:819"
+			}
+		},
+		{
+			"id": "PR-16",
+			"state": "partial",
+			"evidence": "apps/api/src/project/controllers/delete-project.ts (deleted_at, purge_after 30d); tests/api-integration/project-delete.test.ts; tests/api-integration/project-soft-delete-freeze.test.ts",
+			"gap": "Purge job explicitly 'not built yet' (#198); no reveal-deleted filter",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/project-recovery.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/project/controllers/delete-project.ts",
+					"tests/api-integration/project-delete.test.ts",
+					"tests/api-integration/project-soft-delete-freeze.test.ts",
+					"apps/api/src/scheduler/soft-delete-purge.repository.ts",
+					"apps/api/src/project/controllers/get-projects.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:821",
+				"executionScope": "Project recovery and child-project deletion safety scoped integration passed; complete browser lifecycle pending.",
+				"repairReconciledAt": "2026-10-24T21:33:20.913314+00:00",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "PR-17",
+			"state": "partial",
+			"evidence": "apps/api/src/utils/seed-project-states.ts, default-state-templates.ts; tests/api-integration/workspace-project-default-seed.test.ts; tests/api-integration/work-item-integrity-constraints.test.ts",
+			"gap": "Project States settings redirects to Kaneo column/workflow editor (column domain), no canonical state create/reorder/default API; template-transition guard on state creation not found",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/workspace-project-default-seed.test.ts",
+					"tests/api-integration/work-item-integrity-constraints.test.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/utils/seed-project-states.ts",
+					"tests/api-integration/workspace-project-default-seed.test.ts",
+					"tests/api-integration/work-item-integrity-constraints.test.ts",
+					"apps/api/src/project/controllers/manage-project-states.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:826"
+			}
+		},
+		{
+			"id": "PR-18",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts projectFeatureFlagTable; used by apps/api/src/approval/repository.ts; tests/api-integration/approval-feature-flag.test.ts",
+			"gap": "No flag management API/UI; interface not simplified per project",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/approval-feature-flag.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"apps/api/src/approval/repository.ts",
+					"tests/api-integration/approval-feature-flag.test.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/features.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:833"
+			}
+		},
+		{
+			"id": "PR-20",
+			"state": "partial",
+			"evidence": "apps/api/src/project/controllers/delete-project.ts; apps/api/src/project/index.ts (DELETE returns 200)",
+			"gap": "Project deletion is direct soft-delete, not a 202 pending action with typed key + step-up; MCP/API path same",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/pending-action-project-workspace-deletion.test.ts:142",
+					"apps/web/src/components/pending-action/pending-action-approval-executed.test.tsx:250"
+				],
+				"assertions": [
+					"Real DELETE returns 202 without mutation; typed project key plus step-up approval soft-deletes.",
+					"Approval UI requests the project key and displays server-counted impact and 30-day recovery."
+				],
+				"testEvidenceStatus": "targeted_execution_reported_by_coordinator",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [
+					"Source and cited targeted tests cover typed key and impact; persisted browser approval journey remains pending."
+				],
+				"paths": [
+					"apps/api/src/project/controllers/delete-project.ts",
+					"apps/api/src/project/index.ts",
+					"apps/api/src/project/project-deletion-target.ts",
+					"apps/web/src/components/pending-action/pending-action-approval.tsx",
+					"tests/api-integration/pending-action-project-workspace-deletion.test.ts",
+					"apps/web/src/components/pending-action/pending-action-approval-executed.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:834",
+				"executionScope": "Coordinator-reported targeted API 92 and UI 9 pass; this assessment cites only the PR-20 assertions in those existing files, not full-suite or browser execution."
+			}
+		},
+		{
+			"id": "AS-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/assign-work-item.ts; apps/api/src/work-item/controllers/list-assignable-people.ts; tests/api-integration/work-item-assign.test.ts; tests/api-integration/work-item-assignable.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-assignable.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/assign-work-item.ts",
+					"apps/api/src/work-item/controllers/list-assignable-people.ts",
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-assignable.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:969"
+			}
+		},
+		{
+			"id": "AS-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/assign-work-item.ts, unassign-work-item.ts; tests/api-integration/work-item-assign.test.ts; tests/api-integration/work-item-unassign.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-unassign.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/assign-work-item.ts",
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-unassign.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:971"
+			}
+		},
+		{
+			"id": "AS-3",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/controllers/assign-work-item.ts (409 with holder, expectedCurrentAssigneeId); apps/web/src/components/work-item/work-item-properties.tsx; tests/api-integration/work-item-assign.test.ts (AS-3)",
+			"gap": "Previous holder notification fan-out not implemented (events only, per controller comment)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/assign-work-item.ts",
+					"apps/web/src/components/work-item/work-item-properties.tsx",
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts",
+					"apps/web/src/components/work-item/work-item-properties.tsx",
+					"apps/web/src/components/work-item/bulk-assign-toolbar.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:974"
+			}
+		},
+		{
+			"id": "AS-4",
+			"state": "implemented_tested",
+			"evidence": "packages/permissions/src/roles.ts (customer lacks work_item:assign/update); packages/permissions/src/roles.test.ts; no assign control in apps/web/src/portal",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/permissions/src/roles.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/permissions/src/roles.ts",
+					"packages/permissions/src/roles.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:977"
+			}
+		},
+		{
+			"id": "AS-5",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/assignee-eligibility.ts; tests/api-integration/work-item-assign.test.ts; packages/domain/src/assignment/assignment.test.ts; tests/api-integration/authorization-boundaries.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-assign.test.ts",
+					"packages/domain/src/assignment/assignment.test.ts",
+					"tests/api-integration/authorization-boundaries.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/assignee-eligibility.ts",
+					"tests/api-integration/work-item-assign.test.ts",
+					"packages/domain/src/assignment/assignment.test.ts",
+					"tests/api-integration/authorization-boundaries.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:979"
+			}
+		},
+		{
+			"id": "AS-6",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/database/schema.ts (assignee_id FK to person); apps/api/src/work-item/schema.ts; tests/api-integration/work-item-assign.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-assign.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"apps/api/src/work-item/schema.ts",
+					"tests/api-integration/work-item-assign.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:988"
+			}
+		},
+		{
+			"id": "AS-7",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/assignment/assignment.ts; packages/domain/src/assignment/assignment.test.ts; assigneeName joined from user at read in apps/api/src/work-item/controllers/get-work-item.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/assignment/assignment.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/assignment/assignment.ts",
+					"packages/domain/src/assignment/assignment.test.ts",
+					"apps/api/src/work-item/controllers/get-work-item.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:993"
+			}
+		}
+	],
+	"top_gaps": [
+		"Parallel legacy task domain still live: DELETE /api/task/{id} hard-deletes (apps/api/src/task/controllers/delete-task.ts), MCP delete_task uses it, and dashboard task/$taskId_.tsx mounts legacy TaskDetailsContent/TaskDeleteButton (bypasses WI-21/WI-23 pending deletion); also work.tsx layout toggle is a custom-classed Button segmented control rather than Kaneo's original view switcher (table uses @taskdesk/ui Table). Manual grep: 0 raw button/input/select/textarea/dialog in work-item/gantt/calendar/kanban/list-view views; 2 ui-exempt hosts (hidden file picker, Badge remove)",
+		"Project deletion is a direct 200 soft-delete, not a 202 pending action with typed key + step-up (PR-20); no 30-day purge job for work items or projects (WI-21, PR-16)",
+		"Project hierarchy and engagement fields missing: parent/depth, inherited membership, manager, team, start date (PR-1..PR-7, PR-10)",
+		"Work-item templates and checklist templates absent (WI-5)",
+		"Views: no virtualisation (VW-11/18/24), no board grouping (VW-13), no WIP limits (VW-12), no column width/multi-sort/inline cell edit (VW-20..22), no SLA badge in rows (VW-16)",
+		"Calendar month-only with no drag (VW-25/26); Gantt lacks grouping and dependency arrows (VW-27/28); bar drag untested (VW-29)",
+		"Watcher notifications: only approvals fan out to watchers and muted flag ignored; assign creates no implicit watcher; previous-holder notification on reassign missing (WI-28/29, AS-3)",
+		"Project key not validated 2-8 uppercase server-side and rename has no warning (PR-13/14); canonical project states not editable (PR-17 redirects to Kaneo column editor)"
+	],
+	"tonight_actions": [
+		"Route legacy DELETE /api/task/{id} and MCP delete_task through the work-item pending-action deletion (202) or remove them; redirect dashboard task/$taskId_.tsx to the canonical work-item detail",
+		"Convert DELETE /api/projects/{projectId} to a pending action (typed project key + step-up) reusing pending-action/approval-contract.ts and update tests/api-integration/project-delete.test.ts",
+		"Add work-item and project purge job to apps/api/src/scheduler/index.ts honouring purge_after/30-day window, with PostgreSQL integration test",
+		"Add server-side project key validation (^[A-Z]{2,8}$) in apps/api/src/project/schema.ts plus rename confirmation warning in dashboard/settings/projects/$projectId/general.tsx",
+		"Filter watcher.muted in notification/repository.ts listApprovalWatcherPersonIds and create implicit assignee watcher in assign-work-item.ts; add tests",
+		"Add API integration test for bulk 'transition' with one illegal edge (WI-26) in tests/api-integration/work-item-bulk.test.ts",
+		"Add gantt-task-bar drag/resize unit test and calendar drag-to-date via existing dnd-kit + canonical PATCH (VW-26/29)",
+		"Persist list collapsed groups and chosen columns via user-preference whitelist (VW-15/19); add SLA badge to Kaneo TaskRow using work-item-sla"
+	],
+	"sourceHead": "aea5d5702ea9ac553573f598e02f425cd79cde87",
+	"currentAssessmentMethod": "Source-only per-ID trace against retained P1 contracts and requirements-index; original state/evidence/gap and old top_gaps/tonight_actions preserved as historical. No tests or browser journeys executed by this auditor. Historical test file locators are not current execution or freshly inspected assertions; only entries with testEvidenceStatus=assertion_inspected contain read assertions. Source worktree changed concurrently after sourceHead; root must join current execution and browser evidence before phase review.",
+	"currentAssessmentScope": "P1 P1a initial discovery; not phase sign-off",
+	"currentAssessmentSummary": {
+		"implemented": 72,
+		"missing": 5,
+		"partial": 14
+	},
+	"currentAssessmentAssertionInspected": 12
+}

@@ -58,7 +58,7 @@ function repo(name, mutate = () => {}) {
   const dir = scratchDir(`a8-${name}`);
   initRepo(dir);
   installCheckers(dir);
-  installFromRepo(dir, "docs/04-engineering/ci-cd.md");
+  installFromRepo(dir, "docs/technical/ci-gates.md");
   installFromRepo(dir, ".github/workflows/ci-fast.yml");
   installFromRepo(dir, ".github/workflows/ci-full.yml");
   installFromRepo(dir, ".github/actions/setup/action.yml");

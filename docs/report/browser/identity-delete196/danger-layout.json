@@ -1,0 +1,95 @@
+{
+	"recordedAt": "2026-10-26T13:01:59.542Z",
+	"scope": "Read-only lower-editor danger-action layout at three widths/both themes, on a disabled manual QA connection",
+	"checks": [
+		{
+			"name": "Own administrator session",
+			"pass": true
+		},
+		{
+			"name": "375 light action keeps content width",
+			"pass": true
+		},
+		{
+			"name": "375 light action is within viewport",
+			"pass": true
+		},
+		{
+			"name": "375 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "768 light action keeps content width",
+			"pass": true
+		},
+		{
+			"name": "768 light action is within viewport",
+			"pass": true
+		},
+		{
+			"name": "768 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "1440 light action keeps content width",
+			"pass": true
+		},
+		{
+			"name": "1440 light action is within viewport",
+			"pass": true
+		},
+		{
+			"name": "1440 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "375 dark action keeps content width",
+			"pass": true
+		},
+		{
+			"name": "375 dark action is within viewport",
+			"pass": true
+		},
+		{
+			"name": "375 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "768 dark action keeps content width",
+			"pass": true
+		},
+		{
+			"name": "768 dark action is within viewport",
+			"pass": true
+		},
+		{
+			"name": "768 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "1440 dark action keeps content width",
+			"pass": true
+		},
+		{
+			"name": "1440 dark action is within viewport",
+			"pass": true
+		},
+		{
+			"name": "1440 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "No deletion requests made",
+			"pass": true
+		}
+	],
+	"screenshots": [
+		"danger-action-375-light.png",
+		"danger-action-768-light.png",
+		"danger-action-1440-light.png",
+		"danger-action-375-dark.png",
+		"danger-action-768-dark.png",
+		"danger-action-1440-dark.png"
+	],
+	"outcome": "passed"
+}

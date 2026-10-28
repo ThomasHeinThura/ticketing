@@ -1,5 +1,6 @@
 import { client } from "@taskdesk/libs";
 import type { InferRequestType } from "hono/client";
+import { HttpError } from "@/lib/http-error";
 
 export type GetProjectRequest = InferRequestType<
   (typeof client)["project"][":id"]["$get"]
@@ -13,8 +14,7 @@ async function getProject({ id }: GetProjectRequest) {
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error);
+    throw new HttpError(response.status, "Failed to fetch project");
   }
 
   const data = await response.json();

@@ -1,11 +1,10 @@
 [
 	{
 		"name": "sign-in",
-		"inventoryRoute": null,
+		"inventoryRoute": "/auth/sign-in",
 		"applicationRoute": "/auth/sign-in",
 		"test": "sign-in screen @visual",
-		"screenshot": "sign-in.png",
-		"reason": "The implemented sign-in route predates the inventory route /agent/sign-in; this mismatch is reported as a remaining inventory gap."
+		"screenshot": "sign-in.png"
 	},
 	{
 		"name": "work-item-list",
@@ -303,5 +302,447 @@
 		"applicationRoute": "/agent/projects/$projectKey/settings/danger",
 		"test": "project settings danger screen @visual",
 		"screenshot": "project-settings-danger.png"
+	},
+	{
+		"name": "portal-home",
+		"inventoryRoute": "/",
+		"applicationRoute": "/",
+		"test": "portal home screen @visual",
+		"screenshot": "portal-home.png",
+		"origin": "portal"
+	},
+	{
+		"name": "portal-requests",
+		"inventoryRoute": "/requests",
+		"applicationRoute": "/requests",
+		"test": "portal requests screen @visual",
+		"screenshot": "portal-requests.png",
+		"origin": "portal"
+	},
+	{
+		"name": "portal-approvals",
+		"inventoryRoute": "/approvals?approval={id}",
+		"applicationRoute": "/approvals",
+		"test": "portal approval decision screen @visual",
+		"screenshot": "portal-approvals.png",
+		"origin": "portal"
+	},
+	{
+		"name": "instance-audit",
+		"inventoryRoute": "/agent/god-mode/audit",
+		"applicationRoute": "/agent/god-mode/audit",
+		"test": "instance audit screen @visual",
+		"screenshot": "instance-audit.png"
+	},
+	{
+		"name": "cycles",
+		"inventoryRoute": "/agent/projects/{key}/cycles",
+		"applicationRoute": "/agent/projects/$projectKey/cycles",
+		"test": "project cycles screen @visual",
+		"screenshot": "project-cycles.png"
+	},
+	{
+		"name": "cycle-detail",
+		"inventoryRoute": "/agent/projects/{key}/cycles/{cycleId}",
+		"applicationRoute": "/agent/projects/$projectKey/cycles/$cycleId",
+		"test": "project cycle detail screen @visual",
+		"screenshot": "project-cycle-detail.png"
+	},
+	{
+		"name": "modules",
+		"inventoryRoute": "/agent/projects/{key}/modules",
+		"applicationRoute": "/agent/projects/$projectKey/modules",
+		"test": "project modules screen @visual",
+		"screenshot": "project-modules.png"
+	},
+	{
+		"name": "module-detail",
+		"inventoryRoute": "/agent/projects/{key}/modules/{moduleId}",
+		"applicationRoute": "/agent/projects/$projectKey/modules/$moduleId",
+		"test": "project module detail screen @visual",
+		"screenshot": "project-module-detail.png"
+	},
+	{
+		"name": "pages",
+		"inventoryRoute": "/agent/projects/{key}/pages",
+		"applicationRoute": "/agent/projects/$projectKey/pages",
+		"test": "project pages screen @visual",
+		"screenshot": "project-pages.png"
+	},
+	{
+		"name": "page-detail",
+		"inventoryRoute": "/agent/projects/{key}/pages/{pageId}",
+		"applicationRoute": "/agent/projects/$projectKey/pages/$pageId",
+		"test": "project page detail screen @visual",
+		"screenshot": "project-page-detail.png"
+	},
+	{
+		"name": "project-estimates",
+		"inventoryRoute": "/agent/projects/{key}/settings/estimates",
+		"applicationRoute": "/agent/projects/$projectKey/settings/estimates",
+		"test": "project settings estimates screen @visual",
+		"screenshot": "project-settings-estimates.png"
+	},
+	{
+		"name": "project-features",
+		"inventoryRoute": "/agent/projects/{key}/settings/features",
+		"applicationRoute": "/agent/projects/$projectKey/settings/features",
+		"test": "project settings features screen @visual",
+		"screenshot": "project-settings-features.png"
+	},
+	{
+		"name": "project-automations",
+		"inventoryRoute": "/agent/projects/{key}/settings/automations",
+		"applicationRoute": "/agent/projects/$projectKey/settings/automations",
+		"test": "project settings automations screen @visual",
+		"screenshot": "project-settings-automations.png"
+	},
+	{
+		"name": "project-budget",
+		"inventoryRoute": "/agent/projects/{key}/settings/budget",
+		"applicationRoute": "/agent/projects/$projectKey/settings/budget",
+		"test": "project settings budget screen @visual",
+		"screenshot": "project-settings-budget.png"
+	},
+	{
+		"name": "services",
+		"inventoryRoute": "/agent/service-management/services",
+		"applicationRoute": "/agent/service-management/services",
+		"test": "service-management services screen @visual",
+		"screenshot": "services.png"
+	},
+	{
+		"name": "service-detail",
+		"inventoryRoute": "/agent/service-management/services/{id}",
+		"applicationRoute": "/agent/service-management/services/$id",
+		"test": "service-management service detail screen @visual",
+		"screenshot": "service-detail.png"
+	},
+	{
+		"name": "changes",
+		"inventoryRoute": "/agent/service-management/changes",
+		"applicationRoute": "/agent/service-management/changes",
+		"test": "service-management change calendar screen @visual",
+		"screenshot": "changes.png"
+	},
+	{
+		"name": "releases",
+		"inventoryRoute": "/agent/service-management/releases",
+		"applicationRoute": "/agent/service-management/releases",
+		"test": "service-management releases screen @visual",
+		"screenshot": "releases.png"
+	},
+	{
+		"name": "kb",
+		"inventoryRoute": "/agent/kb",
+		"applicationRoute": "/agent/kb",
+		"test": "knowledge base list screen @visual",
+		"screenshot": "kb.png"
+	},
+	{
+		"name": "kb-article",
+		"inventoryRoute": "/agent/kb/{id}",
+		"applicationRoute": "/agent/kb/$id",
+		"test": "knowledge base article screen @visual",
+		"screenshot": "kb-article.png"
+	},
+	{
+		"name": "kb-edit",
+		"inventoryRoute": "/agent/kb/{id}/edit",
+		"applicationRoute": "/agent/kb/$id/edit",
+		"test": "knowledge base article editor screen @visual",
+		"screenshot": "kb-edit.png"
+	},
+	{
+		"name": "reports",
+		"inventoryRoute": "/agent/reports",
+		"applicationRoute": "/agent/reports",
+		"test": "reports index screen @visual",
+		"screenshot": "reports.png"
+	},
+	{
+		"name": "report-detail",
+		"inventoryRoute": "/agent/reports/{key}",
+		"applicationRoute": "/agent/reports/$key",
+		"test": "report detail screen @visual",
+		"screenshot": "report-detail.png"
+	},
+	{
+		"name": "report-new",
+		"inventoryRoute": "/agent/reports/new",
+		"applicationRoute": "/agent/reports/new",
+		"test": "report builder screen @visual",
+		"screenshot": "report-new.png"
+	},
+	{
+		"name": "report-export",
+		"inventoryRoute": "/agent/reports/exports/{id}",
+		"applicationRoute": "/agent/reports/exports/$id",
+		"test": "report export screen @visual",
+		"screenshot": "report-export.png"
+	},
+	{
+		"name": "dashboard",
+		"inventoryRoute": "/agent/dashboard",
+		"applicationRoute": "/agent/dashboard",
+		"test": "dashboard screen @visual",
+		"screenshot": "dashboard.png"
+	},
+	{
+		"name": "dashboard-edit",
+		"inventoryRoute": "/agent/dashboard/edit",
+		"applicationRoute": "/agent/dashboard/edit",
+		"test": "dashboard editor screen @visual",
+		"screenshot": "dashboard-edit.png"
+	},
+	{
+		"name": "timesheet",
+		"inventoryRoute": "/agent/timesheet",
+		"applicationRoute": "/agent/timesheet",
+		"test": "timesheet screen @visual",
+		"screenshot": "timesheet.png"
+	},
+	{
+		"name": "customer-invitations",
+		"inventoryRoute": "/agent/settings/customer-invitations",
+		"applicationRoute": "/agent/settings/customer-invitations",
+		"test": "customer invitations screen @visual",
+		"screenshot": "customer-invitations.png"
+	},
+	{
+		"name": "teams",
+		"inventoryRoute": "/agent/settings/teams",
+		"applicationRoute": "/agent/settings/teams",
+		"test": "workspace teams list screen @visual",
+		"screenshot": "teams.png"
+	},
+	{
+		"name": "team-detail",
+		"inventoryRoute": "/agent/settings/teams/{id}",
+		"applicationRoute": "/agent/settings/teams/$id",
+		"test": "team detail screen @visual",
+		"screenshot": "team-detail.png"
+	},
+	{
+		"name": "roles",
+		"inventoryRoute": "/agent/settings/roles",
+		"applicationRoute": "/agent/settings/roles",
+		"test": "workspace roles list screen @visual",
+		"screenshot": "roles.png"
+	},
+	{
+		"name": "role-detail",
+		"inventoryRoute": "/agent/settings/roles/{id}",
+		"applicationRoute": "/agent/settings/roles/$id",
+		"test": "role editor screen @visual",
+		"screenshot": "role-detail.png"
+	},
+	{
+		"name": "custom-fields",
+		"inventoryRoute": "/agent/settings/custom-fields",
+		"applicationRoute": "/agent/settings/custom-fields",
+		"test": "workspace custom fields list screen @visual",
+		"screenshot": "custom-fields.png"
+	},
+	{
+		"name": "custom-field-detail",
+		"inventoryRoute": "/agent/settings/custom-fields/{id}",
+		"applicationRoute": "/agent/settings/custom-fields/$id",
+		"test": "custom field editor screen @visual",
+		"screenshot": "custom-field-detail.png"
+	},
+	{
+		"name": "profile-notifications",
+		"inventoryRoute": "/agent/settings/profile/notifications",
+		"applicationRoute": "/agent/settings/profile/notifications",
+		"test": "profile notifications screen @visual",
+		"screenshot": "profile-notifications.png"
+	},
+	{
+		"name": "workspace-settings-automations",
+		"inventoryRoute": "/agent/settings/automations",
+		"applicationRoute": "/agent/settings/automations",
+		"test": "workspace settings automations screen @visual",
+		"screenshot": "workspace-settings-automations.png"
+	},
+	{
+		"name": "workspace-settings-webhooks",
+		"inventoryRoute": "/agent/settings/webhooks",
+		"applicationRoute": "/agent/settings/webhooks",
+		"test": "workspace settings webhooks screen @visual",
+		"screenshot": "workspace-settings-webhooks.png"
+	},
+	{
+		"name": "webhook-editor",
+		"inventoryRoute": "/agent/settings/webhooks/{id}",
+		"applicationRoute": "/agent/settings/webhooks/$id",
+		"test": "webhook editor screen @visual",
+		"screenshot": "webhook-editor.png"
+	},
+	{
+		"name": "webhook-delivery-history",
+		"inventoryRoute": "/agent/settings/webhooks/{id}/deliveries",
+		"applicationRoute": "/agent/settings/webhooks/$id/deliveries",
+		"test": "webhook delivery history screen @visual",
+		"screenshot": "webhook-delivery-history.png"
+	},
+	{
+		"name": "workspace-settings-features",
+		"inventoryRoute": "/dashboard/settings/workspace/features",
+		"applicationRoute": "/dashboard/settings/workspace/features",
+		"test": "workspace settings features screen @visual",
+		"screenshot": "workspace-settings-features.png"
+	},
+	{
+		"name": "workspace-settings-workflows",
+		"inventoryRoute": "/agent/settings/workflows",
+		"applicationRoute": "/agent/settings/workflows",
+		"test": "workspace settings workflows screen @visual",
+		"screenshot": "workspace-settings-workflows.png"
+	},
+	{
+		"name": "god-home",
+		"inventoryRoute": "/agent/god-mode",
+		"applicationRoute": "/agent/god-mode",
+		"test": "god mode health screen @visual",
+		"screenshot": "god-home.png"
+	},
+	{
+		"name": "god-webhooks",
+		"inventoryRoute": "/agent/god-mode/webhooks",
+		"applicationRoute": "/agent/god-mode/webhooks",
+		"test": "god mode webhook security posture screen @visual",
+		"screenshot": "god-webhooks.png"
+	},
+	{
+		"name": "god-general",
+		"inventoryRoute": "/agent/god-mode/general",
+		"applicationRoute": "/agent/god-mode/general",
+		"test": "god mode general settings screen @visual",
+		"screenshot": "god-general.png"
+	},
+	{
+		"name": "god-notifications",
+		"inventoryRoute": "/agent/god-mode/notifications",
+		"applicationRoute": "/agent/god-mode/notifications",
+		"test": "god mode notification delivery screen @visual",
+		"screenshot": "god-notifications.png"
+	},
+	{
+		"name": "god-features",
+		"inventoryRoute": "/agent/god-mode/features",
+		"applicationRoute": "/agent/god-mode/features",
+		"test": "god mode feature switches screen @visual",
+		"screenshot": "god-features.png"
+	},
+	{
+		"name": "god-imports",
+		"inventoryRoute": "/agent/god-mode/imports?workspaceId={workspaceId}",
+		"applicationRoute": "/agent/god-mode/imports",
+		"test": "god mode import runs screen @visual",
+		"screenshot": "god-imports.png"
+	},
+	{
+		"name": "god-import-detail",
+		"inventoryRoute": "/agent/god-mode/imports/{id}?workspaceId={workspaceId}",
+		"applicationRoute": "/agent/god-mode/imports/$id",
+		"test": "god mode import run detail screen @visual",
+		"screenshot": "god-import-detail.png"
+	},
+	{
+		"name": "org-identity",
+		"inventoryRoute": "/agent/god-mode/organisations/{id}/identity",
+		"applicationRoute": "/agent/god-mode/organisations/$id/identity",
+		"test": "organisation identity screen @visual",
+		"screenshot": "org-identity.png"
+	},
+	{
+		"name": "god-storage",
+		"inventoryRoute": "/agent/god-mode/storage",
+		"applicationRoute": "/agent/god-mode/storage",
+		"test": "god mode storage screen @visual",
+		"screenshot": "god-storage.png"
+	},
+	{
+		"name": "god-deliveries",
+		"inventoryRoute": "/agent/god-mode/deliveries",
+		"applicationRoute": "/agent/god-mode/deliveries",
+		"test": "god mode deliveries screen @visual",
+		"screenshot": "god-deliveries.png"
+	},
+	{
+		"name": "god-jobs",
+		"inventoryRoute": "/agent/god-mode/jobs",
+		"applicationRoute": "/agent/god-mode/jobs",
+		"test": "god mode jobs screen @visual",
+		"screenshot": "god-jobs.png"
+	},
+	{
+		"name": "god-plugins",
+		"inventoryRoute": "/agent/god-mode/plugins",
+		"applicationRoute": "/agent/god-mode/plugins",
+		"test": "god mode plugins screen @visual",
+		"screenshot": "god-plugins.png"
+	},
+	{
+		"name": "god-mcp",
+		"inventoryRoute": "/agent/god-mode/mcp",
+		"applicationRoute": "/agent/god-mode/mcp",
+		"test": "god mode mcp usage screen @visual",
+		"screenshot": "god-mcp.png"
+	},
+	{
+		"name": "portal-invite",
+		"inventoryRoute": "/invite/{id}",
+		"applicationRoute": "/invite/$id",
+		"origin": "portal",
+		"test": "portal accept invitation screen @visual",
+		"screenshot": "portal-invite.png"
+	},
+	{
+		"name": "portal-kb",
+		"inventoryRoute": "/kb",
+		"applicationRoute": "/kb",
+		"origin": "portal",
+		"test": "portal knowledge base screen @visual",
+		"screenshot": "portal-kb.png"
+	},
+	{
+		"name": "portal-kb-article",
+		"inventoryRoute": "/kb/{id}",
+		"applicationRoute": "/kb/$id",
+		"origin": "portal",
+		"test": "portal knowledge base article screen @visual",
+		"screenshot": "portal-kb-article.png"
+	},
+	{
+		"name": "portal-notifications",
+		"inventoryRoute": "/notifications?filter=unread",
+		"applicationRoute": "/notifications",
+		"origin": "portal",
+		"test": "portal notifications unread screen @visual",
+		"screenshot": "portal-notifications.png"
+	},
+	{
+		"name": "portal-account",
+		"inventoryRoute": "/account",
+		"applicationRoute": "/account",
+		"origin": "portal",
+		"test": "portal account preferences screen @visual",
+		"screenshot": "portal-account.png"
+	},
+	{
+		"name": "workspace-settings-rates",
+		"inventoryRoute": "/agent/settings/rates",
+		"applicationRoute": "/agent/settings/rates",
+		"test": "workspace settings rates screen @visual",
+		"screenshot": "workspace-settings-rates.png"
+	},
+	{
+		"name": "workspace-settings-time-activities",
+		"inventoryRoute": "/agent/settings/time-activities",
+		"applicationRoute": "/agent/settings/time-activities",
+		"test": "workspace settings time activities screen @visual",
+		"screenshot": "workspace-settings-time-activities.png"
 	}
 ]

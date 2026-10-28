@@ -48,6 +48,7 @@ import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation
 import {
   createWorkspaceNative,
   deleteWorkspaceNative,
+  deleteWorkspaceThroughApproval,
   updateWorkspaceNative,
 } from "./helpers/workspace-write-http";
 
@@ -271,8 +272,17 @@ describe("S4 native writes: cross-workspace and role boundaries (A2-P11..A2-P15)
     expect(stillThere).toHaveLength(1);
     expect(stillThere[0]?.name).toBe("Admin Rename");
 
+    // The owner's DELETE is accepted as a request (202); the workspace is removed only on
+    // the owner's approval with the exact name plus step-up.
+    const ownerDelete = await deleteWorkspaceThroughApproval(
+      app,
+      owner.cookie,
+      workspaceId,
+    );
+    expect(ownerDelete.requested.status).toBe(202);
     expect(
-      (await deleteWorkspaceNative(app, owner.cookie, workspaceId)).status,
+      ownerDelete.approved?.status,
+      await ownerDelete.approved?.clone().text(),
     ).toBe(200);
     expect(
       await db
@@ -575,12 +585,15 @@ describe("S4 native writes: the instance-admin boundary (A2-P16..A2-P17)", () =>
     );
     expect(update.status).toBe(200);
 
-    const remove = await deleteWorkspaceNative(
+    const remove = await deleteWorkspaceThroughApproval(
       app,
       instanceAdminOwner.cookie,
       workspaceId,
     );
-    expect(remove.status).toBe(200);
+    expect(remove.requested.status).toBe(202);
+    expect(remove.approved?.status, await remove.approved?.clone().text()).toBe(
+      200,
+    );
   });
 });
 

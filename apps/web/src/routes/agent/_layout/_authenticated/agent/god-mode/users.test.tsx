@@ -15,6 +15,11 @@ const mocks = vi.hoisted(() => ({
   changed: (() => {}) as () => void,
   grantAdmin: vi.fn(),
   createProof: vi.fn(),
+  factorStatus: {
+    enabled: true,
+    required: true,
+    availableMethods: ["totp", "backup_code"] as string[],
+  },
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -44,7 +49,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: { enabled: true, required: true } }),
+  useQuery: () => ({ data: mocks.factorStatus }),
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 
@@ -73,6 +78,7 @@ vi.mock("@/hooks/queries/god-mode/use-instance-users", () => ({
     deactivate: { isPending: false, mutateAsync: vi.fn() },
     grantAdmin: { isPending: false, mutateAsync: mocks.grantAdmin },
     resetMfa: { isPending: false, mutateAsync: vi.fn() },
+    impersonate: { isPending: false, mutateAsync: vi.fn() },
   }),
 }));
 
@@ -116,6 +122,19 @@ async function flushActionContextEffect() {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 }
+
+describe("God Mode Users table", () => {
+  afterEach(() => cleanup());
+
+  it("shows a status badge for an ordinary active account and titles truncated cells", () => {
+    mocks.search = {};
+    render(<Harness />);
+    expect(
+      screen.getAllByText("instanceUsers:dynamic.personActive").length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByTitle("a@example.test").length).toBeGreaterThan(0);
+  });
+});
 
 describe("God Mode Users action context", () => {
   afterEach(() => cleanup());
@@ -278,6 +297,32 @@ describe("God Mode Users action context", () => {
     await act(async () => rejectProof?.(new Error("old proof failed")));
     expect(screen.queryByRole("alert")).toBeNull();
     expect(mocks.grantAdmin).not.toHaveBeenCalled();
+  });
+
+  it("filters by side and status from Kaneo picker popovers and resets the cursor", async () => {
+    mocks.search = { cursor: "page-2" };
+    render(<Harness />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.4dc97a606e2f" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "instanceUsers:copy.a4730a22cf49",
+      }),
+    );
+    await waitFor(() => expect(mocks.search.side).toBe("staff"));
+    expect(mocks.search.cursor).toBeUndefined();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.dd5947e50ac8" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "instanceUsers:copy.c51407d28beb",
+      }),
+    );
+    await waitFor(() => expect(mocks.search.active).toBe("false"));
+    expect(screen.queryByRole("combobox")).toBeNull();
   });
 
   it("shows the filter and step-up labels, never the raw option values", async () => {

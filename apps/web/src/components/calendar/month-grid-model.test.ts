@@ -4,6 +4,7 @@ import {
   buildMonthWeeks,
   DAYS_PER_WEEK,
   packWeekLanes,
+  tasksInWeeks,
   type WeekStartsOn,
 } from "./month-grid-model";
 
@@ -251,5 +252,49 @@ describe("packWeekLanes tasksByDay", () => {
     );
 
     expect(tasksByDay.every((entry) => entry.length === 0)).toBe(true);
+  });
+});
+
+describe("tasksInWeeks (VW-3 select all)", () => {
+  const weeks = buildMonthWeeks(AUGUST_2026, 0);
+
+  it("keeps tasks that touch the visible grid and drops the rest", () => {
+    const tasks = [
+      scheduled("inside", day(2026, 7, 10), day(2026, 7, 12)),
+      scheduled("spans-in", day(2026, 6, 1), day(2026, 7, 2)),
+      scheduled("before", day(2026, 5, 1), day(2026, 5, 3)),
+      scheduled("after", day(2026, 9, 20), day(2026, 9, 22)),
+    ];
+    expect(tasksInWeeks(weeks, tasks).map((task) => task.id)).toEqual([
+      "inside",
+      "spans-in",
+    ]);
+  });
+});
+
+describe("packWeekLanes for a one-day row (VW-25 day view)", () => {
+  it("packs a single column and lists every overlapping task for that day", () => {
+    const target = day(2026, 9, 14);
+    const row = [target];
+    const layout = packWeekLanes(
+      row,
+      [
+        scheduled("A", day(2026, 9, 12), day(2026, 9, 16)),
+        scheduled("B", target, target),
+        scheduled("C", day(2026, 9, 20), day(2026, 9, 21)),
+      ],
+      1,
+    );
+
+    expect(layout.tasksByDay).toHaveLength(1);
+    expect(layout.tasksByDay[0].map((task) => task.id)).toEqual(["A", "B"]);
+    expect(layout.segments).toHaveLength(1);
+    expect(layout.segments[0]).toMatchObject({
+      columnStart: 1,
+      columnEnd: 2,
+      continuesBefore: true,
+      continuesAfter: true,
+    });
+    expect(layout.hiddenCountByDay).toEqual([1]);
   });
 });

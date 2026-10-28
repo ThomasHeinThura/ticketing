@@ -41,12 +41,32 @@ describe("transferWorkspaceOwnership", () => {
     expect(mocks.post).toHaveBeenCalledWith({
       param: { workspaceId: "workspace-1" },
       json: { newOwnerUserId: "user-2" },
+      header: {},
     });
     expect(result).toEqual({
       workspaceId: "workspace-1",
       previousOwnerUserId: "user-1",
       previousOwnerNewRole: "admin",
       newOwnerUserId: "user-2",
+    });
+  });
+
+  it("sends the one-use step-up proof in its header when it has one", async () => {
+    mocks.post.mockResolvedValue({
+      ok: true,
+      json: async () => ({ workspaceId: "workspace-1" }),
+    });
+
+    await transferWorkspaceOwnership({
+      workspaceId: "workspace-1",
+      newOwnerUserId: "user-2",
+      stepUpToken: "T".repeat(43),
+    });
+
+    expect(mocks.post).toHaveBeenCalledWith({
+      param: { workspaceId: "workspace-1" },
+      json: { newOwnerUserId: "user-2" },
+      header: { "x-taskdesk-step-up-token": "T".repeat(43) },
     });
   });
 

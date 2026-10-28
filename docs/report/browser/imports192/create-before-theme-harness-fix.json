@@ -1,0 +1,26 @@
+{
+	"recordedAt": "2026-10-26T03:59:04.866Z",
+	"scope": "Owned persisted import run create/history/detail on deployed192; no record import executed",
+	"strictTls": true,
+	"checks": [
+		{
+			"name": "Owned admin session",
+			"pass": true
+		},
+		{
+			"name": "Normal UI persisted creation200",
+			"pass": true
+		},
+		{
+			"name": "Destination scope preserved",
+			"pass": true
+		},
+		{
+			"name": "Fresh persisted detail read",
+			"pass": true
+		}
+	],
+	"screenshots": [],
+	"outcome": "failed",
+	"failure": "Browser import journey failed; sanitized diagnostic retained privately."
+}

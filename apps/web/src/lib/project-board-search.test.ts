@@ -11,6 +11,7 @@ import {
   parseProjectBoardSearch,
   parseProjectRouterSearch,
   parseProjectViewSearchFromParams,
+  parseWorkItemGroup,
 } from "./project-board-search";
 import {
   resolveProjectBoardLayout,
@@ -20,6 +21,36 @@ import {
 import { projectViewRoutes } from "./project-view-routes";
 
 describe("project board URL state", () => {
+  it("round trips item-scoped hierarchy and relations through schedule URL parsing and encoding", () => {
+    const state = {
+      taskId: "HELP-1",
+      hierarchy: { itemKey: "HELP-1", collapsed: true },
+      relations: {
+        itemKey: "HELP-1",
+        picker: true,
+        type: "follows",
+        query: "SSO & access",
+      },
+    };
+    const query = new URLSearchParams();
+    appendProjectViewSearchParams(query, state);
+    expect(parseProjectViewSearchFromParams(query)).toEqual(state);
+    expect(
+      parseProjectBoardSearch({
+        ...state,
+        hierarchy: '{"broken":',
+        relations: { itemKey: "bad" },
+      }),
+    ).toEqual({ taskId: "HELP-1" });
+  });
+  it("accepts a permanent canonical item alias for schedule selection without coercing legacy identifiers", () => {
+    expect(parseProjectBoardSearch({ item: "HELP-1" })).toEqual({
+      taskId: "HELP-1",
+    });
+    expect(
+      parseProjectBoardSearch({ item: "f3d637ba-77bf-43e2-bd63-356da999a531" }),
+    ).toEqual({});
+  });
   it("preserves string search through the registered TanStack URL codec", () => {
     for (const query of [
       "?q=123",
@@ -284,5 +315,48 @@ describe("project board URL state", () => {
     expect(
       resolveProjectBoardLayout(parseProjectBoardSearch({}).layout, "board"),
     ).toBe("board");
+  });
+});
+
+describe("view grouping URL state (VW-13, VW-27, VW-1)", () => {
+  it("round-trips a valid group through the router codec and drops an unknown one", () => {
+    expect(parseProjectBoardSearch({ group: "assignee" }).group).toBe(
+      "assignee",
+    );
+    expect(parseProjectBoardSearch({ group: "epic" }).group).toBe("epic");
+    // VW-27: the timeline's module grouping is a valid project view group.
+    expect(parseProjectBoardSearch({ group: "module" }).group).toBe("module");
+    // Epic is a project-view option, while the board-specific parser remains unchanged.
+    expect(parseWorkItemGroup("epic")).toBeUndefined();
+    // VW-12/13: the board's own grouping stays state, assignee and priority.
+    expect(parseWorkItemGroup("module")).toBeUndefined();
+    const routed = parseProjectRouterSearch("group=priority&layout=board");
+    expect(parseProjectBoardSearch(routed)).toMatchObject({
+      group: "priority",
+      layout: "board",
+    });
+    const params = new URLSearchParams();
+    appendProjectViewSearchParams(params, {
+      group: "assignee",
+      layout: "board",
+    });
+    expect(params.get("group")).toBe("assignee");
+  });
+});
+
+describe("timeline dependency arrows URL state (VW-28)", () => {
+  it("accepts only deps=1, so a link cannot switch arrows on by accident", () => {
+    expect(parseProjectBoardSearch({ deps: "1" }).deps).toBe("1");
+    expect(parseProjectBoardSearch({ deps: "0" })).not.toHaveProperty("deps");
+    expect(parseProjectBoardSearch({ deps: "yes" })).not.toHaveProperty("deps");
+    expect(parseProjectBoardSearch({})).not.toHaveProperty("deps");
+  });
+
+  it("round-trips through the router codec", () => {
+    const routed = parseProjectRouterSearch("deps=1&group=module");
+    expect(parseProjectBoardSearch(routed)).toMatchObject({
+      deps: "1",
+      group: "module",
+    });
   });
 });

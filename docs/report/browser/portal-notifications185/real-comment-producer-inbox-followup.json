@@ -1,0 +1,39 @@
+{
+	"scope": "One approved public QA comment on owned HELP-22 linked to requester-owned SUB-5",
+	"method": "Strict HTTPS Chromium, existing owner and customer sessions, normal comment API with fresh CSRF; subsequent reads only.",
+	"marker": "SIT portal live notification QA 20261026",
+	"comment": {
+		"createStatus": 200,
+		"visibility": "public",
+		"actorType": "person",
+		"id": "p2krm776tdj5tp55ip8h2v8n",
+		"target": "/submissions/SUB-5#comment-p2krm776tdj5tp55ip8h2v8n"
+	},
+	"inbox": {
+		"readStatus": 200,
+		"previousCount": 3,
+		"currentCount": 4,
+		"newRowCount": 1,
+		"row": {
+			"id": "qz801sbx3m4gx87g54fw9ccu",
+			"kind": "work_item.commented",
+			"requestRef": "SUB-5",
+			"commentId": "p2krm776tdj5tp55ip8h2v8n",
+			"isRead": false
+		}
+	},
+	"websocket": {
+		"origin": "https://portal.localhost",
+		"path": "/api/ws/portal/notification",
+		"customerCookieSessionOpened": true,
+		"remainedOpenDuringWrite": true,
+		"framesReceivedWithinMs": 12000,
+		"safeInvalidations": 0,
+		"unexpectedPayloads": 0,
+		"result": "No notification invalidation frame observed."
+	},
+	"limitations": [
+		"The first write harness stopped on its websocket-frame assertion before rereading inbox; the read-only follow-up confirmed the notification row and linked comment.",
+		"Real cookie proves the portal WebSocket handshake, but this comment did not produce an observed invalidation frame."
+	]
+}

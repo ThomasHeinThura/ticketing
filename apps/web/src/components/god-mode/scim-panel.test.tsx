@@ -32,7 +32,11 @@ vi.mock("@/fetchers/god-mode/identity-step-up", () => ({
   proveIdentityOperation: (...args: unknown[]) => mocks.prove(...args),
 }));
 vi.mock("@/fetchers/god-mode/instance-users", () => ({
-  getCurrentFactorStatus: async () => ({ enabled: true }),
+  getCurrentFactorStatus: async () => ({
+    enabled: true,
+    required: false,
+    availableMethods: ["totp", "backup_code"],
+  }),
 }));
 vi.mock("@/fetchers/god-mode/identity-connections", async (importOriginal) => ({
   ...(await importOriginal<

@@ -8,13 +8,16 @@ export async function findWorkspaceInvitationRole(
   workspaceId: string,
   role: string,
 ) {
+  // Canonical role rows (owner decision, 23 Oct): a role name is valid when this workspace has a
+  // workspace-scope `role` row with that key.
   return await executor
-    .select({ role: schema.workspaceRoleTable.role })
-    .from(schema.workspaceRoleTable)
+    .select({ role: schema.roleTable.key })
+    .from(schema.roleTable)
     .where(
       and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
+        eq(schema.roleTable.scope, "workspace"),
+        eq(schema.roleTable.workspaceId, workspaceId),
+        eq(schema.roleTable.key, role),
       ),
     )
     .limit(1);
@@ -55,6 +58,7 @@ export async function findPendingWorkspaceInvitation(
     .where(
       and(
         eq(schema.invitationTable.workspaceId, workspaceId),
+        eq(schema.invitationTable.scope, "staff"),
         eq(schema.invitationTable.email, email),
         eq(schema.invitationTable.status, "pending"),
         gt(schema.invitationTable.expiresAt, now),
@@ -74,6 +78,7 @@ export async function countPendingWorkspaceInvitations(
     .where(
       and(
         eq(schema.invitationTable.workspaceId, workspaceId),
+        eq(schema.invitationTable.scope, "staff"),
         eq(schema.invitationTable.status, "pending"),
       ),
     );
@@ -102,6 +107,17 @@ export async function insertWorkspaceInvitation(
     .insert(schema.invitationTable)
     .values(values)
     .returning();
+}
+
+/** Shared CP-22 lifetime for native staff and customer invitations. */
+export async function readInvitationLifetimeHours(executor: Executor) {
+  const [row] = await executor
+    .select({ hours: schema.instanceSettingTable.invitationLifetimeHours })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+  if (!row) throw new Error("Invitation runtime settings unavailable");
+  return row.hours;
 }
 
 /** Workspace name used to render the post-commit invitation email. */

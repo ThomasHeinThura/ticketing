@@ -30,7 +30,6 @@ import {
   CalendarIcon,
   ChevronDown,
   Menu,
-  Trash2,
   X,
 } from "lucide-react";
 import {
@@ -90,7 +89,6 @@ function BacklogBulkToolbar() {
   const { project } = useProjectStore();
   const {
     bulkMoveToBoard,
-    bulkDelete,
     bulkArchive,
     bulkAssign,
     bulkPriority,
@@ -104,10 +102,9 @@ function BacklogBulkToolbar() {
   const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(
     workspace?.id ?? "",
   );
-  const { canUpdateTasks, canDeleteTasks, canAssignTasks, canUpdateLabels } =
+  const { canUpdateTasks, canAssignTasks, canUpdateLabels } =
     useWorkspacePermission();
   const canEdit = canUpdateTasks();
-  const canDelete = canDeleteTasks();
   const canAssign = canAssignTasks();
   const canEditLabels = canUpdateLabels();
   const [isActionsOpen, setIsActionsOpen] = useState(false);
@@ -168,21 +165,6 @@ function BacklogBulkToolbar() {
     },
     [bulkMoveToBoard, selectedTaskIds, selectedCount, clearSelection, t],
   );
-
-  const handleBulkDelete = useCallback(async () => {
-    if (!confirm(t("tasks:bulk.deleteConfirm", { count: selectedCount }))) {
-      return;
-    }
-
-    try {
-      await bulkDelete(Array.from(selectedTaskIds));
-      toast.success(t("tasks:bulk.deleteSuccess", { count: selectedCount }));
-      clearSelection();
-      setIsActionsOpen(false);
-    } catch (_error) {
-      toast.error(t("tasks:bulk.deleteError"));
-    }
-  }, [bulkDelete, selectedTaskIds, selectedCount, clearSelection, t]);
 
   const handleBulkArchive = useCallback(async () => {
     try {
@@ -264,23 +246,11 @@ function BacklogBulkToolbar() {
 
   const groupedItems = useMemo<BacklogActionGroup[]>(() => {
     const groups: BacklogActionGroup[] = [];
-    if (canEdit || canDelete) {
+    if (canEdit) {
       groups.push({
         value: "actions",
         label: t("tasks:bulk.actions"),
         items: [
-          ...(canDelete
-            ? [
-                {
-                  value: "bulk-delete",
-                  label: t("tasks:bulk.delete"),
-                  icon: <Trash2 className="h-4 w-4 text-muted-foreground" />,
-                  onRun: () => {
-                    void handleBulkDelete();
-                  },
-                },
-              ]
-            : []),
           ...(canEdit
             ? [
                 {
@@ -358,12 +328,10 @@ function BacklogBulkToolbar() {
     return groups;
   }, [
     canEdit,
-    canDelete,
     canAssign,
     canEditLabels,
     workspaceUsers?.members,
     uniqueLabels,
-    handleBulkDelete,
     handleBulkArchive,
     handleBulkAssign,
     handleBulkPriority,
@@ -373,7 +341,7 @@ function BacklogBulkToolbar() {
   ]);
 
   if (selectedCount === 0) return null;
-  if (!canEdit && !canDelete && !canAssign && !canEditLabels) return null;
+  if (!canEdit && !canAssign && !canEditLabels) return null;
 
   return (
     <div className="-translate-x-1/2 fixed bottom-6 left-1/2 z-50 transition-[translate,opacity] duration-200 ease-out starting:translate-y-3 starting:opacity-0 motion-reduce:starting:translate-y-0">

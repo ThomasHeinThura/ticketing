@@ -1,0 +1,96 @@
+{
+	"kind": "isolated-katex-compatibility-check",
+	"date": "2026-10-25",
+	"scope": "Read-only comparison of installed KaTeX 0.16.47 with the official npm KaTeX 0.18.2 package in a private temporary directory. No repo dependency install, lockfile change, scanner run, browser run, or phase review is claimed.",
+	"runtime": {
+		"node": "v26.12.1",
+		"npm": "11.20.0"
+	},
+	"packages": {
+		"installed": "node_modules/.pnpm/katex@0.16.47/node_modules/katex",
+		"candidate": "katex@0.18.2",
+		"candidateTarball": "https://registry.npmjs.org/katex/-/katex-0.18.2.tgz",
+		"registryIntegrity": "sha512-3snve4y0SXTMequLim1FMiPvLGElySam0blN5xQZBqEY3lOJz1TnuaaiugnBZBqHzlSAGmFTYL7MCQkORuLKCA==",
+		"computedTarballSha512Base64": "3snve4y0SXTMequLim1FMiPvLGElySam0blN5xQZBqEY3lOJz1TnuaaiugnBZBqHzlSAGmFTYL7MCQkORuLKCA==",
+		"integrityMatched": true
+	},
+	"commandsRun": [
+		"npm view katex@0.18.2 dist.tarball dist.integrity --json",
+		"mktemp -d /tmp/taskdesk-katex-XXXXXX",
+		"npm pack katex@0.18.2 --pack-destination /tmp/taskdesk-katex-q92bIU --silent --ignore-scripts",
+		"openssl dgst -sha512 -binary /tmp/taskdesk-katex-q92bIU/katex-0.18.2.tgz | openssl base64 -A",
+		"tar -xzf katex-0.18.2.tgz",
+		"node check.cjs"
+	],
+	"testProgram": "/tmp/taskdesk-katex-q92bIU/check.cjs",
+	"testOptions": {
+		"throwOnError": true,
+		"displayMode": true,
+		"output": "mathml"
+	},
+	"cases": [
+		{
+			"id": "normal-fraction",
+			"expression": "x^2 + \\frac{1}{2}",
+			"old": {
+				"rendered": true,
+				"mathElement": true,
+				"superscript": true,
+				"fraction": true
+			},
+			"candidate": {
+				"rendered": true,
+				"mathElement": true,
+				"superscript": true,
+				"fraction": true
+			}
+		},
+		{
+			"id": "normal-square-root",
+			"expression": "\\sqrt{2+2}",
+			"old": { "rendered": true, "mathElement": true },
+			"candidate": { "rendered": true, "mathElement": true }
+		},
+		{
+			"id": "legacy-output-option",
+			"expression": "x^2 + \\frac{1}{2}",
+			"optionsOverride": { "output": "htmlAndMathml" },
+			"old": { "rendered": true, "mathElement": true, "htmlSpan": true },
+			"candidate": { "rendered": true, "mathElement": true, "htmlSpan": true }
+		},
+		{
+			"id": "inherited-trust-regression",
+			"expression": "\\href{javascript:alert(1)}{x}",
+			"method": "Render once normally and once with Object.prototype.trust=true; delete the added property in a finally block. Assert on an href attribute, not on literal URL text in an error rendering.",
+			"old": {
+				"baselineHasHrefAttribute": false,
+				"inheritedTrustHasHrefAttribute": true
+			},
+			"candidate": {
+				"baselineHasHrefAttribute": false,
+				"inheritedTrustHasHrefAttribute": false
+			}
+		},
+		{
+			"id": "explicit-trust-compatibility",
+			"expression": "\\href{https://example.invalid/safe}{x}",
+			"optionsOverride": { "trust": true },
+			"old": { "hasHrefAttribute": true },
+			"candidate": { "hasHrefAttribute": true }
+		}
+	],
+	"conclusion": "The isolated 0.18.2 public renderer preserved the representative Mermaid render options and blocked the inherited-trust behavior reproduced in 0.16.47. This supports, but does not establish, compatibility of a Mermaid transitive override.",
+	"limits": [
+		"Mermaid 11.16.1 declares a KaTeX 0.16.x range; this direct public-API check does not prove its full integration with 0.18.2.",
+		"The candidate was not installed into the repo or built into its web bundles.",
+		"No lockfile resolution, dependency or image scan, browser rendering, CSS comparison, or persisted-data journey was run here.",
+		"KaTeX 0.18.0 changed internal CSS classes; custom CSS and sanitizer interaction require browser verification."
+	],
+	"primarySources": [
+		"https://github.com/KaTeX/KaTeX/security/advisories/GHSA-238p-pmpm-9mq7",
+		"https://github.com/KaTeX/KaTeX/releases/tag/v0.18.0",
+		"https://github.com/KaTeX/KaTeX/releases/tag/v0.18.2",
+		"https://github.com/mermaid-js/mermaid/pull/8216",
+		"https://registry.npmjs.org/katex/0.18.2"
+	]
+}

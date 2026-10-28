@@ -1,7 +1,9 @@
 import { createId } from "@paralleldrive/cuid2";
+import type { JsonValue } from "@taskdesk/domain";
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
+import { publishCommittedAuthConfigurationReload } from "../auth/configuration-reload";
 import { appendStepUpAudit } from "../auth/step-up-audit";
 import { consumeOidcGroupMappingProof } from "../auth/step-up-service";
 import db, { schema } from "../database";
@@ -108,6 +110,10 @@ function dto(
 async function reportAuditFailure() {
   recordAuditWriteFailure("mutation");
   await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+}
+
+export async function reportIdentityAuditFailure() {
+  await reportAuditFailure();
 }
 
 const getRoute = createRoute({
@@ -405,6 +411,7 @@ const routes = apiRouter()
       return c.json(problem(422, "Invalid mapping"), 422);
     if (result.kind === "proof")
       throw new HTTPException(403, { message: "step_up_unavailable" });
+    await publishCommittedAuthConfigurationReload();
     return c.json(
       mutationResponseSchema.parse({
         data: dto(result.mapping, result.connection),
@@ -605,6 +612,7 @@ const routes = apiRouter()
       }),
     );
     if (result.kind === "updated") {
+      await publishCommittedAuthConfigurationReload();
       await reportPendingActionAuditFailures(result.pendingActionAuditFailures);
       for (const affectedUserId of result.affectedUserIds) {
         await invalidateNativeAuthorization({ userId: affectedUserId });
@@ -633,13 +641,15 @@ const routes = apiRouter()
     );
   });
 
-async function writeMappingEvidence(
+async function writeIdentityEvidence(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   input: {
     actorId: string;
     connectionId: string;
-    mappingId: string;
-    changedFields: string[];
+    eventKind: "group.mapping_changed" | "connection.changed";
+    auditChanges: string[];
+    eventDetail: Record<string, JsonValue>;
+    auditDetail?: Record<string, JsonValue>;
     configVersion: number;
     traceId?: string;
   },
@@ -656,8 +666,9 @@ async function writeMappingEvidence(
         entityType: "identity_connection",
         entityId: input.connectionId,
         after: {
-          changes: ["oidcGroupMapping"],
+          changes: input.auditChanges,
           configVersion: input.configVersion,
+          ...input.auditDetail,
         },
       });
     });
@@ -666,17 +677,68 @@ async function writeMappingEvidence(
   }
   await tx.insert(schema.provisioningEventTable).values({
     identityConnectionId: input.connectionId,
-    kind: "group.mapping_changed",
+    kind: input.eventKind,
     outcome: "succeeded",
     detail: {
-      mappingId: input.mappingId,
-      changes: input.changedFields,
+      changes: input.auditChanges,
       configVersion: input.configVersion,
+      ...input.eventDetail,
     },
     actorType: "person",
     traceId: input.traceId ?? null,
   });
   return auditOk;
+}
+
+async function writeMappingEvidence(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: {
+    actorId: string;
+    connectionId: string;
+    mappingId: string;
+    changedFields: string[];
+    configVersion: number;
+    traceId?: string;
+  },
+) {
+  return writeIdentityEvidence(tx, {
+    actorId: input.actorId,
+    connectionId: input.connectionId,
+    eventKind: "group.mapping_changed",
+    auditChanges: ["oidcGroupMapping"],
+    configVersion: input.configVersion,
+    eventDetail: {
+      mappingId: input.mappingId,
+      changes: input.changedFields,
+    },
+    traceId: input.traceId,
+  });
+}
+
+export async function writeRoleChangeEvidence(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: {
+    actorId: string;
+    connectionId: string;
+    roleId: string;
+    changedFields: string[];
+    configVersion: number;
+    retiredGrantCount: number;
+  },
+) {
+  return writeIdentityEvidence(tx, {
+    actorId: input.actorId,
+    connectionId: input.connectionId,
+    eventKind: "connection.changed",
+    auditChanges: ["roleEligibility"],
+    configVersion: input.configVersion,
+    eventDetail: {
+      roleId: input.roleId,
+      changes: input.changedFields,
+      retiredGrantCount: input.retiredGrantCount,
+    },
+    auditDetail: { roleId: input.roleId },
+  });
 }
 
 export { routes as oidcGroupMappingAdminRouter };

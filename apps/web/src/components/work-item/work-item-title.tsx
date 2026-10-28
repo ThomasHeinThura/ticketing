@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { TaskTitlePresentation } from "@/components/task/task-detail-presentation";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import {
   isWorkItemAccessLost,
@@ -26,9 +27,11 @@ export const TITLE_SAVE_DELAY_MS = 800;
 export default function WorkItemTitle({
   item,
   onAccessLost,
+  readOnly = false,
 }: {
   item: WorkItemDetailRow;
   onAccessLost: () => void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -123,13 +126,11 @@ export default function WorkItemTitle({
   }, [item.title, focused]);
 
   const field = (
-    // ui-exempt: kaneo's borderless title is a bare input styled as the page heading.
-    <input
+    <TaskTitlePresentation
+      maxLength={500}
       aria-label={t("workItems:properties.titleLabel")}
-      className="block h-auto w-full appearance-none border-0 bg-transparent p-0 font-heading font-semibold text-[2rem] text-foreground leading-[1.15] tracking-[-0.02em] outline-none placeholder:text-foreground"
-      type="text"
       value={value}
-      readOnly={!canUpdateTasks()}
+      readOnly={readOnly || !canUpdateTasks()}
       placeholder={t("workItems:properties.titlePlaceholder")}
       onFocus={() => setFocused(true)}
       onBlur={() => {

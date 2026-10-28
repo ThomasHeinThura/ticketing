@@ -43,6 +43,12 @@ export function useIdentityConnectionMutations(connectionId: string) {
             item.id === connection.id ? connection : item,
           ),
       );
+      // The organisation Identity tab reads the same connection under its own key.
+      queryClient.setQueriesData<IdentityConnection | null>(
+        { queryKey: [...identityConnectionsKey, "organisation"] },
+        (current) =>
+          current && current.id === connection.id ? connection : current,
+      );
       return refreshScim();
     },
   });

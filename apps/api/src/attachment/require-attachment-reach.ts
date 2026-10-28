@@ -7,6 +7,10 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import {
+  loadProjectAncestorIdsForRequest,
+  loadProjectOwnerTeamId,
+} from "../project/hierarchy.repository";
+import {
   projectCapabilityRefused,
   projectReadDecision,
 } from "../utils/has-project-reach";
@@ -24,18 +28,11 @@ import { findAttachmentWorkItemForReach } from "./repository";
  * caller's workspace reach from the attachment's own id, via a genuine DB lookup, the same
  * shape `work-item/require-work-item-reach.ts` uses for `work_item.key`.
  *
- * Only ever reaches a `work_item_id`-attached row today (`../database/schema.ts`'s comment
- * on `attachmentTable`: `comment_id`/`submission_id` are reserved, unpopulated columns in
- * this slice), so this middleware 404s outright on a `comment_id`/`submission_id` row --
- * there is no such row to find yet, but the check is here so a future writer that starts
- * populating those columns does not silently fall through this middleware's join.
+ * This route family handles work-item attachments. Comment/submission parents do not
+ * fall through its work-item join and retain their separately scoped routes.
  *
- * A soft-deleted attachment (`state = 'deleted'`) still resolves here -- `DELETE` is
- * idempotent (deleting an already-deleted row is a no-op in the controller) and a deleted
- * row must still 404 exactly like a nonexistent one from the OUTSIDE (no distinguishing
- * "gone" from "never existed" to a caller without read access), which is why the download
- * route re-checks `state = 'ready'` itself rather than relying on this middleware to filter
- * it.
+ * Tombstones still resolve for an authorized confirmed no-op. Download independently
+ * requires ready state; missing and unreachable resources use the same404 response.
  */
 export function requireAttachmentReach(
   idKey = "id",
@@ -55,6 +52,11 @@ export function requireAttachmentReach(
     if (!id) {
       throw new HTTPException(400, { message: "Missing attachment id" });
     }
+    if (options.allowArchivedForRead && c.req.method !== "GET") {
+      throw new HTTPException(500, {
+        message: "Archived attachment access is only valid for GET requests",
+      });
+    }
     if (id.includes("\u0000")) {
       throw new HTTPException(400, { message: "Invalid attachment id" });
     }
@@ -66,7 +68,9 @@ export function requireAttachmentReach(
     // only its project's -- same gap `require-work-item-reach.ts` closed for #276, here
     // for the attachment-reach path, which has its own local lookup rather than going
     // through that middleware.
-    const [row] = await findAttachmentWorkItemForReach(db, id);
+    const [row] = await findAttachmentWorkItemForReach(db, id, {
+      allowArchivedForRead: options.allowArchivedForRead,
+    });
 
     if (!row) {
       throw new HTTPException(404, { message: "Attachment not found" });
@@ -80,13 +84,25 @@ export function requireAttachmentReach(
     c.set("projectId", row.projectId);
     c.set("workItemId", row.workItemId);
     c.set("policyScopeResource", "work_item");
+    c.set("policyRowFacts", { personId: row.uploadedBy });
+    const ancestorProjectIds = await loadProjectAncestorIdsForRequest(
+      c,
+      db,
+      row.workspaceId,
+      row.projectId,
+    );
+    const ownerTeamId = await loadProjectOwnerTeamId(
+      db,
+      row.workspaceId,
+      row.projectId,
+    );
     if (policyShadowEnabled) {
       c.set("projectReachFacts", {
         projectId: row.projectId,
         workspaceId: row.workspaceId,
         organisationId: row.organisationId,
-        ancestorProjectIds: [],
-        ownerTeamId: null,
+        ancestorProjectIds,
+        ownerTeamId,
       });
     }
 
@@ -107,8 +123,8 @@ export function requireAttachmentReach(
         workspaceId: row.workspaceId,
         organisationId: row.organisationId,
         workItemId: row.workItemId,
-        ancestorProjectIds: [],
-        ownerTeamId: null,
+        ancestorProjectIds,
+        ownerTeamId,
       });
       if (!decision) {
         throw new HTTPException(500, {

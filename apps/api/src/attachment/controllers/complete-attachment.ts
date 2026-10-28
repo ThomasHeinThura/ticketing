@@ -3,11 +3,13 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import type { attachmentTable } from "../../database/schema";
 import {
+  attachmentUploadUrlTtlSeconds,
   deleteStorageObject,
   finalizeStorageObject,
   getObjectSizeAndHeader,
   toFinalAttachmentObjectKey,
 } from "../../storage";
+import { queueVacatedUploadKey } from "../../utils/attachment-object-queue";
 import { recordWorkItemActivity } from "../../work-item/activity";
 import {
   assertProjectStillLive,
@@ -21,6 +23,7 @@ import {
   lockAttachmentWorkItem,
   updateAttachmentReady,
 } from "../repository";
+import { assertOrganisationStorageQuota } from "../storage-quota";
 
 const SNIFF_BYTES = 512;
 
@@ -84,7 +87,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   if (
     !attachment ||
     attachment.workspaceId !== workspaceId ||
-    attachment.workItemId !== workItemId
+    attachment.parentWorkItemId !== workItemId
   ) {
     throw new HTTPException(404, { message: "Attachment not found" });
   }
@@ -93,6 +96,13 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
     throw new HTTPException(409, {
       message: `Attachment is already "${attachment.state}", not "pending".`,
     });
+  }
+
+  // P1R2-13: only the person who requested the upload completes it (the portal route already
+  // binds completion to the requester). A pending row with no resolved uploader stays open to
+  // any caller who reaches the item, as before.
+  if (attachment.uploadedBy && identity?.personId !== attachment.uploadedBy) {
+    throw new HTTPException(404, { message: "Attachment not found" });
   }
 
   // Re-check the actual stored size against `attachment_max_bytes` -- `presign`'s own check
@@ -125,6 +135,12 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
       throw new HTTPException(400, { message: NOT_FOUND_MESSAGE });
     },
   );
+  // P1R2-6: the vacated pending key is removed once its upload credential has expired.
+  await queueVacatedUploadKey(db, {
+    objectKey: attachment.objectKey,
+    workspaceId,
+    ttlSeconds: attachmentUploadUrlTtlSeconds(),
+  }).catch(() => {});
 
   // B3 security-review fix (2026-09-27): get the real stored size (no body read at all)
   // and only the first SNIFF_BYTES bytes (a bounded, ranged read) -- NOT the entire object
@@ -162,6 +178,34 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
           ? "The uploaded file's size could not be determined."
           : `The uploaded file is ${Math.ceil(contentLength / (1024 * 1024))} MB; the limit is ${Math.floor(maxBytes / (1024 * 1024))} MB.`,
     });
+  }
+
+  // Per-organisation storage limit (P1 attachment limits): the real size, not the claimed one,
+  // must still fit. An over-quota object is discarded exactly like an oversize one.
+  try {
+    await db.transaction((tx) =>
+      assertOrganisationStorageQuota(tx, {
+        workspaceId,
+        additionalBytes: contentLength,
+        excludeAttachmentId: attachmentId,
+      }),
+    );
+  } catch (error) {
+    // Only an over-quota upload is discarded; a transient failure keeps the pending row so
+    // the caller can retry `complete`.
+    if (error instanceof HTTPException && error.status === 429) {
+      try {
+        await deleteRejectedPendingAttachmentRow({
+          attachmentId,
+          workspaceId,
+          workItemId,
+        });
+      } catch {
+        // The pending-row cleanup job owns its expiry if the item froze first.
+      }
+      await deleteStorageObject(finalObjectKey).catch(() => {});
+    }
+    throw error;
   }
 
   if (!magicBytesMatchDeclaredMime(header, attachment.mimeType)) {
@@ -217,9 +261,20 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
             actorId,
             actorType,
             verb: "attachment.added",
-            payload: { attachmentId, filename: attachment.filename },
+            payload: {
+              attachmentId,
+              filename: attachment.filename,
+              ...(attachment.commentId
+                ? { commentId: attachment.commentId }
+                : {}),
+            },
             // CA-7: `attachment.added` is public only for a customer-visible attachment.
-            visibility: attachment.customerVisible ? "public" : "internal",
+            // AT-4: an attachment on an internal comment is internal whatever its own flag says.
+            visibility:
+              attachment.customerVisible &&
+              attachment.commentVisibility !== "internal"
+                ? "public"
+                : "internal",
           },
         ]);
       }

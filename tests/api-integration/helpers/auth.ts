@@ -1,5 +1,5 @@
 import type { Session, User } from "better-auth/types";
-import { vi } from "vitest";
+import { afterEach, vi } from "vitest";
 import { auth, portalAuth } from "../../../apps/api/src/auth";
 
 function createSession(
@@ -36,6 +36,72 @@ type MockSessionUser = Omit<User, "twoFactorEnabled"> & {
   twoFactorEnabled?: boolean | null;
 };
 
+type ActiveSessionMock = {
+  baseAgent: typeof auth;
+  basePortal: typeof portalAuth;
+  agentSpy: unknown;
+  portalSpy: unknown;
+  reboundAgents: Map<typeof auth, unknown>;
+  reboundPortals: Map<typeof portalAuth, unknown>;
+};
+
+let activeSessionMock: ActiveSessionMock | undefined;
+
+function restoreReboundInstances(state: ActiveSessionMock) {
+  for (const spy of state.reboundAgents.values()) {
+    (spy as { mockRestore?: () => void }).mockRestore?.();
+  }
+  for (const spy of state.reboundPortals.values()) {
+    (spy as { mockRestore?: () => void }).mockRestore?.();
+  }
+  state.reboundAgents.clear();
+  state.reboundPortals.clear();
+}
+
+function rebindCurrentAuthInstances() {
+  const state = activeSessionMock;
+  if (!state) return;
+
+  // `vi.restoreAllMocks()` restores the original fixture targets. This check prevents
+  // a stale session mock from being copied into a replacement auth object afterward.
+  if (
+    !vi.isMockFunction(state.baseAgent.api.getSession) ||
+    !vi.isMockFunction(state.basePortal.api.getSession)
+  ) {
+    restoreReboundInstances(state);
+    activeSessionMock = undefined;
+    return;
+  }
+
+  if (auth !== state.baseAgent && !state.reboundAgents.has(auth)) {
+    const relay = vi
+      .spyOn(auth.api, "getSession")
+      .mockImplementation(state.agentSpy as never);
+    state.reboundAgents.set(auth, relay);
+  }
+  if (
+    portalAuth !== state.basePortal &&
+    !state.reboundPortals.has(portalAuth)
+  ) {
+    const relay = vi
+      .spyOn(portalAuth.api, "getSession")
+      .mockImplementation(state.portalSpy as never);
+    state.reboundPortals.set(portalAuth, relay);
+  }
+}
+
+/** Rebind active explicit fixture spies after auth configuration replaces its instances. */
+export function rebindMockAuthenticatedSession() {
+  rebindCurrentAuthInstances();
+}
+
+afterEach(() => {
+  if (activeSessionMock) {
+    restoreReboundInstances(activeSessionMock);
+    activeSessionMock = undefined;
+  }
+});
+
 export function mockAuthenticatedSession(
   user: MockSessionUser,
   sessionOverrides: {
@@ -43,17 +109,53 @@ export function mockAuthenticatedSession(
     portal?: "agent" | "customer";
   } = {},
 ) {
+  if (activeSessionMock) {
+    restoreReboundInstances(activeSessionMock);
+    activeSessionMock = undefined;
+  }
   const result = {
     session: createSession(user.id, sessionOverrides),
     user: { ...user, twoFactorEnabled: user.twoFactorEnabled ?? false },
   };
-  const agentMock = vi.spyOn(auth.api, "getSession").mockResolvedValue(result);
-  vi.spyOn(portalAuth.api, "getSession").mockResolvedValue(result);
+  const baseAgent = auth;
+  const basePortal = portalAuth;
+  const agentMock = vi
+    .spyOn(baseAgent.api, "getSession")
+    .mockResolvedValue(result);
+  const portalMock = vi
+    .spyOn(basePortal.api, "getSession")
+    .mockResolvedValue(result);
+  activeSessionMock = {
+    baseAgent,
+    basePortal,
+    agentSpy: agentMock,
+    portalSpy: portalMock,
+    reboundAgents: new Map(),
+    reboundPortals: new Map(),
+  };
   return agentMock;
 }
 
 export function mockAnonymousSession() {
-  const agentMock = vi.spyOn(auth.api, "getSession").mockResolvedValue(null);
-  vi.spyOn(portalAuth.api, "getSession").mockResolvedValue(null);
+  if (activeSessionMock) {
+    restoreReboundInstances(activeSessionMock);
+    activeSessionMock = undefined;
+  }
+  const baseAgent = auth;
+  const basePortal = portalAuth;
+  const agentMock = vi
+    .spyOn(baseAgent.api, "getSession")
+    .mockResolvedValue(null);
+  const portalMock = vi
+    .spyOn(basePortal.api, "getSession")
+    .mockResolvedValue(null);
+  activeSessionMock = {
+    baseAgent,
+    basePortal,
+    agentSpy: agentMock,
+    portalSpy: portalMock,
+    reboundAgents: new Map(),
+    reboundPortals: new Map(),
+  };
   return agentMock;
 }

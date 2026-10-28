@@ -1,8 +1,9 @@
 import type { Page } from "@playwright/test";
 
-export type LastItemPaintRecorderOptions =
+export type LastItemPaintRecorderOptions = (
   | { kind: "list"; metric: "listPaint"; expectedCount: 500 }
-  | { kind: "board"; metric: "boardPaint"; expectedCount: 200 };
+  | { kind: "board"; metric: "boardPaint"; expectedCount: 200 }
+) & { canonical?: { selector: string; expectedIds: string[] } };
 
 type RecorderMetrics = Window & {
   __g11Metrics?: Record<string, number>;
@@ -79,18 +80,63 @@ export function installLastItemPaintRecorderInDocument(
       for (const card of cards) if (!card.isConnected) cards.delete(card);
     };
 
+    /**
+     * G11 "work-list render, 500 rows" (`?layout=table`): the virtualized table's first painted
+     * viewport with all 500 rows loaded. Thomas decided this definition on 28 Oct 2026; the
+     * budget is unchanged. The table windows its rows, so it never mounts 500 `tbody tr`:
+     * "loaded" is the table's `aria-rowcount` (header row plus one per loaded row), and
+     * "painted" is every row position that intersects the viewport being mounted, in order and
+     * without gaps, with content. The interim full-table fallback (no `data-virtualized-table`)
+     * never counts, and neither does any loaded count other than the expected one.
+     */
     const readListTarget = () => {
       if (body && !body.isConnected) body = null;
       if (!body) {
         body = document.querySelector<HTMLTableSectionElement>(
-          '[data-testid="work-item-list-populated"] tbody',
+          'table[data-testid="work-item-list-populated"][data-virtualized-table="true"] > tbody',
         );
       }
-      if (!body?.isConnected)
-        return { count: 0, target: null as Element | null };
-      const rows = body.rows;
-      const target = rows.item(expectedCount - 1);
-      return { count: rows.length, target };
+      const none = { count: 0, target: null as Element | null };
+      if (!body?.isConnected) return none;
+      const table = body.closest("table");
+      if (!table) return none;
+      const loaded = Number(table.getAttribute("aria-rowcount")) - 1;
+      if (!Number.isInteger(loaded) || loaded <= 0) return none;
+      if (loaded !== expectedCount) return { count: loaded, target: null };
+      const bodyRect = body.getBoundingClientRect();
+      const viewTop = Math.max(0, bodyRect.top);
+      const viewBottom = Math.min(window.innerHeight, bodyRect.bottom);
+      if (viewBottom <= viewTop) return { count: loaded, target: null };
+      const rows = Array.from(
+        body.querySelectorAll<HTMLTableRowElement>(
+          ":scope > tr[data-virtual-row-id]",
+        ),
+      );
+      let covered = viewTop;
+      let previousIndex = 0;
+      let visibleRows = 0;
+      for (const row of rows) {
+        const index = Number(row.getAttribute("aria-rowindex")) - 1;
+        if (!Number.isInteger(index) || index < 1 || index > loaded)
+          return { count: loaded, target: null };
+        const rect = row.getBoundingClientRect();
+        if (rect.bottom <= viewTop || rect.top >= viewBottom) continue;
+        // Consecutive loaded rows, the first one starting at (or above) the viewport's top.
+        if (
+          (visibleRows > 0 && index !== previousIndex + 1) ||
+          rect.top > covered + 1 ||
+          rect.height <= 0 ||
+          !row.textContent?.trim()
+        )
+          return { count: loaded, target: null };
+        covered = Math.max(covered, rect.bottom);
+        previousIndex = index;
+        visibleRows += 1;
+      }
+      const filled =
+        visibleRows > 0 &&
+        (covered >= viewBottom - 1 || previousIndex === loaded);
+      return { count: loaded, target: filled ? table : null };
     };
 
     const readBoardTarget = () => {
@@ -120,8 +166,30 @@ export function installLastItemPaintRecorderInDocument(
       };
     };
 
-    const readCurrent = () =>
-      kind === "list" ? readListTarget() : readBoardTarget();
+    const readCurrent = () => {
+      if (options.canonical) {
+        const { selector, expectedIds } = options.canonical;
+        const nodes = [...document.querySelectorAll(selector)];
+        const ids = nodes.map((node) => node.getAttribute("data-task-id"));
+        const exact =
+          expectedIds.length === expectedCount &&
+          new Set(expectedIds).size === expectedCount &&
+          nodes.length === expectedCount &&
+          new Set(ids).size === expectedCount &&
+          expectedIds.every((id) => ids.includes(id));
+        return {
+          count: nodes.length,
+          target: exact
+            ? (nodes.find(
+                (node) =>
+                  node.getAttribute("data-task-id") ===
+                  expectedIds[expectedCount - 1],
+              ) ?? null)
+            : null,
+        };
+      }
+      return kind === "list" ? readListTarget() : readBoardTarget();
+    };
 
     const visibleBox = (target: Element) => {
       if (!target.isConnected || target.getClientRects().length === 0)
@@ -202,7 +270,13 @@ export function installLastItemPaintRecorderInDocument(
       const initialRect = visibleBox(current.target);
       if (!initialRect) return;
 
-      if (!isInViewport(initialRect) && !scrollAttempted.has(current.target)) {
+      // The table metric is its first viewport as painted: never scroll it.
+      const scrollable = kind === "board" || Boolean(options.canonical);
+      if (
+        scrollable &&
+        !isInViewport(initialRect) &&
+        !scrollAttempted.has(current.target)
+      ) {
         scrollAttempted.add(current.target);
         debug.scrollCount += 1;
         current.target.scrollIntoView({ block: "nearest" });

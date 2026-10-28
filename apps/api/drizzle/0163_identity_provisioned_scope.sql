@@ -1,0 +1,2 @@
+ALTER TABLE "outbox" DROP CONSTRAINT "outbox_scope_check";--> statement-breakpoint
+ALTER TABLE "outbox" ADD CONSTRAINT "outbox_scope_check" CHECK ((workspace_id IS NOT NULL) OR ((organisation_id IS NULL) AND (kind = ANY (ARRAY['pending_action.requested'::text, 'pending_action.decided'::text, 'pending_action.executed'::text, 'identity.deprovisioned'::text, 'identity.provisioned'::text, 'api_key.auto_disabled'::text]))));

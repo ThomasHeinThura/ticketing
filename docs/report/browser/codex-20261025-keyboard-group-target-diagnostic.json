@@ -1,0 +1,212 @@
+{
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"strictTls": true
+	},
+	"steps": [
+		{
+			"step": "picked-up",
+			"dragging": true,
+			"activeKey": "PERF-1181",
+			"activeId": "a13e373wobm6whmrfm52kab6",
+			"activeSortable": {
+				"index": 0,
+				"itemCount": 59,
+				"containerId": "Sortable-0"
+			},
+			"activeGroup": "group:priority:urgent",
+			"activeRect": {
+				"x": 270,
+				"y": 160,
+				"width": 353,
+				"height": 121
+			},
+			"overKey": "PERF-1181",
+			"overId": "a13e373wobm6whmrfm52kab6",
+			"overGroup": "group:priority:urgent",
+			"overRect": {
+				"x": 270,
+				"y": 160,
+				"width": 353,
+				"height": 121
+			},
+			"liveAnnouncements": [
+				"Picked up TaskDeskPerf10k-20261025 #01181 — 性能測試項目."
+			]
+		},
+		{
+			"step": "after-activation-frame",
+			"dragging": true,
+			"activeKey": "PERF-1181",
+			"activeId": "a13e373wobm6whmrfm52kab6",
+			"activeSortable": {
+				"index": 0,
+				"itemCount": 59,
+				"containerId": "Sortable-0"
+			},
+			"activeGroup": "group:priority:urgent",
+			"activeRect": {
+				"x": 270,
+				"y": 160,
+				"width": 353,
+				"height": 121
+			},
+			"overKey": "PERF-1181",
+			"overId": "a13e373wobm6whmrfm52kab6",
+			"overGroup": "group:priority:urgent",
+			"overRect": {
+				"x": 270,
+				"y": 160,
+				"width": 353,
+				"height": 121
+			},
+			"liveAnnouncements": [
+				"Picked up TaskDeskPerf10k-20261025 #01181 — 性能測試項目."
+			]
+		},
+		{
+			"step": "immediately-after-right",
+			"dragging": true,
+			"activeKey": "PERF-1181",
+			"activeId": "a13e373wobm6whmrfm52kab6",
+			"activeSortable": {
+				"index": 0,
+				"itemCount": 59,
+				"containerId": "Sortable-0"
+			},
+			"activeGroup": "group:priority:urgent",
+			"activeRect": {
+				"x": 270,
+				"y": 160,
+				"width": 353,
+				"height": 121
+			},
+			"overKey": "PERF-1181",
+			"overId": "a13e373wobm6whmrfm52kab6",
+			"overGroup": "group:priority:urgent",
+			"overRect": {
+				"x": 270,
+				"y": 160,
+				"width": 353,
+				"height": 121
+			},
+			"liveAnnouncements": [
+				"Picked up TaskDeskPerf10k-20261025 #01181 — 性能測試項目."
+			]
+		},
+		{
+			"step": "after-two-frames",
+			"dragging": true,
+			"activeKey": "PERF-1181",
+			"activeId": "a13e373wobm6whmrfm52kab6",
+			"activeSortable": {
+				"index": 0,
+				"itemCount": 59,
+				"containerId": "Sortable-0"
+			},
+			"activeGroup": "group:priority:urgent",
+			"activeRect": {
+				"x": 270,
+				"y": 169,
+				"width": 353,
+				"height": 121
+			},
+			"overKey": "PERF-7933",
+			"overId": "a1d73pqd80ujl7thl1wh4cxw",
+			"overGroup": "group:priority:urgent",
+			"overRect": {
+				"x": 270,
+				"y": 280,
+				"width": 353,
+				"height": 121
+			},
+			"liveAnnouncements": [
+				"TaskDeskPerf10k-20261025 #01181 — 性能測試項目 is over TaskDeskPerf10k-20261025 #07933 — 性能測試項目."
+			]
+		},
+		{
+			"step": "after-80ms",
+			"dragging": true,
+			"activeKey": "PERF-1181",
+			"activeId": "a13e373wobm6whmrfm52kab6",
+			"activeSortable": {
+				"index": 0,
+				"itemCount": 59,
+				"containerId": "Sortable-0"
+			},
+			"activeGroup": "group:priority:urgent",
+			"activeRect": {
+				"x": 270,
+				"y": 264,
+				"width": 353,
+				"height": 121
+			},
+			"overKey": "PERF-7933",
+			"overId": "a1d73pqd80ujl7thl1wh4cxw",
+			"overGroup": "group:priority:urgent",
+			"overRect": {
+				"x": 270,
+				"y": 185,
+				"width": 353,
+				"height": 121
+			},
+			"liveAnnouncements": [
+				"TaskDeskPerf10k-20261025 #01181 — 性能測試項目 is over TaskDeskPerf10k-20261025 #07933 — 性能測試項目."
+			]
+		},
+		{
+			"step": "after-escape",
+			"dragging": false,
+			"activeKey": null,
+			"activeId": null,
+			"activeSortable": null,
+			"activeGroup": null,
+			"activeRect": null,
+			"overKey": null,
+			"overId": null,
+			"overGroup": null,
+			"overRect": null,
+			"liveAnnouncements": [
+				"Moving TaskDeskPerf10k-20261025 #01181 — 性能測試項目 was cancelled."
+			]
+		}
+	],
+	"writes": [
+		{
+			"method": "GET",
+			"path": "/assets/rank-work-item-bq0f-RSf.js"
+		},
+		{
+			"method": "GET",
+			"path": "/assets/unassign-work-item-CGLGbRhs.js"
+		}
+	],
+	"errors": [],
+	"groupHeadings": [
+		{
+			"id": "group:priority:urgent",
+			"key": "PERF-1181"
+		},
+		{
+			"id": "group:priority:high",
+			"key": "PERF-3454"
+		},
+		{
+			"id": "group:priority:medium",
+			"key": "PERF-1863"
+		},
+		{
+			"id": "group:priority:low",
+			"key": "PERF-7972"
+		},
+		{
+			"id": "group:priority:none",
+			"key": null
+		}
+	],
+	"source": {
+		"key": "PERF-1181",
+		"priority": "urgent"
+	}
+}

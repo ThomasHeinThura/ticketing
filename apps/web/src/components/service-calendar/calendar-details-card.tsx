@@ -7,7 +7,7 @@ import {
   Input,
   Label,
 } from "@taskdesk/ui";
-import type { UseFormReturn } from "react-hook-form";
+import { type UseFormReturn, useFormState } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import type { CalendarMetadata } from "@/hooks/use-service-calendar-editor";
 import { timezoneOptions } from "@/lib/service-calendar-form";
@@ -16,10 +16,13 @@ const TIMEZONE_OPTIONS = timezoneOptions();
 
 export function CalendarDetailsCard({
   form,
+  isNew,
 }: {
   form: UseFormReturn<CalendarMetadata>;
+  isNew: boolean;
 }) {
   const { t } = useTranslation("serviceCalendars");
+  const { errors } = useFormState({ control: form.control });
   return (
     <Card>
       <CardHeader>
@@ -27,6 +30,31 @@ export function CalendarDetailsCard({
         <CardDescription>{t("details.description")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="calendar-key">
+            {t(
+              isNew
+                ? "details.stableKeyLabel"
+                : "details.stableKeyReadOnlyLabel",
+            )}
+          </Label>
+          <Input
+            id="calendar-key"
+            autoComplete="off"
+            maxLength={64}
+            readOnly={!isNew}
+            {...form.register("key")}
+            aria-invalid={Boolean(errors.key)}
+          />
+          <p className="text-xs text-muted-foreground">
+            {t("details.stableKeyHelp")}
+          </p>
+          {errors.key ? (
+            <p className="text-sm text-destructive" role="alert">
+              {errors.key.message}
+            </p>
+          ) : null}
+        </div>
         <div className="space-y-2">
           <Label htmlFor="calendar-name">{t("details.name")}</Label>
           <Input
@@ -34,11 +62,11 @@ export function CalendarDetailsCard({
             autoComplete="off"
             maxLength={120}
             {...form.register("name")}
-            aria-invalid={Boolean(form.formState.errors.name)}
+            aria-invalid={Boolean(errors.name)}
           />
-          {form.formState.errors.name ? (
+          {errors.name ? (
             <p className="text-sm text-destructive" role="alert">
-              {form.formState.errors.name.message}
+              {errors.name.message}
             </p>
           ) : null}
         </div>
@@ -50,7 +78,7 @@ export function CalendarDetailsCard({
             placeholder={t("details.timezonePlaceholder")}
             autoComplete="off"
             {...form.register("timezone")}
-            aria-invalid={Boolean(form.formState.errors.timezone)}
+            aria-invalid={Boolean(errors.timezone)}
           />
           <datalist id="service-calendar-timezones">
             {TIMEZONE_OPTIONS.map((timezone) => (
@@ -60,9 +88,9 @@ export function CalendarDetailsCard({
           <p className="text-xs text-muted-foreground">
             {t("details.timezoneHelp")}
           </p>
-          {form.formState.errors.timezone ? (
+          {errors.timezone ? (
             <p className="text-sm text-destructive" role="alert">
-              {form.formState.errors.timezone.message}
+              {errors.timezone.message}
             </p>
           ) : null}
         </div>

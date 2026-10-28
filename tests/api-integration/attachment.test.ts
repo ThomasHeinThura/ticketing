@@ -7,15 +7,18 @@ import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   findWorkItemAttachment,
   listWorkItemAttachments,
 } from "../../apps/api/src/attachment/repository";
+import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import { cleanAttachment } from "../../apps/api/src/scheduler/attachment-cleanup";
+import { deleteStorageObject } from "../../apps/api/src/storage";
 import { apiKeyCapabilitySubset } from "../../apps/api/src/utils/require-api-key-permission-scope";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
@@ -30,6 +33,7 @@ import {
 } from "./helpers/fixtures";
 import { raceProjectArchive } from "./helpers/race-soft-delete";
 import { makeApiKey, setAmbientHeaders } from "./helpers/reach-world";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 const originalAgentUrl = process.env.TASKDESK_AGENT_URL;
 
@@ -132,9 +136,48 @@ async function setupProject() {
   await grantWorkItemProjectAccess(creator.id, project.id);
   const type = await makeWorkItemType(workspace.id);
   await makeDefaultState(workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, workspace, project, type };
 }
 
+/** Existing deletion cases traverse real request202 + explicit approval before inspecting tombstones. */
+async function requestAndApproveAttachmentDeletion(
+  app: ReturnType<typeof createApp>["app"],
+  id: string,
+) {
+  const current = await auth.api.getSession({ headers: new Headers() });
+  if (current)
+    await db
+      .insert(schema.sessionTable)
+      .values({ ...current.session, portal: "agent" })
+      .onConflictDoNothing();
+  const request = await app.request(`/api/attachments/${id}`, {
+    method: "DELETE",
+  });
+  if (request.status !== 202) return request;
+  const action = (await request.json()) as { pendingActionId: string };
+  const approval = await app.request(
+    `/api/me/pending-actions/${action.pendingActionId}/approve`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    },
+  );
+  if (approval.status !== 200) return approval;
+  const row = requireRow(
+    await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, id)),
+    "confirmed attachment",
+  );
+  return Response.json(row);
+}
 async function createWorkItem(
   app: ReturnType<typeof createApp>["app"],
   projectId: string,
@@ -206,6 +249,12 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       workspaceId: workspace.id,
     });
     await makeDefaultState(workspace.id, sameWorkspaceProject.project.id);
+    const hiddenType = await makeWorkItemType(workspace.id);
+    await ensureCreationWorkflow({
+      workspaceId: workspace.id,
+      projectId: sameWorkspaceProject.project.id,
+      typeId: hiddenType.id,
+    });
     await grantWorkItemProjectAccess(
       creator.id,
       sameWorkspaceProject.project.id,
@@ -213,7 +262,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     const { key: hiddenKey } = await createWorkItem(
       app,
       sameWorkspaceProject.project.id,
-      type.id,
+      hiddenType.id,
     );
     const [hiddenItem] = await db
       .select()
@@ -670,9 +719,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(auditRows).toHaveLength(1);
     expect(auditRows[0]?.workspaceId).toBe(workspace.id);
 
-    const deleteResponse = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const deleteResponse = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(deleteResponse.status).toBe(200);
     const deleted = (await deleteResponse.json()) as { state: string };
@@ -728,9 +777,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     // didn't accept `pending` as a state its own UPDATE could match, despite the
     // pre-transaction check a few lines above it explicitly allowing both `pending` and
     // `ready` through (Opus security review, first pass: B1).
-    const deleteResponse = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const deleteResponse = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(deleteResponse.status).toBe(200);
     const deleted = (await deleteResponse.json()) as { state: string };
@@ -1062,7 +1111,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(listResponse.status).toBe(403);
   });
 
-  it("only the uploader may delete their own attachment (structural ownership check)", async () => {
+  it("own-only colleagues cannot delete another uploader’s attachment, including its tombstone", async () => {
     const { creator, workspace, project, type } = await setupProject();
     await addPersonForUser(creator.id);
     mockAuthenticatedSession(creator);
@@ -1093,7 +1142,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
           id: `user-${randomUUID()}`,
           email: `other-${randomUUID()}@example.com`,
           emailVerified: true,
-          name: "Other Admin",
+          name: "Other Member",
         })
         .returning(),
       "other user",
@@ -1101,7 +1150,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: workspace.id,
       userId: otherUser.id,
-      role: "admin",
+      role: "member",
       joinedAt: new Date(),
     });
     await addPersonForUser(otherUser.id);
@@ -1109,24 +1158,24 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     await grantWorkItemProjectAccess(otherUser.id, project.id);
 
     mockAuthenticatedSession(otherUser);
-    const deleteResponse = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const deleteResponse = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(deleteResponse.status).toBe(403);
 
     mockAuthenticatedSession(creator);
-    const ownerDelete = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const ownerDelete = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(ownerDelete.status).toBe(200);
     await ownerDelete.text();
 
     mockAuthenticatedSession(otherUser);
-    const tombstoneDelete = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const tombstoneDelete = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(tombstoneDelete.status).toBe(403);
     await tombstoneDelete.text();
@@ -1176,9 +1225,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     );
     expect(downloadResponse.status).toBe(404);
 
-    const deleteResponse = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const deleteResponse = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(deleteResponse.status).toBe(404);
 
@@ -1233,9 +1282,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     );
     expect(downloadResponse.status).toBe(404);
 
-    const deleteResponse = await app.request(
-      `/api/attachments/${presigned.attachmentId}`,
-      { method: "DELETE" },
+    const deleteResponse = await requestAndApproveAttachmentDeletion(
+      app,
+      presigned.attachmentId,
     );
     expect(deleteResponse.status).toBe(404);
 
@@ -1341,5 +1390,741 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       .from(schema.attachmentTable)
       .where(eq(schema.attachmentTable.id, presigned.attachmentId));
     expect(row?.state).toBe("pending");
+  });
+
+  /** Presign, PUT, complete one PNG; returns the presign + complete responses' decoded bodies. */
+  async function uploadPng(
+    app: ReturnType<typeof createApp>["app"],
+    key: string,
+    extra: Record<string, unknown>,
+  ) {
+    const presign = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "shot.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+          ...extra,
+        }),
+      },
+    );
+    if (presign.status !== 200) return { presign };
+    const presigned = (await presign.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+    await app.request(presigned.uploadUrl, {
+      method: "PUT",
+      headers: presigned.uploadHeaders,
+      body: PNG_BYTES,
+    });
+    const complete = await app.request(
+      `/api/attachments/${presigned.attachmentId}/complete`,
+      { method: "POST" },
+    );
+    return { presign, presigned, complete };
+  }
+
+  async function insertComment(input: {
+    workspaceId: string;
+    key: string;
+    authorId: string;
+    visibility: "public" | "internal";
+  }) {
+    const [item] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, input.key));
+    return requireRow(
+      await db
+        .insert(schema.commentTable)
+        .values({
+          workspaceId: input.workspaceId,
+          workItemId: requireRow([item], "comment parent").id,
+          authorId: input.authorId,
+          actorType: "person",
+          body: { type: "doc", content: [{ type: "paragraph" }] },
+          visibility: input.visibility,
+        })
+        .returning(),
+      "insertComment",
+    );
+  }
+
+  it("AT-1/AT-4: a comment file presigns, completes, lists under its comment and is internal on an internal comment whatever its flag says", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const person = await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const internal = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: person.id,
+      visibility: "internal",
+    });
+    const publicComment = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: person.id,
+      visibility: "public",
+    });
+
+    const onInternal = await uploadPng(app, key, {
+      commentId: internal.id,
+      customerVisible: true,
+    });
+    expect(onInternal.presign.status).toBe(200);
+    expect(onInternal.complete?.status).toBe(200);
+    // AT-3: a public comment's file is customer-visible only on explicit opt-in.
+    const onPublic = await uploadPng(app, key, {
+      commentId: publicComment.id,
+      customerVisible: true,
+    });
+    expect(onPublic.complete?.status).toBe(200);
+
+    const rows = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.commentId, internal.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.workItemId).toBeNull();
+    // AT-4: stored internal although the request asked for a customer-visible file.
+    expect(rows[0]?.customerVisible).toBe(false);
+    const publicRows = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.commentId, publicComment.id));
+    expect(publicRows[0]?.customerVisible).toBe(true);
+
+    const list = (await (
+      await app.request(`/api/work-items/${key}/attachments`)
+    ).json()) as Array<{
+      id: string;
+      commentId: string | null;
+      workItemId: string;
+      customerVisible: boolean;
+      canDelete: boolean;
+    }>;
+    const listed = list.find(
+      (a) => a.id === onInternal.presigned?.attachmentId,
+    );
+    expect(listed?.commentId).toBe(internal.id);
+    expect(listed?.workItemId).toBeTruthy();
+    expect(listed?.customerVisible).toBe(false);
+    // Deletion approval resolves work-item parents only.
+    expect(listed?.canDelete).toBe(false);
+
+    // Reach resolves through the comment: download works, and the activity row follows AT-4.
+    const download = await app.request(
+      `/api/attachments/${onInternal.presigned?.attachmentId}`,
+      { redirect: "manual" },
+    );
+    expect(download.status).toBe(302);
+    const activity = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.verb, "attachment.added"));
+    expect(activity).toHaveLength(2);
+    expect(
+      activity.find(
+        (row) =>
+          (row.payload as { commentId?: string } | null)?.commentId ===
+          internal.id,
+      )?.visibility,
+    ).toBe("internal");
+    expect(
+      activity.find(
+        (row) =>
+          (row.payload as { commentId?: string } | null)?.commentId ===
+          publicComment.id,
+      )?.visibility,
+    ).toBe("public");
+  });
+
+  it("P1-22 / AT-3 (UNRUN: DB integration): a staff file on a public comment defaults to NOT customer-visible", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const person = await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const publicComment = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: person.id,
+      visibility: "public",
+    });
+    const upload = await uploadPng(app, key, { commentId: publicComment.id });
+    expect(upload.complete?.status).toBe(200);
+    const [row] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.commentId, publicComment.id));
+    expect(row?.customerVisible).toBe(false);
+  });
+
+  it("AT-1: only the comment's author can attach, the comment must belong to the item and be live, and a tombstone hides its files", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const person = await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const { key: otherKey } = await createWorkItem(app, project.id, type.id);
+
+    // A different person (own workspace is irrelevant: comment.author_id has no FK).
+    const other = await createWorkspaceMember({ role: "admin" });
+    const otherPerson = await addPersonForUser(other.user.id);
+    const theirs = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: otherPerson.id,
+      visibility: "internal",
+    });
+    const mine = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: person.id,
+      visibility: "internal",
+    });
+
+    const foreign = await uploadPng(app, key, { commentId: theirs.id });
+    expect(foreign.presign.status).toBe(403);
+    const wrongItem = await uploadPng(app, otherKey, { commentId: mine.id });
+    expect(wrongItem.presign.status).toBe(404);
+    const unknown = await uploadPng(app, key, { commentId: randomUUID() });
+    expect(unknown.presign.status).toBe(404);
+
+    const ok = await uploadPng(app, key, { commentId: mine.id });
+    expect(ok.complete?.status).toBe(200);
+    await db
+      .update(schema.commentTable)
+      .set({ deletedAt: new Date(), body: null })
+      .where(eq(schema.commentTable.id, mine.id));
+
+    const list = (await (
+      await app.request(`/api/work-items/${key}/attachments`)
+    ).json()) as Array<{ id: string }>;
+    expect(list.map((a) => a.id)).not.toContain(ok.presigned?.attachmentId);
+    expect(
+      (
+        await app.request(`/api/attachments/${ok.presigned?.attachmentId}`, {
+          redirect: "manual",
+        })
+      ).status,
+    ).toBe(404);
+    const afterTombstone = await uploadPng(app, key, { commentId: mine.id });
+    expect(afterTombstone.presign.status).toBe(404);
+  });
+
+  it("AT-7: recoverable list is explicit, restore preserves the object, audits safe identifiers, and GC skips the restored row", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const upload = await uploadPng(app, key, {});
+    expect(upload.complete?.status).toBe(200);
+    const id = upload.presigned?.attachmentId;
+    if (!id) throw new Error("attachment upload did not return an id");
+    await db
+      .update(schema.attachmentTable)
+      .set({
+        state: "deleted",
+        deletedAt: sql`(clock_timestamp() AT TIME ZONE 'UTC') - interval '23 hours'`,
+      })
+      .where(eq(schema.attachmentTable.id, id));
+
+    const ordinary = (await (
+      await app.request(`/api/work-items/${key}/attachments`)
+    ).json()) as Array<{ id: string }>;
+    expect(ordinary.map((row) => row.id)).not.toContain(id);
+
+    const recoverableResponse = await app.request(
+      `/api/work-items/${key}/attachments?lifecycle=recoverable`,
+    );
+    expect(recoverableResponse.status).toBe(200);
+    const recoverable = (await recoverableResponse.json()) as Array<{
+      id: string;
+      state: string;
+      canRestore: boolean;
+      objectKey?: string;
+    }>;
+    expect(recoverable).toContainEqual(
+      expect.objectContaining({ id, state: "deleted", canRestore: true }),
+    );
+    expect(JSON.stringify(recoverable)).not.toContain("objectKey");
+
+    const restoredResponse = await app.request(
+      `/api/attachments/${id}/restore`,
+      { method: "POST" },
+    );
+    expect(restoredResponse.status).toBe(200);
+    expect(await restoredResponse.json()).toMatchObject({
+      id,
+      state: "ready",
+      deletedAt: null,
+      canRestore: false,
+    });
+    const saved = await db.query.attachmentTable.findFirst({
+      where: eq(schema.attachmentTable.id, id),
+    });
+    expect(saved).toMatchObject({ state: "ready", deletedAt: null });
+    expect(
+      (await app.request(`/api/attachments/${id}`, { redirect: "manual" }))
+        .status,
+    ).toBe(302);
+    expect(await cleanAttachment(id, "deleted")).toBe(false);
+    const audit = await db.query.auditLogTable.findFirst({
+      where: eq(schema.auditLogTable.action, "attachment.restored"),
+    });
+    expect(audit?.after).toMatchObject({
+      attachmentId: id,
+      workspaceId: workspace.id,
+    });
+    expect(JSON.stringify(audit?.after)).not.toContain("shot.png");
+  });
+
+  it("AT-7: exact 24-hour expiry, revoked reach, and deleted parents fail closed", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const expiredUpload = await uploadPng(app, key, {});
+    const expiredId = expiredUpload.presigned?.attachmentId;
+    if (!expiredId)
+      throw new Error("expired attachment upload did not return an id");
+    await db
+      .update(schema.attachmentTable)
+      .set({
+        state: "deleted",
+        deletedAt: sql`(clock_timestamp() AT TIME ZONE 'UTC') - interval '24 hours'`,
+      })
+      .where(eq(schema.attachmentTable.id, expiredId));
+
+    const expiredList = (await (
+      await app.request(
+        `/api/work-items/${key}/attachments?lifecycle=recoverable`,
+      )
+    ).json()) as Array<{ id: string }>;
+    expect(expiredList.map((row) => row.id)).not.toContain(expiredId);
+    const expiredRestore = await app.request(
+      `/api/attachments/${expiredId}/restore`,
+      { method: "POST" },
+    );
+    expect(expiredRestore.status).toBe(404);
+
+    const liveUpload = await uploadPng(app, key, {});
+    const liveId = liveUpload.presigned?.attachmentId;
+    if (!liveId) throw new Error("live attachment upload did not return an id");
+    await db
+      .update(schema.attachmentTable)
+      .set({
+        state: "deleted",
+        deletedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
+      })
+      .where(eq(schema.attachmentTable.id, liveId));
+    const [item] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    if (!item) throw new Error("recovery fixture work item missing");
+
+    const actor = await createWorkspaceMember({ role: "member" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: workspace.id,
+      userId: actor.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    await grantProjectRole(actor.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+      "attachment:delete_own",
+    ]);
+    const [actorPerson] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, actor.user.id));
+    if (!actorPerson) throw new Error("recovery actor person missing");
+    const actorUpload = await uploadPng(app, key, {});
+    const actorAttachmentId = actorUpload.presigned?.attachmentId;
+    if (!actorAttachmentId)
+      throw new Error("actor attachment upload did not return an id");
+    await db
+      .update(schema.attachmentTable)
+      .set({
+        uploadedBy: actorPerson.id,
+        state: "deleted",
+        deletedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
+      })
+      .where(eq(schema.attachmentTable.id, actorAttachmentId));
+    mockAuthenticatedSession(actor.user);
+    const actorList = (await (
+      await app.request(
+        `/api/work-items/${key}/attachments?lifecycle=recoverable`,
+      )
+    ).json()) as Array<{ id: string; canRestore: boolean }>;
+    expect(actorList).toContainEqual(
+      expect.objectContaining({ id: actorAttachmentId, canRestore: true }),
+    );
+
+    const viewer = await createWorkspaceMember({ role: "member" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: workspace.id,
+      userId: viewer.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    await grantProjectRole(viewer.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    mockAuthenticatedSession(viewer.user);
+    const noRestoreAuthority = await app.request(
+      `/api/attachments/${actorAttachmentId}/restore`,
+      { method: "POST" },
+    );
+    expect(noRestoreAuthority.status).toBe(403);
+
+    mockAuthenticatedSession(actor.user);
+    await db
+      .delete(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, actorPerson.id),
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, project.id),
+        ),
+      );
+    const revoked = await app.request(
+      `/api/attachments/${actorAttachmentId}/restore`,
+      { method: "POST" },
+    );
+    expect(revoked.status).toBe(404);
+
+    mockAuthenticatedSession(creator);
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workItemTable.id, item.id));
+    const parentDeleted = await app.request(
+      `/api/attachments/${liveId}/restore`,
+      { method: "POST" },
+    );
+    expect(parentDeleted.status).toBe(404);
+    const stillDeleted = await db.query.attachmentTable.findFirst({
+      where: eq(schema.attachmentTable.id, liveId),
+    });
+    expect(stillDeleted?.state).toBe("deleted");
+
+    // GC's expired-row winner is serialized with restore's row lock; once collection
+    // removes the row/object, the route cannot resurrect its metadata.
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: null })
+      .where(eq(schema.workItemTable.id, item.id));
+    await db
+      .update(schema.attachmentTable)
+      .set({
+        deletedAt: sql`(clock_timestamp() AT TIME ZONE 'UTC') - interval '25 hours'`,
+      })
+      .where(eq(schema.attachmentTable.id, liveId));
+    expect(await cleanAttachment(liveId, "deleted")).toBe(true);
+    const afterGc = await app.request(`/api/attachments/${liveId}/restore`, {
+      method: "POST",
+    });
+    expect(afterGc.status).toBe(404);
+
+    // A different workspace cannot address the other tenant's attachment by id.
+    const other = await setupProject();
+    mockAuthenticatedSession(other.creator);
+    const foreign = await app.request(`/api/attachments/${expiredId}/restore`, {
+      method: "POST",
+    });
+    expect(foreign.status).toBe(404);
+  });
+
+  it("AT-7: restores a live comment file without widening its audience and refuses a tombstoned comment", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const person = await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const comment = await insertComment({
+      workspaceId: workspace.id,
+      key,
+      authorId: person.id,
+      visibility: "internal",
+    });
+    const upload = await uploadPng(app, key, {
+      commentId: comment.id,
+      customerVisible: true,
+    });
+    expect(upload.complete?.status).toBe(200);
+    const id = upload.presigned?.attachmentId;
+    if (!id) throw new Error("comment attachment upload did not return an id");
+    await db
+      .update(schema.attachmentTable)
+      .set({
+        state: "deleted",
+        deletedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
+      })
+      .where(eq(schema.attachmentTable.id, id));
+
+    const recoverable = (await (
+      await app.request(
+        `/api/work-items/${key}/attachments?lifecycle=recoverable`,
+      )
+    ).json()) as Array<{
+      id: string;
+      commentId: string | null;
+      customerVisible: boolean;
+    }>;
+    expect(recoverable).toContainEqual(
+      expect.objectContaining({
+        id,
+        commentId: comment.id,
+        customerVisible: false,
+      }),
+    );
+    const restored = await app.request(`/api/attachments/${id}/restore`, {
+      method: "POST",
+    });
+    expect(restored.status).toBe(200);
+    const saved = await db.query.attachmentTable.findFirst({
+      where: eq(schema.attachmentTable.id, id),
+    });
+    expect(saved).toMatchObject({ state: "ready", customerVisible: false });
+
+    await db
+      .update(schema.commentTable)
+      .set({ deletedAt: new Date(), body: null })
+      .where(eq(schema.commentTable.id, comment.id));
+    await db
+      .update(schema.attachmentTable)
+      .set({
+        state: "deleted",
+        deletedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
+      })
+      .where(eq(schema.attachmentTable.id, id));
+    const tombstoned = await app.request(`/api/attachments/${id}/restore`, {
+      method: "POST",
+    });
+    expect(tombstoned.status).toBe(404);
+    const hiddenRecoverable = (await (
+      await app.request(
+        `/api/work-items/${key}/attachments?lifecycle=recoverable`,
+      )
+    ).json()) as Array<{ id: string }>;
+    expect(hiddenRecoverable.map((row) => row.id)).not.toContain(id);
+  });
+
+  it("AT-7: does not restore an upload that never passed completion checks", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const presign = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "unchecked.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+        }),
+      },
+    );
+    const upload = (await presign.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+    await app.request(upload.uploadUrl, {
+      method: "PUT",
+      headers: upload.uploadHeaders,
+      body: PNG_BYTES,
+    });
+    await db
+      .update(schema.attachmentTable)
+      .set({
+        state: "deleted",
+        deletedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
+      })
+      .where(eq(schema.attachmentTable.id, upload.attachmentId));
+
+    const response = await app.request(
+      `/api/attachments/${upload.attachmentId}/restore`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(409);
+    const row = await db.query.attachmentTable.findFirst({
+      where: eq(schema.attachmentTable.id, upload.attachmentId),
+    });
+    expect(row?.state).toBe("deleted");
+  });
+
+  it("AT-7: refuses recovery when the stored object is already missing without exposing its locator", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const upload = await uploadPng(app, key, {});
+    expect(upload.complete?.status).toBe(200);
+    const id = upload.presigned?.attachmentId;
+    if (!id) throw new Error("attachment upload did not return an id");
+    const attachment = await db.query.attachmentTable.findFirst({
+      where: eq(schema.attachmentTable.id, id),
+    });
+    if (!attachment) throw new Error("attachment row missing");
+    await deleteStorageObject(attachment.objectKey);
+    await db
+      .update(schema.attachmentTable)
+      .set({
+        state: "deleted",
+        deletedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
+      })
+      .where(eq(schema.attachmentTable.id, id));
+
+    const response = await app.request(`/api/attachments/${id}/restore`, {
+      method: "POST",
+    });
+    expect(response.status).toBe(409);
+    const body = await response.text();
+    expect(body).not.toContain(attachment.objectKey);
+    const unchanged = await db.query.attachmentTable.findFirst({
+      where: eq(schema.attachmentTable.id, id),
+    });
+    expect(unchanged?.state).toBe("deleted");
+  });
+
+  it("AT-9: streams only signature-checked, reachable ready PDFs and audits the preview", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    if (!item) throw new Error("preview fixture work item missing");
+
+    const pdfBytes = Buffer.from(
+      "%PDF-1.4\n%TaskDesk preview fixture\n%%EOF\n",
+    );
+    const objectKey = `pdf-preview/${randomUUID()}.pdf`;
+    await mkdir(path.join(root, "pdf-preview"), { recursive: true });
+    await writeFile(path.join(root, objectKey), pdfBytes);
+    const ready = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: workspace.id,
+          organisationId: project.organisationId,
+          workItemId: item.id,
+          objectKey,
+          filename: "evidence.pdf",
+          mimeType: "application/pdf",
+          size: pdfBytes.byteLength,
+          state: "ready",
+          customerVisible: false,
+          uploadedBy: null,
+        })
+        .returning(),
+      "ready preview PDF",
+    );
+
+    const response = await app.request(`/api/attachments/${ready.id}/preview`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/pdf");
+    expect(response.headers.get("content-disposition")).toBe("attachment");
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("content-length")).toBe(
+      String(pdfBytes.byteLength),
+    );
+    expect(response.headers.get("location")).toBeNull();
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(pdfBytes);
+
+    const foreignWorkspaceAdmin = await createWorkspaceMember({
+      role: "admin",
+    });
+    mockAuthenticatedSession(foreignWorkspaceAdmin.user);
+    const unreachablePreview = await app.request(
+      `/api/attachments/${ready.id}/preview`,
+    );
+    expect(unreachablePreview.status).toBe(404);
+    expect(await unreachablePreview.text()).not.toContain("PDF preview");
+    mockAuthenticatedSession(creator);
+
+    const auditRows = await db
+      .select({ id: schema.auditLogTable.id })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityId, ready.id),
+          eq(schema.auditLogTable.action, "attachment.downloaded"),
+        ),
+      );
+    expect(auditRows).toHaveLength(1);
+
+    const invalidKey = `pdf-preview/${randomUUID()}.pdf`;
+    const invalidBytes = Buffer.from("not a PDF document");
+    await writeFile(path.join(root, invalidKey), invalidBytes);
+    const invalid = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: workspace.id,
+          organisationId: project.organisationId,
+          workItemId: item.id,
+          objectKey: invalidKey,
+          filename: "invalid.pdf",
+          mimeType: "application/pdf",
+          size: invalidBytes.byteLength,
+          state: "ready",
+          customerVisible: false,
+          uploadedBy: null,
+        })
+        .returning(),
+      "invalid preview PDF",
+    );
+    expect(
+      (await app.request(`/api/attachments/${invalid.id}/preview`)).status,
+    ).toBe(415);
+
+    const oversized = requireRow(
+      await db
+        .insert(schema.attachmentTable)
+        .values({
+          workspaceId: workspace.id,
+          organisationId: project.organisationId,
+          workItemId: item.id,
+          objectKey: `pdf-preview/${randomUUID()}.pdf`,
+          filename: "large.pdf",
+          mimeType: "application/pdf",
+          size: 25 * 1024 * 1024 + 1,
+          state: "ready",
+          customerVisible: false,
+          uploadedBy: null,
+        })
+        .returning(),
+      "oversized preview PDF",
+    );
+    expect(
+      (await app.request(`/api/attachments/${oversized.id}/preview`)).status,
+    ).toBe(413);
+
+    await db
+      .update(schema.attachmentTable)
+      .set({ state: "deleted", deletedAt: new Date() })
+      .where(eq(schema.attachmentTable.id, ready.id));
+    expect(
+      (await app.request(`/api/attachments/${ready.id}/preview`)).status,
+    ).toBe(404);
   });
 });

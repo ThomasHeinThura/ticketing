@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import { csrfRequest } from "./csrf";
 import type { App, SignedUpUser } from "./organization-http";
 import { nextClientIp, signUpUser } from "./organization-http";
+import {
+  approvePendingDeletionAsCookie,
+  type PendingDeletionBody,
+} from "./pending-deletion";
 
 // HTTP helpers for the S6a NATIVE invitation write routes (issue #6,
 // retrofit plan §3, S6a row): invite (create), accept, reject, cancel.
@@ -94,6 +98,23 @@ export async function cancelInvitationNative(
     },
     cookie,
   );
+}
+
+/**
+ * `DELETE /api/invitation/{id}` only REQUESTS the cancellation (202); the invitation stays
+ * `pending` until its requester approves (click). Returns the request response and, when a
+ * pending action was recorded, the approve response.
+ */
+export async function cancelInvitationThroughApproval(
+  app: App,
+  cookie: string,
+  invitationId: string,
+) {
+  const requested = await cancelInvitationNative(app, cookie, invitationId);
+  if (requested.status !== 202) return { requested, approved: undefined };
+  const pending = (await requested.clone().json()) as PendingDeletionBody;
+  const approved = await approvePendingDeletionAsCookie(app, cookie, pending);
+  return { requested, approved };
 }
 
 /**

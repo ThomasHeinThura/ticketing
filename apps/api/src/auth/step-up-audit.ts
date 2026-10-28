@@ -15,7 +15,21 @@ export type StepUpOperation =
   | "scim_token_rotate"
   | "scim_token_revoke"
   | "identity_connection_create"
-  | "identity_connection_configure";
+  | "identity_connection_configure"
+  | "impersonation_start"
+  | "secrets_rotate"
+  | "organisation_restore"
+  | "webhook_create"
+  | "webhook_update_url"
+  | "webhook_rotate_secret"
+  | "webhook_rotate_all"
+  | "workspace_role_create"
+  | "workspace_role_update"
+  | "service_key_create"
+  | "service_key_reattest"
+  | "workspace_ownership_transfer"
+  | "change_freeze_override"
+  | "audit_export";
 
 export type StepUpAuditAction =
   | "auth.step_up_issued"
@@ -25,7 +39,7 @@ export type StepUpAuditAction =
 type StepUpTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AuditDatabase = typeof db | StepUpTransaction;
 
-const operationRoutes: Record<StepUpOperation, string> = {
+export const STEP_UP_OPERATION_ROUTES: Record<StepUpOperation, string> = {
   metrics_token_rotate: "POST /api/instance/observability/metrics-token/rotate",
   mfa_reset: "POST /api/instance/users/{id}/reset-mfa",
   instance_admin_grant: "POST /api/instance/users/{id}/grant-admin",
@@ -42,6 +56,21 @@ const operationRoutes: Record<StepUpOperation, string> = {
   identity_connection_create: "POST /api/instance/identity-connections",
   identity_connection_configure:
     "PATCH /api/instance/identity-connections/{id}",
+  impersonation_start: "POST /api/instance/users/{id}/impersonate",
+  secrets_rotate: "POST /api/instance/plugins/rotate-secrets",
+  organisation_restore: "POST /api/instance/organisations/{id}/restore",
+  webhook_create: "POST /api/webhooks",
+  webhook_update_url: "PATCH /api/webhooks/{id}",
+  webhook_rotate_secret: "POST /api/webhooks/{id}/rotate-secret",
+  webhook_rotate_all: "POST /api/instance/webhooks/rotate-secrets",
+  workspace_role_create: "POST /api/workspace/{workspaceId}/roles",
+  workspace_role_update: "PATCH /api/workspace/{workspaceId}/roles/{roleId}",
+  service_key_create: "POST /api/workspaces/{id}/api-keys",
+  service_key_reattest: "POST /api/workspaces/{id}/api-keys/{keyId}/re-attest",
+  workspace_ownership_transfer:
+    "POST /api/workspace/{workspaceId}/transfer-ownership",
+  change_freeze_override: "POST /api/work-items/{key}/change/override-freeze",
+  audit_export: "POST /api/instance/audit/export",
 };
 
 /**
@@ -71,7 +100,7 @@ export async function appendStepUpAudit(
       after: {
         bindingKind: "operation",
         operation: input.operation,
-        route: operationRoutes[input.operation],
+        route: STEP_UP_OPERATION_ROUTES[input.operation],
       },
     });
   } catch {

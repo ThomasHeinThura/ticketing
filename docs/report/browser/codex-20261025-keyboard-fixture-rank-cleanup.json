@@ -1,0 +1,77 @@
+{
+	"artifact": "codex-20261025-keyboard-fixture-rank-cleanup",
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"expected": ["PERF-7972", "PERF-1863", "PERF-6219"],
+	"requests": [
+		{
+			"path": "/api/work-items/PERF-7972/rank",
+			"body": {
+				"beforeId": null,
+				"afterId": "a03fohihmsd74wy8dcaiifa8"
+			}
+		}
+	],
+	"responses": [
+		{
+			"path": "/api/work-items/PERF-7972/rank",
+			"status": 200,
+			"contentType": "application/json",
+			"json": {
+				"key": "PERF-7972",
+				"position": "1.9980468750",
+				"version": 10
+			}
+		}
+	],
+	"errors": [],
+	"before": [
+		{
+			"key": "PERF-1863",
+			"id": "a03fohihmsd74wy8dcaiifa8",
+			"position": "2.9980468750",
+			"version": 7
+		},
+		{
+			"key": "PERF-7972",
+			"id": "a03oizj1k8xx8cnnaxa09dva",
+			"position": "2.9990234375",
+			"version": 9
+		},
+		{
+			"key": "PERF-6219",
+			"id": "a07nduomdh0ox0zm921an8bh",
+			"position": "3.0000000000",
+			"version": 2
+		}
+	],
+	"after": [
+		{
+			"key": "PERF-7972",
+			"id": "a03oizj1k8xx8cnnaxa09dva",
+			"position": "1.9980468750",
+			"version": 10
+		},
+		{
+			"key": "PERF-1863",
+			"id": "a03fohihmsd74wy8dcaiifa8",
+			"position": "2.9980468750",
+			"version": 7
+		},
+		{
+			"key": "PERF-6219",
+			"id": "a07nduomdh0ox0zm921an8bh",
+			"position": "3.0000000000",
+			"version": 2
+		}
+	],
+	"pass": true,
+	"priorityProbe": {
+		"key": "PERF-1181",
+		"priority": "urgent"
+	}
+}

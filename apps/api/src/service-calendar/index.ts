@@ -1,7 +1,10 @@
 import {
   annualCoverMinutes,
   calendarHasCover,
+  generateHolidayPreset,
+  HOLIDAY_PRESET_DATASET_VERSION,
   HolidayImportError,
+  listHolidayPresets,
   parseHolidayIcs,
   type ServiceCalendar,
   validateCalendar,
@@ -9,7 +12,9 @@ import {
 } from "@taskdesk/domain";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { clientIpForContext } from "../api-key/enforce";
 import db from "../database";
+import { requireWorkspaceFeature } from "../feature-flag/enforce";
 import {
   apiRouter,
   type BaseVariables,
@@ -43,12 +48,16 @@ import {
   calendarListSchema,
   calendarPreviewSchema,
   calendarSchema,
+  calendarUpdateSchema,
   calendarVersionConflictSchema,
+  holidayPresetListSchema,
+  holidayPresetResultSchema,
 } from "./response";
 import {
   calendarDataSchema,
   calendarIdParam,
   createCalendarBody,
+  holidayPresetBody,
   importHolidayBody,
   optionalCalendarIfMatchHeader,
   previewQuery,
@@ -107,6 +116,7 @@ const listRoute = createRoute({
     workspaceAccess.fromQuery(),
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { query: workspaceIdQuery },
   responses: {
@@ -125,6 +135,7 @@ const createRouteDef = createRoute({
     workspaceAccess.fromBody(),
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: {
     body: {
@@ -136,6 +147,8 @@ const createRouteDef = createRoute({
     200: jsonResponse("Created calendar", calendarSchema),
     400: errorResponse("Invalid calendar data"),
     403: errorResponse("Missing sla_policy:manage permission"),
+    409: errorResponse("A service calendar with this key already exists"),
+    422: errorResponse("A catalogue key could not be derived"),
   },
 });
 const detailRoute = createRoute({
@@ -148,6 +161,7 @@ const detailRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: calendarIdParam },
   responses: {
@@ -168,6 +182,7 @@ const updateRouteDef = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: {
     params: calendarIdParam,
@@ -178,7 +193,7 @@ const updateRouteDef = createRoute({
     },
   },
   responses: {
-    200: jsonResponse("Updated calendar", calendarSchema),
+    200: jsonResponse("Updated calendar", calendarUpdateSchema),
     400: errorResponse("Invalid calendar data"),
     403: errorResponse("Missing sla_policy:manage permission"),
     404: errorResponse("Service calendar not found"),
@@ -198,6 +213,7 @@ const previewRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: calendarIdParam, query: previewQuery },
   responses: {
@@ -219,6 +235,7 @@ const importHolidaysRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: {
     params: calendarIdParam,
@@ -234,6 +251,65 @@ const importHolidaysRoute = createRoute({
       calendarHolidayImportSchema,
     ),
     400: errorResponse("Invalid or unsupported iCalendar file"),
+    403: errorResponse("Missing sla_policy:manage permission"),
+    404: errorResponse("Service calendar not found"),
+    409: jsonResponse(
+      "Calendar version conflict",
+      calendarVersionConflictSchema,
+    ),
+  },
+});
+
+const listPresetsRoute = createRoute({
+  method: "get",
+  path: "/{id}/holidays/presets",
+  operationId: "listServiceCalendarHolidayPresets",
+  tags: ["Service calendars"],
+  summary: "List bundled country holiday presets",
+  description:
+    "The dataset ships with the release (no external call). Each preset states what it leaves out; it is a starting point, never authority (CAL-11).",
+  middleware: [
+    calendarReach,
+    requireApiKeyPermissionScope({ sla_policy: ["read"] }),
+    requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
+  ] as const,
+  request: { params: calendarIdParam },
+  responses: {
+    200: jsonResponse("Available presets", holidayPresetListSchema),
+    403: errorResponse("Missing sla_policy:read permission"),
+    404: errorResponse("Service calendar not found"),
+  },
+});
+
+const presetRoute = createRoute({
+  method: "post",
+  path: "/{id}/holidays/preset",
+  operationId: "applyServiceCalendarHolidayPreset",
+  tags: ["Service calendars"],
+  summary: "Preview or append a country holiday preset for a year",
+  description:
+    "Preview (default) returns the proposed dates and which already exist. Confirming (preview=false) appends the missing dates atomically, with the same If-Match and retroactive-impact handling as an import (CAL-10, CAL-11, CAL-13).",
+  middleware: [
+    calendarReach,
+    requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
+    requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
+  ] as const,
+  request: {
+    params: calendarIdParam,
+    headers: optionalCalendarIfMatchHeader,
+    body: {
+      required: true,
+      content: { "application/json": { schema: holidayPresetBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "Proposed or applied holidays",
+      holidayPresetResultSchema,
+    ),
+    400: errorResponse("Unknown country or year"),
     403: errorResponse("Missing sla_policy:manage permission"),
     404: errorResponse("Service calendar not found"),
     409: jsonResponse(
@@ -263,6 +339,7 @@ const usageRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: calendarIdParam },
   responses: {
@@ -287,6 +364,7 @@ const deleteCalendarRoute = createRoute({
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: calendarIdParam },
   responses: {
@@ -390,7 +468,13 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
     }
     if (!result)
       throw new HTTPException(404, { message: "Service calendar not found" });
-    return c.json(calendarSchema.parse(result.row), 200);
+    return c.json(
+      calendarUpdateSchema.parse({
+        ...result.row,
+        affectedWorkItemCount: result.affectedWorkItemCount,
+      }),
+      200,
+    );
   })
   .openapi(importHolidaysRoute, async (c) => {
     const id = c.req.valid("param").id;
@@ -438,6 +522,109 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
         calendar: result.row,
         importedCount: result.importedCount,
         duplicateCount: result.duplicateCount,
+        affectedWorkItemCount: result.affectedWorkItemCount,
+      }),
+      200,
+    );
+  })
+  .openapi(listPresetsRoute, async (c) => {
+    const row = await getCalendar(
+      c.req.valid("param").id,
+      c.get("workspaceId"),
+    );
+    if (!row)
+      throw new HTTPException(404, { message: "Service calendar not found" });
+    return c.json(
+      holidayPresetListSchema.parse({
+        datasetVersion: HOLIDAY_PRESET_DATASET_VERSION,
+        presets: listHolidayPresets(),
+      }),
+      200,
+    );
+  })
+  .openapi(presetRoute, async (c) => {
+    const id = c.req.valid("param").id;
+    const body = c.req.valid("json");
+    const row = await getCalendar(id, c.get("workspaceId"));
+    if (!row)
+      throw new HTTPException(404, { message: "Service calendar not found" });
+    const proposed = generateHolidayPreset(body.country, body.year);
+    const preset = listHolidayPresets().find(
+      (candidate) => candidate.country === body.country,
+    );
+    if (!proposed || !preset)
+      throw new HTTPException(400, { message: "Unknown country or year" });
+    const present = new Set<string>();
+    for (const holiday of calendarValue(row).holidays) {
+      if ("date" in holiday) present.add(holiday.date);
+      else if ("recurs" in holiday)
+        present.add(
+          `${String(body.year).padStart(4, "0")}-${String(holiday.month).padStart(2, "0")}-${String(holiday.day).padStart(2, "0")}`,
+        );
+    }
+    const holidays = proposed.map((holiday) => ({
+      date: holiday.date,
+      name: holiday.name ?? "",
+      existing: present.has(holiday.date),
+    }));
+    const base = {
+      datasetVersion: HOLIDAY_PRESET_DATASET_VERSION,
+      country: body.country,
+      year: body.year,
+      notIncluded: preset.notIncluded,
+      holidays,
+    };
+    if (body.preview)
+      return c.json(
+        holidayPresetResultSchema.parse({
+          ...base,
+          applied: false,
+          importedCount: 0,
+          duplicateCount: holidays.filter((holiday) => holiday.existing).length,
+          affectedWorkItemCount: 0,
+          calendar: null,
+        }),
+        200,
+      );
+    const ifMatch = c.req.valid("header")["if-match"];
+    const assertedVersion =
+      ifMatch === undefined ? undefined : Number(ifMatch.slice(1, -1));
+    const apiKey = c.get("apiKey");
+    let result: Awaited<ReturnType<typeof importCalendarHolidays>> | undefined;
+    try {
+      result = await importCalendarHolidays(
+        id,
+        c.get("workspaceId"),
+        proposed,
+        assertedVersion,
+        {
+          actorId: c.get("userId"),
+          actorType: apiKey ? "api_key" : "person",
+          apiKeyId: apiKey?.id ?? null,
+        },
+      );
+    } catch (error) {
+      if (error instanceof ServiceCalendarVersionConflictError)
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      throw error;
+    }
+    if (!result)
+      throw new HTTPException(404, { message: "Service calendar not found" });
+    return c.json(
+      holidayPresetResultSchema.parse({
+        ...base,
+        applied: true,
+        importedCount: result.importedCount,
+        duplicateCount: result.duplicateCount,
+        affectedWorkItemCount: result.affectedWorkItemCount,
+        calendar: result.row,
       }),
       200,
     );
@@ -498,7 +685,7 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
       organisationId: null,
       actorId: c.get("userId"),
       actorType: apiKey ? "api_key" : "person",
-      actorIp: c.req.header("x-forwarded-for") ?? null,
+      actorIp: clientIpForContext(c),
       userAgent: c.req.header("user-agent") ?? null,
     });
     return c.json(

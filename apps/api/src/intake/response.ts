@@ -7,9 +7,13 @@ import { z } from "../openapi";
 
 export const submissionMessageSchema = z.object({
   id: z.string(),
-  authorId: z.string(),
+  /** Null only for a `system` message (IQ-15 auto-decline). */
+  authorId: z.string().nullable(),
   actorType: z.string(),
   body: z.string(),
+  /** A system message's stable reason (`P2R1-05`); the client renders it in its locale. */
+  reasonCode: z.string().nullable(),
+  reasonParams: z.record(z.string(), z.unknown()).nullable(),
   createdAt: z.string().datetime(),
 });
 
@@ -56,6 +60,16 @@ export const submissionWorkItemSchema = z.object({
 });
 
 export const staffQueueRowSchema = z.object({
+  suggestedDuplicates: z
+    .array(
+      z.object({
+        id: z.string(),
+        key: z.string(),
+        title: z.string(),
+        score: z.number(),
+      }),
+    )
+    .optional(),
   ref: z.string(),
   summary: z.string(),
   submission: staffSubmissionSchema.pick({
@@ -78,9 +92,11 @@ const iso = (value: Instant) =>
 
 export function toSubmissionMessage(row: {
   id: string;
-  authorId: string;
+  authorId: string | null;
   actorType: string;
   body: string;
+  reasonCode?: string | null;
+  reasonParams?: Record<string, unknown> | null;
   createdAt: Instant;
 }): z.infer<typeof submissionMessageSchema> {
   return {
@@ -88,6 +104,8 @@ export function toSubmissionMessage(row: {
     authorId: row.authorId,
     actorType: row.actorType,
     body: row.body,
+    reasonCode: row.reasonCode ?? null,
+    reasonParams: row.reasonParams ?? null,
     createdAt: iso(row.createdAt),
   };
 }

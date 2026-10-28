@@ -46,11 +46,21 @@ services:
       - traefik.http.routers.taskdesk-local-agent.tls=true
       - traefik.http.routers.taskdesk-local-agent.service=taskdesk-local
       - traefik.http.routers.taskdesk-local-agent.middlewares=security-headers@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-local-agent-pdf-preview.rule=Host(`${TASKDESK_AGENT_HOST:-ticket.${DOMAIN:-localhost}}`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-local-agent-pdf-preview.entrypoints=websecure
+      - traefik.http.routers.taskdesk-local-agent-pdf-preview.tls=true
+      - traefik.http.routers.taskdesk-local-agent-pdf-preview.service=taskdesk-local
+      - traefik.http.routers.taskdesk-local-agent-pdf-preview.middlewares=pdf-preview-headers@file,compress@file,rate-limit@file
       - traefik.http.routers.taskdesk-local-portal.rule=Host(`${TASKDESK_PORTAL_HOST:-portal.${DOMAIN:-localhost}}`)
       - traefik.http.routers.taskdesk-local-portal.entrypoints=websecure
       - traefik.http.routers.taskdesk-local-portal.tls=true
       - traefik.http.routers.taskdesk-local-portal.service=taskdesk-local
       - traefik.http.routers.taskdesk-local-portal.middlewares=security-headers@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-local-portal-pdf-preview.rule=Host(`${TASKDESK_PORTAL_HOST:-portal.${DOMAIN:-localhost}}`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-local-portal-pdf-preview.entrypoints=websecure
+      - traefik.http.routers.taskdesk-local-portal-pdf-preview.tls=true
+      - traefik.http.routers.taskdesk-local-portal-pdf-preview.service=taskdesk-local
+      - traefik.http.routers.taskdesk-local-portal-pdf-preview.middlewares=pdf-preview-headers@file,compress@file,rate-limit@file
 
   postgres:
     # Published so psql, a GUI client and the integration tests can reach it.
@@ -58,9 +68,11 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
 
-  # Local mail. Every notification the instance sends lands here instead of a
-  # real inbox; SMTP host/port are configured in God Mode -> Notifications
-  # (mailpit:1025), exactly as a real deployment would configure a real relay.
+  # Optional local test inbox. Starting this service does not configure SMTP.
+  # The current runtime provider rejects private destinations, including this
+  # Docker address (mailpit:1025). Isolated mail tests use an injected local
+  # transport; a supported runtime capture configuration remains open.
+  # Production never loads this overlay.
   mailpit:
     image: axllent/mailpit:v1.28
     restart: unless-stopped

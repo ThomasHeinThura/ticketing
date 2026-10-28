@@ -58,3 +58,11 @@ export class AlreadyWorkspaceMemberError extends Error {
     this.name = "AlreadyWorkspaceMemberError";
   }
 }
+
+/** The person who sent the invitation no longer holds the authority to grant its role. */
+export class InvitationRoleNotAssignableError extends Error {
+  constructor() {
+    super("The person who sent this invitation can no longer grant its role");
+    this.name = "InvitationRoleNotAssignableError";
+  }
+}

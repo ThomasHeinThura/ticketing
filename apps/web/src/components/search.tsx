@@ -28,17 +28,17 @@ export default function Search() {
         onClick={() => setOpen(true)}
         type="button"
       >
-        <span className="flex grow items-center">
+        <span className="flex min-w-0 grow items-center gap-2">
           <SearchIcon
             aria-hidden="true"
-            className="-ms-1 me-3 text-muted-foreground"
+            className="shrink-0 text-muted-foreground"
             size={16}
           />
-          <span className="font-normal text-muted-foreground">
+          <span className="truncate font-normal text-muted-foreground">
             {t("navigation:commandPalette.search")}
           </span>
         </span>
-        <kbd className="-me-0.5 ms-6 inline-flex h-4 max-h-full items-center rounded border border-border/70 bg-background px-1 font-[inherit] font-medium text-[0.625rem] text-muted-foreground">
+        <kbd className="ms-auto shrink-0 inline-flex h-4 max-h-full items-center rounded border border-border/70 bg-background px-1 font-[inherit] font-medium text-[0.625rem] text-muted-foreground">
           {shortcuts.search.prefix}
         </kbd>
       </Button>

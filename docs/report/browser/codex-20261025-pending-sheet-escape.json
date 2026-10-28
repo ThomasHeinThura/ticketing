@@ -1,0 +1,32 @@
+{
+	"generated": "2026-10-25T01:19:01.473532+00:00",
+	"origin": "https://ticketing.localhost",
+	"fixture": "audit-owned HELP-19",
+	"checks": [
+		{
+			"attempt": 1,
+			"item": null,
+			"dialogs": 0,
+			"dragging": 0
+		},
+		{
+			"attempt": 2,
+			"item": null,
+			"dialogs": 0,
+			"dragging": 0
+		},
+		{
+			"attempt": 3,
+			"item": null,
+			"dialogs": 0,
+			"dragging": 0
+		},
+		{
+			"attempt": 4,
+			"item": null,
+			"dialogs": 0,
+			"dragging": 0
+		}
+	],
+	"result": "4/4 pass: immediate Escape after URL item change cancels pending task detail with no later open; regular keyboard matrix9/9 pass and writes[] separately recorded."
+}

@@ -4,9 +4,11 @@ import { ArrowLeft, ArrowRight, Download } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { exportWorkItems } from "@/fetchers/work-item/export-work-items";
+import { useCustomFields } from "@/hooks/queries/custom-field/use-custom-fields";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import {
+  type NativeWorkItemSearchColumn,
   WORK_ITEM_SEARCH_COLUMNS,
   type WorkItemFilterMode,
   type WorkItemSearchColumn,
@@ -28,7 +30,7 @@ const DEFAULT_TABLE_COLUMNS: readonly WorkItemSearchColumn[] = [
   "assignee",
 ];
 
-const COLUMN_LABEL_KEYS: Record<WorkItemSearchColumn, string> = {
+const COLUMN_LABEL_KEYS: Record<NativeWorkItemSearchColumn, string> = {
   key: "workItems:list.columnKey",
   title: "workItems:list.columnTitle",
   state: "workItems:list.columnState",
@@ -74,6 +76,9 @@ export default function WorkItemListControls({
 }) {
   const { t } = useTranslation();
   const { canExportTasks, isCheckingPermissions } = useWorkspacePermission();
+  const customFieldsQuery = useCustomFields(
+    onColumnsChange ? (workspaceId ?? "") : "",
+  );
   const canExport =
     !isCheckingPermissions &&
     canExportTasks() &&
@@ -95,6 +100,7 @@ export default function WorkItemListControls({
   const handleToggleColumn = (column: WorkItemSearchColumn) => {
     if (!onColumnsChange) return;
     const pressed = selectedColumns.includes(column);
+    if (!pressed && selectedColumns.length >= 100) return;
     if (pressed && selectedColumns.length === 1) return;
     const next = pressed
       ? selectedColumns.filter((value) => value !== column)
@@ -186,7 +192,10 @@ export default function WorkItemListControls({
                     size="sm"
                     variant={pressed ? "secondary" : "outline"}
                     aria-pressed={pressed}
-                    disabled={pressed && selectedColumns.length === 1}
+                    disabled={
+                      (pressed && selectedColumns.length === 1) ||
+                      (!pressed && selectedColumns.length >= 100)
+                    }
                     onClick={() => handleToggleColumn(column)}
                   >
                     {label}
@@ -222,6 +231,63 @@ export default function WorkItemListControls({
                 </div>
               );
             })}
+            {(customFieldsQuery.data?.data ?? [])
+              .filter(
+                (field) =>
+                  !field.deletedAt &&
+                  field.visibility.some((row) => row.visible),
+              )
+              .map((field) => {
+                const column = `cf.${field.key}` as WorkItemSearchColumn;
+                const pressed = selectedColumns.includes(column);
+                const index = selectedColumns.indexOf(column);
+                const label = field.name;
+                return (
+                  <div key={column} className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={pressed ? "secondary" : "outline"}
+                      aria-pressed={pressed}
+                      disabled={
+                        (pressed && selectedColumns.length === 1) ||
+                        (!pressed && selectedColumns.length >= 100)
+                      }
+                      onClick={() => handleToggleColumn(column)}
+                    >
+                      {label}
+                    </Button>
+                    {pressed && selectedColumns.length > 1 ? (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          aria-label={t("workItems:list.moveColumnLeft", {
+                            column: label,
+                          })}
+                          disabled={index <= 0}
+                          onClick={() => handleMoveColumn(index, -1)}
+                        >
+                          <ArrowLeft />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          aria-label={t("workItems:list.moveColumnRight", {
+                            column: label,
+                          })}
+                          disabled={index === selectedColumns.length - 1}
+                          onClick={() => handleMoveColumn(index, 1)}
+                        >
+                          <ArrowRight />
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                );
+              })}
             {columns?.length ? (
               <Button
                 type="button"

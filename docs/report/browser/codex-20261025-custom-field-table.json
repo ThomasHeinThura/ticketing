@@ -1,0 +1,277 @@
+{
+	"recordedAt": "2026-10-25T11:49:29.892Z",
+	"runtimeCheckpoint": 175,
+	"tlsVerification": "default trust",
+	"fixture": "Owned CCY-1 and Service planning custom fields",
+	"mutations": [
+		{
+			"key": "business_impact",
+			"status": 200,
+			"ifMatchPresent": true,
+			"payloadKeys": []
+		},
+		{
+			"key": "effort_points",
+			"status": 200,
+			"ifMatchPresent": true,
+			"payloadKeys": []
+		},
+		{
+			"key": "customer_confirmed",
+			"status": 200,
+			"ifMatchPresent": true,
+			"payloadKeys": []
+		}
+	],
+	"layout": [
+		{
+			"width": 375,
+			"theme": "light",
+			"cellWidth": 64,
+			"childrenFit": true,
+			"documentOverflow": false
+		},
+		{
+			"width": 390,
+			"theme": "light",
+			"cellWidth": 64,
+			"childrenFit": true,
+			"documentOverflow": false
+		},
+		{
+			"width": 768,
+			"theme": "light",
+			"cellWidth": 64,
+			"childrenFit": false,
+			"documentOverflow": false
+		},
+		{
+			"width": 1440,
+			"theme": "light",
+			"cellWidth": 75.609375,
+			"childrenFit": false,
+			"documentOverflow": false
+		},
+		{
+			"width": 375,
+			"theme": "dark",
+			"cellWidth": 64,
+			"childrenFit": true,
+			"documentOverflow": false
+		},
+		{
+			"width": 390,
+			"theme": "dark",
+			"cellWidth": 64,
+			"childrenFit": true,
+			"documentOverflow": false
+		},
+		{
+			"width": 768,
+			"theme": "dark",
+			"cellWidth": 64,
+			"childrenFit": false,
+			"documentOverflow": false
+		},
+		{
+			"width": 1440,
+			"theme": "dark",
+			"cellWidth": 75.609375,
+			"childrenFit": false,
+			"documentOverflow": false
+		}
+	],
+	"screenshots": [
+		"docs/report/browser/screens/cf175-375-light.png",
+		"docs/report/browser/screens/cf175-390-light.png",
+		"docs/report/browser/screens/cf175-768-light.png",
+		"docs/report/browser/screens/cf175-1440-light.png",
+		"docs/report/browser/screens/cf175-375-dark.png",
+		"docs/report/browser/screens/cf175-390-dark.png",
+		"docs/report/browser/screens/cf175-768-dark.png",
+		"docs/report/browser/screens/cf175-1440-dark.png"
+	],
+	"errors": {
+		"page": 0,
+		"unexpectedHttp": []
+	},
+	"attemptHistory": [
+		{
+			"status": "failed",
+			"failure": {
+				"stage": "edit-business_impact",
+				"kind": "TypeError"
+			},
+			"interpretation": "Prior browser driver used incorrect response/data-shape assumptions; not feature acceptance."
+		},
+		{
+			"status": "failed",
+			"failure": {
+				"stage": "edit-business_impact",
+				"kind": "TimeoutError"
+			},
+			"interpretation": "Prior browser driver used incorrect response/data-shape assumptions; not feature acceptance."
+		}
+	],
+	"before": {
+		"status": 200,
+		"values": {
+			"business_impact": "Customer portal availability",
+			"effort_points": null,
+			"customer_confirmed": null
+		},
+		"version": 69
+	},
+	"afterReload": {
+		"status": 200,
+		"values": {
+			"business_impact": "Customer portal service availability",
+			"effort_points": 8,
+			"customer_confirmed": true
+		},
+		"version": 72
+	},
+	"escape": {
+		"patches": 0,
+		"unchanged": true
+	},
+	"width": {
+		"status": 200,
+		"persisted": 64
+	},
+	"status": "scoped_pass",
+	"layoutFailure175": [
+		{
+			"width": 375,
+			"theme": "light",
+			"cellWidth": 64,
+			"childrenFit": true,
+			"documentOverflow": false
+		},
+		{
+			"width": 390,
+			"theme": "light",
+			"cellWidth": 64,
+			"childrenFit": true,
+			"documentOverflow": false
+		},
+		{
+			"width": 768,
+			"theme": "light",
+			"cellWidth": 64,
+			"childrenFit": false,
+			"documentOverflow": false
+		},
+		{
+			"width": 1440,
+			"theme": "light",
+			"cellWidth": 75.609375,
+			"childrenFit": false,
+			"documentOverflow": false
+		},
+		{
+			"width": 375,
+			"theme": "dark",
+			"cellWidth": 64,
+			"childrenFit": true,
+			"documentOverflow": false
+		},
+		{
+			"width": 390,
+			"theme": "dark",
+			"cellWidth": 64,
+			"childrenFit": true,
+			"documentOverflow": false
+		},
+		{
+			"width": 768,
+			"theme": "dark",
+			"cellWidth": 64,
+			"childrenFit": false,
+			"documentOverflow": false
+		},
+		{
+			"width": 1440,
+			"theme": "dark",
+			"cellWidth": 75.609375,
+			"childrenFit": false,
+			"documentOverflow": false
+		}
+	],
+	"captureRetest176": {
+		"recordedAt": "2026-10-25T12:15:56.449Z",
+		"runtimeCheckpoint": 176,
+		"mutations": 0,
+		"pageErrors": 0,
+		"unexpectedHttp": [],
+		"layout": [
+			{
+				"width": 375,
+				"theme": "light",
+				"cellWidth": 64,
+				"childrenFit": true,
+				"documentOverflow": false
+			},
+			{
+				"width": 390,
+				"theme": "light",
+				"cellWidth": 64,
+				"childrenFit": true,
+				"documentOverflow": false
+			},
+			{
+				"width": 768,
+				"theme": "light",
+				"cellWidth": 64,
+				"childrenFit": true,
+				"documentOverflow": false
+			},
+			{
+				"width": 1440,
+				"theme": "light",
+				"cellWidth": 75.609375,
+				"childrenFit": true,
+				"documentOverflow": false
+			},
+			{
+				"width": 375,
+				"theme": "dark",
+				"cellWidth": 64,
+				"childrenFit": true,
+				"documentOverflow": false
+			},
+			{
+				"width": 390,
+				"theme": "dark",
+				"cellWidth": 64,
+				"childrenFit": true,
+				"documentOverflow": false
+			},
+			{
+				"width": 768,
+				"theme": "dark",
+				"cellWidth": 64,
+				"childrenFit": true,
+				"documentOverflow": false
+			},
+			{
+				"width": 1440,
+				"theme": "dark",
+				"cellWidth": 75.609375,
+				"childrenFit": true,
+				"documentOverflow": false
+			}
+		],
+		"screenshots": [
+			"docs/report/browser/screens/cf176-375-light.png",
+			"docs/report/browser/screens/cf176-390-light.png",
+			"docs/report/browser/screens/cf176-768-light.png",
+			"docs/report/browser/screens/cf176-1440-light.png",
+			"docs/report/browser/screens/cf176-375-dark.png",
+			"docs/report/browser/screens/cf176-390-dark.png",
+			"docs/report/browser/screens/cf176-768-dark.png",
+			"docs/report/browser/screens/cf176-1440-dark.png"
+		],
+		"status": "scoped_pass"
+	}
+}

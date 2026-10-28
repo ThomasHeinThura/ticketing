@@ -1,0 +1,97 @@
+# Overlay — SIT on proxy VM (technexus.info).
+#
+#   docker compose -f compose.yml -f deploy/compose.sit.yml up -d --wait
+#
+# Target host: proxy (4.194.153.78)
+# Origins:
+#   Agent:  https://tickting.technexus.info
+#   Portal: https://portal.technexus.info
+# Reverse proxy: host-managed Traefik on external network `web` with resolver `le`.
+# In front: Cloudflare proxy enabled (2 trusted hops).
+
+services:
+  taskdesk:
+    environment:
+      NODE_ENV: production
+      TASKDESK_TRUST_PROXY: "2"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.services.taskdesk-sit.loadbalancer.server.port=${TASKDESK_PORT:-5173}
+      - traefik.http.services.taskdesk-sit.loadbalancer.healthcheck.path=/api/public/health/ready
+      # agent (preserve tickting spelling)
+      - traefik.http.routers.taskdesk-sit-agent.rule=Host(`tickting.technexus.info`)
+      - traefik.http.routers.taskdesk-sit-agent.entrypoints=websecure
+      - traefik.http.routers.taskdesk-sit-agent.tls=true
+      - traefik.http.routers.taskdesk-sit-agent.tls.certresolver=le
+      - traefik.http.routers.taskdesk-sit-agent.service=taskdesk-sit
+      - traefik.http.routers.taskdesk-sit-agent.middlewares=taskdesk-sit-headers@docker
+      - traefik.http.routers.taskdesk-sit-agent-pdf-preview.rule=Host(`tickting.technexus.info`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-sit-agent-pdf-preview.entrypoints=websecure
+      - traefik.http.routers.taskdesk-sit-agent-pdf-preview.tls=true
+      - traefik.http.routers.taskdesk-sit-agent-pdf-preview.tls.certresolver=le
+      - traefik.http.routers.taskdesk-sit-agent-pdf-preview.service=taskdesk-sit
+      - traefik.http.routers.taskdesk-sit-agent-pdf-preview.middlewares=taskdesk-sit-pdf-headers@docker
+      # portal
+      - traefik.http.routers.taskdesk-sit-portal.rule=Host(`portal.technexus.info`)
+      - traefik.http.routers.taskdesk-sit-portal.entrypoints=websecure
+      - traefik.http.routers.taskdesk-sit-portal.tls=true
+      - traefik.http.routers.taskdesk-sit-portal.tls.certresolver=le
+      - traefik.http.routers.taskdesk-sit-portal.service=taskdesk-sit
+      - traefik.http.routers.taskdesk-sit-portal.middlewares=taskdesk-sit-headers@docker
+      - traefik.http.routers.taskdesk-sit-portal-pdf-preview.rule=Host(`portal.technexus.info`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-sit-portal-pdf-preview.entrypoints=websecure
+      - traefik.http.routers.taskdesk-sit-portal-pdf-preview.tls=true
+      - traefik.http.routers.taskdesk-sit-portal-pdf-preview.tls.certresolver=le
+      - traefik.http.routers.taskdesk-sit-portal-pdf-preview.service=taskdesk-sit
+      - traefik.http.routers.taskdesk-sit-portal-pdf-preview.middlewares=taskdesk-sit-pdf-headers@docker
+      - traefik.http.middlewares.taskdesk-sit-headers.headers.stsSeconds=63072000
+      - traefik.http.middlewares.taskdesk-sit-headers.headers.stsIncludeSubdomains=false
+      - traefik.http.middlewares.taskdesk-sit-headers.headers.stsPreload=false
+      - traefik.http.middlewares.taskdesk-sit-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.taskdesk-sit-headers.headers.frameDeny=true
+      - traefik.http.middlewares.taskdesk-sit-headers.headers.referrerPolicy=strict-origin-when-cross-origin
+      - traefik.http.middlewares.taskdesk-sit-headers.headers.permissionsPolicy=geolocation=(), camera=(), microphone=(), payment=()
+      - traefik.http.middlewares.taskdesk-sit-headers.headers.customResponseHeaders.Cross-Origin-Opener-Policy=same-origin
+      - traefik.http.middlewares.taskdesk-sit-headers.headers.customResponseHeaders.X-Powered-By=
+      - traefik.http.middlewares.taskdesk-sit-headers.headers.customResponseHeaders.Server=
+      - traefik.http.middlewares.taskdesk-sit-pdf-headers.headers.stsSeconds=63072000
+      - traefik.http.middlewares.taskdesk-sit-pdf-headers.headers.stsIncludeSubdomains=false
+      - traefik.http.middlewares.taskdesk-sit-pdf-headers.headers.stsPreload=false
+      - traefik.http.middlewares.taskdesk-sit-pdf-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.taskdesk-sit-pdf-headers.headers.customFrameOptionsValue=SAMEORIGIN
+      - traefik.http.middlewares.taskdesk-sit-pdf-headers.headers.referrerPolicy=strict-origin-when-cross-origin
+      - traefik.http.middlewares.taskdesk-sit-pdf-headers.headers.permissionsPolicy=geolocation=(), camera=(), microphone=(), payment=()
+      - traefik.http.middlewares.taskdesk-sit-pdf-headers.headers.customResponseHeaders.Cross-Origin-Opener-Policy=same-origin
+      - traefik.http.middlewares.taskdesk-sit-pdf-headers.headers.customResponseHeaders.X-Powered-By=
+      - traefik.http.middlewares.taskdesk-sit-pdf-headers.headers.customResponseHeaders.Server=
+    networks:
+      - taskdesk
+      - web
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 1536M }
+        reservations: { cpus: "0.5", memory: 512M }
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+
+  postgres:
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 2048M }
+        reservations: { cpus: "0.5", memory: 512M }
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+
+  valkey:
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+        reservations: { cpus: "0.1", memory: 64M }
+
+networks:
+  web:
+    external: true
+    name: web

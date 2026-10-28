@@ -14,6 +14,12 @@ import {
   createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
+import {
+  makeCustomField,
+  setCustomValue,
+  workItemWorld,
+} from "./helpers/p4-closeout";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 function hashApiKeyForTest(key: string): string {
   return createHash("sha256")
@@ -138,6 +144,79 @@ describe("POST /api/work-items/export", () => {
     });
   });
 
+  it("streams registered custom columns with their labels and formula escaping", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await grantProjectRole(owner.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    const items = await workItemWorld(owner.workspace.id, project.id);
+    const field = await makeCustomField(owner.workspace.id, items.type.id, {
+      key: "severity",
+      name: "Severity",
+      format: "text",
+    });
+    const item = await items.makeItem("Export custom field");
+    await setCustomValue(owner.workspace.id, field.id, item, "=1+1");
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const response = await app.request("/api/work-items/export", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: owner.workspace.id,
+        query: {
+          entity: "work_item",
+          columns: ["key", "cf.severity"],
+        },
+      }),
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(await response.text()).toBe(
+      `"Key","Severity"\r\n"${item.key}","'=1+1"\r\n`,
+    );
+  });
+
+  it("exports an empty cell for hidden custom fields", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await grantProjectRole(owner.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    const items = await workItemWorld(owner.workspace.id, project.id);
+    const field = await makeCustomField(owner.workspace.id, items.type.id, {
+      key: "private_note",
+      name: "Private note",
+      format: "text",
+      visible: false,
+    });
+    const item = await items.makeItem("Hidden field export");
+    await setCustomValue(owner.workspace.id, field.id, item, "=HIDDEN()");
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const response = await app.request("/api/work-items/export", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: owner.workspace.id,
+        query: {
+          entity: "work_item",
+          columns: ["key", "cf.private_note"],
+        },
+      }),
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(await response.text()).toBe(
+      `"Key","Private note"\r\n"${item.key}",""\r\n`,
+    );
+  });
+
   it("AU-14: preserves a completed CSV when its audit append fails", async () => {
     const owner = await createWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
@@ -227,6 +306,12 @@ describe("POST /api/work-items/export", () => {
         updatedAt: now,
       },
     ]);
+    for (const project of [reachable.project, unreachable.project])
+      await ensureCreationWorkflow({
+        workspaceId: owner.workspace.id,
+        projectId: project.id,
+        typeId: type.id,
+      });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
     const reachableCreated = await app.request(
@@ -315,6 +400,11 @@ describe("POST /api/work-items/export", () => {
       isDefault: true,
       createdAt: now,
       updatedAt: now,
+    });
+    await ensureCreationWorkflow({
+      workspaceId: owner.workspace.id,
+      projectId: reachable.project.id,
+      typeId: type.id,
     });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();

@@ -2,6 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
+  buildAttachmentStorageKey,
   createAttachmentUploadUrl,
   getFileExtension,
   sanitizePathSegment,
@@ -15,6 +16,7 @@ import {
   insertSubmissionAttachment,
   lockSubmissionForPresign,
 } from "../repository";
+import { assertOrganisationStorageQuota } from "../storage-quota";
 
 export async function presignSubmissionAttachment(input: {
   submissionId: string;
@@ -82,21 +84,27 @@ export async function presignSubmissionAttachment(input: {
     });
   const safeName = `${sanitizePathSegment(input.filename.replace(/\.[^/.]+$/, "") || "file")}${extension ? `.${extension}` : ""}`;
   const attachmentId = createId();
-  const objectKey = [
-    "workspace",
-    sanitizePathSegment(input.workspaceId),
-    "submission",
-    sanitizePathSegment(input.submissionId),
-    "attachment",
-    attachmentId,
-    safeName,
-  ].join("/");
+  const objectKey = buildAttachmentStorageKey(
+    [
+      "workspace",
+      sanitizePathSegment(input.workspaceId),
+      "submission",
+      sanitizePathSegment(input.submissionId),
+      "attachment",
+      attachmentId,
+      safeName,
+    ].join("/"),
+  );
   const [row] = await db.transaction(async (tx) => {
     const [locked] = await lockSubmissionForPresign(tx, input);
     if (!locked || (locked.state !== "new" && locked.state !== "clarifying"))
       throw new HTTPException(409, {
         message: "Submission changed before upload",
       });
+    await assertOrganisationStorageQuota(tx, {
+      workspaceId: input.workspaceId,
+      additionalBytes: input.size,
+    });
     const [countRow] = await countSubmissionAttachments(tx, input.submissionId);
     if ((countRow?.value ?? 0) >= maxPerParent)
       throw new HTTPException(400, {
@@ -162,6 +170,7 @@ export async function presignSubmissionAttachment(input: {
     input.contentType,
     maxBytes,
     input.apiBaseUrl,
+    input.size,
   );
   return {
     attachmentId: row.id,

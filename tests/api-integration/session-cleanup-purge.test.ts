@@ -22,6 +22,10 @@ import {
 } from "../../apps/api/src/scheduler/session-cleanup";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import {
+  plantPreferenceHandoff,
+  preferenceHandoffExists,
+} from "./helpers/preference-handoff-fixture";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -360,6 +364,54 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
     });
   });
 
+  it("purges expired handoffs under person and organisation holds while retaining live handoffs and held sessions", async () => {
+    const member = await createWorkspaceMember();
+    const org = await makeOrganisation("handoff-hold");
+    const person = await makePerson(member.user.id, org.id);
+    await placeHold("person", person.id, member.user.id);
+    await placeHold("organisation", org.id, member.user.id);
+    const expired = await plantPreferenceHandoff(person.id, -1);
+    const live = await plantPreferenceHandoff(person.id, 5);
+    const heldSession = await makeSession(member.user.id, true);
+    expect(await runSessionCleanup()).toEqual({
+      sessionsDeleted: 0,
+      notificationReservationsDeleted: 0,
+      notificationPreferenceHandoffsDeleted: 1,
+      readNotificationsPurged: 0,
+      softDelete: {
+        projectsPurged: 0,
+        workItemsPurged: 0,
+        awaitingAttachments: 0,
+        skipped: 0,
+        failed: 0,
+        permanentlyRetained: 0,
+        budgetExhausted: false,
+        degraded: false,
+      },
+      degraded: false,
+    });
+    expect(await preferenceHandoffExists(expired)).toBe(false);
+    expect(await preferenceHandoffExists(live)).toBe(true);
+    expect(await sessionExists(heldSession.id)).toBe(true);
+    expect(await runSessionCleanup()).toEqual({
+      sessionsDeleted: 0,
+      notificationReservationsDeleted: 0,
+      notificationPreferenceHandoffsDeleted: 0,
+      readNotificationsPurged: 0,
+      softDelete: {
+        projectsPurged: 0,
+        workItemsPurged: 0,
+        awaitingAttachments: 0,
+        skipped: 0,
+        failed: 0,
+        permanentlyRetained: 0,
+        budgetExhausted: false,
+        degraded: false,
+      },
+      degraded: false,
+    });
+  });
+
   describe("the job wrapper", () => {
     it("runs under the lease and reports what it deleted", async () => {
       const member = await createWorkspaceMember();
@@ -370,12 +422,21 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
 
       expect(outcome.sessionsDeleted).toBe(1);
       expect(outcome.notificationReservationsDeleted).toBe(1);
+      expect(outcome.notificationPreferenceHandoffsDeleted).toBe(0);
     });
 
     it("emits the structured log line background-jobs.md asks of every run", async () => {
       const member = await createWorkspaceMember();
       await makeSession(member.user.id, true);
       await makeReservation(member, true);
+      const person = requireRow(
+        await db
+          .select()
+          .from(schema.personTable)
+          .where(eq(schema.personTable.userId, member.user.id)),
+        "handoff recipient",
+      );
+      await plantPreferenceHandoff(person.id, -1);
       const logged = vi.spyOn(console, "log").mockImplementation(() => {});
 
       await runSessionCleanup();
@@ -386,7 +447,7 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
       expect(lines).toHaveLength(1);
       expect(JSON.parse(lines[0] as string)).toMatchObject({
         job: "session-cleanup",
-        itemsProcessed: 2,
+        itemsProcessed: 3,
         outcome: "ok",
       });
       expect(typeof JSON.parse(lines[0] as string).durationMs).toBe("number");
@@ -448,6 +509,15 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
       const member = await createWorkspaceMember();
       const session = await makeSession(member.user.id, true);
 
+      const person = requireRow(
+        await db
+          .select()
+          .from(schema.personTable)
+          .where(eq(schema.personTable.userId, member.user.id)),
+        "held handoff recipient",
+      );
+      const handoff = await plantPreferenceHandoff(person.id, -1);
+
       await withJobLease(
         "session-cleanup",
         async () => {
@@ -456,6 +526,17 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
           expect(outcome).toEqual({
             sessionsDeleted: 0,
             notificationReservationsDeleted: 0,
+            notificationPreferenceHandoffsDeleted: 0,
+            readNotificationsPurged: 0,
+            softDelete: {
+              projectsPurged: 0,
+              workItemsPurged: 0,
+              awaitingAttachments: 0,
+              skipped: 0,
+              failed: 0,
+              degraded: false,
+            },
+            degraded: false,
           });
         },
         () => {
@@ -464,6 +545,7 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
       );
 
       expect(await sessionExists(session.id)).toBe(true);
+      expect(await preferenceHandoffExists(handoff)).toBe(true);
     });
   });
 

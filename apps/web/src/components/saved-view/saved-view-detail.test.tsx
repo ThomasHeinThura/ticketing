@@ -43,6 +43,10 @@ vi.mock("react-i18next", () => ({
       ),
   }),
 }));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  useNavigate: () => vi.fn(),
+}));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
   default: () => ({ user: { id: "viewer-1" } }),
@@ -86,6 +90,15 @@ vi.mock("@/components/work-item/work-item-list", () => ({
         ))}
       </ul>
     ),
+}));
+vi.mock("@/components/intake/submission-queue-table", () => ({
+  SubmissionQueueTable: ({ rows }: { rows: Array<{ ref: string }> }) => (
+    <ul data-testid="submission-queue">
+      {rows.map((row) => (
+        <li key={row.ref}>{row.ref}</li>
+      ))}
+    </ul>
+  ),
 }));
 vi.mock("@/components/saved-view/saved-view-editor", () => ({
   SavedViewEditor: (props: Record<string, unknown>) => {
@@ -164,6 +177,7 @@ const storedSearch: SavedViewUrlSearch = {
   dir: "asc",
 };
 const page = (titles: string[], total = titles.length) => ({
+  entity: "work_item" as const,
   items: titles.map((title, index) => ({
     key: `WLP-${index + 1}`,
     title,
@@ -254,7 +268,9 @@ describe("SV-19 saved view the viewer cannot read, complete URL snapshot", () =>
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
         "Shared view",
       );
-      expect(screen.getByText("1 matching work item")).toBeInTheDocument();
+      expect(
+        screen.getByText(translate("savedViews:count_one", { count: 1 })),
+      ).toBeInTheDocument();
     },
   );
 
@@ -354,6 +370,47 @@ describe("SV-19 saved view the viewer cannot read, complete URL snapshot", () =>
 });
 
 describe("a saved view the viewer can read", () => {
+  it("renders stored submission views with the shared staff table and paired queue link", async () => {
+    const submissionView = {
+      ...baseView,
+      queuePairId: "pair-1",
+      queueVersion: 1,
+      query: { entity: "submission", filter: { state: "new" } },
+    };
+    mocks.getSavedView.mockResolvedValue(submissionView);
+    mocks.runSavedView.mockResolvedValue({
+      entity: "submission",
+      submissions: [
+        {
+          ref: "SUB-17",
+          summary: "Request summary",
+          submission: {
+            id: "submission-1",
+            number: 17,
+            state: "new",
+            customerVisibility: "private",
+            claimedBy: null,
+            claimedAt: null,
+            createdAt: "2026-10-25T00:00:00.000Z",
+          },
+          requestType: { id: "type-1", key: "access", name: "Access" },
+          requester: { id: "person-1", displayName: "Requester" },
+          organisation: { id: "org-1", name: "Customer" },
+          suggestedDuplicates: [],
+        },
+      ],
+      hasMore: false,
+      nextCursor: null,
+      total: 1,
+    });
+    renderDetail(storedSearch);
+    expect(await screen.findByText("SUB-17")).toBeInTheDocument();
+    expect(screen.getByTestId("submission-queue")).toBeInTheDocument();
+    expect(screen.getByTestId("saved-view-paired-queue")).toBeInTheDocument();
+    expect(screen.queryByTestId("saved-view-unsupported")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit view" })).toBeNull();
+  });
+
   it("runs and counts the stored view when the URL is its own definition", async () => {
     renderDetail(storedSearch);
     expect(await screen.findByText("Stored result")).toBeInTheDocument();
@@ -362,7 +419,9 @@ describe("a saved view the viewer can read", () => {
       cursor: undefined,
     });
     await waitFor(() =>
-      expect(screen.getByText("5 matching work items")).toBeInTheDocument(),
+      expect(
+        screen.getByText(translate("savedViews:count_other", { count: 5 })),
+      ).toBeInTheDocument(),
     );
     expect(mocks.runSavedViewUrlQuery).not.toHaveBeenCalled();
     expect(screen.queryByTestId("saved-view-modified")).toBeNull();
@@ -374,7 +433,9 @@ describe("a saved view the viewer can read", () => {
     expect(screen.getByTestId("saved-view-modified")).toBeInTheDocument();
     expect(mocks.runSavedView).not.toHaveBeenCalled();
     expect(mocks.countSavedView).not.toHaveBeenCalled();
-    expect(screen.getByText("1 matching work item")).toBeInTheDocument();
+    expect(
+      screen.getByText(translate("savedViews:count_one", { count: 1 })),
+    ).toBeInTheDocument();
   });
 
   it("replaces a bare or incomplete URL with the view's own definition, once", async () => {

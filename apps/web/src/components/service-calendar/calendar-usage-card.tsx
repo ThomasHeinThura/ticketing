@@ -1,12 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
 import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPopup,
-  AlertDialogTitle,
   Button,
   Card,
   CardContent,
@@ -14,12 +6,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@taskdesk/ui";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ServiceCalendarUsage } from "@/fetchers/service-calendar";
 import { useRequestServiceCalendarDeletion } from "@/hooks/mutations/service-calendar/use-request-service-calendar-deletion";
 import type { useServiceCalendarUsage } from "@/hooks/queries/service-calendar/use-service-calendar-usage";
-import { routes } from "@/lib/routes";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { toast } from "@/lib/toast";
 
 type UsageQuery = ReturnType<typeof useServiceCalendarUsage>;
@@ -67,23 +58,17 @@ export function CalendarUsageCard({
   canManage: boolean;
 }) {
   const { t } = useTranslation("serviceCalendars");
-  const navigate = useNavigate();
+  const openPendingAction = useOpenPendingAction();
   const requestDeletion = useRequestServiceCalendarDeletion();
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const counts = usage.data?.counts;
   const inUse = counts ? usageIsInUse(counts) : true;
 
   async function submitDeletionRequest() {
     try {
       const pending = await requestDeletion.mutateAsync(calendarId);
-      setConfirmOpen(false);
-      toast.info(t("usage.deleteRequested"));
-      await navigate({
-        to: routes.pendingAction.path,
-        params: { id: pending.pendingActionId },
-      });
+      // The approval opens in place as the one confirm dialog.
+      await openPendingAction(pending);
     } catch (error) {
-      setConfirmOpen(false);
       toast.error(
         error instanceof Error && error.message
           ? error.message
@@ -129,37 +114,10 @@ export function CalendarUsageCard({
               type="button"
               variant="destructive-outline"
               disabled={inUse || requestDeletion.isPending}
-              onClick={() => setConfirmOpen(true)}
+              onClick={() => void submitDeletionRequest()}
             >
               {t("usage.requestDeletion")}
             </Button>
-            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-              <AlertDialogPopup>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{t("usage.confirmTitle")}</AlertDialogTitle>
-                  <AlertDialogDescription className="text-foreground">
-                    {t("usage.confirmDescription")}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogClose
-                    render={
-                      <Button type="button" variant="outline">
-                        {t("usage.cancel")}
-                      </Button>
-                    }
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    disabled={requestDeletion.isPending}
-                    onClick={() => void submitDeletionRequest()}
-                  >
-                    {t("usage.confirmRequest")}
-                  </Button>
-                </AlertDialogFooter>
-              </AlertDialogPopup>
-            </AlertDialog>
           </>
         ) : null}
       </CardContent>

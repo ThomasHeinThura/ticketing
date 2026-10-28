@@ -1,0 +1,659 @@
+{
+	"date": "2026-10-25T02:43:48.898Z",
+	"environment": "Real Chromium against persisted local SIT at https://ticketing.localhost; lead and reserved member storage states; strict TLS verification enabled (ignoreHTTPSErrors=false).",
+	"fixture": {
+		"workspace": "Codex Cost Cycle 20261025",
+		"workspaceId": "vjsgsgt7jrlia8sln5j3rzhm",
+		"project": "Cost Cycle QA",
+		"projectKey": "CCY",
+		"projectId": "y8onxgpl4vd25fsgq4dnc2fp",
+		"workItems": ["CCY-1", "CCY-2", "CCY-3", "CCY-4"]
+	},
+	"journeys": {
+		"forecast": {
+			"status": "passed",
+			"budgetReload": "October Cost Budget 2026-10-25 – 2026-10-25 x Planned 1,000.00 EUR Actual 30.00 EUR Time 30.00 EUR · Cost entries 0.00 EUR Remaining 970.00 EUR Committed Unknown Estimated committed work by currency 90.00 EUR across 1 open task 120.00 USD across 1 open task 2 open tasks have unknown committed cost (unscheduled: 1, non-time estimate: 1, unassigned: 0, unrated: 0; 1:00 known remaining). 1 unscheduled open task has no due date, so it cannot be assigned to a budget period.",
+			"unknownReasons": ["unscheduled: 1", "non-time estimate: 1"],
+			"separateCurrencies": ["90.00 EUR", "120.00 USD"]
+		},
+		"cycleLoggedTime": {
+			"status": "passed",
+			"detail": "Total 0:30",
+			"reload": "Total 0:30"
+		},
+		"moduleLoggedTime": {
+			"status": "passed",
+			"detail": "Total 0:30",
+			"reload": "Total 0:30"
+		},
+		"memberRateOmission": {
+			"status": "passed",
+			"noRateAmounts": true,
+			"detail": "Back to Workspace Settings Account Workspace Projects CC Codex Cost Cycle 20261025 Member PROJECT Cost Cycle QA SETTINGS General Settings Members Labels Workflow Budget New time is billable by default The starting value of Billable when time is logged on this project. Each entry can still override it. Budget Planned against actual for each budget period. Actuals are time valued at the rate captured on each entry; other currencies are shown separately and never converted. October Cost Budget 2026-10-25 – 2026-10-25 Planned 1,000.00 EUR Actual Hidden: time cost needs permission to see rates Remaining Hidden: time cost needs permission to see rates Committed Not available yet",
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-budget-member-hidden.png"
+		},
+		"projectHeader": {
+			"status": "passed",
+			"environment": "Real Chromium at https://ticketing.localhost with strict TLS verification, reserved Lead session, and the rebuilt local SIT stack.",
+			"workspaceSwitch": {
+				"from": "TaskDesk Service Desk",
+				"to": "Codex Cost Cycle 20261025",
+				"changed": true
+			},
+			"workspaceRestore": {
+				"from": "Codex Cost Cycle 20261025",
+				"to": "TaskDesk Service Desk",
+				"changed": true
+			},
+			"project": "Cost Cycle QA",
+			"cycle": {
+				"href": "/agent/projects/CCY/cycles/ep65o1q0oitqcx7z8vpuyyi4",
+				"name": "Cost Cycle QA cycle"
+			},
+			"module": {
+				"href": "/agent/projects/CCY/modules/gofyhysqotm5fvglnx92lau0",
+				"name": "Cost Cycle QA module"
+			},
+			"viewNavigation": [
+				{
+					"destination": "Modules",
+					"url": "https://ticketing.localhost/agent/projects/CCY/modules",
+					"selected": true,
+					"from": "cycle",
+					"theme": "light"
+				},
+				{
+					"destination": "Cycles",
+					"url": "https://ticketing.localhost/agent/projects/CCY/cycles",
+					"selected": true,
+					"from": "module",
+					"theme": "light"
+				},
+				{
+					"destination": "Modules",
+					"url": "https://ticketing.localhost/agent/projects/CCY/modules",
+					"selected": true,
+					"from": "cycle",
+					"theme": "dark"
+				},
+				{
+					"destination": "Cycles",
+					"url": "https://ticketing.localhost/agent/projects/CCY/cycles",
+					"selected": true,
+					"from": "module",
+					"theme": "dark"
+				}
+			],
+			"tabletVerification": {
+				"viewTabs": [
+					"Backlog",
+					"Tasks",
+					"Calendar",
+					"Gantt",
+					"Cycles",
+					"Modules",
+					"Pages"
+				],
+				"keyboardOrder": [
+					"Backlog",
+					"Tasks",
+					"Calendar",
+					"Gantt",
+					"Cycles",
+					"Modules",
+					"Pages"
+				],
+				"horizontalScrollRangePx": 293,
+				"pagesFullyVisibleAtScrollEnd": true,
+				"workspaceAndProjectCrumbsDoNotOverlapTabs": true,
+				"allThreeRectsInsideHeader": true,
+				"projectMenuItems": [
+					{
+						"name": "Cost Cycle QA",
+						"disabled": true
+					},
+					{
+						"name": "Add project",
+						"disabled": false
+					}
+				]
+			},
+			"screenshots": [
+				"docs/report/screens/codex-20261025-cost-cycle-cycle-light-390.png",
+				"docs/report/screens/codex-20261025-cost-cycle-cycle-light-768.png",
+				"docs/report/screens/codex-20261025-cost-cycle-cycle-light-1440.png",
+				"docs/report/screens/codex-20261025-cost-cycle-module-light-390.png",
+				"docs/report/screens/codex-20261025-cost-cycle-module-light-768.png",
+				"docs/report/screens/codex-20261025-cost-cycle-module-light-1440.png",
+				"docs/report/screens/codex-20261025-cost-cycle-cycle-dark-390.png",
+				"docs/report/screens/codex-20261025-cost-cycle-cycle-dark-768.png",
+				"docs/report/screens/codex-20261025-cost-cycle-cycle-dark-1440.png",
+				"docs/report/screens/codex-20261025-cost-cycle-module-dark-390.png",
+				"docs/report/screens/codex-20261025-cost-cycle-module-dark-768.png",
+				"docs/report/screens/codex-20261025-cost-cycle-module-dark-1440.png"
+			],
+			"errors": []
+		}
+	},
+	"captures": [
+		{
+			"screen": "budget",
+			"theme": "light",
+			"viewport": "390x844",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-budget-light-390.png",
+			"bytes": 54406
+		},
+		{
+			"screen": "budget",
+			"theme": "light",
+			"viewport": "768x1024",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-budget-light-768.png",
+			"bytes": 101081
+		},
+		{
+			"screen": "budget",
+			"theme": "light",
+			"viewport": "1440x1000",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-budget-light-1440.png",
+			"bytes": 109915
+		},
+		{
+			"screen": "cycle",
+			"theme": "light",
+			"viewport": "390x844",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-cycle-light-390.png",
+			"bytes": 41246,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": false,
+				"activeView": "cycles",
+				"activeViewVerified": true
+			}
+		},
+		{
+			"screen": "cycle",
+			"theme": "light",
+			"viewport": "768x1024",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-cycle-light-768.png",
+			"bytes": 90802,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": true,
+				"activeView": "cycles",
+				"activeViewVerified": true,
+				"workspaceRect": {
+					"left": 294,
+					"right": 422,
+					"top": 19,
+					"bottom": 43,
+					"width": 128,
+					"height": 24
+				},
+				"projectRect": {
+					"left": 440,
+					"right": 492,
+					"top": 19,
+					"bottom": 43,
+					"width": 53,
+					"height": 24
+				},
+				"tabViewportRect": {
+					"left": 501,
+					"right": 742,
+					"top": 16,
+					"bottom": 46,
+					"width": 241,
+					"height": 30
+				},
+				"workspaceOverlapsTabs": false,
+				"projectOverlapsTabs": false,
+				"headerContainsCrumbsAndTabs": true,
+				"allTabsInOrder": [
+					"Backlog",
+					"Tasks",
+					"Calendar",
+					"Gantt",
+					"Cycles",
+					"Modules",
+					"Pages"
+				],
+				"keyboardOrder": [
+					"Backlog",
+					"Tasks",
+					"Calendar",
+					"Gantt",
+					"Cycles",
+					"Modules",
+					"Pages"
+				],
+				"horizontalScroll": {
+					"start": 293,
+					"left": 0,
+					"right": 293,
+					"max": 293,
+					"lastFullyVisible": true
+				}
+			}
+		},
+		{
+			"screen": "cycle",
+			"theme": "light",
+			"viewport": "1440x1000",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-cycle-light-1440.png",
+			"bytes": 110953,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": true,
+				"activeView": "cycles",
+				"activeViewVerified": true
+			}
+		},
+		{
+			"screen": "module",
+			"theme": "light",
+			"viewport": "390x844",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-module-light-390.png",
+			"bytes": 41537,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": false,
+				"activeView": "modules",
+				"activeViewVerified": true
+			}
+		},
+		{
+			"screen": "module",
+			"theme": "light",
+			"viewport": "768x1024",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-module-light-768.png",
+			"bytes": 80407,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": true,
+				"activeView": "modules",
+				"activeViewVerified": true,
+				"workspaceRect": {
+					"left": 294,
+					"right": 422,
+					"top": 19,
+					"bottom": 43,
+					"width": 128,
+					"height": 24
+				},
+				"projectRect": {
+					"left": 440,
+					"right": 492,
+					"top": 19,
+					"bottom": 43,
+					"width": 53,
+					"height": 24
+				},
+				"tabViewportRect": {
+					"left": 501,
+					"right": 742,
+					"top": 16,
+					"bottom": 46,
+					"width": 241,
+					"height": 30
+				},
+				"workspaceOverlapsTabs": false,
+				"projectOverlapsTabs": false,
+				"headerContainsCrumbsAndTabs": true,
+				"allTabsInOrder": [
+					"Backlog",
+					"Tasks",
+					"Calendar",
+					"Gantt",
+					"Cycles",
+					"Modules",
+					"Pages"
+				],
+				"keyboardOrder": [
+					"Backlog",
+					"Tasks",
+					"Calendar",
+					"Gantt",
+					"Cycles",
+					"Modules",
+					"Pages"
+				],
+				"horizontalScroll": {
+					"start": 293,
+					"left": 0,
+					"right": 293,
+					"max": 293,
+					"lastFullyVisible": true
+				}
+			}
+		},
+		{
+			"screen": "module",
+			"theme": "light",
+			"viewport": "1440x1000",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-module-light-1440.png",
+			"bytes": 94502,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": true,
+				"activeView": "modules",
+				"activeViewVerified": true
+			}
+		},
+		{
+			"screen": "budget",
+			"theme": "dark",
+			"viewport": "390x844",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-budget-dark-390.png",
+			"bytes": 54218
+		},
+		{
+			"screen": "budget",
+			"theme": "dark",
+			"viewport": "768x1024",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-budget-dark-768.png",
+			"bytes": 100638
+		},
+		{
+			"screen": "budget",
+			"theme": "dark",
+			"viewport": "1440x1000",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-budget-dark-1440.png",
+			"bytes": 109844
+		},
+		{
+			"screen": "cycle",
+			"theme": "dark",
+			"viewport": "390x844",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-cycle-dark-390.png",
+			"bytes": 40373,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": false,
+				"activeView": "cycles",
+				"activeViewVerified": true
+			}
+		},
+		{
+			"screen": "cycle",
+			"theme": "dark",
+			"viewport": "768x1024",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-cycle-dark-768.png",
+			"bytes": 88529,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": true,
+				"activeView": "cycles",
+				"activeViewVerified": true,
+				"workspaceRect": {
+					"left": 294,
+					"right": 422,
+					"top": 19,
+					"bottom": 43,
+					"width": 128,
+					"height": 24
+				},
+				"projectRect": {
+					"left": 440,
+					"right": 492,
+					"top": 19,
+					"bottom": 43,
+					"width": 53,
+					"height": 24
+				},
+				"tabViewportRect": {
+					"left": 501,
+					"right": 742,
+					"top": 16,
+					"bottom": 46,
+					"width": 241,
+					"height": 30
+				},
+				"workspaceOverlapsTabs": false,
+				"projectOverlapsTabs": false,
+				"headerContainsCrumbsAndTabs": true,
+				"allTabsInOrder": [
+					"Backlog",
+					"Tasks",
+					"Calendar",
+					"Gantt",
+					"Cycles",
+					"Modules",
+					"Pages"
+				],
+				"keyboardOrder": [
+					"Backlog",
+					"Tasks",
+					"Calendar",
+					"Gantt",
+					"Cycles",
+					"Modules",
+					"Pages"
+				],
+				"horizontalScroll": {
+					"start": 293,
+					"left": 0,
+					"right": 293,
+					"max": 293,
+					"lastFullyVisible": true
+				}
+			}
+		},
+		{
+			"screen": "cycle",
+			"theme": "dark",
+			"viewport": "1440x1000",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-cycle-dark-1440.png",
+			"bytes": 108328,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": true,
+				"activeView": "cycles",
+				"activeViewVerified": true
+			}
+		},
+		{
+			"screen": "module",
+			"theme": "dark",
+			"viewport": "390x844",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 390,
+			"bodyWidth": 390,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-module-dark-390.png",
+			"bytes": 39950,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": false,
+				"activeView": "modules",
+				"activeViewVerified": true
+			}
+		},
+		{
+			"screen": "module",
+			"theme": "dark",
+			"viewport": "768x1024",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 768,
+			"bodyWidth": 768,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-module-dark-768.png",
+			"bytes": 77767,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": true,
+				"activeView": "modules",
+				"activeViewVerified": true,
+				"workspaceRect": {
+					"left": 294,
+					"right": 422,
+					"top": 19,
+					"bottom": 43,
+					"width": 128,
+					"height": 24
+				},
+				"projectRect": {
+					"left": 440,
+					"right": 492,
+					"top": 19,
+					"bottom": 43,
+					"width": 53,
+					"height": 24
+				},
+				"tabViewportRect": {
+					"left": 501,
+					"right": 742,
+					"top": 16,
+					"bottom": 46,
+					"width": 241,
+					"height": 30
+				},
+				"workspaceOverlapsTabs": false,
+				"projectOverlapsTabs": false,
+				"headerContainsCrumbsAndTabs": true,
+				"allTabsInOrder": [
+					"Backlog",
+					"Tasks",
+					"Calendar",
+					"Gantt",
+					"Cycles",
+					"Modules",
+					"Pages"
+				],
+				"keyboardOrder": [
+					"Backlog",
+					"Tasks",
+					"Calendar",
+					"Gantt",
+					"Cycles",
+					"Modules",
+					"Pages"
+				],
+				"horizontalScroll": {
+					"start": 293,
+					"left": 0,
+					"right": 293,
+					"max": 293,
+					"lastFullyVisible": true
+				}
+			}
+		},
+		{
+			"screen": "module",
+			"theme": "dark",
+			"viewport": "1440x1000",
+			"http": 200,
+			"horizontalOverflow": false,
+			"documentWidth": 1440,
+			"bodyWidth": 1440,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-module-dark-1440.png",
+			"bytes": 91194,
+			"projectHeader": {
+				"workspaceProjectCrumbsVisible": true,
+				"activeView": "modules",
+				"activeViewVerified": true
+			}
+		},
+		{
+			"screen": "budget-bottom-scroll",
+			"theme": "light",
+			"viewport": "390x844",
+			"http": 200,
+			"horizontalOverflow": false,
+			"scroll": {
+				"scrollTop": 378,
+				"scrollHeight": 1068,
+				"clientHeight": 690
+			},
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-budget-light-390-bottom.png"
+		},
+		{
+			"screen": "budget-bottom-scroll",
+			"theme": "dark",
+			"viewport": "390x844",
+			"http": 200,
+			"horizontalOverflow": false,
+			"scroll": {
+				"scrollTop": 378,
+				"scrollHeight": 1068,
+				"clientHeight": 690
+			},
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-budget-dark-390-bottom.png"
+		},
+		{
+			"screen": "budget-member-hidden",
+			"theme": "dark",
+			"viewport": "1440x1000",
+			"http": 200,
+			"horizontalOverflow": false,
+			"screenshot": "docs/report/screens/codex-20261025-cost-cycle-budget-member-hidden.png"
+		}
+	],
+	"limitations": [
+		"A late catch-up snapshot was not applicable to the newly created fixture: no historical completed cycle was present; no historical facts were fabricated.",
+		"Browser unknown-cost display covers unscheduled and non-time reasons; unassigned and unrated categories are covered by the focused forecast/integration suite, not synthetic browser identities."
+	],
+	"errors": [],
+	"productFindings": [
+		{
+			"id": "project-header-overlaps-at-tablet-width",
+			"severity": "visual defect",
+			"status": "fixed and browser-verified",
+			"detail": "Retested the rebuilt shared project header on cycle and module detail at 390, 768, and 1440px in light and dark themes. At 768px the workspace crumb (x=294–422), project crumb (x=440–492), and tab viewport (x=501–742) have distinct, non-overlapping rectangles inside the header. The seven view tabs are keyboard reachable in order and the tab viewport scrolls 293px so Pages becomes fully visible. Visual review of all twelve captures showed the header no longer collides; the 390px layout uses the existing mobile project navigation.",
+			"evidence": [
+				"docs/report/screens/codex-20261025-cost-cycle-cycle-light-768.png",
+				"docs/report/screens/codex-20261025-cost-cycle-module-light-768.png",
+				"docs/report/screens/codex-20261025-cost-cycle-cycle-dark-768.png",
+				"docs/report/screens/codex-20261025-cost-cycle-module-dark-768.png"
+			]
+		}
+	]
+}

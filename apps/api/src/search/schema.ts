@@ -3,7 +3,19 @@ import { z } from "../openapi";
 export const searchQuery = z.object({
   q: z.string().min(1, "Query must be at least 1 character"),
   type: z
-    .enum(["all", "tasks", "projects", "workspaces", "comments", "activities"])
+    .enum([
+      "all",
+      "tasks",
+      "work_items",
+      "people",
+      "views",
+      "pages",
+      "kb_articles",
+      "projects",
+      "workspaces",
+      "comments",
+      "activities",
+    ])
     .optional()
     .default("all"),
   workspaceId: z.string().min(1),

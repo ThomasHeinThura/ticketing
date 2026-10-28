@@ -1,0 +1,64 @@
+{
+	"scope": "Single approved public QA comment on owned HELP-22 linked to requester-owned SUB-5",
+	"method": "Strict HTTPS Chromium, existing persisted owner and customer sessions, registered comment API with fresh CSRF; one comment only.",
+	"marker": "SIT portal live notification QA 20261026",
+	"checks": [
+		{
+			"name": "Customer portal origin loads over strict HTTPS",
+			"passed": true,
+			"status": 200
+		},
+		{
+			"name": "Real customer cookie opens portal notification WebSocket",
+			"passed": true,
+			"timeout": false
+		},
+		{
+			"name": "Customer inbox pre-write read succeeds",
+			"passed": true,
+			"status": 200,
+			"count": 3,
+			"ownSub5": true
+		},
+		{
+			"name": "Owner agent origin loads over strict HTTPS",
+			"passed": true,
+			"status": 200
+		},
+		{
+			"name": "One registered public comment write succeeds",
+			"passed": true,
+			"status": 200,
+			"responseKeys": [
+				"activityId",
+				"actorType",
+				"authorId",
+				"body",
+				"createdAt",
+				"deletedAt",
+				"deletedBy",
+				"editedAt",
+				"id",
+				"updatedAt",
+				"visibility",
+				"workItemId",
+				"workspaceId"
+			],
+			"visibility": "public",
+			"actorType": "person"
+		},
+		{
+			"name": "Public comment produces generic payload-free invalidation",
+			"passed": false,
+			"safeInvalidations": 0,
+			"unexpectedPayloadCount": 0,
+			"readyState": 1
+		}
+	],
+	"notification": null,
+	"websocket": {
+		"opened": true,
+		"safeMessages": [],
+		"unexpectedPayloadCount": 0
+	}
+}

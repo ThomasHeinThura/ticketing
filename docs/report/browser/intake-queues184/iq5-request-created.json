@@ -1,0 +1,13 @@
+{
+	"action": "created one portal request through the normal catalogue form",
+	"type": "Report a problem",
+	"submitStatus": 200,
+	"ref": "SUB-7",
+	"targetKey": "HELP-22",
+	"inputIds": [
+		"request-field-summary",
+		"request-field-details",
+		"request-field-impact"
+	],
+	"noExistingWorkItemChanged": true
+}

@@ -13,24 +13,21 @@
  * `America/New_York`: a session created 2026-09-07 06:00:00, three hours and fifteen
  * minutes inside the vulnerable window, was NOT expired).
  *
- * One file per direction, per the sibling `session-cleanup-server-{ahead,behind}-utc.test.ts`
- * pair's own convention: the session's `TimeZone` is fixed for the life of the pool a file
- * uses, so this direction needs its own file/pool.
+ * Each test applies this session-local timezone after pool startup and restores UTC during
+ * cleanup, keeping the regression direction explicit without changing database defaults.
  */
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { eq, sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { resetTestDatabase } from "./helpers/database";
+import { setTestDatabaseTimezone } from "./helpers/database-timezone";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
-
-// America/New_York is UTC-04:00 in September 2026, so a UTC wall-clock value read as
-// local time lands four hours in the future -- the direction that under-invalidates.
-process.env.PGOPTIONS = "-c timezone=America/New_York";
 
 const CUTOFF = new Date("2026-09-07T09:15:26.000Z");
 const FAR_FUTURE = new Date("2027-01-01T00:00:00.000Z");
+let restoreDatabaseTimezone: (() => Promise<void>) | undefined;
 
 async function sessionTimeZone() {
   const result = await db.execute<{ timezone: string }>(
@@ -83,6 +80,11 @@ async function loadSession(sessionId: string) {
 
 beforeEach(async () => {
   await resetTestDatabase();
+  restoreDatabaseTimezone = await setTestDatabaseTimezone("America/New_York");
+});
+afterEach(async () => {
+  await restoreDatabaseTimezone?.();
+  restoreDatabaseTimezone = undefined;
 });
 
 describe("migration 0060 on a database server behind UTC", () => {

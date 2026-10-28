@@ -1,18 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import { getMyApiKeys } from "@/fetchers/api-keys";
 
 function useGetApiKeys() {
   return useQuery({
     queryKey: ["api-keys"],
-    queryFn: async () => {
-      const result = await authClient.apiKey.list();
-
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-
-      return result.data.apiKeys || [];
-    },
+    queryFn: getMyApiKeys,
   });
 }
 

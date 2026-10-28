@@ -7,6 +7,7 @@ import {
   preloadNamespaces,
   resolveLocale,
 } from "./index";
+import { TerminologyProvider } from "./terminology-provider";
 
 export function AppI18nProvider({ children }: PropsWithChildren) {
   const { user } = useAuth();
@@ -23,5 +24,11 @@ export function AppI18nProvider({ children }: PropsWithChildren) {
     document.documentElement.lang = resolvedLocale;
   }, [resolvedLocale]);
 
-  return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>;
+  return (
+    <I18nextProvider i18n={i18n}>
+      <TerminologyProvider audience="agent" locale={resolvedLocale}>
+        {children}
+      </TerminologyProvider>
+    </I18nextProvider>
+  );
 }

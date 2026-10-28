@@ -3,6 +3,11 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
 import { invalidateNativeAuthorization } from "../../ws";
+import {
+  invalidateProjectAncestry,
+  lockProjectHierarchy,
+} from "../hierarchy.repository";
+import { assertNoLiveChildProjects } from "../project-children";
 import { revokeProjectCreatorGrantsForProject } from "../project-creator-grant";
 
 // #187: 30 days, matching `docs/03-features/projects-and-engagements.md` PR-16 and the
@@ -29,6 +34,8 @@ const PURGE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
  */
 async function deleteProject(id: string, workspaceId: string) {
   const deletedProject = await db.transaction(async (tx) => {
+    await lockProjectHierarchy(tx, workspaceId);
+    await assertNoLiveChildProjects(tx, workspaceId, id);
     const [row] = await tx
       .update(projectTable)
       .set({
@@ -43,6 +50,7 @@ async function deleteProject(id: string, workspaceId: string) {
         ),
       )
       .returning();
+    invalidateProjectAncestry(tx);
     // Decision log 2026-10-14: the creator's project-lead grant goes with the project, in the
     // same transaction. Grants of any other origin are left alone (a recovered project keeps
     // them); the creator is not re-granted on recovery -- an owner or admin re-adds them.

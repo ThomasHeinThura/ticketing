@@ -48,7 +48,7 @@ for (const [label, source] of cases) {
 }
 
 // D3: shapes Thomas found still evaded #352's detector on `main`
-// (docs/07-planning/security-reviews/352-env-read-detector.md, "Delta Opus 5.5 review at
+// (archive/2026-10-22/docs/07-planning/security-reviews/352-env-read-detector.md, "Delta Opus 5.5 review at
 // `fa1d325`", finding G1) and asked to keep #342 open for. Confirmed absent from
 // `apps/` and `packages/` today (grepped for every one of these shapes before writing
 // this file), so none of them changes `check:env`'s exact-count ratchet on the real tree.

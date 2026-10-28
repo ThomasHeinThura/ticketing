@@ -70,3 +70,23 @@ describe("createWorkItem", () => {
     ).rejects.toMatchObject({ name: "HttpError", status: 403 });
   });
 });
+
+it("sends all initial fields in one request and preserves atomic rejection status", async () => {
+  mocks.post.mockReset();
+  mocks.post.mockResolvedValue({ ok: true, json: async () => ({ id: "new" }) });
+  const input = {
+    projectId: "project",
+    typeId: "type",
+    title: "Atomic create",
+    startDate: "2026-10-22T00:00:00.000Z",
+    dueDate: "2026-10-23T00:00:00.000Z",
+    labelIds: ["label"],
+    assigneeId: "person",
+  };
+  await createWorkItem(input);
+  expect(mocks.post).toHaveBeenCalledTimes(1);
+  const { projectId, ...body } = input;
+  expect(mocks.post).toHaveBeenCalledWith({ param: { projectId }, json: body });
+  mocks.post.mockResolvedValue({ ok: false, status: 422 });
+  await expect(createWorkItem(input)).rejects.toMatchObject({ status: 422 });
+});

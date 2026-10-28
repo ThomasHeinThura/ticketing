@@ -17,3 +17,14 @@ export const createNotificationBody = z.object({
     description: "Stored as resourceType: `task` or `workspace`.",
   }),
 });
+
+export const notificationInboxQuery = z
+  .object({
+    filter: z.enum(["all", "unread", "mentions", "assignments"]).default("all"),
+    limit: z
+      .string()
+      .regex(/^(?:[1-9]|[1-9][0-9]|100)$/)
+      .optional(),
+    cursor: z.string().min(1).max(512).optional(),
+  })
+  .strict();

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   calendar: {
     id: "calendar-1",
     workspaceId: "calendar-workspace",
+    key: "support-hours",
     name: "Original",
     timezone: "UTC",
     windows: { mon: [{ from: 540, to: 1020 }] },
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   refetchCalendar: vi.fn(),
   previewRefetch: vi.fn(),
   mutateAsync: vi.fn(),
+  createCalendar: vi.fn(),
   permissionWorkspaceIds: [] as Array<string | undefined>,
 }));
 
@@ -60,7 +62,7 @@ vi.mock(
   "@/hooks/mutations/service-calendar/use-create-service-calendar",
   () => ({
     useCreateServiceCalendar: () => ({
-      mutateAsync: vi.fn(),
+      mutateAsync: mocks.createCalendar,
       isPending: false,
     }),
   }),
@@ -76,11 +78,11 @@ vi.mock(
 );
 vi.mock("@/lib/toast", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
-function renderEditor() {
+function renderEditor(isNew = false) {
   return renderHook(() =>
     useServiceCalendarEditor({
-      calendarId: "calendar-1",
-      isNew: false,
+      calendarId: isNew ? "new" : "calendar-1",
+      isNew,
       year: 2026,
       onCreated: vi.fn(),
     }),
@@ -109,6 +111,10 @@ describe("service calendar editor optimistic-concurrency recovery", () => {
     mocks.refetchCalendar.mockReset();
     mocks.previewRefetch.mockReset().mockResolvedValue({});
     mocks.mutateAsync.mockReset();
+    mocks.createCalendar.mockReset().mockResolvedValue({
+      ...mocks.calendar,
+      id: "created-calendar",
+    });
     mocks.permissionWorkspaceIds = [];
   });
 
@@ -138,7 +144,11 @@ describe("service calendar editor optimistic-concurrency recovery", () => {
 
     act(() => result.current.form.setValue("name", "My draft"));
     await act(async () => {
-      await result.current.handleSave({ name: "My draft", timezone: "UTC" });
+      await result.current.handleSave({
+        key: "support-hours",
+        name: "My draft",
+        timezone: "UTC",
+      });
     });
     expect(mocks.refetchCalendar).toHaveBeenCalledTimes(1);
     expect(mocks.previewRefetch).toHaveBeenCalledTimes(1);
@@ -152,6 +162,7 @@ describe("service calendar editor optimistic-concurrency recovery", () => {
     expect(result.current.calendarConflict).toBeNull();
     await act(async () => {
       await result.current.handleSave({
+        key: "support-hours",
         name: result.current.form.getValues("name"),
         timezone: "UTC",
       });
@@ -163,6 +174,7 @@ describe("service calendar editor optimistic-concurrency recovery", () => {
         data: expect.objectContaining({ name: "My draft" }),
       }),
     );
+    expect(mocks.mutateAsync.mock.calls[1]?.[0].data).not.toHaveProperty("key");
   });
 
   it("reloads the latest values when the user discards the draft", async () => {
@@ -179,7 +191,11 @@ describe("service calendar editor optimistic-concurrency recovery", () => {
     );
     act(() => result.current.form.setValue("name", "Draft"));
     await act(async () => {
-      await result.current.handleSave({ name: "Draft", timezone: "UTC" });
+      await result.current.handleSave({
+        key: "support-hours",
+        name: "Draft",
+        timezone: "UTC",
+      });
     });
     act(() => result.current.reloadLatest());
     expect(result.current.form.getValues("name")).toBe("Latest saved");
@@ -204,6 +220,7 @@ describe("service calendar editor optimistic-concurrency recovery", () => {
     let saving: Promise<void> | undefined;
     act(() => {
       saving = result.current.handleSave({
+        key: "support-hours",
         name: "Keep this draft",
         timezone: "UTC",
       });
@@ -256,6 +273,7 @@ describe("service calendar editor optimistic-concurrency recovery", () => {
     act(() => result.current.form.setValue("name", "Unsent draft"));
     await act(async () => {
       await result.current.handleSave({
+        key: "support-hours",
         name: "Unsent draft",
         timezone: "UTC",
       });
@@ -277,5 +295,36 @@ describe("service calendar editor optimistic-concurrency recovery", () => {
     act(() => result.current.reloadLatest());
     expect(result.current.form.getValues("name")).toBe("Fresh after retry");
     expect(result.current.calendarConflict).toBeNull();
+  });
+
+  it("requires a valid stable key on create and persists it only for creation", async () => {
+    const { result } = renderEditor(true);
+    await waitFor(() => expect(result.current.form).toBeDefined());
+
+    act(() => {
+      result.current.form.setValue("name", "Support hours");
+      result.current.form.setValue("timezone", "UTC");
+      result.current.form.setValue("key", "Invalid_Key");
+    });
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.handleSave)();
+    });
+    expect(mocks.createCalendar).not.toHaveBeenCalled();
+    expect(result.current.form.getFieldState("key").error?.message).toBe(
+      "details.stableKeyInvalid",
+    );
+
+    act(() => result.current.form.setValue("key", "support_hours"));
+    await act(async () => {
+      await result.current.form.handleSubmit(result.current.handleSave)();
+    });
+    expect(mocks.createCalendar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: "different-active-workspace",
+        key: "support_hours",
+        name: "Support hours",
+        timezone: "UTC",
+      }),
+    );
   });
 });

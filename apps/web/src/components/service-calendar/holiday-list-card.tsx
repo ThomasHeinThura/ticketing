@@ -10,6 +10,7 @@ import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HolidayFields } from "@/components/service-calendar/holiday-fields";
 import { HolidayImportPanel } from "@/components/service-calendar/holiday-import-panel";
+import { HolidayPresetPanel } from "@/components/service-calendar/holiday-preset-panel";
 import type { Holiday, ServiceCalendar } from "@/fetchers/service-calendar";
 
 export function HolidayListCard({
@@ -51,7 +52,10 @@ export function HolidayListCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {calendar && canImport ? (
-          <HolidayImportPanel calendar={calendar} onImported={onImported} />
+          <>
+            <HolidayPresetPanel calendar={calendar} onImported={onImported} />
+            <HolidayImportPanel calendar={calendar} onImported={onImported} />
+          </>
         ) : null}
         {holidays.length ? (
           holidays.map((holiday, index) => (

@@ -1,0 +1,43 @@
+{
+	"status": "passed",
+	"tlsVerification": "strict",
+	"fixture": "CCY-5",
+	"descriptionRestored": true,
+	"controlledCommentCreated": false,
+	"controlledCommentReused": true,
+	"commentUpdated": false,
+	"hostileRenderOutcome": "rendered_sanitized_or_inert",
+	"sanitizedRenderError": "none",
+	"commentData": {
+		"returnedAsDocument": true,
+		"containsMermaidCodeBlock": true,
+		"renderedCodeBlocks": 2,
+		"renderedPreviews": 2,
+		"renderedSvgs": 2,
+		"normalDiagramDone": true,
+		"renderedPreviewStates": ["done", "done"],
+		"codeLanguageClass": "language-mermaid",
+		"codeContainsFlowchart": true
+	},
+	"captures": [
+		"codex-20261025-mermaid-runtime-afterfix-task-light-375.png",
+		"codex-20261025-mermaid-runtime-afterfix-comment-light-375.png",
+		"codex-20261025-mermaid-runtime-afterfix-task-light-1440.png",
+		"codex-20261025-mermaid-runtime-afterfix-comment-light-1440.png",
+		"codex-20261025-mermaid-runtime-afterfix-task-dark-375.png",
+		"codex-20261025-mermaid-runtime-afterfix-comment-dark-375.png",
+		"codex-20261025-mermaid-runtime-afterfix-task-dark-1440.png",
+		"codex-20261025-mermaid-runtime-afterfix-comment-dark-1440.png"
+	],
+	"ordinaryDiagramRendered": true,
+	"unsafeDiagramRendered": true,
+	"unsafePayload": {
+		"javascriptHrefCount": 0,
+		"eventHandlerAttributeCount": 0,
+		"foreignObjectCount": 0,
+		"probeTextVisible": true,
+		"mathOutputVisible": false
+	},
+	"sanitizerBaseline": "SVG-only DOMPurify can strip MathML/foreignObject; math display is recorded without weakening sanitization.",
+	"errors": []
+}

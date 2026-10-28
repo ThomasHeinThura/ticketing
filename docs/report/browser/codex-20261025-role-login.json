@@ -1,0 +1,33 @@
+{
+	"method": "Real Chromium form login using additive audit users; credentials kept private; no bypass",
+	"results": [
+		{
+			"role": "owner",
+			"finalPath": "/agent",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nKnowledge base\nTimesheet\nReports\nDashboard\nService management\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nProjects\nCreate project\nTitle\tProgress\tDue date\tStatus\n\nCustomer Support Desk\n\t\nx\n7%\n\tOct 21, 2026\tIn progress",
+			"screenshot": "docs/report/screens/codex-20261025-owner-login.png"
+		},
+		{
+			"role": "lead",
+			"finalPath": "/agent",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nKnowledge base\nTimesheet\nReports\nDashboard\nService management\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nProjects\nCreate project\nTitle\tProgress\tDue date\tStatus\n\nCustomer Support Desk\n\t\nx\n7%\n\tOct 21, 2026\tIn progress",
+			"screenshot": "docs/report/screens/codex-20261025-lead-login.png"
+		},
+		{
+			"role": "member",
+			"finalPath": "/agent",
+			"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nKnowledge base\nTimesheet\nReports\nDashboard\nService management\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nTaskDesk Service Desk\nProjects\nCreate project\nTitle\tProgress\tDue date\tStatus\n\nCustomer Support Desk\n\t\nx\n7%\n\tOct 21, 2026\tIn progress",
+			"screenshot": "docs/report/screens/codex-20261025-member-login.png"
+		},
+		{
+			"role": "viewer",
+			"finalPath": "/auth/sign-in",
+			"body": "Welcome back\nEnter your credentials to access your workspace\nEmail\nPassword\nSign In\nDon't have an account? Create account",
+			"screenshot": "docs/report/screens/codex-20261025-viewer-login.png"
+		},
+		{
+			"role": "customer",
+			"error": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[type=password]')\u001b[22m\n"
+		}
+	]
+}

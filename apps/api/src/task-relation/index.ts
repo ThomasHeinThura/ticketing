@@ -11,13 +11,17 @@ import {
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
 import { assertWorkItemProjectReach } from "../utils/assert-work-item-project-reach";
 import { callerReach } from "../utils/caller-reach";
+import {
+  legacyDeletionGoneMessage,
+  legacyDeletionGoneMiddleware,
+  legacyDeletionGoneResponseHeaders,
+} from "../utils/legacy-deletion-gone";
 import { markReach } from "../utils/reach-mark";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createTaskRelation from "./controllers/create-task-relation";
-import deleteTaskRelation from "./controllers/delete-task-relation";
 import getTaskRelations from "./controllers/get-task-relations";
 import { findRelationEndpoints, findTaskReachRow } from "./repository";
 import {
@@ -29,6 +33,8 @@ import {
   taskIdParam,
   taskRelationParam,
 } from "./schema";
+
+const RELATION_DELETION_SUCCESSOR = "/api/work-items/{key}/relations/{id}";
 
 async function requestIdentity(
   c: Context<{ Variables: BaseVariables & { workspaceId: string } }>,
@@ -238,19 +244,27 @@ const deleteTaskRelationRoute = createRoute({
   operationId: "deleteTaskRelation",
   path: "/{id}",
   tags: ["Task Relations"],
-  summary: "Delete task relation",
-  description: "Remove a link between two tasks. Returns the deleted relation.",
+  deprecated: true,
+  summary: "Delete task relation (removed; 410)",
+  description:
+    "Removed. This route used to delete a relation immediately with no approval. It now answers 410 Gone (after the same reach and permission checks). Request deletion through DELETE /api/work-items/{key}/relations/{id}, which records a pending action.",
   middleware: [
+    legacyDeletionGoneMiddleware(RELATION_DELETION_SUCCESSOR),
     scopeToRelation,
     requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: { params: taskRelationParam },
   responses: {
-    200: jsonResponse("The deleted relation", taskRelationSchema),
     403: errorResponse("Missing work_item:update permission"),
     // #290 follow-up: an unreachable relation/source task now answers this same 404
     // as a nonexistent one, via `scopeToRelation`.
     404: errorResponse("Task relation not found, or its source task is gone"),
+    410: {
+      ...errorResponse(
+        "Removed: use DELETE /api/work-items/{key}/relations/{id}",
+      ),
+      headers: legacyDeletionGoneResponseHeaders(RELATION_DELETION_SUCCESSOR),
+    },
   },
 });
 
@@ -279,6 +293,7 @@ const taskRelation = apiRouter<BaseVariables & { workspaceId: string }>()
         targetTaskId,
         relationType,
         userId: c.get("userId"),
+        apiKeyId: c.get("apiKey")?.id,
         workspaceId: c.get("workspaceId"),
         canReachTarget: async (task) =>
           (await reach.reaches(task)) &&
@@ -287,15 +302,8 @@ const taskRelation = apiRouter<BaseVariables & { workspaceId: string }>()
       200,
     );
   })
-  .openapi(deleteTaskRelationRoute, async (c) =>
-    c.json(
-      await deleteTaskRelation(
-        await requestIdentity(c),
-        c.req.valid("param").id,
-        c.get("userId"),
-      ),
-      200,
-    ),
+  .openapi(deleteTaskRelationRoute, (c) =>
+    c.text(legacyDeletionGoneMessage(RELATION_DELETION_SUCCESSOR), 410),
   );
 
 export default taskRelation;

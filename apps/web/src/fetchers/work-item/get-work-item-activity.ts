@@ -14,6 +14,9 @@ export type WorkItemActivityRow = {
   visibility: string;
   workflowVersionId: string | null;
   createdAt: string;
+  /** `imported`: written by an import; `createdAt` is then the source time. */
+  origin?: string | null;
+  importedAt?: string | null;
   kind?: "activity" | "comment";
   body?: unknown;
   activityId?: string | null;
@@ -21,6 +24,10 @@ export type WorkItemActivityRow = {
   deletedAt?: string | null;
   deletedBy?: string | null;
   updatedAt?: string;
+  actorPersonId?: string | null;
+  actorDisplayName?: string | null;
+  canEdit?: boolean;
+  canDelete?: boolean;
 };
 
 export type WorkItemActivityPage = {
@@ -31,13 +38,19 @@ export type WorkItemActivityPage = {
 async function getWorkItemActivity({
   key,
   cursor,
+  comment,
 }: {
   key: string;
   cursor?: string;
+  comment?: string;
 }): Promise<WorkItemActivityPage> {
   const response = await client["work-items"][":key"].activity.$get({
     param: { key },
-    query: { limit: "50", ...(cursor ? { cursor } : {}) },
+    query: {
+      limit: "50",
+      ...(cursor ? { cursor } : {}),
+      ...(comment ? { comment } : {}),
+    },
   });
   if (!response.ok) {
     throw new HttpError(response.status, "Failed to fetch work item activity");

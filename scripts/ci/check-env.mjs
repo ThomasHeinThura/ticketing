@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
  * check:env — every environment read is attributable to an approved entry in
- * docs/05-operations/configuration-reference.md.
+ * docs/technical/configuration.md.
  *
  * AGENTS.md rule 2: environment variables are for bootstrap only, five required and a
- * handful of optional operational switches, "all listed in configuration-reference.md and
+ * handful of optional operational switches, "all listed in docs/technical/configuration.md and
  * nowhere else — check:env fails the build on any other process.env read."
  *
  * This is not a grep. See lib/env-reads.mjs for what it detects and why a grep is not
  * enough. Three outcomes per environment access:
  *
- *   approved        — a literal name that configuration-reference.md lists for this surface
+ *   approved        — a literal name that docs/technical/configuration.md lists for this surface
  *   unapproved      — a literal name it does not list
  *   unattributable  — the name cannot be resolved at all: process.env[name], a lookup
  *                     table, or an alias such as `env: SmtpEnv = process.env`
@@ -300,15 +300,15 @@ async function main() {
           `\`${name}\` is baselined as inherited debt, but only in ` +
             `${[...exemptFiles].join(", ")}. A baselined name is NOT exempt repo-wide — ` +
             "a new read of it elsewhere is new debt. Add it to " +
-            "docs/05-operations/configuration-reference.md, or use runtime configuration.",
+            "docs/technical/configuration.md, or use runtime configuration.",
         ),
       );
       continue;
     }
     const compose = reference.notReadByApplication.get(name);
     const why = compose
-      ? `\`${name}\` is listed in configuration-reference.md as NOT read by the application (${compose}). Application code must not read it.`
-      : `\`${name}\` is not in docs/05-operations/configuration-reference.md. Add it there first, in the same change, or use runtime configuration (God Mode) instead — see AGENTS.md rule 2.`;
+      ? `\`${name}\` is listed in docs/technical/configuration.md as NOT read by the application (${compose}). Application code must not read it.`
+      : `\`${name}\` is not in docs/technical/configuration.md. Add it there first, in the same change, or use runtime configuration (God Mode) instead — see AGENTS.md rule 2.`;
     failures.push(violation(locations.join("\n  "), why));
   }
 
@@ -382,7 +382,7 @@ async function main() {
       violation(
         file,
         "unattributable environment read — the variable name cannot be resolved to a " +
-          "string literal, so it cannot be checked against configuration-reference.md. " +
+          "string literal, so it cannot be checked against docs/technical/configuration.md. " +
           `Read a literal name, or route the read through a central configuration module.\n      ${detail}`,
       ),
     );
@@ -491,7 +491,7 @@ async function main() {
     name: NAME,
     failures,
     warnings,
-    ok: `${approvedReads.length} environment read(s), every one attributable to configuration-reference.md`,
+    ok: `${approvedReads.length} environment read(s), every one attributable to docs/technical/configuration.md`,
   });
 }
 

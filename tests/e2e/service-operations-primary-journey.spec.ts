@@ -9,6 +9,7 @@ import {
   type MfaCsrfAppFixture,
   withMfaCsrfApp,
 } from "./helpers/mfa-csrf-app-fixture";
+import { uniqueProjectKey } from "./helpers/project-key";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const webRequire = createRequire(resolve(repoRoot, "apps/web/package.json"));
@@ -184,7 +185,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         name: "Service Operations Queue",
         workspaceId,
         icon: "Folder",
-        slug: `service-ops-${randomUUID().slice(0, 8)}`,
+        slug: uniqueProjectKey(),
       },
     );
     const project = await bodyAt(projectResponse, 200);

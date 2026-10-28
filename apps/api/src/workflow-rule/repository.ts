@@ -1,7 +1,8 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, exists, sql } from "drizzle-orm";
+import { and, asc, eq, exists, sql } from "drizzle-orm";
 import db from "../database";
+import type { Executor } from "../database/executor";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
 import {
   columnTable,
@@ -14,9 +15,13 @@ export type NewWorkflowRule = Pick<
   "projectId" | "integrationType" | "eventType" | "columnId"
 >;
 
-function reachableProject(identity: ResolvedIdentity, projectId: string) {
+function reachableProject(
+  identity: ResolvedIdentity,
+  projectId: string,
+  executor: Executor = db,
+) {
   return exists(
-    db
+    executor
       .select({ one: sql`1` })
       .from(projectTable)
       .where(
@@ -28,16 +33,16 @@ function reachableProject(identity: ResolvedIdentity, projectId: string) {
             projectTable.id,
             projectTable.workspaceId,
             projectTable.organisationId,
-            db,
+            executor,
           ),
         ),
       ),
   );
 }
 
-function reachableRule(identity: ResolvedIdentity) {
+function reachableRule(identity: ResolvedIdentity, executor: Executor = db) {
   return exists(
-    db
+    executor
       .select({ one: sql`1` })
       .from(projectTable)
       .where(
@@ -49,11 +54,33 @@ function reachableRule(identity: ResolvedIdentity) {
             projectTable.id,
             projectTable.workspaceId,
             projectTable.organisationId,
-            db,
+            executor,
           ),
         ),
       ),
   );
+}
+
+/** A rule write shares the project row with deletion's exclusive project-scope fence. */
+async function lockProjectForRuleWrite(
+  tx: Executor,
+  identity: ResolvedIdentity,
+  projectId: string,
+) {
+  const [project] = await tx
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        sql`${projectTable.deletedAt} IS NULL`,
+        reachableProject(identity, projectId, tx),
+      ),
+    )
+    .orderBy(asc(projectTable.id))
+    .for("share")
+    .limit(1);
+  return project;
 }
 
 export async function findWorkflowRuleById(
@@ -72,11 +99,21 @@ export async function deleteWorkflowRuleById(
   identity: ResolvedIdentity,
   id: string,
 ) {
-  const [deleted] = await db
-    .delete(workflowRuleTable)
-    .where(and(eq(workflowRuleTable.id, id), reachableRule(identity)))
-    .returning();
-  return deleted;
+  return db.transaction(async (tx) => {
+    const [anchor] = await tx
+      .select({ projectId: workflowRuleTable.projectId })
+      .from(workflowRuleTable)
+      .where(and(eq(workflowRuleTable.id, id), reachableRule(identity, tx)))
+      .limit(1);
+    if (!anchor) return undefined;
+    if (!(await lockProjectForRuleWrite(tx, identity, anchor.projectId)))
+      return undefined;
+    const [deleted] = await tx
+      .delete(workflowRuleTable)
+      .where(and(eq(workflowRuleTable.id, id), reachableRule(identity, tx)))
+      .returning();
+    return deleted;
+  });
 }
 
 export async function listWorkflowRulesWithColumn(
@@ -151,77 +188,85 @@ export async function updateWorkflowRuleColumn(
   projectId: string,
   columnId: string,
 ) {
-  const [updated] = await db
-    .update(workflowRuleTable)
-    .set({ columnId })
-    .where(
-      and(
-        eq(workflowRuleTable.id, id),
-        eq(workflowRuleTable.projectId, projectId),
-        reachableProject(identity, projectId),
-        exists(
-          db
-            .select({ one: sql`1` })
-            .from(columnTable)
-            .where(
-              and(
-                eq(columnTable.id, columnId),
-                eq(columnTable.projectId, projectId),
+  return db.transaction(async (tx) => {
+    if (!(await lockProjectForRuleWrite(tx, identity, projectId)))
+      return undefined;
+    const [updated] = await tx
+      .update(workflowRuleTable)
+      .set({ columnId })
+      .where(
+        and(
+          eq(workflowRuleTable.id, id),
+          eq(workflowRuleTable.projectId, projectId),
+          reachableProject(identity, projectId, tx),
+          exists(
+            tx
+              .select({ one: sql`1` })
+              .from(columnTable)
+              .where(
+                and(
+                  eq(columnTable.id, columnId),
+                  eq(columnTable.projectId, projectId),
+                ),
               ),
-            ),
+          ),
         ),
-      ),
-    )
-    .returning();
-  return updated;
+      )
+      .returning();
+    return updated;
+  });
 }
 
 export async function insertWorkflowRule(
   identity: ResolvedIdentity,
   values: NewWorkflowRule,
 ) {
-  const [created] = await db
-    .insert(workflowRuleTable)
-    .select(
-      db
-        .select({
-          id: sql`${createId()}`.as("id"),
-          projectId: projectTable.id,
-          integrationType:
-            sql`${sql.param(values.integrationType, workflowRuleTable.integrationType)}`.as(
-              "integration_type",
+  return db.transaction(async (tx) => {
+    if (!(await lockProjectForRuleWrite(tx, identity, values.projectId)))
+      return undefined;
+    const [created] = await tx
+      .insert(workflowRuleTable)
+      .select(
+        tx
+          .select({
+            id: sql`${createId()}`.as("id"),
+            projectId: projectTable.id,
+            integrationType:
+              sql`${sql.param(values.integrationType, workflowRuleTable.integrationType)}`.as(
+                "integration_type",
+              ),
+            eventType:
+              sql`${sql.param(values.eventType, workflowRuleTable.eventType)}`.as(
+                "event_type",
+              ),
+            columnId: columnTable.id,
+            createdAt: sql`now()`.as("created_at"),
+            updatedAt: sql`now()`.as("updated_at"),
+          })
+          .from(projectTable)
+          .innerJoin(
+            columnTable,
+            and(
+              eq(columnTable.projectId, projectTable.id),
+              eq(columnTable.id, values.columnId),
             ),
-          eventType:
-            sql`${sql.param(values.eventType, workflowRuleTable.eventType)}`.as(
-              "event_type",
+          )
+          .where(
+            and(
+              eq(projectTable.id, values.projectId),
+              sql`${projectTable.deletedAt} IS NULL`,
+              currentProjectReachPredicate(
+                identity,
+                projectTable.id,
+                projectTable.workspaceId,
+                projectTable.organisationId,
+                tx,
+              ),
             ),
-          columnId: columnTable.id,
-          createdAt: sql`now()`.as("created_at"),
-          updatedAt: sql`now()`.as("updated_at"),
-        })
-        .from(projectTable)
-        .innerJoin(
-          columnTable,
-          and(
-            eq(columnTable.projectId, projectTable.id),
-            eq(columnTable.id, values.columnId),
-          ),
-        )
-        .where(
-          and(
-            eq(projectTable.id, values.projectId),
-            sql`${projectTable.deletedAt} IS NULL`,
-            currentProjectReachPredicate(
-              identity,
-              projectTable.id,
-              projectTable.workspaceId,
-              projectTable.organisationId,
-              db,
-            ),
-          ),
-        )
-        .limit(1),
-    )
-    .returning();
-  return created;
+          )
+          .limit(1),
+      )
+      .returning();
+    return created;
+  });
 }

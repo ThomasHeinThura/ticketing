@@ -30,7 +30,22 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   // as CA-2's default comment visibility. Never inferred from `manageProjects`/`updateProjects`,
   // which follow the broader legacy statement (#708).
   manageProjectSettings?: boolean;
+  // Strict per-area settings capabilities (workspace:manage_roles, webhook:manage,
+  // custom_field:manage), exactly what each settings API enforces. Optional so an older server
+  // fails closed; never inferred from `manageWorkspaceSettings`.
+  manageRoles?: boolean;
+  manageWebhooks?: boolean;
+  manageCustomFields?: boolean;
   manageLabels?: boolean;
+  // Strict time_entry:manage_rates, workflow:manage and budget:read: what the Rates, Workflows
+  // (CAB template) and project Budget APIs enforce. Optional so an older server fails closed.
+  manageRates?: boolean;
+  manageWorkflows?: boolean;
+  readBudgets?: boolean;
+  // Strict time_entry:create: gates the Timesheet entry and the work item Time section.
+  logTime?: boolean;
+  createAttachments?: boolean;
+  triageIntake?: boolean;
 };
 
 // Mirrors apps/api/src/capabilities/response.ts's capabilitiesResponseSchema
@@ -122,6 +137,7 @@ export function useWorkspacePermission(
       canDeleteProjects: () => can.deleteProjects,
       canUpdateTasks: () => can.updateTasks,
       canCreateTasks: () => can.createTasks,
+      canCreateAttachments: () => can.createAttachments === true,
       canDeleteTasks: () => can.deleteTasks,
       canAssignTasks: () => can.assignTasks,
       canManageLabels: () => can.manageLabels === true,
@@ -135,6 +151,7 @@ export function useWorkspacePermission(
       canRemoveMembers: () => can.removeMembers,
       canManageServiceCalendars: () => can.manageServiceCalendars,
       canShareSavedViews: () => can.shareSavedViews,
+      canTriageIntake: () => can.triageIntake === true,
       canManageWorkspaceSettings: () => can.manageWorkspaceSettings,
       canCreatePublicComments: () => can.createPublicComments === true,
       canCreateInternalComments: () => can.createInternalComments === true,
@@ -143,6 +160,13 @@ export function useWorkspacePermission(
       canExportTasks: () => can.exportTasks === true,
       canSetPriorityTasks: () => can.setPriorityTasks === true,
       canManageProjectSettings: () => can.manageProjectSettings === true,
+      canManageRoles: () => can.manageRoles === true,
+      canManageWebhooks: () => can.manageWebhooks === true,
+      canManageCustomFields: () => can.manageCustomFields === true,
+      canManageRates: () => can.manageRates === true,
+      canManageWorkflows: () => can.manageWorkflows === true,
+      canReadBudgets: () => can.readBudgets === true,
+      canLogTime: () => can.logTime === true,
       canBindProjectOrganisation: () => can.bindProjectOrganisation === true,
     };
   }, [can]);

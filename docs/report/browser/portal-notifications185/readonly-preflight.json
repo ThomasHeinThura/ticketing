@@ -1,0 +1,167 @@
+{
+	"method": "strict HTTPS Chromium with existing authenticated customer portal session",
+	"pageStatus": 200,
+	"finalPath": "/notifications",
+	"title": "TaskDesk Customer Portal",
+	"text": "navigation.title\nnavigation.home\nnavigation.catalogue\nnavigation.requests\nnavigation.approvals\nnavigation.account\nnavigation.signOut\na11y.toggleSidebar\nnavigation.title\n/\nnotifications.title\n3\nnotifications.title\n\nnotifications.unreadCount\n\nnotifications.markAllRead\nnotifications.filterAll\nnotifications.filterUnread\nnotifications.filterMentions\nnotifications.events.transition\n10/25/2026, 10:58:40 PM\nnotifications.markRead\n\nnotifications.requestReference\n\nnotifications.events.transition\n10/25/2026, 10:58:37 PM\nnotifications.markRead\n\nnotifications.requestReference\n\nnotifications.events.comment\n10/25/2026, 1:24:38 PM\nnotifications.markRead\n\nnotifications.requestReference",
+	"links": [
+		{
+			"text": "navigation.title",
+			"href": "/"
+		},
+		{
+			"text": "navigation.home",
+			"href": "/"
+		},
+		{
+			"text": "navigation.catalogue",
+			"href": "/catalogue"
+		},
+		{
+			"text": "navigation.requests",
+			"href": "/requests"
+		},
+		{
+			"text": "navigation.approvals",
+			"href": "/approvals"
+		},
+		{
+			"text": "navigation.account",
+			"href": "/account"
+		},
+		{
+			"text": "navigation.title",
+			"href": "/"
+		},
+		{
+			"text": "notifications.events.transition",
+			"href": "/submissions/SUB-6"
+		},
+		{
+			"text": "notifications.events.transition",
+			"href": "/submissions/SUB-5"
+		},
+		{
+			"text": "notifications.events.comment",
+			"href": "/submissions/SUB-3#comment-j2g7w4pif7ol37gwwdi4ypq1"
+		}
+	],
+	"buttons": [
+		{
+			"text": "navigation.signOut",
+			"label": null,
+			"title": ""
+		},
+		{
+			"text": "a11y.toggleSidebar",
+			"label": null,
+			"title": ""
+		},
+		{
+			"text": "3",
+			"label": "notifications.inbox",
+			"title": ""
+		},
+		{
+			"text": "notifications.markAllRead",
+			"label": null,
+			"title": ""
+		},
+		{
+			"text": "notifications.filterAll",
+			"label": null,
+			"title": ""
+		},
+		{
+			"text": "notifications.filterUnread",
+			"label": null,
+			"title": ""
+		},
+		{
+			"text": "notifications.filterMentions",
+			"label": null,
+			"title": ""
+		},
+		{
+			"text": "notifications.markRead",
+			"label": null,
+			"title": ""
+		},
+		{
+			"text": "notifications.markRead",
+			"label": null,
+			"title": ""
+		},
+		{
+			"text": "notifications.markRead",
+			"label": null,
+			"title": ""
+		}
+	],
+	"overflow": false,
+	"inbox": {
+		"status": 200,
+		"unreadCount": 3,
+		"hasMore": false,
+		"rowCount": 3,
+		"rows": [
+			{
+				"kind": "work_item.transitioned",
+				"isRead": false,
+				"requestRef": "SUB-6",
+				"commentId": null
+			},
+			{
+				"kind": "work_item.transitioned",
+				"isRead": false,
+				"requestRef": "SUB-5",
+				"commentId": null
+			},
+			{
+				"kind": "work_item.commented",
+				"isRead": false,
+				"requestRef": "SUB-3",
+				"commentId": "j2g7w4pif7ol37gwwdi4ypq1"
+			}
+		]
+	},
+	"api": [
+		{
+			"method": "GET",
+			"path": "/api/public/terminology",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/auth/get-session",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/portal/notification/inbox",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/portal/releases",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/portal/kb",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/portal/notification/inbox",
+			"status": 200
+		},
+		{
+			"method": "GET",
+			"path": "/api/portal/notification/inbox",
+			"status": 200
+		}
+	],
+	"errors": [],
+	"expectedRouteAndData": true
+}

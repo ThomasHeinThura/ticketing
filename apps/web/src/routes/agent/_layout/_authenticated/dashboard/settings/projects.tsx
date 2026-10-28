@@ -37,20 +37,33 @@ function RouteComponent() {
   const { t } = useTranslation();
   const projectLabelId = useId();
   const projectValueId = useId();
-  const { workspace, role } = useWorkspacePermission();
+  const { workspace, role, canManageProjectSettings, canReadBudgets } =
+    useWorkspacePermission();
   const location = useLocation();
   const navigate = useNavigate();
-  const menuItems = getProjectSettingsMenuItems(t);
+  const selectedProjectMatch = location.pathname.match(
+    /^\/dashboard\/settings\/projects\/([^/]+)\//,
+  );
+  const selectedProjectId = selectedProjectMatch?.[1] || "";
+  // The budget API is project-scoped, so the Budget entry follows the selected project's own
+  // capabilities (grants and ancestors) once a project is chosen; the workspace read is the
+  // fallback until then.
+  const projectAccess = useWorkspacePermission(
+    selectedProjectId ? workspace?.id : undefined,
+    selectedProjectId || undefined,
+  );
+  const menuItems = getProjectSettingsMenuItems(t, {
+    canManageProjectSettings: canManageProjectSettings(),
+    canReadBudgets: selectedProjectId
+      ? projectAccess.canReadBudgets()
+      : canReadBudgets(),
+  });
   const { data: projects } = useGetProjects({
     workspaceId: workspace?.id || "",
   });
 
   const workspaceInitials = getInitials(workspace?.name, "WS");
 
-  const selectedProjectMatch = location.pathname.match(
-    /^\/dashboard\/settings\/projects\/([^/]+)\//,
-  );
-  const selectedProjectId = selectedProjectMatch?.[1] || "";
   const selectedSegment =
     location.pathname.match(
       /^\/dashboard\/settings\/projects\/[^/]+\/([^/]+)/,

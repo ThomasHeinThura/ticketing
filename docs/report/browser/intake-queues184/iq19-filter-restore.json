@@ -1,0 +1,20 @@
+{
+	"method": "normal edit dialog with explicit state=new URL override; strict HTTPS",
+	"patchStatus": 200,
+	"hydrationMs": 53,
+	"namePreserved": true,
+	"submissionFilter": {
+		"state": "new",
+		"assignee": "unclaimed"
+	},
+	"workItemFilter": {
+		"op": "eq",
+		"field": "state.group",
+		"value": "backlog"
+	},
+	"versions": {
+		"submission": 12,
+		"workItem": 12
+	},
+	"restored": true
+}

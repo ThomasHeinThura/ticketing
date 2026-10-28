@@ -1,0 +1,309 @@
+{
+	"date": "2026-10-25T02:30:34.163Z",
+	"outcome": "passed",
+	"method": "Strict-TLS Chromium against persisted local SIT with the approved private admin and customer states. All mutations used the TaskDesk UI; reads used same-origin browser fetch.",
+	"serviceId": "vw4k21ae6s9gt1a1jzdxr25q",
+	"releaseId": "vendh1lx308zhyz31e2qcjwx",
+	"workspaceId": "ws-taskdesk-sit",
+	"checks": [
+		{
+			"name": "admin active workspace is service workspace",
+			"passed": true
+		},
+		{
+			"name": "captured original workspace service-catalogue flag state",
+			"passed": true,
+			"enabled": true,
+			"source": "instance",
+			"override": null
+		},
+		{
+			"name": "existing HELP project matches customer organisation",
+			"passed": true,
+			"id": "proj-help-sit"
+		},
+		{
+			"name": "owned service already links to customer-reachable project",
+			"passed": true,
+			"projectId": "proj-help-sit"
+		},
+		{
+			"name": "release service/customer reach",
+			"projectId": "proj-help-sit",
+			"projectSlug": "HELP",
+			"createdProject": false,
+			"passed": true
+		},
+		{
+			"name": "unpublished release absent from customer list and detail is 404",
+			"passed": true
+		},
+		{
+			"name": "REL-5 publication is off before the publish action",
+			"passed": true
+		},
+		{
+			"name": "release notes saved and persisted before publication",
+			"passed": true
+		},
+		{
+			"name": "released+portal enabled creates a frozen publication snapshot",
+			"passed": true,
+			"publishedAt": "2026-10-25T02:28:51.484Z"
+		},
+		{
+			"name": "customer portal list/detail exposes published snapshot for matched organisation",
+			"passed": true
+		},
+		{
+			"name": "published customer snapshot stays stable after release-name edit",
+			"passed": true
+		},
+		{
+			"name": "portal navigation, detail and reload render persisted snapshot",
+			"passed": true
+		},
+		{
+			"name": "portal list/detail responsive layout",
+			"width": 390,
+			"theme": "light",
+			"passed": true,
+			"axeAvailable": false
+		},
+		{
+			"name": "portal list/detail responsive layout",
+			"width": 390,
+			"theme": "dark",
+			"passed": true,
+			"axeAvailable": false
+		},
+		{
+			"name": "portal list/detail responsive layout",
+			"width": 768,
+			"theme": "light",
+			"passed": true,
+			"axeAvailable": false
+		},
+		{
+			"name": "portal list/detail responsive layout",
+			"width": 768,
+			"theme": "dark",
+			"passed": true,
+			"axeAvailable": false
+		},
+		{
+			"name": "portal list/detail responsive layout",
+			"width": 1440,
+			"theme": "light",
+			"passed": true,
+			"axeAvailable": false
+		},
+		{
+			"name": "portal list/detail responsive layout",
+			"width": 1440,
+			"theme": "dark",
+			"passed": true,
+			"axeAvailable": false
+		},
+		{
+			"name": "workspace feature off denies published portal release and hides portal UI entry",
+			"passed": true
+		},
+		{
+			"name": "workspace feature on restores published portal release",
+			"passed": true
+		},
+		{
+			"name": "workspace feature off denies published portal release and hides portal UI entry",
+			"passed": true
+		},
+		{
+			"name": "workspace feature on restores published portal release",
+			"passed": true
+		},
+		{
+			"name": "workspace service-catalogue override restored to original inherited state",
+			"passed": true,
+			"enabled": true,
+			"override": null,
+			"source": "instance"
+		},
+		{
+			"name": "owned release unpublished after the feature gate journey",
+			"passed": true
+		},
+		{
+			"name": "unpublished customer detail returns 404 and list omits the release",
+			"passed": true
+		}
+	],
+	"screenshots": [
+		{
+			"route": "list",
+			"width": 390,
+			"theme": "light",
+			"path": "docs/report/screens/codex-20261025-release-portal-list-390-light.png",
+			"horizontalOverflow": false,
+			"readiness": "sidebar opened and Home and Release notes verified, closed before capture; fonts and two animation frames settled"
+		},
+		{
+			"route": "detail",
+			"width": 390,
+			"theme": "light",
+			"path": "docs/report/screens/codex-20261025-release-portal-detail-390-light.png",
+			"horizontalOverflow": false,
+			"readiness": "sidebar opened and Home and Release notes verified, closed before capture; fonts and two animation frames settled"
+		},
+		{
+			"route": "list",
+			"width": 390,
+			"theme": "dark",
+			"path": "docs/report/screens/codex-20261025-release-portal-list-390-dark.png",
+			"horizontalOverflow": false,
+			"readiness": "sidebar opened and Home and Release notes verified, closed before capture; fonts and two animation frames settled"
+		},
+		{
+			"route": "detail",
+			"width": 390,
+			"theme": "dark",
+			"path": "docs/report/screens/codex-20261025-release-portal-detail-390-dark.png",
+			"horizontalOverflow": false,
+			"readiness": "sidebar opened and Home and Release notes verified, closed before capture; fonts and two animation frames settled"
+		},
+		{
+			"route": "list",
+			"width": 768,
+			"theme": "light",
+			"path": "docs/report/screens/codex-20261025-release-portal-list-768-light.png",
+			"horizontalOverflow": false,
+			"readiness": "Home and Release notes sidebar links visible; fonts and two animation frames settled"
+		},
+		{
+			"route": "detail",
+			"width": 768,
+			"theme": "light",
+			"path": "docs/report/screens/codex-20261025-release-portal-detail-768-light.png",
+			"horizontalOverflow": false,
+			"readiness": "Home and Release notes sidebar links visible; fonts and two animation frames settled"
+		},
+		{
+			"route": "list",
+			"width": 768,
+			"theme": "dark",
+			"path": "docs/report/screens/codex-20261025-release-portal-list-768-dark.png",
+			"horizontalOverflow": false,
+			"readiness": "Home and Release notes sidebar links visible; fonts and two animation frames settled"
+		},
+		{
+			"route": "detail",
+			"width": 768,
+			"theme": "dark",
+			"path": "docs/report/screens/codex-20261025-release-portal-detail-768-dark.png",
+			"horizontalOverflow": false,
+			"readiness": "Home and Release notes sidebar links visible; fonts and two animation frames settled"
+		},
+		{
+			"route": "list",
+			"width": 1440,
+			"theme": "light",
+			"path": "docs/report/screens/codex-20261025-release-portal-list-1440-light.png",
+			"horizontalOverflow": false,
+			"readiness": "Home and Release notes sidebar links visible; fonts and two animation frames settled"
+		},
+		{
+			"route": "detail",
+			"width": 1440,
+			"theme": "light",
+			"path": "docs/report/screens/codex-20261025-release-portal-detail-1440-light.png",
+			"horizontalOverflow": false,
+			"readiness": "Home and Release notes sidebar links visible; fonts and two animation frames settled"
+		},
+		{
+			"route": "list",
+			"width": 1440,
+			"theme": "dark",
+			"path": "docs/report/screens/codex-20261025-release-portal-list-1440-dark.png",
+			"horizontalOverflow": false,
+			"readiness": "Home and Release notes sidebar links visible; fonts and two animation frames settled"
+		},
+		{
+			"route": "detail",
+			"width": 1440,
+			"theme": "dark",
+			"path": "docs/report/screens/codex-20261025-release-portal-detail-1440-dark.png",
+			"horizontalOverflow": false,
+			"readiness": "Home and Release notes sidebar links visible; fonts and two animation frames settled"
+		}
+	],
+	"errors": [],
+	"expectedDiagnostics": [
+		"Portal detail returned the expected 404 while unpublished.",
+		"Portal detail returned the expected 404 while feature.service_catalogue was off. No page errors or HTTP 5xx responses were observed."
+	],
+	"writes": [
+		{
+			"role": "agent",
+			"method": "POST",
+			"path": "/api/releases/vendh1lx308zhyz31e2qcjwx/notes"
+		},
+		{
+			"role": "agent",
+			"method": "PATCH",
+			"path": "/api/releases/vendh1lx308zhyz31e2qcjwx",
+			"releaseInput": {
+				"hasName": false
+			}
+		},
+		{
+			"role": "agent",
+			"method": "PATCH",
+			"path": "/api/releases/vendh1lx308zhyz31e2qcjwx",
+			"releaseInput": {
+				"hasName": false
+			}
+		},
+		{
+			"role": "agent",
+			"method": "PATCH",
+			"path": "/api/workspaces/ws-taskdesk-sit/features"
+		},
+		{
+			"role": "agent",
+			"method": "PATCH",
+			"path": "/api/workspaces/ws-taskdesk-sit/features"
+		},
+		{
+			"role": "agent",
+			"method": "PATCH",
+			"path": "/api/workspaces/ws-taskdesk-sit/features",
+			"purpose": "restore original inherited value through workspace settings UI"
+		},
+		{
+			"role": "agent",
+			"method": "PATCH",
+			"path": "/api/releases/vendh1lx308zhyz31e2qcjwx",
+			"purpose": "unpublish assigned release through agent UI"
+		}
+	],
+	"scopeNotes": {
+		"serviceReach": "Read-only API responses confirmed the customer organisation matches the existing HELP project. The assigned service was linked to HELP through the agent UI; no project organisation or settings changed.",
+		"fixtures": "Only the assigned P5 service/release fixtures were changed. Release notes were edited, released/published for the checks, name edited after publication to verify snapshot stability, then unpublished. The workspace feature override was restored to its original inherited state.",
+		"screenshots": "Published list and detail screens cover 390, 768 and 1440 widths in light and dark themes using user-preferences state. All recorded layouts have no horizontal overflow.",
+		"axe": "No axe browser runtime was available; visual/semantic checks used Playwright accessible roles and headings."
+	},
+	"cleanupAfterRecapture": {
+		"attempted": true,
+		"verified": true
+	},
+	"screenshotReadinessAttempt": {
+		"capturedAt": "2026-10-25T02:47:23.452Z",
+		"capturedCount": 0,
+		"error": "Capture stopped before all 12 screenshots; previous screenshot evidence retained."
+	},
+	"screenshotReadiness": {
+		"capturedAt": "2026-10-25T02:48:01.323Z",
+		"detail": "Screenshots were recaptured on persisted SIT after waiting for the customer portal sidebar. At widths 768 and 1440, both Home and Release notes sidebar links were visible before capture. At width 390, the sidebar was opened and both links verified, then closed before capture. Fonts and two animation frames settled before each screenshot.",
+		"portalReleaseId": "vendh1lx308zhyz31e2qcjwx",
+		"featureFlagRepeated": false
+	}
+}

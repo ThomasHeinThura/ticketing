@@ -1,97 +1,65 @@
 /**
- * Structural guard for the open N2 forward item (docs/07-planning/migration-ledger.md,
- * "Open forward items after 0120").
- *
- * `custom_field_type_visibility` and `custom_field_value` carry no `workspace_id`, so the
- * database cannot stop a cross-tenant reference on them. They are inert until a runtime
- * writes them. (`approval` was anchored by migration 0120 and is no longer guarded.) This test fails as soon as any file under
- * `apps/api/src` other than the two schema declaration files references one of them, so
- * the tenant-anchoring work cannot be skipped by a runtime slice that just starts using
- * the tables.
+ * N2 forward item (formerly "open forward items after 0120"): `custom_field_type_visibility` and
+ * `custom_field_value` carried no `workspace_id`, so the database could not stop a cross-tenant
+ * reference. They were kept out of runtime code until anchored. Migration 0139 anchors both: this
+ * test now guards the anchor itself (column NOT NULL, composite same-workspace foreign keys to the
+ * field, and to the work item type / work item / project they reference), and it is why runtime
+ * code may use the tables.
  */
-import {
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const SRC = fileURLToPath(new URL("../../../apps/api/src", import.meta.url));
-const ALLOWED = new Set(["database/schema.ts", "database/migration-schema.ts"]);
+const read = (relative: string) =>
+  readFileSync(fileURLToPath(new URL(relative, import.meta.url)), "utf8");
 
-const REFERENCE =
-  /\b(customFieldTypeVisibility(Table)?|customFieldValue(Table)?|custom_field_type_visibility|custom_field_value)\b/i;
+const MIGRATION = read(
+  "../../../apps/api/drizzle/0139_custom_field_tenant_anchor.sql",
+);
+const DECLARATIONS = read("../../../apps/api/src/database/migration-schema.ts");
 
-export function findUnanchoredTableReferences(root: string): string[] {
-  const hits: string[] = [];
-  const walk = (dir: string) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name !== "node_modules") walk(full);
-        continue;
-      }
-      if (!/\.(ts|tsx|mts|js|mjs|sql)$/.test(entry.name)) continue;
-      const rel = relative(root, full).split("\\").join("/");
-      if (ALLOWED.has(rel)) continue;
-      if (REFERENCE.test(readFileSync(full, "utf8"))) hits.push(rel);
+describe("N2 forward item: custom field tables are tenant anchored (0139)", () => {
+  it("adds a backfilled NOT NULL workspace_id to both tables", () => {
+    for (const table of [
+      "custom_field_type_visibility",
+      "custom_field_value",
+    ]) {
+      expect(MIGRATION).toContain(
+        `ALTER TABLE "${table}" ADD COLUMN "workspace_id" text`,
+      );
+      expect(MIGRATION).toContain(
+        `ALTER TABLE "${table}" ALTER COLUMN "workspace_id" SET NOT NULL`,
+      );
+      expect(MIGRATION).toMatch(
+        new RegExp(`UPDATE "${table}" SET "workspace_id"`),
+      );
     }
-  };
-  walk(root);
-  return hits.sort();
-}
-
-const GUIDANCE =
-  "custom_field_type_visibility and custom_field_value have no workspace_id and no tenant-composite FK. " +
-  'Do not reference them from runtime code until they are anchored: see "Open forward items after 0120" in docs/07-planning/migration-ledger.md.';
-
-describe("N2 forward item: unanchored tables are not used by runtime code", () => {
-  it("no file under apps/api/src references them outside the schema declarations", () => {
-    const hits = findUnanchoredTableReferences(SRC);
-    expect(hits, `${GUIDANCE}\nReferenced from: ${hits.join(", ")}`).toEqual(
-      [],
-    );
   });
 
-  it("is non-vacuous: a reference added to a temp copy is detected, schema files are exempt", () => {
-    const root = mkdtempSync(join(tmpdir(), "n2-guard-"));
-    try {
-      mkdirSync(join(root, "database"), { recursive: true });
-      mkdirSync(join(root, "feature"), { recursive: true });
-      writeFileSync(
-        join(root, "database", "schema.ts"),
-        "export const customFieldValueTable = 1;\n",
+  it("pins every reference to the same workspace with composite foreign keys", () => {
+    for (const constraint of [
+      "custom_field_type_visibility_workspace_field_fk",
+      "custom_field_type_visibility_workspace_type_fk",
+      "custom_field_value_workspace_field_fk",
+      "custom_field_value_workspace_work_item_fk",
+      "custom_field_value_workspace_project_fk",
+    ]) {
+      expect(MIGRATION).toContain(
+        `ADD CONSTRAINT "${constraint}" FOREIGN KEY ("workspace_id"`,
       );
-      writeFileSync(
-        join(root, "feature", "ok.ts"),
-        '// custom field gates are described here\nexport const a = 1;\nconst approvalTable = 1;\nconst q = "insert into approval (id) values (1)";\n',
-      );
-      expect(findUnanchoredTableReferences(root)).toEqual([]);
-      writeFileSync(
-        join(root, "feature", "bad.ts"),
-        'import { customFieldValueTable } from "../database/schema";\n',
-      );
-      writeFileSync(
-        join(root, "feature", "bad2.ts"),
-        "const q = sql`select * from custom_field_value`;\n",
-      );
-      writeFileSync(
-        join(root, "feature", "bad3.ts"),
-        "const q = sql`insert into custom_field_type_visibility (id) values (1)`;\n",
-      );
-      expect(findUnanchoredTableReferences(root)).toEqual([
-        "feature/bad.ts",
-        "feature/bad2.ts",
-        "feature/bad3.ts",
-      ]);
-    } finally {
-      rmSync(root, { recursive: true, force: true });
+      expect(DECLARATIONS).toContain(`name: "${constraint}"`);
+    }
+  });
+
+  it("drops the single-column foreign keys the composites replace", () => {
+    for (const constraint of [
+      "custom_field_type_visibility_custom_field_id_custom_field_id_fk",
+      "custom_field_type_visibility_work_item_type_id_work_item_type_i",
+      "custom_field_value_custom_field_id_custom_field_id_fk",
+      "custom_field_value_project_id_project_id_fk",
+    ]) {
+      expect(MIGRATION).toContain(`DROP CONSTRAINT "${constraint}"`);
+      expect(DECLARATIONS).not.toContain(`name: "${constraint}"`);
     }
   });
 });

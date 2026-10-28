@@ -71,6 +71,44 @@ describe("structured work-item search fetcher", () => {
     });
   });
 
+  it("keeps the selected custom-field metadata and project-bound person names", async () => {
+    mocks.post.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [],
+        page: { hasMore: false },
+        meta: { total: 0 },
+        customFieldColumns: [
+          {
+            key: "constructor",
+            name: "Asset tag",
+            format: "text",
+            options: [],
+          },
+        ],
+        customFieldPeople: [
+          {
+            projectId: "project-1",
+            personId: "person-1",
+            name: "A. Person",
+          },
+        ],
+      }),
+    });
+    const result = await searchWorkItems({
+      workspaceId: "ws_1",
+      projectSlug: "OPS",
+      filter: "",
+      sort: "key",
+      dir: "asc",
+      columns: ["cf.constructor"],
+    });
+    expect(result.customFieldColumns?.[0]?.key).toBe("constructor");
+    expect(result.customFieldPeople).toEqual([
+      { projectId: "project-1", personId: "person-1", name: "A. Person" },
+    ]);
+  });
+
   it("does not forward the list route's rank order, which search cannot sort by", async () => {
     mocks.post.mockResolvedValue(emptyPage);
     expect(toSearchSort("position", "asc")).toEqual([]);

@@ -305,15 +305,14 @@ describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
     expect(await denyResponse.text()).toContain("session_required");
 
     mockAuthenticatedSession(user, { impersonatedBy: "admin-user" });
-    // The CSRF issuer intentionally rejects impersonated sessions. This raw
-    // request carries no ambient session cookie so this assertion reaches the
-    // decision route's explicit session_required denial.
+    // GM-9: an impersonation session is refused approval decisions with a 403 naming
+    // `impersonation`, enforced once in the app-wide auth guard (permissions.md).
     const impersonatedDeny = await app.request(
       `/api/me/pending-actions/${denied.id}/deny`,
       { method: "POST" },
     );
     expect(impersonatedDeny.status).toBe(403);
-    expect(await impersonatedDeny.text()).toContain("session_required");
+    expect(await impersonatedDeny.text()).toContain("impersonation");
 
     mockAuthenticatedSession(user);
     const cancelResponse = await app.request(

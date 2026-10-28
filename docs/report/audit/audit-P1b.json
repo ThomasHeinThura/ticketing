@@ -1,0 +1,2215 @@
+{
+	"phase": "P1",
+	"items": [
+		{
+			"id": "AS-8",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts:3678 (assignee_id ON DELETE RESTRICT); packages/domain/src/assignment/assignment.ts resolveAssigneeDisplayStatus (unused outside domain); apps/web/src/components/work-item/work-item-list.tsx:132; apps/web/src/components/work-item/work-item-properties.tsx:595; tests: apps/web/src/components/work-item/work-item-list.test.tsx:321, packages/domain/src/assignment/assignment.test.ts",
+			"gap": "\"(inactive)\" shown only when name unresolvable, not from person.active; no \"Jane Smith (inactive)\" or \"(no longer on this project)\" rendering",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-list.test.tsx",
+					"packages/domain/src/assignment/assignment.test.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "tests/api-integration/work-item-p1-assignment-notifications.test.ts:509",
+						"finding": "Detail retains assignee id after person.active=false; assigneeActive changes false."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"packages/domain/src/assignment/assignment.ts",
+					"apps/web/src/components/work-item/work-item-list.tsx",
+					"apps/web/src/components/work-item/work-item-properties.tsx",
+					"apps/web/src/components/work-item/work-item-list.test.tsx",
+					"packages/domain/src/assignment/assignment.test.ts",
+					"apps/api/src/work-item/response.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:997"
+			}
+		},
+		{
+			"id": "AS-9",
+			"state": "implemented_tested",
+			"evidence": "RESTRICT FK schema.ts:3678; apps/api/src/work-item/controllers/unassign-work-item.ts emits work_item.unassigned; tests/api-integration/work-item-unassign.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-unassign.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/unassign-work-item.ts",
+					"tests/api-integration/work-item-unassign.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1003"
+			}
+		},
+		{
+			"id": "AS-10",
+			"state": "partial",
+			"evidence": "packages/domain/src/assignment/assignment.ts workItemsAssignedToInactive; packages/domain/src/assignment/assignment.test.ts",
+			"gap": "Spec marks the report P5; only the pure filter exists, no report screen (acceptable deferral)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-reports-inactive-assignees.test.ts",
+					"apps/web/src/components/reports/report-format.test.ts"
+				],
+				"assertions": [
+					"Inactive assignee aggregate/drill/CSV share current project scope and filters",
+					"Active/unassigned/foreign-workspace records excluded"
+				],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/assignment/assignment.ts",
+					"packages/domain/src/assignment/assignment.test.ts",
+					"docs/technical/feature-contracts-p1.md"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1005",
+				"executionScope": "Focused realPG report test and formatter5pass; browser report pending.",
+				"repairReconciledAt": "2026-10-24T21:33:20.914052+00:00",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "AS-11",
+			"state": "missing",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts:203-210 states no project.default_assignee_id column; schema.ts default_assignee_id only on request types (4618/4685)",
+			"gap": "No project default assignee column, setting or create-time application",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"apps/api/src/work-item/create-preparation.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1012"
+			}
+		},
+		{
+			"id": "AS-12",
+			"state": "partial",
+			"evidence": "apps/api/src/intake/repository.ts:1077-1104 (request-type default at intake conversion); tests/api-integration/intake-rt6-snapshot.test.ts, tests/api-integration/intake-atomic-conversion.test.ts",
+			"gap": "Applied only on intake conversion; no project default to override; not applied for agent-created items of a request type",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-rt6-snapshot.test.ts",
+					"tests/api-integration/intake-atomic-conversion.test.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/repository.ts",
+					"tests/api-integration/intake-rt6-snapshot.test.ts",
+					"tests/api-integration/intake-atomic-conversion.test.ts",
+					"apps/api/src/work-item/create-preparation.ts",
+					"tests/api-integration/project-hierarchy-settings.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1013"
+			}
+		},
+		{
+			"id": "AS-13",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/transition-work-item.ts (set_assignee/clear_assignee effects); packages/domain/src/workflow/workflow.ts; tests/api-integration/work-item-transition.test.ts",
+			"gap": "set_assignee \"default\" always resolves to null (no default columns)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-transition.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"set_assignee \"default\" always resolves to null (no default columns)"
+				],
+				"paths": [
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"packages/domain/src/workflow/workflow.ts",
+					"tests/api-integration/work-item-transition.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1014"
+			}
+		},
+		{
+			"id": "AS-14",
+			"state": "missing",
+			"evidence": "apps/api/src/workflow-rule/* is legacy integration->column automation only; no automation engine assigning work items",
+			"gap": "No automation assign action (general automation unfinished per docs/audit.md)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/automation/actions-executor.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1018"
+			}
+		},
+		{
+			"id": "AS-15",
+			"state": "implemented_tested",
+			"evidence": "Deliberate omission documented at packages/domain/src/assignment/assignment.ts:10-12; no round-robin/load-balancing strategy anywhere",
+			"gap": "Out-of-scope requirement; satisfied by absence (no dedicated test needed)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Out-of-scope requirement; satisfied by absence (no dedicated test needed)"
+				],
+				"paths": ["packages/domain/src/assignment/assignment.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1019"
+			}
+		},
+		{
+			"id": "AS-16",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/controllers/assign-work-item.ts:46-48,260-308 emits work_item.assigned; apps/api/src/notification/preferences.ts:20; no enqueueNotificationEvent for assigned; tests/api-integration/work-item-assign.test.ts (event only)",
+			"gap": "Event emitted but no notification fan-out/recipient resolver for the new assignee",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "tests/api-integration/work-item-p1-assignment-notifications.test.ts:282",
+						"finding": "Assignment yields one inbox row and one outbox event."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/assign-work-item.ts",
+					"apps/api/src/notification/preferences.ts",
+					"tests/api-integration/work-item-assign.test.ts",
+					"apps/api/src/notification/work-item-recipients.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1024"
+			}
+		},
+		{
+			"id": "AS-17",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/controllers/unassign-work-item.ts emits work_item.unassigned; tests/api-integration/work-item-unassign.test.ts (event only)",
+			"gap": "No notification fan-out to previous assignee",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-unassign.test.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "tests/api-integration/work-item-p1-assignment-notifications.test.ts:338",
+						"finding": "Reassignment/unassignment each notify previous holder."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/unassign-work-item.ts",
+					"tests/api-integration/work-item-unassign.test.ts",
+					"apps/api/src/notification/work-item-recipients.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1026"
+			}
+		},
+		{
+			"id": "AS-18",
+			"state": "partial",
+			"evidence": "apps/api/src/notification/fanout.ts:97-100 generic actor exclusion; packages/domain/src/assignment/assignment.test.ts",
+			"gap": "Actor exclusion exists generically but assignment fan-out is not wired, so untestable end-to-end",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/assignment/assignment.test.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "tests/api-integration/work-item-p1-assignment-notifications.test.ts:313",
+						"finding": "Self assignment emits event while actor inbox remains empty."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/notification/fanout.ts",
+					"packages/domain/src/assignment/assignment.test.ts",
+					"apps/api/src/notification/work-item-recipients.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1028"
+			}
+		},
+		{
+			"id": "AS-19",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/assign-work-item.ts (WorkItemAssigneeConflictError, expectedCurrentAssigneeId); unassign-work-item.ts:74-100; tests/api-integration/work-item-assign.test.ts:515-580,873; tests/api-integration/work-item-unassign.test.ts:508",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-unassign.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/assign-work-item.ts",
+					"tests/api-integration/work-item-assign.test.ts",
+					"tests/api-integration/work-item-unassign.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1033"
+			}
+		},
+		{
+			"id": "CA-1",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-activity.tsx:245-256,560-577 (visibility Select + notice); tests/api-integration/work-item-comment.test.ts:501; apps/web/src/components/work-item/work-item-activity.ui.test.tsx:323",
+			"gap": "Composer lives in parallel work-item-activity.tsx, not original activity/CommentCard (docs/audit.md)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-comment.test.ts",
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Composer lives in parallel work-item-activity.tsx, not original activity/CommentCard (docs/audit.md)"
+				],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-activity.tsx",
+					"tests/api-integration/work-item-comment.test.ts",
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1185"
+			}
+		},
+		{
+			"id": "CA-2",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/project-default-comment-visibility.test.ts; apps/web/src/components/project/default-comment-visibility-setting.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/project-default-comment-visibility.test.ts",
+					"apps/web/src/components/project/default-comment-visibility-setting.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"tests/api-integration/project-default-comment-visibility.test.ts",
+					"apps/web/src/components/project/default-comment-visibility-setting.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1187"
+			}
+		},
+		{
+			"id": "CA-3",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts:1565 (visibility=public in portal query); tests/api-integration/work-item-comment.test.ts:687 (#580 B1 customer visibility)",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-comment.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/repository.ts",
+					"tests/api-integration/work-item-comment.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1192"
+			}
+		},
+		{
+			"id": "CA-4",
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/work-item/comment-schema.ts (update body has no visibility); apps/api/src/work-item/controllers/update-comment.ts:34-35",
+			"gap": "No test asserting a visibility change attempt is rejected/ignored",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/comment-schema.ts",
+					"apps/api/src/work-item/controllers/update-comment.ts",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1194"
+			}
+		},
+		{
+			"id": "CA-5",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-activity.tsx:573-577,671 (same bg-card wrapper both modes; only a notice line differs)",
+			"gap": "No distinct internal background/persistent label; conflicts with audit decision to use neutral Kaneo composer - needs product decision",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-activity.ui.test.tsx:407",
+						"finding": "Audience toggle changes current label; explanatory notice persists; no warning alert."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-activity.tsx",
+					"docs/technical/feature-contracts-p1.md",
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1196",
+				"ownerDecision": "22 Oct neutral Kaneo composer with audience toggle and explanatory sentence, docs/technical/feature-contracts-p1.md:1201."
+			}
+		},
+		{
+			"id": "CA-6",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/activity.ts; tests/api-integration/work-item-activity-wiring.test.ts:236",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-activity-wiring.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/activity.ts",
+					"tests/api-integration/work-item-activity-wiring.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1203"
+			}
+		},
+		{
+			"id": "CA-7",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/activity.ts:11-90 allowlist, unmapped->internal; tests/api-integration/work-item-activity-table.test.ts; tests/api-integration/work-item-activity-wiring.test.ts:312,695",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-activity-table.test.ts",
+					"tests/api-integration/work-item-activity-wiring.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/activity.ts",
+					"tests/api-integration/work-item-activity-table.test.ts",
+					"tests/api-integration/work-item-activity-wiring.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1210"
+			}
+		},
+		{
+			"id": "CA-8",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-activity.tsx:101-132,990-1014 (Collapsible); apps/web/src/components/work-item/work-item-activity.test.ts:34-61",
+			"gap": "Rendered in parallel activity UI rather than original Activity/Timeline",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-activity.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Rendered in parallel activity UI rather than original Activity/Timeline"
+				],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-activity.tsx",
+					"apps/web/src/components/work-item/work-item-activity.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1220"
+			}
+		},
+		{
+			"id": "CA-9",
+			"state": "partial",
+			"evidence": "apps/api/src/work-item/activity.ts:9 actor types person|automation|system|api_key; apps/web/src/components/work-item/work-item-activity.tsx:333-335 renders generic \"Automation\"",
+			"gap": "UI does not name the specific automation/job; no test of system attribution display",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Non-person actor kind or named automation is rendered; source inspection does not attest that every producer supplies a specific automation name."
+				],
+				"paths": [
+					"apps/api/src/work-item/activity.ts",
+					"apps/web/src/components/work-item/work-item-activity.tsx",
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1222"
+			}
+		},
+		{
+			"id": "CA-10",
+			"state": "implemented_untested",
+			"evidence": "No update/delete path on activityTable in apps/api/src (grep); apps/api/src/database/schema.ts:4047",
+			"gap": "No DB-level immutability guard (trigger/REVOKE) and no test",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": ["No DB-level immutability guard (trigger/REVOKE) and no test"],
+				"paths": ["apps/api/src/database/schema.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1224"
+			}
+		},
+		{
+			"id": "CA-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/comment-schema.ts:23-57 (256 KiB/10,000 nodes); apps/web/src/components/activity/comment-editor.tsx (Tiptap tables/tasks/code/links/images); tests/api-integration/work-item-comment.test.ts:1805; tests/api/work-item-comment-schema.test.ts; apps/web/src/components/activity/comment-editor.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-comment.test.ts",
+					"tests/api/work-item-comment-schema.test.ts",
+					"apps/web/src/components/activity/comment-editor.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/comment-schema.ts",
+					"apps/web/src/components/activity/comment-editor.tsx",
+					"tests/api-integration/work-item-comment.test.ts",
+					"tests/api/work-item-comment-schema.test.ts",
+					"apps/web/src/components/activity/comment-editor.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1232"
+			}
+		},
+		{
+			"id": "CA-12",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/mention-access.ts; apps/web/src/components/work-item/work-item-activity.tsx:276-316 (picker + preflight); tests/api-integration/work-item-comment.test.ts:1428,2206; tests/api/native-mentions.test.ts; tests/api-integration/notification-immediate-mention.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-comment.test.ts",
+					"tests/api/native-mentions.test.ts",
+					"tests/api-integration/notification-immediate-mention.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/mention-access.ts",
+					"apps/web/src/components/work-item/work-item-activity.tsx",
+					"tests/api-integration/work-item-comment.test.ts",
+					"tests/api/native-mentions.test.ts",
+					"tests/api-integration/notification-immediate-mention.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1237"
+			}
+		},
+		{
+			"id": "CA-13",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/work-item-comment.test.ts:2443",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-comment.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["tests/api-integration/work-item-comment.test.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1250"
+			}
+		},
+		{
+			"id": "CA-14",
+			"state": "partial",
+			"evidence": "apps/web/src/components/task/extensions/taskdesk-issue-link.tsx (pasted legacy /dashboard/.../task URLs via getTask); comment-editor.tsx:747",
+			"gap": "No #KEY trigger; resolves legacy taskTable not canonical work items; no state rendering test",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/activity/work-item-issue-link.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/task/extensions/taskdesk-issue-link.tsx",
+					"apps/web/src/components/activity/work-item-issue-link.tsx",
+					"apps/web/src/components/activity/work-item-issue-link.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1251"
+			}
+		},
+		{
+			"id": "CA-15",
+			"state": "partial",
+			"evidence": "apps/web/src/components/activity/comment-editor.tsx:390-428,711,798 (paste/drop via legacy task image-upload); apps/web/src/components/work-item/work-item-activity.tsx:672-680 passes no taskId/ensureTaskId/onFilesSelected",
+			"gap": "In canonical work-item composer canUploadFiles is false; paste/drop does not create a canonical attachment",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-activity.ui.test.tsx:423",
+						"finding": "Chosen file stages until comment creation and upload queue receives comment id."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Pasted image is staged as an attachment; source stores no base64 document image."
+				],
+				"paths": [
+					"apps/web/src/components/activity/comment-editor.tsx",
+					"apps/web/src/components/work-item/work-item-activity.tsx",
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx",
+					"apps/web/src/components/work-item/work-item-comment-composer.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1252"
+			}
+		},
+		{
+			"id": "CA-16",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-activity.tsx:370-432 (localStorage per user/work item); apps/web/src/components/work-item/work-item-activity.ui.test.tsx:401",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-activity.tsx",
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1254"
+			}
+		},
+		{
+			"id": "CA-17",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/comment-access.ts:174-192; apps/api/src/work-item/comment-versions.ts; tests/api-integration/work-item-comment.test.ts:1817,1892,1928; apps/web/src/components/activity/comment-version-history.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-comment.test.ts",
+					"apps/web/src/components/activity/comment-version-history.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/comment-access.ts",
+					"apps/api/src/work-item/comment-versions.ts",
+					"tests/api-integration/work-item-comment.test.ts",
+					"apps/web/src/components/activity/comment-version-history.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1257"
+			}
+		},
+		{
+			"id": "CA-18",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/delete-comment.ts; tests/api-integration/work-item-comment.test.ts:1950,1969; tests/api-integration/pending-action-comment-deletion.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-comment.test.ts",
+					"tests/api-integration/pending-action-comment-deletion.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/delete-comment.ts",
+					"tests/api-integration/work-item-comment.test.ts",
+					"tests/api-integration/pending-action-comment-deletion.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1270"
+			}
+		},
+		{
+			"id": "CA-11a",
+			"state": "implemented_tested",
+			"evidence": "apps/web/package.json (turndown, react-markdown, mermaid, shiki, dompurify); apps/web/src/components/task/extensions/mermaid-block.ts; comment-editor.tsx (Markdown, shiki); apps/web/src/components/activity/comment-editor.test.tsx; apps/web/src/components/task/task-description.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/activity/comment-editor.test.tsx",
+					"apps/web/src/components/task/task-description.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/package.json",
+					"apps/web/src/components/task/extensions/mermaid-block.ts",
+					"apps/web/src/components/activity/comment-editor.test.tsx",
+					"apps/web/src/components/task/task-description.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1278"
+			}
+		},
+		{
+			"id": "CA-19",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/canned-response/*; tests/api-integration/canned-response.test.ts; apps/web/e2e/canned-response-management.spec.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/canned-response.test.ts",
+					"apps/web/e2e/canned-response-management.spec.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"tests/api-integration/canned-response.test.ts",
+					"apps/web/e2e/canned-response-management.spec.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1286"
+			}
+		},
+		{
+			"id": "CA-19a",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/canned-response.ts; packages/domain/src/canned-response.test.ts; tests/api-integration/canned-response.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/canned-response.test.ts",
+					"tests/api-integration/canned-response.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/canned-response.ts",
+					"packages/domain/src/canned-response.test.ts",
+					"tests/api-integration/canned-response.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1294"
+			}
+		},
+		{
+			"id": "CA-20",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-activity.tsx:598-662 (insert into draft, never auto-send); apps/web/src/components/work-item/work-item-activity.ui.test.tsx:441-587",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-activity.tsx",
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1308"
+			}
+		},
+		{
+			"id": "AT-1",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts:4938-5013 (work_item|comment|submission exclusive check); apps/api/src/attachment/index.ts routes: work-item + portal submission only; tests/api-integration/attachment.test.ts",
+			"gap": "No comment-attachment presign/list route or UI",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/attachment.test.ts",
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-activity.ui.test.tsx:423",
+						"finding": "Comment attachment queue receives new comment id and file."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/database/schema.ts",
+					"apps/api/src/attachment/index.ts",
+					"tests/api-integration/attachment.test.ts",
+					"apps/api/src/attachment/controllers/presign-attachment.ts",
+					"apps/web/src/components/work-item/work-item-activity.ui.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1468"
+			}
+		},
+		{
+			"id": "AT-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/attachment/controllers/presign-attachment.ts, complete-attachment.ts; apps/api/src/storage/s3.ts; tests/api-integration/attachment.test.ts:495; tests/api-integration/attachment-s3-finalize-race.test.ts",
+			"gap": "Filesystem storage driver path exists too (storage-filesystem-upload.test.ts)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/attachment.test.ts",
+					"tests/api-integration/attachment-s3-finalize-race.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Filesystem storage driver path exists too (storage-filesystem-upload.test.ts)"
+				],
+				"paths": [
+					"apps/api/src/attachment/controllers/presign-attachment.ts",
+					"apps/api/src/storage/s3.ts",
+					"tests/api-integration/attachment.test.ts",
+					"tests/api-integration/attachment-s3-finalize-race.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1469"
+			}
+		},
+		{
+			"id": "AT-3",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/attachment/schema.ts:32 (staff default false); apps/api/src/attachment/repository.ts:484 (customer true); tests/api-integration/attachment.test.ts; tests/api-integration/intake-attachment-duplicate-reach.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/attachment.test.ts",
+					"tests/api-integration/intake-attachment-duplicate-reach.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/attachment/schema.ts",
+					"apps/api/src/attachment/repository.ts",
+					"tests/api-integration/attachment.test.ts",
+					"tests/api-integration/intake-attachment-duplicate-reach.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1471"
+			}
+		},
+		{
+			"id": "AT-4",
+			"state": "missing",
+			"evidence": "No comment-attachment path; no comment-visibility join in apps/api/src/attachment/*",
+			"gap": "Cannot attach to comments, so internal-comment override is not implemented",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/attachment/controllers/presign-attachment.ts",
+					"apps/api/src/attachment/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1473"
+			}
+		},
+		{
+			"id": "AT-5",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/storage/shared.ts:23 (300s); apps/api/src/attachment/controllers/download-attachment.ts; tests/api-integration/attachment.test.ts:666",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/attachment.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/storage/shared.ts",
+					"apps/api/src/attachment/controllers/download-attachment.ts",
+					"tests/api-integration/attachment.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1475"
+			}
+		},
+		{
+			"id": "AT-6",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/attachment/controllers/download-attachment.ts; tests/api-integration/attachment.test.ts:666",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/attachment.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/attachment/controllers/download-attachment.ts",
+					"tests/api-integration/attachment.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1479"
+			}
+		},
+		{
+			"id": "AT-7",
+			"state": "partial",
+			"evidence": "apps/api/src/attachment/controllers/delete-attachment.ts (pending action); apps/api/src/scheduler/attachment-cleanup.ts; tests/api-integration/pending-action-attachment-deletion.test.ts; tests/api-integration/attachment-cleanup.test.ts",
+			"gap": "Recovery within the day has no API/UI (docs/status.md)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/attachment.test.ts",
+					"tests/api-integration/attachment-recovery-concurrency.test.ts",
+					"apps/web/src/components/work-item/work-item-attachments.test.tsx"
+				],
+				"assertions": [
+					"24-hour boundary/current reach/parent tombstone/object existence restrictions",
+					"Restore and GC wait on the same locks and recheck eligibility"
+				],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/attachment/controllers/delete-attachment.ts",
+					"apps/api/src/scheduler/attachment-cleanup.ts",
+					"tests/api-integration/pending-action-attachment-deletion.test.ts",
+					"tests/api-integration/attachment-cleanup.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1480",
+				"executionScope": "AT7 targeted7pass, attachment full24pass after shared limiter fix, panel12pass; real browser recovery pending.",
+				"repairReconciledAt": "2026-10-24T21:33:20.914058+00:00",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "AT-8",
+			"state": "missing",
+			"evidence": "apps/web/src/components/work-item/work-item-attachments.tsx:146-178 (Paperclip icon, name, size, date only)",
+			"gap": "No inline thumbnails/lightbox; uploader not shown; custom list instead of original Kaneo attachment-card",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-attachments.test.tsx"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-attachments.test.tsx:200",
+						"finding": "Image opens lightbox; PDF remains downloadable card with uploader."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-attachments.tsx",
+					"apps/web/src/components/work-item/work-item-attachments.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1485"
+			}
+		},
+		{
+			"id": "AT-9",
+			"state": "missing",
+			"evidence": "No PDF/iframe viewer found in apps/web/src/components/work-item or task/extensions/attachment-card.tsx",
+			"gap": "No sandboxed PDF preview",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-attachments.test.tsx",
+					"apps/web/src/pdf-preview/protocol.test.ts",
+					"tests/api-integration/attachment.test.ts"
+				],
+				"assertions": [
+					"PDF action composes the existing attachment card with a sandbox allow-scripts dialog; downloads remain available.",
+					"The authorized preview checks signature, readiness, size and reach; the guarded AT-9 case including foreign-workspace denial passes.",
+					"Standalone renderer build isolates viewer/worker assets from application code; its enforced child CSP and static CORS helper are integrated."
+				],
+				"testEvidenceStatus": "scoped_execution_passed",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-attachments.tsx",
+					"apps/web/src/components/work-item/work-item-attachments.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1487",
+				"verificationRemaining": [
+					"New API bundle is not deployed; real PDF upload, rendering, role/portal and responsive browser journeys remain pending."
+				]
+			}
+		},
+		{
+			"id": "AT-10",
+			"state": "missing",
+			"evidence": "apps/web/src/components/work-item/work-item-attachments.tsx (button + hidden input only); drop only in create staging (create-work-item-staged-attachments.tsx)",
+			"gap": "No drag-and-drop anywhere on work item detail",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-attachments-intake.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-attachments.tsx",
+					"apps/web/src/components/work-item/work-item-attachments-intake.tsx",
+					"apps/web/src/components/work-item/work-item-attachments-intake.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1494"
+			}
+		},
+		{
+			"id": "AT-11",
+			"state": "partial",
+			"evidence": "Create dialog staging via CommentEditor onFilesSelected (apps/web/src/components/work-item/use-create-work-item-attachments.ts); detail composer has no upload wiring",
+			"gap": "No paste-to-attach on existing work item detail",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-attachments-intake.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/use-create-work-item-attachments.ts",
+					"apps/web/src/components/work-item/work-item-attachments-intake.tsx",
+					"apps/web/src/components/work-item/work-item-attachments-intake.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1495"
+			}
+		},
+		{
+			"id": "AT-12",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-attachments.tsx:96 (files?.[0] only); apps/web/src/components/work-item/use-create-work-item-attachments.test.tsx:14 (multi-file staging on create)",
+			"gap": "Detail uploads one file; no per-file byte progress bar",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/use-create-work-item-attachments.test.tsx",
+					"apps/web/src/components/work-item/work-item-attachments-uploads.test.tsx"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-attachments-uploads.test.tsx:33",
+						"finding": "Two upload rows have independent progress bars."
+					},
+					{
+						"path": "apps/web/src/components/work-item/work-item-attachments-uploads.test.tsx:49",
+						"finding": "Failed file has own reason and retry while healthy file remains."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-attachments.tsx",
+					"apps/web/src/components/work-item/use-create-work-item-attachments.test.tsx",
+					"apps/web/src/components/work-item/work-item-attachments-uploads.tsx",
+					"apps/web/src/components/work-item/work-item-attachments-uploads.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1496"
+			}
+		},
+		{
+			"id": "AT-13",
+			"state": "missing",
+			"evidence": "docs/handover.md final checkpoint lists navigation continuation and beforeunload warning as open; no beforeunload in attachment code",
+			"gap": "Uploads tied to component mutation; no continuation/leave warning",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-attachments-uploads.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"docs/handover.md",
+					"apps/web/src/components/work-item/work-item-attachments-uploads.test.tsx",
+					"apps/web/src/fetchers/attachment/work-item-upload-queue.ts",
+					"apps/web/src/fetchers/attachment/work-item-upload-queue.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1498"
+			}
+		},
+		{
+			"id": "AT-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/attachment/magic-bytes.ts; tests/api-integration/attachment.test.ts:644,794; tests/api/attachment/magic-bytes.test.ts; apps/web/src/components/work-item/work-item-attachments.tsx:46-52 shows server reason",
+			"gap": "Exact copy of size/executable messages not asserted in web test",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/attachment.test.ts",
+					"tests/api/attachment/magic-bytes.test.ts",
+					"apps/web/src/components/work-item/work-item-attachments-uploads.test.tsx"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/work-item/work-item-attachments-uploads.test.tsx:49",
+						"finding": "Specific over-limit failure reason is rendered."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Exact copy of size/executable messages not asserted in web test"
+				],
+				"paths": [
+					"apps/api/src/attachment/magic-bytes.ts",
+					"tests/api-integration/attachment.test.ts",
+					"tests/api/attachment/magic-bytes.test.ts",
+					"apps/web/src/components/work-item/work-item-attachments.tsx",
+					"apps/web/src/components/work-item/work-item-attachments-uploads.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1500"
+			}
+		},
+		{
+			"id": "RH-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item-relation/*; tests/api-integration/work-item-relations.test.ts:104; apps/web/src/components/work-item/work-item-relations.test.tsx:102",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-relations.test.ts",
+					"apps/web/src/components/work-item/work-item-relations.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"tests/api-integration/work-item-relations.test.ts",
+					"apps/web/src/components/work-item/work-item-relations.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1630"
+			}
+		},
+		{
+			"id": "RH-2",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/work-item-relations.test.ts:131",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-relations.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["tests/api-integration/work-item-relations.test.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1631"
+			}
+		},
+		{
+			"id": "RH-3",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/work-item-relations.test.ts:156,235",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-relations.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["tests/api-integration/work-item-relations.test.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1632"
+			}
+		},
+		{
+			"id": "RH-4",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-relations.tsx:290-292 (hiddenCount); tests/api-integration/work-item-relations.test.ts:156; apps/web/src/components/work-item/work-item-relations.test.tsx:102",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-relations.test.ts",
+					"apps/web/src/components/work-item/work-item-relations.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-relations.tsx",
+					"tests/api-integration/work-item-relations.test.ts",
+					"apps/web/src/components/work-item/work-item-relations.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1633"
+			}
+		},
+		{
+			"id": "RH-5",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/controllers/set-work-item-parent.ts; tests/api-integration/work-item-hierarchy.test.ts:356; apps/web/src/components/work-item/work-item-parent-control.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"apps/web/src/components/work-item/work-item-parent-control.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/set-work-item-parent.ts",
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"apps/web/src/components/work-item/work-item-parent-control.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1645"
+			}
+		},
+		{
+			"id": "RH-6",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/work-item-hierarchy.test.ts:619",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-hierarchy.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["tests/api-integration/work-item-hierarchy.test.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1646"
+			}
+		},
+		{
+			"id": "RH-7",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/work-item-hierarchy.test.ts:508,977; packages/domain/src/hierarchy/hierarchy.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"packages/domain/src/hierarchy/hierarchy.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"packages/domain/src/hierarchy/hierarchy.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1647"
+			}
+		},
+		{
+			"id": "RH-8",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/work-item-hierarchy.test.ts:446,469; tests/api-integration/work-item-parent-cycle-guard.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"tests/api-integration/work-item-parent-cycle-guard.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"tests/api-integration/work-item-parent-cycle-guard.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1648"
+			}
+		},
+		{
+			"id": "RH-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/hierarchy-page.repository.ts; apps/api/src/work-item/response.ts:551; apps/web/src/components/work-item/work-item-hierarchy.tsx:131; tests/api-integration/work-item-hierarchy-pagination.test.ts:188",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-hierarchy-pagination.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/hierarchy-page.repository.ts",
+					"apps/api/src/work-item/response.ts",
+					"apps/web/src/components/work-item/work-item-hierarchy.tsx",
+					"tests/api-integration/work-item-hierarchy-pagination.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1649"
+			}
+		},
+		{
+			"id": "RH-10",
+			"state": "partial",
+			"evidence": "children_closed workflow guard in apps/api/src/work-item/controllers/transition-work-item.ts:417",
+			"gap": "Guard blocks rather than warns-and-lists; no warning UI listing open children found",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-properties.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/controllers/transition-work-item.ts",
+					"apps/web/src/components/work-item/open-children-warning.tsx",
+					"apps/web/src/components/work-item/work-item-properties.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1654"
+			}
+		},
+		{
+			"id": "RH-11",
+			"state": "partial",
+			"evidence": "apps/api/src/pending-action/work-item-deletion-target.ts:88-117 (children in confirmation); apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:152; delete-work-item.ts:64 keeps parent_id",
+			"gap": "Children keep parent_id to a deleted parent (hidden) rather than explicit orphaning; no test of child state after parent deletion",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-delete.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/pending-action/work-item-deletion-target.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx",
+					"apps/api/src/scheduler/soft-delete-purge-detach.ts",
+					"tests/api-integration/work-item-delete.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1655"
+			}
+		},
+		{
+			"id": "RH-12",
+			"state": "missing",
+			"evidence": "No work-item project-move route (only legacy apps/api/src/task/controllers/move-task.ts); detach exists (tests/api-integration/work-item-hierarchy.test.ts:406)",
+			"gap": "No move-with-children offer/detach-on-decline flow",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"tests/api-integration/work-item-move-archive.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/task/controllers/move-task.ts",
+					"tests/api-integration/work-item-hierarchy.test.ts",
+					"apps/api/src/work-item/controllers/move-work-item.ts",
+					"apps/web/src/components/work-item/move-work-item-dialog.tsx",
+					"tests/api-integration/work-item-move-archive.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1657"
+			}
+		},
+		{
+			"id": "RH-13",
+			"state": "partial",
+			"evidence": "work_item_type.is_epic column (apps/api/drizzle/0054_cool_wendell_rand.sql:82); exposed in list-work-item-types.ts",
+			"gap": "is_epic not enforced in set-parent/create (epics can get parents)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-hierarchy.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/drizzle/0054_cool_wendell_rand.sql",
+					"apps/api/src/work-item/controllers/set-work-item-parent.ts",
+					"tests/api-integration/work-item-hierarchy.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1664"
+			}
+		},
+		{
+			"id": "RH-14",
+			"state": "implemented_tested",
+			"evidence": "Same whole-subtree progress as RH-9; tests/api-integration/work-item-hierarchy-pagination.test.ts:188",
+			"gap": "No epic-specific UI distinction",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-hierarchy-pagination.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": ["No epic-specific UI distinction"],
+				"paths": [
+					"tests/api-integration/work-item-hierarchy-pagination.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1668"
+			}
+		},
+		{
+			"id": "RH-15",
+			"state": "missing",
+			"evidence": "No reporting module for epic roll-up",
+			"gap": "Reporting is P5 scope; nothing implemented",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/report-epic-rollup.test.ts",
+					"apps/web/e2e/report-epic-rollup.spec.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "scoped_pass",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [
+					"Tier3 epic grouping, matching totals, independent descendant progress, typed drill, private saved-view reload and CSV pass scoped tests/browser. Full report role/flag/parity matrix and phase review remain pending."
+				],
+				"paths": [
+					"apps/api/src/report/epic-rollup.ts",
+					"apps/api/src/report/custom.ts",
+					"apps/web/src/components/reports/report-builder.tsx",
+					"apps/web/src/components/reports/report-format.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1670",
+				"executionEvidence": "docs/report/audit/codex-20261026-rh15-epic-browser.json"
+			}
+		},
+		{
+			"id": "RH-16",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item-relation/blockers.ts; tests/api-integration/work-item-blockers.test.ts:212,286",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-blockers.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item-relation/blockers.ts",
+					"tests/api-integration/work-item-blockers.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1675"
+			}
+		},
+		{
+			"id": "RH-17",
+			"state": "partial",
+			"evidence": "apps/web/src/components/work-item/work-item-relations.tsx (lists blocked_by group)",
+			"gap": "No blocked badge on detail/board/list cards",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-relations.tsx",
+					"apps/api/src/work-item/response.ts",
+					"apps/web/src/components/work-item/work-item-list.tsx",
+					"tests/api-integration/work-item-p1-assignment-notifications.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1679"
+			}
+		},
+		{
+			"id": "RH-18",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/work-item-unblocked.ts; tests/api-integration/work-item-blockers.test.ts:232-337",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-blockers.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/notification/work-item-unblocked.ts",
+					"tests/api-integration/work-item-blockers.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1680"
+			}
+		},
+		{
+			"id": "RH-19",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/components/work-item/work-item-relations.tsx:243 (blockingCycle); tests/api-integration/work-item-relations.test.ts:131",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/work-item-relations.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/work-item/work-item-relations.tsx",
+					"tests/api-integration/work-item-relations.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1682"
+			}
+		},
+		{
+			"id": "SV-1",
+			"state": "partial",
+			"evidence": "apps/web/src/components/command-palette/index.tsx; apps/web/src/components/search-command-menu/index.tsx; apps/api/src/search/repository.ts (legacy taskTable/projects/workspaces/activity); apps/web/src/components/command-palette/index.test.tsx",
+			"gap": "Searches legacy Kaneo tasks not canonical work items; no people, saved views or KB; navigates to /dashboard task routes",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-kb-articles.test.ts",
+					"apps/web/src/components/search-command-menu/search-targets.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/command-palette/index.tsx",
+					"apps/web/src/components/search-command-menu/index.tsx",
+					"apps/api/src/search/repository.ts",
+					"apps/web/src/components/command-palette/index.test.tsx",
+					"apps/api/src/search/canonical-repository.ts",
+					"apps/web/src/components/search-command-menu/search-targets.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1835",
+				"latestEvidence": "Global search already includes kb_article via staff KB capability, API-key ceiling, feature flag and reachable projects. Raw trimmed query now preserves indexed Unicode behavior;22scoped PostgreSQL tests pass, then final added global title/body ranking assertion passes separately; palette target test1pass. Customer KB remains on immutable published versions. Full global-search browser/performance pending.",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "SV-2",
+			"state": "partial",
+			"evidence": "apps/web/src/components/command-palette/index.tsx:187-382 (grouped Command); apps/web/src/components/search-command-menu/index.test.tsx",
+			"gap": "Grouping/keyboard over legacy result kinds only",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/search-command-menu/index.test.tsx",
+					"tests/api-integration/global-search-canonical.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/command-palette/index.tsx",
+					"apps/web/src/components/search-command-menu/index.test.tsx",
+					"apps/web/src/components/search-command-menu/index.tsx",
+					"tests/api-integration/global-search-canonical.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1839"
+			}
+		},
+		{
+			"id": "SV-3",
+			"state": "partial",
+			"evidence": "apps/api/src/search/repository.ts reach predicates; tests/api-integration/global-search-scope.test.ts; tests/api-integration/global-search-soft-delete.test.ts",
+			"gap": "Tested against legacy task model, not work_item reach",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/global-search-scope.test.ts",
+					"tests/api-integration/global-search-soft-delete.test.ts",
+					"tests/api-integration/global-search-canonical.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/search/repository.ts",
+					"tests/api-integration/global-search-scope.test.ts",
+					"tests/api-integration/global-search-soft-delete.test.ts",
+					"apps/api/src/search/canonical-repository.ts",
+					"tests/api-integration/global-search-canonical.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1841"
+			}
+		},
+		{
+			"id": "SV-4",
+			"state": "partial",
+			"evidence": "apps/api/src/search/task-short-id.ts; tests/api-integration/global-search-scope.test.ts:307; tests/api/search/task-short-id-pattern.test.ts",
+			"gap": "Ranks legacy short-id task first; no direct jump to canonical work item key",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/global-search-scope.test.ts",
+					"tests/api/search/task-short-id-pattern.test.ts",
+					"tests/api-integration/global-search-canonical.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/search/task-short-id.ts",
+					"tests/api-integration/global-search-scope.test.ts",
+					"tests/api/search/task-short-id-pattern.test.ts",
+					"apps/api/src/search/canonical-repository.ts",
+					"tests/api-integration/global-search-canonical.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1842"
+			}
+		},
+		{
+			"id": "SV-5",
+			"state": "partial",
+			"evidence": "No benchmark for palette latency; G11 not passing (docs/status.md)",
+			"gap": "100 ms budget unmeasured",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/search/global-search-cancellation.test.ts",
+					"tests/api/search/search-abort-guard.test.ts",
+					"tests/api-integration/global-search-canonical.test.ts",
+					"tests/api-integration/global-search-scope.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"docs/status.md",
+					"apps/api/src/search/canonical-repository.ts",
+					"docs/technical/feature-contracts-p1.md"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1843",
+				"browserEvidence": "docs/report/browser/codex-20261025-performance-10k-mixed-search-parallel-reads.json",
+				"latestEvidence": "One unchanged10k-item benchmark passes97.4ms p95 against100ms, all12queries visible, all200, no browser errors. Root confirmed same target/fixture/metric/query definitions; earlier failures retained.85PG and5unit checks pass. Narrow2.6msheadroom; not full phase acceptance."
+			}
+		},
+		{
+			"id": "SV-6",
+			"state": "missing",
+			"evidence": "No recent-items code in command-palette/ or search-command-menu/",
+			"gap": "No recent items before query",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/search-command-menu/recent-items.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "apps/web/src/components/search-command-menu/recent-items.test.ts:18",
+						"finding": "Recent entries are bounded, de-duplicated and scoped per workspace."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/search-command-menu/recent-items.ts",
+					"apps/web/src/components/search-command-menu/recent-items.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1845"
+			}
+		},
+		{
+			"id": "SV-7",
+			"state": "partial",
+			"evidence": "apps/api/src/search/repository.ts; tests/api-integration/global-search-scope.test.ts:164",
+			"gap": "Legacy taskTable only",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/global-search-scope.test.ts",
+					"tests/api-integration/global-search-canonical.test.ts"
+				],
+				"assertions": [
+					{
+						"path": "tests/api-integration/global-search-canonical.test.ts:160",
+						"finding": "Title result precedes description-only result with higher relevance score."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/search/repository.ts",
+					"tests/api-integration/global-search-scope.test.ts",
+					"apps/api/src/search/canonical-repository.ts",
+					"tests/api-integration/global-search-canonical.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1853"
+			}
+		},
+		{
+			"id": "SV-8",
+			"state": "partial",
+			"evidence": "apps/api/src/search/controllers/global-search.ts:135 (%q% ILIKE contains)",
+			"gap": "Contains match on legacy tables; not canonical work items",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/global-search-canonical.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/search/controllers/global-search.ts",
+					"apps/api/src/search/canonical-repository.ts",
+					"tests/api-integration/global-search-canonical.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1854"
+			}
+		},
+		{
+			"id": "SV-9",
+			"state": "partial",
+			"evidence": "apps/api/drizzle/0103_work_item_title_trigram_index.sql (index only)",
+			"gap": "No similarity() typo fallback in any query",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/global-search-canonical.test.ts"],
+				"assertions": [
+					{
+						"path": "tests/api-integration/global-search-canonical.test.ts:207",
+						"finding": "Typo query returns item via trigram fallback."
+					}
+				],
+				"testEvidenceStatus": "assertion_inspected",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/drizzle/0103_work_item_title_trigram_index.sql",
+					"apps/api/src/search/canonical-repository.ts",
+					"tests/api-integration/global-search-canonical.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1855"
+			}
+		},
+		{
+			"id": "SV-10",
+			"state": "missing",
+			"evidence": "No search.meilisearch plugin in apps/api/src/plugins or packages",
+			"gap": "Conditional on SV-5 measurement; absence acceptable until benchmark shows need",
+			"currentAssessment": {
+				"implementation": "partial",
+				"testFiles": [],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Current PostgreSQL path passes the unchanged10k-item benchmark at97.4ms p95, so no enablement trigger is present. The optional search.meilisearch plugin itself is not implemented; retain that source gap without claiming PostgreSQL insufficiency."
+				],
+				"paths": ["docs/technical/feature-contracts-p1.md"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1856",
+				"conditionalScope": {
+					"requiredNow": false,
+					"reason": "Retained contract explicitly defers Meilisearch until the same10k benchmark misses100ms; recorded97.4ms passes. Optional backend remains unimplemented, not waived or claimed built.",
+					"evidence": "docs/report/browser/codex-20261025-performance-10k-mixed-search-parallel-reads.json"
+				}
+			}
+		},
+		{
+			"id": "SV-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/search/query.ts (and/or AST, parser); apps/web/src/components/work-item/work-item-filter-editor.test.tsx; apps/web/src/lib/work-item-list-search.test.ts; tests/api/work-item-search-query.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/components/work-item/work-item-filter-editor.test.tsx",
+					"apps/web/src/lib/work-item-list-search.test.ts",
+					"tests/api/work-item-search-query.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/search/query.ts",
+					"apps/web/src/components/work-item/work-item-filter-editor.test.tsx",
+					"apps/web/src/lib/work-item-list-search.test.ts",
+					"tests/api/work-item-search-query.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1872"
+			}
+		},
+		{
+			"id": "SV-12",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/search/query.ts; tests/api-integration/work-item-structured-search.test.ts:403; apps/web/src/lib/work-item-filter.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/work-item-structured-search.test.ts",
+					"apps/web/src/lib/work-item-filter.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/search/query.ts",
+					"tests/api-integration/work-item-structured-search.test.ts",
+					"apps/web/src/lib/work-item-filter.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1879"
+			}
+		},
+		{
+			"id": "SV-13",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/work-item/search/query.ts (@me); tests/api/work-item-search-query.test.ts; apps/web/src/lib/work-item-filter.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/work-item-search-query.test.ts",
+					"apps/web/src/lib/work-item-filter.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/work-item/search/query.ts",
+					"tests/api/work-item-search-query.test.ts",
+					"apps/web/src/lib/work-item-filter.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1885"
+			}
+		},
+		{
+			"id": "SV-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/view/schema.ts; apps/web/src/lib/saved-view-query.test.ts; tests/api-integration/view.test.ts:139",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/lib/saved-view-query.test.ts",
+					"tests/api-integration/view.test.ts"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/view/schema.ts",
+					"apps/web/src/lib/saved-view-query.test.ts",
+					"tests/api-integration/view.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1903"
+			}
+		},
+		{
+			"id": "SV-15",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/view.test.ts:365,731,787; apps/web/src/components/saved-view/saved-view-audience-fields.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/view.test.ts",
+					"apps/web/src/components/saved-view/saved-view-audience-fields.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"tests/api-integration/view.test.ts",
+					"apps/web/src/components/saved-view/saved-view-audience-fields.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1906"
+			}
+		},
+		{
+			"id": "SV-16",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/view.test.ts:139; apps/web/src/components/saved-view/saved-view-audience-fields.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/view.test.ts",
+					"apps/web/src/components/saved-view/saved-view-audience-fields.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"tests/api-integration/view.test.ts",
+					"apps/web/src/components/saved-view/saved-view-audience-fields.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1909"
+			}
+		},
+		{
+			"id": "SV-17",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/view.test.ts:365,787,969",
+			"gap": "Team-lead editing deferred by spec",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/view.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": ["Team-lead editing deferred by spec"],
+				"paths": ["tests/api-integration/view.test.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1910"
+			}
+		},
+		{
+			"id": "SV-18",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/view.test.ts:436; apps/web/src/routes/agent/_layout/_authenticated/agent/views.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/view.test.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/views.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"tests/api-integration/view.test.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/views.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1912"
+			}
+		},
+		{
+			"id": "SV-19",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/lib/saved-view-query.test.ts; apps/web/src/fetchers/saved-views.test.ts; apps/web/src/components/saved-view/saved-view-detail.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/lib/saved-view-query.test.ts",
+					"apps/web/src/fetchers/saved-views.test.ts",
+					"apps/web/src/components/saved-view/saved-view-detail.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/lib/saved-view-query.test.ts",
+					"apps/web/src/fetchers/saved-views.test.ts",
+					"apps/web/src/components/saved-view/saved-view-detail.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1914"
+			}
+		},
+		{
+			"id": "SV-20",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/view.test.ts:2033,2143,2483; apps/web/src/components/nav-main.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/view.test.ts",
+					"apps/web/src/components/nav-main.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"tests/api-integration/view.test.ts",
+					"apps/web/src/components/nav-main.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1917"
+			}
+		},
+		{
+			"id": "SV-22",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/view.test.ts:200,709; apps/web/src/components/nav-main.test.tsx",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/view.test.ts",
+					"apps/web/src/components/nav-main.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"tests/api-integration/view.test.ts",
+					"apps/web/src/components/nav-main.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1918"
+			}
+		},
+		{
+			"id": "SV-21",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/agent/views.test.tsx:349-374",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/views.test.tsx"
+				],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/views.test.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1924"
+			}
+		},
+		{
+			"id": "SV-23",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/view/count-cache.ts:2-36 (30s TTL, Redis/Valkey when configured); tests/api/saved-view-count-cache.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api/saved-view-count-cache.test.ts"],
+				"assertions": [],
+				"testEvidenceStatus": "historical_locator_only",
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/view/count-cache.ts",
+					"tests/api/saved-view-count-cache.test.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p1.md:1933"
+			}
+		}
+	],
+	"top_gaps": [
+		"Global search/command palette (SV-1..9) queries legacy taskTable and navigates to /dashboard task routes, not canonical work items; no people/views/KB, no recent items, no trigram similarity fallback",
+		"Assignment notifications (AS-16/17/18): work_item.assigned/unassigned emitted but never fanned out via enqueueNotificationEvent",
+		"Project default assignee (AS-11) absent; set_assignee \"default\" always null; automation assignment (AS-14) absent",
+		"Attachments on detail: custom list (work-item-attachments.tsx) without thumbnails/lightbox/PDF preview/drag-drop/paste/multi-file/progress (AT-8..13); comment attachments + internal override absent (AT-1/AT-4); no recovery (AT-7)",
+		"Comment composer/activity is parallel work-item-activity.tsx instead of original Kaneo Activity/CommentCard; paste-image upload not wired (CA-15); #KEY links legacy-only (CA-14); no distinct internal composer (CA-5)",
+		"Hierarchy: is_epic not enforced (RH-13); no cross-project move with children (RH-12); no close-with-open-children warning (RH-10); parent delete keeps parent_id instead of orphaning (RH-11)",
+		"Blocked badge missing on cards/detail (RH-17); AS-8 \"(inactive)\" derived from missing name, not person.active",
+		"Activity immutability (CA-10) and visibility immutability (CA-4) have no tests/DB guard"
+	],
+	"tonight_actions": [
+		"Wire enqueueNotificationEvent in assign-work-item.ts/unassign-work-item.ts with a resolver for new/previous assignee (actor excluded) and add integration tests in tests/api-integration/work-item-assign.test.ts / work-item-unassign.test.ts",
+		"Enforce is_epic (no parent) in set-work-item-parent.ts and create path, with 422 test in work-item-hierarchy.test.ts",
+		"Extend apps/api/src/search/repository.ts with a workItemTable branch (reach-scoped, title>description weighting, key exact match) and point search-command-menu navigation at /agent canonical work-item routes; add global-search tests",
+		"Add project.default_assignee_id migration + create-time application (AS-11) and request-type override (AS-12); resolve set_assignee \"default\" through it",
+		"Expose person.active/on-project in work-item responses and render \"Name (inactive)\" / \"(no longer on this project)\" via resolveAssigneeDisplayStatus",
+		"Wire CommentEditor in work-item-activity.tsx to canonical attachment presign/complete for paste/drop (CA-15/AT-11) and allow multi-file on detail picker (AT-12)",
+		"Add blocked badge on work-item cards/detail from blocked_by relations with open state (RH-17) and an open-children warning in the transition UI (RH-10)",
+		"Add tests: comment PATCH with visibility is ignored/rejected (CA-4); no activity update/delete route exists (CA-10)"
+	],
+	"sourceHead": "aea5d5702ea9ac553573f598e02f425cd79cde87",
+	"currentAssessmentMethod": "Source-only per-ID trace against retained P1 contracts and requirements-index; original state/evidence/gap and old top_gaps/tonight_actions preserved as historical. No tests or browser journeys executed by this auditor. Historical test file locators are not current execution or freshly inspected assertions; only entries with testEvidenceStatus=assertion_inspected contain read assertions. Source worktree changed concurrently after sourceHead; root must join current execution and browser evidence before phase review.",
+	"currentAssessmentScope": "P1 P1b initial discovery; not phase sign-off",
+	"currentAssessmentSummary": {
+		"implemented": 83,
+		"partial": 6,
+		"missing": 1
+	},
+	"currentAssessmentAssertionInspected": 14
+}

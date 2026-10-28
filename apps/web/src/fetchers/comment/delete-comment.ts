@@ -1,23 +1,14 @@
 import { client } from "@taskdesk/libs";
-import type { InferRequestType } from "hono/client";
+import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
 
-export type DeleteCommentRequest = InferRequestType<
-  (typeof client)["activity"]["comment"]["$delete"]
->["json"];
+export type DeleteCommentRequest = { commentId: string };
 
-async function deleteComment({ activityId }: DeleteCommentRequest) {
-  const response = await client.activity.comment.$delete({
-    json: { activityId },
+/** Requests deletion (`202` pending action); the comment stays until the requester approves. */
+async function deleteComment({ commentId }: DeleteCommentRequest) {
+  const response = await client.comments[":id"].$delete({
+    param: { id: commentId },
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error);
-  }
-
-  const data = await response.json();
-
-  return data;
+  return readPendingDeletion(response, "Failed to request comment deletion");
 }
 
 export default deleteComment;

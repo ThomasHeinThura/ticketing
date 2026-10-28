@@ -99,17 +99,36 @@ export const workspaceRoleParam = z.object({
 // the controller too (`checkForInvalidResources` parity).
 export const createWorkspaceRoleBody = z.object({
   // `.trim()` runs before `.min(1)` re-checks length, so a whitespace-only
-  // name ("   ") is rejected at the boundary with a clear 400 instead of
-  // reaching the controller, normalizing to an empty string, and silently
-  // inserting a nameless role -- found adversarially: the controller's own
-  // `.trim().toLowerCase()` normalization ran AFTER this schema validated,
-  // so nothing here caught the whitespace-only case before insert.
+  // name ("   ") is rejected at the boundary with a clear 400. The immutable key is derived
+  // from the name in the service (`roleKeyFromName`).
   role: z.string().trim().min(1).max(100),
-  permission: z.record(z.string(), z.array(z.string())),
+  description: z.string().trim().max(500).nullable().optional(),
+  rank: z.number().int().optional(),
+  /** Canonical capability names. Send this, `permission` or `cloneFromRoleId`. */
+  capabilities: z.array(z.string()).optional(),
+  /** Deprecated: the inherited `{resource: action[]}` statement shape. */
+  permission: z.record(z.string(), z.array(z.string())).optional(),
+  /** Start from another role's capabilities (RL clone). */
+  cloneFromRoleId: z.string().optional(),
 });
 
-// PATCH replaces the role's ENTIRE permission set -- it does not merge. See
-// `update-workspace-role.ts` and the S7 blueprint's Finding F5.
+// PATCH replaces the role's ENTIRE capability set -- it does not merge. See
+// `role-service.ts`. Every field is optional but at least one must be present.
 export const updateWorkspaceRoleBody = z.object({
-  permission: z.record(z.string(), z.array(z.string())),
+  name: z.string().trim().min(1).max(100).optional(),
+  description: z.string().trim().max(500).nullable().optional(),
+  rank: z.number().int().optional(),
+  capabilities: z.array(z.string()).optional(),
+  permission: z.record(z.string(), z.array(z.string())).optional(),
+  expectedVersion: z.string().optional(),
+  confirmSelfEdit: z.boolean().optional(),
+});
+
+export const reassignWorkspaceRoleBody = z.object({
+  toRoleId: z.string().min(1),
+  userIds: z.array(z.string()).max(1000).optional(),
+});
+
+export const previewWorkspaceRoleBody = z.object({
+  capabilities: z.array(z.string()).max(200),
 });

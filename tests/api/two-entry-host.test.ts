@@ -20,6 +20,19 @@ import {
   PORTAL_CLIENT_ROUTE_PATTERNS,
 } from "../../apps/api/src/portal-client-routes";
 
+// Unit tests run without a database; the portal host is on unless a flag row turns it off.
+const portalFlag = vi.hoisted(() => ({
+  state: "on" as "on" | "off" | "unknown",
+}));
+vi.mock("../../apps/api/src/feature-flag/enforce", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../apps/api/src/feature-flag/enforce")
+  >()),
+  featureStateSomewhere: async () => portalFlag.state,
+  customerPortalStateForUser: async () => null,
+  customerPortalStateForSubmission: async () => "on" as const,
+}));
+
 const requireFromApi = createRequire(
   fileURLToPath(new URL("../../apps/api/package.json", import.meta.url)),
 );
@@ -96,6 +109,54 @@ describe("P0 host and static isolation", () => {
       const head = await app.request("/", { method: "HEAD", headers });
       expect(head.status).toBe(200);
       expect(await head.text()).toBe("");
+    }
+  });
+
+  it("serves the portal app with the feature-off marker while feature.customer_portal is off or unreadable (P3-R2-03, P4R2-L1)", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    const headers = { host: "portal.localhost:5174" };
+    try {
+      for (const [state, marker, status] of [
+        ["off", "disabled", 404],
+        ["unknown", "unavailable", 503],
+      ] as const) {
+        portalFlag.state = state;
+        for (const path of ["/", "/requests"]) {
+          const page = await app.request(path, { headers });
+          expect(page.status).toBe(status);
+          const html = await page.text();
+          expect(html).toContain("PORTAL ROOT MARKER");
+          expect(html).toMatch(
+            new RegExp(
+              `^<!doctype html><meta name="taskdesk-portal-state" content="${marker}">`,
+            ),
+          );
+          expect(page.headers.get("cache-control")).toContain("no-store");
+        }
+        const asset = await app.request("/assets/only-portal.js", { headers });
+        expect(asset.status).toBe(200);
+        const api = await app.request("/api/public/terminology", { headers });
+        expect(api.status).toBe(status);
+        if (state === "unknown")
+          expect(api.headers.get("retry-after")).toBe("5");
+        const post = await app.request("/api/portal/submissions", {
+          method: "POST",
+          headers,
+        });
+        expect(post.status).toBe(status);
+        const agent = await app.request("/", {
+          headers: { host: "localhost:5173" },
+        });
+        expect(agent.status).toBe(200);
+        await expect(agent.text()).resolves.not.toContain(
+          "taskdesk-portal-state",
+        );
+      }
+    } finally {
+      portalFlag.state = "on";
     }
   });
 
@@ -203,7 +264,7 @@ describe("P0 host and static isolation", () => {
       ),
       "utf8",
     );
-    const match = /fullPaths:\s*([^\n]+)/.exec(tree);
+    const match = /fullPaths:\s*([\s\S]*?)(?=\n\s*fileRoutesByTo)/.exec(tree);
     expect(match).not.toBeNull();
     const treePaths = [...(match?.[1] ?? "").matchAll(/'([^']+)'/g)]
       .map((m) => m[1] as string)
@@ -366,6 +427,7 @@ describe("P0 host and static isolation", () => {
   });
 
   it("rejects shared cookie domains at application startup", () => {
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
     const original = process.env.COOKIE_DOMAIN;
     process.env.COOKIE_DOMAIN = ".example.test";
     try {
@@ -373,6 +435,7 @@ describe("P0 host and static isolation", () => {
         createApp({ staticRoot: agentRoot, portalStaticRoot: portalRoot }),
       ).toThrow(/COOKIE_DOMAIN is incompatible/u);
     } finally {
+      // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
       if (original === undefined) delete process.env.COOKIE_DOMAIN;
       else process.env.COOKIE_DOMAIN = original;
     }

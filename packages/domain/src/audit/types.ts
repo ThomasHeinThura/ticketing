@@ -133,6 +133,16 @@ export interface ActivityRow {
   field: string | null;
   newValue: string | null;
   createdAt: Date;
+  /**
+   * The journal verb. Optional so field-only callers stay valid. State transitions are
+   * journalled as verb `transitioned` with no `field` (CA-7 keeps that pair public only while
+   * `field` is null), so `reconstructAt` maps that verb to the `stateId` field itself.
+   */
+  verb?: string | null;
+  /** The value before this change; seeds the value a field held at creation. */
+  oldValue?: string | null;
+  /** Decoded `payload` jsonb; a project move carries `fromStateId`/`toStateId` here. */
+  payload?: unknown;
 }
 
 /**

@@ -8,7 +8,7 @@
  * satisfied the moment *any* candidate in that set is proven executing. That collapsed
  * two gates into one satisfiable slot: `check:events` had no reverse obligation at all,
  * and the alias let `check:vocabulary`'s own step be removed the same way. The fix:
- * `check:events` has its own row in `docs/04-engineering/ci-cd.md` and its own manifest
+ * `check:events` has its own row in `docs/technical/ci-gates.md` and its own manifest
  * entry, and `WORKFLOW_ALIASES` keeps only the five aliases it genuinely needs (see the
  * comment on the map in `scripts/ci/lib/workflow-aliases.mjs` for what each one is).
  *
@@ -153,7 +153,7 @@ function repoWithWorkflows(name, mutate = () => {}) {
   const dir = scratchDir(`alias-table-${name}`);
   initRepo(dir);
   installCheckers(dir);
-  installFromRepo(dir, "docs/04-engineering/ci-cd.md");
+  installFromRepo(dir, "docs/technical/ci-gates.md");
   installFromRepo(dir, ".github/workflows/ci-fast.yml");
   installFromRepo(dir, ".github/workflows/ci-full.yml");
   installFromRepo(dir, ".github/actions/setup/action.yml");

@@ -254,3 +254,15 @@ export async function lockInstanceAdminSerialization(
 ): Promise<void> {
   await executor.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
 }
+
+/**
+ * The same lock in SHARED mode: it waits for an instance-administrator change in flight (which holds
+ * it exclusively) and makes one wait for it, but does not serialize with other shared holders. A
+ * long-running writer (the import runner) takes it only for a short authority re-check in its own
+ * small transaction, so a role change is never blocked for the length of a whole chunk.
+ */
+export async function lockInstanceAdminSerializationShared(
+  executor: Executor,
+): Promise<void> {
+  await executor.execute(sql`SELECT pg_advisory_xact_lock_shared(2026)`);
+}

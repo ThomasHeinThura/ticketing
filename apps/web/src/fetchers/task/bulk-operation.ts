@@ -4,7 +4,6 @@ type BulkOperationType =
   | "updateStatus"
   | "updatePriority"
   | "updateAssignee"
-  | "delete"
   | "addLabel"
   | "removeLabel"
   | "updateDueDate";

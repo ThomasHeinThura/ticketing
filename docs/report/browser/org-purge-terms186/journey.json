@@ -1,0 +1,33 @@
+{
+	"recordedAt": "2026-10-25T23:08:45.576069+00:00",
+	"scope": "Real global approval dialog, exact own qaterm26 organisation/QATERM project/QATERM-1 item on audit copy",
+	"strictTLS": true,
+	"backup": {
+		"databaseFullyDecoded": true,
+		"storageFilesByteVerified": 3,
+		"guard": "Exact target ids and backup SHA-256 checked before both destructive stages"
+	},
+	"execution": {
+		"softDeleteApproved": true,
+		"permanentPurgeApproved": true,
+		"typedExactName": true,
+		"freshPasswordStepUp": true,
+		"auditActionsRetained": [
+			"hard_purge.executed",
+			"organisation.created",
+			"organisation.deleted"
+		],
+		"unrelatedFullRows": "business-integrity.json"
+	},
+	"visual": {
+		"scopedDesktopPass": true,
+		"unresolvedTermMarkers": false,
+		"missingRegisteredActionLabel": false,
+		"rootInspectedPurgeDialog": true
+	},
+	"limits": [
+		"Desktop organisation purge only; full viewport/theme/role/flag and work-item/project manual-purge journeys remain pending",
+		"No live database or unrelated business data modified"
+	],
+	"screens": ["soft-delete-approve-dialog.png", "purge-approve-dialog.png"]
+}

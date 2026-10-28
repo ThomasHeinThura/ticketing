@@ -1,0 +1,24 @@
+# Local testing image assembled from freshly built workspace artifacts.
+# The coordinator verifies runtime dependency declarations against this base first.
+ARG SIT_RUNTIME_BASE=taskdesk-codex-sit:20261025-node24-security
+FROM ${SIT_RUNTIME_BASE}
+USER root
+# The application and its health probe use Node; this debug downloader is unused.
+RUN apt-get purge -y wget
+RUN rm -rf /app/public /app/apps/api/dist /app/apps/api/drizzle \
+    /app/packages/domain/dist /app/packages/email/dist /app/packages/permissions/dist
+COPY --chown=taskdesk:taskdesk apps/api/dist /app/apps/api/dist
+COPY --chown=taskdesk:taskdesk apps/api/drizzle /app/apps/api/drizzle
+COPY --chown=taskdesk:taskdesk apps/web/dist /app/public
+COPY --chown=taskdesk:taskdesk packages/domain /app/packages/domain
+COPY --chown=taskdesk:taskdesk packages/email /app/packages/email
+COPY --chown=taskdesk:taskdesk packages/permissions /app/packages/permissions
+COPY --chown=taskdesk:taskdesk NOTICE LICENSE THIRD-PARTY-NOTICES.md /app/
+COPY --chown=taskdesk:taskdesk deploy/entrypoint.sh /app/entrypoint.sh
+COPY --chown=taskdesk:taskdesk deploy/healthcheck.mjs /app/healthcheck.mjs
+RUN chmod 0555 /app/entrypoint.sh
+USER taskdesk
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD ["node", "/app/healthcheck.mjs"]
+ARG SIT_SOURCE_DIGEST
+LABEL org.taskdesk.testing.source-digest=${SIT_SOURCE_DIGEST}

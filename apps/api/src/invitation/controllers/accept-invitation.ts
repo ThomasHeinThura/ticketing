@@ -1,6 +1,12 @@
+import { auditWrongPortalAccept } from "../../customer-invitation/service";
 import db from "../../database";
 import { resolveIdentity } from "../../permissions/resolve-identity";
 import { WorkspaceRoleNotFoundError } from "../../workspace/controllers/workspace-membership-errors";
+import {
+  InsufficientPermissionToGrantError,
+  RoleRankError,
+} from "../../workspace/controllers/workspace-role-errors";
+import { assertMayAssignRole } from "../../workspace/role-assignment-guard";
 import { syncWorkspaceAdminReach } from "../../workspace/workspace-admin-reach";
 import { lockWorkspaceRoleAssignment } from "../../workspace/workspace-role-assignment.repository";
 import {
@@ -17,6 +23,7 @@ import {
   InvitationExpiredError,
   InvitationNotFoundError,
   InvitationNotPendingError,
+  InvitationRoleNotAssignableError,
   NotInvitationRecipientError,
 } from "./invitation-action-errors";
 import { refuseRecipientInvitationTransition } from "./recipient-transition-refusal";
@@ -72,6 +79,8 @@ async function acceptInvitation(
 
   const pre = await findInvitationWorkspaceId(identity, invitationId);
   if (!pre) {
+    // CP-25: a customer-scope id on the staff route is a wrong-portal refusal; record it.
+    await auditWrongPortalAccept(callerId, invitationId);
     const recipientMatch = await findInvitationRecipientMatch(
       identity,
       invitationId,
@@ -121,6 +130,22 @@ async function acceptInvitation(
     const roleRow = await findWorkspaceRoleId(tx, invitation.workspaceId, role);
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(role);
+    }
+    // The role is handed over now, so the inviter must still be allowed to hand it over (rank and
+    // capabilities, RL-3): an invitation outlives the authority that issued it.
+    try {
+      await assertMayAssignRole(tx, {
+        workspaceId: invitation.workspaceId,
+        actorUserId: invitation.inviterId,
+        targetRoleKey: role,
+      });
+    } catch (error) {
+      if (
+        error instanceof RoleRankError ||
+        error instanceof InsufficientPermissionToGrantError
+      )
+        throw new InvitationRoleNotAssignableError();
+      throw error;
     }
     const now = new Date();
 

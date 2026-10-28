@@ -1,0 +1,74 @@
+{
+	"checkpoint": "Corrected served web build supplied by root; work-list G11 reported at 349.1 KB",
+	"browser": "Chromium, strict TLS, same-origin API with regular CSRF flow",
+	"fixtures": {
+		"mutatedItems": ["CCY-2", "CCY-4"],
+		"originalLabelArraysRestored": true,
+		"originalCustomValuesRestored": true,
+		"stateIdsUnchanged": true,
+		"ccY1": "Not opened in detail or mutated; it appeared as a normal card in project-board captures",
+		"retainedProjectLabels": ["VW13 QA A", "VW13 QA B", "VW13 QA C"],
+		"retainedLabelReason": "Project-label deletion uses a pending approval flow"
+	},
+	"labels": {
+		"duplicates": "CCY-2 appeared in both A and B",
+		"emptyTargetMouse": "Dragging A to empty C replaced only A, resulting in B+C",
+		"reload": "B+C assignments persisted after reload",
+		"noneClear": "Dragging to None cleared the label array",
+		"occupiedTargetMouse": "With CCY-4 in C, dragging CCY-2 from A to the occupied C target produced B+C; CCY-4 remained in C",
+		"restored": "Both item label arrays returned to empty using fresh If-Match CAS",
+		"screenshot": "docs/report/browser/screens/vw13-179-labels-1440-light.png"
+	},
+	"customFields": {
+		"textKeyboard": "business_impact Alpha to Beta; persisted after reload",
+		"numberMouse": "effort_points 1 to 2; persisted after reload",
+		"booleanMouse": "customer_confirmed No to Yes; persisted after reload",
+		"restored": "CCY-2 and CCY-4 business_impact/effort_points/customer_confirmed values returned to null using fresh If-Match CAS"
+	},
+	"safetyAndAccessibility": {
+		"staleCas": "stale If-Match returned HTTP 409; no field, state, or version changed",
+		"viewerReach": "existing viewer received HTTP 404 for CCY-2; no membership or role changes",
+		"keyboardCancel": "Space then Escape caused zero PATCH requests; focus returned to CCY-2 card",
+		"globalFeatureOff": "Not tested; no global flags changed"
+	},
+	"responsive": [
+		{
+			"width": 390,
+			"theme": "light",
+			"bodyAndHtmlWidthEqualViewport": true,
+			"screenshot": "docs/report/browser/screens/vw13-179-390-light.png"
+		},
+		{
+			"width": 390,
+			"theme": "dark",
+			"bodyAndHtmlWidthEqualViewport": true,
+			"screenshot": "docs/report/browser/screens/vw13-179-390-dark.png"
+		},
+		{
+			"width": 768,
+			"theme": "light",
+			"bodyAndHtmlWidthEqualViewport": true,
+			"screenshot": "docs/report/browser/screens/vw13-179-768-light.png"
+		},
+		{
+			"width": 768,
+			"theme": "dark",
+			"bodyAndHtmlWidthEqualViewport": true,
+			"screenshot": "docs/report/browser/screens/vw13-179-768-dark.png"
+		},
+		{
+			"width": 1440,
+			"theme": "light",
+			"bodyAndHtmlWidthEqualViewport": true,
+			"screenshot": "docs/report/browser/screens/vw13-179-1440-light.png"
+		},
+		{
+			"width": 1440,
+			"theme": "dark",
+			"bodyAndHtmlWidthEqualViewport": true,
+			"screenshot": "docs/report/browser/screens/vw13-179-1440-dark.png"
+		}
+	],
+	"recordedAt": "2026-10-25T14:58:10.948792+00:00",
+	"status": "scoped_pass_pending_coordinator_visual_inspection"
+}

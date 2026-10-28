@@ -1,50 +1,4 @@
-/**
- * Issue #454: a regression test for N concurrent `DELETE /api/attachments/{id}` calls
- * racing on the SAME, already-`ready` attachment.
- *
- * Before the fix, the soft-delete UPDATE's `WHERE` clause guarded on `id` and
- * `uploaded_by` only -- not on `state` -- unlike `complete-attachment.ts`'s own
- * `WHERE state = 'pending'` guard (added by PR #450's L5/N5 fixes for the identical
- * reason). Every concurrent call therefore matched the row regardless of how many
- * earlier calls had already soft-deleted it: all N calls returned 200, each one recorded
- * its own `attachment.deleted` activity row, and `deleted_at` was overwritten by
- * whichever call happened to commit last.
- *
- * The fix adds `state <> 'deleted'` to the UPDATE's `WHERE` clause (mirroring
- * `complete-attachment.ts`'s own guarded-UPDATE pattern, widened to match this route's own
- * pre-check, which accepts both `pending` and `ready` -- see `delete-attachment.ts`'s own
- * comment on why `<> 'deleted'`, not the narrower `= 'ready'` a first pass at this fix used
- * and an Opus security review caught as B1: it wrongly 403'd an uploader deleting their own
- * still-`pending`, never-completed attachment) and only records the activity row when that
- * guarded UPDATE actually matched a row. This test fires N concurrent DELETE calls and
- * confirms: exactly one `attachment.deleted` activity row exists afterward, and the row
- * ends up `deleted` -- not that every call returns a distinct status, since DELETE is
- * conventionally idempotent here (a losing racer's own re-check sees the row already
- * `deleted` and returns the same 200 no-op the sequential double-delete path already
- * returns, rather than a misleading 403).
- *
- * A plain `Promise.all` of N in-process requests is NOT enough to reproduce this
- * reliably: this local Postgres round-trip is fast enough that, absent the fix, a losing
- * request's OWN pre-transaction "already deleted?" read (the early no-op check at the top
- * of `deleteAttachment`) usually lands after an earlier request has already committed --
- * so it short-circuits there instead of ever reaching the unguarded `UPDATE`, which is
- * exactly why the real-world bug report itself only observed 2 activity rows from 5
- * concurrent calls, not 5.
- *
- * `recordWorkItemActivity` is mocked to add a small delay AFTER the real insert but
- * BEFORE returning -- i.e. every call that wins its own `UPDATE`'s row lock holds that
- * lock open a little longer before committing. That gives every OTHER concurrent
- * `deleteAttachment` call's own pre-transaction "already deleted?" read time to run (it
- * sees `state = 'ready'`, since nothing has committed yet -- a plain `SELECT` never
- * blocks on another transaction's row lock under `READ COMMITTED`), and then time for
- * its own `UPDATE` to queue up waiting on that same row lock. When the delay elapses and
- * the lock holder commits, the next queued `UPDATE` re-evaluates its `WHERE` clause
- * against the now-committed row -- exactly the race `state <> 'deleted'` in the guard is
- * for. This is the DB-transaction-boundary equivalent of
- * `attachment-concurrent-complete.test.ts`'s own S3 `copyBarrier` (holding several
- * concurrent operations open at once to force the real interleaving), just applied to a
- * pure DB race with no external client to intercept.
- */
+/** Concurrent durable requests must preserve the file; concurrent confirmations tombstone exactly once. */
 import { randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -62,6 +16,7 @@ import {
   grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 vi.mock("../../apps/api/src/work-item/activity", async () => {
   const actual = await vi.importActual<
@@ -168,6 +123,18 @@ async function setupProject() {
   await grantWorkItemProjectAccess(creator.id, project.id);
   const type = await makeWorkItemType(workspace.id);
   await makeDefaultState(workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
+  await db.insert(schema.sessionTable).values({
+    id: `session-${creator.id}`,
+    token: randomUUID(),
+    userId: creator.id,
+    portal: "agent",
+    expiresAt: new Date(Date.now() + 3600000),
+  });
   return { creator, workspace, project, type };
 }
 
@@ -195,7 +162,29 @@ async function raceConcurrentDeletes(
       app.request(`/api/attachments/${attachmentId}`, { method: "DELETE" }),
     ),
   );
-  return responses.map((r) => r.status);
+  expect(responses.map((r) => r.status).sort()).toEqual([
+    202, 409, 409, 409, 409,
+  ]);
+  const accepted = responses.find((r) => r.status === 202);
+  if (!accepted) throw new Error("Missing durable action");
+  const { pendingActionId } = (await accepted.json()) as {
+    pendingActionId: string;
+  };
+  const [before] = await db
+    .select()
+    .from(schema.attachmentTable)
+    .where(eq(schema.attachmentTable.id, attachmentId));
+  expect(before?.state).toBe("ready");
+  const approved = await Promise.all(
+    Array.from({ length: count }, () =>
+      app.request(`/api/me/pending-actions/${pendingActionId}/approve`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+    ),
+  );
+  return approved.map((r) => r.status);
 }
 
 describe("#454 regression: concurrent delete on one attachment", () => {
@@ -269,9 +258,7 @@ describe("#454 regression: concurrent delete on one attachment", () => {
     // DELETE is idempotent here: every call -- the real winner and every racer whose own
     // re-check then sees the row already `deleted` -- returns the same 200 no-op. The actual
     // regression is not the status codes; it's what got written underneath them.
-    for (const status of statuses) {
-      expect(status).toBe(200);
-    }
+    expect(statuses.sort()).toEqual([200, 409, 409, 409, 409]);
 
     const [row] = await db
       .select()

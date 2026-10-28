@@ -1,0 +1,3 @@
+CREATE INDEX "work_item_alias_search_idx" ON "work_item_key_alias" USING btree (lower("old_key"));--> statement-breakpoint
+CREATE INDEX "work_item_key_search_idx" ON "work_item" USING btree (lower("key") text_pattern_ops);--> statement-breakpoint
+CREATE INDEX "work_item_description_search_idx" ON "work_item" USING gin (lower(coalesce(case when jsonb_typeof("description") = 'string' then "description" #>> '{}' else jsonb_path_query_array("description", 'lax $.**.text')::text end, '')) gin_trgm_ops);

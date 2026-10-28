@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   can: vi.fn(),
@@ -7,14 +7,25 @@ const mocks = vi.hoisted(() => ({
   resolveNotificationPreference: vi.fn(),
   findCurrentNotificationResource: vi.fn(),
   findNotificationPerson: vi.fn(),
+  findInstanceTimezone: vi.fn(),
   findApprovalNotificationContext: vi.fn(),
   isApprovalApproverStillValid: vi.fn(),
   listApprovalWatcherPersonIds: vi.fn(),
+  isCurrentCustomerOwnRequest: vi.fn(),
 }));
 
-vi.mock("@taskdesk/permissions", () => ({
-  can: mocks.can,
-  reaches: mocks.reaches,
+vi.mock("@taskdesk/permissions", async (importOriginal) => {
+  const permissions =
+    await importOriginal<typeof import("@taskdesk/permissions")>();
+  return {
+    ...permissions,
+    can: mocks.can,
+    reaches: mocks.reaches,
+  };
+});
+vi.mock("../../apps/api/src/utils/project-ancestry", () => ({
+  projectAncestryFor: async () => ["parent-project"],
+  projectOwnerTeamFor: async () => null,
 }));
 vi.mock("../../apps/api/src/permissions/resolve-identity", () => ({
   resolveIdentity: mocks.resolveIdentity,
@@ -25,9 +36,13 @@ vi.mock("../../apps/api/src/notification/preferences", () => ({
 vi.mock("../../apps/api/src/notification/repository", () => ({
   findCurrentNotificationResource: mocks.findCurrentNotificationResource,
   findNotificationPerson: mocks.findNotificationPerson,
+  findInstanceTimezone: mocks.findInstanceTimezone,
   findApprovalNotificationContext: mocks.findApprovalNotificationContext,
   isApprovalApproverStillValid: mocks.isApprovalApproverStillValid,
   listApprovalWatcherPersonIds: mocks.listApprovalWatcherPersonIds,
+}));
+vi.mock("../../apps/api/src/notification/customer-request-scope", () => ({
+  isCurrentCustomerOwnRequest: mocks.isCurrentCustomerOwnRequest,
 }));
 
 import type { ClaimedNotificationDelivery } from "../../apps/api/src/database/repositories/notification-delivery.repository";
@@ -58,6 +73,7 @@ const delivery = {
 
 const tx = {} as DbTransaction;
 const resource = {
+  workItemId: "item-1",
   workspaceId: "workspace-1",
   projectId: "project-1",
   organisationId: "org-1",
@@ -85,6 +101,8 @@ describe("current notification reach and preference", () => {
     mocks.reaches.mockReturnValue(true);
     mocks.can.mockReturnValue(true);
     mocks.resolveNotificationPreference.mockResolvedValue({ enabled: true });
+    mocks.findInstanceTimezone.mockResolvedValue("UTC");
+    mocks.isCurrentCustomerOwnRequest.mockResolvedValue(true);
   });
 
   it("suppresses after current resource reach is lost", async () => {
@@ -131,6 +149,7 @@ describe("current notification reach and preference", () => {
         title: "Assigned",
         body: "A safe summary",
         url: "/agent/work-items/item-1",
+        audience: "agent",
       },
     });
   });
@@ -430,19 +449,34 @@ describe("current notification reach and preference", () => {
     });
   });
 
-  it("passes the current private requester/participant allowlist to canonical reach", async () => {
-    mocks.findCurrentNotificationResource.mockResolvedValue({
-      ...resource,
-      visibleToPersonIds: ["person-1", "participant-2"],
-    });
-    await evaluateCurrentNotificationReachAndPreference(tx, delivery);
-    expect(mocks.reaches).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
+  it.each(["staff", "customer"] as const)(
+    "applies the private requester/participant allowlist only to customers (%s)",
+    async (side) => {
+      mocks.resolveIdentity.mockResolvedValue({ personId: "person-1", side });
+      mocks.findCurrentNotificationResource.mockResolvedValue({
+        ...resource,
         visibleToPersonIds: ["person-1", "participant-2"],
-      }),
-    );
-  });
+      });
+      await evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        eventKind: "work_item.commented",
+        resourceType: "comment",
+        resourceId: "comment-1",
+        payload: {
+          ...delivery.payload,
+          kind: "work_item.commented",
+          payload: { commentId: "comment-1", workItemId: "item-1" },
+        },
+      });
+      expect(mocks.reaches).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          visibleToPersonIds:
+            side === "customer" ? ["person-1", "participant-2"] : null,
+        }),
+      );
+    },
+  );
 
   it("does not project an internal comment to a customer", async () => {
     mocks.resolveIdentity.mockResolvedValue({
@@ -541,18 +575,90 @@ describe("current notification reach and preference", () => {
     });
   });
 
-  it("holds provider eligibility when quiet-hours fields are configured", async () => {
-    mocks.findNotificationPerson.mockResolvedValue({
+  describe("NO-3 quiet hours", () => {
+    const quietPerson = {
       userId: "user-1",
       side: "staff",
       active: true,
       quietHoursStart: "22:00",
       quietHoursEnd: "07:00",
       quietHoursTimezone: "Europe/London",
+    };
+
+    afterEach(() => {
+      vi.useRealTimers();
     });
-    await expect(
-      evaluateCurrentNotificationReachAndPreference(tx, delivery),
-    ).resolves.toEqual({ kind: "quiet_hours_unresolved" });
+
+    it("defers a non-urgent delivery inside the window until the window ends", async () => {
+      vi.useFakeTimers({ now: new Date("2026-01-15T23:30:00Z") });
+      mocks.findNotificationPerson.mockResolvedValue(quietPerson);
+      await expect(
+        evaluateCurrentNotificationReachAndPreference(tx, delivery),
+      ).resolves.toEqual({
+        kind: "defer",
+        until: new Date("2026-01-16T07:00:00Z"),
+        reason: "quiet_hours",
+      });
+    });
+
+    it("delivers outside the window", async () => {
+      vi.useFakeTimers({ now: new Date("2026-01-15T12:00:00Z") });
+      mocks.findNotificationPerson.mockResolvedValue(quietPerson);
+      await expect(
+        evaluateCurrentNotificationReachAndPreference(tx, delivery),
+      ).resolves.toMatchObject({ kind: "eligible" });
+    });
+
+    it("uses the instance zone when the person has none", async () => {
+      vi.useFakeTimers({ now: new Date("2026-01-15T16:30:00Z") });
+      mocks.findNotificationPerson.mockResolvedValue({
+        ...quietPerson,
+        quietHoursTimezone: null,
+      });
+      mocks.findInstanceTimezone.mockResolvedValue("Asia/Yangon");
+      await expect(
+        evaluateCurrentNotificationReachAndPreference(tx, delivery),
+      ).resolves.toMatchObject({ kind: "defer", reason: "quiet_hours" });
+    });
+
+    it("ignores quiet hours for an SLA breach", async () => {
+      vi.useFakeTimers({ now: new Date("2026-01-15T23:30:00Z") });
+      mocks.findNotificationPerson.mockResolvedValue(quietPerson);
+      const breach = {
+        ...delivery,
+        eventKind: "sla.breached",
+        payload: {
+          id: delivery.eventId,
+          kind: "sla.breached",
+          scope: { workspaceId: "workspace-1", organisationId: "org-1" },
+          payload: { workItemId: "item-1" },
+        },
+      };
+      await expect(
+        evaluateCurrentNotificationReachAndPreference(tx, breach),
+      ).resolves.toMatchObject({ kind: "eligible" });
+    });
+
+    it("stays unresolved when the configured hours are malformed", async () => {
+      mocks.findNotificationPerson.mockResolvedValue({
+        ...quietPerson,
+        quietHoursEnd: "25:99",
+      });
+      await expect(
+        evaluateCurrentNotificationReachAndPreference(tx, delivery),
+      ).resolves.toEqual({ kind: "quiet_hours_unresolved" });
+    });
+
+    it("never consults the instance zone when no quiet hours are configured", async () => {
+      mocks.findNotificationPerson.mockResolvedValue({
+        ...quietPerson,
+        quietHoursStart: null,
+        quietHoursEnd: null,
+        quietHoursTimezone: null,
+      });
+      await evaluateCurrentNotificationReachAndPreference(tx, delivery);
+      expect(mocks.findInstanceTimezone).not.toHaveBeenCalled();
+    });
   });
 
   it("does not send a customer to the staff work-item route", async () => {
@@ -581,6 +687,33 @@ describe("current notification reach and preference", () => {
     await expect(
       evaluateCurrentNotificationReachAndPreference(tx, descriptionMention),
     ).resolves.toEqual({ kind: "destination_unresolved" });
+  });
+
+  it("suppresses a customer notification when the current request is not theirs", async () => {
+    mocks.resolveIdentity.mockResolvedValue({
+      personId: "person-1",
+      side: "customer",
+    });
+    mocks.isCurrentCustomerOwnRequest.mockResolvedValue(false);
+    await expect(
+      evaluateCurrentNotificationReachAndPreference(tx, {
+        ...delivery,
+        eventKind: "work_item.transitioned",
+        payload: {
+          id: delivery.eventId,
+          kind: "work_item.transitioned",
+          scope: {
+            workspaceId: delivery.workspaceId,
+            organisationId: delivery.organisationId,
+          },
+          payload: { workItemId: "item-1" },
+        },
+      }),
+    ).resolves.toEqual({
+      kind: "suppress",
+      reason: "customer_request_not_owned",
+    });
+    expect(mocks.resolveNotificationPreference).not.toHaveBeenCalled();
   });
 
   it("keeps a visible customer transition eligible through reach and fails closed at the missing customer projection seam", async () => {

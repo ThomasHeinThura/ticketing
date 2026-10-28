@@ -43,12 +43,33 @@ describe("issue #307 S6: bulkUpdateTasks fails closed when workspaceId is falsy"
         // Deny-all stand-in for the route's reach context: the call must fail on the
         // workspace invariant before it is ever consulted.
         reach: {
+          identity: null,
           reaches: async () => false,
           can: async () => false,
           reachableProjectIds: async () => [],
+          projectFactsFor: async () => [],
         },
       }),
     ).rejects.toMatchObject({ status: 500 });
+  });
+
+  it("refuses operation delete with 410 and never reaches the database (PA-1)", async () => {
+    await expect(
+      bulkUpdateTasks({
+        identity,
+        taskIds: ["some-task-id"],
+        operation: "delete",
+        userId: "some-user-id",
+        workspaceId: "some-workspace-id",
+        reach: {
+          identity: null,
+          reaches: async () => true,
+          can: async () => true,
+          reachableProjectIds: async () => [],
+          projectFactsFor: async () => [],
+        },
+      }),
+    ).rejects.toMatchObject({ status: 410 });
   });
 
   it("throws 500 when the route's reach context is missing, before any database access", async () => {

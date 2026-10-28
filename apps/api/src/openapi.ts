@@ -11,6 +11,8 @@ export type ApiKey = {
   userId: string;
   enabled: boolean;
   permissions: Record<string, string[]> | null;
+  /** From the `api_key` extension row (MC-14); absent means a legacy personal, non-MCP key. */
+  isMcp?: boolean;
 };
 
 export type BaseVariables = {

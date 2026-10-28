@@ -88,7 +88,7 @@ function scenario(
   const dir = scratchDir(prefix);
   initRepo(dir);
   installCheckers(dir);
-  installFromRepo(dir, "docs/05-operations/configuration-reference.md");
+  installFromRepo(dir, "docs/technical/configuration.md");
   write(dir, S3, s3With(baseReads));
   write(dir, BASELINE, baselineWith(baseBaseline));
   const base = commit(dir, "chore: bootstrap the baseline");

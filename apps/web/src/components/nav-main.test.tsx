@@ -19,6 +19,9 @@ const mocks = vi.hoisted(() => ({
   paint: { resolve: () => {} },
   getSavedViews: vi.fn(),
   countSavedView: vi.fn(),
+  getWorkspaceResolvedFeatures: vi.fn(),
+  logTime: true,
+  instanceAdmin: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -36,6 +39,12 @@ vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws-1" } }),
 }));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({ canLogTime: () => mocks.logTime }),
+}));
+vi.mock("@/hooks/use-instance-admin-signal", () => ({
+  useInstanceAdminSignal: () => mocks.instanceAdmin,
+}));
 vi.mock("@/hooks/queries/invitation/use-pending-invitations", () => ({
   usePendingInvitations: () => ({ data: [] }),
 }));
@@ -48,6 +57,11 @@ vi.mock("@/lib/i18n/after-first-paint", () => ({
 vi.mock("@/fetchers/saved-views", () => ({
   getSavedViews: (...args: unknown[]) => mocks.getSavedViews(...args),
   countSavedView: (...args: unknown[]) => mocks.countSavedView(...args),
+}));
+
+vi.mock("@/fetchers/feature-flags", () => ({
+  getWorkspaceResolvedFeatures: (...args: unknown[]) =>
+    mocks.getWorkspaceResolvedFeatures(...args),
 }));
 
 const view = (id: string, name: string, isPinned: boolean) => ({
@@ -84,7 +98,9 @@ beforeEach(() => {
       }) as MediaQueryList,
   );
   mocks.user = { id: "viewer-1" };
+  mocks.instanceAdmin = false;
   mocks.navigate.mockReset();
+  mocks.getWorkspaceResolvedFeatures.mockResolvedValue([]);
   mocks.getSavedViews.mockResolvedValue([
     view("v-pinned", "Escalations", true),
     view("v-other", "Not pinned", false),
@@ -201,5 +217,90 @@ describe("NavMain saved views (SV-20, SV-22)", () => {
     mocks.paint.resolve();
     await Promise.resolve();
     expect(mocks.getSavedViews).not.toHaveBeenCalled();
+  });
+});
+
+describe("NavMain feature entries (P5-R4-04)", () => {
+  const on = (...keys: string[]) => keys.map((key) => ({ key, enabled: true }));
+
+  it("shows the gated entries from the resolved read, which every workspace member may call", async () => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
+      ...on(
+        "feature.knowledge_base",
+        "feature.time_tracking",
+        "feature.reports",
+      ),
+    ]);
+    renderNav();
+    mocks.paint.resolve();
+    for (const name of ["Knowledge base", "Timesheet", "Reports", "Dashboard"])
+      expect(await screen.findByRole("button", { name })).toBeInTheDocument();
+    expect(mocks.getWorkspaceResolvedFeatures).toHaveBeenCalledWith("ws-1");
+  });
+
+  it("hides the Timesheet entry from a caller without time_entry:create even with the flag on (R6-02)", async () => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
+      ...on("feature.time_tracking", "feature.reports"),
+    ]);
+    mocks.logTime = false;
+    renderNav();
+    mocks.paint.resolve();
+    expect(
+      await screen.findByRole("button", { name: "Reports" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Timesheet" })).toBeNull();
+    mocks.logTime = true;
+  });
+
+  it("hides an entry whose flag is off and all of them when the read fails", async () => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue(
+      on("feature.knowledge_base"),
+    );
+    const first = renderNav();
+    mocks.paint.resolve();
+    expect(
+      await screen.findByRole("button", { name: "Knowledge base" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Timesheet" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reports" })).toBeNull();
+    first.unmount();
+
+    mocks.getWorkspaceResolvedFeatures.mockRejectedValue(
+      new HttpError(403, "no"),
+    );
+    renderNav();
+    mocks.paint.resolve();
+    await waitFor(() =>
+      expect(mocks.getWorkspaceResolvedFeatures).toHaveBeenCalledTimes(2),
+    );
+    expect(screen.queryByRole("button", { name: "Knowledge base" })).toBeNull();
+  });
+});
+
+describe("NavMain scoped settings entry", () => {
+  it("offers separate Account, Workspace and Project settings destinations", () => {
+    renderNav();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Workspace" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Project settings" }));
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/dashboard/settings/projects",
+    });
+  });
+
+  it("shows the independent God Mode destination only to instance admins", () => {
+    const { unmount } = renderNav();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.queryByRole("button", { name: "God Mode" })).toBeNull();
+    unmount();
+
+    mocks.instanceAdmin = true;
+    renderNav();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "God Mode" }));
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent/god-mode" });
   });
 });

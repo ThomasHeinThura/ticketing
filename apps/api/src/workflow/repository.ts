@@ -19,15 +19,18 @@ import {
   currentWorkspaceReachPredicate,
 } from "../database/repositories/identity-scope.repository";
 import {
+  personTable,
   projectTable,
   roleTable,
   stateTable,
   stateTemplateTable,
+  userTable,
   workflowTable,
   workflowTransitionTable,
   workflowVersionTable,
   workItemTable,
   workspaceTable,
+  workspaceUserTable,
 } from "../database/schema";
 
 /**
@@ -262,12 +265,25 @@ export async function stampVersionPublished(
   versionId: string,
   publishedBy: string | null,
 ) {
+  // WF-6: a published version is immutable. The stamp is written once (`published_at IS NULL`);
+  // a repeat call returns the stored row untouched, never overwriting who/when first published it.
   const [published] = await executor
     .update(workflowVersionTable)
     .set({ publishedAt: new Date(), publishedBy })
-    .where(eq(workflowVersionTable.id, versionId))
+    .where(
+      and(
+        eq(workflowVersionTable.id, versionId),
+        isNull(workflowVersionTable.publishedAt),
+      ),
+    )
     .returning();
-  return published;
+  if (published) return published;
+  const [existing] = await executor
+    .select()
+    .from(workflowVersionTable)
+    .where(eq(workflowVersionTable.id, versionId))
+    .limit(1);
+  return existing;
 }
 
 export async function setActiveWorkflowVersion(
@@ -412,6 +428,28 @@ export async function listWorkflowAdoptingProjectIds(
         projectReach(identity, projectTable.id, executor),
       ),
     );
+}
+
+/** Active staff account candidates; each is still checked with canonical project reach. */
+export async function listActiveWorkflowWorkspaceUserIds(
+  executor: Executor,
+  workspaceId: string,
+): Promise<string[]> {
+  const rows = await executor
+    .select({ userId: workspaceUserTable.userId })
+    .from(workspaceUserTable)
+    .innerJoin(userTable, eq(userTable.id, workspaceUserTable.userId))
+    .innerJoin(personTable, eq(personTable.userId, workspaceUserTable.userId))
+    .where(
+      and(
+        eq(workspaceUserTable.workspaceId, workspaceId),
+        eq(personTable.side, "staff"),
+        eq(personTable.active, true),
+        sql`coalesce(${userTable.banned}, false) = false`,
+      ),
+    )
+    .orderBy(workspaceUserTable.userId);
+  return [...new Set(rows.map((row) => row.userId))];
 }
 
 /** A scalar refusal oracle: it exposes no hidden project IDs or counts. The existing

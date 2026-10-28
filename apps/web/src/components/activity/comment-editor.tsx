@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@taskdesk/ui";
-import type { Editor, JSONContent } from "@tiptap/core";
+import type { Editor, Extensions, JSONContent } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Table } from "@tiptap/extension-table";
@@ -45,7 +45,14 @@ import {
   UnderlineIcon,
 } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import type { Highlighter } from "shiki";
 import { AttachmentCard } from "@/components/task/extensions/attachment-card";
@@ -58,12 +65,12 @@ import {
   ShikiCodeBlock,
 } from "@/components/task/extensions/shiki-code-block";
 import { TaskItemWithCheckbox } from "@/components/task/extensions/task-item-with-checkbox";
-import { TaskDeskIssueLink } from "@/components/task/extensions/taskdesk-issue-link";
 import { TaskDeskMention } from "@/components/task/extensions/taskdesk-mention";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useShikiHighlighterForCode } from "@/hooks/use-shiki-highlighter-for-code";
 import { cn } from "@/lib/cn";
+import "@/components/task/editor-styles.css";
 import { parseTaskListMarkdownToNodes } from "@/lib/editor-task-list-paste";
 import {
   extractIssueKeyFromUrl,
@@ -74,6 +81,10 @@ import {
 import { isInCodeBlockLanguagePicker } from "@/lib/is-in-codeblock-language-picker";
 import { toast } from "@/lib/toast";
 import { uploadTaskImage } from "@/lib/upload-task-image";
+import {
+  extractWorkItemKeyFromUrl,
+  WorkItemIssueLink,
+} from "./work-item-issue-link";
 
 type CommentEditorProps = {
   value: string;
@@ -97,6 +108,8 @@ type CommentEditorProps = {
   ensureTaskId?: () => Promise<string | null>;
   showQuickAttachButton?: boolean;
   onAttachActionChange?: (attach: (() => void) | null) => void;
+  /** A create controller may stage local files without creating a shadow task. */
+  onFilesSelected?: (files: File[]) => void;
   /** Native work-item comments store the editor's Tiptap document, not Markdown. */
   documentValue?: unknown;
   onDocumentChange?: (value: unknown) => void;
@@ -106,7 +119,14 @@ type CommentEditorProps = {
   enableMentions?: boolean;
   /** Native work-item comments supply person ids from the scoped mention API. */
   mentionMembers?: MentionMember[];
+  /** Optional caller-owned Tiptap nodes/marks for a specialized editor surface. */
+  additionalExtensions?: Extensions;
+  /** Optional caller-owned slash actions; defaults are unchanged for other surfaces. */
+  additionalSlashCommands?: CommentEditorSlashCommand[];
 };
+
+const EMPTY_EXTENSIONS: Extensions = [];
+const EMPTY_SLASH_COMMANDS: CommentEditorSlashCommand[] = [];
 
 export type CommentContentSnapshot = {
   text: string;
@@ -115,7 +135,7 @@ export type CommentContentSnapshot = {
 
 type SlashRange = { from: number; to: number };
 
-type SlashCommand = {
+export type CommentEditorSlashCommand = {
   id: string;
   label: string;
   group: "text" | "lists" | "insert";
@@ -123,6 +143,8 @@ type SlashCommand = {
   search: string;
   run: (editor: Editor, range: SlashRange) => void;
 };
+
+type SlashCommand = CommentEditorSlashCommand;
 
 type SlashMenuState = {
   from: number;
@@ -212,11 +234,14 @@ export default function CommentEditor({
   ensureTaskId,
   showQuickAttachButton = true,
   onAttachActionChange,
+  onFilesSelected,
   documentValue,
   onDocumentChange,
   onContentChange,
   enableMentions = true,
   mentionMembers,
+  additionalExtensions = EMPTY_EXTENSIONS,
+  additionalSlashCommands = EMPTY_SLASH_COMMANDS,
 }: CommentEditorProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder =
@@ -247,11 +272,16 @@ export default function CommentEditor({
   onContentChangeRef.current = onContentChange;
   const lastEditorRef = useRef<Editor | null>(null);
   const disposedEditorRef = useRef<Editor | null>(null);
-  const [editorGeneration, setEditorGeneration] = useState(0);
+  // Re-rendering is enough to heal a disposed instance: Tiptap's `useEditor` re-checks its
+  // instance on every render and replaces a destroyed one. Keep this out of the editor deps,
+  // otherwise each bump destroys the fresh replacement and the cycle never settles.
+  const [, requestEditorRender] = useReducer((count: number) => count + 1, 0);
   const syncGenerationRef = useRef(0);
   const taskIdRef = useRef(taskId);
   const ensureTaskIdRef = useRef(ensureTaskId);
   const uploadSurfaceRef = useRef(uploadSurface);
+  const filesSelectedRef = useRef(onFilesSelected);
+  filesSelectedRef.current = onFilesSelected;
   const onSubmitShortcutRef = useRef(onSubmitShortcut);
   const onCancelShortcutRef = useRef(onCancelShortcut);
   onSubmitShortcutRef.current = onSubmitShortcut;
@@ -377,6 +407,10 @@ export default function CommentEditor({
 
   const handleAssetFileUpload = useCallback(
     async (file: File, targetEditor?: Editor | null, range?: SlashRange) => {
+      if (filesSelectedRef.current) {
+        filesSelectedRef.current([file]);
+        return;
+      }
       const activeEditor = targetEditor || lastEditorRef.current;
       const resolvedTaskId =
         taskIdRef.current ?? (await ensureTaskIdRef.current?.());
@@ -416,7 +450,7 @@ export default function CommentEditor({
     [insertUploadedAsset, t],
   );
 
-  const canUploadFiles = Boolean(taskId || ensureTaskId);
+  const canUploadFiles = Boolean(taskId || ensureTaskId || onFilesSelected);
 
   const openImagePicker = useCallback(
     (activeEditor?: Editor | null, range?: SlashRange) => {
@@ -478,6 +512,14 @@ export default function CommentEditor({
     (event: React.DragEvent<HTMLElement>) => {
       if (readOnly || disabled || !canUploadFiles || !hasFileDrag(event)) {
         return;
+      }
+      if (filesSelectedRef.current) {
+        const files = Array.from(event.dataTransfer?.files ?? []);
+        if (files.length) {
+          event.preventDefault();
+          event.stopPropagation();
+          filesSelectedRef.current(files);
+        }
       }
       dragDepthRef.current = 0;
       setIsDragActive(false);
@@ -608,8 +650,9 @@ export default function CommentEditor({
           openImagePicker(activeEditor);
         },
       },
+      ...additionalSlashCommands,
     ],
-    [openImagePicker, t],
+    [additionalSlashCommands, openImagePicker, t],
   );
 
   const filteredSlashCommands = useMemo(() => {
@@ -655,7 +698,8 @@ export default function CommentEditor({
         }),
         EmbedBlock,
         AttachmentCard,
-        TaskDeskIssueLink,
+        WorkItemIssueLink,
+        ...additionalExtensions,
         TaskDeskMention,
         ...(enableMentions
           ? [
@@ -700,7 +744,8 @@ export default function CommentEditor({
           if (pastedFile) {
             if (!canUploadFiles) return false;
             event.preventDefault();
-            void handleAssetFileUpload(pastedFile, editor);
+            if (filesSelectedRef.current) filesSelectedRef.current(pastedFiles);
+            else void handleAssetFileUpload(pastedFile, editor);
             return true;
           }
 
@@ -726,7 +771,8 @@ export default function CommentEditor({
           const url = normalizeUrl(pastedText);
           if (!url) return false;
 
-          const issueKey = extractIssueKeyFromUrl(url);
+          const issueKey =
+            extractIssueKeyFromUrl(url) ?? extractWorkItemKeyFromUrl(url);
           const taskIdFromUrl = extractTaskIdFromUrl(url);
           if (issueKey || taskIdFromUrl) {
             event.preventDefault();
@@ -795,7 +841,8 @@ export default function CommentEditor({
             ? { from: coordinates.pos, to: coordinates.pos }
             : undefined;
 
-          void handleAssetFileUpload(droppedFile, editor, dropRange);
+          if (filesSelectedRef.current) filesSelectedRef.current(droppedFiles);
+          else void handleAssetFileUpload(droppedFile, editor, dropRange);
           return true;
         },
         handleTextInput: (view, _from, _to, text) => {
@@ -941,8 +988,9 @@ export default function CommentEditor({
       },
     },
     [
+      additionalSlashCommands,
       enableMentions,
-      editorGeneration,
+      additionalExtensions,
       handleAssetFileUpload,
       resolvedPlaceholder,
       toShikiLanguage,
@@ -950,14 +998,16 @@ export default function CommentEditor({
   );
 
   // Tiptap can dispose an instance during a React layout transition before the
-  // editor's passive hydration effects run. Recreate that instance once so the
-  // editor does not remain a permanently inert shell after being disposed.
+  // editor's passive hydration effects run. Render once more so `useEditor` replaces
+  // that instance and the editor does not remain a permanently inert shell. The same
+  // commit may also have destroyed it deliberately because a dependency changed; the
+  // extra render then simply delivers the replacement Tiptap already created.
   useEffect(() => {
     if (!editor) return;
     if (editor.isDestroyed) {
       if (disposedEditorRef.current !== editor) {
         disposedEditorRef.current = editor;
-        setEditorGeneration((generation) => generation + 1);
+        requestEditorRender();
       }
       return;
     }
@@ -1566,20 +1616,28 @@ export default function CommentEditor({
       onDragEnter={handleShellDragEnter}
       onDragOver={handleShellDragOver}
       onDragLeave={handleShellDragLeave}
+      onDropCapture={onFilesSelected ? handleShellDrop : undefined}
       onDrop={handleShellDrop}
     >
       {!readOnly && !disabled && (
         <Input
           ref={imageInputRef}
           type="file"
+          multiple={Boolean(onFilesSelected)}
           className="sr-only"
           // Opened only programmatically (slash menu / paste); an unlabelled,
           // invisible Tab stop in front of the editor is a keyboard defect.
           tabIndex={-1}
           aria-hidden="true"
           onChange={(event) => {
-            const file = event.target.files?.[0];
+            const files = Array.from(event.target.files ?? []);
+            const file = files[0];
             if (!file) return;
+            if (filesSelectedRef.current) {
+              filesSelectedRef.current(files);
+              event.target.value = "";
+              return;
+            }
 
             const pendingInsert = pendingImageInsertRef.current;
             pendingImageInsertRef.current = null;

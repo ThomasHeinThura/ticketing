@@ -23,3 +23,29 @@ export const auditListSchema = z.object({
   rows: z.array(auditRowSchema),
 });
 export type AuditRowResponse = z.infer<typeof auditRowSchema>;
+
+export const auditEntityHistorySchema = z.object({
+  entityType: z.string(),
+  entityId: z.string(),
+  rows: z.array(auditRowSchema),
+});
+
+/** Point-in-time work-item state (AU-8/AU-9): field name to the value it held at `at`. */
+export const workItemReconstructionSchema = z.object({
+  key: z.string(),
+  workItemId: z.string(),
+  at: z.string().datetime(),
+  /** `null` when `at` precedes the first recorded activity of the item. */
+  snapshot: z
+    .object({ fields: z.record(z.string(), z.string().nullable()) })
+    .nullable(),
+});
+
+export const auditExportResponseSchema = z.object({
+  format: z.enum(["csv", "json"]),
+  filename: z.string(),
+  rowCount: z.number().int().min(0),
+  /** True when more rows matched than the export cap; narrow the filters to get them. */
+  truncated: z.boolean(),
+  content: z.string(),
+});

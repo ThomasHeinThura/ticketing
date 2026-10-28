@@ -152,7 +152,8 @@ vi.mock("lucide-react", () => {
   };
 });
 
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async () => ({
+  ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
@@ -202,6 +203,7 @@ describe("NavProjects drag-and-drop setup", () => {
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/agent/projects/$projectKey/work",
       params: { projectKey: "VIS" },
+      search: { layout: "board", sort: "position", dir: "asc" },
     });
   });
 

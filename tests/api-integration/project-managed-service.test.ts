@@ -43,7 +43,7 @@ async function createProjectRequest(
       workspaceId,
       name: "Managed support",
       icon: "Folder",
-      slug: "managed-support",
+      slug: "MSUPPORT",
       kind: "managed_service",
       ...body,
     }),

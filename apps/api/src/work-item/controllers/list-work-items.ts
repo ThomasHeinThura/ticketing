@@ -1,14 +1,18 @@
-import { and, eq, inArray, isNull, lt, type SQL, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
 import db from "../../database";
 import {
+  labelTable,
   personTable,
   stateTable,
   stateTemplateTable,
   userTable,
+  workItemLabelTable,
   workItemTable,
   workspaceUserTable,
 } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { decorateWorkItemRows } from "../decorate-rows";
+import { resolveWorkItemEpicProjections } from "../epic-projection";
 import {
   DEFAULT_WORK_ITEM_LIST_LIMIT,
   decodeWorkItemCursor,
@@ -44,10 +48,11 @@ import type { ListWorkItemsQuery } from "../schema";
  * fixed allowlist (`schema.ts`'s `listWorkItemsQuery`), so a request naming any other
  * column is a 400, never silently accepted.
  *
- * Bounded queries, no N+1: exactly two queries run regardless of how many rows match --
- * one `SELECT ... LEFT/INNER JOIN ...` that resolves state name/category and assignee
- * name for the whole page in one round trip, and one `SELECT count(*)` for
- * `meta.total`. Neither cost scales with the number of ROWS returned per item.
+ * Bounded queries, no N+1: a fixed number of queries run regardless of how many rows match --
+ * one `SELECT ... LEFT/INNER JOIN ...` resolves state and assignee facts for the page, one
+ * `SELECT count(*)` resolves `meta.total`, and bounded page queries resolve assigned labels
+ * and epic ancestry. Epic ancestry uses one recursive query for the whole page, never one
+ * query per item or ancestor.
  */
 
 const WORK_ITEM_PRIORITY_COLUMN_VALUES = [
@@ -72,9 +77,21 @@ async function buildFilterConditions(
   const conditions: SQL[] = [
     eq(workItemTable.projectId, projectId),
     eq(workItemTable.workspaceId, workspaceId),
-    isNull(workItemTable.archivedAt),
-    isNull(workItemTable.deletedAt),
   ];
+
+  if (query.lifecycle === "active") {
+    conditions.push(
+      isNull(workItemTable.archivedAt),
+      isNull(workItemTable.deletedAt),
+    );
+  } else if (query.lifecycle === "archived") {
+    conditions.push(
+      sql`${workItemTable.archivedAt} IS NOT NULL`,
+      isNull(workItemTable.deletedAt),
+    );
+  } else {
+    conditions.push(sql`${workItemTable.deletedAt} IS NOT NULL`);
+  }
 
   if (query.state) {
     const ids = query.state.split(",").filter((id) => id.length > 0);
@@ -105,6 +122,9 @@ async function buildFilterConditions(
       lt(workItemTable.dueDate, new Date(`${query.due_before}T00:00:00.000Z`)),
     );
   }
+
+  if (query.cycle) conditions.push(eq(workItemTable.cycleId, query.cycle));
+  if (query.module) conditions.push(eq(workItemTable.moduleId, query.module));
 
   if (query.assignee) {
     if (query.assignee === "none") {
@@ -234,9 +254,56 @@ export async function listWorkItems(
         })
       : null;
 
+  const labels = page.length
+    ? await db
+        .select({
+          workItemId: workItemLabelTable.workItemId,
+          id: labelTable.id,
+          name: labelTable.name,
+          color: labelTable.color,
+        })
+        .from(workItemLabelTable)
+        .innerJoin(labelTable, eq(labelTable.id, workItemLabelTable.labelId))
+        .where(
+          and(
+            inArray(
+              workItemLabelTable.workItemId,
+              page.map((row) => row.workItem.id),
+            ),
+            eq(labelTable.workspaceId, workspaceId),
+            isNull(labelTable.taskId),
+            or(
+              isNull(labelTable.projectId),
+              eq(labelTable.projectId, projectId),
+            ),
+          ),
+        )
+        .orderBy(labelTable.name, labelTable.id)
+    : [];
+  const labelsByItem = new Map<
+    string,
+    Array<{ id: string; name: string; color: string }>
+  >();
+  for (const { workItemId, ...label } of labels) {
+    const assigned = labelsByItem.get(workItemId) ?? [];
+    assigned.push(label);
+    labelsByItem.set(workItemId, assigned);
+  }
+  const decorate = await decorateWorkItemRows(db, page, (row) => row.workItem);
+  const epicByItem = await resolveWorkItemEpicProjections(
+    projectId,
+    workspaceId,
+    page.map((row) => row.workItem.id),
+  );
   return {
     data: page.map((row) => ({
+      labels: labelsByItem.get(row.workItem.id) ?? [],
       ...row.workItem,
+      ...(epicByItem.get(row.workItem.id) ?? {
+        epic: null,
+        epicAvailable: false,
+      }),
+      ...decorate(row),
       stateName: row.stateName,
       stateCategory: row.stateCategory,
       // Only ever the resolved name when the assignee is a member of THIS

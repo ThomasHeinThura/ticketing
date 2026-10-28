@@ -1,5 +1,6 @@
 import { csrfRequest } from "./csrf";
 import type { App } from "./organization-http";
+import { type StepUpOption, stepUpHeaders } from "./step-up";
 
 // HTTP helpers for the S5 NATIVE membership write routes (issue #6, retrofit
 // plan §3, S5 row): add, remove, role-update, leave, transfer-ownership.
@@ -85,13 +86,22 @@ export async function transferWorkspaceOwnershipNative(
   cookie: string,
   workspaceId: string,
   body: { newOwnerUserId?: unknown },
+  stepUp?: StepUpOption,
 ): Promise<Response> {
+  // Elevated: the route spends a one-use proof bound to this workspace and new owner.
+  const proof = await stepUpHeaders(
+    app,
+    cookie,
+    stepUp,
+    "workspace_ownership_transfer",
+    { workspaceId, ...body },
+  );
   return csrfRequest(
     app,
     `/api/workspace/${workspaceId}/transfer-ownership`,
     {
       method: "POST",
-      headers: { "content-type": "application/json", cookie },
+      headers: { "content-type": "application/json", cookie, ...proof },
       body: JSON.stringify(body),
     },
     cookie,

@@ -1,7 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { workItemCustomFields } from "../../custom-field/repository";
 import db from "../../database";
 import {
+  externalLinkTable,
   personTable,
   projectTable,
   stateTable,
@@ -10,6 +12,7 @@ import {
   workItemTable,
   workspaceUserTable,
 } from "../../database/schema";
+import { loadWorkItemRowFacts } from "../row-facts";
 
 /**
  * `GET /api/work-items/{key}` (`work_item:read`, plus reach on the project --
@@ -92,8 +95,12 @@ export async function getWorkItemByKey(key: string, workspaceId: string) {
     throw new HTTPException(404, { message: "Work item not found" });
   }
 
+  const facts = (await loadWorkItemRowFacts(db, [row.workItem])).get(
+    row.workItem.id,
+  );
   return {
     ...row.workItem,
+    ...facts,
     stateName: row.stateName,
     stateCategory: row.stateCategory,
     defaultCommentVisibility: row.defaultCommentVisibility,
@@ -103,7 +110,68 @@ export async function getWorkItemByKey(key: string, workspaceId: string) {
     // resolvable" (a placeholder person, or a user outside this workspace) apart from
     // "unassigned".
     assigneeName: row.assigneeIsWorkspaceMember ? row.assigneeName : null,
+    // CF-3: only the fields that apply to this item's type, with its values.
+    customFields: await workItemCustomFields(db, row.workItem),
+    importProvenance: await workItemImportProvenance(row.workItem),
   };
+}
+
+/** `http(s)` only: a source URL is shown as a link, so no other scheme ever leaves the API. */
+function safeSourceUrl(value: string | null) {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:"
+      ? parsed.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The item's import provenance link(s) (P6-R1-04): the `external_link` rows of entity type
+ * `work_item` with origin `imported`. The legacy task-link reader selects `task_id` rows only, so
+ * these were never readable. Staff-only by route (`work_item:read` + reach); the customer portal
+ * routes never call this.
+ */
+async function workItemImportProvenance(item: {
+  id: string;
+  workspaceId: string;
+}) {
+  const rows = await db
+    .select({
+      system: externalLinkTable.system,
+      pluginId: externalLinkTable.pluginId,
+      url: externalLinkTable.url,
+      importedAt: externalLinkTable.createdAt,
+      lastSeenAt: externalLinkTable.lastSeenAt,
+      staleAt: externalLinkTable.staleAt,
+      sourceCreatedAt: externalLinkTable.sourceCreatedAt,
+      sourceUpdatedAt: externalLinkTable.sourceUpdatedAt,
+      sourceResolvedAt: externalLinkTable.sourceResolvedAt,
+    })
+    .from(externalLinkTable)
+    .where(
+      and(
+        eq(externalLinkTable.workspaceId, item.workspaceId),
+        eq(externalLinkTable.workItemId, item.id),
+        eq(externalLinkTable.entityType, "work_item"),
+        eq(externalLinkTable.origin, "imported"),
+      ),
+    )
+    .orderBy(asc(externalLinkTable.createdAt), asc(externalLinkTable.id));
+  return rows.map((row) => ({
+    system: row.system ?? "",
+    pluginId: row.pluginId,
+    sourceUrl: safeSourceUrl(row.url),
+    importedAt: row.importedAt,
+    lastSeenAt: row.lastSeenAt,
+    stale: row.staleAt !== null,
+    sourceCreatedAt: row.sourceCreatedAt,
+    sourceUpdatedAt: row.sourceUpdatedAt,
+    sourceResolvedAt: row.sourceResolvedAt,
+  }));
 }
 
 export default getWorkItemByKey;

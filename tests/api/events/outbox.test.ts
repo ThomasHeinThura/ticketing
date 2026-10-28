@@ -21,23 +21,55 @@ describe("instance-scoped event envelopes", () => {
     ).toThrow("An instance event cannot include narrower scope");
   });
 
-  it("persists a registered lifecycle event without a workspace", async () => {
+  it.each(["identity.deprovisioned", "identity.provisioned"])(
+    "persists registered %s without a fabricated workspace",
+    async (kind) => {
+      const values = vi.fn().mockResolvedValue(undefined);
+      const tx = { insert: vi.fn(() => ({ values })) } as never;
+
+      await enqueueOutboxEvent(tx, {
+        id: "evt_instance_scope",
+        kind,
+        occurredAt: new Date(0).toISOString(),
+        actor: { type: "system", id: null, name: "System" },
+        scope: {},
+        payload: { personId: "person-1" },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      });
+      expect(values).toHaveBeenCalledWith(
+        expect.objectContaining({ workspaceId: null }),
+      );
+    },
+  );
+
+  it("persists import progress with instance scope and no fabricated workspace", async () => {
     const values = vi.fn().mockResolvedValue(undefined);
     const tx = { insert: vi.fn(() => ({ values })) } as never;
-
     await enqueueOutboxEvent(tx, {
-      id: "evt_instance_scope",
-      kind: "identity.deprovisioned",
+      id: "evt_import_progress",
+      kind: "import.chunk_completed",
       occurredAt: new Date(0).toISOString(),
-      actor: { type: "system", id: null, name: "System" },
+      actor: { type: "api_key", id: "key", name: "Importer" },
       scope: {},
-      payload: { personId: "person-1" },
+      payload: {
+        importRunId: "run",
+        chunk: 1,
+        chunks: 1,
+        rowsDone: 10,
+        rowsTotal: 10,
+      },
       causationId: null,
       depth: 0,
       originAutomationId: null,
     });
     expect(values).toHaveBeenCalledWith(
-      expect.objectContaining({ workspaceId: null }),
+      expect.objectContaining({
+        kind: "import.chunk_completed",
+        workspaceId: null,
+        organisationId: null,
+      }),
     );
   });
 

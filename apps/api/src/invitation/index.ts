@@ -5,26 +5,31 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
 import { requireInvitationWorkspaceAccess } from "../utils/require-invitation-workspace-access";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import { WorkspaceRoleNotFoundError } from "../workspace/controllers/workspace-membership-errors";
 import acceptInvitationCtrl from "./controllers/accept-invitation";
-import cancelInvitationCtrl from "./controllers/cancel-invitation";
 import getUserPendingInvitations from "./controllers/get-user-pending-invitations";
 import {
   AlreadyWorkspaceMemberError,
   InvitationExpiredError,
   InvitationNotFoundError,
   InvitationNotPendingError,
+  InvitationRoleNotAssignableError,
   NotInvitationRecipientError,
 } from "./controllers/invitation-action-errors";
 import rejectInvitationCtrl from "./controllers/reject-invitation";
+import { INVITATION_DELETION_ROUTE } from "./invitation-deletion-target";
 import {
   acceptedInvitationSchema,
-  canceledInvitationSchema,
   invitationDetailsSchema,
   pendingInvitationListSchema,
   rejectedInvitationSchema,
@@ -62,12 +67,9 @@ const getPendingRoute = createRoute({
 // already does), marked `deprecated: true`, but make the handler unconditionally refuse
 // -- closing the info-leak today without waiting out a deprecation window a route that
 // never did anything safe doesn't deserve.
-// Classification (issue #8): reuses `cancelInvitationRoute`'s own real middleware chain
-// below rather than a bare unconditional throw, so the DECLARED policy
-// (`invitation/policy.ts`) matches what actually runs, not a guess -- `capability:
-// "member:invite"` is enforced here exactly as it is for cancel, and the handler still
-// refuses even a caller who passes it, because the actual decision was "nobody gets real
-// data from this operation again," not "only non-admins are refused."
+// Classification (issue #8): retains its own session, row-derived workspace, membership
+// and legacy authority gates before the unconditional refusal. The route remains disabled
+// for every caller; the policy declaration does not make invitation details available.
 const getInvitationRoute = createRoute({
   method: "get",
   operationId: "getInvitationDetails",
@@ -105,14 +107,10 @@ const getInvitationRoute = createRoute({
 // (the controllers) check the invitation's own state and that the caller
 // IS its recipient.
 //
-// Cancel is different: it is an action a workspace ADMIN/OWNER takes on
-// someone else's invitation, so it needs the full S4/S5 authorization
-// shape -- `requireInvitationWorkspaceAccess()` resolves `workspaceId` from
-// the invitation id (see that middleware's own doc comment for why this is
-// a dedicated resolver rather than another `workspaceAccess.from*` case),
-// then `requireWorkspaceMembership` / `requireWorkspacePermission` (against
-// the INHERITED `invitation:cancel` statement) / `requireWorkspaceRoleAuthority`
-// run exactly as they do on every S4/S5 mutation route.
+// Cancel is an action a staff member with `member:invite` takes on someone
+// else's invitation. `requireInvitationWorkspaceAccess()` resolves
+// `workspaceId` from the invitation id; membership and the canonical
+// capability are then checked before the pending action is requested.
 
 const acceptInvitationRoute = createRoute({
   method: "post",
@@ -167,23 +165,26 @@ const cancelInvitationRoute = createRoute({
   tags: ["Invitations"],
   summary: "Cancel an invitation",
   description:
-    "Cancel a pending invitation. Native replacement for authClient.organization.cancelInvitation().",
+    "Request cancellation of a pending invitation. Native replacement for authClient.organization.cancelInvitation(). Returns a durable pending action (202); the invitation stays pending until the requester approves in a current browser session.",
   middleware: [
     requireSessionOnly(),
     requireInvitationWorkspaceAccess(),
     requireWorkspaceMembership,
-    requireWorkspacePermission({ invitation: ["cancel"] }),
-    requireWorkspaceRoleAuthority({ invitation: ["cancel"] }),
+    requireWorkspaceCapability("member:invite"),
   ] as const,
   request: { params: invitationParam },
   responses: {
-    200: jsonResponse("The canceled invitation", canceledInvitationSchema),
+    202: jsonResponse(
+      "Pending cancellation; invitation unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse("The invitation is no longer pending"),
     401: errorResponse("No credential at all"),
     403: errorResponse(
-      "An API key or impersonation session (session_required), no workspace access, or missing invitation:cancel permission",
+      "An API key or impersonation session (session_required), no workspace access, or missing member:invite capability",
     ),
     404: errorResponse("No invitation with this id"),
+    409: errorResponse("An equivalent cancellation is already pending"),
   },
 });
 
@@ -229,6 +230,9 @@ const invitation = apiRouter()
       if (error instanceof AlreadyWorkspaceMemberError) {
         throw new HTTPException(409, { message: error.message });
       }
+      if (error instanceof InvitationRoleNotAssignableError) {
+        throw new HTTPException(403, { message: error.message });
+      }
       if (error instanceof WorkspaceRoleNotFoundError) {
         throw new HTTPException(400, {
           message: "This invitation's workspace role is no longer available",
@@ -258,21 +262,12 @@ const invitation = apiRouter()
     }
   })
   .openapi(cancelInvitationRoute, async (c) => {
-    try {
-      const canceled = await cancelInvitationCtrl(
-        c.req.valid("param").id,
-        c.get("userId"),
-      );
-      return c.json(canceled, 200);
-    } catch (error) {
-      if (error instanceof InvitationNotFoundError) {
-        throw new HTTPException(404, { message: error.message });
-      }
-      if (error instanceof InvitationNotPendingError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      throw error;
-    }
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: INVITATION_DELETION_ROUTE,
+      targetType: "invitation",
+      id: c.req.valid("param").id,
+    });
+    return c.json(pending, 202);
   });
 
 export default invitation;

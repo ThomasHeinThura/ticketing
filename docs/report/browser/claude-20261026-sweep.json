@@ -1,0 +1,117 @@
+{
+	"recordedAt": "2026-10-26",
+	"deployment": "https://ticketing.localhost (compose.testing.yml, restored copy database; live database untouched)",
+	"signedInAs": "Thomas's admin account on the copy, signed in by Thomas in the browser pane",
+	"viewport": ["911x610 dark", "375x812 mobile (board, work item, triage)"],
+	"screenSweep": {
+		"method": "Client-side navigation through 54 static agent routes; per screen: uncaught errors, fetch responses >= 400, raw i18n keys in visible text, role=alert banners, horizontal page overflow",
+		"screens": 54,
+		"uncaughtErrors": 0,
+		"failedApiCalls": 0,
+		"rawI18nKeys": 0,
+		"pageOverflow": 0,
+		"redirectsToKaneoSettings": [
+			"/agent/search",
+			"/agent/settings",
+			"/agent/settings/members",
+			"/agent/settings/labels",
+			"/agent/settings/danger",
+			"/agent/settings/profile",
+			"/agent/settings/profile/appearance",
+			"/agent/settings/profile/notifications"
+		],
+		"informationalBanners": [
+			"god-mode/storage: provider connectivity not checked until probe",
+			"god-mode/mcp: two data sources notice"
+		]
+	},
+	"flows": [
+		{
+			"flow": "Create work item from the Kaneo dialog (title, type picker popover, create)",
+			"result": "pass",
+			"evidence": "HELP-24 created, shown on the board"
+		},
+		{
+			"flow": "Inline priority change from the Kaneo popover, persisted after reload",
+			"result": "pass"
+		},
+		{
+			"flow": "Internal comment, persisted after reload with activity history",
+			"result": "pass"
+		},
+		{
+			"flow": "Delete work item via pending action dialog and confirm",
+			"result": "pass",
+			"evidence": "Deletion approved, item removed from the board"
+		}
+	],
+	"defects": [
+		{
+			"id": "BS-1",
+			"screen": "/agent/god-mode/users",
+			"defect": "User column wraps names/emails almost per character; Status column empty",
+			"status": "fixed, deployed (source196-web-fixes-20261026), rechecked in browser"
+		},
+		{
+			"id": "BS-2",
+			"screen": "KB, Reports, Timesheet, Dashboard",
+			"defect": "Breadcrumb last crumb reads 'Overview' instead of the page name",
+			"status": "fixed, deployed (source196-web-fixes-20261026), browser recheck pending"
+		},
+		{
+			"id": "BS-3",
+			"screen": "/agent/my-work",
+			"defect": "Empty state copy refers to 'this Project's Work items'",
+			"status": "fixed, deployed (source196-web-fixes-20261026), browser recheck pending"
+		},
+		{
+			"id": "BS-4",
+			"screen": "/dashboard/settings/account/preferences",
+			"defect": "Document title 'Personal Information'",
+			"status": "fixed, deployed (source196-web-fixes-20261026), browser recheck pending"
+		},
+		{
+			"id": "BS-5",
+			"screen": "/agent/settings/calendars",
+			"defect": "Banner says presets and country holidays are unavailable although holiday presets exist",
+			"status": "fixed, deployed (source196-web-fixes-20261026), browser recheck pending"
+		},
+		{
+			"id": "BS-6",
+			"screen": "project work list layout",
+			"defect": "Titles without labels render centred",
+			"status": "fixed, deployed (source196-web-fixes-20261026), browser recheck pending"
+		},
+		{
+			"id": "BS-7",
+			"screen": "project work table layout ~900px",
+			"defect": "Header labels truncated to 'Pr..', 'D..', 'St..'",
+			"status": "fixed, deployed (source196-web-fixes-20261026), rechecked in browser"
+		},
+		{
+			"id": "BS-8",
+			"screen": "/agent/dashboard",
+			"defect": "Widget export icon on its own row; empty SLA chart sliver",
+			"status": "fixed, deployed (source196-web-fixes-20261026), browser recheck pending"
+		},
+		{
+			"id": "BS-9",
+			"screen": "triage, KB, reports, activity, releases, members",
+			"defect": "Select dropdowns used as pickers/filters instead of Kaneo popovers",
+			"status": "fixed, deployed (source196-web-fixes-20261026), rechecked in browser"
+		}
+	],
+	"notYetCovered": [
+		"Customer portal journeys (needs a customer sign-in on portal.localhost)",
+		"Role matrix as lead/member/viewer",
+		"Every feature flag off/on",
+		"Light theme (user theme setting)",
+		"Browser recheck of BS-2..BS-6, BS-8 after redeploy",
+		"P6 import wizard (not deployed yet)"
+	],
+	"phaseAccepted": false,
+	"portalSignIn": {
+		"defect": "Sign-in loop on portal.localhost (race clearing stored email before navigation)",
+		"status": "fixed and deployed; awaiting Thomas retest"
+	}
+}

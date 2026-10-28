@@ -16,13 +16,37 @@ const { mocks } = vi.hoisted(() => ({
     checking: false,
     project: undefined as Record<string, unknown> | undefined,
     projectState: { isLoading: false, isError: false },
-    calendars: undefined as
-      | { data: { id: string; name: string }[] }
-      | undefined,
-    calendarState: { isLoading: false, isError: false },
+    inheritance: {
+      projectId: "project-1",
+      workspaceId: "ws-1",
+      projectVersion: 1,
+      workspaceVersion: 1,
+      slaPolicy: {
+        mode: "inherit",
+        overrideId: null,
+        effectiveId: null,
+        effectiveName: null,
+        source: "none",
+      },
+      serviceCalendar: {
+        mode: "inherit",
+        overrideId: null,
+        effectiveId: "cal-1",
+        effectiveName: "Support hours",
+        source: "workspace",
+      },
+      states: {
+        mode: "inherit",
+        activeTemplateIds: [],
+        workspaceTemplateIds: [],
+      },
+    },
+    inheritanceOptions: { data: [] as Array<{ id: string; name: string }> },
     updateProject: vi.fn(),
+    patchInheritance: vi.fn(),
     updateHealth: vi.fn(),
     invalidateQueries: vi.fn(),
+    setQueryData: vi.fn(),
     refetch: vi.fn(),
     toastSuccess: vi.fn(),
   },
@@ -84,7 +108,26 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
+  useQueryClient: () => ({
+    invalidateQueries: mocks.invalidateQueries,
+    setQueryData: mocks.setQueryData,
+  }),
+  useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
+    const key = queryKey.map(String).join("/");
+    if (key.includes("settings-inheritance"))
+      return {
+        data: mocks.inheritance,
+        isLoading: false,
+        isError: false,
+        refetch: mocks.refetch,
+      };
+    return {
+      data: mocks.inheritanceOptions.data,
+      isLoading: false,
+      isError: false,
+      refetch: mocks.refetch,
+    };
+  },
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
@@ -100,11 +143,35 @@ vi.mock("@/hooks/queries/project/use-get-project", () => ({
     refetch: mocks.refetch,
   }),
 }));
-vi.mock("@/hooks/queries/service-calendar/use-service-calendars", () => ({
-  useServiceCalendars: () => ({
-    data: mocks.calendars,
-    ...mocks.calendarState,
-    refetch: mocks.refetch,
+vi.mock("@/fetchers/project-settings-inheritance", () => ({
+  getProjectSettingsInheritance: vi.fn(async () => mocks.inheritance),
+  patchProjectSettingsInheritance: mocks.patchInheritance,
+  WorkspaceSettingsError: class extends Error {
+    status: number;
+    constructor(status: number) {
+      super();
+      this.status = status;
+    }
+  },
+}));
+vi.mock("@/fetchers/sla-policy", () => ({
+  getSlaPolicies: vi.fn(async () => ({
+    data: [{ id: "sla-1", name: "Standard" }],
+    page: { nextCursor: null },
+  })),
+}));
+vi.mock("@/fetchers/service-calendar", () => ({
+  getServiceCalendars: vi.fn(async () => ({
+    data: [{ id: "cal-1", name: "Support hours" }],
+    page: { nextCursor: null },
+  })),
+}));
+// P4R2-M1: the SLA areas follow the workspace's resolved `feature.sla`.
+const workspaceFeatureState = vi.hoisted(() => ({ sla: true, loading: false }));
+vi.mock("@/hooks/queries/feature-flag/use-workspace-features", () => ({
+  default: () => ({
+    isOn: (key: string) => key === "feature.sla" && workspaceFeatureState.sla,
+    isLoading: workspaceFeatureState.loading,
   }),
 }));
 vi.mock("@/hooks/mutations/project/use-update-project", () => ({
@@ -124,7 +191,8 @@ const KEY = "settings:projectGeneral.engagement";
 const kind = () => screen.getByLabelText(`${KEY}.kind`);
 const health = () => screen.getByLabelText(`${KEY}.health`);
 const support = () => screen.getByLabelText(`${KEY}.supportLevel`);
-const calendar = () => screen.getByLabelText(`${KEY}.serviceCalendar`);
+const calendar = () =>
+  screen.getByLabelText("settings:projectInheritance.serviceCalendar");
 const save = () => screen.getByRole("button", { name: `${KEY}.save` });
 
 describe("ProjectEngagementSettings", () => {
@@ -133,7 +201,31 @@ describe("ProjectEngagementSettings", () => {
     mocks.canManage = true;
     mocks.checking = false;
     mocks.projectState = { isLoading: false, isError: false };
-    mocks.calendarState = { isLoading: false, isError: false };
+    mocks.inheritance = {
+      projectId: "project-1",
+      workspaceId: "ws-1",
+      projectVersion: 1,
+      workspaceVersion: 1,
+      slaPolicy: {
+        mode: "inherit",
+        overrideId: null,
+        effectiveId: null,
+        effectiveName: null,
+        source: "none",
+      },
+      serviceCalendar: {
+        mode: "inherit",
+        overrideId: null,
+        effectiveId: "cal-1",
+        effectiveName: "Support hours",
+        source: "workspace",
+      },
+      states: {
+        mode: "inherit",
+        activeTemplateIds: [],
+        workspaceTemplateIds: [],
+      },
+    };
     mocks.project = {
       id: "project-1",
       name: "Service desk",
@@ -145,12 +237,18 @@ describe("ProjectEngagementSettings", () => {
       supportLevel: null,
       serviceCalendarId: null,
     };
-    mocks.calendars = { data: [{ id: "cal-1", name: "Support hours" }] };
+    mocks.inheritanceOptions = {
+      data: [{ id: "cal-1", name: "Support hours" }],
+    };
     mocks.updateProject.mockReset().mockResolvedValue({});
+    mocks.patchInheritance.mockReset().mockResolvedValue(mocks.inheritance);
     mocks.updateHealth.mockReset().mockResolvedValue({ health: "amber" });
     mocks.invalidateQueries.mockReset().mockResolvedValue(undefined);
+    mocks.setQueryData.mockReset();
     mocks.refetch.mockReset();
     mocks.toastSuccess.mockReset();
+    workspaceFeatureState.sla = true;
+    workspaceFeatureState.loading = false;
   });
   afterEach(() => cleanup());
 
@@ -186,37 +284,32 @@ describe("ProjectEngagementSettings", () => {
     render_();
     expect(kind()).toHaveValue("managed_service");
     expect(support()).toHaveValue("L2");
-    expect(calendar()).toHaveValue("cal-1");
+    expect(calendar()).toHaveValue("__inherit__");
     expect(health()).toHaveValue("red");
     expect(save()).toBeDisabled();
   });
 
-  it("PR-9: refuses a managed service without support level or calendar and sends nothing", () => {
+  it("requires a support level; calendar is configured in the inheritance control", () => {
     render_();
     fireEvent.change(kind(), { target: { value: "managed_service" } });
     fireEvent.click(save());
 
     expect(screen.getByText(`${KEY}.supportLevelRequired`)).toBeInTheDocument();
-    expect(screen.getByText(`${KEY}.calendarRequired`)).toBeInTheDocument();
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
-  it("PR-9: names only the field still missing", () => {
+  it("allows managed-service save when the effective calendar is inherited", async () => {
     render_();
     fireEvent.change(kind(), { target: { value: "managed_service" } });
     fireEvent.change(support(), { target: { value: "L1" } });
     fireEvent.click(save());
-
-    expect(screen.queryByText(`${KEY}.supportLevelRequired`)).toBeNull();
-    expect(screen.getByText(`${KEY}.calendarRequired`)).toBeInTheDocument();
-    expect(mocks.updateProject).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.updateProject).toHaveBeenCalled());
   });
 
-  it("saves a complete managed service with the project's own fields and refreshes caches", async () => {
+  it("saves a managed service without rewriting inherited calendar settings", async () => {
     render_();
     fireEvent.change(kind(), { target: { value: "managed_service" } });
     fireEvent.change(support(), { target: { value: "L2" } });
-    fireEvent.change(calendar(), { target: { value: "cal-1" } });
     fireEvent.click(save());
 
     await waitFor(() =>
@@ -228,7 +321,6 @@ describe("ProjectEngagementSettings", () => {
         icon: "Folder",
         kind: "managed_service",
         supportLevel: "L2",
-        serviceCalendarId: "cal-1",
       }),
     );
     await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalled());
@@ -237,7 +329,22 @@ describe("ProjectEngagementSettings", () => {
     });
   });
 
-  it("clears a field with an explicit null", async () => {
+  it("saves a calendar override with both project and workspace CAS versions", async () => {
+    render_();
+    fireEvent.change(calendar(), { target: { value: "cal-1" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings:projectInheritance.save" }),
+    );
+    await waitFor(() =>
+      expect(mocks.patchInheritance).toHaveBeenCalledWith("project-1", {
+        expectedProjectVersion: 1,
+        expectedWorkspaceVersion: 1,
+        serviceCalendar: { mode: "override", id: "cal-1" },
+      }),
+    );
+  });
+
+  it("clears the support level with an explicit null", async () => {
     mocks.project = {
       ...mocks.project,
       supportLevel: "L1",
@@ -245,7 +352,6 @@ describe("ProjectEngagementSettings", () => {
     };
     render_();
     fireEvent.change(support(), { target: { value: "none" } });
-    fireEvent.change(calendar(), { target: { value: "none" } });
     fireEvent.click(save());
 
     await waitFor(() =>
@@ -253,7 +359,6 @@ describe("ProjectEngagementSettings", () => {
         expect.objectContaining({
           kind: "project",
           supportLevel: null,
-          serviceCalendarId: null,
         }),
       ),
     );
@@ -311,13 +416,12 @@ describe("ProjectEngagementSettings", () => {
     });
   });
 
-  it("without project:update every control is disabled, save is absent and a notice explains", () => {
+  it("without project:update engagement controls are disabled while inheritance follows settings capability", () => {
     mocks.canUpdate = false;
     render_();
     expect(kind()).toBeDisabled();
     expect(health()).toBeDisabled();
     expect(support()).toBeDisabled();
-    expect(calendar()).toBeDisabled();
     expect(
       screen.queryByRole("button", { name: `${KEY}.save` }),
     ).not.toBeInTheDocument();
@@ -327,12 +431,11 @@ describe("ProjectEngagementSettings", () => {
     expect(mocks.updateHealth).not.toHaveBeenCalled();
   });
 
-  it("with project:update but not manage_settings: kind, support level and calendar are read-only with a notice, health stays editable", async () => {
+  it("with project:update but not manage_settings: engagement is read-only, health stays editable", async () => {
     mocks.canManage = false;
     render_();
     expect(kind()).toBeDisabled();
     expect(support()).toBeDisabled();
-    expect(calendar()).toBeDisabled();
     expect(health()).not.toBeDisabled();
     expect(
       screen.queryByRole("button", { name: `${KEY}.save` }),
@@ -350,9 +453,9 @@ describe("ProjectEngagementSettings", () => {
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
-  it("with both capabilities every control is editable and no notice shows", () => {
+  it("with both capabilities engagement controls are editable and no notice shows", () => {
     render_();
-    for (const control of [kind(), health(), support(), calendar()])
+    for (const control of [kind(), health(), support()])
       expect(control).not.toBeDisabled();
     expect(
       screen.queryByTestId("project-engagement-settings-readonly"),
@@ -366,7 +469,7 @@ describe("ProjectEngagementSettings", () => {
     mocks.canUpdate = false;
     mocks.canManage = true;
     render_();
-    for (const control of [kind(), health(), support(), calendar()])
+    for (const control of [kind(), health(), support()])
       expect(control).toBeDisabled();
     expect(
       screen.queryByRole("button", { name: `${KEY}.save` }),
@@ -380,7 +483,7 @@ describe("ProjectEngagementSettings", () => {
     mocks.canUpdate = false;
     mocks.canManage = false;
     render_();
-    for (const control of [kind(), health(), support(), calendar()])
+    for (const control of [kind(), health(), support()])
       expect(control).toBeDisabled();
     expect(mocks.updateHealth).not.toHaveBeenCalled();
     expect(mocks.updateProject).not.toHaveBeenCalled();
@@ -406,29 +509,26 @@ describe("ProjectEngagementSettings", () => {
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 
-  it("keeps a saved calendar that is missing from the loaded list", () => {
-    mocks.project = { ...mocks.project, serviceCalendarId: "cal-gone" };
-    render_();
-    expect(calendar()).toHaveValue("cal-gone");
-  });
-
-  it("offers a retry when calendars fail to load", () => {
-    mocks.calendars = undefined;
-    mocks.calendarState = { isLoading: false, isError: true };
-    render_();
-    expect(screen.getByText(`${KEY}.calendarsError`)).toBeInTheDocument();
-  });
-
   it("never renders or sends the customer organisation binding", async () => {
     mocks.project = { ...mocks.project, organisationId: "org-9" };
     render_();
     fireEvent.change(kind(), { target: { value: "managed_service" } });
     fireEvent.change(support(), { target: { value: "L1" } });
-    fireEvent.change(calendar(), { target: { value: "cal-1" } });
     fireEvent.click(save());
     await waitFor(() => expect(mocks.updateProject).toHaveBeenCalled());
     expect(mocks.updateProject.mock.calls[0]?.[0]).not.toHaveProperty(
       "organisationId",
     );
+  });
+
+  it("does not offer SLA policy or service calendar inheritance while feature.sla is off (P4R2-M1)", () => {
+    workspaceFeatureState.sla = false;
+    render_();
+    expect(
+      screen.queryByLabelText("settings:projectInheritance.serviceCalendar"),
+    ).toBeNull();
+    expect(screen.queryByTestId("project-inheritance-loading")).toBeNull();
+    // The engagement controls themselves stay.
+    expect(kind()).toBeInTheDocument();
   });
 });

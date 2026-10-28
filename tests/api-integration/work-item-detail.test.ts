@@ -23,6 +23,7 @@ import {
   createWorkspaceMember,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 // ── Fixture builders, the same shapes `work-item-create-read-list.test.ts` builds ──
 
@@ -82,6 +83,11 @@ async function setupProjectWithDefaultState() {
   await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const state = await makeDefaultState(creator.workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: creator.workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, project, type, state };
 }
 

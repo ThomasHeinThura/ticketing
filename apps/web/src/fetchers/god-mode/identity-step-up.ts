@@ -14,6 +14,25 @@ import type { StepUpMethod } from "./instance-users";
  */
 export type IdentityOperationBinding =
   | {
+      operation: "instance_admin_grant";
+      targetUserId: string;
+    }
+  | {
+      operation: "instance_admin_suspend";
+      targetUserId: string;
+      request: { reason?: string; expiresAt?: string | null };
+    }
+  | {
+      operation: "mfa_reset";
+      userId: string;
+      verificationNote: string;
+    }
+  | {
+      operation: "impersonation_start";
+      targetUserId: string;
+      reason: string;
+    }
+  | {
       operation: "identity_connection_create";
       request: IdentityConnectionCreateBody;
     }
@@ -31,6 +50,84 @@ export type IdentityOperationBinding =
       operation: "scim_token_rotate" | "scim_token_revoke";
       connectionId: string;
       version: number;
+    }
+  | {
+      operation: "webhook_create";
+      workspaceId: string;
+      name: string;
+      url: string;
+      events: string[];
+    }
+  | {
+      operation: "webhook_update_url";
+      workspaceId: string;
+      webhookId: string;
+      url: string;
+    }
+  | {
+      operation: "webhook_rotate_secret";
+      workspaceId: string;
+      webhookId: string;
+    }
+  | {
+      operation: "secrets_rotate";
+    }
+  | {
+      operation: "webhook_rotate_all";
+      replacementSetDigest: string;
+    }
+  | {
+      operation: "organisation_restore";
+      organisationId: string;
+      expectedOperationId: string;
+      expectedGeneration: number;
+    }
+  | {
+      operation: "workspace_role_create";
+      workspaceId: string;
+      role: string;
+      description?: string | null;
+      rank?: number;
+      capabilities?: string[];
+      cloneFromRoleId?: string;
+    }
+  | {
+      operation: "workspace_role_update";
+      workspaceId: string;
+      roleId: string;
+      name?: string;
+      description?: string | null;
+      rank?: number;
+      capabilities?: string[];
+      expectedVersion?: string;
+    }
+  | {
+      operation: "service_key_reattest";
+      workspaceId: string;
+      keyId: string;
+      expectedVersion: number;
+    }
+  | {
+      operation: "workspace_ownership_transfer";
+      workspaceId: string;
+      newOwnerUserId: string;
+    }
+  | {
+      operation: "service_key_create";
+      workspaceId: string;
+      name: string;
+      expiresIn?: number | null;
+      capabilities: string[];
+      ipAllowlist?: string[];
+      rateLimitPerMinute?: number;
+    }
+  | {
+      operation: "change_freeze_override";
+      workspaceId: string;
+      workItemKey: string;
+      reason: string;
+      windowStart?: string | null;
+      windowEnd?: string | null;
     };
 
 export type IdentityStepUpFactor = { method: StepUpMethod; secret: string };
@@ -46,6 +143,20 @@ export async function proveIdentityOperation(
   factor: IdentityStepUpFactor,
 ): Promise<string> {
   const operationBinding = { kind: "operation" as const, ...binding };
+  if (factor.method === "sso_prompt_login") {
+    const popup =
+      typeof window === "undefined"
+        ? null
+        : window.open("about:blank", "_blank", "popup,width=520,height=720");
+    if (!popup) throw new Error("Fresh authentication is unavailable");
+    popup.opener = null;
+    try {
+      const { proveSsoStepUpBinding } = await import("./sso-identity-step-up");
+      return await proveSsoStepUpBinding(operationBinding, popup);
+    } finally {
+      if (!popup.closed) popup.close();
+    }
+  }
   const challengeResponse = await stepUp.challenges.$post({
     json: operationBinding as never,
   });

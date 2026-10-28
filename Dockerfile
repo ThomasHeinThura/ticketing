@@ -17,17 +17,15 @@
 #     without the compiled JavaScript the API imports at runtime. The runtime
 #     stage therefore keeps the pnpm workspace layout and installs a pruned
 #     production tree with `pnpm install --prod`.
-#   * wget is installed explicitly. container-image.md assumes it is present
-#     (kaneo's image was Alpine, where busybox provides it); node:24-bookworm-slim
-#     ships neither wget nor curl, so the documented HEALTHCHECK would fail on a
-#     missing binary rather than on a missing endpoint.
+#   * The liveness probe is copied as plain Node source, with no separate build
+#     entry. It needs no wget/curl package and only calls the fixed loopback URL.
 
-ARG NODE_IMAGE=node:24.20.0-bookworm-slim
+ARG NODE_IMAGE=node:24.22.1-trixie-slim
 
 # ---------------------------------------------------------------------------
-# base — toolchain only
+# base — native build toolchain; generated JS/static assets are CPU-independent
 # ---------------------------------------------------------------------------
-FROM ${NODE_IMAGE} AS base
+FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS base
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     HUSKY=0 \
@@ -42,6 +40,7 @@ WORKDIR /repo
 # ---------------------------------------------------------------------------
 FROM base AS deps
 COPY .npmrc pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY patches/ ./patches/
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/domain/package.json packages/domain/
@@ -78,8 +77,18 @@ RUN pnpm --filter @taskdesk/api exec esbuild ../../scripts/seed-sit-users.mjs --
 # ---------------------------------------------------------------------------
 # proddeps — pruned production node_modules for the API only
 # ---------------------------------------------------------------------------
-FROM base AS proddeps
+# Production dependencies must match the target CPU even though JS builds run natively.
+FROM ${NODE_IMAGE} AS proddeps
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH \
+    HUSKY=0 \
+    CI=true \
+    TURBO_TELEMETRY_DISABLED=1 \
+    DO_NOT_TRACK=1
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+WORKDIR /repo
 COPY --from=build /repo/.npmrc /repo/pnpm-lock.yaml /repo/pnpm-workspace.yaml /repo/package.json ./
+COPY --from=build /repo/patches ./patches
 COPY --from=build /repo/apps/api/package.json apps/api/
 COPY --from=build /repo/packages/domain/package.json packages/domain/
 COPY --from=build /repo/packages/email/package.json packages/email/
@@ -97,19 +106,17 @@ RUN NODE_ENV=production pnpm install --prod --frozen-lockfile --no-optional --ig
 # ---------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS runtime
 
-# wget is the healthcheck client and nothing else; see the deviation note above.
 # perl-base ships in the base image but nothing in this image runs Perl (pnpm
 # installed with --ignore-scripts, no maintainer script needs it after this
 # layer) — purged so its recurring pack/unpack and Storable CVEs stop blocking
 # the release scan (Trivy, HIGH/CRITICAL, exit-code 1). It is dpkg-Essential,
 # so a plain purge is refused; --allow-remove-essential overrides that guard
 # deliberately. Verified safe by rebuilding this exact base image locally with
-# the purge applied and confirming wget and node both still work, with no
+# the purge applied and confirming Node still works, with no
 # other installed package depending on it.
-# libpcre2-8-0 ships in the base image below its patched version; upgrading it in place
-# (Debian's security repo already has the fix) closes 3 real, fixed CVEs the release scan
-# still flags even with `ignore-unfixed: true` (decision log, 2026-09-27), since a fix being
-# available is exactly the case that flag does NOT skip.
+# Apply the distribution's available security updates to every runtime package;
+# a cached Node base may predate fixes for gzip, SQLite and OpenSSL. Keep the
+# unfiltered scan and vendor dispositions in the phase evidence.
 #
 # npm's own bundled CLI (ships inside the Node base image for `npm install`-style workflows)
 # is never invoked in this runtime image -- the app is a pre-built bundle started with plain
@@ -117,9 +124,8 @@ FROM ${NODE_IMAGE} AS runtime
 # install directory closes the remaining fixed-but-unaddressed findings the same way; `node`
 # and `corepack` (a separate binary, unaffected) still work, verified locally.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends wget \
- && apt-get install -y --only-upgrade libpcre2-8-0 \
- && apt-get purge -y --allow-remove-essential perl-base \
+ && apt-get upgrade -y --no-install-recommends \
+ && apt-get purge -y --allow-remove-essential perl-base wget \
  && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
  && groupadd --system --gid 10001 taskdesk \
  && useradd --system --uid 10001 --gid taskdesk --home-dir /app --shell /usr/sbin/nologin taskdesk
@@ -152,7 +158,9 @@ RUN find ./public -type f -name '*.map' -delete
 
 # Licence and attribution travel with the image (AGPL-3.0 + kaneo's MIT notice).
 COPY --chown=taskdesk:taskdesk NOTICE LICENSE THIRD-PARTY-NOTICES.md ./
+COPY --chown=taskdesk:taskdesk patches/ ./patches/
 COPY --chown=taskdesk:taskdesk deploy/entrypoint.sh ./entrypoint.sh
+COPY --chown=taskdesk:taskdesk deploy/healthcheck.mjs ./healthcheck.mjs
 RUN chmod 0555 ./entrypoint.sh
 
 # Attachment bytes for the default storage.filesystem backend. It exists in the
@@ -175,7 +183,7 @@ EXPOSE 5173
 # never restarts a healthy container. Readiness is the load balancer's concern
 # (/api/public/health/ready).
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-  CMD wget --spider -q "http://127.0.0.1:${TASKDESK_PORT}/api/public/health/live" || exit 1
+  CMD ["node", "/app/healthcheck.mjs"]
 
 ENTRYPOINT ["./entrypoint.sh"]
 

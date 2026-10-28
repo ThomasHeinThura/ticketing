@@ -34,6 +34,9 @@ import { cn } from "@/lib/cn";
 import generateProjectSlug from "@/lib/generate-project-id";
 import { toast } from "@/lib/toast";
 
+/** PR-13: a project key is 2-8 uppercase ASCII letters (the API refuses anything else). */
+const PROJECT_KEY_PATTERN = /^[A-Z]{2,8}$/;
+
 /** The "no customer organisation" choice: the project stays internal (null on the API). */
 const INTERNAL_PROJECT = "__internal__";
 
@@ -82,6 +85,7 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
     iconName.toLowerCase().includes(iconSearch.trim().toLowerCase()),
   );
   const navigate = useNavigate();
+  const keyInvalid = slug.trim() !== "" && !PROJECT_KEY_PATTERN.test(slug);
 
   const handleClose = () => {
     setName("");
@@ -95,7 +99,7 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !PROJECT_KEY_PATTERN.test(slug)) return;
 
     try {
       const { id } = await mutateAsync();
@@ -231,7 +235,11 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
                 <Input
                   id="project-key"
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  onChange={(e) => setSlug(e.target.value.toUpperCase())}
+                  aria-invalid={keyInvalid}
+                  aria-describedby={
+                    keyInvalid ? "project-key-error" : undefined
+                  }
                   placeholder="PRO"
                   maxLength={8}
                   className="w-20 h-8 text-center font-semibold text-sm bg-background border-border rounded-lg transition-colors duration-150"
@@ -244,6 +252,16 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
                 })}
               </div>
             </div>
+            {keyInvalid ? (
+              <p
+                id="project-key-error"
+                role="alert"
+                className="text-xs text-destructive"
+                data-testid="project-key-error"
+              >
+                {t("common:modals.createProject.keyInvalid")}
+              </p>
+            ) : null}
           </div>
 
           {canBindOrganisation ? (
@@ -338,7 +356,7 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
             </Button>
             <Button
               type="submit"
-              disabled={!name.trim() || !slug.trim()}
+              disabled={!name.trim() || !PROJECT_KEY_PATTERN.test(slug)}
               size="sm"
               className="bg-primary hover:bg-primary/90  disabled:opacity-50"
             >

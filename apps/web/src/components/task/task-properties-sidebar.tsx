@@ -20,6 +20,7 @@ import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
 import type { Project } from "@/types/project";
 import type Task from "@/types/task";
+import { TaskPropertiesPresentation } from "./task-detail-presentation";
 import TaskLabelsSection from "./task-labels-section";
 import TaskMovePopover from "./task-move-popover";
 import TaskPropertiesControls from "./task-properties-controls";
@@ -167,7 +168,7 @@ export default function TaskPropertiesSidebar({
 
   return (
     <div className={className}>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+      <TaskPropertiesPresentation>
         {/* Compact mode: properties + icons in one row */}
         {compact && (
           <div className="flex flex-row-reverse gap-2 w-full border-b border-border">
@@ -376,7 +377,7 @@ export default function TaskPropertiesSidebar({
             heading={t("tasks:properties.labels")}
           />
         )}
-      </div>
+      </TaskPropertiesPresentation>
     </div>
   );
 }

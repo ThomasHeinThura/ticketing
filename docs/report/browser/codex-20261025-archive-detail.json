@@ -1,0 +1,47 @@
+{
+	"name": "work-item-create-board-list-table-detail-reload",
+	"method": "Real browser UI mutation on isolated copy; new audit record only; no mocked requests",
+	"archiveHttp": 200,
+	"finalPath": "/agent/work-items/HELP-20",
+	"failedCalls": [
+		{
+			"path": "/api/work-items/HELP-20/children",
+			"status": 404
+		},
+		{
+			"path": "/api/work-items/HELP-20/relations",
+			"status": 404
+		},
+		{
+			"path": "/api/work-items/HELP-20/activity",
+			"status": 404
+		},
+		{
+			"path": "/api/work-items/HELP-20/attachments",
+			"status": 404
+		},
+		{
+			"path": "/api/work-items/HELP-20/comments/mention-candidates",
+			"status": 404
+		},
+		{
+			"path": "/api/work-items/HELP-20/attachments",
+			"status": 404
+		},
+		{
+			"path": "/api/work-items/HELP-20/relations",
+			"status": 404
+		},
+		{
+			"path": "/api/work-items/HELP-20/children",
+			"status": 404
+		},
+		{
+			"path": "/api/work-items/HELP-20/comments/mention-candidates",
+			"status": 404
+		}
+	],
+	"body": "TaskDesk Service Desk\nNotifications\nSA\nSearch\n/\nOverview\nInbox\nMy work\nTriage\nProjects\nSaved views\nKnowledge base\nTimesheet\nReports\nDashboard\nService management\nMembers\nInvitations\nSettings\nProjects\nCustomer Support Desk\nMore\nAdd project\nv2.22.0\nToggle theme\nToggle sidebar\nCustomer Support Desk\n/\nHELP-20\nLive updates are unavailable. This page refreshes every 30 seconds while open.\n\nHELP-20\n\nArchived\nSIT Audit 20261025 Archived read-only fixture\n\n\n\n\nSub-tasks\nHierarchy\nRelations\nActivity & comments\nEverything\nActivity could not be loaded.\nRetry\nAudit history\n\nProperties\n\nTo Do\nNo priority\nUnassigned\nNo start date\nNo due date\nAttachments\nSLA\nTime\nProject\nCustomer Support Desk\nCreated\nOct 25, 2026, 3:15 AM\nUpdated\nOct 25, 2026, 3:18 AM",
+	"outcome": "archived-detail-inspected",
+	"screenshot": "docs/report/screens/codex-20261025-archive-detail.png"
+}

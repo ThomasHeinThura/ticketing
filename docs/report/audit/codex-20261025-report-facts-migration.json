@@ -1,0 +1,58 @@
+{
+	"recordedAt": "2026-10-25T06:28:54.724Z",
+	"records": [
+		{
+			"target": "audit",
+			"database": "taskdesk_codex_sit_20261025",
+			"before": {
+				"people": 10,
+				"work_items": 24,
+				"projects": 2,
+				"teams": 35,
+				"aggregates": 1,
+				"coverage": 7,
+				"migrations": 171
+			},
+			"after": {
+				"people": 10,
+				"work_items": 24,
+				"projects": 2,
+				"teams": 35,
+				"aggregates": 1,
+				"coverage": 0,
+				"migrations": 172
+			},
+			"rollbackDump": "backups/codex-sit-20261025/pre-0171-audit.dump",
+			"dumpFullyDecoded": true
+		},
+		{
+			"target": "performance",
+			"database": "taskdesk_codex_performance_20261025_test",
+			"before": {
+				"people": 1,
+				"work_items": 10000,
+				"projects": 1,
+				"teams": 1,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 171
+			},
+			"after": {
+				"people": 1,
+				"work_items": 10000,
+				"projects": 1,
+				"teams": 1,
+				"aggregates": 0,
+				"coverage": 0,
+				"migrations": 172
+			},
+			"rollbackDump": "backups/codex-sit-20261025/pre-0171-performance.dump",
+			"dumpFullyDecoded": true
+		}
+	],
+	"protectedDatabase": "Never targeted; protected live database remains separate on62870",
+	"notes": [
+		"0171 adds versioned twelve-family coverage and transactional source invalidation; facts and source records are preserved.",
+		"Source records and aggregate rows are preserved; missing coverage reads live until the hourly job rebuilds it."
+	]
+}

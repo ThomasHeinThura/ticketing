@@ -1,0 +1,2 @@
+CREATE INDEX "kb_article_full_text_idx" ON "kb_article" USING gin ((setweight(to_tsvector('simple', coalesce("title", '')), 'A') || setweight(to_tsvector('simple', coalesce("body_text", '')), 'B')));--> statement-breakpoint
+CREATE INDEX "kb_article_version_full_text_idx" ON "kb_article_version" USING gin ((setweight(to_tsvector('simple', coalesce("title", '')), 'A') || setweight(to_tsvector('simple', coalesce("body_text", '')), 'B')));

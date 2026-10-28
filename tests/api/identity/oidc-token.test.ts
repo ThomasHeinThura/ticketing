@@ -46,6 +46,10 @@ describe("Entra ID-token validation", () => {
   it.each([
     [{ iss: "https://evil.example" }, "issuer_mismatch"],
     [{ aud: "another-client" }, "audience_mismatch"],
+    [{ aud: ["client", "other-api"] }, "audience_mismatch"],
+    [{ aud: ["client", "other-api"], azp: "other-api" }, "audience_mismatch"],
+    [{ aud: "client", azp: "other-api" }, "audience_mismatch"],
+    [{ aud: ["client"], azp: "other-api" }, "audience_mismatch"],
     [{ tid: "another-tenant" }, "tenant_mismatch"],
     [{ nonce: "another-nonce" }, "nonce_mismatch"],
     [{ exp: expectation.nowSeconds - 61 }, "expired"],
@@ -55,6 +59,17 @@ describe("Entra ID-token validation", () => {
     expect(
       validateEntraIdToken(fixture.token, fixture.jwks, expectation),
     ).toEqual({ ok: false, reason });
+  });
+
+  it.each([
+    [{ aud: ["client", "other-api"], azp: "client" }],
+    [{ aud: ["client"] }],
+    [{ aud: "client", azp: "client" }],
+  ] as const)("accepts a matching authorized party %#", (claims) => {
+    const fixture = signedToken(claims);
+    expect(
+      validateEntraIdToken(fixture.token, fixture.jwks, expectation),
+    ).toMatchObject({ ok: true });
   });
 
   it("refuses a bad signature, unsupported algorithm, and unknown key", () => {

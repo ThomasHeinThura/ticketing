@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { JsonValue } from "@taskdesk/domain";
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { appendAuditLog } from "../../audit/audit-writer";
+import type { AuditRequestContext } from "../../audit/request-context";
 import db from "../../database";
 import {
   commentTable,
@@ -11,8 +11,11 @@ import {
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { enqueueNotificationEvent } from "../../notification/fanout";
 import { resolveMentionEventRecipient } from "../../notification/recipient-resolvers";
+import { resolveCommentEventRecipients } from "../../notification/work-item-recipients";
 import type { ApiKey } from "../../openapi";
 import { dbNowUtc } from "../../utils/db-time";
 import { parseNativeMentionPersonIds } from "../../utils/parse-native-mentions";
@@ -25,6 +28,7 @@ import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
+import { loadCommentCaller, requireCommentPerson } from "../comment-access";
 import {
   classifyWorkItemMentionPeople,
   findWorkItemMentionContext,
@@ -57,7 +61,9 @@ export async function createComment(
   actorType: ActivityActorType,
   input: CreateCommentInput,
   apiKey?: ApiKey,
+  audit?: Partial<AuditRequestContext>,
 ) {
+  let auditFailed = false;
   const requiredCapability =
     input.visibility === "public"
       ? "comment:create"
@@ -101,12 +107,19 @@ export async function createComment(
         tx,
       );
 
+      const authorPersonId = requireCommentPerson(
+        await loadCommentCaller(
+          tx,
+          { userId: actorId, apiKey },
+          { workspaceId, projectId: locked.projectId, workItemId },
+        ),
+      );
       const [row] = await tx
         .insert(commentTable)
         .values({
           workspaceId,
           workItemId,
-          authorId: actorId,
+          authorId: authorPersonId,
           actorType,
           body: input.body,
           visibility: input.visibility,
@@ -155,6 +168,51 @@ export async function createComment(
       const reachableMentionedPeople = mentionCandidates.filter(
         (candidate) => candidate.reachable && candidate.userId !== actorId,
       );
+      // AU-14: a failed audit append never fails the comment, and is never silent.
+      auditFailed = await appendAuditSavepoint(tx, {
+        actorIp: audit?.actorIp ?? null,
+        userAgent: audit?.userAgent ?? null,
+        traceId: audit?.traceId ?? null,
+        actorId,
+        actorType,
+        apiKeyId: apiKey?.id ?? audit?.apiKeyId ?? null,
+        workspaceId,
+        projectId: locked.projectId,
+        action: "work_item.commented",
+        entityType: "comment",
+        entityId: row.id,
+        before: null,
+        after: {
+          workItemId,
+          visibility: row.visibility,
+          body: (row.body ?? null) as JsonValue,
+          ...(apiKey?.isMcp === true ? { origin: "mcp" as const } : {}),
+        },
+      });
+
+      const realtimeEvent = await recordWorkItemEvent(tx, {
+        kind: "work_item.commented",
+        workItemId,
+        key: locked.key,
+        workspaceId,
+        organisationId: mentionContext.organisationId ?? undefined,
+        projectId: locked.projectId,
+        actorId,
+        actorType,
+        customerVisible: row.visibility === "public",
+        payload: {
+          key: locked.key,
+          workItemId,
+          url: `/agent/work-items/${encodeURIComponent(locked.key)}`,
+          commentId: row.id,
+          visibility: row.visibility,
+        },
+        notify: { resolveRecipients: resolveCommentEventRecipients },
+      });
+
+      // Snapshot the comment's existing watchers before mention-only watchers are added.
+      // A person made a watcher by this comment receives the direct mention event below,
+      // without a second generic comment notification from the same write.
       for (const candidate of reachableMentionedPeople) {
         await tx
           .insert(watcherTable)
@@ -198,39 +256,6 @@ export async function createComment(
         });
       }
 
-      await appendAuditLog(tx, {
-        actorId,
-        actorType,
-        apiKeyId: apiKey?.id ?? null,
-        workspaceId,
-        projectId: locked.projectId,
-        action: "work_item.commented",
-        entityType: "comment",
-        entityId: row.id,
-        before: null,
-        after: {
-          workItemId,
-          visibility: row.visibility,
-          body: (row.body ?? null) as JsonValue,
-        },
-      });
-
-      const realtimeEvent = await recordWorkItemEvent(tx, {
-        kind: "work_item.commented",
-        workItemId,
-        key: locked.key,
-        workspaceId,
-        projectId: locked.projectId,
-        actorId,
-        actorType,
-        customerVisible: row.visibility === "public",
-        payload: {
-          key: locked.key,
-          url: `/agent/work-items/${encodeURIComponent(locked.key)}`,
-          commentId: row.id,
-          visibility: row.visibility,
-        },
-      });
       return {
         created: row,
         realtimeEvent,
@@ -239,6 +264,8 @@ export async function createComment(
       };
     },
   );
+
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 
   if (!created) {
     throw new HTTPException(500, { message: "Failed to create comment" });

@@ -9,7 +9,10 @@ export const commentSchema = z
     id: z.string(),
     workItemId: z.string(),
     workspaceId: z.string(),
-    authorId: z.string().nullable(),
+    authorId: z.string().nullable().openapi({
+      description:
+        "Canonical person ID for new comments. Historical user-ID authors are retained and resolved without rewriting history.",
+    }),
     actorType: z.string().openapi({
       description: "One of: person, automation, system, api_key.",
     }),
@@ -25,5 +28,10 @@ export const commentSchema = z
     deletedBy: z.string().nullable(),
     createdAt: responseTimestamp,
     updatedAt: responseTimestamp,
+    origin: z.string().nullable().optional().openapi({
+      description:
+        "`imported` for a comment an import wrote (createdAt is then the source time); null for a native comment.",
+    }),
+    importedAt: nullableResponseTimestamp.optional(),
   })
   .openapi("Comment");

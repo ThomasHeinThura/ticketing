@@ -18,8 +18,10 @@ import {
 } from "../database/repositories/identity-scope.repository";
 import {
   attachmentTable,
+  commentTable,
   instanceFeatureFlagTable,
   instanceSettingTable,
+  organisationQuotaTable,
   organisationTable,
   personTable,
   projectTable,
@@ -31,6 +33,7 @@ import {
   workspaceTable,
 } from "../database/schema";
 import { getActiveStaffPerson } from "../instance/users/repository";
+import { dbClockUtc } from "../utils/db-time";
 
 export async function getAttachmentSettings(executor: Executor) {
   return await executor
@@ -68,6 +71,20 @@ export async function findAttachmentWorkspaceOrganisation(
     .limit(1);
 }
 
+/**
+ * AT-1: a file belongs to a work item directly, or through one of its comments (the
+ * `attachment_exactly_one_parent` CHECK leaves `work_item_id` NULL for a comment file).
+ * Every work-item-scoped lookup resolves the parent through this expression so a comment
+ * attachment is never invisible to reach, download, completion or the per-item limit.
+ */
+const parentWorkItemId = sql<string>`coalesce(${attachmentTable.workItemId}, ${commentTable.workItemId})`;
+
+/** A comment file disappears with its comment's tombstone (CA-18); non-comment files are unaffected. */
+const parentCommentLive = or(
+  isNull(attachmentTable.commentId),
+  isNull(commentTable.deletedAt),
+);
+
 export async function countWorkItemAttachments(
   executor: Executor,
   workItemId: string,
@@ -75,7 +92,33 @@ export async function countWorkItemAttachments(
   return await executor
     .select({ value: count() })
     .from(attachmentTable)
-    .where(eq(attachmentTable.workItemId, workItemId));
+    .leftJoin(commentTable, eq(commentTable.id, attachmentTable.commentId))
+    .where(sql`${parentWorkItemId} = ${workItemId}`);
+}
+
+/** The comment a new attachment would hang off, locked so a concurrent delete waits. */
+export async function lockCommentForAttachment(
+  executor: Executor,
+  input: { commentId: string; workItemId: string; workspaceId: string },
+) {
+  return await executor
+    .select({
+      id: commentTable.id,
+      authorId: commentTable.authorId,
+      actorType: commentTable.actorType,
+      visibility: commentTable.visibility,
+      deletedAt: commentTable.deletedAt,
+    })
+    .from(commentTable)
+    .where(
+      and(
+        eq(commentTable.id, input.commentId),
+        eq(commentTable.workItemId, input.workItemId),
+        eq(commentTable.workspaceId, input.workspaceId),
+      ),
+    )
+    .for("share")
+    .limit(1);
 }
 
 export async function findAttachmentUploader(
@@ -92,25 +135,36 @@ export async function findAttachmentUploader(
 export async function findAttachmentWorkItemForReach(
   executor: Executor,
   id: string,
+  options: { allowArchivedForRead?: true } = {},
 ) {
   return await executor
     .select({
       id: attachmentTable.id,
-      workItemId: attachmentTable.workItemId,
+      uploadedBy: attachmentTable.uploadedBy,
+      workItemId: workItemTable.id,
       workspaceId: attachmentTable.workspaceId,
       projectId: workItemTable.projectId,
       organisationId: workspaceTable.organisationId,
+      commentId: attachmentTable.commentId,
     })
     .from(attachmentTable)
-    .innerJoin(workItemTable, eq(attachmentTable.workItemId, workItemTable.id))
+    .leftJoin(commentTable, eq(commentTable.id, attachmentTable.commentId))
+    .innerJoin(workItemTable, sql`${workItemTable.id} = ${parentWorkItemId}`)
     .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
     .innerJoin(workspaceTable, eq(workspaceTable.id, projectTable.workspaceId))
     .where(
       and(
         eq(attachmentTable.id, id),
+        parentCommentLive,
+        ...(options.allowArchivedForRead
+          ? [isNull(attachmentTable.deletedAt)]
+          : []),
         isNull(workItemTable.deletedAt),
-        isNull(workItemTable.archivedAt),
+        ...(options.allowArchivedForRead
+          ? []
+          : [isNull(workItemTable.archivedAt)]),
         isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
       ),
     )
     .limit(1);
@@ -310,6 +364,12 @@ export async function findSubmissionAttachmentContent(
         identity.side === "customer"
           ? eq(submissionTable.requesterId, identity.personId)
           : undefined,
+        identity.side === "customer"
+          ? inArray(
+              attachmentTable.workItemId,
+              liveWorkItemIds(executor, input.linkedWorkItemId),
+            )
+          : undefined,
         identity.side === "staff"
           ? inArray(
               attachmentTable.workItemId,
@@ -494,13 +554,15 @@ export async function findWorkItemAttachment(
   return await executor
     .select()
     .from(attachmentTable)
-    .innerJoin(workItemTable, eq(workItemTable.id, attachmentTable.workItemId))
+    .leftJoin(commentTable, eq(commentTable.id, attachmentTable.commentId))
+    .innerJoin(workItemTable, sql`${workItemTable.id} = ${parentWorkItemId}`)
     .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
     .where(
       and(
         eq(attachmentTable.id, input.id),
         eq(attachmentTable.workspaceId, input.workspaceId),
-        eq(attachmentTable.workItemId, input.workItemId),
+        eq(workItemTable.id, input.workItemId),
+        parentCommentLive,
         isNull(workItemTable.deletedAt),
         isNull(workItemTable.archivedAt),
         isNull(projectTable.deletedAt),
@@ -514,7 +576,15 @@ export async function findWorkItemAttachment(
       ),
     )
     .limit(1)
-    .then((rows) => rows.map(({ attachment }) => attachment));
+    .then((rows) =>
+      rows.map(({ attachment, comment }) => ({
+        ...attachment,
+        // The owning work item is `input.workItemId` (the query filtered on it), whichever
+        // parent the row hangs off; `commentVisibility` drives AT-4.
+        parentWorkItemId: input.workItemId,
+        commentVisibility: comment?.visibility ?? null,
+      })),
+    );
 }
 
 export async function findSubmissionCompletionAttachment(
@@ -609,6 +679,104 @@ export async function lockSubmissionForCompletion(
     .limit(1);
 }
 
+/**
+ * P1 attachment limits (`feature-contracts-p1.md` "Total per organisation"): the organisation
+ * that owns `workspaceId`, its `organisation_quota.max_storage_bytes` (20 GiB when no row
+ * exists) and the bytes currently held by its live (`pending` + `ready`) attachments, across
+ * every workspace of that organisation. `excludeAttachmentId` removes the row being completed so
+ * its own reserved bytes are not counted twice. Takes a transaction-scoped advisory lock keyed
+ * on the organisation first, so concurrent presigns serialise their quota check.
+ */
+export const DEFAULT_MAX_STORAGE_BYTES = 21_474_836_480;
+
+export async function readOrganisationStorageUsage(
+  executor: Executor,
+  input: { workspaceId: string; excludeAttachmentId?: string; lock?: boolean },
+) {
+  const [workspace] = await executor
+    .select({ organisationId: workspaceTable.organisationId })
+    .from(workspaceTable)
+    .where(eq(workspaceTable.id, input.workspaceId))
+    .limit(1);
+  if (!workspace) return null;
+  if (input.lock) {
+    await executor.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${`attachment-storage-quota:${workspace.organisationId}`}, 0))`,
+    );
+  }
+  const [quota] = await executor
+    .select({ maxStorageBytes: organisationQuotaTable.maxStorageBytes })
+    .from(organisationQuotaTable)
+    .where(eq(organisationQuotaTable.organisationId, workspace.organisationId))
+    .limit(1);
+  const [usage] = await executor
+    .select({
+      used: sql<string>`coalesce(sum(${attachmentTable.size}), 0)`,
+    })
+    .from(attachmentTable)
+    .innerJoin(
+      workspaceTable,
+      eq(workspaceTable.id, attachmentTable.workspaceId),
+    )
+    .where(
+      and(
+        eq(workspaceTable.organisationId, workspace.organisationId),
+        inArray(attachmentTable.state, ["pending", "ready"]),
+        isNull(attachmentTable.deletedAt),
+        input.excludeAttachmentId
+          ? ne(attachmentTable.id, input.excludeAttachmentId)
+          : undefined,
+      ),
+    );
+  return {
+    organisationId: workspace.organisationId,
+    maxStorageBytes: quota?.maxStorageBytes ?? DEFAULT_MAX_STORAGE_BYTES,
+    usedBytes: Number(usage?.used ?? 0),
+  };
+}
+
+/** The work item `workItemId` while it, and its project, are live (not deleted or archived). */
+function liveWorkItemIds(executor: Executor, workItemId: string) {
+  return executor
+    .select({ id: workItemTable.id })
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+    .where(
+      and(
+        eq(workItemTable.id, workItemId),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+      ),
+    );
+}
+
+/**
+ * AT-5/AT-7: the portal requester keeps access to a converted work item's customer-visible
+ * files only while that item and its project are live. A soft-deleted or archived item (or a
+ * deleted project) behaves as if the submission carried no link.
+ */
+export async function findLiveLinkedWorkItemId(
+  executor: Executor,
+  workItemId: string | null,
+): Promise<string | null> {
+  if (!workItemId) return null;
+  const [row] = await executor
+    .select({ id: workItemTable.id })
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+    .where(
+      and(
+        eq(workItemTable.id, workItemId),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  return row?.id ?? null;
+}
+
 export async function listPortalSubmissionAttachments(
   executor: Executor,
   identity: ResolvedIdentity | null,
@@ -651,6 +819,14 @@ export async function listPortalSubmissionAttachments(
                   and(
                     eq(submissionTable.state, "accepted"),
                     eq(attachmentTable.workItemId, submissionTable.workItemId),
+                    // P1R2-4: a converted item that staff deleted or archived (or whose
+                    // project was deleted) no longer shares its files with the portal.
+                    input.workItemId
+                      ? inArray(
+                          attachmentTable.workItemId,
+                          liveWorkItemIds(executor, input.workItemId),
+                        )
+                      : sql`false`,
                   ),
                 ),
               ),
@@ -815,8 +991,17 @@ export async function deletePendingWorkItemAttachment(
       and(
         eq(attachmentTable.id, input.id),
         eq(attachmentTable.workspaceId, input.workspaceId),
-        eq(attachmentTable.workItemId, input.workItemId),
         eq(attachmentTable.state, "pending"),
+        or(
+          eq(attachmentTable.workItemId, input.workItemId),
+          inArray(
+            attachmentTable.commentId,
+            executor
+              .select({ id: commentTable.id })
+              .from(commentTable)
+              .where(eq(commentTable.workItemId, input.workItemId)),
+          ),
+        ),
       ),
     )
     .returning({ id: attachmentTable.id });
@@ -828,7 +1013,9 @@ export async function insertWorkItemAttachment(
     id: string;
     workspaceId: string;
     organisationId: string | null;
-    workItemId: string;
+    /** Exactly one parent (`attachment_exactly_one_parent`): the item, or one of its comments. */
+    workItemId?: string;
+    commentId?: string;
     objectKey: string;
     filename: string;
     contentType: string;
@@ -843,7 +1030,8 @@ export async function insertWorkItemAttachment(
       id: input.id,
       workspaceId: input.workspaceId,
       organisationId: input.organisationId,
-      workItemId: input.workItemId,
+      workItemId: input.commentId ? null : (input.workItemId ?? null),
+      commentId: input.commentId ?? null,
       objectKey: input.objectKey,
       filename: input.filename.slice(0, 255),
       mimeType: input.contentType,
@@ -925,21 +1113,39 @@ export async function listWorkItemAttachments(
   executor: Executor,
   identity: ResolvedIdentity | null,
   workItemId: string,
+  options: {
+    allowArchivedForRead?: true;
+    lifecycle?: "live" | "recoverable";
+  } = {},
 ) {
-  if (!identity || identity.side !== "staff") return [];
+  if (identity?.side !== "staff") return [];
   return await executor
     .select()
     .from(attachmentTable)
-    .innerJoin(workItemTable, eq(workItemTable.id, attachmentTable.workItemId))
+    .leftJoin(commentTable, eq(commentTable.id, attachmentTable.commentId))
+    .innerJoin(workItemTable, sql`${workItemTable.id} = ${parentWorkItemId}`)
     .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
     .where(
       and(
-        eq(attachmentTable.workItemId, workItemId),
-        ne(attachmentTable.state, "deleted"),
-        isNull(attachmentTable.deletedAt),
+        eq(workItemTable.id, workItemId),
+        options.lifecycle === "recoverable"
+          ? and(
+              eq(attachmentTable.state, "deleted"),
+              sql`${attachmentTable.deletedAt} > ${dbClockUtc()} - interval '24 hours'`,
+            )
+          : and(
+              ne(attachmentTable.state, "deleted"),
+              isNull(attachmentTable.deletedAt),
+            ),
+        parentCommentLive,
         isNull(workItemTable.deletedAt),
-        isNull(workItemTable.archivedAt),
+        ...(options.allowArchivedForRead && options.lifecycle !== "recoverable"
+          ? []
+          : [isNull(workItemTable.archivedAt)]),
         isNull(projectTable.deletedAt),
+        ...(options.lifecycle === "recoverable"
+          ? [isNull(projectTable.archivedAt)]
+          : []),
         currentProjectReachPredicate(
           identity,
           projectTable.id,
@@ -950,5 +1156,139 @@ export async function listWorkItemAttachments(
       ),
     )
     .orderBy(attachmentTable.createdAt)
-    .then((rows) => rows.map(({ attachment }) => attachment));
+    .then((rows) =>
+      rows.map(({ attachment, comment }) => ({
+        ...attachment,
+        // The owning work item whichever parent the row hangs off.
+        parentWorkItemId: workItemId,
+        // AT-4: an attachment on an internal comment is internal whatever its own flag says.
+        customerVisible:
+          attachment.customerVisible &&
+          (comment === null || comment.visibility === "public"),
+      })),
+    );
+}
+
+/**
+ * AT-7 restore lock order: work item → project → comment → attachment. GC locks the
+ * work item → comment → attachment; the project share lock fences project deletion
+ * without introducing a project-to-item wait edge.
+ */
+export async function lockAttachmentRestoreParent(
+  executor: Executor,
+  input: { attachmentId: string },
+) {
+  const [candidate] = await executor
+    .select({
+      attachment: attachmentTable,
+      parentWorkItemId,
+    })
+    .from(attachmentTable)
+    .leftJoin(commentTable, eq(commentTable.id, attachmentTable.commentId))
+    .where(eq(attachmentTable.id, input.attachmentId))
+    .limit(1);
+  const itemId = candidate?.parentWorkItemId;
+  if (!candidate || !itemId || candidate.attachment.submissionId)
+    return undefined;
+
+  const [item] = await executor
+    .select()
+    .from(workItemTable)
+    .where(eq(workItemTable.id, itemId))
+    .for("share")
+    .limit(1);
+  if (
+    !item ||
+    item.deletedAt !== null ||
+    item.archivedAt !== null ||
+    item.workspaceId !== candidate.attachment.workspaceId
+  )
+    return undefined;
+
+  const [project] = await executor
+    .select()
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, item.projectId),
+        eq(projectTable.workspaceId, item.workspaceId),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+      ),
+    )
+    .for("share")
+    .limit(1);
+  if (!project) return undefined;
+
+  if (candidate.attachment.commentId) {
+    const [comment] = await executor
+      .select()
+      .from(commentTable)
+      .where(
+        and(
+          eq(commentTable.id, candidate.attachment.commentId),
+          eq(commentTable.workItemId, item.id),
+          isNull(commentTable.deletedAt),
+        ),
+      )
+      .for("share")
+      .limit(1);
+    if (!comment) return undefined;
+  }
+
+  return {
+    attachment: candidate.attachment,
+    item,
+    project,
+  };
+}
+
+export async function lockRecoverableAttachment(
+  executor: Executor,
+  input: {
+    id: string;
+    workItemId: string;
+    workspaceId: string;
+    commentId: string | null;
+  },
+) {
+  return await executor
+    .select()
+    .from(attachmentTable)
+    .where(
+      and(
+        eq(attachmentTable.id, input.id),
+        eq(attachmentTable.workspaceId, input.workspaceId),
+        input.commentId === null
+          ? and(
+              eq(attachmentTable.workItemId, input.workItemId),
+              isNull(attachmentTable.commentId),
+            )
+          : and(
+              isNull(attachmentTable.workItemId),
+              eq(attachmentTable.commentId, input.commentId),
+            ),
+        eq(attachmentTable.state, "deleted"),
+        sql`${attachmentTable.deletedAt} > ${dbClockUtc()} - interval '24 hours'`,
+      ),
+    )
+    .for("update")
+    .limit(1);
+}
+
+export async function restoreAttachmentRow(
+  executor: Executor,
+  input: { id: string },
+) {
+  return await executor
+    .update(attachmentTable)
+    .set({ state: "ready", deletedAt: null, updatedAt: dbClockUtc() })
+    .where(
+      and(
+        eq(attachmentTable.id, input.id),
+        eq(attachmentTable.state, "deleted"),
+        sql`${attachmentTable.deletedAt} > ${dbClockUtc()} - interval '24 hours'`,
+      ),
+    )
+    .returning();
 }

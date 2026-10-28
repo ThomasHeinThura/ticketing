@@ -1,15 +1,9 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import deleteComment from "@/fetchers/comment/delete-comment";
 
-function useDeleteComment(taskId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: deleteComment,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["activities", taskId] });
-    },
-  });
+/** Requests comment deletion; nothing is removed (or refetched) until the approval executes. */
+function useDeleteComment() {
+  return useMutation({ mutationFn: deleteComment });
 }
 
 export default useDeleteComment;

@@ -1,0 +1,35 @@
+{
+	"recordedAt": "2026-10-25T13:53:54.981713+00:00",
+	"scope": "Unauthenticated real TLS endpoint admission only; no identities or report contents retained in this evidence.",
+	"results": [
+		{
+			"host": "ticketing.localhost",
+			"case": "valid",
+			"status": 204,
+			"expected": 204,
+			"pass": true
+		},
+		{
+			"host": "ticketing.localhost",
+			"case": "invalid",
+			"status": 400,
+			"expected": 400,
+			"pass": true
+		},
+		{
+			"host": "portal.localhost",
+			"case": "valid",
+			"status": 204,
+			"expected": 204,
+			"pass": true
+		},
+		{
+			"host": "portal.localhost",
+			"case": "invalid",
+			"status": 400,
+			"expected": 400,
+			"pass": true
+		}
+	],
+	"status": "pass"
+}

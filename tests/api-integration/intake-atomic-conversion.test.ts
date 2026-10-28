@@ -1168,10 +1168,13 @@ describe("intake atomic conversion", () => {
     expect(portalPage.workItem).toMatchObject({
       title: "Reset access",
       description: "",
-      state: "Backlog",
       priority: null,
     });
     expect(portalPage.workItem).not.toHaveProperty("key");
+    // CP-5: the internal workflow state name ("Backlog") is never shown to the customer; the
+    // page carries the customer-safe status computed in portal-status.ts instead.
+    expect(portalPage.workItem).not.toHaveProperty("state");
+    expect(portalPage.customerStatus).toBe("in_progress");
     await db
       .update(schema.projectTable)
       .set({ archivedAt: new Date() })

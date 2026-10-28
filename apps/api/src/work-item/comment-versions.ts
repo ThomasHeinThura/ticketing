@@ -24,7 +24,9 @@ const listWorkItemCommentVersionsRoute = createRoute({
     "same work_item:read, project reach, and immutable comment visibility as activity; " +
     "tombstones and unavailable parents return 404. This agent-side route is not exposed " +
     "through the portal router.",
-  middleware: [requireWorkItemReach()] as const,
+  middleware: [
+    requireWorkItemReach("key", { allowArchivedForRead: true }),
+  ] as const,
   request: {
     params: z.object({ ...workItemKeyParam.shape, ...commentIdParam.shape }),
     query: listCommentVersionsQuery,

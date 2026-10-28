@@ -18,7 +18,8 @@ const migrationDirectory = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../apps/api/drizzle",
 );
-const scratchDatabases: Array<{ adminUrl: string; name: string }> = [];
+const scratchDatabases: Array<{ adminUrl: string; name: string; pool: Pool }> =
+  [];
 
 async function createScratchDatabase(baseUrl: string) {
   const adminUrl = new URL(baseUrl);
@@ -34,12 +35,14 @@ async function createScratchDatabase(baseUrl: string) {
   const databaseUrl = new URL(baseUrl);
   databaseUrl.pathname = `/${name}`;
   const pool = new Pool({ connectionString: databaseUrl.toString(), max: 3 });
-  scratchDatabases.push({ adminUrl: adminUrl.toString(), name });
+  scratchDatabases.push({ adminUrl: adminUrl.toString(), name, pool });
   return { pool, database: drizzle(pool, { schema }) };
 }
 
 afterAll(async () => {
   for (const scratch of scratchDatabases) {
+    // Release the scratch pool's backends first so the forced drop never waits on them.
+    await scratch.pool.end().catch(() => undefined);
     const admin = new Client({ connectionString: scratch.adminUrl });
     await admin.connect();
     try {

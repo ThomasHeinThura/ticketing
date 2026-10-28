@@ -1,0 +1,986 @@
+{
+	"verdict": "pass_with_conditions",
+	"summary": "PASS WITH CONDITIONS (round 2). Both round-1 highs are fixed: reconstruction now answers state across transitions/moves with creation seeding (audit.ts:327-438) and the real system-transition executor + customer reopen are integration-tested (system-transition-real-executor.test.ts).\nR3/R4/R5/R8/R9/R11/R12 fixed; R6 and R10 partial; R7 carried to P3. Cursor fix in listSubmissions/listOwnSubmissions is correct (consistent ms truncation in predicate and ORDER BY) but bypasses the created_at indexes.\nNew mediums: S1 every successful customer reopen leaves a false 'Reopen needs review' flag; S2 system hops take the first matching edge, so a gated edge on the same pair can be skipped depending on order.\nSecurity pass: SLA/submission recipients staff/requester-scoped and reach-checked, portal SLA {state,dueAt} only, audit routes reach-gated, customers refused; no high issues.\nConditions: C1 browser-verify SLA panel, History disclosure, reopen badge, portal SLA (AGENTS.md:48); C2 fix S1; C3 fix or explicitly accept S2 with a test.\nRequirements: 117 met, 15 partial, 5 blocked, 0 not_met; remaining partial/blocked are non-core or carried (P3/P4/P5/owner hold).",
+	"round1_status": [
+		{
+			"id": "R1",
+			"status": "fixed",
+			"evidence": "packages/domain/src/audit/audit.ts:327-348 (transitioned->stateId, project move->stateId), audit.ts:408-425 (creation seeding + options.current), apps/api/src/audit/work-item-history.repository.ts:24-87 (full journal + current), apps/api/src/audit/index.ts:180-200; test tests/api-integration/system-transition-real-executor.test.ts:368-455"
+		},
+		{
+			"id": "R2",
+			"status": "fixed",
+			"evidence": "tests/api-integration/system-transition-real-executor.test.ts:176-268 (real executeSystemTransition: once-only, concurrent claim, approval refusal, role bypass, left_state), :307-366 (real reopen via is_reopen edge, flagged fallbacks); executor registered apps/api/src/work-item/controllers/transition-work-item.ts:1160-1194"
+		},
+		{
+			"id": "R3",
+			"status": "fixed",
+			"evidence": "transition-work-item.ts:304-309,334-396 (stored concrete hop, inert edge when no edge), :419-425 (system refuses approval/CAB); scheduler/scheduled-transition.ts:172-180 (terminal cancel), :57-107 (flagged internal activity). Residual: first-match edge selection (S2) and stale doc comment :20-24 (S9)."
+		},
+		{
+			"id": "R4",
+			"status": "fixed",
+			"evidence": "apps/api/src/work-item/scheduled-transition-cancel.ts:11-30; transition-work-item.ts:842-844; archive-work-item.ts:88; delete-work-item.ts:65; move-work-item.ts:376; test system-transition-real-executor.test.ts:270-305"
+		},
+		{
+			"id": "R5",
+			"status": "fixed",
+			"evidence": "packages/domain/src/sla/escalation.ts:55-96 (level = all stakeholders at an order, advance by distinct order); apps/api/src/scheduler/sla-escalation.ts:59-67,163-195; tests sla-notifications-and-escalation.test.ts:220-249"
+		},
+		{
+			"id": "R6",
+			"status": "partial",
+			"evidence": "Durable in-tx row apps/api/src/intake/repository.ts:2339-2345 + post-commit reopen with logged failure :2209-2226; flag rendering work-item-activity.tsx:736-746. New defect S1: the 'pending' row is never superseded on success, so every successful reopen shows 'could not be reopened automatically'. Upload/portal-reopen call sites still unwired (P3)."
+		},
+		{
+			"id": "R7",
+			"status": "not_fixed",
+			"evidence": "Carried by coordinator to P3: submission-recipients.ts:78,123 (channels: []), no portal inbox surface; auto-decline.ts:19-21 (no thread message), :28-30 reason still promises reopen; no customer reopen route."
+		},
+		{
+			"id": "R8",
+			"status": "fixed",
+			"evidence": "apps/api/drizzle/0136_sla_escalation_and_intake_windows.sql:40 (clarifying_since = now() for rows currently clarifying)"
+		},
+		{
+			"id": "R9",
+			"status": "fixed",
+			"evidence": "apps/web/src/lib/audit-history-format.ts:20-109 (action/field labels, state/person names, rich text to plain, ids -> 'unavailable'); apps/web/src/components/work-item/work-item-audit-history.tsx:54-80,134,181-185; workflow-validation-dialog.tsx:43-71 (API strings -> translated sentences with state names), :126-128,185,241 (project names). Not browser-verified."
+		},
+		{
+			"id": "R10",
+			"status": "partial",
+			"evidence": "Server filters apps/api/src/intake/list-filters.ts:30-68 and intake/repository.ts:1764-1813 (cursor scope includes filters :1772); web apps/web/src/lib/intake-queue.ts:50-74. 'claimed' and unresolved type ids remain page-local (intake-queue.ts:66-70; triage.tsx:256)."
+		},
+		{
+			"id": "R11",
+			"status": "fixed",
+			"evidence": "apps/api/src/work-item/controllers/get-work-item-sla.ts:48-63; apps/api/src/work-item/sla-response.ts:13-49; apps/web/src/components/work-item/work-item-sla.tsx:109-199. Not browser-verified (C1)."
+		},
+		{
+			"id": "R12",
+			"status": "fixed",
+			"evidence": "tests/api-integration/sla-notifications-and-escalation.test.ts:127-193 (assignee/lead/first stakeholder written; lead without reach and customer never), :195-277 (advance, ties, stop on staff comment)"
+		},
+		{
+			"id": "R13",
+			"status": "not_fixed",
+			"evidence": "apps/api/src/audit/index.ts:89-104 (entity history work_item only); export controller still unmounted (no import of controllers/export-instance-audit.ts anywhere in apps/api/src). Carry P4."
+		},
+		{
+			"id": "R14",
+			"status": "not_fixed",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/workflows.tsx:89 (template names via projects[0])"
+		},
+		{
+			"id": "R15",
+			"status": "not_fixed",
+			"evidence": "apps/api/src/scheduler/index.ts:100-101 (reminder-scan */15); sla-recipients.ts:135-142 (no watchers)"
+		},
+		{
+			"id": "R16",
+			"status": "not_fixed",
+			"evidence": "apps/api/drizzle/0136_sla_escalation_and_intake_windows.sql:31-33 (single-column FKs)"
+		},
+		{
+			"id": "R17",
+			"status": "not_fixed",
+			"evidence": "apps/api/src/intake/auto-decline.ts:150-170 (no keyset/offset; 50 skipped rows end the run)"
+		},
+		{
+			"id": "R18",
+			"status": "not_fixed",
+			"evidence": "docs/technical/feature-contracts-p2.md:178 still says reminder-scan fires due rows; background-jobs.md runs scheduled-transition every minute"
+		}
+	],
+	"findings": [
+		{
+			"id": "S1",
+			"severity": "medium",
+			"category": "correctness",
+			"requirement": "WF-21",
+			"file": "apps/api/src/workflow/customer-reopen.ts:40-58,94; apps/api/src/intake/repository.ts:2339-2345; apps/web/src/components/work-item/work-item-activity.tsx:736-746",
+			"problem": "The R6 fix writes reopen_requested {reason:'pending'} in the reply transaction for every reply to a resolved item. On success requestCustomerReopen returns at :94 without superseding that row, and on refusal it adds a second reopen_requested row. The web renders every reopen_requested row (regardless of payload.reason) as the warning badge 'Reopen needs review - could not be reopened automatically'.",
+			"impact": "Every successful customer reopen leaves a false 'needs review' flag next to the system transition; refused reopens show two flags. Staff learn to ignore the flag that WF-21 relies on.",
+			"recommended_fix": "Use a distinct verb (e.g. reopen_received) for the durable in-tx record and render the warning only for reopen_requested rows whose reason is non-pending, or mark the pending row resolved/superseded on success. Add an integration test through postSubmissionMessage (customer reply on a resolved item) asserting exactly one transitioned row and no warning row on success."
+		},
+		{
+			"id": "S2",
+			"severity": "medium",
+			"category": "correctness",
+			"requirement": "WF-19",
+			"file": "apps/api/src/work-item/controllers/transition-work-item.ts:312-325,370-396; packages/domain/src/workflow/workflow.ts:623",
+			"problem": "For a system actor every role-gated edge is legal (:313-314) and the scheduled hop takes the FIRST offerable edge for the template pair (:370-374). Version validation only forbids duplicates of (from,to,role) (workflow.ts:623), so a version can hold two edges for the same pair (different roles, or a null-from 'any' edge plus a specific one), one ungated and one requiring approval or carrying guards; which gate/guards apply to the hop depends on array order.",
+			"impact": "Whether a scheduled hop is refused by an approval gate or guard is order-dependent (non-deterministic across republishes); no test covers a guarded or multi-edge pair. Not a privilege escalation: both edges are admin-authored and the ungated one is a path some role can already take.",
+			"recommended_fix": "For system hops, refuse (blocked) when any matching edge in the type-filtered offerable set requires approval/CAB, and evaluate guards of all matching edges (most restrictive wins). Add integration tests for a two-edge pair and a guarded (children_closed) pair."
+		},
+		{
+			"id": "S3",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "SLA-13, SLA-19, AU-9, WF-21, SLA-21",
+			"file": "apps/web/src/components/work-item/work-item-sla.tsx:109-199; apps/web/src/components/work-item/work-item-audit-history.tsx:84-195; apps/web/src/components/work-item/work-item-activity.tsx:736-746; apps/web/src/routes/portal/submissions/$ref.tsx:220-249",
+			"problem": "AGENTS.md:48 requires every touched screen to be compared against Kaneo 42bb8011 in a browser. Only Workflows list/detail and the triage queue have screenshots (docs/report/screens/p2-*.jpg). The SLA panel (hand-positioned absolute span marker with inline style left:% at :148-166, calendar line, pause line), History disclosure + reconstruction table, reopen warning badge and portal SLA badge have never been rendered in a browser.",
+			"impact": "Visual/UX regressions on the work-item detail and portal would be unobserved; under AGENTS.md this is a phase condition.",
+			"recommended_fix": "Seed an item with an SLA policy on a named calendar, an open waiting_customer pause and an at_risk metric; capture the detail SLA panel, History disclosure with 'state then' table, a reopen flag row, and the portal submission with SLA badge; compare to Kaneo and file screenshots in docs/report/screens."
+		},
+		{
+			"id": "S4",
+			"severity": "low",
+			"category": "test",
+			"requirement": "WF-21",
+			"file": "tests/api-integration/system-transition-real-executor.test.ts:307-366",
+			"problem": "WF-21 tests call requestCustomerReopen directly; the reply transaction's durable write (intake/repository.ts:2339-2345) and post-commit sequencing are never executed by a test.",
+			"impact": "The S1 false flag and any regression in the in-tx durability are not caught.",
+			"recommended_fix": "Add a test that posts a customer reply on a resolved item via postSubmissionMessage and asserts activity rows and final state."
+		},
+		{
+			"id": "S5",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "IQ-21",
+			"file": "apps/web/src/lib/intake-queue.ts:66-70,80-97",
+			"problem": "'assignee=claimed' has no server parameter and is filtered on the loaded page only; an unresolved request-type id also falls back to page-local filtering.",
+			"impact": "A shared ?assignee=claimed queue URL can show different/incomplete rows than the server total.",
+			"recommended_fix": "Accept assignee=claimed server-side (claimed_by IS NOT NULL) and resolve unknown type ids to a 400/empty result instead of page-local filtering."
+		},
+		{
+			"id": "S6",
+			"severity": "low",
+			"category": "performance",
+			"requirement": "IQ-21, CP portal list",
+			"file": "apps/api/src/intake/repository.ts:1799,1843,1950,1977",
+			"problem": "The cursor fix orders and compares on date_trunc('milliseconds', created_at), which cannot use submission_state_created_idx / submission_requester_created_idx (0096:163-164); every page sorts the full filtered set. The fix itself is correct (consistent truncation on both predicate and ORDER BY, id tie-break).",
+			"impact": "Queue/portal pagination degrades linearly with backlog size.",
+			"recommended_fix": "Keep raw created_at ordering and carry full precision in the cursor (select created_at::text or extract(epoch) with microseconds), or add an expression index on (date_trunc('milliseconds', created_at), id)."
+		},
+		{
+			"id": "S7",
+			"severity": "low",
+			"category": "correctness",
+			"requirement": "NO-21 (pre-existing)",
+			"file": "apps/api/src/notification/inbox.repository.ts:170-179,756,892",
+			"problem": "Sibling cursor with the same precision class, pre-existing (not in the P2 diff): candidate-page loops (bulk mark-read/delete and list) set the cursor from the driver's millisecond Date and compare raw microsecond created_at (defaultNow, schema.ts:1399) in DESC order, so rows at the page boundary sharing the millisecond (including all rows of one fan-out tx, which share now()) are SKIPPED, not repeated. pending-action cursor (pending-action/service.ts:187,393) is safe because created_at is app-set in ms; activity feed already truncates (list-work-item-activity.ts:91-106).",
+			"impact": "Rare: bulk mark-all-read/delete-all or the inbox list can leave/miss rows when >100 candidates and a tie straddles the page boundary.",
+			"recommended_fix": "Apply the same date_trunc (or full-precision cursor) to inbox cursorPredicate and order; audit remaining keyset cursors."
+		},
+		{
+			"id": "S8",
+			"severity": "low",
+			"category": "test",
+			"requirement": "",
+			"file": "tests/api-integration/system-transition-real-executor.test.ts:3,280-282,379-389,430-447; tests/api-integration/sla-notifications-and-escalation.test.ts:3; tests/api-integration/intake-queue-filters.test.ts:3",
+			"problem": "Headers still say 'WRITTEN, NOT YET RUN' though the coordinator reports them green; the R4 test calls transitionWorkItem with null identity and no system request (not a production call shape); the AU-9 test hand-writes the created and project-move activity rows instead of driving create/move controllers.",
+			"impact": "Misleading provenance; the move payload shape (move-work-item.ts:514-521) is asserted only by convention.",
+			"recommended_fix": "Update headers; drive R4 through a person transition; build the AU-9 move through moveWorkItem."
+		},
+		{
+			"id": "S9",
+			"severity": "low",
+			"category": "correctness",
+			"requirement": "WF-19",
+			"file": "apps/api/src/scheduler/scheduled-transition.ts:20-24; apps/api/src/workflow/system-transition.ts:7-10; docs/technical/feature-contracts-p2.md:178",
+			"problem": "Doc comments contradict behaviour: scheduled-transition.ts says a refused/blocked hop stays pending and is retried (it is cancelled terminally); system-transition.ts says no executor is registered (transition-work-item.ts:1194 registers it); contract still says reminder-scan fires rows (R18).",
+			"impact": "Maintainers are misled about failure semantics.",
+			"recommended_fix": "Correct the comments and add a decision-log entry for the one-minute scheduled-transition job."
+		},
+		{
+			"id": "S10",
+			"severity": "low",
+			"category": "correctness",
+			"requirement": "WF-19",
+			"file": "apps/api/src/scheduler/scheduled-transition.ts:181-191",
+			"problem": "A hop whose execution throws (not a refusal) stays pending and is retried every minute forever; no attempt counter or backoff (known carry).",
+			"impact": "Log noise and a permanently degraded job for a poisoned row.",
+			"recommended_fix": "Add attempts/last_error columns and cancel with a flagged activity after N failures."
+		},
+		{
+			"id": "S11",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "IQ-15",
+			"file": "apps/api/src/intake/auto-decline.ts:28-30",
+			"problem": "The auto-decline reason sent to the customer says 'You can reopen it at any time to continue' but no customer reopen route or portal action exists until P3.",
+			"impact": "A promise the product cannot keep in this phase.",
+			"recommended_fix": "Drop the reopen sentence until the P3 route ships, or ship the route."
+		},
+		{
+			"id": "S12",
+			"severity": "low",
+			"category": "correctness",
+			"requirement": "AU-9",
+			"file": "apps/api/src/audit/work-item-history.repository.ts:53-75; apps/api/src/audit/index.ts:112-113",
+			"problem": "The present-value baseline covers only stateId/assigneeId/priority/title; other fields set at creation and never changed (description, dates, type, parent) are absent, while the route description says untouched fields do not appear at all.",
+			"impact": "Inconsistent snapshot completeness; documentation does not match output.",
+			"recommended_fix": "Extend the baseline to the journalled field set (or seed from the created payload) and align the route description. Also: auditValueLabel falls through to truncate(value) for unrecognised fields (apps/web/src/lib/audit-history-format.ts:108), so a typeId/label change can still show a raw id or JSON despite the 'never a raw id' comment; map those fields too."
+		},
+		{
+			"id": "S13",
+			"severity": "low",
+			"category": "ui-ux",
+			"requirement": "SLA-21",
+			"file": "apps/web/src/routes/portal/submissions/$ref.tsx:31-37,243",
+			"problem": "Portal SLA due instant uses toLocaleString() without timezone name (staff side uses formatSlaInstant with timeZoneName) and English defaults are duplicated in code (SLA_DEFAULT).",
+			"impact": "Minor inconsistency; English fallbacks bypass the catalogue.",
+			"recommended_fix": "Reuse formatSlaInstant/formatDate and rely on catalogue keys."
+		},
+		{
+			"id": "S14",
+			"severity": "low",
+			"category": "ui-ux",
+			"requirement": "WF-13",
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/workflows.tsx:89",
+			"problem": "R14 unchanged: state template names come from projects[0]'s state-templates route.",
+			"impact": "Workspace with no projects (or no reach to projects[0]) shows unknown names in transitions and the validation dialog.",
+			"recommended_fix": "Use a workspace-scoped state-template list."
+		}
+	],
+	"requirements": [
+		{
+			"id": "WF-1",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Workflow authoring screen now exists (settings/workflows.tsx); API unchanged."
+		},
+		{
+			"id": "WF-2",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-3",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-4",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-5",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-6",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-7",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-8",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-9",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Validation dialog lists stuck items with links (workflow-validation-dialog.tsx:145-195); project column shows raw project id (see R9)."
+		},
+		{
+			"id": "WF-10",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-11",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-12",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-13",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-14",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-15",
+			"state": "partial",
+			"note": "(carried from round 1, not re-read in round 2) field_required/change_risk_at_most still fail closed: no custom-field/change-risk store. Carry."
+		},
+		{
+			"id": "WF-16",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "WF-17",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) resolved_at set on completed entry; the resolved sla_pause half is held by the contract text itself."
+		},
+		{
+			"id": "WF-18",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) resolved_at cleared on leaving completed; pause continuation held by the contract text itself."
+		},
+		{
+			"id": "WF-19",
+			"state": "met",
+			"note": "Re-verified: stored hop executed as system actor with no current-version edge needed (transition-work-item.ts:334-396), claimed under item lock after from_state re-check (:502-517), refused hops cancelled terminally with internal flagged activity (scheduled-transition.ts:57-107,172-180), leaving a state cancels pending hops in-tx (transition-work-item.ts:842-844; archive-work-item.ts:88; delete-work-item.ts:65; move-work-item.ts:376). Real-executor integration tests system-transition-real-executor.test.ts:176-305. Caveat S2 (first-match edge selection)."
+		},
+		{
+			"id": "WF-20",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Emits work_item.transitioned; webhook/automation consumption is P4."
+		},
+		{
+			"id": "WF-21",
+			"state": "partial",
+			"note": "Reply call site wired: durable reopen_requested row in the reply tx (intake/repository.ts:2339-2345) then post-commit reopen with logged failure (intake/repository.ts:2209-2226; customer-reopen.ts:61-119); real executor tested (system-transition-real-executor.test.ts:307-366). Upload-to-resolved and portal reopen call sites still have no caller (P3). S1: every successful reopen leaves a false 'Reopen needs review' flag."
+		},
+		{
+			"id": "WF-22",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-1",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-2",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-3",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-4",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-5",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-6",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-7",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-8",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-9",
+			"state": "blocked",
+			"note": "(carried from round 1, not re-read in round 2) Contract/owner hold: resolved-pause continuity deferred."
+		},
+		{
+			"id": "SLA-10",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-11",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-12",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-13",
+			"state": "met",
+			"note": "API returns open pauses (get-work-item-sla.ts:48-63; sla-response.ts:39-49); web renders 'Paused - {reason} since {when}' (work-item-sla.tsx:181-199; i18n workItems.detail.sla.pausedSince). NOT browser-verified (condition C1)."
+		},
+		{
+			"id": "SLA-14",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-15",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-16",
+			"state": "partial",
+			"note": "Assignee/lead/stakeholder inbox fan-out in the producing tx, staff-only and reach-checked (sla-escalation.ts:48-81; sla-recipients.ts:98-185), integration-tested (sla-notifications-and-escalation.test.ts:127-193). Webhooks are P4; watchers are not in the audience (SLA-17 parenthetical)."
+		},
+		{
+			"id": "SLA-17",
+			"state": "met",
+			"note": "Walk advances by DISTINCT escalation_order and notifies every tied stakeholder (packages/domain/src/sla/escalation.ts:55-96; sla-escalation.ts:59-67,163-195); stop conditions and tie cases integration-tested (sla-notifications-and-escalation.test.ts:195-277). Low: 15-minute reminder-scan cadence quantises waits (scheduler/index.ts:100-101)."
+		},
+		{
+			"id": "SLA-15a",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "SLA-18",
+			"state": "partial",
+			"note": "Compact badge on list and board cards; triage queue rows still carry no SLA badge (API gap) - P3."
+		},
+		{
+			"id": "SLA-19",
+			"state": "met",
+			"note": "Bar with positional at-risk marker (work-item-sla.tsx:135-167), viewer-timezone due (:32-42,207-210), calendar name (:109-116) from route fields calendarName/atRiskThresholdPct (get-work-item-sla.ts:48-63; sla-policy/repository.ts:72-98). NOT browser-verified (condition C1)."
+		},
+		{
+			"id": "SLA-20",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) State badge text + icon accompany colour on detail, list badge and portal."
+		},
+		{
+			"id": "SLA-21",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Portal projection is {state,dueAt} for the resolution metric only, owner-scoped by requester_id (intake/portal-sla.ts:32-93); integration test intake-portal-response-shape.test.ts:295."
+		},
+		{
+			"id": "CAL-1",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-2",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-3",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-4",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-5",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-6",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-7",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-8",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-9",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-10",
+			"state": "partial",
+			"note": "(carried from round 1, not re-read in round 2) Manual + .ics only; no preset endpoint/dataset (needs dataset decision)."
+		},
+		{
+			"id": "CAL-11",
+			"state": "blocked",
+			"note": "(carried from round 1, not re-read in round 2) No shipped country presets; blocked on holiday-dataset decision."
+		},
+		{
+			"id": "CAL-12",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-13",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Affected open-item count returned by PATCH/import and shown as a warning after save (repository.ts countRetroactiveHolidayImpact; editor view + import panel). Past/current-day additions only; warning is post-save, not a pre-save confirmation."
+		},
+		{
+			"id": "CAL-14",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-15",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-16",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "CAL-17",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-0",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Immutability/independence test added (tests/api-integration/request-type-key-immutability.test.ts)."
+		},
+		{
+			"id": "RT-1",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-2",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-3",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-4",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-5",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-6",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-7",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-8",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-9",
+			"state": "partial",
+			"note": "(carried from round 1, not re-read in round 2) No manual group ordering (API has no group order)."
+		},
+		{
+			"id": "RT-10",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Request-type search met; KB half is P5."
+		},
+		{
+			"id": "RT-11",
+			"state": "blocked",
+			"note": "(carried from round 1, not re-read in round 2) Depends on P5 knowledge base."
+		},
+		{
+			"id": "RT-12",
+			"state": "blocked",
+			"note": "(carried from round 1, not re-read in round 2) Depends on P5 knowledge base (deflection_event)."
+		},
+		{
+			"id": "RT-13",
+			"state": "blocked",
+			"note": "(carried from round 1, not re-read in round 2) Vacuous until RT-11 exists (P5)."
+		},
+		{
+			"id": "RT-14",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-15",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "RT-16",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-1",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-2",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-3",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-4",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-5",
+			"state": "partial",
+			"note": "(carried from round 1, not re-read in round 2) Age column added (triage.tsx, intake-queue.ts:15-23); per-row suggested duplicates still absent (API gap)."
+		},
+		{
+			"id": "IQ-6",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-5a",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-7",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-8",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-9",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-10",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-11",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-12",
+			"state": "partial",
+			"note": "Clarification posts a thread message and writes a customer inbox row (submission-recipients.ts:46-80, reach submission-reach.ts:21-38), but channels:[] and the portal has no notification surface - P3."
+		},
+		{
+			"id": "IQ-13",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-14",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-15",
+			"state": "partial",
+			"note": "Auto-decline after clarification_window_days works with migration backfill clarifying_since=now() (0136:40; auto-decline.ts:49-190); no thread message, no customer reopen route, and the reason text promises a reopen (auto-decline.ts:28-30) - P3."
+		},
+		{
+			"id": "IQ-16",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-16a",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-17",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-18",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "IQ-19",
+			"state": "partial",
+			"note": "(carried from round 1, not re-read in round 2) No queue object grouping submission + work_item saved views."
+		},
+		{
+			"id": "IQ-20",
+			"state": "partial",
+			"note": "(carried from round 1, not re-read in round 2) No team-owned queue."
+		},
+		{
+			"id": "IQ-21",
+			"state": "partial",
+			"note": "Server-side requestTypeKey/assignee=unclaimed/olderThanDays filters in the cursor scope (intake/list-filters.ts:30-68; intake/repository.ts:1772-1813); web sends them (intake-queue.ts:50-74; fetchers/intake.ts:26-31). 'assignee=claimed' and an unresolved request-type id are still filtered on the loaded page only (intake-queue.ts:66-70,80-97), so a shared ?assignee=claimed URL can differ."
+		},
+		{
+			"id": "AP-1",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-2",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-3",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-4",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-5",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-6",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-7",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-8",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-9",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-10",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-11",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-12",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-13",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-14",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-15",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-16",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-17",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-18",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-19",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-20",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AP-21",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AU-1",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AU-2",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AU-3",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AU-4",
+			"state": "partial",
+			"note": "(carried from round 1, not re-read in round 2) Impersonator id now recorded on audit reads (audit-read-common.ts requestAuditActor); impersonation flow is P4."
+		},
+		{
+			"id": "AU-5",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AU-6",
+			"state": "partial",
+			"note": "(carried from round 1, not re-read in round 2) Pre-existing purge writes audit.purged with purgedCount (apps/api/src/audit/purge.ts:106-122); retention window not runtime-configurable (P4 God Mode). Not re-verified at runtime."
+		},
+		{
+			"id": "AU-7",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AU-8",
+			"state": "met",
+			"note": "Pure fold over activity rows with explicit at (audit.ts:391-438)."
+		},
+		{
+			"id": "AU-9",
+			"state": "met",
+			"note": "Re-verified: transitioned rows map to stateId and project moves remap stateId via payload (packages/domain/src/audit/audit.ts:327-348); creation values seeded from first change oldValue plus current baseline (audit.ts:408-425; work-item-history.repository.ts:53-75); route returns 422 rather than wrong data when truncated (audit/index.ts:184-191). Integration test across transitions and a move (system-transition-real-executor.test.ts:368-455). Low S12 (baseline covers 4 fields only)."
+		},
+		{
+			"id": "AU-10",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AU-11",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AU-12",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AU-13",
+			"state": "partial",
+			"note": "(carried from round 1, not re-read in round 2) Read auditing extended to entity history; export controller/CSV builder written but unmounted (needs step-up operation) - P4."
+		},
+		{
+			"id": "AU-14",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		},
+		{
+			"id": "AU-15",
+			"state": "met",
+			"note": "(carried from round 1, not re-read in round 2) Unchanged by P2 diff; audit state implemented_tested, full suite reported green by coordinator."
+		}
+	],
+	"carry_to_later_phases": [
+		{
+			"item": "R7/IQ-12/IQ-15: portal notification surface, auto-decline thread message, customer reopen route for auto-declined submissions (and drop the reopen promise S11 until then)",
+			"phase": "P3"
+		},
+		{
+			"item": "WF-21 upload-to-resolved and portal reopen call sites",
+			"phase": "P3"
+		},
+		{
+			"item": "SLA-18 SLA badge on triage queue rows (submission first-response clock)",
+			"phase": "P3"
+		},
+		{
+			"item": "IQ-5 per-row duplicate suggestions; IQ-19/IQ-20 team-owned queues; IQ-21 server-side 'claimed' filter (S5); RT-9 manual group ordering",
+			"phase": "P3"
+		},
+		{
+			"item": "CAL-10/CAL-11 country holiday presets (holiday dataset decision)",
+			"phase": "P3 (owner decision)"
+		},
+		{
+			"item": "AU-13 audit export endpoint (step-up operation) and mounting review of export-instance-audit.ts; AU-4 impersonation flow; AU-6 runtime retention window; entity history for roles/workflows/SLA policies/plugin configs (R13)",
+			"phase": "P4"
+		},
+		{
+			"item": "SLA-16 webhook fan-out (outbox consumer) and watcher audience",
+			"phase": "P4"
+		},
+		{
+			"item": "WF-15 field_required/change_risk_at_most real evaluation (fail closed today)",
+			"phase": "P4/P5 (change/custom-field store)"
+		},
+		{
+			"item": "RT-11/RT-12/RT-13 KB deflection",
+			"phase": "P5"
+		},
+		{
+			"item": "WF-17/WF-18/SLA-9 held resolved-pause continuity",
+			"phase": "owner hold (unscheduled)"
+		},
+		{
+			"item": "Scheduled-hop attempt counter/backoff for throwing rows (S10); escalation cadence below 15 min (R15); composite tenant FKs on sla_escalation (R16); auto-decline keyset (R17); contract/doc comment alignment (R18/S9)",
+			"phase": "P3 hardening"
+		},
+		{
+			"item": "Inbox candidate cursor precision (S7) and cursor ORDER BY index use (S6)",
+			"phase": "P3 hardening"
+		},
+		{
+			"item": "Workspace-scoped state-template names on Workflows page (S14); AU-9 baseline completeness (S12); portal SLA timezone (S13); test hygiene (S8)",
+			"phase": "P3"
+		}
+	],
+	"unverified": [
+		"Browser rendering of the SLA panel (marker, calendar name, pause line), History disclosure/reconstruction table, reopen warning badge and portal SLA badge (condition C1); only Workflows list/detail and triage screenshots exist.",
+		"Coordinator's test evidence (4000 integration incl. the new real-executor/SLA/filters files, unit suites, typecheck, biome, gates, OpenAPI/matrix regeneration) not reproduced: review was read-only.",
+		"All requirement rows except the 12 re-verified in round 2 (WF-19, WF-21, AU-8, AU-9, SLA-13, SLA-16, SLA-17, SLA-18, SLA-19, IQ-12, IQ-15, IQ-21) were carried from round 1 without a fresh read.",
+		"Sibling keyset cursors in work-item list-query, run-view, search, instance users directory, work-item-relation, comment-versions and SCIM/connection admin were only grep-scanned (no raw created_at vs Date keyset predicate found); not analysed in depth.",
+		"requireWorkItemReach's projectCapabilityRefused was trusted to enforce work_item:read for the audit history/reconstruct routes (require-work-item-reach.ts:290-309); customers are refused there."
+	]
+}

@@ -8,14 +8,15 @@
  * proofs, since no route existed yet. This file drives the real routes instead.
  */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { claimWorkItemNumber } from "../../apps/api/src/work-item/controllers/claim-work-item-number";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
+import { setTestDatabaseTimezone } from "./helpers/database-timezone";
 import {
   createProjectFixture,
   createWorkspaceMember,
@@ -25,6 +26,7 @@ import {
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 // ── Fixture builders for the tables `work-item-schema.test.ts` also builds directly -- ──
 // this file needs the same rows (`work_item_type`, `state_template`, `state`), but reached
@@ -150,6 +152,19 @@ async function addWorkspaceMemberWithoutGenuineRow(
 
   await prepareAuthenticatedApiFixture(user.id);
 
+  // Owner decision, 23 Oct: every workspace now has a genuine canonical row for each built-in
+  // key. This helper models the state #318 is about, a built-in key with NO genuine row, so the
+  // canonical row for the key is removed.
+  await db
+    .delete(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.scope, "workspace"),
+        eq(schema.roleTable.workspaceId, workspaceId),
+        eq(schema.roleTable.key, role),
+      ),
+    );
+
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
@@ -170,6 +185,11 @@ async function setupProjectWithDefaultState(
   await grantWorkItemProjectAccess(creator.user.id, project.id);
   const type = await makeWorkItemType(creator.workspace.id);
   const state = await makeDefaultState(creator.workspace.id, project.id);
+  await ensureCreationWorkflow({
+    workspaceId: creator.workspace.id,
+    projectId: project.id,
+    typeId: type.id,
+  });
   return { creator, project, type, state };
 }
 
@@ -186,8 +206,55 @@ function createWorkItemRequest(
 }
 
 describe("API integration: work item create/read/list (#23)", () => {
+  let restoreDatabaseTimezone: (() => Promise<void>) | undefined;
   beforeEach(async () => {
     await resetTestDatabase();
+    restoreDatabaseTimezone = await setTestDatabaseTimezone("Asia/Yangon");
+  });
+  afterEach(async () => {
+    await restoreDatabaseTimezone?.();
+    restoreDatabaseTimezone = undefined;
+  });
+
+  it("creates matching UTC creation/update/SLA instants on a non-UTC PostgreSQL session", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const zone = await db.execute<{ timezone: string }>(
+      sql`SELECT current_setting('TimeZone') AS timezone`,
+    );
+    expect(zone.rows[0]?.timezone).toBe("Asia/Yangon");
+    const { app } = createApp();
+    const before = Date.now();
+    const response = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "UTC creation timestamp",
+    });
+    const after = Date.now();
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      id: string;
+      key: string;
+      createdAt: string;
+      updatedAt: string;
+    };
+    expect(body.updatedAt).toBe(body.createdAt);
+    expect(Date.parse(body.createdAt)).toBeGreaterThanOrEqual(before);
+    expect(Date.parse(body.createdAt)).toBeLessThanOrEqual(after);
+    const [stored] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, body.id));
+    if (!stored) throw new Error("Created work item missing");
+    expect(stored.updatedAt.toISOString()).toBe(stored.createdAt.toISOString());
+    expect(stored.slaStartedAt?.toISOString()).toBe(
+      stored.createdAt.toISOString(),
+    );
+    const read = await app.request(`/api/work-items/${body.key}`);
+    expect(read.status).toBe(200);
+    expect(await read.json()).toMatchObject({
+      createdAt: body.createdAt,
+      updatedAt: body.updatedAt,
+    });
   });
 
   it("creates a work item with the right key format and shape", async () => {

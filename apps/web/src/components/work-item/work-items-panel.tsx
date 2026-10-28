@@ -9,11 +9,23 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import loadWorkItemList, {
+  isWorkItemListLoaded,
+} from "@/components/work-item/load-work-item-list";
+import loadWorkItemTable, {
+  isWorkItemTableLoaded,
+} from "@/components/work-item/load-work-item-table";
+import { useModuleReady } from "@/components/work-item/use-module-ready";
+import WorkItemLightList, {
+  canPreviewWorkItemList,
+} from "@/components/work-item/work-item-light-list";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
+import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import type {
   WorkItemSearchColumn,
+  WorkItemSort,
   WorkItemSortDirection,
   WorkItemSortField,
 } from "@/lib/routes";
@@ -21,12 +33,19 @@ import type {
 const WorkItemListRealtime = lazy(
   () => import("@/components/work-item/work-item-list-realtime"),
 );
-const WorkItemList = lazy(
-  () => import("@/components/work-item/work-item-list"),
+const WorkItemKaneoList = lazy(
+  () => import("@/components/work-item/work-item-kaneo-list"),
 );
+const WorkItemList = lazy(loadWorkItemList);
+
+const loadTableModules = () =>
+  Promise.all([loadWorkItemList(), loadWorkItemTable()]);
+const tableModulesLoaded = () =>
+  isWorkItemListLoaded() && isWorkItemTableLoaded();
 
 type WorkItemsPanelProps = {
-  project: { id: string; name: string } | undefined;
+  layout?: "list" | "table";
+  project: { id: string; name: string; workspaceId?: string } | undefined;
   workItemsResult: WorkItemsResult | undefined;
   isLoading: boolean;
   isError: boolean;
@@ -36,7 +55,9 @@ type WorkItemsPanelProps = {
     | undefined;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
+  sorts?: WorkItemSort[];
   onSortChange: (sort: WorkItemSortField, dir: WorkItemSortDirection) => void;
+  onSortsChange?: (sorts: WorkItemSort[]) => void;
   onRealtimeAvailabilityChange: (
     projectId: string,
     status: WorkItemRealtimeStatus,
@@ -47,13 +68,24 @@ type WorkItemsPanelProps = {
   hasMore?: boolean;
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
+  isLoadMoreError?: boolean;
+  isCursorChanged?: boolean;
+  onRestartFromFirstPage?: () => void;
+  isPlaceholderData?: boolean;
   selectedKeys?: string[];
   canBulkAssign?: boolean;
   onSelectionChange?: (key: string, checked: boolean) => void;
   onSelectAll?: (checked: boolean) => void;
+  onOpenItem?: (key: string) => void;
+  /** Kaneo's per-column "+" in the list layout. */
+  onCreateInState?: (
+    state: { id: string; name: string },
+    trigger: HTMLButtonElement,
+  ) => void;
 };
 
 function WorkItemsPanel({
+  layout = "table",
   project,
   workItemsResult,
   isLoading,
@@ -62,7 +94,9 @@ function WorkItemsPanel({
   realtimeStatus,
   sort,
   dir,
+  sorts,
   onSortChange,
+  onSortsChange,
   onRealtimeAvailabilityChange,
   onRetry,
   columns,
@@ -70,13 +104,45 @@ function WorkItemsPanel({
   hasMore,
   onLoadMore,
   isLoadingMore,
+  isLoadMoreError,
+  isCursorChanged,
+  onRestartFromFirstPage,
+  isPlaceholderData,
   selectedKeys,
   canBulkAssign,
   onSelectionChange,
   onSelectAll,
+  onOpenItem,
+  onCreateInState,
 }: WorkItemsPanelProps) {
   const { t } = useTranslation();
   const workItems = workItemsResult?.items;
+  // The grouped list's states, read here too so its first viewport can paint from the
+  // already-fetched rows while the list's own modules load (see `WorkItemLightList`).
+  const states = useGetProjectStates(project?.id, layout === "list");
+  const previewStates = states.data;
+  const showPreview =
+    layout === "list" &&
+    !isLoading &&
+    !isError &&
+    !isPlaceholderData &&
+    canPreviewWorkItemList({
+      workItems,
+      states: previewStates,
+      sort,
+      hasPartialFailure: workItemsResult?.hasPartialFailure,
+    });
+  // The table mounts with an ordinary update once its module is here, not as a Suspense retry
+  // (see `useModuleReady`).
+  // The virtualized table is part of that module set: mounted before it, a table of more than
+  // 100 rows renders every row once as its fallback, then swaps (G11 work-list render).
+  // Not while the project is still resolving: the route renders this panel then for every
+  // layout, the board included, which has no use for the table's modules.
+  const tableModuleReady = useModuleReady(
+    loadTableModules,
+    tableModulesLoaded,
+    layout === "table" && (Boolean(project) || !isLoading),
+  );
   const [projectLifecycle, setProjectLifecycle] = useState(() => ({
     projectId: project?.id,
     generation: 0,
@@ -171,8 +237,37 @@ function WorkItemsPanel({
     projectLifecycle.projectId,
   ]);
 
+  const listProps = {
+    projectId: project?.id,
+    workspaceId: project?.workspaceId,
+    workItems: workItems,
+    hasPartialFailure: workItemsResult?.hasPartialFailure ?? false,
+    isLoading: isLoading,
+    isError: isError,
+    sort: sort,
+    dir: dir,
+    sorts,
+    onSortChange: onSortChange,
+    onSortsChange,
+    onRetry: onRetry,
+    columns: columns,
+    isFiltered: isFiltered,
+    hasMore: hasMore,
+    onLoadMore: onLoadMore,
+    isLoadingMore: isLoadingMore,
+    isLoadMoreError,
+    isCursorChanged,
+    onRestartFromFirstPage,
+    isPlaceholderData,
+    selectedKeys: selectedKeys,
+    canBulkAssign: canBulkAssign,
+    onSelectionChange: onSelectionChange,
+    onSelectAll: onSelectAll,
+    onOpenItem,
+  };
+
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col bg-background">
       {project &&
       realtimeStatus?.projectId === project.id &&
       realtimeStatus?.status === "unavailable" ? (
@@ -188,26 +283,30 @@ function WorkItemsPanel({
           </Alert>
         </div>
       ) : null}
-      <Suspense fallback={<WorkItemListLoading />}>
-        <WorkItemList
-          workItems={workItems}
-          hasPartialFailure={workItemsResult?.hasPartialFailure ?? false}
-          isLoading={isLoading}
-          isError={isError}
-          sort={sort}
-          dir={dir}
-          onSortChange={onSortChange}
-          onRetry={onRetry}
-          columns={columns}
-          isFiltered={isFiltered}
-          hasMore={hasMore}
-          onLoadMore={onLoadMore}
-          isLoadingMore={isLoadingMore}
-          selectedKeys={selectedKeys}
-          canBulkAssign={canBulkAssign}
-          onSelectionChange={onSelectionChange}
-          onSelectAll={onSelectAll}
-        />
+      <Suspense
+        fallback={
+          showPreview && workItems && previewStates ? (
+            <WorkItemLightList
+              projectId={project?.id}
+              workItems={workItems}
+              states={previewStates}
+            />
+          ) : (
+            <WorkItemListLoading />
+          )
+        }
+      >
+        {layout === "list" ? (
+          <WorkItemKaneoList {...listProps} onCreateInState={onCreateInState} />
+        ) : tableModuleReady ? (
+          <WorkItemList
+            {...listProps}
+            customFieldColumns={workItemsResult?.customFieldColumns}
+            customFieldPeople={workItemsResult?.customFieldPeople}
+          />
+        ) : (
+          <WorkItemListLoading />
+        )}
       </Suspense>
       {project &&
       !isLoading &&
@@ -223,7 +322,7 @@ function WorkItemsPanel({
           />
         </Suspense>
       ) : null}
-    </>
+    </div>
   );
 }
 

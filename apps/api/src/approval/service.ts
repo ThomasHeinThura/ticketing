@@ -8,9 +8,11 @@ import {
 } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import { appendAuditLog } from "../audit/audit-writer";
+import type { AuditRequestContext } from "../audit/request-context";
 import db, { type schema } from "../database";
+import { appendAuditSavepoint } from "../events/audit-savepoint";
 import { eventScope } from "../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { enqueueNotificationEvent } from "../notification/fanout";
 import { resolveApprovalEventRecipients } from "../notification/recipient-resolvers";
 import { recordWorkItemActivity } from "../work-item/activity";
@@ -35,6 +37,17 @@ import {
 } from "./repository";
 
 type ActorType = "person" | "api_key";
+
+/** The route's trusted-proxy ip, user agent, request id and API key for the audit row (P2R1-16). */
+function auditFields(audit: Partial<AuditRequestContext> | undefined) {
+  return {
+    actorIp: audit?.actorIp ?? null,
+    userAgent: audit?.userAgent ?? null,
+    traceId: audit?.traceId ?? null,
+    apiKeyId: audit?.apiKeyId ?? null,
+  };
+}
+type ApprovalTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 function toDomainApproval(
   row: typeof schema.approvalTable.$inferSelect,
@@ -61,8 +74,10 @@ export async function createApproval(input: {
   kind: ApprovalKind;
   approverId: string;
   expiresAt?: Date;
+  audit?: Partial<AuditRequestContext>;
 }) {
   const now = new Date();
+  let auditFailed = false;
   const target = await loadApprovalTargetByKey(input.identity, input.targetKey);
   if (!(await hasWorkItemReach(input.identity, target))) {
     throw new HTTPException(404, { message: "Work item not found" });
@@ -199,7 +214,9 @@ export async function createApproval(input: {
       },
       { resolveRecipients: resolveApprovalEventRecipients },
     );
-    await appendAuditLog(tx, {
+    // AU-14: a failed audit append never fails the request, and is never silent.
+    auditFailed = await appendAuditSavepoint(tx, {
+      ...auditFields(input.audit),
       actorId: input.identity.personId,
       actorType: input.actorType,
       workspaceId: target.workspaceId,
@@ -221,6 +238,7 @@ export async function createApproval(input: {
     });
     return row;
   });
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
   return created;
 }
 
@@ -228,127 +246,168 @@ export async function decideApproval(input: {
   approvalId: string;
   identity: ResolvedIdentity;
   actorType: ActorType;
+  apiKeyId?: string;
   action: "approve" | "reject";
   note: string | null;
   isCabMember: boolean;
   target: Awaited<ReturnType<typeof loadApprovalTargetByKey>>;
+  audit?: Partial<AuditRequestContext>;
 }) {
+  let auditFailed = false;
+  const decided = await db.transaction((tx) =>
+    decideApprovalInTransaction(tx, {
+      ...input,
+      onAuditFailure: () => {
+        auditFailed = true;
+      },
+    }),
+  );
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  return decided;
+}
+
+/** Decide under a caller-owned transaction so a pending MCP action and the approval state,
+ * activity, notification and audit commit or roll back together. */
+export async function decideApprovalInTransaction(
+  tx: ApprovalTransaction,
+  input: {
+    approvalId: string;
+    identity: ResolvedIdentity;
+    actorType: ActorType;
+    apiKeyId?: string;
+    action: "approve" | "reject";
+    note: string | null;
+    isCabMember: boolean;
+    target: Awaited<ReturnType<typeof loadApprovalTargetByKey>>;
+    audit?: Partial<AuditRequestContext>;
+    /**
+     * Called when the audit append failed in its savepoint (AU-14). The caller reports it after
+     * its own commit; when omitted (a caller-owned transaction that cannot defer), the
+     * administrators are notified here, before that commit.
+     */
+    onAuditFailure?: () => void;
+  },
+) {
   if (!(await hasWorkItemReach(input.identity, input.target))) {
     throw new HTTPException(403, {
       message: "Approver no longer has reach on this work item",
     });
   }
   const actorNameValue = await loadApprovalActorName(input.identity.personId);
-  return db.transaction(async (tx) => {
-    const lockedItem = await lockLiveWorkItem(
-      tx,
-      input.identity,
-      input.target.workspaceId,
-      input.target.workItemId,
-    );
-    if (!lockedItem)
-      throw new HTTPException(404, { message: "Approval not found" });
-    const row = await lockApproval(
-      tx,
-      input.identity,
-      input.approvalId,
-      input.target.workItemId,
-      input.target.workspaceId,
-    );
-    if (!row) throw new HTTPException(404, { message: "Approval not found" });
-    if (row.expiresAt.getTime() <= Date.now()) {
-      throw new HTTPException(409, { message: "Approval has expired" });
-    }
-    const decision = evaluateApprovalDecision({
-      approval: toDomainApproval(row),
-      actingPersonId: input.identity.personId,
-      action: input.action,
-      note: input.note,
-      cabMemberIds: input.isCabMember
-        ? new Set([input.identity.personId])
-        : new Set(),
+  const lockedItem = await lockLiveWorkItem(
+    tx,
+    input.identity,
+    input.target.workspaceId,
+    input.target.workItemId,
+  );
+  if (!lockedItem)
+    throw new HTTPException(404, { message: "Approval not found" });
+  const row = await lockApproval(
+    tx,
+    input.identity,
+    input.approvalId,
+    input.target.workItemId,
+    input.target.workspaceId,
+  );
+  if (!row) throw new HTTPException(404, { message: "Approval not found" });
+  if (row.expiresAt.getTime() <= Date.now()) {
+    throw new HTTPException(409, { message: "Approval has expired" });
+  }
+  const decision = evaluateApprovalDecision({
+    approval: toDomainApproval(row),
+    actingPersonId: input.identity.personId,
+    action: input.action,
+    note: input.note,
+    cabMemberIds: input.isCabMember
+      ? new Set([input.identity.personId])
+      : new Set(),
+  });
+  if (!decision.ok) {
+    const status = decision.reasons.includes("not_pending")
+      ? 409
+      : decision.reasons.includes("note_required")
+        ? 422
+        : 403;
+    throw new HTTPException(status, {
+      message: `Approval decision refused: ${decision.reasons.join(", ")}`,
     });
-    if (!decision.ok) {
-      const status = decision.reasons.includes("not_pending")
-        ? 409
-        : decision.reasons.includes("note_required")
-          ? 422
-          : 403;
-      throw new HTTPException(status, {
-        message: `Approval decision refused: ${decision.reasons.join(", ")}`,
-      });
-    }
-    const now = new Date();
-    const updated = await updateApprovalDecision(tx, input.identity, {
-      id: row.id,
-      workspaceId: input.target.workspaceId,
-      state: decision.nextState,
-      decidedAt: now,
-      decisionNote: input.note,
+  }
+  const now = new Date();
+  const updated = await updateApprovalDecision(tx, input.identity, {
+    id: row.id,
+    workspaceId: input.target.workspaceId,
+    state: decision.nextState,
+    decidedAt: now,
+    decisionNote: input.note,
+  });
+  if (!updated)
+    throw new HTTPException(409, {
+      message: "Approval is no longer pending",
     });
-    if (!updated)
-      throw new HTTPException(409, {
-        message: "Approval is no longer pending",
-      });
 
-    await recordWorkItemActivity(tx, [
-      {
-        workspaceId: input.target.workspaceId,
-        workItemId: input.target.workItemId,
-        actorId: input.identity.personId,
-        actorType: input.actorType,
-        verb: "approval.decided",
-        oldValue: "pending",
-        newValue: decision.nextState,
-        payload: {
-          approvalId: row.id,
-          kind: row.kind,
-          decision: decision.nextState,
-        },
-        visibility: "internal",
-      },
-    ]);
-    const eventId = createId();
-    await enqueueNotificationEvent(
-      tx,
-      {
-        id: `evt_${eventId}`,
-        kind: "approval.decided",
-        occurredAt: now.toISOString(),
-        actor: {
-          type: input.actorType,
-          id: input.identity.personId,
-          name: actorNameValue,
-        },
-        scope: eventScope({
-          workspaceId: input.target.workspaceId,
-          organisationId: input.target.organisationId,
-          projectId: input.target.projectId,
-        }),
-        payload: {
-          approvalId: row.id,
-          decision: decision.nextState,
-        },
-        causationId: null,
-        depth: 0,
-        originAutomationId: null,
-      },
-      { resolveRecipients: resolveApprovalEventRecipients },
-    );
-    await appendAuditLog(tx, {
+  await recordWorkItemActivity(tx, [
+    {
+      workspaceId: input.target.workspaceId,
+      workItemId: input.target.workItemId,
       actorId: input.identity.personId,
       actorType: input.actorType,
-      workspaceId: input.target.workspaceId,
-      projectId: input.target.projectId,
-      organisationId: input.target.organisationId,
-      action: "approval.decided",
-      entityType: "approval",
-      entityId: row.id,
-      before: { state: row.state },
-      after: { state: decision.nextState, decidedAt: now.toISOString() },
-    });
-    return updated;
+      verb: "approval.decided",
+      oldValue: "pending",
+      newValue: decision.nextState,
+      payload: {
+        approvalId: row.id,
+        kind: row.kind,
+        decision: decision.nextState,
+      },
+      visibility: "internal",
+    },
+  ]);
+  const eventId = createId();
+  await enqueueNotificationEvent(
+    tx,
+    {
+      id: `evt_${eventId}`,
+      kind: "approval.decided",
+      occurredAt: now.toISOString(),
+      actor: {
+        type: input.actorType,
+        id: input.apiKeyId ?? input.identity.personId,
+        name: actorNameValue,
+      },
+      scope: eventScope({
+        workspaceId: input.target.workspaceId,
+        organisationId: input.target.organisationId,
+        projectId: input.target.projectId,
+      }),
+      payload: {
+        approvalId: row.id,
+        decision: decision.nextState,
+      },
+      causationId: null,
+      depth: 0,
+      originAutomationId: null,
+    },
+    { resolveRecipients: resolveApprovalEventRecipients },
+  );
+  const decidedAuditFailed = await appendAuditSavepoint(tx, {
+    ...auditFields(input.audit),
+    actorId: input.identity.personId,
+    actorType: input.actorType,
+    apiKeyId: input.apiKeyId ?? input.audit?.apiKeyId ?? null,
+    workspaceId: input.target.workspaceId,
+    projectId: input.target.projectId,
+    organisationId: input.target.organisationId,
+    action: "approval.decided",
+    entityType: "approval",
+    entityId: row.id,
+    before: { state: row.state },
+    after: { state: decision.nextState, decidedAt: now.toISOString() },
   });
+  if (decidedAuditFailed) {
+    if (input.onAuditFailure) input.onAuditFailure();
+    else await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  }
+  return updated;
 }
 
 export async function withdrawApproval(input: {
@@ -358,9 +417,11 @@ export async function withdrawApproval(input: {
   target: Awaited<ReturnType<typeof loadApprovalTargetByKey>>;
   /** True only for the dedicated admin route; current authority is rechecked under lock. */
   isInstanceAdmin: boolean;
+  audit?: Partial<AuditRequestContext>;
 }) {
   const name = await loadApprovalActorName(input.identity.personId);
-  return db.transaction(async (tx) => {
+  let auditFailed = false;
+  const withdrawn = await db.transaction(async (tx) => {
     const lockedItem = await lockLiveWorkItem(
       tx,
       input.identity,
@@ -429,7 +490,8 @@ export async function withdrawApproval(input: {
       },
       { resolveRecipients: resolveApprovalEventRecipients },
     );
-    await appendAuditLog(tx, {
+    auditFailed = await appendAuditSavepoint(tx, {
+      ...auditFields(input.audit),
       actorId: input.identity.personId,
       actorType: input.actorType,
       workspaceId: input.target.workspaceId,
@@ -449,6 +511,8 @@ export async function withdrawApproval(input: {
     });
     return updated;
   });
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  return withdrawn;
 }
 
 /**
@@ -471,6 +535,9 @@ export async function closePendingApprovalsOnTransition(
     /** The acting user's id; the audit row records the person id, like other `approval.*` rows. */
     actorId: string | null;
     actorType: "person" | "api_key" | "automation" | "system";
+    audit?: Partial<AuditRequestContext>;
+    /** Called once per audit append that failed in its savepoint (AU-14); the caller reports it. */
+    onAuditFailure?: () => void;
   },
 ) {
   const closed = await closePendingApprovalRowsForTransition(
@@ -486,7 +553,8 @@ export async function closePendingApprovalsOnTransition(
     input.workspaceId,
   );
   for (const approval of closed) {
-    await appendAuditLog(tx, {
+    const failed = await appendAuditSavepoint(tx, {
+      ...auditFields(input.audit),
       actorId: actorPerson?.id ?? null,
       actorType: input.actorType,
       workspaceId: input.workspaceId,
@@ -502,6 +570,7 @@ export async function closePendingApprovalsOnTransition(
         transitionId: input.transitionId,
       },
     });
+    if (failed) input.onAuditFailure?.();
   }
   return closed;
 }

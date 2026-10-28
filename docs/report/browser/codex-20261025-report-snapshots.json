@@ -1,0 +1,120 @@
+{
+	"recordedAt": "2026-10-25",
+	"journey": "RP-9 owned-project closed, mixed, and current time-report verification",
+	"scope": "Focused browser evidence only; not phase acceptance",
+	"strictTls": true,
+	"fixture": "Owned Cost Cycle QA project; no existing non-fixture records changed",
+	"browser": {
+		"account": "lead with existing owned-project reach and rate visibility",
+		"reloadPreservedCustomWindowAndProjectFilter": true,
+		"closedDay": {
+			"date": "2026-10-24",
+			"loadedThroughRealUI": true,
+			"boundary": "snapshot",
+			"sources": {
+				"metricSnapshot": true,
+				"liveComponents": []
+			},
+			"closedDays": 1,
+			"uncoveredDays": 0,
+			"entries": 1,
+			"hours": 0.25,
+			"billableSharePercent": 100,
+			"cost": null,
+			"unpricedHours": 0.25,
+			"drill": {
+				"sameWindowFiltersAndReach": true,
+				"date": "2026-10-24",
+				"projectKey": "CCY",
+				"itemKey": "CCY-1",
+				"entries": 1,
+				"hours": 0.25
+			}
+		},
+		"mixedWindow": {
+			"dates": ["2026-10-24", "2026-10-25"],
+			"boundary": "mixed",
+			"sources": {
+				"metricSnapshot": true,
+				"liveComponents": ["current_period"]
+			},
+			"closedDays": 1,
+			"uncoveredDays": 0,
+			"entries": 2,
+			"hours": 0.75,
+			"cost": {
+				"currency": "EUR",
+				"amount": 30
+			},
+			"unpricedHours": 0.25
+		},
+		"currentDay": {
+			"date": "2026-10-25",
+			"boundary": "live",
+			"sources": {
+				"metricSnapshot": false,
+				"liveComponents": ["current_period"]
+			},
+			"entries": 1,
+			"hours": 0.5,
+			"cost": {
+				"currency": "EUR",
+				"amount": 30
+			}
+		},
+		"csv": {
+			"downloadedThroughUi": true,
+			"rows": 1,
+			"windowLine": "# Window: 2026-10-24 to 2026-10-24",
+			"sourceLine": "# Source: 1 closed day(s) from stored daily snapshots up to 2026-10-24",
+			"dataLine": "Cost Cycle QA (CCY),0.25,0.25,100,1,,0.25",
+			"sourceCaptionMatchesUi": true,
+			"costBlankBecauseClosedEntryHasNoCapturedRate": true
+		},
+		"restored": {
+			"workspace": "TaskDesk Service Desk",
+			"theme": "dark"
+		}
+	},
+	"sourceFixes": {
+		"exactMinuteToHourConversionAndTwoDecimalDisplay": "implemented, deployed, and verified in UI and CSV",
+		"customWindowInclusiveEndDateInUiAndCsv": "implemented, deployed, and verified for Oct24 one-day and Oct24-25 two-day windows",
+		"snapshotThroughInclusiveDateInCsv": "implemented, deployed, and verified; exclusive Oct25 boundary is shown as last included day Oct24"
+	},
+	"screenshots": [
+		"../screens/codex-20261025-report-snapshots-closed.png",
+		"../screens/codex-20261025-report-snapshots-drill.png",
+		"../screens/codex-20261025-report-snapshots-mixed.png",
+		"../screens/codex-20261025-report-snapshots-current.png",
+		"../screens/codex-20261025-report-snapshots-help19-comment-editor.png",
+		"../screens/codex-20261025-report-snapshots-kb-editor.png"
+	],
+	"limitations": [
+		"The 2026-10-24 time entry has no captured rate, so cost remains blank and the report identifies its 0.25 hours as unpriced; no rate was inferred.",
+		"This verifies one owned lead/project path, not member own-time behavior or full RP-9 acceptance."
+	],
+	"lazySurfaceSpotChecks": {
+		"strictTls": true,
+		"contentMutations": false,
+		"workItem": {
+			"fixture": "owned HELP-19",
+			"titleVisible": true,
+			"internalAndPublicCommentControlsVisible": true,
+			"proseMirrorEditorCount": 2,
+			"editorClass": "taskdesk-comment-editor-prose",
+			"computedFont": "Geist Variable, ui-sans-serif, system-ui, sans-serif",
+			"visibleEditorBoxes": [[736, 76], [734, 48]],
+			"screenshot": "../screens/codex-20261025-report-snapshots-help19-comment-editor.png"
+		},
+		"knowledgeBase": {
+			"fixture": "owned KB draft",
+			"proseMirrorEditorCount": 1,
+			"editorClass": "taskdesk-comment-editor-prose",
+			"computedFont": "Geist Variable, ui-sans-serif, system-ui, sans-serif",
+			"visibleEditorBox": [804, 146],
+			"skeletonCount": 0,
+			"existingSaveState": "All changes saved",
+			"screenshot": "../screens/codex-20261025-report-snapshots-kb-editor.png"
+		}
+	}
+}

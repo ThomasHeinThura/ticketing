@@ -1,0 +1,57 @@
+﻿Task ID,Task Name,Bucket Name,Progress,Priority,Assigned To,Created By,Created Date,Start Date,Due Date,Is Recurring,Late,Completed Date,Completed By,Completed Checklist Items,Checklist Items,Labels,Description
+PL0001,Planner task 1,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/2/2026,3/2/2026,4/2/2026,false,false,,,,,Green,Task description 1
+PL0002,Planner task 2,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/3/2026,3/3/2026,4/3/2026,false,false,,,,,Green,Task description 2
+PL0003,Planner task 3,Done,Completed,Low,,ana.lopez@example.test,3/4/2026,3/4/2026,4/4/2026,false,false,3/30/2026,ben.okafor@example.test,,,Red;Blue,Task description 3
+PL0004,"Rollout ""phase 2"", EU région",Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/5/2026,3/5/2026,4/5/2026,false,false,,,,,Green,Task description 4
+PL0005,Planner task 5,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,13/45/2026,3/6/2026,4/6/2026,false,false,,,1/3,Draft;Review;Ship,Green,Task description 5
+PL0006,Planner task 6,Waiting,Not started,Medium,Dana Whitfield,ana.lopez@example.test,3/7/2026,3/7/2026,4/7/2026,false,false,,,,,Red;Blue,Task description 6
+PL0007,Planner task 7,Done,Blocked??,Low,,ana.lopez@example.test,3/8/2026,3/8/2026,4/8/2026,false,false,3/30/2026,ben.okafor@example.test,,,Green,Task description 7
+PL0008,Planner task 8,Misc,Blocked??,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/9/2026,3/9/2026,4/9/2026,false,false,,,,,Green,Task description 8
+PL0009,Planner task 9,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/10/2026,3/10/2026,4/10/2026,false,false,,,,,Red;Blue,Task description 9
+PL0010,Planner task 10,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/11/2026,3/11/2026,4/11/2026,false,false,,,1/3,Draft;Review;Ship,Green,Task description 10
+PL0011,Planner task 11,Done,Completed,Low,,ana.lopez@example.test,3/12/2026,3/12/2026,4/12/2026,false,false,3/30/2026,ben.okafor@example.test,,,Green,Task description 11
+PL0012,Planner task 12,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/13/2026,3/13/2026,4/13/2026,false,false,,,,,Red;Blue,Task description 12
+PL0013,Planner task 13,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/14/2026,3/14/2026,4/14/2026,false,false,,,,,Green,Task description 13
+PL0014,Planner task 14,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/15/2026,3/15/2026,4/15/2026,false,false,,,,,Green,Task description 14
+PL0015,Planner task 15,Done,Completed,Low,,ana.lopez@example.test,3/16/2026,3/16/2026,4/16/2026,false,false,3/30/2026,ben.okafor@example.test,1/3,Draft;Review;Ship,Red;Blue,Task description 15
+PL0016,Planner task 16,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/17/2026,3/17/2026,4/17/2026,false,false,,,,,Green,Task description 16
+PL0017,Planner task 17,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/18/2026,3/18/2026,4/18/2026,false,false,,,,,Green,Task description 17
+PL0018,Planner task 18,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/19/2026,3/19/2026,4/19/2026,false,false,,,,,Red;Blue,Task description 18
+PL0019,Planner task 19,Done,Completed,Low,,ana.lopez@example.test,3/20/2026,3/20/2026,4/20/2026,false,false,3/30/2026,ben.okafor@example.test,,,Green,Task description 19
+PL0020,Planner task 20,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/21/2026,3/21/2026,4/21/2026,false,false,,,1/3,Draft;Review;Ship,Green,Task description 20
+PL0021,Planner task 21,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/22/2026,3/22/2026,4/22/2026,false,false,,,,,Red;Blue,Task description 21
+PL0022,Planner task 22,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/23/2026,3/23/2026,4/23/2026,false,false,,,,,Green,Task description 22
+PL0023,Planner task 23,Done,Completed,Low,,ana.lopez@example.test,3/24/2026,3/24/2026,4/24/2026,false,false,3/30/2026,ben.okafor@example.test,,,Green,Task description 23
+PL0024,Planner task 24,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/25/2026,3/25/2026,4/25/2026,false,false,,,,,Red;Blue,Task description 24
+PL0025,Planner task 25,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/26/2026,3/26/2026,4/26/2026,false,false,,,1/3,Draft;Review;Ship,Green,Task description 25
+PL0026,Planner task 26,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/27/2026,3/27/2026,4/27/2026,false,false,,,,,Green,Task description 26
+PL0027,Planner task 27,Done,Completed,Low,,ana.lopez@example.test,3/28/2026,3/28/2026,4/28/2026,false,false,3/30/2026,ben.okafor@example.test,,,Red;Blue,Task description 27
+PL0028,Planner task 28,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/1/2026,3/1/2026,4/1/2026,false,false,,,,,Green,Task description 28
+PL0029,Planner task 29,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/2/2026,3/2/2026,4/2/2026,false,false,,,,,Green,Task description 29
+PL0030,Planner task 30,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/3/2026,3/3/2026,4/3/2026,false,false,,,1/3,Draft;Review;Ship,Red;Blue,Task description 30
+PL0031,Planner task 31,Done,Completed,Low,,ana.lopez@example.test,3/4/2026,3/4/2026,4/4/2026,false,false,3/30/2026,ben.okafor@example.test,,,Green,Task description 31
+PL0032,Planner task 32,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/5/2026,3/5/2026,4/5/2026,false,false,,,,,Green,Task description 32
+PL0033,Planner task 33,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/6/2026,3/6/2026,4/6/2026,false,false,,,,,Red;Blue,Task description 33
+PL0034,Planner task 34,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/7/2026,3/7/2026,4/7/2026,false,false,,,,,Green,Task description 34
+PL0035,Planner task 35,Done,Completed,Low,,ana.lopez@example.test,3/8/2026,3/8/2026,4/8/2026,false,false,3/30/2026,ben.okafor@example.test,1/3,Draft;Review;Ship,Green,Task description 35
+PL0036,Planner task 36,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/9/2026,3/9/2026,4/9/2026,false,false,,,,,Red;Blue,Task description 36
+PL0037,Planner task 37,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/10/2026,3/10/2026,4/10/2026,false,false,,,,,Green,Task description 37
+PL0038,Planner task 38,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/11/2026,3/11/2026,4/11/2026,false,false,,,,,Green,Task description 38
+PL0039,Planner task 39,Done,Completed,Low,,ana.lopez@example.test,3/12/2026,3/12/2026,4/12/2026,false,false,3/30/2026,ben.okafor@example.test,,,Red;Blue,Task description 39
+PL0040,Planner task 40,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/13/2026,3/13/2026,4/13/2026,false,false,,,1/3,Draft;Review;Ship,Green,Task description 40
+PL0041,Planner task 41,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/14/2026,3/14/2026,4/14/2026,false,false,,,,,Green,Task description 41
+PL0042,Planner task 42,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/15/2026,3/15/2026,4/15/2026,false,false,,,,,Red;Blue,Task description 42
+PL0043,Planner task 43,Done,Completed,Low,,ana.lopez@example.test,3/16/2026,3/16/2026,4/16/2026,false,false,3/30/2026,ben.okafor@example.test,,,Green,Task description 43
+PL0044,Planner task 44,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/17/2026,3/17/2026,4/17/2026,false,false,,,,,Green,Task description 44
+PL0045,Planner task 45,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/18/2026,3/18/2026,4/18/2026,false,false,,,1/3,Draft;Review;Ship,Red;Blue,Task description 45
+PL0046,Planner task 46,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/19/2026,3/19/2026,4/19/2026,false,false,,,,,Green,Task description 46
+PL0047,Planner task 47,Done,Completed,Low,,ana.lopez@example.test,3/20/2026,3/20/2026,4/20/2026,false,false,3/30/2026,ben.okafor@example.test,,,Green,Task description 47
+PL0048,Planner task 48,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/21/2026,3/21/2026,4/21/2026,false,false,,,,,Red;Blue,Task description 48
+PL0049,Planner task 49,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/22/2026,3/22/2026,4/22/2026,false,false,,,,,Green,Task description 49
+PL0050,Planner task 50,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/23/2026,3/23/2026,4/23/2026,false,false,,,1/3,Draft;Review;Ship,Green,Task description 50
+PL0051,Planner task 51,Done,Completed,Low,,ana.lopez@example.test,3/24/2026,3/24/2026,4/24/2026,false,false,3/30/2026,ben.okafor@example.test,,,Red;Blue,Task description 51
+PL0052,Planner task 52,Backlog,Not started,Urgent,ana.lopez@example.test,ana.lopez@example.test,3/25/2026,3/25/2026,4/25/2026,false,false,,,,,Green,Task description 52
+PL0053,Planner task 53,To do,Not started,Important,ben.okafor@example.test;chi.nguyen@example.test,ana.lopez@example.test,3/26/2026,3/26/2026,4/26/2026,false,false,,,,,Green,Task description 53
+PL0054,Planner task 54,Doing,In progress,Medium,Dana Whitfield,ana.lopez@example.test,3/27/2026,3/27/2026,4/27/2026,false,false,,,,,Red;Blue,Task description 54
+PL0055,Planner task 55,Done,Completed,Low,,ana.lopez@example.test,3/28/2026,3/28/2026,4/28/2026,false,false,3/30/2026,ben.okafor@example.test,1/3,Draft;Review;Ship,Green,Task description 55
+PL0001,Duplicate task id,Doing,In progress,Low,,,3/1/2026,,,false,false,,,,,,

@@ -1,5 +1,6 @@
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { requireWorkspaceFeature } from "../feature-flag/enforce";
 import {
   apiRouter,
   type BaseVariables,
@@ -67,6 +68,7 @@ const listRoute = createRoute({
     workspaceAccess.fromQuery(),
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { query: workspaceIdQuery },
   responses: {
@@ -86,6 +88,7 @@ const createRouteDef = createRoute({
     workspaceAccess.fromQuery(),
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: {
     query: workspaceIdQuery.pick({ workspaceId: true }),
@@ -98,6 +101,7 @@ const createRouteDef = createRoute({
     200: jsonResponse("Created SLA policy", slaPolicySchema),
     400: errorResponse("Invalid policy request"),
     403: errorResponse("Missing sla_policy:manage permission"),
+    409: errorResponse("An SLA policy with this key already exists"),
     422: errorResponse("Referenced calendar or work-item type is invalid"),
   },
 });
@@ -112,6 +116,7 @@ const detailRoute = createRoute({
     policyReach,
     requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: policyIdParam },
   responses: {
@@ -133,6 +138,7 @@ const updateRoute = createRoute({
     policyReach,
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: {
     params: policyIdParam,
@@ -167,6 +173,7 @@ const publishRoute = createRoute({
     policyReach,
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
+    requireWorkspaceFeature("feature.sla"),
   ] as const,
   request: { params: policyIdParam, headers: optionalPolicyIfMatchHeader },
   responses: {

@@ -3,6 +3,19 @@ import {
   defaultStringifySearch,
 } from "@tanstack/react-router";
 import type { SortDirection, SortField } from "./sort-tasks";
+import {
+  parseWorkItemDetailSectionsSearch,
+  type WorkItemDetailSectionsSearch,
+} from "./work-item-detail-sections-search";
+import {
+  parseWorkItemHierarchySearch,
+  type WorkItemHierarchySearch,
+} from "./work-item-hierarchy-search";
+import { isValidWorkItemKeyParam } from "./work-item-list-search";
+import {
+  parseWorkItemRelationsSearch,
+  type WorkItemRelationsSearch,
+} from "./work-item-relations-search";
 
 export type ProjectBoardLayout = "board" | "list";
 
@@ -28,14 +41,85 @@ export const DUE_DATE_FILTER_VALUES = {
   noDueDate: "noDueDate",
 } as const;
 
-export type ProjectViewSearch = ProjectViewFilters & {
-  taskId?: string;
-  layout?: ProjectBoardLayout;
-  month?: string;
-  q?: string;
-  sort?: SortField;
-  dir?: SortDirection;
-};
+/** `VW-13`: board grouping. `state` is the default; custom fields use `cf.<key>`. */
+export const WORK_ITEM_GROUPS = [
+  "state",
+  "assignee",
+  "priority",
+  "label",
+] as const;
+export type WorkItemGroup = (typeof WORK_ITEM_GROUPS)[number] | `cf.${string}`;
+
+const CUSTOM_FIELD_GROUP = /^cf\.[a-z][a-z0-9_]{0,63}$/u;
+
+export function parseWorkItemGroup(value: unknown): WorkItemGroup | undefined {
+  return typeof value === "string" &&
+    ((WORK_ITEM_GROUPS as readonly string[]).includes(value) ||
+      CUSTOM_FIELD_GROUP.test(value))
+    ? (value as WorkItemGroup)
+    : undefined;
+}
+
+/**
+ * `VW-27`: the timeline may also group by module (`feature.modules`) or epic. Only the timeline
+ * offers the epic option; the board's own grouping (`parseWorkItemGroup`) remains unchanged and
+ * also accepts live custom-field keys (`cf.<key>`).
+ */
+export type ProjectViewGroup = WorkItemGroup | "module" | "epic";
+
+export function parseProjectViewGroup(
+  value: unknown,
+): ProjectViewGroup | undefined {
+  return value === "module" || value === "epic"
+    ? value
+    : parseWorkItemGroup(value);
+}
+
+/** `VW-28`: `deps=1` draws the timeline's dependency arrows. Off (absent) by default. */
+export function parseTimelineDependencies(value: unknown): "1" | undefined {
+  return value === "1" || value === 1 || value === true ? "1" : undefined;
+}
+
+/** `VW-25`: the calendar's range. `month` is the default and is never written. */
+export const CALENDAR_VIEWS = ["month", "week", "day"] as const;
+export type CalendarView = (typeof CALENDAR_VIEWS)[number];
+
+export function parseCalendarView(value: unknown): CalendarView | undefined {
+  return typeof value === "string" &&
+    (CALENDAR_VIEWS as readonly string[]).includes(value)
+    ? (value as CalendarView)
+    : undefined;
+}
+
+/** A real calendar day, `YYYY-MM-DD`; the anchor of the week and day views. */
+export function parseCalendarDay(value: unknown): value is string {
+  if (typeof value !== "string" || !/^[1-9]\d{3}-\d{2}-\d{2}$/u.test(value))
+    return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+export type ProjectViewSearch = ProjectViewFilters &
+  WorkItemHierarchySearch &
+  WorkItemRelationsSearch &
+  WorkItemDetailSectionsSearch & {
+    filter?: string;
+    taskId?: string;
+    layout?: ProjectBoardLayout;
+    month?: string;
+    q?: string;
+    sort?: SortField;
+    dir?: SortDirection;
+    group?: ProjectViewGroup;
+    deps?: "1";
+    calendarView?: CalendarView;
+    date?: string;
+  };
 
 export type ProjectBoardSearch = ProjectViewSearch;
 export type ProjectBacklogSearch = ProjectViewSearch;
@@ -57,7 +141,18 @@ const FILTER_KEYS = [
   "dueDate",
   "labels",
 ] as const;
-const SCALAR_KEYS = ["taskId", "month", "q", "sort", "dir"] as const;
+const SCALAR_KEYS = [
+  "filter",
+  "taskId",
+  "month",
+  "q",
+  "sort",
+  "dir",
+  "group",
+  "deps",
+  "calendarView",
+  "date",
+] as const;
 
 // A value the router's default codec typed as a number or boolean is read back as its
 // string form, so a project view never drops `q=123` when the search was parsed for
@@ -88,13 +183,23 @@ export function parseProjectViewSearch(
   calendar = false,
 ): ProjectViewSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
-  const search: ProjectViewSearch = {};
+  const search: ProjectViewSearch = {
+    ...parseWorkItemHierarchySearch(candidate),
+    ...parseWorkItemRelationsSearch(candidate),
+    ...parseWorkItemDetailSectionsSearch(candidate),
+  };
+  if (!candidate.taskId && isValidWorkItemKeyParam(candidate.item))
+    search.taskId = candidate.item;
   for (const key of SCALAR_KEYS) {
     const value = searchString(candidate[key]);
     if (
       value &&
       (key !== "sort" || SORT_FIELDS.includes(value as SortField)) &&
       (key !== "dir" || SORT_DIRECTIONS.includes(value as SortDirection)) &&
+      (key !== "group" || parseProjectViewGroup(value)) &&
+      (key !== "deps" || parseTimelineDependencies(value)) &&
+      (key !== "calendarView" || parseCalendarView(value)) &&
+      (key !== "date" || parseCalendarDay(value)) &&
       (!calendar || key !== "month" || parseMonth(value))
     )
       search[key] = value as never;
@@ -207,6 +312,8 @@ export function appendProjectViewSearchParams(
     if (Array.isArray(value)) {
       for (const entry of value)
         params.append(key, stringifyProjectSearchValue(key, entry));
+    } else if (value && typeof value === "object") {
+      params.set(key, JSON.stringify(value));
     } else if (value) {
       params.set(key, stringifyProjectSearchValue(key, value));
     }

@@ -25,9 +25,15 @@ import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { findAssetWorkspaceScope } from "../asset/repository";
+import { hasElevatedEnforcementClassification } from "../auth/elevated-enforcement";
 import db, { schema } from "../database";
+import { timeEntryTable } from "../database/schema-p5-time";
 import type { RegisteredHttpRoute } from "../observability/metrics.js";
 import { policyRegistry } from "../policy-registry";
+import {
+  loadProjectAncestorIdsFor,
+  loadProjectOwnerTeamIdFor,
+} from "../project/hierarchy.repository";
 import { rejectNulByte } from "../utils/reject-nul-byte";
 import { enforcedPolicySources } from "./enforcement-config";
 import {
@@ -104,15 +110,15 @@ async function identityFor(
   c: RuntimeContext,
 ): Promise<ResolvedIdentity | null> {
   const userId = c.get("userId") as string | undefined;
-  if (!userId) return null;
-
   const apiKey = c.get("apiKey") as AuthenticatedApiKey | undefined;
+  // A workspace service key (AK-7) has no user id by design; its principal is the key itself.
+  if (!userId && !apiKey?.service) return null;
   const session = c.get("session") as
     | { id?: string; impersonatedBy?: string | null }
     | null
     | undefined;
   return resolveRequestIdentity({
-    userId,
+    userId: userId ?? "",
     apiKey,
     impersonatedBy: session?.impersonatedBy,
   });
@@ -239,6 +245,7 @@ function workspaceReach(
 }
 
 async function projectReach(
+  c: RuntimeContext,
   identity: ResolvedIdentity,
   evidence: ScopeEvidence,
   policyScope: "project" | "work_item",
@@ -339,8 +346,19 @@ async function projectReach(
     projectId: project.id,
     workspaceId: project.workspaceId,
     organisationId: project.organisationId,
-    ancestorProjectIds: [],
-    ownerTeamId: null,
+    ancestorProjectIds: await loadProjectAncestorIdsFor(
+      c,
+      db,
+      identity,
+      project.workspaceId,
+      project.id,
+    ),
+    ownerTeamId: await loadProjectOwnerTeamIdFor(
+      db,
+      identity,
+      project.workspaceId,
+      project.id,
+    ),
     ...(visibleToPersonIds === null ? {} : { visibleToPersonIds }),
   };
   return reaches(identity, facts);
@@ -465,7 +483,30 @@ async function loadAuthoritativeEvidence(
     }
   }
 
-  if (policy.orOwner) {
+  if (
+    policy.orOwner &&
+    policy.orOwner.predicate === "row.person_id === identity.personId" &&
+    entry.source === "apps/api/src/time-tracking/policy.ts"
+  ) {
+    // P5 time and cost: the entry's own person, re-read from the persisted id like the comment
+    // author below. A row in another workspace than the one the middleware resolved is refused.
+    const entryId = c.req.param("id");
+    if (!entryId) refuse(500);
+    const [timeEntry] = await db
+      .select({
+        personId: timeEntryTable.personId,
+        workspaceId: timeEntryTable.workspaceId,
+      })
+      .from(timeEntryTable)
+      .where(eq(timeEntryTable.id, entryId))
+      .limit(1);
+    if (!timeEntry || timeEntry.workspaceId !== evidence.workspaceId)
+      refuse(404);
+    evidence = {
+      ...evidence,
+      row: { ...evidence.row, personId: timeEntry.personId },
+    };
+  } else if (policy.orOwner) {
     if (policy.orOwner.predicate === "row.person_id === identity.personId") {
       const commentId = c.req.param("id");
       if (!commentId) refuse(500);
@@ -574,7 +615,7 @@ async function buildContext(
         ? workspaceReach(identity, reachWorkspaceId)
         : undefined;
     } else if (policy.scope === "project" || policy.scope === "work_item") {
-      inReach = await projectReach(identity, evidence, policy.scope);
+      inReach = await projectReach(c, identity, evidence, policy.scope);
     }
   }
 
@@ -609,15 +650,50 @@ async function buildContext(
     body = { assigneeId: parsed.assigneeId };
   }
 
+  // PR-2/PR-3: the authority check inherits the nearest ancestor's project grant when the
+  // caller has none on this project; the same memoised chain feeds the reach check above.
+  let ancestorProjectIds: string[] | undefined;
+  if (scope.kind === "project" || scope.kind === "work_item") {
+    ancestorProjectIds = await loadProjectAncestorIdsFor(
+      c,
+      db,
+      identity,
+      scope.workspaceId,
+      scope.projectId,
+    );
+  }
+
   return {
     identity,
     target: {},
     scope,
+    ...(ancestorProjectIds === undefined ? {} : { ancestorProjectIds }),
     inReach,
     row: evidence.row,
     body,
     now: new Date(),
   };
+}
+
+/**
+ * Hono's `route()` wraps every handler of a sub-router that has its own `onError` (SCIM does)
+ * and keeps the original under this key (hono `COMPOSED_HANDLER`; not a package export).
+ * Without unwrapping, such a route never matches its registration and falls back to the
+ * sub-router path, which has no policy entry, so every request was refused with 500.
+ */
+const COMPOSED_HANDLER_KEY = "__COMPOSED_HANDLER";
+
+function unwrapComposedHandler(handler: unknown): unknown {
+  let current = handler;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (typeof current !== "function") return current;
+    const inner = (current as unknown as Record<string, unknown>)[
+      COMPOSED_HANDLER_KEY
+    ];
+    if (inner === undefined) return current;
+    current = inner;
+  }
+  return current;
 }
 
 /** Run at the endpoint boundary, after route middleware and Zod validators, before handler effects. */
@@ -626,8 +702,6 @@ export async function enforceRegisteredPolicy(
   next: Next,
   registeredRoute?: RegisteredRoute,
 ) {
-  if (enforcedPolicySources.size === 0) return next();
-
   const exactRegisteredMatch = registeredRoute?.terminalHandler
     ? (
         c.req.matchedRoutes as Array<{
@@ -636,7 +710,9 @@ export async function enforceRegisteredPolicy(
           path: string;
         }>
       ).find(
-        (candidate) => candidate.handler === registeredRoute.terminalHandler,
+        (candidate) =>
+          unwrapComposedHandler(candidate.handler) ===
+          registeredRoute.terminalHandler,
       )
     : undefined;
   const matched =
@@ -675,7 +751,18 @@ export async function enforceRegisteredPolicy(
 
   const entry = policyRegistry.get(routeKey);
   if (!entry) refuse(500);
-  if (!enforcedPolicySources.has(entry.source)) return next();
+  const assertElevatedClassification = () => {
+    if (
+      entry.policy.elevated === true &&
+      !hasElevatedEnforcementClassification(routeKey)
+    ) {
+      refuse(500);
+    }
+  };
+  if (!enforcedPolicySources.has(entry.source)) {
+    assertElevatedClassification();
+    return next();
+  }
 
   let identity: ResolvedIdentity | null;
   try {
@@ -731,6 +818,11 @@ export async function enforceRegisteredPolicy(
     });
   }
   if (!decision.allowed) refuse(decision.status);
+
+  // A policy declaration must resolve to an explicit enforcement classification at runtime.
+  // This checks route coverage only: the operation handler still consumes the route/body-bound
+  // proof inside its own write transaction.
+  assertElevatedClassification();
 
   // `requiresElevation` is not proof. The protected operation's existing handler must still
   // consume its exact route-bound proof in the same transaction as its mutation.

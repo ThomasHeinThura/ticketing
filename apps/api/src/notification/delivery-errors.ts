@@ -9,3 +9,10 @@ export class NotificationReservationContentionError extends Error {
     this.name = "NotificationReservationContentionError";
   }
 }
+
+/** The adapter could have accepted before its transport failed; retain the lease. */
+export class NotificationProviderOutcomeAmbiguous extends Error {
+  constructor() {
+    super("Notification provider outcome ambiguous");
+  }
+}

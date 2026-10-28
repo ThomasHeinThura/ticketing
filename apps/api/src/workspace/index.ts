@@ -1,11 +1,17 @@
 import { HTTPException } from "hono/http-exception";
+import { runWithStepUp, stepUpTokenHeader } from "../auth/step-up-spend";
 import {
   apiRouter,
   type BaseVariables,
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
+import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
 import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
@@ -21,10 +27,7 @@ import {
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
-import {
-  requireWorkspacePermission,
-  resolveCallerWorkspaceStatements,
-} from "../utils/require-workspace-permission";
+import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { invalidateNativeAuthorization } from "../ws";
@@ -33,25 +36,16 @@ import addWorkspaceMemberCtrl from "./controllers/add-workspace-member";
 import createWorkspaceCtrl, {
   WorkspaceSlugTakenError,
 } from "./controllers/create-workspace";
-import createWorkspaceRoleCtrl from "./controllers/create-workspace-role";
-import deleteWorkspaceCtrl from "./controllers/delete-workspace";
-import deleteWorkspaceRoleCtrl from "./controllers/delete-workspace-role";
-import {
-  WorkspaceDeleteLockBusyError,
-  WorkspaceInUseByIdentityConnectionError,
-} from "./controllers/delete-workspace-role-dependents";
 import getUserWorkspacesCtrl from "./controllers/get-user-workspaces";
 import getWorkspaceDetailCtrl from "./controllers/get-workspace-detail";
 import getWorkspaceInvitationsCtrl from "./controllers/get-workspace-invitations";
 import getWorkspaceMembersCtrl from "./controllers/get-workspace-members";
 import inviteWorkspaceMemberCtrl from "./controllers/invite-workspace-member";
 import leaveWorkspaceCtrl from "./controllers/leave-workspace";
-import listWorkspaceRolesCtrl from "./controllers/list-workspace-roles";
 import removeWorkspaceMemberCtrl from "./controllers/remove-workspace-member";
 import transferWorkspaceOwnershipCtrl from "./controllers/transfer-workspace-ownership";
 import updateWorkspaceCtrl from "./controllers/update-workspace";
 import updateWorkspaceMemberRoleCtrl from "./controllers/update-workspace-member-role";
-import updateWorkspaceRoleCtrl from "./controllers/update-workspace-role";
 import {
   InvitationAlreadyPendingError,
   InvitationLimitReachedError,
@@ -72,16 +66,10 @@ import {
 } from "./controllers/workspace-membership-errors";
 import {
   InsufficientPermissionToGrantError,
-  InvalidPermissionResourceError,
-  RoleAssignedToMembersError,
-  RoleLimitReachedError,
-  RoleNameReservedError,
-  RoleNameTakenError,
+  RoleRankError,
 } from "./controllers/workspace-role-errors";
 import {
   activatedWorkspaceSchema,
-  deletedWorkspaceRoleSchema,
-  deletedWorkspaceSchema,
   leftWorkspaceSchema,
   removedWorkspaceMemberSchema,
   transferredWorkspaceOwnershipSchema,
@@ -91,16 +79,35 @@ import {
   workspaceMemberListSchema,
   workspaceMemberRoleSchema,
   workspaceMemberSchema,
+  workspaceRoleHistorySchema,
+  workspaceRoleHoldersSchema,
   workspaceRoleListSchema,
+  workspaceRolePreviewSchema,
+  workspaceRoleReassignResultSchema,
   workspaceRoleSchema,
   workspaceSchema,
   workspaceSummaryListSchema,
 } from "./response";
+import type { RoleAuditActor } from "./role-governance";
+import { roleErrorToHttp } from "./role-http";
+import {
+  createRole,
+  getRole,
+  getRoleHistory,
+  getRoleHolders,
+  listRoles,
+  previewCapabilitySet,
+  reassignRoleHolders,
+  resolveRoleCaller,
+  updateRole,
+} from "./role-service";
 import {
   addWorkspaceMemberBody,
   createWorkspaceBody,
   createWorkspaceRoleBody,
   inviteWorkspaceMemberBody,
+  previewWorkspaceRoleBody,
+  reassignWorkspaceRoleBody,
   transferWorkspaceOwnershipBody,
   updateWorkspaceBody,
   updateWorkspaceMemberRoleBody,
@@ -109,6 +116,23 @@ import {
   workspaceMemberIdParam,
   workspaceRoleParam,
 } from "./schema";
+import {
+  WORKSPACE_DELETION_ROUTE,
+  WORKSPACE_ROLE_DELETION_ROUTE,
+} from "./workspace-deletion-target";
+
+/** RL-10: the credential behind a role write, for its audit row. */
+function roleAuditActor(c: {
+  get(key: "userId"): string;
+  get(key: "apiKey"): { id: string } | undefined | null;
+}): RoleAuditActor {
+  const apiKey = c.get("apiKey");
+  return {
+    userId: c.get("userId"),
+    actorType: apiKey ? "api_key" : "person",
+    apiKeyId: apiKey?.id ?? null,
+  };
+}
 
 const listWorkspacesRoute = createRoute({
   method: "get",
@@ -290,7 +314,7 @@ const deleteWorkspaceRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Delete a workspace",
   description:
-    "Delete a workspace and everything cascading off it. Native replacement for authClient.organization.delete().",
+    "Request deletion of a workspace and everything cascading off it. Native replacement for authClient.organization.delete(). Returns a durable pending action (202); nothing changes until the requester approves it in a current browser session by typing the exact workspace name and completing step-up.",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -302,14 +326,17 @@ const deleteWorkspaceRoute = createRoute({
   ] as const,
   request: { params: workspaceIdParam },
   responses: {
-    200: jsonResponse("The deleted workspace's id", deletedWorkspaceSchema),
+    202: jsonResponse(
+      "Pending deletion; workspace unchanged",
+      registeredDeletionRequestSchema,
+    ),
     401: errorResponse("No credential at all"),
     403: errorResponse(
       "An API key or impersonation session (session_required), no workspace access, or missing organization:delete permission",
     ),
     404: errorResponse("Workspace not found"),
     409: errorResponse(
-      "Workspace is still referenced as an identity connection default_workspace_id, or workspace access is currently locked",
+      "An equivalent deletion is already pending (execution-time refusals such as an identity connection default_workspace_id are returned by the approval)",
     ),
   },
 });
@@ -507,7 +534,7 @@ const transferWorkspaceOwnershipRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Transfer workspace ownership",
   description:
-    "Atomically install a new owner and demote the caller in one transaction. Replaces the client's promote/demote pair (use-transfer-workspace-ownership.ts). Callable only by the workspace's current owner.",
+    "Elevated: spends a one-use PA-15 step-up proof (`workspace_ownership_transfer`) sent in `X-TaskDesk-Step-Up-Token`. Atomically install a new owner and demote the caller in one transaction. Replaces the client's promote/demote pair (use-transfer-workspace-ownership.ts). Callable only by the workspace's current owner.",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -515,6 +542,7 @@ const transferWorkspaceOwnershipRoute = createRoute({
     requireWorkspaceCapability("workspace:transfer_ownership"),
   ] as const,
   request: {
+    headers: stepUpTokenHeader,
     params: workspaceIdParam,
     body: {
       required: true,
@@ -531,7 +559,7 @@ const transferWorkspaceOwnershipRoute = createRoute({
     400: errorResponse("The new owner is the caller themselves"),
     401: errorResponse("No credential at all"),
     403: errorResponse(
-      "An API key or impersonation session (session_required), no workspace access, or the caller is not the current owner",
+      "An API key or impersonation session (session_required), no workspace access, the caller is not the current owner, or the step-up proof is missing (step_up_required) or unusable (step_up_unavailable)",
     ),
     404: errorResponse("The new owner is not a member of this workspace"),
     409: errorResponse(
@@ -631,11 +659,14 @@ const inviteWorkspaceMemberRoute = createRoute({
 // the seeded rows (and this evaluator) to `workspace:*` is #7's capability
 // migration, not this stage's.
 //
-// `POST/PATCH/DELETE` additionally enforce `RL-3` — the caller can never grant
-// a `(resource, action)` pair they do not themselves already hold
-// (`resolveCallerWorkspaceStatements`, `require-workspace-permission.ts`) — and
-// are `elevated: true` in `policy.ts` (`workspace:manage_roles` is in
-// `AUTHORITY_GRANTING`).
+// `POST/PATCH` additionally enforce `RL-3` — the caller can never grant a
+// capability they do not themselves hold — plus the rank guards (`RL-4`,
+// `RL-14`) and the last-manager guard (`RL-7`), all in `role-service.ts`. All
+// of `POST/PATCH/DELETE` are `elevated: true` in `policy.ts`
+// (`workspace:manage_roles` is in `AUTHORITY_GRANTING`): POST and PATCH spend a one-use PA-15
+// proof (`workspace_role_create` / `workspace_role_update`) inside the write transaction, and
+// DELETE is a click-level pending action (RL-8; see `elevated-enforcement.ts`). Capabilities live
+// in the canonical `role` row; `workspace_member.role` holds the role key.
 
 const listWorkspaceRolesRoute = createRoute({
   method: "get",
@@ -644,7 +675,7 @@ const listWorkspaceRolesRoute = createRoute({
   tags: ["Workspaces"],
   summary: "List a workspace's roles",
   description:
-    "List every workspace_role row for a workspace, including the three seeded defaults. Never includes 'owner', which stays a compiled, non-editable role. Native replacement for authClient.organization.listRoles(). No guaranteed ordering.",
+    "List every workspace-scope role (the six built-ins and the custom ones) with capabilities, rank and holder count. Capabilities live in the canonical role row; `permission` is a deprecated derived view. Never ordering-guaranteed beyond rank descending.",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -664,6 +695,153 @@ const listWorkspaceRolesRoute = createRoute({
   },
 });
 
+const getWorkspaceRoleRoute = createRoute({
+  method: "get",
+  operationId: "getWorkspaceRole",
+  path: "/{workspaceId}/roles/{roleId}",
+  tags: ["Workspaces"],
+  summary: "Get one workspace role",
+  description:
+    "One workspace-scope role with capabilities, rank, holder count and its concurrency `version`.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspaceCapability("workspace:read"),
+    requireWorkspacePermission({ ac: ["read"] }),
+    requireWorkspaceRoleAuthority({ ac: ["read"] }),
+  ] as const,
+  request: { params: workspaceRoleParam },
+  responses: {
+    200: jsonResponse("The role", workspaceRoleSchema),
+    401: errorResponse("No credential at all"),
+    403: errorResponse("No workspace access, or missing ac:read permission"),
+    404: errorResponse("The role does not exist"),
+  },
+});
+
+const listWorkspaceRoleHoldersRoute = createRoute({
+  method: "get",
+  operationId: "listWorkspaceRoleHolders",
+  path: "/{workspaceId}/roles/{roleId}/holders",
+  tags: ["Workspaces"],
+  summary: "List the people who hold a role",
+  description:
+    "The role and the people holding it (RL-8 bulk reassignment lists them). Includes suspended and deactivated holders, flagged.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspaceCapability("workspace:read"),
+    requireWorkspacePermission({ ac: ["read"] }),
+    requireWorkspaceRoleAuthority({ ac: ["read"] }),
+  ] as const,
+  request: { params: workspaceRoleParam },
+  responses: {
+    200: jsonResponse("The role and its holders", workspaceRoleHoldersSchema),
+    401: errorResponse("No credential at all"),
+    403: errorResponse("No workspace access, or missing ac:read permission"),
+    404: errorResponse("The role does not exist"),
+  },
+});
+
+const getWorkspaceRoleHistoryRoute = createRoute({
+  method: "get",
+  operationId: "getWorkspaceRoleHistory",
+  path: "/{workspaceId}/roles/{roleId}/history",
+  tags: ["Workspaces"],
+  summary: "The audit history of a role",
+  description:
+    "RL-10: who changed which capabilities of this role, and when, newest first.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspaceCapability("workspace:read"),
+    requireWorkspacePermission({ ac: ["read"] }),
+    requireWorkspaceRoleAuthority({ ac: ["read"] }),
+  ] as const,
+  request: { params: workspaceRoleParam },
+  responses: {
+    200: jsonResponse("The role's history", workspaceRoleHistorySchema),
+    401: errorResponse("No credential at all"),
+    403: errorResponse("No workspace access, or missing ac:read permission"),
+    404: errorResponse("The role does not exist"),
+  },
+});
+
+const previewWorkspaceRoleRoute = createRoute({
+  method: "post",
+  operationId: "previewWorkspaceRole",
+  path: "/{workspaceId}/roles/{roleId}/preview",
+  tags: ["Workspaces"],
+  summary: "Preview a draft capability set",
+  description:
+    "RL-12 'Test as this role': the navigation entries and sample work-item actions a holder of the DRAFT capability set in the body would have. Reads nothing about any person and persists nothing; it is a preview, not impersonation.",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspaceCapability("workspace:read"),
+    requireWorkspacePermission({ ac: ["read"] }),
+    requireWorkspaceRoleAuthority({ ac: ["read"] }),
+  ] as const,
+  request: {
+    params: workspaceRoleParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: previewWorkspaceRoleBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "What the draft set would see",
+      workspaceRolePreviewSchema,
+    ),
+    400: errorResponse("An unknown or non-grantable capability"),
+    401: errorResponse("No credential at all"),
+    403: errorResponse("No workspace access, or missing ac:read permission"),
+    404: errorResponse("The role does not exist"),
+  },
+});
+
+const reassignWorkspaceRoleRoute = createRoute({
+  method: "post",
+  operationId: "reassignWorkspaceRole",
+  path: "/{workspaceId}/roles/{roleId}/reassign",
+  tags: ["Workspaces"],
+  summary: "Move a role's holders to another role",
+  description:
+    "RL-8: move every holder (or the listed people) from this role to another workspace role, in one transaction under the membership and role locks. Refuses the owner role in either direction, roles at or above the caller's rank, and a move that would leave nobody able to manage roles (RL-7).",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ member: ["update"] }),
+    requireWorkspaceRoleAuthority({ member: ["update"] }),
+  ] as const,
+  request: {
+    params: workspaceRoleParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: reassignWorkspaceRoleBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "How many people moved",
+      workspaceRoleReassignResultSchema,
+    ),
+    400: errorResponse("Same role, owner role, or invalid target"),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "No workspace access, missing member:update, or rank guard",
+    ),
+    404: errorResponse("A role does not exist"),
+    409: errorResponse("RL-7: the move would leave no active role manager"),
+  },
+});
+
 const createWorkspaceRoleRoute = createRoute({
   method: "post",
   operationId: "createWorkspaceRole",
@@ -671,7 +849,7 @@ const createWorkspaceRoleRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Create a workspace role",
   description:
-    "Create a custom role for this workspace. The caller cannot grant a permission they do not themselves hold (RL-3). Native replacement for authClient.organization.createRole().",
+    "Elevated: spends a one-use PA-15 step-up proof (`workspace_role_create`) sent in `X-TaskDesk-Step-Up-Token`. Create a custom role: a name (the immutable key is derived from it), an optional description and rank, and a capability set given as `capabilities`, the deprecated `permission` statements, or `cloneFromRoleId`. The caller cannot grant a capability they do not hold (RL-3) nor create a role at or above their own rank (RL-14).",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -680,6 +858,7 @@ const createWorkspaceRoleRoute = createRoute({
     requireWorkspaceRoleAuthority({ ac: ["create"] }),
   ] as const,
   request: {
+    headers: stepUpTokenHeader,
     params: workspaceIdParam,
     body: {
       required: true,
@@ -693,7 +872,7 @@ const createWorkspaceRoleRoute = createRoute({
     ),
     401: errorResponse("No credential at all"),
     403: errorResponse(
-      "An API key or impersonation session (session_required), no workspace access, missing ac:create permission, or granting a permission the caller does not themselves hold",
+      "An API key or impersonation session (session_required), no workspace access, missing ac:create permission, granting a permission the caller does not themselves hold, or the step-up proof is missing (step_up_required) or unusable (step_up_unavailable)",
     ),
     409: errorResponse(
       "A role with that name already exists in this workspace",
@@ -708,7 +887,7 @@ const updateWorkspaceRoleRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Update a workspace role's permissions",
   description:
-    "Replace -- never merge -- a role's entire permission set. The caller cannot grant a permission they do not themselves hold (RL-3). Identified by the role's opaque id, not its name. Native replacement for authClient.organization.updateRole().",
+    "Elevated: spends a one-use PA-15 step-up proof (`workspace_role_update`) sent in `X-TaskDesk-Step-Up-Token`. Replace -- never merge -- a role's capability set, and/or rename it, re-describe it or change its rank. RL-3, RL-4, RL-7 and RL-14 apply; a stale `expectedVersion` is a 409 carrying the current role; removing capabilities from your own role needs `confirmSelfEdit`. Built-in roles are cloned, not edited. `?dryRun=true` validates the same draft and CAS without spending proof or writing, and returns affected active holders and their current canonical-reach projects/work items.",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -717,20 +896,37 @@ const updateWorkspaceRoleRoute = createRoute({
     requireWorkspaceRoleAuthority({ ac: ["update"] }),
   ] as const,
   request: {
+    headers: stepUpTokenHeader,
     params: workspaceRoleParam,
+    query: z.object({ dryRun: z.enum(["true"]).optional() }),
     body: {
       required: true,
       content: { "application/json": { schema: updateWorkspaceRoleBody } },
     },
   },
   responses: {
-    200: jsonResponse("The updated role", workspaceRoleSchema),
+    200: jsonResponse(
+      "The updated role or read-only impact preview",
+      z.union([
+        workspaceRoleSchema,
+        z.object({
+          affected: z.object({
+            people: z.number().int().nonnegative(),
+            workItems: z.number().int().nonnegative(),
+            projects: z.number().int().nonnegative(),
+          }),
+        }),
+      ]),
+    ),
     400: errorResponse("Invalid body, or an unknown permission resource"),
     401: errorResponse("No credential at all"),
     403: errorResponse(
-      "An API key or impersonation session (session_required), no workspace access, missing ac:update permission, or granting a permission the caller does not themselves hold",
+      "An API key or impersonation session (session_required), no workspace access, missing ac:update permission, granting a permission the caller does not themselves hold, or the step-up proof is missing (step_up_required) or unusable (step_up_unavailable)",
     ),
     404: errorResponse("The role does not exist"),
+    409: errorResponse(
+      "RL-7: the save would leave no active person able to manage roles",
+    ),
   },
 });
 
@@ -741,7 +937,7 @@ const deleteWorkspaceRoleRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Delete a workspace role",
   description:
-    "Delete a custom role. Refused for 'owner' and for a role still assigned to any member. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole().",
+    "Request deletion of a custom role (202 pending action, executed on the requester's click approval). Refused for 'owner' and for a role still assigned to any member, at request and again at approval. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole().",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -751,9 +947,9 @@ const deleteWorkspaceRoleRoute = createRoute({
   ] as const,
   request: { params: workspaceRoleParam },
   responses: {
-    200: jsonResponse(
-      "The deleted role's id and name",
-      deletedWorkspaceRoleSchema,
+    202: jsonResponse(
+      "Pending deletion; role unchanged",
+      registeredDeletionRequestSchema,
     ),
     400: errorResponse(
       "The role is 'owner', or is still assigned to one or more members",
@@ -763,6 +959,7 @@ const deleteWorkspaceRoleRoute = createRoute({
       "An API key or impersonation session (session_required), no workspace access, or missing ac:delete permission",
     ),
     404: errorResponse("The role does not exist"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -876,25 +1073,14 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     }
   })
   .openapi(deleteWorkspaceRoute, async (c) => {
-    try {
-      const deleted = await deleteWorkspaceCtrl(
-        c.get("workspaceId"),
-        requireSessionId(c),
-      );
-      if (!deleted) {
-        throw new HTTPException(404, { message: "Workspace not found" });
-      }
-      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
-      return c.json(deleted, 200);
-    } catch (error) {
-      if (
-        error instanceof WorkspaceInUseByIdentityConnectionError ||
-        error instanceof WorkspaceDeleteLockBusyError
-      ) {
-        throw new HTTPException(409, { message: error.message });
-      }
-      throw error;
-    }
+    const workspaceId = c.get("workspaceId");
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: WORKSPACE_DELETION_ROUTE,
+      targetType: "workspace",
+      id: workspaceId,
+      workspaceId,
+    });
+    return c.json(pending, 202);
   })
   .openapi(activateWorkspaceRoute, async (c) => {
     const activated = await activateWorkspaceCtrl(
@@ -911,6 +1097,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         workspaceId: c.get("workspaceId"),
         userId: body.userId,
         role: body.role,
+        actorUserId: c.get("userId"),
       });
       void invalidateNativeAuthorization({
         userId: body.userId,
@@ -918,6 +1105,11 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       });
       return c.json(added, 200);
     } catch (error) {
+      if (
+        error instanceof RoleRankError ||
+        error instanceof InsufficientPermissionToGrantError
+      )
+        return roleErrorToHttp(error);
       if (error instanceof OwnerRoleNotAssignableHereError) {
         throw new HTTPException(400, { message: error.message });
       }
@@ -961,6 +1153,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.get("workspaceId"),
         c.req.valid("param").userId,
         body.role,
+        c.get("userId"),
       );
       void invalidateNativeAuthorization({
         userId: c.req.valid("param").userId,
@@ -968,6 +1161,11 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       });
       return c.json(updated, 200);
     } catch (error) {
+      if (
+        error instanceof RoleRankError ||
+        error instanceof InsufficientPermissionToGrantError
+      )
+        return roleErrorToHttp(error);
       if (error instanceof OwnerRoleNotAssignableHereError) {
         throw new HTTPException(400, { message: error.message });
       }
@@ -1015,10 +1213,23 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     const body = c.req.valid("json");
     markShadowLegacyAuthorizationUnknown(c);
     try {
-      const transferred = await transferWorkspaceOwnershipCtrl(
-        c.get("workspaceId"),
-        c.get("userId"),
-        body.newOwnerUserId,
+      // Elevated (retained-constraints.md: ownership transfer needs operation-bound step-up):
+      // the proof is bound to this workspace and this new owner and spent in the transfer's own
+      // transaction, after the ownership and membership checks.
+      const transferred = await runWithStepUp(
+        c,
+        {
+          operation: "workspace_ownership_transfer",
+          workspaceId: c.get("workspaceId"),
+          newOwnerUserId: body.newOwnerUserId,
+        },
+        (spend) =>
+          transferWorkspaceOwnershipCtrl(
+            c.get("workspaceId"),
+            c.get("userId"),
+            body.newOwnerUserId,
+            spend,
+          ),
       );
       void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
       setShadowLegacyAuthorization(c, "allowed");
@@ -1052,6 +1263,11 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       });
       return c.json(invitation, 200);
     } catch (error) {
+      if (
+        error instanceof RoleRankError ||
+        error instanceof InsufficientPermissionToGrantError
+      )
+        return roleErrorToHttp(error);
       if (error instanceof OwnerRoleNotAssignableHereError) {
         throw new HTTPException(400, { message: error.message });
       }
@@ -1071,84 +1287,179 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     }
   })
   .openapi(listWorkspaceRolesRoute, async (c) =>
-    c.json(await listWorkspaceRolesCtrl(c.get("workspaceId")), 200),
+    c.json(await listRoles(c.get("workspaceId")), 200),
   )
+  .openapi(getWorkspaceRoleRoute, async (c) => {
+    try {
+      return c.json(
+        await getRole(c.get("workspaceId"), c.req.valid("param").roleId),
+        200,
+      );
+    } catch (error) {
+      return roleErrorToHttp(error);
+    }
+  })
+  .openapi(listWorkspaceRoleHoldersRoute, async (c) => {
+    try {
+      return c.json(
+        await getRoleHolders(c.get("workspaceId"), c.req.valid("param").roleId),
+        200,
+      );
+    } catch (error) {
+      return roleErrorToHttp(error);
+    }
+  })
+  .openapi(getWorkspaceRoleHistoryRoute, async (c) => {
+    try {
+      return c.json(
+        await getRoleHistory(c.get("workspaceId"), c.req.valid("param").roleId),
+        200,
+      );
+    } catch (error) {
+      return roleErrorToHttp(error);
+    }
+  })
+  .openapi(previewWorkspaceRoleRoute, async (c) => {
+    try {
+      await getRole(c.get("workspaceId"), c.req.valid("param").roleId);
+      return c.json(
+        previewCapabilitySet(c.req.valid("json").capabilities),
+        200,
+      );
+    } catch (error) {
+      return roleErrorToHttp(error);
+    }
+  })
   .openapi(createWorkspaceRoleRoute, async (c) => {
     const body = c.req.valid("json");
     try {
-      const created = await createWorkspaceRoleCtrl({
-        workspaceId: c.get("workspaceId"),
-        role: body.role,
-        permission: body.permission,
-        callerStatements: await resolveCallerWorkspaceStatements(c),
-      });
+      // Elevated: the proof is bound to this exact role and spent in the creating transaction.
+      const created = await runWithStepUp(
+        c,
+        {
+          ...body,
+          operation: "workspace_role_create",
+          workspaceId: c.get("workspaceId"),
+        },
+        async (spend) =>
+          createRole({
+            workspaceId: c.get("workspaceId"),
+            name: body.role,
+            description: body.description,
+            rank: body.rank,
+            capabilities: body.capabilities,
+            permission: body.permission,
+            cloneFromRoleId: body.cloneFromRoleId,
+            caller: await resolveRoleCaller(
+              c.get("workspaceId"),
+              c.get("userId"),
+              roleAuditActor(c),
+            ),
+            beforeWrite: spend,
+          }),
+      );
       return c.json(created, 200);
     } catch (error) {
-      if (error instanceof RoleNameReservedError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      if (error instanceof InvalidPermissionResourceError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      if (error instanceof RoleLimitReachedError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      if (error instanceof InsufficientPermissionToGrantError) {
-        throw new HTTPException(403, { message: error.message });
-      }
-      if (error instanceof RoleNameTakenError) {
-        throw new HTTPException(409, { message: error.message });
-      }
-      throw error;
+      return roleErrorToHttp(error);
     }
   })
   .openapi(updateWorkspaceRoleRoute, async (c) => {
     const body = c.req.valid("json");
     try {
-      const updated = await updateWorkspaceRoleCtrl({
-        workspaceId: c.get("workspaceId"),
-        roleId: c.req.valid("param").roleId,
-        permission: body.permission,
-        callerStatements: await resolveCallerWorkspaceStatements(c),
-      });
+      const roleId = c.req.valid("param").roleId;
+      if (c.req.valid("query").dryRun === "true") {
+        const preview = await updateRole({
+          workspaceId: c.get("workspaceId"),
+          roleId,
+          name: body.name,
+          description: body.description,
+          rank: body.rank,
+          capabilities: body.capabilities,
+          permission: body.permission,
+          expectedVersion: body.expectedVersion,
+          confirmSelfEdit: body.confirmSelfEdit,
+          caller: await resolveRoleCaller(
+            c.get("workspaceId"),
+            c.get("userId"),
+            roleAuditActor(c),
+          ),
+          dryRun: true,
+        });
+        if (!("affected" in preview)) {
+          throw new Error(
+            "Role impact preview returned a role mutation result",
+          );
+        }
+        return c.json(preview, 200);
+      }
+      // Elevated: the proof is bound to this role and these exact changes. `confirmSelfEdit` only
+      // acknowledges a warning, so a confirmation retry spends no second proof.
+      const updated = await runWithStepUp(
+        c,
+        {
+          operation: "workspace_role_update",
+          workspaceId: c.get("workspaceId"),
+          roleId,
+          name: body.name,
+          description: body.description,
+          rank: body.rank,
+          capabilities: body.capabilities,
+          permission: body.permission,
+          expectedVersion: body.expectedVersion,
+        },
+        async (spend) =>
+          updateRole({
+            workspaceId: c.get("workspaceId"),
+            roleId,
+            name: body.name,
+            description: body.description,
+            rank: body.rank,
+            capabilities: body.capabilities,
+            permission: body.permission,
+            expectedVersion: body.expectedVersion,
+            confirmSelfEdit: body.confirmSelfEdit,
+            caller: await resolveRoleCaller(
+              c.get("workspaceId"),
+              c.get("userId"),
+              roleAuditActor(c),
+            ),
+            beforeWrite: spend,
+          }),
+      );
       void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
       return c.json(updated, 200);
     } catch (error) {
-      if (error instanceof InvalidPermissionResourceError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      if (error instanceof RoleNameReservedError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      if (error instanceof InsufficientPermissionToGrantError) {
-        throw new HTTPException(403, { message: error.message });
-      }
-      if (error instanceof WorkspaceRoleNotFoundError) {
-        throw new HTTPException(404, { message: error.message });
-      }
-      throw error;
+      return roleErrorToHttp(error);
+    }
+  })
+  .openapi(reassignWorkspaceRoleRoute, async (c) => {
+    const body = c.req.valid("json");
+    try {
+      const result = await reassignRoleHolders({
+        workspaceId: c.get("workspaceId"),
+        fromRoleId: c.req.valid("param").roleId,
+        toRoleId: body.toRoleId,
+        userIds: body.userIds,
+        caller: await resolveRoleCaller(
+          c.get("workspaceId"),
+          c.get("userId"),
+          roleAuditActor(c),
+        ),
+      });
+      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
+      return c.json(result, 200);
+    } catch (error) {
+      return roleErrorToHttp(error);
     }
   })
   .openapi(deleteWorkspaceRoleRoute, async (c) => {
-    try {
-      const deleted = await deleteWorkspaceRoleCtrl(
-        c.get("workspaceId"),
-        c.req.valid("param").roleId,
-      );
-      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
-      return c.json(deleted, 200);
-    } catch (error) {
-      if (error instanceof RoleNameReservedError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      if (error instanceof RoleAssignedToMembersError) {
-        throw new HTTPException(400, { message: error.message });
-      }
-      if (error instanceof WorkspaceRoleNotFoundError) {
-        throw new HTTPException(404, { message: error.message });
-      }
-      throw error;
-    }
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: WORKSPACE_ROLE_DELETION_ROUTE,
+      targetType: "workspace_role",
+      id: c.req.valid("param").roleId,
+      workspaceId: c.get("workspaceId"),
+    });
+    return c.json(pending, 202);
   });
 
 export default workspace;

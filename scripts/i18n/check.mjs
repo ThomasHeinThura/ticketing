@@ -8,6 +8,7 @@ import {
   setValueAtKey,
   writeJson,
 } from "./shared.mjs";
+import { refreshTerminologyDefaults } from "./terminology-defaults.mjs";
 
 function pluralBase(key) {
   for (const category of PLURAL_CATEGORIES) {
@@ -217,6 +218,13 @@ for (const locale of filteredLocales) {
       "  Added missing keys, using the locale's own plural wording where it had one.",
     );
   }
+}
+
+try {
+  await refreshTerminologyDefaults(shouldFix);
+} catch (error) {
+  console.error(error.message);
+  hasIssues = true;
 }
 
 if (!hasIssues) {

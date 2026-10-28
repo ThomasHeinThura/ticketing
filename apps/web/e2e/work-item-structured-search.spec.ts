@@ -6,6 +6,8 @@ import {
 } from "./helpers/g11-performance-fixture";
 
 const SEARCH_ROUTE = "**/api/work-items/search";
+/** `layout=list` is Kaneo's grouped list; rows, columns and headers are the table layout. */
+const TABLE_PATH = "/agent/projects/WLP/work?layout=table";
 
 const row = (number: number, priority: "high" | "low") => ({
   id: `search-item-${number}`,
@@ -86,14 +88,16 @@ test("structured filter is applied, scoped to the project and restored from the 
   await installPerformanceApiFixture(page);
   const requests = await mockSearch(page);
 
-  await page.goto(WORK_LIST_PATH);
+  await page.goto(TABLE_PATH);
   await openFilter(page);
   await page.getByRole("button", { name: "Text" }).click();
   const filter = page.getByRole("textbox", { name: "Filter work items" });
   await filter.fill("priority:high");
   await page.getByRole("button", { name: "Apply filter" }).click();
   await expect(page).toHaveURL(/filter=priority%3Ahigh/u);
-  await expect(page.getByText("Matching high priority item")).toBeVisible();
+  await expect(
+    page.getByText("Matching high priority item", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Nonmatching low priority item")).toHaveCount(0);
   await expect(
     page.locator("[data-testid=work-item-list-populated] tbody tr"),
@@ -115,7 +119,11 @@ test("structured filter is applied, scoped to the project and restored from the 
     },
   });
 
-  await page.getByRole("button", { name: "Title" }).click();
+  // The Title column header's sort control.
+  await page
+    .getByRole("columnheader")
+    .getByRole("button", { name: /^Title, .*sort priority/u })
+    .click();
   await expect(page).toHaveURL(/sort=title/u);
   await expect(page).toHaveURL(/filter=priority%3Ahigh/u);
   await expect
@@ -127,7 +135,9 @@ test("structured filter is applied, scoped to the project and restored from the 
   await expect(
     page.getByRole("textbox", { name: "Filter work items" }),
   ).toHaveValue("priority:high");
-  await expect(page.getByText("Matching high priority item")).toBeVisible();
+  await expect(
+    page.getByText("Matching high priority item", { exact: true }),
+  ).toBeVisible();
 });
 
 test("a plain list read stays on the list route and loads no filter editor", async ({
@@ -136,9 +146,15 @@ test("a plain list read stays on the list route and loads no filter editor", asy
   await installPerformanceApiFixture(page);
   const requests = await mockSearch(page);
   await page.goto(WORK_LIST_PATH);
+  // The list route paints a plain table while project states load, then Kaneo's grouped
+  // list; the item title is on screen in both.
   await expect(
-    page.locator("[data-testid=work-item-list-populated] tbody tr").first(),
+    page.getByText("Seeded work item 1", { exact: true }).first(),
   ).toBeVisible();
+  await expect(page).toHaveURL(
+    /\/agent\/projects\/WLP\/work\?(?:.*&)?layout=list/,
+  );
+  expect(new URL(page.url()).searchParams.has("filter")).toBe(false);
   await expect(
     page.getByRole("form", { name: "Work item filters" }),
   ).toHaveCount(0);
@@ -152,7 +168,7 @@ test("visual and text modes keep sort, direction and columns through history and
   const requests = await mockSearch(page);
 
   await page.goto(
-    `${WORK_LIST_PATH}&sort=priority&dir=desc&columns=%5B%22key%22%2C%22priority%22%5D&filter=assignee%3A%40me`,
+    `${TABLE_PATH}&sort=priority&dir=desc&columns=%5B%22key%22%2C%22priority%22%5D&filter=assignee%3A%40me`,
   );
   await expect(
     page.getByRole("form", { name: "Work item filters" }),
@@ -179,9 +195,10 @@ test("visual and text modes keep sort, direction and columns through history and
 
   await page.getByRole("button", { name: "Visual" }).click();
   await expect(page).toHaveURL(/filterMode=visual/u);
+  // The group operator is a Kaneo popover trigger.
   await expect(
-    page.getByRole("combobox", { name: "Group operator" }).first(),
-  ).toBeVisible();
+    page.getByRole("button", { name: "Group operator" }).first(),
+  ).toContainText("all (AND)");
 
   await page.goBack();
   await expect(page).toHaveURL(/filterMode=text/u);
@@ -259,7 +276,7 @@ test("a filter that matches nothing says so and keeps the filter visible", async
   }));
   await page.goto(`${WORK_LIST_PATH}&filter=priority%3Aurgent`);
   await expect(page.getByTestId("work-item-list-empty")).toContainText(
-    "No work items match this filter",
+    "No Work items match this filter",
   );
   await expect(
     page.getByRole("form", { name: "Work item filters" }),
@@ -375,7 +392,9 @@ test("the board applies a URL filter across its state columns and exposes the fi
   await expect(
     page.getByRole("form", { name: "Work item filters" }),
   ).toBeVisible();
-  await expect(page.getByText("Matching high priority item")).toBeVisible();
+  await expect(
+    page.getByText("Matching high priority item", { exact: true }),
+  ).toBeVisible();
   expect(requests.at(-1)).toMatchObject({
     workspaceId: "ws-g11",
     query: {
@@ -425,7 +444,7 @@ test("a filter matching more than one page loads the rest on demand", async ({
       }),
     };
   });
-  await page.goto(`${WORK_LIST_PATH}&filter=priority%3Ahigh`);
+  await page.goto(`${TABLE_PATH}&filter=priority%3Ahigh`);
   const rows = page.locator("[data-testid=work-item-list-populated] tbody tr");
   await expect(rows).toHaveCount(2);
   await page.getByTestId("work-item-list-load-more").click();

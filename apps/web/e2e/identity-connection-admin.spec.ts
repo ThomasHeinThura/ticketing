@@ -31,9 +31,13 @@ test("list shows staff and customer connections and customer ones are not editab
   await expectNoSeriousAxeViolations(page);
 
   await page.getByRole("link", { name: "View" }).click();
-  await expect(page).toHaveURL(`${LIST}/conn-customer`);
-  await expect(page.getByText("Managed from the organisation")).toBeVisible();
-  await expect(page.getByLabel("Connection name")).toHaveCount(0);
+  await expect(page).toHaveURL("/agent/god-mode/organisations/org-1/identity");
+  await expect(
+    page.getByRole("heading", { name: "Organisation identity", level: 1 }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Connection name")).toHaveValue(
+    "Contoso customers",
+  );
   await expectNoSeriousAxeViolations(page);
 });
 

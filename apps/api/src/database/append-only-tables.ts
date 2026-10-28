@@ -17,3 +17,13 @@
  * this concept is `migrations.md`, and this list is this file's mirror of it in code.
  */
 export const APPEND_ONLY_TABLES: readonly string[] = ["activity", "audit_log"];
+
+/**
+ * Tables the application role may only READ (`SELECT`). Writers are SECURITY DEFINER
+ * functions owned by the migration role, so a compromised API process cannot forge rows.
+ *
+ * `audit_chain_anchor` is written only by `audit_log_purge_prefix(bigint)` (migration 0132),
+ * which derives the anchor from the rows it deletes and enforces the retention floor.
+ * Granting INSERT here would let the application role forge an anchor (review-p0 F2/F4).
+ */
+export const READ_ONLY_TABLES: readonly string[] = ["audit_chain_anchor"];

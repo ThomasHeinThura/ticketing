@@ -1,4 +1,7 @@
-import { TASK_TARGET_WORK_ITEM_ROUTE_KEYS } from "./project-reach-route-keys";
+import {
+  PROJECT_AGILE_ITEM_ROUTE_KEYS,
+  TASK_TARGET_WORK_ITEM_ROUTE_KEYS,
+} from "./project-reach-route-keys";
 
 /**
  * The route keys each behavioural reach table covers. Pure data (no DB), imported by the
@@ -12,6 +15,10 @@ export const ITEM_WRITE_ROUTE_KEYS = [
   "DELETE /api/work-items/{key}/assign",
   "DELETE /api/work-items/{key}",
   "POST /api/work-items/{key}/rank",
+  "POST /api/v2/work-items/{key}/parent",
+  "DELETE /api/v2/work-items/{key}/parent",
+  "POST /api/v2/work-items/{key}/archive",
+  "POST /api/v2/work-items/{key}/move",
   "POST /api/work-items/{key}/parent",
   "DELETE /api/work-items/{key}/parent",
   "POST /api/work-items/{key}/watch",
@@ -55,6 +62,8 @@ export const READ_ROUTE_KEYS = [
   "GET /api/work-items/{key}",
   "GET /api/work-items/{key}/sla",
   "GET /api/work-items/{key}/activity",
+  "GET /api/work-items/{key}/reconstruct",
+  "GET /api/audit/entity/{type}/{id}",
   "GET /api/work-items/{key}/tree",
   "GET /api/work-items/{key}/children",
   "GET /api/work-items/{key}/transitions",
@@ -76,7 +85,33 @@ export const READ_ROUTE_KEYS = [
  * `task-target-reach.test.ts`.
  */
 export const OTHER_COVERED_ROUTE_KEYS = [
+  // approval-authoring.test.ts covers the staff list reach guard; customer predicates remain in the handler.
+  "GET /api/work-items/{key}/approvals",
+  // attachment.test.ts exercises the one-day restore window and current reach/authority.
+  "POST /api/attachments/{id}/restore",
+  // attachment.test.ts proves the successful reachable preview and foreign-workspace denial.
+  "GET /api/attachments/{id}/preview",
+  // Dedicated recovery tests assert hidden-project 404 and missing-capability 403.
+  "POST /api/v2/work-items/{key}/restore",
   "GET /api/canned-responses",
+  // Dedicated real credential/reach cases in approval authoring integration tests.
+  "GET /api/work-items/{key}/approval-request-context",
+  "GET /api/work-items/{key}/approval-candidates",
   "POST /api/work-items/search",
+  // P5 change detail: hidden-project 404 and per-capability refusals in p5-service-changes.test.ts.
+  "GET /api/work-items/{key}/change",
+  "PATCH /api/work-items/{key}/change",
+  "POST /api/work-items/{key}/change/override-freeze",
+  "POST /api/work-items/{key}/service",
+  // P5 agile planning: the item-scoped estimate, cycle and module routes, in p5-agile-reach.test.ts.
+  ...PROJECT_AGILE_ITEM_ROUTE_KEYS,
   ...TASK_TARGET_WORK_ITEM_ROUTE_KEYS,
+] as const;
+
+/** Real subject-reach and per-project capability table in work-item-relations.test.ts. */
+export const RELATION_REACH_ROUTE_KEYS = [
+  "GET /api/work-items/{key}/relations",
+  "GET /api/work-items/{key}/relation-candidates",
+  "POST /api/work-items/{key}/relations",
+  "DELETE /api/work-items/{key}/relations/{id}",
 ] as const;

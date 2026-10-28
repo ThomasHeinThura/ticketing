@@ -1,0 +1,383 @@
+{
+	"verdict": "fail",
+	"summary": "Fail: 3 high findings are unresolved.\n(1) Four legacy DELETE routes (comment, activity comment, task-relation, workflow-rule) still hard-delete immediately with API keys, contradicting the 'all direct deletes converted' claim.\n(2) Migration 0131 lets the application role purge the whole audit history early: the SECURITY DEFINER function has no retention floor, EXECUTE is granted, and the role can INSERT anchors.\n(3) An approved workspace deletion hard-deletes without any legal-hold check.\nThe registered pending-action core (hash, version, scope recheck, typed name + bound step-up, failed state, idempotency) is sound.\nThe web flow navigates away instead of an in-place dialog, and the Kaneo draft-task cleanup was removed, leaving orphan drafts.",
+	"findings": [
+		{
+			"id": "F1",
+			"severity": "high",
+			"category": "security",
+			"requirement": "PA-1",
+			"file": "apps/api/src/comment/index.ts:192; apps/api/src/activity/index.ts:227 (hard DELETE at activity/repository.ts:302-320); apps/api/src/task-relation/index.ts:290 (task-relation/controllers/delete-task-relation.ts:36); apps/api/src/workflow-rule/index.ts:122",
+			"problem": "Four legacy DELETE routes still delete immediately, with no pending action, and accept API keys: DELETE /api/comment/{id}, DELETE /api/activity/comment, DELETE /api/task-relation/{id} and DELETE /api/workflow-rule/{id}. None of their policies sets sessionOnly (comment/policy.ts:103, activity/policy.ts:107, task-relation/policy.ts:83, workflow-rule/policy.ts:65). The implementers' claim that 'all direct deletes' were converted is therefore not true. PA-4 names relation and comment explicitly.",
+			"impact": "Any API-key holder, including an agent that holds TASKDESK_API_KEY and bypasses the MCP server, can hard-delete comments, relations and workflow rules with no human approval. This breaks PA-1, PA-2, PA-4 and PA-10.",
+			"recommended_fix": "Retire these routes with 410, as was done for DELETE /api/task/{id}, or move them behind RegisteredDeletionTargets. Add a route-table test that fails on any DELETE route that neither returns 202 nor is an explicitly allow-listed unlink or sessionOnly route."
+		},
+		{
+			"id": "F2",
+			"severity": "high",
+			"category": "security",
+			"requirement": "PA-12",
+			"file": "apps/api/drizzle/0131_audit_chain_anchor.sql:78-113,29-38; apps/api/src/database/ensure-application-role.ts:222-233; apps/api/src/database/append-only-tables.ts:19-23; apps/api/src/audit/purge.ts:30,66",
+			"problem": "The SECURITY DEFINER function audit_log_purge_prefix checks that the anchor exists in the current transaction, then its hash, count, the chain head and the legal-hold rule. It never checks retention: the 12-month cutoff exists only in TypeScript (purge.repository.ts:88). The trigger carve-out trusts a.purged_through_at, which the caller supplies. The application role is granted EXECUTE and has INSERT on audit_chain_anchor (append-only grant), and it can SELECT audit_log. So the application role can compute a matching hash and count, insert an anchor with purged_through_at='infinity', and delete the entire history except the head. verify-audit-chain then passes, because it starts from the newest anchor. background-jobs.md:13 says audit-purge runs 'as taskdesk_maint'. AU-15 / ensure-application-role assume the application role holds no DELETE on audit_log.",
+			"impact": "A compromised API process or a SQL injection can wipe the audit trail early, at any time, leaving only an anchor row. This contradicts the append-only guarantee the migration was meant to keep. The GUC itself is not spoofable for the application role, because that role has no DELETE privilege on audit_log; in single-URL mode, where the owner is the application role, the carve-out adds a further bypass.",
+			"recommended_fix": "Enforce a retention floor inside the function: deleted rows' created_at must be < now() - a minimum interval held in a table the application role cannot write, or hard-coded. Have the function compute and insert the anchor itself from the rows it deletes, and revoke INSERT on audit_chain_anchor from the application role. Alternatively, do not grant EXECUTE to the application role and run audit-purge as taskdesk_maint, as documented. Add a negative test proving that an early purge by the application role is refused."
+		},
+		{
+			"id": "F3",
+			"severity": "high",
+			"category": "data-loss",
+			"requirement": "PA-12",
+			"file": "apps/api/src/workspace/workspace-deletion-target.ts:66-87",
+			"problem": "An approved workspace deletion is still an immediate hard DELETE of the workspace row and everything that cascades from it. It runs no legal_hold check and has no soft-delete window. data-model.md:39 says an open hold suspends 'hard delete of held business/history data in the matching scope'.",
+			"impact": "A workspace whose organisation or people are under an open legal hold loses all work items, comments, activity and attachment rows as soon as the requester approves. Stored objects are orphaned. Step-up does not mitigate this, because the requester is the approver.",
+			"recommended_fix": "Under LOCK TABLE legal_hold IN SHARE MODE, refuse execution with 409 legal_hold when an open hold covers the workspace organisation or any person in it. Better, convert workspace deletion to a soft delete with purge_after, handled by the 30-day purge. Hand attachments to attachment-gc."
+		},
+		{
+			"id": "F4",
+			"severity": "medium",
+			"category": "security",
+			"requirement": "",
+			"file": "apps/api/src/audit/purge.repository.ts:202-215; apps/api/src/database/append-only-tables.ts:19-23",
+			"problem": "The application role has INSERT on audit_chain_anchor, and verifyAuditChain uses the newest anchor (ORDER BY created_at DESC). Anyone with the application role can insert a forged anchor with a future created_at and an arbitrary last_purged_row_hash. Because the table is append-only (trigger 0131:17-21), nobody can remove that row without disabling triggers.",
+			"impact": "Chain verification is broken permanently (a denial of service on AU-15 evidence). Every later legitimate anchor sorts before the forged one.",
+			"recommended_fix": "Same fix as F2: only the SECURITY DEFINER function may write anchors (revoke INSERT from the application role), and it stamps created_at itself. Optionally make the verifier walk the anchor chain, not trust the newest row."
+		},
+		{
+			"id": "F5",
+			"severity": "medium",
+			"category": "correctness",
+			"requirement": "PA-12",
+			"file": "apps/api/src/audit/purge.repository.ts:126-136,174; apps/api/drizzle/0131_audit_chain_anchor.sql:34-35",
+			"problem": "The anchor's purged_through_at is the created_at of the last row by seq, not max(created_at) over the range. audit_log.created_at is the transaction's now(), and seq is assigned later under the chain lock (audit/repository.ts:241-246). A transaction that started later but took the lock earlier therefore gets a lower seq and a later created_at. Any such earlier row in the range fails the trigger check OLD.created_at <= purged_through_at, which raises and aborts the purge.",
+			"impact": "Under concurrent auditing the nightly purge fails. When the 10,000-row cap fixes the boundary, it fails on the same prefix every night, wedging retention permanently.",
+			"recommended_fix": "Use max(created_at) over the range for purged_through_at. In the trigger, check against that value, or derive the bound inside the function. Add a test with an out-of-order created_at."
+		},
+		{
+			"id": "F6",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "",
+			"file": "apps/web/src/components/shared/modals/create-task-modal.tsx:275-296 (draft creation ~364-395)",
+			"problem": "The Kaneo draft cleanup was removed. Pasting or uploading an image creates a real draft task (ensureDraftTask). 'Discard' used to delete it; now it is silently kept, as an 'Untitled task' with its attachment. The in-code comment admits this.",
+			"impact": "This is a Kaneo UX regression and a data leak: every discarded create that contains an image leaves an orphan task in the project, and the 'Discard' wording contradicts what happens.",
+			"recommended_fix": "Give unsubmitted drafts their own audited, creator-only abandon path that is not deletion (for example a draft state hidden until submit, abandoned server-side), or stage uploads without creating a task. Add a test that a discarded draft disappears."
+		},
+		{
+			"id": "F7",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "PA-3",
+			"file": "[sub-review, not re-read by lead reviewer] apps/web/src/hooks/use-open-pending-action.ts:14-20 (callers: nav-projects.tsx, task-delete-button.tsx, backlog-task-row.tsx, task-subtasks.tsx, label-catalogue.tsx, column-editor.tsx, members-table.tsx, general.tsx, roles.tsx, canned-responses.tsx)",
+			"problem": "After Kaneo's own confirm dialog, every web delete navigates the whole page to /agent/settings/profile/pending-actions/$id. It does not open the approval dialog in place.",
+			"impact": "The person confirms twice and loses their board or settings context. PA-3 says 'to the person it is a confirm dialog'. This also goes against AGENTS.md's preserve-Kaneo-interactions rule.",
+			"recommended_fix": "Render the approval body (server summary, typed name, step-up) in a Kaneo Dialog on the current screen, replacing the first confirm. Keep the profile page for API-key, MCP and notification approvals."
+		},
+		{
+			"id": "F8",
+			"severity": "medium",
+			"category": "data-loss",
+			"requirement": "PA-12",
+			"file": "[sub-review, not re-read by lead reviewer] apps/api/src/scheduler/soft-delete-purge.repository.ts:18-58",
+			"problem": "The soft-delete purge checks holds only against the work item's requester and assignee and the organisation. A person-scoped hold on a comment author, attachment uploader, time-entry person or activity actor is not checked, yet their rows cascade away with the work item or project.",
+			"impact": "History authored by a held person is hard-deleted by the 30-day purge.",
+			"recommended_fix": "Extend the hold predicate to every person column that cascades, and add an integration test with a held comment author."
+		},
+		{
+			"id": "F9",
+			"severity": "medium",
+			"category": "correctness",
+			"requirement": "PA-12",
+			"file": "[sub-review, not re-read by lead reviewer] apps/api/src/scheduler/soft-delete-purge.ts:28,94-116; soft-delete-purge.repository.ts:99-104",
+			"problem": "Each daily run purges at most 50 projects and 50 work items, in a fixed order. Rows that come back awaiting_attachments stay at the head of that order. Shared-object attachments are never collected by attachment-gc.",
+			"impact": "Bulk deletes build an unbounded backlog. 50 or more permanently-awaiting items stall the work-item purge completely, and the run does not report itself as degraded.",
+			"recommended_fix": "Loop until a time budget runs out, rotate or skip rows that are awaiting attachments, and report permanently retained rows as degraded."
+		},
+		{
+			"id": "F10",
+			"severity": "medium",
+			"category": "gap",
+			"requirement": "EV-1",
+			"file": "[sub-review, not re-read by lead reviewer] apps/api/src/workspace/controllers/create-workspace.ts (diff ~226-255); apps/api/src/notification/index.ts:191-207",
+			"problem": "workspace.created now writes a parent envelope through enqueueOutboxEvent, but the owner's notification still comes from the in-memory publishEvent subscriber after commit (fire-and-forget). The existing resolveWorkspaceCreatedRecipient is not used.",
+			"impact": "EV-1's 'no fire-and-forget path' is not met even for the one migrated kind.",
+			"recommended_fix": "Use enqueueNotificationEvent with the resolver inside the transaction, and remove the legacy subscriber for this kind."
+		},
+		{
+			"id": "F11",
+			"severity": "medium",
+			"category": "ui-ux",
+			"requirement": "PA-3",
+			"file": "[sub-review, not re-read by lead reviewer] apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx:268-286; apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:420-445",
+			"problem": "The old flows redirected after deleting a workspace or project. After an approval executes, the code only invalidates queries; it does not clear the active workspace or project, and it does not navigate.",
+			"impact": "The shell can keep pointing at a deleted workspace or project: stale sidebar entries and 404s. This was not checked in a browser.",
+			"recommended_fix": "Once a workspace or project deletion reaches executed, clear the active store and navigate as the old flow did. Add a test."
+		},
+		{
+			"id": "F12",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "PA-14",
+			"file": "[sub-review, not re-read by lead reviewer] apps/api/src/approval/policy.ts:32-37",
+			"problem": "POST /api/approvals/{id}/decide is not sessionOnly, and no mcp_destructive pending-action mechanism exists. No MCP tool exposes decide or bulk operations today.",
+			"impact": "Any API key with approval:decide can decide approvals directly. MCP cannot reach this today.",
+			"recommended_fix": "Implement mcp_destructive, or make decide session-only for keys, before any MCP decide or bulk tool is added."
+		},
+		{
+			"id": "F13",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "PA-4",
+			"file": "apps/api/src/pending-action/deletion-targets.ts:1533",
+			"problem": "requestRegisteredDeletion hard-codes origin: apiKey ? 'api' : 'web'. A repository-wide grep finds no code path that ever sets origin 'mcp'.",
+			"impact": "MCP-originated deletion requests are recorded and notified as 'api'. Audit and notification cannot tell an agent from a CI key.",
+			"recommended_fix": "Derive origin from the key's is_mcp flag in every request path, and test it."
+		},
+		{
+			"id": "F14",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "PA-4",
+			"file": "apps/api/src/index.ts (authGuard, DELETE-only idempotency wiring ~1417-1424)",
+			"problem": "Idempotency-Key handling is wired only for method === 'DELETE'. Bulk deletion is POST /api/work-items/bulk, and user deactivation is a POST. The retry rule in PA-4 also applies to those.",
+			"impact": "A keyed retry of a bulk-delete request is not replayed. It still gets 409 pending_approval from the unique index, so no duplicate pending action is created, but the contract is not met.",
+			"recommended_fix": "Apply the middleware to every pending-action-producing route, or to all unsafe methods as api-design.md describes."
+		},
+		{
+			"id": "F15",
+			"severity": "low",
+			"category": "correctness",
+			"requirement": "PA-6",
+			"file": "apps/api/src/workspace/workspace-deletion-target.ts:45-50",
+			"problem": "workspaceDeletionTarget.load reads the workspace without FOR UPDATE. The project target locks its row; this one does not. The fingerprint and typed-name checks can pass, then a concurrent rename commits, and the DELETE proceeds on the renamed row.",
+			"impact": "There is a small TOCTOU window between the confirmation check and execution.",
+			"recommended_fix": "Lock the workspace row (FOR UPDATE) in load."
+		},
+		{
+			"id": "F16",
+			"severity": "low",
+			"category": "correctness",
+			"requirement": "PA-6",
+			"file": "apps/api/src/pending-action/execution-failure.ts:63-83",
+			"problem": "failOnExecutorError turns every non-HTTP error into a terminal 'failed' state. That includes transient serialization failures, deadlocks and lock timeouts (40001, 40P01, 55P03); only the user-deactivation path passes these through.",
+			"impact": "A transient conflict permanently fails an approved deletion, and the requester has to start a new request.",
+			"recommended_fix": "Pass transient SQLSTATEs through as retryable 409/503 so the action stays pending."
+		},
+		{
+			"id": "F17",
+			"severity": "low",
+			"category": "security",
+			"requirement": "PA-10",
+			"file": "[sub-review, not re-read by lead reviewer] packages/mcp/src/utils/untrusted.ts:27-62; packages/mcp/src/taskdesk/client.ts:60-74",
+			"problem": "Untrusted wrapping is applied by a key-name allow-list. User-written values under other keys, and error bodies (up to 500 characters of the raw response), reach the model unwrapped. The wrapping is structural JSON, so a closing delimiter cannot escape it.",
+			"impact": "Injected text can reach the model outside the wrapper.",
+			"recommended_fix": "Wrap every string by default and exempt only known id, enum and timestamp keys. Wrap error detail as well."
+		},
+		{
+			"id": "F18",
+			"severity": "low",
+			"category": "test",
+			"requirement": "PA-12",
+			"file": "[sub-review, not re-read by lead reviewer] tests/api-integration/audit-purge.test.ts:49,63,86,115",
+			"problem": "The purge integration tests call ctx.skip() when migration 0131 is absent. No test asserts that an early (inside-retention) purge, or a forged anchor, is refused at the database level.",
+			"impact": "A database without the migration shows green, and F2 and F4 are not covered by any test.",
+			"recommended_fix": "Assert that the migration is present in the integration suite, and add negative database-level tests."
+		},
+		{
+			"id": "F19",
+			"severity": "low",
+			"category": "test",
+			"requirement": "",
+			"file": "[sub-review, not re-read by lead reviewer] tests/api-integration/project-archive-freeze-legacy.test.ts:~1580-1620; tests/api-integration/label-workspace-cascade-task-delete-race.test.ts:~46-115",
+			"problem": "The race tests now delete the task with raw SQL instead of through the production deletion path.",
+			"impact": "The approval executor and the soft-delete purge are no longer raced against the archive freeze or the label cascade.",
+			"recommended_fix": "Race the approval executor or the purge instead."
+		},
+		{
+			"id": "F20",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "PA-12",
+			"file": "[sub-review, not re-read by lead reviewer] apps/api/src/scheduler/session-cleanup.ts:19-36",
+			"problem": "Expired idempotency_key rows are never purged; they are only overwritten when a key is reused, and the comment still says the table does not exist. Soft-deleted comments and organisations, and terminal parent envelopes, are not purged either.",
+			"impact": "Tables grow without bound.",
+			"recommended_fix": "Add the cleanup to session-cleanup and track the remaining purges as named gaps."
+		},
+		{
+			"id": "F21",
+			"severity": "low",
+			"category": "ui-ux",
+			"requirement": "PA-6",
+			"file": "[sub-review, not re-read by lead reviewer] apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.tsx:449-460; apps/web/src/fetchers/pending-action/read-pending-deletion.ts:12-16",
+			"problem": "The step-up 403 codes and 429 all show a generic 'approvalFailed'. A repeat request gets the raw '409 pending_approval: <id>' string as a toast, instead of opening the existing action.",
+			"impact": "The user cannot tell a wrong proof from a real failure, or find the action that is already pending.",
+			"recommended_fix": "Map the error codes to specific messages. Return a structured pendingActionId on the 409 and open it."
+		},
+		{
+			"id": "F22",
+			"severity": "low",
+			"category": "ui-ux",
+			"requirement": "",
+			"file": "[sub-review, not re-read by lead reviewer] i18n/*.json",
+			"problem": "Every new pending-deletion and approval key is present in all locales, but each non-English value is the English string.",
+			"impact": "Non-English users see English in the new deletion flow.",
+			"recommended_fix": "Track the translation as open work."
+		},
+		{
+			"id": "F23",
+			"severity": "low",
+			"category": "test",
+			"requirement": "",
+			"file": "[sub-review, not re-read by lead reviewer] apps/web/src/components/work-item/work-item-board.test.tsx",
+			"problem": "Assertions for selection checkboxes, 'disables Move up on first / Move down on last' and failed-move focus were removed. work-item-board.tsx is modified in the tree but is not on the P0 list.",
+			"impact": "Coverage may have been dropped for behaviour that still exists.",
+			"recommended_fix": "Confirm the component change, and restore equivalent assertions or document why they no longer apply."
+		},
+		{
+			"id": "F24",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "PA-1",
+			"file": "[sub-review, not re-read by lead reviewer] apps/api/src/label/index.ts:304; packages/mcp/src/tools/register.ts (detach_label_from_task removed)",
+			"problem": "DELETE /api/label/{id}/task (detach) still runs directly with any credential, while the MCP detach tool was removed.",
+			"impact": "The policy is inconsistent: either detach is a deletion, in which case the route bypasses approval, or it is not, in which case the MCP capability was lost unnecessarily.",
+			"recommended_fix": "Record a decision, then either restore the tool or gate the route."
+		},
+		{
+			"id": "F25",
+			"severity": "low",
+			"category": "test",
+			"requirement": "PA-3",
+			"file": "[sub-review, not re-read by lead reviewer] apps/web/src/routes/agent/_layout/_authenticated/agent/settings/profile/pending-actions/$id.test.tsx",
+			"problem": "Approval-page tests cover project, workspace and redacted rows only. They do not cover the 9 click-confirmed registered targets or query invalidation after approval.",
+			"impact": "Regressions in the click path go uncaught.",
+			"recommended_fix": "Add a parameterised click-approval test."
+		},
+		{
+			"id": "F26",
+			"severity": "low",
+			"category": "gap",
+			"requirement": "EV-2",
+			"file": "[sub-review, not re-read by lead reviewer] apps/api/src/events/outbox-consumer.ts:33-35,154-179",
+			"problem": "With no consumers registered, every claimed parent is marked 'delivered', including historical pending rows on the live database. This has no side effects. Consumers added in P4 will never see interim events, and this is undocumented.",
+			"impact": "This is a silent semantic decision about backfill.",
+			"recommended_fix": "Record the decision in events.md or the decision log."
+		}
+	],
+	"requirements": [
+		{
+			"id": "EV-1",
+			"state": "partial",
+			"note": "Only workspace.created writes its envelope in the same transaction, and its notification is still fire-and-forget (F10). Legacy task.* kinds are not migrated (known open)."
+		},
+		{
+			"id": "EV-2",
+			"state": "partial",
+			"note": "[sub-review] Parent claims use FOR NO KEY UPDATE SKIP LOCKED, terminal-state guards, bounded retries and dead-lettering. Re-drain idempotency holds trivially because no consumers exist yet. The replay test only checks the inbox unique key (F26)."
+		},
+		{
+			"id": "EV-3",
+			"state": "blocked",
+			"note": "Needs the P4 automation runtime (known)."
+		},
+		{
+			"id": "EV-4",
+			"state": "met",
+			"note": "No new event key was found in this phase. check:events passes per the coordinator; not independently re-run."
+		},
+		{
+			"id": "EV-5",
+			"state": "partial",
+			"note": "The new pending-action resolver notifies only staff requesters (recipient-resolvers.ts ~305-340). Customer projection of legacy kinds is unverified."
+		},
+		{
+			"id": "PA-1",
+			"state": "partial",
+			"note": "Converted routes run their normal policy first. Four legacy DELETE routes still delete directly (F1)."
+		},
+		{
+			"id": "PA-2",
+			"state": "partial",
+			"note": "Registered targets return 202 with pendingActionId, summary, confirmation, expiresAt and approveUrl, and a requested audit row and event. Legacy direct routes are not covered (F1)."
+		},
+		{
+			"id": "PA-3",
+			"state": "partial",
+			"note": "The approval UI renders from the server summary, but the person is navigated away instead of getting an in-place dialog (F7), and there is no post-approval redirect (F11)."
+		},
+		{
+			"id": "PA-4",
+			"state": "partial",
+			"note": "202 for key-originated requests, key-owner notification and the 409 pending_approval unique index are present. Gaps: F1 legacy routes, F13 origin 'mcp' never set, F14 idempotency on DELETE only."
+		},
+		{
+			"id": "PA-5",
+			"state": "partial",
+			"note": "Project, workspace and workspace-role are sessionOnly via requireSessionOnly and policy. API-key, webhook and identity-connection deletion were not checked in this phase."
+		},
+		{
+			"id": "PA-5a",
+			"state": "not_met",
+			"note": "Service keys are missing (known)."
+		},
+		{
+			"id": "PA-6",
+			"state": "met",
+			"note": "For registered targets: re-checks pending state and expiry, re-runs the policy against both the original credential and the current session, verifies the payload hash and target versions (required-access.ts:100-123, deletion-targets.ts:225-234) and the stored scope, then typed name plus a step-up bound to the action, then executes the stored target. The intermediate 'approved' state is not persisted (pending to executed directly). Minor: F15, F16."
+		},
+		{
+			"id": "PA-7",
+			"state": "met",
+			"note": "Single-use through state='pending' conditional updates, the payload hash and the target fingerprint."
+		},
+		{
+			"id": "PA-8",
+			"state": "met",
+			"note": "TTL is 15 minutes (service.ts ACTION_TTL_MS). New targets carry workspace_id, so they are in the expire job's candidate set. The expire job itself predates this phase."
+		},
+		{
+			"id": "PA-9",
+			"state": "partial",
+			"note": "Approval-time invalidation reasons map from evaluateActionRequiredAccess (click-deletion-executor.ts:301-327). Proactive invalidation on reach or capability change for the new target types is unverified."
+		},
+		{
+			"id": "PA-10",
+			"state": "partial",
+			"note": "MCP has no confirm or approve argument, and approval is sessionOnly. Raw API keys can still delete via F1."
+		},
+		{
+			"id": "PA-11",
+			"state": "met",
+			"note": "requested, decided, executed and failed each have an audit row and event, including the separate-transaction failed path (execution-failure.ts:122-268). The viewed audit predates this phase."
+		},
+		{
+			"id": "PA-12",
+			"state": "partial",
+			"note": "30-day purge, audit-purge and the hold fence exist. Gaps: F2/F5 audit purge safety, F3 workspace hard delete ignores holds, F8 person-hold gap, F9 throughput, F20."
+		},
+		{
+			"id": "PA-13",
+			"state": "partial",
+			"note": "Known: POST /api/instance/purge is written but not mounted. No MCP purge tool exists."
+		},
+		{
+			"id": "PA-14",
+			"state": "partial",
+			"note": "No mcp_destructive mechanism exists, and no MCP tool exposes decide or bulk operations today (F12)."
+		},
+		{
+			"id": "PA-15",
+			"state": "met",
+			"note": "Step-up challenge and proof admission were extended to the requester's own typed-name and bulk pending deletions through pendingDeletionStepUpAccess, rechecked inside the admitted transaction (step-up-api.ts diff). Deactivation still requires instance admin. Not exercised at runtime by this reviewer."
+		}
+	],
+	"unverified": [
+		"No database integration tests, migrations or servers were run by this reviewer (read-only). Runtime behaviour of the 0131 function and trigger is inferred from SQL.",
+		"No browser verification. Web findings F6, F7 and F11 are inferred from code, not compared live against Kaneo 42bb8011.",
+		"Shape and volume of historical pending outbox parents on the live or SIT database.",
+		"Whether better-auth /api/auth/api-key/delete, webhook or identity-connection deletes are session-only (PA-5 for those targets).",
+		"Proactive PA-9 invalidation (membership or role change) for the 11 new registered target types.",
+		"Findings tagged [sub-review] came from parallel sub-reviews; the lead reviewer did not re-read those exact lines. F1, F2, F3, F5, F6 and F13-F16 were verified directly.",
+		"Whether the key owner is always apikey.reference_id; the notification resolver requires reference_id, while access accepts reference_id or user_id.",
+		"Technexus and CI were not run."
+	]
+}

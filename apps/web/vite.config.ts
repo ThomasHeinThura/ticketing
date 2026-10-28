@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { cp } from "node:fs/promises";
 import path from "node:path";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
@@ -18,15 +19,18 @@ function preloadWorkRouteForDirectVisits(): Plugin {
     generateBundle: {
       order: "post",
       handler(_options, bundle) {
+        // Matched by the module it contains: the route component shares its chunk with its
+        // first-paint dependencies (the `work-route` code-splitting group).
         const routeChunk = Object.values(bundle).find(
           (item) =>
             item.type === "chunk" &&
-            item.isDynamicEntry &&
-            item.facadeModuleId
-              ?.replaceAll("\\", "/")
-              .endsWith(
-                "/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component",
-              ) === true,
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith(
+                  "/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component",
+                ),
+            ),
         );
         const html = bundle["index.html"];
         if (!routeChunk || !html || html.type !== "asset")
@@ -75,6 +79,42 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve its parent outlet chunk.",
           );
         addChunkAndImports(projectRootChunk.fileName);
+        // The restored Kaneo frame wraps the outlet. Its lazy import otherwise starts
+        // after entry evaluation, serializing the frame's dependency downloads with
+        // authentication and delaying the work heading's first paint.
+        const projectLayoutChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith("/components/common/project-layout.tsx"),
+            ),
+        );
+        if (projectLayoutChunk?.type !== "chunk")
+          throw new Error(
+            "G11 work-route preload could not resolve the Kaneo project frame.",
+          );
+        addChunkAndImports(projectLayoutChunk.fileName);
+        // The authenticated shell wraps every agent screen. Its component chunk is otherwise
+        // requested only after the session check resolves, a round trip queued behind the
+        // route's other downloads that held back the work list's first paint (G11 LCP).
+        const authenticatedShellChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith(
+                  "/routes/agent/_layout/_authenticated.tsx?tsr-split=component",
+                ),
+            ),
+        );
+        if (authenticatedShellChunk?.type !== "chunk")
+          throw new Error(
+            "G11 work-route preload could not resolve the authenticated shell chunk.",
+          );
+        addChunkAndImports(authenticatedShellChunk.fileName);
         // The panel supplies the route's first content and heading readiness
         // boundary, but is dynamically imported by beforeLoad only after the
         // route code executes. Fetch its static closure alongside the route so
@@ -195,6 +235,32 @@ function preloadWorkRouteForDirectVisits(): Plugin {
           );
         addChunkAndImports(slimLoaderChunk.fileName);
 
+        // The board layout (`?layout=board`) renders from its own module graph, which `beforeLoad`
+        // otherwise only requests once the entry has run; on a direct board visit start it with
+        // the route's (G11 board render). Only the files the route closure does not already hold.
+        const boardViewChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith("/components/work-item/work-item-board-view.tsx"),
+            ),
+        );
+        if (boardViewChunk?.type !== "chunk")
+          throw new Error(
+            "G11 work-route preload could not resolve the board layout chunk.",
+          );
+        const boardViewFiles = new Set<string>();
+        const addBoardViewChunk = (fileName: string) => {
+          if (files.has(fileName) || boardViewFiles.has(fileName)) return;
+          boardViewFiles.add(fileName);
+          const chunk = bundle[fileName];
+          if (chunk?.type === "chunk")
+            for (const imported of chunk.imports) addBoardViewChunk(imported);
+        };
+        addBoardViewChunk(boardViewChunk.fileName);
+
         const latinFontAsset = Object.values(bundle).find(
           (item) =>
             item.type === "asset" &&
@@ -211,7 +277,7 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve the Geist Latin font asset.",
           );
 
-        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${JSON.stringify([...files].map((file) => `/${file}`))};const locales=${JSON.stringify(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);const fontLink=document.createElement("link");fontLink.rel="preload";fontLink.as="font";fontLink.type="font/woff2";fontLink.href=${JSON.stringify(`/${latinFontAsset.fileName}`)};fontLink.crossOrigin="anonymous";fontLink.fetchPriority="high";document.head.append(fontLink);for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
+        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${inlineScriptJson([...files].map((file) => `/${file}`))};const locales=${inlineScriptJson(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);const fontLink=document.createElement("link");fontLink.rel="preload";fontLink.as="font";fontLink.type="font/woff2";fontLink.href=${inlineScriptJson(`/${latinFontAsset.fileName}`)};fontLink.crossOrigin="anonymous";fontLink.fetchPriority="high";document.head.append(fontLink);for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}if(new URLSearchParams(location.search).get("layout")!=="board")return;for(const file of ${inlineScriptJson([...boardViewFiles].map((file) => `/${file}`))}){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
         // The legacy project board is the other measured direct-visit screen (G11 board
         // render). Its route chunk is only requested after the session resolves, so start it
         // and the full locale catalog it renders with alongside the entry instead.
@@ -256,7 +322,7 @@ function preloadWorkRouteForDirectVisits(): Plugin {
         });
         if (fullLocaleAssets.length === 0)
           throw new Error("G11 board preload could not resolve locale assets.");
-        const boardScript = `(()=>{if(!/^\\/dashboard\\/workspace\\/[^/]+\\/project\\/[^/]+\\/board\\/?$/.test(location.pathname))return;const routeFiles=${JSON.stringify([...boardFiles].map((file) => `/${file}`))};const locales=${JSON.stringify(Object.fromEntries(fullLocaleAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}for(const file of [locales[locale],...routeFiles]){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
+        const boardScript = `(()=>{if(!/^\\/dashboard\\/workspace\\/[^/]+\\/project\\/[^/]+\\/board\\/?$/.test(location.pathname))return;const routeFiles=${inlineScriptJson([...boardFiles].map((file) => `/${file}`))};const locales=${inlineScriptJson(Object.fromEntries(fullLocaleAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}for(const file of [locales[locale],...routeFiles]){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
         const source = String(html.source);
         const head = source.match(/<head(?:\s[^>]*)?>/i)?.[0];
         if (!head)
@@ -270,6 +336,38 @@ function preloadWorkRouteForDirectVisits(): Plugin {
       },
     },
   };
+}
+
+const WORK_ROUTE_PAINT_ROOT =
+  /\/(?:routes\/agent\/_layout\/_authenticated\/agent\/projects\/\$projectKey\/work\.tsx\?tsr-split=component|components\/work-item\/work-(?:items-panel|item-light-list)\.tsx)$/u;
+
+/**
+ * Icons and `@taskdesk/ui` components those roots take from a package index. Their importer is
+ * the index, not the root, so they are named here; a module missing from this list only costs
+ * its own small request again.
+ */
+const WORK_ROUTE_PAINT_BARREL_MEMBERS =
+  /\/(?:lucide-react\/dist\/esm\/icons\/(?:archive|calendar|calendar-clock|calendar-x|circle|circle-dashed|circle-dot|funnel|panels-top-left|rows-3|table-2)\.mjs|packages\/ui\/src\/components\/alert\.tsx)$/u;
+
+/**
+ * The `work-route` chunk: modules the work route component, the list panel or its preview
+ * import directly, with their own dependencies (the group's default recursion). The roots keep
+ * their chunks, so the route stays a dynamic entry of its own.
+ */
+function workRoutePaintDependency(
+  moduleId: string,
+  ctx: { getModuleInfo: (id: string) => { importers: string[] } | null },
+) {
+  const id = moduleId.replaceAll("\\", "/");
+  if (WORK_ROUTE_PAINT_ROOT.test(id)) return null;
+  if (WORK_ROUTE_PAINT_BARREL_MEMBERS.test(id)) return "work-route";
+  return ctx
+    .getModuleInfo(moduleId)
+    ?.importers.some((importer) =>
+      WORK_ROUTE_PAINT_ROOT.test(importer.replaceAll("\\", "/")),
+    )
+    ? "work-route"
+    : null;
 }
 
 function portalModuleGraphMetadata(): Plugin {
@@ -294,8 +392,103 @@ function portalModuleGraphMetadata(): Plugin {
   };
 }
 
+function isolatedPdfPreviewArtifacts(outputRoot: string): Plugin {
+  return {
+    name: "taskdesk:isolated-pdf-preview-artifacts",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      const chunks = Object.values(bundle).filter(
+        (item) => item.type === "chunk",
+      );
+      const entry = chunks.find(
+        (chunk) => chunk.isEntry && chunk.name === "pdfPreview",
+      );
+      if (!entry)
+        this.error(
+          "The isolated PDF preview build must contain one viewer entry.",
+        );
+
+      const chunksByFile = new Map(
+        chunks.map((chunk) => [chunk.fileName, chunk]),
+      );
+      const visited = new Set<string>();
+      const visit = (fileName: string) => {
+        if (visited.has(fileName)) return;
+        if (!fileName.startsWith("assets/pdf-preview/"))
+          this.error(
+            `PDF preview dependency escaped its static asset prefix: ${fileName}`,
+          );
+        visited.add(fileName);
+        const chunk = chunksByFile.get(fileName);
+        if (!chunk) return;
+        for (const imported of [...chunk.imports, ...chunk.dynamicImports])
+          visit(imported);
+        for (const moduleId of Object.keys(chunk.modules)) {
+          const normalized = moduleId.replaceAll("\\", "/");
+          if (
+            normalized.includes("/apps/web/src/") &&
+            !normalized.includes("/apps/web/src/pdf-preview/")
+          ) {
+            this.error(
+              "The isolated PDF viewer imported application UI source.",
+            );
+          }
+          if (
+            /(?:^|\/)node_modules\/(?:react|react-dom|@tanstack\/router|i18next)(?:\/|$)/u.test(
+              normalized,
+            )
+          ) {
+            this.error(
+              "The isolated PDF viewer imported app runtime dependencies.",
+            );
+          }
+        }
+      };
+      visit(entry.fileName);
+      if (Object.keys(bundle).some((fileName) => fileName.endsWith(".css")))
+        this.error(
+          "The isolated canvas-only PDF viewer must not emit application CSS.",
+        );
+    },
+    async writeBundle(_options, bundle) {
+      if (bundle["pdf-preview.html"]?.type !== "asset")
+        this.error(
+          "The isolated PDF build did not emit its public viewer document.",
+        );
+      const sourceHtml = path.join(outputRoot, "pdf-preview.html");
+      const sourceAssets = path.join(outputRoot, "assets/pdf-preview");
+      for (const surface of ["agent", "portal"] as const) {
+        const destination = path.resolve(__dirname, "dist", surface);
+        if (!existsSync(path.join(destination, "index.html")))
+          throw new Error(
+            `The ${surface} app must be built before copying the isolated PDF viewer.`,
+          );
+        await cp(sourceHtml, path.join(destination, "pdf-preview.html"));
+        await cp(sourceAssets, path.join(destination, "assets/pdf-preview"), {
+          recursive: true,
+          force: true,
+        });
+      }
+    },
+  };
+}
+
+/**
+ * JSON for a value spliced into an inline `<script>`: escapes the characters that could end the
+ * element (`<`, `>`) or a JavaScript string (U+2028, U+2029). Build asset names never contain
+ * them, so the emitted bytes are unchanged.
+ */
+function inlineScriptJson(value: unknown): string {
+  return JSON.stringify(value).replace(
+    /[<>\u2028\u2029]/gu,
+    (character) =>
+      `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+}
+
 export default defineConfig(({ mode }) => {
   const isPortal = mode === "portal";
+  const isPdfPreview = mode === "pdf-preview";
   const root = isPortal ? path.resolve(__dirname, "portal") : __dirname;
   const routeTree = isPortal
     ? path.resolve(__dirname, "src/routeTree.portal.gen.ts")
@@ -306,8 +499,11 @@ export default defineConfig(({ mode }) => {
   );
   const outDir = path.resolve(
     __dirname,
-    isPortal ? "dist/portal" : "dist/agent",
+    isPdfPreview ? "dist/pdf-preview" : isPortal ? "dist/portal" : "dist/agent",
   );
+  const buildInput: Record<string, string> = isPdfPreview
+    ? { pdfPreview: path.resolve(root, "pdf-preview.html") }
+    : { index: path.resolve(root, "index.html") };
 
   return {
     root,
@@ -316,30 +512,36 @@ export default defineConfig(({ mode }) => {
     // other's optimized-dependency URLs during startup.
     cacheDir: path.resolve(
       __dirname,
-      isPortal ? "node_modules/.vite-portal" : "node_modules/.vite-agent",
+      isPdfPreview
+        ? "node_modules/.vite-pdf-preview"
+        : isPortal
+          ? "node_modules/.vite-portal"
+          : "node_modules/.vite-agent",
     ),
-    publicDir: path.resolve(__dirname, "public"),
+    publicDir: isPdfPreview ? false : path.resolve(__dirname, "public"),
     define: {
       __APP_VERSION__: JSON.stringify(packageJson.version),
     },
     base: "/",
-    plugins: [
-      tanstackRouter({
-        routesDirectory,
-        generatedRouteTree: routeTree,
-        autoCodeSplitting: true,
-        routeFileIgnorePattern: "\\.test\\.tsx?$",
-      }),
-      ...(!isPortal ? [preloadWorkRouteForDirectVisits()] : []),
-      ...(isPortal ? [portalModuleGraphMetadata()] : []),
-      i18nNamespaceGroups({
-        i18nDir: path.resolve(__dirname, "../../i18n"),
-        groupedEntry: !isPortal,
-      }),
-      tailwindcss(),
-      react(),
-      babel({ presets: [reactCompilerPreset()] }),
-    ],
+    plugins: isPdfPreview
+      ? [isolatedPdfPreviewArtifacts(outDir)]
+      : [
+          tanstackRouter({
+            routesDirectory,
+            generatedRouteTree: routeTree,
+            autoCodeSplitting: true,
+            routeFileIgnorePattern: "\\.test\\.tsx?$",
+          }),
+          ...(!isPortal ? [preloadWorkRouteForDirectVisits()] : []),
+          ...(isPortal ? [portalModuleGraphMetadata()] : []),
+          i18nNamespaceGroups({
+            i18nDir: path.resolve(__dirname, "../../i18n"),
+            groupedEntry: !isPortal,
+          }),
+          tailwindcss(),
+          react(),
+          babel({ presets: [reactCompilerPreset()] }),
+        ],
     server: {
       host: true,
       hmr: true,
@@ -367,21 +569,86 @@ export default defineConfig(({ mode }) => {
       outDir,
       emptyOutDir: true,
       manifest: true,
-      sourcemap: "hidden",
+      sourcemap: isPdfPreview ? false : "hidden",
       rolldownOptions: {
-        input: path.resolve(root, "index.html"),
+        input: buildInput,
         output: {
-          codeSplitting: {
-            groups: [
-              {
-                name: isPortal
-                  ? "portal-initial-runtime"
-                  : "agent-initial-runtime",
-                tags: ["$initial"],
-                maxSize: 1_000_000,
-              },
-            ],
-          },
+          entryFileNames: (chunk) =>
+            isPdfPreview ||
+            chunk.name === "pdfPreview" ||
+            chunk.facadeModuleId
+              ?.replaceAll("\\", "/")
+              .endsWith("/src/pdf-preview/viewer.ts")
+              ? "assets/pdf-preview/viewer-[hash].js"
+              : isPdfPreview
+                ? "assets/pdf-preview/[name]-[hash].js"
+                : "assets/[name]-[hash].js",
+          chunkFileNames: (chunk) =>
+            isPdfPreview || chunk.name.startsWith("pdf-preview")
+              ? "assets/pdf-preview/[name]-[hash].js"
+              : "assets/[name]-[hash].js",
+          assetFileNames: (asset) =>
+            asset.name?.includes("pdf.worker")
+              ? "assets/pdf-preview/pdf.worker-[hash][extname]"
+              : isPdfPreview
+                ? "assets/pdf-preview/[name]-[hash][extname]"
+                : "assets/[name]-[hash][extname]",
+          ...(!isPdfPreview
+            ? {
+                codeSplitting: {
+                  groups: [
+                    {
+                      name: isPortal
+                        ? "portal-initial-runtime"
+                        : "agent-initial-runtime",
+                      tags: ["$initial"],
+                      // Keep shared bootstrap modules in the initial graph before the frame
+                      // group captures its remaining static dependencies below.
+                      priority: 2,
+                      maxSize: 1_000_000,
+                    },
+                    ...(!isPortal
+                      ? [
+                          {
+                            // Dozens of small frame imports otherwise queue ahead of locale
+                            // bootstrap on a cold connection. Preserve the same module graph
+                            // and execution order while fetching that closure in one group.
+                            name: "project-layout",
+                            test: /\/src\/components\/common\/project-layout\.tsx$/u,
+                            priority: 1,
+                            maxSize: 1_000_000,
+                          },
+                          {
+                            // The work list's panel and the first-viewport preview it paints
+                            // from (G11 work-list LCP) are HTML-preloaded on a direct visit;
+                            // as a dozen sub-kilobyte chunks they queued behind the entry for
+                            // a round trip each. Fetch the panel and its preview as one request.
+                            // Only these two modules: their shared dependencies (query hooks,
+                            // icons, `@taskdesk/ui`) stay in their own chunks, so the toolbar and
+                            // the create dialog never wait for the list's code.
+                            name: "work-items-panel",
+                            test: /\/src\/components\/work-item\/work-(?:items-panel|item-light-list)\.tsx$/u,
+                            includeDependenciesRecursively: false,
+                            priority: 1,
+                            maxSize: 1_000_000,
+                          },
+                          {
+                            // The static dependencies of the route's and the panel's first paint:
+                            // icons, query hooks and skeletons that were two dozen sub-kilobyte
+                            // chunks, each queued for a round trip behind the entry on a direct
+                            // visit (G11 work-list LCP). The route component, the panel and its
+                            // preview keep their own chunks, so nothing here is the list's code.
+                            name: workRoutePaintDependency,
+                            debugName: "work-route",
+                            priority: 1,
+                            maxSize: 1_000_000,
+                          },
+                        ]
+                      : []),
+                  ],
+                },
+              }
+            : {}),
           strictExecutionOrder: true,
         },
       },

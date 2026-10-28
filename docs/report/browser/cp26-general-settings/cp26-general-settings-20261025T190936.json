@@ -1,0 +1,60 @@
+{
+	"run": "CP26 General settings UI persistence",
+	"result": "passed",
+	"changedKey": "customerInvitationPerOrganisationLimit",
+	"screenshots": [
+		"invitation-limit-incremented-persisted-375-light-20261025T190936.png",
+		"invitation-limit-incremented-persisted-375-dark-20261025T190936.png",
+		"invitation-limit-incremented-persisted-768-light-20261025T190936.png",
+		"invitation-limit-incremented-persisted-768-dark-20261025T190936.png",
+		"invitation-limit-incremented-persisted-1440-light-20261025T190936.png",
+		"invitation-limit-incremented-persisted-1440-dark-20261025T190936.png",
+		"invitation-limit-restored-persisted-375-light-20261025T190936.png",
+		"invitation-limit-restored-persisted-375-dark-20261025T190936.png",
+		"invitation-limit-restored-persisted-768-light-20261025T190936.png",
+		"invitation-limit-restored-persisted-768-dark-20261025T190936.png",
+		"invitation-limit-restored-persisted-1440-light-20261025T190936.png",
+		"invitation-limit-restored-persisted-1440-dark-20261025T190936.png"
+	],
+	"originalLimit": 50,
+	"initialUpdatedAt": "2026-10-22T06:43:24.314Z",
+	"initialSettingsDigest": "c0d0c732f85923979b0a2a2c2d79efa7d53471811fdd891dba69d7c62d6af9fa",
+	"increasedLimit": 51,
+	"increasedUpdatedAt": "2026-10-25T19:09:36.942Z",
+	"onlyIntendedSettingChanged": true,
+	"restoredUpdatedAt": "2026-10-25T19:09:38.138Z",
+	"restoredSettingsDigest": "c0d0c732f85923979b0a2a2c2d79efa7d53471811fdd891dba69d7c62d6af9fa",
+	"allSettingsRestoredExactly": true,
+	"smtpInspection": {
+		"status": 200,
+		"source": "unconfigured",
+		"enabled": false,
+		"passwordConfigured": false,
+		"configPresent": false,
+		"localMailpit": false,
+		"secure": null,
+		"requireTLS": null,
+		"portIsMailpit": false,
+		"uiMatchesApi": true,
+		"visibleLabels": [
+			"Enable email delivery",
+			"SMTP host",
+			"Port",
+			"From address",
+			"Reply-to address (optional)",
+			"Username (optional)",
+			"Password",
+			"Use TLS from connection start",
+			"Require TLS before authentication"
+		],
+		"passwordFieldType": "password",
+		"passwordPreviewPresent": false
+	},
+	"localMailpitReadOnlyProbe": {
+		"reachable": false,
+		"messageCount": null,
+		"strictBrowserFailure": "net::ERR_CERT_AUTHORITY_INVALID",
+		"tlsVerification": "strict; no bypass"
+	},
+	"initialContactRecommendation": "SMTP provider is unconfigured and the Mailpit endpoint certificate is not trusted by Chromium; identify or provision a trusted local Mailpit endpoint before testing an invitation."
+}

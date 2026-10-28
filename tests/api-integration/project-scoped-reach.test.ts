@@ -20,9 +20,14 @@ import { and, eq } from "drizzle-orm";
 import { Client, type Notification } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { costTypeTable } from "../../apps/api/src/database/schema-p5-time";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
+import { grantProjectRole } from "./helpers/fixtures";
+import { setTimeFlags } from "./helpers/p5-time";
+import { ensureAgentSession } from "./helpers/pending-deletion";
+import { projectKey } from "./helpers/project-key";
 import {
   PROJECT_READ_ROUTE_KEYS,
   PROJECT_WRITE_ROUTE_KEYS,
@@ -51,6 +56,10 @@ type Case = {
   /** Put the data into the state this route's success path needs. */
   prepare?: (world: ProjectWorld, ids: Ids) => Promise<void>;
   successStatus?: number;
+  /** Search POSTs are read operations despite their transport method. */
+  readOnly?: boolean;
+  /** Session-only route: every API key is refused with 403, outsiders included. */
+  apiKeyRefused?: boolean;
   call: (app: App, world: ProjectWorld, ids: Ids) => Promise<Response>;
 };
 
@@ -64,12 +73,31 @@ const SECRET_MARKERS = [
 
 const WRITES: Case[] = [
   {
+    matrixKey: "PATCH /api/projects/{projectId}/settings/inheritance",
+    call: (app, _w, i) =>
+      json(app, "PATCH", `/api/projects/${i.projectId}/settings/inheritance`, {
+        expectedProjectVersion: 1,
+        expectedWorkspaceVersion: 1,
+        slaPolicy: { mode: "inherit" },
+      }),
+  },
+  {
+    matrixKey: "PATCH /api/projects/{projectId}/state-set",
+    call: (app, _w, i) =>
+      json(app, "PATCH", `/api/projects/${i.projectId}/state-set`, {
+        expectedProjectVersion: 1,
+        expectedWorkspaceVersion: 1,
+        mode: "inherit",
+      }),
+  },
+
+  {
     matrixKey: "PUT /api/project/{id}",
     call: (app, _w, i) =>
       json(app, "PUT", `/api/project/${i.projectId}`, {
         name: "Renamed",
         icon: "Folder",
-        slug: `renamed-${Date.now()}`,
+        slug: projectKey(),
         description: "changed",
       }),
   },
@@ -82,6 +110,8 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/project/{id}",
+    successStatus: 202,
+    apiKeyRefused: true,
     call: (app, _w, i) => json(app, "DELETE", `/api/project/${i.projectId}`),
   },
   {
@@ -120,6 +150,7 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/project/{id}/milestones/{milestoneId}",
+    successStatus: 202,
     call: (app, _w, i) =>
       json(
         app,
@@ -147,6 +178,7 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/project/{id}/prerequisites/{prerequisiteId}",
+    successStatus: 202,
     call: (app, _w, i) =>
       json(
         app,
@@ -192,6 +224,7 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/project/{id}/document-links/{documentLinkId}",
+    successStatus: 202,
     call: (app, _w, i) =>
       json(
         app,
@@ -205,6 +238,159 @@ const WRITES: Case[] = [
       json(app, "POST", `/api/projects/${i.projectId}/work-items`, {
         typeId: w.type.id,
         title: "Injected work item",
+      }),
+  },
+  {
+    // PR-1: clearing a root project's parent is a no-op write, so the success path needs no
+    // extra fixture; the prospective-parent capability check is covered in
+    // project-ownership.test.ts.
+    matrixKey: "PATCH /api/projects/{projectId}/ownership",
+    call: (app, _w, i) =>
+      json(app, "PATCH", `/api/projects/${i.projectId}/ownership`, {
+        parentId: null,
+      }),
+  },
+  {
+    // PR-2..PR-4 roster writes. Each success call passes reach and capability and is then
+    // refused by the handler with a status distinct from the matrix's 404/403 (unknown role
+    // 422, a row held only by a role grant 409 managed_membership), proving the gates ran
+    // before any write.
+    matrixKey: "POST /api/projects/{projectId}/members",
+    successStatus: 422,
+    call: (app, w, i) =>
+      json(app, "POST", `/api/projects/${i.projectId}/members`, {
+        personId: w.readerAdmin.personId,
+        roleKey: "no-such-role",
+      }),
+  },
+  {
+    matrixKey: "PATCH /api/projects/{projectId}/members/{personId}",
+    successStatus: 422,
+    call: (app, w, i) =>
+      json(
+        app,
+        "PATCH",
+        `/api/projects/${i.projectId}/members/${w.projectAdmin.personId}`,
+        { roleKey: "no-such-role" },
+      ),
+  },
+  {
+    matrixKey: "DELETE /api/projects/{projectId}/members/{personId}",
+    successStatus: 409,
+    call: (app, w, i) =>
+      json(
+        app,
+        "DELETE",
+        `/api/projects/${i.projectId}/members/${w.readerAdmin.personId}`,
+      ),
+  },
+  {
+    // PR-17: an unknown template id passes reach and capability and is then refused by the
+    // handler with 422 (a distinct status from the matrix's 404/403), which is what proves
+    // the gates ran before the write.
+    matrixKey: "POST /api/projects/{projectId}/states",
+    successStatus: 422,
+    call: (app, _w, i) =>
+      json(app, "POST", `/api/projects/${i.projectId}/states`, {
+        stateTemplateId: "no-such-template",
+      }),
+  },
+  {
+    matrixKey: "PATCH /api/projects/{projectId}/states/{stateId}",
+    call: async (app, _w, i) => {
+      const [state] = await db
+        .select({ id: schema.stateTable.id })
+        .from(schema.stateTable)
+        .where(eq(schema.stateTable.projectId, i.projectId))
+        .limit(1);
+      return json(
+        app,
+        "PATCH",
+        `/api/projects/${i.projectId}/states/${state?.id ?? "missing"}`,
+        { position: 0 },
+      );
+    },
+  },
+  {
+    // ST-2: a flag override. `enabled: null` clears the project override, so the success path
+    // changes nothing yet still passes through reach and `project:manage_settings`.
+    matrixKey: "PATCH /api/projects/{projectId}/features",
+    call: (app, _w, i) =>
+      json(app, "PATCH", `/api/projects/${i.projectId}/features`, {
+        changes: [{ key: "feature.automations", enabled: null }],
+      }),
+  },
+  {
+    // AM: `feature.automations` is off by default, so a caller that passes reach and
+    // `automation:manage` is refused by the handler with 409 feature_disabled, a status
+    // distinct from the matrix's 404/403, which is what proves the gates ran before any write.
+    // `{key}` accepts the project id as well as its slug.
+    matrixKey: "POST /api/projects/{key}/automations",
+    successStatus: 409,
+    prepare: async (w, i) => {
+      await grantProjectRole(w.projectAdmin.user.id, i.projectId, [
+        "automation:manage",
+      ]);
+    },
+    call: async (app, w, i) => {
+      const [role] = await db
+        .select({ id: schema.roleTable.id })
+        .from(schema.roleTable)
+        .where(
+          and(
+            eq(schema.roleTable.scope, "workspace"),
+            eq(schema.roleTable.workspaceId, w.workspaceId),
+            eq(schema.roleTable.key, "member"),
+          ),
+        )
+        .limit(1);
+      return json(app, "POST", `/api/projects/${i.projectId}/automations`, {
+        name: "Injected automation",
+        trigger: "work_item.created",
+        conditions: [],
+        actions: [{ type: "set_priority", priority: "high" }],
+        effectiveRoleId: role?.id ?? "missing-role",
+      });
+    },
+  },
+  {
+    matrixKey: "POST /api/projects/{projectId}/budgets",
+    prepare: async (w) => {
+      await setTimeFlags(w.workspaceId);
+    },
+    successStatus: 201,
+    call: (app, _w, i) =>
+      json(app, "POST", `/api/projects/${i.projectId}/budgets`, {
+        name: "Q4",
+        plannedAmountMinor: 100000,
+        currency: "EUR",
+        periodStart: "2026-01-01",
+        periodEnd: "2026-12-31",
+      }),
+  },
+  {
+    // P5 time and cost (`TC-14`): a cost entry needs an active cost type and feature.cost_tracking.
+    matrixKey: "POST /api/projects/{projectId}/costs",
+    prepare: async (w) => {
+      await setTimeFlags(w.workspaceId);
+      await db
+        .insert(costTypeTable)
+        .values({
+          id: "ct-reach-row",
+          workspaceId: w.workspaceId,
+          name: "Licence",
+          unit: "seat",
+          defaultRateMinor: 100,
+          currency: "EUR",
+        })
+        .onConflictDoNothing();
+    },
+    successStatus: 201,
+    call: (app, _w, i) =>
+      json(app, "POST", `/api/projects/${i.projectId}/costs`, {
+        costTypeId: "ct-reach-row",
+        date: new Date().toISOString().slice(0, 10),
+        units: 1,
       }),
   },
   {
@@ -247,6 +433,7 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/column/{id}",
+    successStatus: 202,
     prepare: async (_w, i) => {
       // A column holding no task, so the delete's own preconditions pass.
       await db.delete(schema.workflowRuleTable);
@@ -267,6 +454,8 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "DELETE /api/workflow-rule/{id}",
+    // Browser session only: a workflow rule is a column-routing setting, not history.
+    apiKeyRefused: true,
     call: (app, _w, i) => json(app, "DELETE", `/api/workflow-rule/${i.ruleId}`),
   },
 ];
@@ -306,13 +495,79 @@ const READS: Case[] = [
       json(a, "GET", `/api/projects/${i.projectId}/assignable`),
   },
   {
+    matrixKey: "GET /api/projects/{projectId}/settings/inheritance",
+    call: (app, _w, i) =>
+      json(app, "GET", `/api/projects/${i.projectId}/settings/inheritance`),
+  },
+  {
     matrixKey: "GET /api/projects/{projectId}/states",
     call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/states`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/state-templates",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/state-templates`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/members",
+    call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/members`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/members/candidates",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/members/candidates`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/ownership/preview",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/ownership/preview`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/features",
+    call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/features`),
+  },
+  {
+    matrixKey: "GET /api/projects/{key}/automations",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/automations`),
+  },
+  {
+    // P5 time and cost (`TC-15`): budgets need feature.cost_tracking, so the success path turns it on.
+    matrixKey: "GET /api/projects/{projectId}/budget",
+    prepare: async (w) => {
+      await setTimeFlags(w.workspaceId);
+    },
+    call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/budget`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/costs",
+    prepare: async (w) => {
+      await setTimeFlags(w.workspaceId);
+    },
+    call: (a, _w, i) => json(a, "GET", `/api/projects/${i.projectId}/costs`),
+  },
+  {
+    matrixKey: "GET /api/features/resolved",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/features/resolved?project=${i.projectId}`),
   },
   {
     matrixKey: "GET /api/projects/{projectId}/work-items",
     call: (a, _w, i) =>
       json(a, "GET", `/api/projects/${i.projectId}/work-items`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/work-items/combined",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/work-items/combined`),
+  },
+  {
+    matrixKey: "POST /api/projects/{projectId}/work-items/combined",
+    readOnly: true,
+    call: (a, _w, i) =>
+      json(a, "POST", `/api/projects/${i.projectId}/work-items/combined`, {
+        query: { entity: "work_item" },
+      }),
   },
   {
     matrixKey: "GET /api/task/tasks/{projectId}",
@@ -526,7 +781,7 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
           ?.enabled,
       ).not.toBe("D");
 
-      const taskResponseJson = deferred<void>();
+      let taskResponseReturned = false;
       const observedApp = new Proxy(app, {
         get(target, property, receiver) {
           if (property !== "request")
@@ -534,12 +789,7 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
           return async (...args: Parameters<App["request"]>) => {
             const response = await target.request(...args);
             if (String(args[0]) === "/api/task/" + world.project.id) {
-              const parseJson = response.json.bind(response);
-              response.json = async () => {
-                const body = await parseJson();
-                taskResponseJson.resolve();
-                return body;
-              };
+              taskResponseReturned = true;
             }
             return response;
           };
@@ -580,15 +830,12 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
       expect(waitingActivity.task_fk_lock).toBe(true);
       expect(waitingActivity.activity_insert_lock).toBe(true);
       expect(waitingActivity.created_activity_insert).toBe(true);
-      await waitForSignal(
-        taskResponseJson.promise,
-        "actual POST task response JSON completion",
-      );
-      // Drain promise continuations after the real response body is decoded. With the old
-      // helper this makes its immediate return observable; with the proposed helper the
-      // created-activity row is still held at the owned gate.
+      // The required history insert is in the task transaction. While the trigger owns the
+      // advisory gate, the HTTP response must remain pending with that insert; fixture
+      // construction may return only after the activity commits.
       await new Promise<void>((resolve) => setImmediate(resolve));
       expect(seedSettled).toBe(false);
+      expect(taskResponseReturned).toBe(false);
 
       const unlock = await control.query("SELECT pg_advisory_unlock($1, $2)", [
         ADVISORY_CLASS,
@@ -602,6 +849,7 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
         "seedProjectRows after its created activity commits",
       );
       expect(ids.taskId).toBeTruthy();
+      expect(taskResponseReturned).toBe(true);
       const notification = await waitForSignal(
         activityNotification.promise,
         "actual created-activity commit after gate release",
@@ -616,6 +864,11 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
         ),
       });
       expect(activity).toBeDefined();
+      expect(
+        await db.query.taskTable.findFirst({
+          where: eq(schema.taskTable.id, ids.taskId),
+        }),
+      ).toMatchObject({ id: ids.taskId, projectId: world.project.id });
 
       await resetTestDatabase();
       expect(
@@ -744,6 +997,8 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
     const { app } = createApp();
     const ids = await seedProjectRows(app, world);
     await route.prepare?.(world, ids);
+    // Deletion routes record pending actions bound to the caller's live session row.
+    await ensureAgentSession(world.projectAdmin.user.id);
     return { world, app, ids };
   }
 
@@ -758,7 +1013,8 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
   }
 
   for (const route of [...WRITES, ...READS]) {
-    const isRead = route.matrixKey.startsWith("GET ");
+    const isRead =
+      route.readOnly === true || route.matrixKey.startsWith("GET ");
     describe(route.matrixKey, () => {
       it("a same-workspace caller outside project reach gets the matrix's 404 byte-identical to a missing project, and writes nothing", async () => {
         const { world, app, ids } = await arrange(route);
@@ -819,7 +1075,9 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
         );
         const memberKey = await makeApiKey(
           world.projectAdmin.user.id,
-          PROJECT_KEY_SCOPE,
+          route.matrixKey === "POST /api/projects/{key}/automations"
+            ? { ...PROJECT_KEY_SCOPE, automation: ["manage"] }
+            : PROJECT_KEY_SCOPE,
         );
         const readKey = await makeApiKey(
           world.projectAdmin.user.id,
@@ -830,7 +1088,10 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
         setAmbientHeaders({ "x-api-key": outsiderKey });
         const outside = await route.call(app, world, ids);
         const outsideText = await outside.text();
-        expect(outside.status, outsideText).toBe(404);
+        // A session-only route refuses every key identically before reach is consulted.
+        expect(outside.status, outsideText).toBe(
+          route.apiKeyRefused ? 403 : 404,
+        );
         for (const marker of SECRET_MARKERS) {
           expect(outsideText).not.toContain(marker);
         }
@@ -852,8 +1113,10 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
           const allowed = await route.call(app, world, ids);
           setAmbientHeaders({});
           expect(allowed.status, await allowed.clone().text()).toBe(
-            route.successStatus ?? 200,
+            route.apiKeyRefused ? 403 : (route.successStatus ?? 200),
           );
+          if (route.apiKeyRefused)
+            expect(await allowed.text()).toContain("session_required");
         }
       });
     });

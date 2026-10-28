@@ -7,6 +7,7 @@
  * (#307's property for this helper family) and the NUL-byte guard.
  */
 import { randomUUID } from "node:crypto";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -117,6 +118,19 @@ async function addWorkspaceMemberWithoutGenuineRow(
   );
 
   await prepareAuthenticatedApiFixture(user.id);
+
+  // Owner decision, 23 Oct: every workspace now has a genuine canonical row for each built-in
+  // key. This helper models the state #318 is about, a built-in key with NO genuine row, so the
+  // canonical row for the key is removed.
+  await db
+    .delete(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.scope, "workspace"),
+        eq(schema.roleTable.workspaceId, workspaceId),
+        eq(schema.roleTable.key, role),
+      ),
+    );
 
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,

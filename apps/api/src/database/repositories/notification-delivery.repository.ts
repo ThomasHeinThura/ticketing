@@ -23,6 +23,8 @@ export type ClaimedNotificationDelivery = {
   attempts: number;
   eventKind: string;
   payload: JsonValue;
+  /** Older persisted/test projections may not carry eventData; copy resolution is optional. */
+  eventData?: JsonValue | null;
   title: string | null;
   body: string | null;
   resourceType: string | null;
@@ -52,8 +54,8 @@ function rows<T>(result: { rows: unknown[] }): T[] {
 
 type RawClaimedNotificationDelivery = Omit<
   ClaimedNotificationDelivery,
-  "payload"
-> & { payload: unknown };
+  "payload" | "eventData"
+> & { payload: unknown; eventData: unknown };
 
 function utcDate(value: Date | string | null | undefined): Date | null {
   if (!value) return null;
@@ -97,6 +99,7 @@ export async function claimNextNotificationDelivery(
            d.attempts,
            o.kind AS "eventKind",
            o.payload,
+           n.event_data AS "eventData",
            n.title,
            n.body,
            n.resource_type AS "resourceType",
@@ -113,7 +116,13 @@ export async function claimNextNotificationDelivery(
      FOR UPDATE OF d SKIP LOCKED
   `);
   const row = rows<RawClaimedNotificationDelivery>(result)[0];
-  return row ? { ...row, payload: row.payload as JsonValue } : null;
+  return row
+    ? {
+        ...row,
+        payload: row.payload as JsonValue,
+        eventData: row.eventData as JsonValue | null,
+      }
+    : null;
 }
 
 /**

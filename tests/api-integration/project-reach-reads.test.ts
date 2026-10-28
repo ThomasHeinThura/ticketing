@@ -249,6 +249,23 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
     return `/api/search?q=${MARKER}&workspaceId=${a.world.workspaceId}${extra}`;
   }
 
+  // P1-21: type=all no longer runs the legacy task/comment searches, so the hidden-row and
+  // count oracle reads each legacy kind under its explicit type and merges them.
+  async function readLegacySearch(a: Arranged) {
+    let status = 200;
+    const results: SearchBody["results"] = [];
+    let totalCount = 0;
+    let text = "";
+    for (const type of ["tasks", "comments", "projects"]) {
+      const r = await read<SearchBody>(a.app, searchUrl(a, `&type=${type}`));
+      if (r.status !== 200) status = r.status;
+      results.push(...(r.body?.results ?? []));
+      totalCount += r.body?.totalCount ?? 0;
+      text += r.text;
+    }
+    return { status, body: { results, totalCount }, text };
+  }
+
   function assertSearch(body: SearchBody, text: string, sees: Caller["sees"]) {
     expect(text.includes("Visible task")).toBe(showsVisible(sees));
     expect(text.includes("Visible comment")).toBe(showsVisible(sees));
@@ -296,7 +313,7 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
       it("GET /api/search", async () => {
         const a = await arrange();
         mockAuthenticatedSession(caller.as(a).user);
-        const r = await read<SearchBody>(a.app, searchUrl(a));
+        const r = await readLegacySearch(a);
         expect(r.status, r.text).toBe(200);
         assertSearch(r.body, r.text, caller.sees);
       });
@@ -396,7 +413,7 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         );
         expect(projects.status, projects.text).toBe(200);
         assertProjects(projects.body, sees);
-        const search = await read<SearchBody>(a.app, searchUrl(a));
+        const search = await readLegacySearch(a);
         expect(search.status, search.text).toBe(200);
         assertSearch(search.body, search.text, sees);
       }
@@ -753,12 +770,21 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         } as never,
         staffId,
       );
-      const found = await globalSearch({
-        query: MARKER,
-        identity: staffIdentity,
-        workspaceId: a.world.workspaceId,
-        reachableProjectIds: (ids) => staffReach.reachableProjectIds(ids),
-      });
+      const foundParts = await Promise.all(
+        (["tasks", "comments", "projects"] as const).map((type) =>
+          globalSearch({
+            query: MARKER,
+            identity: staffIdentity,
+            workspaceId: a.world.workspaceId,
+            type,
+            reachableProjectIds: (ids) => staffReach.reachableProjectIds(ids),
+          }),
+        ),
+      );
+      const found = {
+        results: foundParts.flatMap((part) => part.results),
+        totalCount: foundParts.reduce((sum, part) => sum + part.totalCount, 0),
+      };
       assertSearch(
         found as unknown as SearchBody,
         JSON.stringify(found),

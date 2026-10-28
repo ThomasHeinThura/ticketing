@@ -118,17 +118,10 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * check ALONGSIDE the capability gate, not the only authority check on this path. Both call
  * the identical `builtInRoleHasCapability` function, so they cannot disagree.
  *
- * Like `POST /api/workspace/{workspaceId}/members` and the role-update route above,
- * `workspace:transfer_ownership` sits in `AUTHORITY_GRANTING`'s SHADOW but not the set
- * itself: it obviously mints authority (it hands over the single most powerful role in the
- * workspace), but rbac.md's single elevated-action table does not carry a row for ownership
- * transfer, and `AUTHORITY_GRANTING` (`elevated.ts`) is exactly the capabilities that table's
- * rows are reachable through — adding it there without a corresponding table row would be
- * this lane deciding, unilaterally, a question rbac.md leaves open. `elevated: false` is kept
- * below for the same reason it was kept before: no step-up mechanism
- * (`POST /api/me/step-up`) exists anywhere in this codebase to enforce `elevated: true`
- * honestly against, and whether ownership transfer SHOULD require step-up once one exists is
- * recorded as a judgement call for Thomas, not decided here.
+ * `workspace:transfer_ownership` is in `AUTHORITY_GRANTING` (`elevated.ts`) and the route is
+ * `elevated: true`: it hands over the single most powerful role in the workspace, and
+ * retained-constraints.md requires real operation-bound step-up for it once the mechanism exists
+ * (permissions.md's elevated table carries the row).
  *
  * There remains no instance-admin bypass to close on this route, and that is unchanged and
  * deliberate: `requireWorkspaceCapability` never calls `isInstanceAdmin`, exactly like the
@@ -264,15 +257,13 @@ export const workspacePolicies = {
   // capability-name gap.
   //
   // `workspace:manage_members` is in `AUTHORITY_GRANTING` (`elevated.ts`), so the elevation
-  // coverage test demands a declaration either way — but the ONE elevated action rbac.md lists
+  // coverage test demands a declaration either way. The ONE elevated action permissions.md lists
   // under this capability is granting `sees_all` on a membership (`PATCH
-  // /api/workspaces/{id}/members/{personId}` with `sees_all: true`), a DIFFERENT, not-yet-built
-  // route (P1/P4) that this batch does not touch: `workspace_member` has no `sees_all` column
-  // today. This route only inserts an ordinary membership row with an existing role; it mints
-  // no reach. `elevated: true` would also be dishonest for a second, independent reason: no
-  // step-up mechanism (`POST /api/me/step-up`, `pending-actions.md`) exists anywhere in this
-  // codebase yet, so declaring it would be a control that runs nowhere — exactly the
-  // declared-and-inert shape this registry exists to refuse.
+  // /api/workspaces/{id}/members/{personId}` with `sees_all: true`), a different route that is
+  // not mounted (`workspace_member` has no `sees_all` column). This route only inserts an
+  // ordinary membership row with an existing role and mints no reach, and permissions.md's
+  // elevated table carries no row for it, so it is declared `elevated: false` with that reason
+  // (contract and map agree; the step-up mechanism exists, the contract just does not ask for it).
   "POST /api/workspace/{workspaceId}/members": {
     capability: "workspace:manage_members",
     scope: "workspace",
@@ -281,7 +272,7 @@ export const workspacePolicies = {
     sessionOnly: true,
     elevated: false,
     elevationExemptionReason:
-      "inserts an ordinary member row with an existing role; grants no sees_all/reach change (rbac.md's one elevated action under workspace:manage_members) and no step-up mechanism exists in this codebase to enforce elevated: true honestly",
+      "inserts an ordinary member row with an existing role; grants no sees_all/reach change (permissions.md's one elevated action under workspace:manage_members) and the elevated table carries no row for member add",
   },
 
   // S5 — remove a member. `member:remove` is an exact match in rbac.md; runtime check is
@@ -299,8 +290,8 @@ export const workspacePolicies = {
   // capability-name gap. Can never grant or touch the `owner` role — see
   // `update-workspace-member-role.ts`.
   //
-  // Same `AUTHORITY_GRANTING` / elevation reasoning as the route above: no `sees_all` column,
-  // no `sees_all` write, and no step-up mechanism to enforce `elevated: true` honestly against.
+  // Same `AUTHORITY_GRANTING` / elevation reasoning as the route above: no `sees_all` column
+  // or write, and permissions.md's elevated table carries no row for a member role change.
   // Reassigning a member between the workspace's own EDITABLE roles is bounded by whatever
   // capabilities that role already carries — it is not a fresh authority mint the way creating
   // or editing a ROLE DEFINITION (`workspace:manage_roles`, a different capability, also
@@ -313,7 +304,7 @@ export const workspacePolicies = {
     sessionOnly: true,
     elevated: false,
     elevationExemptionReason:
-      "reassigns a member between this workspace's own existing editable roles; grants no sees_all/reach change and no step-up mechanism exists in this codebase to enforce elevated: true honestly",
+      "reassigns a member between this workspace's own existing editable roles; grants no sees_all/reach change and permissions.md's elevated table carries no row for a member role change",
   },
 
   // S5 — a member leaves of their own accord. `self`, kind 2: the caller acts only on their
@@ -333,30 +324,19 @@ export const workspacePolicies = {
   // S5 — the atomic ownership-transfer endpoint that replaces the client's promote/demote
   // pair. Declared `capability` with `workspace:transfer_ownership` (rbac.md § Capabilities,
   // granted to `owner` alone) — the runtime check, `requireWorkspaceCapability` in this
-  // route's own middleware, now evaluates that exact capability. See the file comment for
-  // the defect this closes (the declaration used to say `workspace:manage_members` while the
-  // runtime enforced a hardcoded `role === "owner"` check with no capability check at all)
-  // and for why the in-transaction re-read stays, as a race-safety check alongside this gate
-  // rather than the only one.
+  // route's own middleware, evaluates that exact capability.
   //
-  // `workspace:transfer_ownership` is NOT in `AUTHORITY_GRANTING` (`elevated.ts`) — that set
-  // is exactly the capabilities rbac.md's single elevated-action table has a row for, and
-  // that table has no row for ownership transfer. Adding it to `AUTHORITY_GRANTING`
-  // unilaterally, without rbac.md settling the question, would be inventing a step-up policy
-  // this lane was told not to invent. Recorded here as a JUDGEMENT CALL rather than an
-  // obvious exemption: this route hands over the single most powerful role in the workspace,
-  // and an argument that it SHOULD be `elevated: true` the moment `POST /api/me/step-up`
-  // exists is reasonable — that decision is Thomas's, not this lane's to make by picking
-  // `false` here.
+  // `elevated: true`: retained-constraints.md requires "real operation-bound elevation ... when
+  // the supported step-up mechanism exists", and it now does. The handler spends a one-use
+  // PA-15 proof (`workspace_ownership_transfer`, bound to the workspace and the new owner) in
+  // the transfer's own transaction (`runWithStepUp`, `auth/step-up-spend.ts`).
   "POST /api/workspace/{workspaceId}/transfer-ownership": {
     capability: "workspace:transfer_ownership",
     scope: "workspace",
     scopeSource: "request",
     reach: "required",
     sessionOnly: true,
-    elevated: false,
-    elevationExemptionReason:
-      "hands over the owner role atomically; workspace:transfer_ownership is not in AUTHORITY_GRANTING because rbac.md's elevated-action table carries no row for ownership transfer, and no step-up mechanism exists in this codebase yet to enforce elevated: true honestly -- flagged as a judgement call for a human decision once that mechanism lands, given this is the single most powerful role transfer a workspace has",
+    elevated: true,
   },
 
   // S6a — invite a user, by email, into the workspace (issue #6, retrofit plan §3, S6a row).
@@ -399,10 +379,11 @@ export const workspacePolicies = {
 
   // S7 — create/update/delete a workspace role (issue #6, retrofit plan §3, S7 row; the last
   // item on the organization()-retrofit critical path). Runtime checks are
-  // `requireWorkspacePermission({ac:[...]})` against the INHERITED `ac` resource, plus --
-  // ONLY for create/update -- `RL-3`'s "cannot grant a capability you do not hold" ceiling
-  // (`resolveCallerWorkspaceStatements`, `require-workspace-permission.ts`). Same transitional
-  // capability-key gap as every mutation above.
+  // `requireWorkspacePermission({ac:[...]})` against the INHERITED `ac` resource (translated
+  // to `workspace:manage_roles` for a custom role, `permissions/legacy-statements.ts`), plus
+  // -- for create/update -- `RL-3`'s "cannot grant a capability you do not hold" ceiling,
+  // `RL-4`/`RL-14`'s rank guards and `RL-7`'s last-manager guard (`role-service.ts`). Role
+  // capabilities live in the canonical `role` row (owner decision, 23 Oct).
   //
   // `elevated: true` is REQUIRED, not optional, on all three: `workspace:manage_roles` is
   // already in `AUTHORITY_GRANTING` (`elevated.ts`) -- "a role editor can mint authority up to
@@ -432,5 +413,87 @@ export const workspacePolicies = {
     reach: "required",
     sessionOnly: true,
     elevated: true,
+  },
+
+  // RL read surface (P4): one role, its holders, its audit history and the draft-set preview.
+  // All four read the path's own `workspaceId` and never load a `workspace` row for authority,
+  // the same shape as the role list above. `POST .../preview` is a POST only because the draft
+  // capability set travels in the body: it reads nothing about any person and persists nothing.
+  "GET /api/workspace/{workspaceId}/roles/{roleId}": {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "GET /api/workspace/{workspaceId}/roles/{roleId}/holders": {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "GET /api/workspace/{workspaceId}/roles/{roleId}/history": {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "POST /api/workspace/{workspaceId}/roles/{roleId}/preview": {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+  },
+
+  // RL-8 bulk reassignment: moves people between the workspace's own existing roles, bounded by
+  // the caller's rank (neither side may be at or above it) and never touching `owner`. Same
+  // authority and the same written exemption as the single-member role change above.
+  "POST /api/workspace/{workspaceId}/roles/{roleId}/reassign": {
+    capability: "workspace:manage_members",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason:
+      "moves people between this workspace's own existing roles, never to or from a role at or above the caller's rank and never owner; grants no sees_all beyond what the target role's own owner/admin reach rule already derives, and permissions.md's elevated table carries no row for bulk reassignment (RL-8)",
+  },
+  "GET /api/workspace/{workspaceId}/project-settings": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "PATCH /api/workspace/{workspaceId}/project-settings": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "GET /api/workspace/{workspaceId}/state-templates": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "POST /api/workspace/{workspaceId}/state-templates": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  "PATCH /api/workspace/{workspaceId}/state-templates/{stateTemplateId}": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
   },
 } as const satisfies PolicyMap;

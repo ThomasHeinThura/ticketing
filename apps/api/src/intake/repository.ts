@@ -23,13 +23,13 @@ import {
   exists,
   gt,
   inArray,
+  isNotNull,
   isNull,
   lt,
   or,
   sql,
 } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { appendAuditLog } from "../audit/audit-writer";
 import db, { schema } from "../database";
 import {
   currentProjectReachPredicate,
@@ -40,14 +40,61 @@ import {
   enqueueOutboxEvent,
   eventScope,
 } from "../events/outbox";
+import {
+  customerPortalCondition,
+  customerPortalOnFor,
+  customerPortalScope,
+  projectFeatureEnabled,
+} from "../feature-flag/enforce";
+import { logTaskDesk } from "../instance/observability/runtime";
+import { enqueueNotificationEvent } from "../notification/fanout";
+import { resolveSubmissionRepliedRecipients } from "../notification/submission-recipients";
+import { resolveProjectSlaPolicyId } from "../project/effective-settings";
 import { recordWorkItemActivity } from "../work-item/activity";
+import { resolveAssigneeEligibility } from "../work-item/assignee-eligibility";
 import { claimWorkItemNumber } from "../work-item/controllers/claim-work-item-number";
+import { recordInitialWorkItemFields } from "../work-item/create-initial-fields";
 import { recordWorkItemEvent } from "../work-item/native-event";
 import {
   findEffectiveSlaPolicyVersionQuery,
   findWorkspaceDefaultSlaPolicyQuery,
   findWorkspaceOwnedSlaPolicyQuery,
 } from "../work-item/repository";
+import {
+  findReopenWindowDays,
+  isWithinReopenWindow,
+  recordReopenRequested,
+  requestCustomerReopen,
+} from "../workflow/customer-reopen";
+import { appendIntakeAudit } from "./audit";
+import {
+  applyAcceptedCustomFields,
+  customFieldKeyOf,
+  loadPortalCustomFields,
+  type PortalCustomField,
+  refusedCustomFieldMappings,
+} from "./custom-field-mapping";
+import { suggestDuplicatesForQueueRows } from "./duplicate-suggestions";
+import { intakeError } from "./errors";
+import {
+  lockRequestTypeGroupOrder,
+  orderPortalCatalogueGroups,
+  synchronizeRequestTypeGroupOrder,
+} from "./group-order";
+import {
+  CLAIMED,
+  filtersScope,
+  olderThanCutoff,
+  type SubmissionListFilters,
+  UNCLAIMED,
+} from "./list-filters";
+import { raisablePriorities } from "./portal-priority";
+import { loadPortalSla, type PortalSla } from "./portal-sla";
+import {
+  type PortalCustomerStatus,
+  type PortalStatusWorkItem,
+  portalCustomerStatus,
+} from "./portal-status";
 
 type RequestTypeInput = {
   workspaceId: string;
@@ -182,6 +229,7 @@ export async function createRequestType(
   actorId: string,
 ) {
   const row = await db.transaction(async (tx) => {
+    await lockRequestTypeGroupOrder(tx, input.workspaceId);
     const [created] = await tx
       .insert(schema.requestTypeTable)
       .values({
@@ -194,7 +242,8 @@ export async function createRequestType(
       throw new HTTPException(500, {
         message: "Could not create request type",
       });
-    await appendAuditLog(tx, {
+    await synchronizeRequestTypeGroupOrder(tx, input.workspaceId);
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId: input.workspaceId,
@@ -215,6 +264,14 @@ export async function updateRequestType(
   actorId: string,
 ) {
   return db.transaction(async (tx) => {
+    const [scope] = await tx
+      .select({ workspaceId: schema.requestTypeTable.workspaceId })
+      .from(schema.requestTypeTable)
+      .where(eq(schema.requestTypeTable.id, id))
+      .limit(1);
+    if (!scope)
+      throw new HTTPException(404, { message: "Request type not found" });
+    await lockRequestTypeGroupOrder(tx, scope.workspaceId);
     const [current] = await tx
       .select()
       .from(schema.requestTypeTable)
@@ -223,6 +280,13 @@ export async function updateRequestType(
       .limit(1);
     if (!current)
       throw new HTTPException(404, { message: "Request type not found" });
+    if (
+      current.workspaceId !== scope.workspaceId ||
+      (input.workspaceId && input.workspaceId !== current.workspaceId)
+    )
+      throw new HTTPException(409, {
+        message: "Request type workspace changed",
+      });
     if (current.version !== version)
       throw new HTTPException(409, {
         message: "Request type changed; reload before saving",
@@ -257,7 +321,8 @@ export async function updateRequestType(
       throw new HTTPException(409, {
         message: "Request type changed; reload before saving",
       });
-    await appendAuditLog(tx, {
+    await synchronizeRequestTypeGroupOrder(tx, current.workspaceId);
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId: row.workspaceId,
@@ -375,16 +440,34 @@ export async function publishRequestType(id: string, actorId: string) {
       workspaceId: type.workspaceId,
       projectId: type.defaultProjectId,
     });
+    // CF-11: a form may also collect a customer-visible custom field, mapped as `cf.<key>`.
+    const refusedCustomFields = await refusedCustomFieldMappings(tx, {
+      workspaceId: type.workspaceId,
+      workItemTypeId: type.workItemTypeId,
+      form: formSchema,
+    });
+    const supportedNativeFields = new Set(["title", "description", "priority"]);
     const defects = validateFormSchema(
       formSchema,
-      new Set(["title", "description", "priority"]),
+      new Set([
+        ...supportedNativeFields,
+        ...formSchema.fields.flatMap((field) =>
+          field.mapsTo &&
+          customFieldKeyOf(field.mapsTo.field) !== null &&
+          !refusedCustomFields.includes(field.mapsTo.field)
+            ? [field.mapsTo.field]
+            : [],
+        ),
+      ]),
     );
-    const supportedNativeFields = new Set(["title", "description", "priority"]);
-    const unsupportedMapping = formSchema.fields.some(
-      (field) =>
-        field.mapsTo !== undefined &&
-        !supportedNativeFields.has(field.mapsTo.field),
-    );
+    const unsupportedMapping =
+      refusedCustomFields.length > 0 ||
+      formSchema.fields.some(
+        (field) =>
+          field.mapsTo !== undefined &&
+          customFieldKeyOf(field.mapsTo.field) === null &&
+          !supportedNativeFields.has(field.mapsTo.field),
+      );
     const requiredFileField = formSchema.fields.some(
       (field) => field.type === "file" && field.required === true,
     );
@@ -395,7 +478,10 @@ export async function publishRequestType(id: string, actorId: string) {
       !hasValidTitleMapping(formSchema)
     ) {
       throw new HTTPException(422, {
-        message: "Request type form is not publishable",
+        message:
+          refusedCustomFields.length > 0
+            ? `Request type form is not publishable: ${refusedCustomFields.join(", ")} cannot be collected (not a customer-visible custom field of this work-item type, or the wrong control for its format)`
+            : "Request type form is not publishable",
       });
     }
     const [workItemType] = await tx
@@ -472,7 +558,7 @@ export async function publishRequestType(id: string, actorId: string) {
       throw new HTTPException(409, {
         message: "Request type changed while publishing",
       });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId: type.workspaceId,
@@ -539,7 +625,7 @@ export async function setRequestTypePublished(
       .returning();
     if (!row)
       throw new HTTPException(404, { message: "Request type not found" });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId: row.workspaceId,
@@ -664,19 +750,42 @@ export async function portalCatalogue(organisationId: string, query = "") {
         }).enabled,
     ),
   );
-  const activeRows = rows.filter((row) =>
-    enabledWorkspaceIds.has(row.workspaceId),
+  // P4R2-M2: request types of a workspace with the customer portal off are not offered.
+  const portalScope = await customerPortalScope();
+  const activeRows = rows.filter(
+    (row) =>
+      enabledWorkspaceIds.has(row.workspaceId) &&
+      customerPortalOnFor(portalScope, row.workspaceId),
   );
   const ordered = activeRows.sort(
     (a, b) =>
       a.type.position - b.type.position || a.type.id.localeCompare(b.type.id),
   );
-  const groupOrder = new Map<string, number>();
-  for (const row of ordered) {
-    const current = groupOrder.get(row.type.group);
-    if (current === undefined || row.type.position < current)
-      groupOrder.set(row.type.group, row.type.position);
-  }
+  const storedOrders = workspaceIds.length
+    ? await db
+        .select()
+        .from(schema.requestTypeGroupOrderTable)
+        .where(
+          inArray(schema.requestTypeGroupOrderTable.workspaceId, workspaceIds),
+        )
+    : [];
+  const groupNames = orderPortalCatalogueGroups(
+    [...enabledWorkspaceIds].map((workspaceId) => {
+      const visible = ordered
+        .filter((row) => row.workspaceId === workspaceId)
+        .map((row) => row.type.group);
+      const stored = storedOrders.find(
+        (row) => row.workspaceId === workspaceId,
+      );
+      return {
+        workspaceId,
+        groups: [
+          ...new Set([...(stored?.orderedGroups ?? []), ...visible]),
+        ].filter((group) => visible.includes(group)),
+      };
+    }),
+  );
+  const groupOrder = new Map(groupNames.map((group, index) => [group, index]));
   return ordered
     .filter(({ type }) =>
       `${type.name} ${type.description ?? ""} ${type.group}`
@@ -838,7 +947,7 @@ export async function createSubmission(input: {
       personId: identity.personId,
       addedBy: identity.personId,
     });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId: identity.personId,
       actorType: "person",
       workspaceId: selected.workspaceId,
@@ -941,9 +1050,20 @@ async function convertSubmissionInTransaction(
         )[0]?.displayName ?? actor.name)
       : actor.name;
   if (!projectId)
-    throw new HTTPException(422, {
-      message:
-        "A destination project must be selected before accepting this submission",
+    throw intakeError(
+      422,
+      "destination_required",
+      "A destination project must be selected before accepting this submission",
+    );
+  const [lockedWorkspace] = await tx
+    .select({ id: schema.workspaceTable.id })
+    .from(schema.workspaceTable)
+    .where(eq(schema.workspaceTable.id, workspaceId))
+    .for("share")
+    .limit(1);
+  if (!lockedWorkspace)
+    throw new HTTPException(409, {
+      message: "Submission workspace is unavailable",
     });
   const [project] = await tx
     .select()
@@ -964,9 +1084,11 @@ async function convertSubmissionInTransaction(
     project.organisationId !== submission.organisationId ||
     !(await canReachProject(project))
   )
-    throw new HTTPException(422, {
-      message: "Destination project is unavailable for this organisation",
-    });
+    throw intakeError(
+      422,
+      "destination_unavailable",
+      "Destination project is unavailable for this organisation",
+    );
   const [version] = await tx
     .select()
     .from(schema.requestTypeVersionTable)
@@ -975,9 +1097,11 @@ async function convertSubmissionInTransaction(
     )
     .limit(1);
   if (!version)
-    throw new HTTPException(409, {
-      message: "Submitted form version is unavailable",
-    });
+    throw intakeError(
+      409,
+      "form_version_unavailable",
+      "Submitted form version is unavailable",
+    );
   // IQ-7 treats the snapshotted project and type as prefilled suggestions. The form
   // mapping/version remains pinned; the triager's chosen target type must be live in
   // this workspace, and the chosen project must be live and belong to the requester org.
@@ -992,9 +1116,11 @@ async function convertSubmissionInTransaction(
     )
     .limit(1);
   if (!type)
-    throw new HTTPException(422, {
-      message: "The submitted work-item type is unavailable",
-    });
+    throw intakeError(
+      422,
+      "work_item_type_unavailable",
+      "The submitted work-item type is unavailable",
+    );
   const [state] = await tx
     .select()
     .from(schema.stateTable)
@@ -1053,11 +1179,17 @@ async function convertSubmissionInTransaction(
     throw new HTTPException(409, {
       message: "Submission workspace is unavailable",
     });
-  const policyId =
-    type.slaPolicyId ??
-    requestSlaPolicyId ??
-    project.slaPolicyId ??
-    workspace.slaPolicyId;
+  // P4R1-M2 / P4R2-M2: with `feature.sla` off for the destination project no SLA clock
+  // starts on the accepted work item.
+  const policyId = !(await projectFeatureEnabled("feature.sla", project.id, tx))
+    ? null
+    : (type.slaPolicyId ??
+      requestSlaPolicyId ??
+      resolveProjectSlaPolicyId({
+        mode: project.slaPolicyMode as "inherit" | "override",
+        overrideId: project.slaPolicyId,
+        workspaceDefaultId: workspace.slaPolicyId,
+      }));
   if (
     policyId &&
     !(await findWorkspaceOwnedSlaPolicyQuery(tx, policyId, workspaceId))[0]
@@ -1077,36 +1209,35 @@ async function convertSubmissionInTransaction(
   // #761 / RT-6: an ineligible snapshotted default assignee never fails acceptance; the item
   // is left unassigned and the reason is recorded in the acceptance audit row.
   let assigneeSkipped: { id: string; reason: string } | null = null;
-  if (defaultAssigneeId) {
-    const [person] = await tx
-      .select({
-        id: schema.personTable.id,
-        active: schema.personTable.active,
-        side: schema.personTable.side,
-      })
-      .from(schema.personTable)
-      .innerJoin(
-        schema.membershipTable,
-        eq(schema.membershipTable.personId, schema.personTable.id),
-      )
-      .where(
-        and(
-          eq(schema.personTable.id, defaultAssigneeId),
-          eq(schema.membershipTable.scope, "project"),
-          eq(schema.membershipTable.scopeId, project.id),
-        ),
-      )
-      .limit(1);
-    if (person?.active && person.side === "staff")
-      eligibleAssigneeId = person.id;
+  // AS-12: the request type's default overrides the project's; AS-11: with no request-type
+  // default the project's default applies. The same eligibility rule below judges either.
+  const effectiveDefaultAssigneeId =
+    defaultAssigneeId ?? project.defaultAssigneeId ?? null;
+  if (effectiveDefaultAssigneeId) {
+    // PR-2: the roster is the project plus its ancestors, judged by the same rule as the
+    // canonical create and the project-settings write (`resolveAssigneeEligibility`).
+    const eligibility = await resolveAssigneeEligibility(
+      tx,
+      project.id,
+      effectiveDefaultAssigneeId,
+    );
+    const [person] = eligibility.eligible
+      ? await tx
+          .select({ side: schema.personTable.side })
+          .from(schema.personTable)
+          .where(eq(schema.personTable.id, effectiveDefaultAssigneeId))
+          .limit(1)
+      : [];
+    if (eligibility.eligible && person?.side === "staff")
+      eligibleAssigneeId = effectiveDefaultAssigneeId;
     else
       assigneeSkipped = {
-        id: defaultAssigneeId,
-        reason: !person
-          ? "not_a_project_member"
-          : !person.active
+        id: effectiveDefaultAssigneeId,
+        reason: eligibility.eligible
+          ? "not_staff"
+          : eligibility.reason === "not_active"
             ? "inactive"
-            : "not_staff",
+            : "not_a_project_member",
       };
   }
   const number = await claimWorkItemNumber(project.id, tx);
@@ -1145,6 +1276,17 @@ async function convertSubmissionInTransaction(
       payload: { key: item.key, title: item.title },
     },
   ]);
+  // CF-11: customer answers mapped to customer-visible custom fields, re-checked now.
+  const customFields = await applyAcceptedCustomFields(
+    tx,
+    {
+      id: item.id,
+      workspaceId,
+      projectId: project.id,
+      typeId: item.typeId,
+    },
+    mappedFields,
+  );
   await recordWorkItemEvent(tx, {
     kind: "work_item.created",
     workItemId: item.id,
@@ -1164,6 +1306,18 @@ async function convertSubmissionInTransaction(
       source: "portal",
     },
   });
+  // P1-11 / AS-16, WI-29: a default-assigned conversion records the same assignment
+  // activity, audit row, `work_item.assigned` event + assignee notification fan-out and
+  // implicit watcher as the create path (actor excluded, AS-18), in this transaction. Covers
+  // both the request-type default and the project-default fallback (AS-11/AS-12).
+  if (eligibleAssigneeId)
+    await recordInitialWorkItemFields(
+      tx,
+      item,
+      { assigneeId: eligibleAssigneeId },
+      actorId,
+      actor.type,
+    );
   for (const message of messages)
     await tx.insert(schema.commentTable).values({
       workspaceId,
@@ -1210,11 +1364,13 @@ async function convertSubmissionInTransaction(
     )
     .returning();
   if (!accepted)
-    throw new HTTPException(409, {
-      message: "Submission changed before it could be accepted",
-    });
+    throw intakeError(
+      409,
+      "submission_changed",
+      "Submission changed before it could be accepted",
+    );
   await beforeAcceptedAudit();
-  await appendAuditLog(tx, {
+  await appendIntakeAudit(tx, {
     actorId,
     actorType: actor.type,
     workspaceId,
@@ -1225,6 +1381,9 @@ async function convertSubmissionInTransaction(
     after: {
       ref: formatSubmissionReference(submission.number),
       workItemKey: item.key,
+      ...(customFields.skipped.length > 0
+        ? { customFieldsSkipped: customFields.skipped }
+        : {}),
       ...(assigneeSkipped
         ? {
             defaultAssigneeSkipped: {
@@ -1281,6 +1440,26 @@ export async function acceptSubmission(
       ref,
       workspaceId,
       actorId,
+      // `P2R1-12`: the loser of an accept race is shown the work item the first triager made,
+      // when the destination is within the loser's reach.
+      async (inner, converted) => {
+        if (!converted.workItemId) return null;
+        const [found] = await inner
+          .select({
+            id: schema.workItemTable.id,
+            key: schema.workItemTable.key,
+            project: schema.projectTable,
+          })
+          .from(schema.workItemTable)
+          .innerJoin(
+            schema.projectTable,
+            eq(schema.projectTable.id, schema.workItemTable.projectId),
+          )
+          .where(eq(schema.workItemTable.id, converted.workItemId))
+          .limit(1);
+        if (!found || !(await canReachProject(found.project))) return null;
+        return { id: found.id, key: found.key };
+      },
     );
     const [snapshot] = await tx
       .select()
@@ -1290,9 +1469,11 @@ export async function acceptSubmission(
       )
       .limit(1);
     if (!snapshot)
-      throw new HTTPException(409, {
-        message: "Submitted form version is unavailable",
-      });
+      throw intakeError(
+        409,
+        "form_version_unavailable",
+        "Submitted form version is unavailable",
+      );
     const item = await convertSubmissionInTransaction(
       tx,
       submission,
@@ -1344,7 +1525,11 @@ export async function markSubmissionDuplicate(
       .limit(1);
     if (!row) throw new HTTPException(404, { message: "Submission not found" });
     if (row.submission.state !== "new" && row.submission.state !== "clarifying")
-      throw new HTTPException(409, { message: "Submission is no longer open" });
+      throw intakeError(
+        409,
+        "submission_not_open",
+        "Submission is no longer open",
+      );
     const [target] = await tx
       .select({ item: schema.workItemTable, project: schema.projectTable })
       .from(schema.workItemTable)
@@ -1358,6 +1543,8 @@ export async function markSubmissionDuplicate(
           eq(schema.workItemTable.workspaceId, workspaceId),
           isNull(schema.workItemTable.deletedAt),
           isNull(schema.workItemTable.archivedAt),
+          // A merge target in a deleted project is gone for every other reader (`P2R1-P1`).
+          isNull(schema.projectTable.deletedAt),
         ),
       )
       .limit(1);
@@ -1387,10 +1574,12 @@ export async function markSubmissionDuplicate(
       )
       .returning();
     if (!updated)
-      throw new HTTPException(409, {
-        message: "Submission changed before it could be linked",
-      });
-    await appendAuditLog(tx, {
+      throw intakeError(
+        409,
+        "submission_changed",
+        "Submission changed before it could be linked",
+      );
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId,
@@ -1416,6 +1605,59 @@ export async function markSubmissionDuplicate(
   });
 }
 
+/** A signed-in portal customer, as far as read visibility (`CP-16`) is concerned. */
+export type PortalViewer = { personId: string; organisationId: string };
+
+export async function loadPortalViewer(
+  personId: string,
+): Promise<PortalViewer> {
+  const [row] = await db
+    .select({ organisationId: schema.personTable.organisationId })
+    .from(schema.personTable)
+    .where(
+      and(
+        eq(schema.personTable.id, personId),
+        eq(schema.personTable.side, "customer"),
+        eq(schema.personTable.active, true),
+      ),
+    )
+    .limit(1);
+  if (!row)
+    throw new HTTPException(404, { message: "Portal account not found" });
+  return { personId, organisationId: row.organisationId };
+}
+
+/**
+ * `CP-16` read visibility, always inside the viewer's own organisation: the requester, a
+ * participant explicitly added to the submission (`request_participant`), or any customer of the
+ * same organisation when the submission's `customer_visibility` is `organisation`. A `private`
+ * submission is invisible to every other colleague, and another organisation's customer never
+ * matches (the organisation equality is part of every branch). A miss is the constant 404.
+ */
+export function portalReadablePredicate(viewer: PortalViewer) {
+  return and(
+    eq(schema.submissionTable.organisationId, viewer.organisationId),
+    or(
+      eq(schema.submissionTable.requesterId, viewer.personId),
+      eq(schema.submissionTable.customerVisibility, "organisation"),
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(schema.requestParticipantTable)
+          .where(
+            and(
+              eq(
+                schema.requestParticipantTable.submissionId,
+                schema.submissionTable.id,
+              ),
+              eq(schema.requestParticipantTable.personId, viewer.personId),
+            ),
+          ),
+      ),
+    ),
+  );
+}
+
 export async function findSubmission(
   ref: string,
   workspaceId?: string,
@@ -1426,6 +1668,8 @@ export async function findSubmission(
    * requester's own view passes nothing and keeps its existing behaviour.
    */
   staffIdentity?: ResolvedIdentity,
+  /** Portal read path (`CP-16`): requester, participant or organisation colleague. */
+  portalViewer?: PortalViewer,
 ) {
   const number = /^SUB-([1-9]\d{0,9})$/u.exec(ref)?.[1];
   if (!number)
@@ -1458,6 +1702,7 @@ export async function findSubmission(
         ...(requesterId
           ? [eq(schema.submissionTable.requesterId, requesterId)]
           : []),
+        ...(portalViewer ? [portalReadablePredicate(portalViewer)] : []),
         ...(staffIdentity
           ? [
               currentWorkspaceReachPredicate(
@@ -1598,6 +1843,8 @@ export async function findSubmission(
         authorId: comment.authorId ?? "",
         actorType: comment.actorType,
         body: extractDocumentText(comment.body),
+        reasonCode: null,
+        reasonParams: null,
         createdAt: comment.createdAt.toISOString(),
       }));
     messages = [...messages, ...transferred].sort((left, right) =>
@@ -1615,9 +1862,79 @@ type PortalSubmissionSource = Omit<
   version: typeof schema.requestTypeVersionTable.$inferSelect;
 };
 
-export async function findPortalSubmission(ref: string, requesterId: string) {
-  const row = await findSubmission(ref, undefined, requesterId);
+/**
+ * `CP-4`: how a message author appears to a customer. Staff who act publicly are named (the
+ * author of a public comment or clarification); a customer is never named, only marked as the
+ * viewer's own. Nothing else about the author (id, role, assignment) is exposed.
+ */
+export type PortalMessageAuthor = {
+  actorType: "customer" | "triager" | "system";
+  authorName: string | null;
+  mine: boolean;
+};
+
+export async function portalMessageAuthors(
+  messages: ReadonlyArray<{ authorId: string | null; actorType: string }>,
+  viewerPersonId: string,
+): Promise<
+  (authorId: string | null, actorType: string) => PortalMessageAuthor
+> {
+  const ids = [
+    ...new Set(
+      messages.flatMap((message) =>
+        message.authorId ? [message.authorId] : [],
+      ),
+    ),
+  ];
+  const people = ids.length
+    ? await db
+        .select({
+          id: schema.personTable.id,
+          side: schema.personTable.side,
+          displayName: schema.personTable.displayName,
+        })
+        .from(schema.personTable)
+        .where(inArray(schema.personTable.id, ids))
+    : [];
+  const byId = new Map(people.map((person) => [person.id, person]));
+  return (authorId, actorType) => {
+    // `P2R1-05`: a system message (the IQ-15 auto-decline) has no author to name.
+    if (actorType === "system" || authorId === null)
+      return { actorType: "system", authorName: null, mine: false };
+    const person = byId.get(authorId);
+    // A stored `triager` message or a comment by a non-customer person is staff; an author that
+    // cannot be resolved falls back to the stored actor type, and anything but `customer` is staff.
+    const staff = person
+      ? person.side !== "customer"
+      : actorType !== "customer";
+    return staff
+      ? {
+          actorType: "triager",
+          authorName: person?.displayName?.trim() || null,
+          mine: false,
+        }
+      : {
+          actorType: "customer",
+          authorName: null,
+          mine: authorId === viewerPersonId,
+        };
+  };
+}
+
+export async function findPortalSubmission(
+  ref: string,
+  viewerPersonId: string,
+) {
+  const viewer = await loadPortalViewer(viewerPersonId);
+  const row = await findSubmission(
+    ref,
+    undefined,
+    undefined,
+    undefined,
+    viewer,
+  );
   const portalRow: PortalSubmissionSource = row;
+  const isRequester = portalRow.submission.requesterId === viewer.personId;
   const formSchema = portalRow.version.formSchema as FormSchema;
   const fields = visibleFields(
     formSchema,
@@ -1628,19 +1945,31 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
     label: field.label,
     multiple: field.multiple,
   }));
+  let customFields: PortalCustomField[] = [];
   let workItem: {
     title: string;
     description: string;
-    state: string;
     priority: string | null;
+    resolvedAt: string | null;
+    sla: PortalSla | null;
   } | null = null;
+  let statusFacts: PortalStatusWorkItem | null = null;
+  let resolvedAt: Date | null = null;
+  let linkedWorkItemId: string | null = null;
   if (portalRow.submission.workItemId) {
+    // The submission itself was authorised for this viewer above; its linked work item belongs
+    // to the submission's requester, so the lookup is keyed on that person (CP-16).
+    const ownerId = portalRow.submission.requesterId;
     const [item] = await db
       .select({
+        id: schema.workItemTable.id,
+        workspaceId: schema.workItemTable.workspaceId,
+        typeId: schema.workItemTable.typeId,
         title: schema.workItemTable.title,
         description: schema.workItemTable.description,
-        state: schema.stateTemplateTable.name,
+        stateGroup: schema.stateTemplateTable.group,
         priority: schema.workItemTable.priority,
+        resolvedAt: schema.workItemTable.resolvedAt,
       })
       .from(schema.workItemTable)
       .innerJoin(
@@ -1654,17 +1983,64 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
       .where(
         and(
           eq(schema.workItemTable.id, portalRow.submission.workItemId),
-          eq(schema.workItemTable.requesterId, requesterId),
+          eq(schema.workItemTable.requesterId, ownerId),
           isNull(schema.workItemTable.deletedAt),
         ),
       )
       .limit(1);
-    if (item)
+    if (item) {
+      const {
+        id: itemId,
+        workspaceId: itemWorkspaceId,
+        typeId: itemTypeId,
+        resolvedAt: itemResolvedAt,
+        stateGroup,
+        ...visible
+      } = item;
+      linkedWorkItemId = itemId;
+      customFields = await loadPortalCustomFields(db, {
+        id: itemId,
+        workspaceId: itemWorkspaceId,
+        typeId: itemTypeId,
+      });
+      resolvedAt = itemResolvedAt;
+      statusFacts = { resolvedAt: itemResolvedAt, stateGroup };
       workItem = {
-        ...item,
+        ...visible,
         description: extractDocumentText(item.description),
+        resolvedAt: itemResolvedAt ? itemResolvedAt.toISOString() : null,
+        sla: await loadPortalSla(itemId, ownerId),
       };
+    }
   }
+  const windowDays = await findReopenWindowDays();
+  const now = new Date();
+  const withinWindow = resolvedAt
+    ? isWithinReopenWindow(resolvedAt, now, windowDays)
+    : false;
+  const [rating] = linkedWorkItemId
+    ? await db
+        .select({
+          score: schema.satisfactionRatingTable.score,
+          comment: schema.satisfactionRatingTable.comment,
+          updatedAt: schema.satisfactionRatingTable.updatedAt,
+        })
+        .from(schema.satisfactionRatingTable)
+        .where(
+          and(
+            eq(schema.satisfactionRatingTable.workItemId, linkedWorkItemId),
+            eq(
+              schema.satisfactionRatingTable.personId,
+              portalRow.submission.requesterId,
+            ),
+          ),
+        )
+        .limit(1)
+    : [];
+  const authorOf = await portalMessageAuthors(
+    portalRow.messages,
+    viewer.personId,
+  );
   return {
     ref: portalRow.ref,
     submission: {
@@ -1673,10 +2049,44 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
       customerVisibility: portalRow.submission.customerVisibility,
       createdAt: portalRow.submission.createdAt.toISOString(),
     },
+    customerStatus: portalCustomerStatus(
+      portalRow.submission.state,
+      statusFacts,
+    ),
+    isRequester,
+    // CP-16: attachments are requester-only, so a colleague's view hides them.
+    canViewAttachments: isRequester,
+    canUpload: isRequester,
     canWithdraw:
+      isRequester &&
       (portalRow.submission.state === "new" ||
         portalRow.submission.state === "clarifying") &&
       portalRow.submission.claimedBy === null,
+    // CP-7: accepted, open, requester only, and a higher priority still exists.
+    canEscalate:
+      isRequester &&
+      workItem !== null &&
+      resolvedAt === null &&
+      raisablePriorities(workItem.priority).length > 0,
+    // CP-8 / IQ-15: an auto-declined submission, or a resolved request inside the window.
+    canReopen:
+      isRequester &&
+      ((portalRow.submission.state === "declined" &&
+        portalRow.submission.autoDeclinedAt !== null) ||
+        (workItem !== null && resolvedAt !== null && withinWindow)),
+    // CP-9: a resolved request can be rated; an existing rating can be changed in the window.
+    canRate:
+      isRequester &&
+      workItem !== null &&
+      resolvedAt !== null &&
+      (rating === undefined || withinWindow),
+    satisfaction: rating
+      ? {
+          rating: rating.score,
+          comment: rating.comment,
+          ratedAt: rating.updatedAt.toISOString(),
+        }
+      : null,
     requestType: {
       name: portalRow.requestType.name,
       description: portalRow.requestType.description,
@@ -1685,16 +2095,46 @@ export async function findPortalSubmission(ref: string, requesterId: string) {
     },
     version: { formSchema: { fields } },
     workItem,
+    customFields,
     messages: portalRow.messages.map((message) => ({
       id: message.id,
-      actorType: message.actorType,
+      ...authorOf(message.authorId, message.actorType),
       body: message.body,
+      reasonCode: message.reasonCode ?? null,
+      reasonParams: message.reasonParams ?? null,
       createdAt: message.createdAt,
     })),
   };
 }
 
-function extractDocumentText(value: unknown): string {
+/** CP-9: the requester's rating on a work item, for the staff submission detail. */
+export async function findSubmissionSatisfaction(workItemId: string | null) {
+  if (!workItemId) return null;
+  const [row] = await db
+    .select({
+      score: schema.satisfactionRatingTable.score,
+      comment: schema.satisfactionRatingTable.comment,
+      updatedAt: schema.satisfactionRatingTable.updatedAt,
+    })
+    .from(schema.satisfactionRatingTable)
+    .where(eq(schema.satisfactionRatingTable.workItemId, workItemId))
+    .orderBy(asc(schema.satisfactionRatingTable.createdAt))
+    .limit(1);
+  return row
+    ? {
+        rating: row.score,
+        comment: row.comment,
+        ratedAt: row.updatedAt.toISOString(),
+      }
+    : null;
+}
+
+/**
+ * Plain text of a stored rich-text body for the portal projection. A legacy plain-string body
+ * (older transition notes and comments) is returned as it is; a document is flattened.
+ */
+export function extractDocumentText(value: unknown): string {
+  if (typeof value === "string") return value;
   if (!value || typeof value !== "object") return "";
   const node = value as { text?: unknown; content?: unknown[] };
   if (typeof node.text === "string") return node.text;
@@ -1734,19 +2174,47 @@ export async function listSubmissions(
   states?: string[],
   cursor?: string,
   limit = 50,
+  filters: SubmissionListFilters = {},
 ) {
   const visibleStates = states?.length ? states : ["new", "clarifying"];
-  const scope = `staff:${workspaceId}:${[...visibleStates].sort().join(",")}:limit:${limit}`;
+  const scope = `staff:${workspaceId}:${[...visibleStates].sort().join(",")}:limit:${limit}:filters:${filtersScope(filters)}`;
   const decoded = decodeSubmissionCursor(cursor, scope);
-  const conditions = [
+  // The filter predicates are shared by the page and the total, so `meta.total` counts the
+  // filtered queue. `olderThanDays` is evaluated once per request.
+  const filterConditions = [
     eq(schema.requestTypeTable.workspaceId, workspaceId),
     inArray(schema.submissionTable.state, visibleStates),
+    ...(filters.requestTypeKey
+      ? [eq(schema.requestTypeTable.key, filters.requestTypeKey)]
+      : []),
+    ...(filters.assignee === UNCLAIMED
+      ? [isNull(schema.submissionTable.claimedBy)]
+      : filters.assignee === CLAIMED
+        ? [isNotNull(schema.submissionTable.claimedBy)]
+        : filters.assignee
+          ? [eq(schema.submissionTable.claimedBy, filters.assignee)]
+          : []),
+    ...(filters.olderThanDays !== undefined
+      ? [
+          lt(
+            schema.submissionTable.createdAt,
+            olderThanCutoff(filters.olderThanDays, new Date()),
+          ),
+        ]
+      : []),
+  ];
+  // `created_at` carries microseconds but the cursor round-trips through a JS Date
+  // (milliseconds): comparing raw values re-serves the last row of the previous page. Both
+  // the keyset predicate and the order use the millisecond-truncated value.
+  const createdAtMs = sql`date_trunc('milliseconds', ${schema.submissionTable.createdAt})`;
+  const conditions = [
+    ...filterConditions,
     ...(decoded
       ? [
           or(
-            gt(schema.submissionTable.createdAt, new Date(decoded.createdAt)),
+            sql`${createdAtMs} > ${new Date(decoded.createdAt)}`,
             and(
-              eq(schema.submissionTable.createdAt, new Date(decoded.createdAt)),
+              sql`${createdAtMs} = ${new Date(decoded.createdAt)}`,
               gt(schema.submissionTable.id, decoded.id),
             ),
           ),
@@ -1782,10 +2250,7 @@ export async function listSubmissions(
       eq(schema.organisationTable.id, schema.submissionTable.organisationId),
     )
     .where(and(...conditions))
-    .orderBy(
-      asc(schema.submissionTable.createdAt),
-      asc(schema.submissionTable.id),
-    )
+    .orderBy(asc(createdAtMs), asc(schema.submissionTable.id))
     .limit(limit + 1);
   const hasMore = rows.length > limit;
   const pageRows = rows.slice(0, limit);
@@ -1805,12 +2270,7 @@ export async function listSubmissions(
       schema.requestTypeTable,
       eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
     )
-    .where(
-      and(
-        eq(schema.requestTypeTable.workspaceId, workspaceId),
-        inArray(schema.submissionTable.state, visibleStates),
-      ),
-    );
+    .where(and(...filterConditions));
   return {
     submissions: pageRows.map((row) => {
       const form = row.version.formSchema as FormSchema;
@@ -1841,6 +2301,12 @@ export async function listOwnSubmissions(
   limit = 50,
 ) {
   const identity = await portalIdentity(userId);
+  // CP-16: the caller's own requests plus the organisation-visible and participant requests of
+  // their organisation, never another organisation's and never a colleague's `private` request.
+  const readable = portalReadablePredicate({
+    personId: identity.personId,
+    organisationId: identity.organisationId,
+  });
   const scope = `portal:${identity.personId}:limit:${limit}`;
   const decoded = decodeSubmissionCursor(cursor, scope);
   const workspaceRows = await db
@@ -1850,7 +2316,7 @@ export async function listOwnSubmissions(
       schema.requestTypeTable,
       eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
     )
-    .where(eq(schema.submissionTable.requesterId, identity.personId));
+    .where(readable);
   const workspaceIds = workspaceRows.map((row) => row.workspaceId);
   if (workspaceIds.length === 0)
     return {
@@ -1896,15 +2362,24 @@ export async function listOwnSubmissions(
       page: { nextCursor: null, hasMore: false },
       meta: { total: 0 },
     };
+  // P4R2-M2: a submission follows its converted work item's project, otherwise its request
+  // type's workspace; rows of a project or workspace with the customer portal off are hidden.
+  const portalOn = await customerPortalCondition(
+    schema.requestTypeTable.workspaceId,
+    sql`(SELECT ${schema.workItemTable.projectId} FROM ${schema.workItemTable} WHERE ${schema.workItemTable.id} = ${schema.submissionTable.workItemId})`,
+  );
+  // `created_at` has microseconds; the cursor round-trips through a JS Date (milliseconds).
+  const ownCreatedAtMs = sql`date_trunc('milliseconds', ${schema.submissionTable.createdAt})`;
   const conditions = [
-    eq(schema.submissionTable.requesterId, identity.personId),
+    readable,
     inArray(schema.requestTypeTable.workspaceId, enabledWorkspaceIds),
+    portalOn,
     ...(decoded
       ? [
           or(
-            lt(schema.submissionTable.createdAt, new Date(decoded.createdAt)),
+            sql`${ownCreatedAtMs} < ${new Date(decoded.createdAt)}`,
             and(
-              eq(schema.submissionTable.createdAt, new Date(decoded.createdAt)),
+              sql`${ownCreatedAtMs} = ${new Date(decoded.createdAt)}`,
               lt(schema.submissionTable.id, decoded.id),
             ),
           ),
@@ -1922,10 +2397,7 @@ export async function listOwnSubmissions(
       eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
     )
     .where(and(...conditions))
-    .orderBy(
-      desc(schema.submissionTable.createdAt),
-      desc(schema.submissionTable.id),
-    )
+    .orderBy(desc(ownCreatedAtMs), desc(schema.submissionTable.id))
     .limit(limit + 1);
   const hasMore = rows.length > limit;
   const pageRows = rows.slice(0, limit);
@@ -1947,16 +2419,67 @@ export async function listOwnSubmissions(
     )
     .where(
       and(
-        eq(schema.submissionTable.requesterId, identity.personId),
+        readable,
         inArray(schema.requestTypeTable.workspaceId, enabledWorkspaceIds),
+        portalOn,
       ),
     );
+  // CP-6: the customer-safe `{state, dueAt}` on each row that has a linked work item, in small
+  // concurrent batches (one evaluation per such row, at most `limit` rows).
+  const slas = new Map<string, PortalSla | null>();
+  const withItem = pageRows.filter((row) => row.submission.workItemId);
+  for (let index = 0; index < withItem.length; index += 10) {
+    await Promise.all(
+      withItem.slice(index, index + 10).map(async (row) => {
+        slas.set(
+          row.submission.id,
+          await loadPortalSla(
+            row.submission.workItemId as string,
+            row.submission.requesterId,
+          ),
+        );
+      }),
+    );
+  }
+  const statusFacts = new Map<string, PortalStatusWorkItem>();
+  const itemIds = withItem.map((row) => row.submission.workItemId as string);
+  if (itemIds.length > 0) {
+    const facts = await db
+      .select({
+        id: schema.workItemTable.id,
+        resolvedAt: schema.workItemTable.resolvedAt,
+        stateGroup: schema.stateTemplateTable.group,
+      })
+      .from(schema.workItemTable)
+      .innerJoin(
+        schema.stateTable,
+        eq(schema.stateTable.id, schema.workItemTable.stateId),
+      )
+      .innerJoin(
+        schema.stateTemplateTable,
+        eq(schema.stateTemplateTable.id, schema.stateTable.stateTemplateId),
+      )
+      .where(inArray(schema.workItemTable.id, itemIds));
+    for (const fact of facts)
+      statusFacts.set(fact.id, {
+        resolvedAt: fact.resolvedAt,
+        stateGroup: fact.stateGroup,
+      });
+  }
   return {
     submissions: pageRows.map((row) => ({
       ...row,
       submission: materializeSubmission(row.submission),
       requestType: materializeRequestType(row.requestType),
       ref: formatSubmissionReference(row.submission.number),
+      isRequester: row.submission.requesterId === identity.personId,
+      customerStatus: portalCustomerStatus(
+        row.submission.state,
+        row.submission.workItemId
+          ? (statusFacts.get(row.submission.workItemId) ?? null)
+          : null,
+      ) satisfies PortalCustomerStatus,
+      sla: slas.get(row.submission.id) ?? null,
     })),
     page: { nextCursor, hasMore },
     meta: { total: totalRow?.value ?? 0 },
@@ -2003,36 +2526,18 @@ export async function suggestDuplicateWorkItems(
         (row.submission.formData as Record<string, unknown>)[field.key] ?? "",
       ).trim()
     : "";
-  // #740: a suggestion names a work item (key and title), so only items of projects the
-  // triager reaches may be suggested.
-  if (title.length < 2 || reachableProjectIds.length === 0) return [];
-  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const score = sql<number>`similarity(${sql.identifier("work_item")}.${sql.identifier("title")}, ${title})`;
-  return db
-    .select({
-      id: schema.workItemTable.id,
-      key: schema.workItemTable.key,
-      title: schema.workItemTable.title,
-      score,
-    })
-    .from(schema.workItemTable)
-    .innerJoin(
-      schema.projectTable,
-      eq(schema.projectTable.id, schema.workItemTable.projectId),
-    )
-    .where(
-      and(
-        eq(schema.workItemTable.workspaceId, workspaceId),
-        eq(schema.projectTable.organisationId, row.submission.organisationId),
-        inArray(schema.projectTable.id, [...reachableProjectIds]),
-        gt(schema.workItemTable.createdAt, cutoff),
-        gt(score, 0.3),
-        isNull(schema.workItemTable.deletedAt),
-        isNull(schema.workItemTable.archivedAt),
-      ),
-    )
-    .orderBy(desc(score), desc(schema.workItemTable.createdAt))
-    .limit(10);
+  const grouped = await suggestDuplicatesForQueueRows(
+    workspaceId,
+    [
+      {
+        ref,
+        summary: title,
+        organisationId: row.submission.organisationId,
+      },
+    ],
+    reachableProjectIds,
+  );
+  return grouped.get(ref) ?? [];
 }
 
 /**
@@ -2048,6 +2553,10 @@ async function claimSubmissionInTransaction(
   ref: string,
   workspaceId: string,
   actorId: string,
+  resolveWinner?: (
+    tx: DbTransaction,
+    submission: typeof schema.submissionTable.$inferSelect,
+  ) => Promise<{ id: string; key: string } | null>,
 ) {
   const [row] = await tx
     .select({
@@ -2068,13 +2577,27 @@ async function claimSubmissionInTransaction(
     .for("update", { of: schema.submissionTable })
     .limit(1);
   if (!row) throw new HTTPException(404, { message: "Submission not found" });
-  if (row.submission.state !== "new" && row.submission.state !== "clarifying")
-    throw new HTTPException(409, { message: "Submission is no longer open" });
-  if (row.submission.claimedBy && row.submission.claimedBy !== actorId)
-    throw new HTTPException(409, {
-      message: "Submission is claimed by another triager",
-    });
-  if (row.submission.claimedBy === actorId && row.submission.claimedAt)
+  if (row.submission.state !== "new" && row.submission.state !== "clarifying") {
+    const winner =
+      row.submission.state === "accepted" && resolveWinner
+        ? await resolveWinner(tx, row.submission)
+        : null;
+    if (winner)
+      throw intakeError(
+        409,
+        "submission_already_converted",
+        "Submission is no longer open",
+        { workItem: winner },
+      );
+    throw intakeError(
+      409,
+      "submission_not_open",
+      "Submission is no longer open",
+    );
+  }
+  // `IQ-16a`: the claim is the customer's withdrawal lock, not an assignment. Any triager on the
+  // triage team may act on a claimed submission, so a claim by someone else is kept as it is.
+  if (row.submission.claimedBy && row.submission.claimedAt)
     return { submission: row.submission, appendAudit: async () => {} };
   const [updated] = await tx
     .update(schema.submissionTable)
@@ -2091,13 +2614,15 @@ async function claimSubmissionInTransaction(
     )
     .returning();
   if (!updated)
-    throw new HTTPException(409, {
-      message: "Submission changed; reload before acting",
-    });
+    throw intakeError(
+      409,
+      "submission_changed",
+      "Submission changed; reload before acting",
+    );
   return {
     submission: updated,
     appendAudit: async () => {
-      await appendAuditLog(tx, {
+      await appendIntakeAudit(tx, {
         actorId,
         actorType: "person",
         workspaceId,
@@ -2153,6 +2678,42 @@ export async function postSubmissionMessage(input: {
   const number = parseSubmissionReference(input.ref);
   if (number === null)
     throw new HTTPException(404, { message: "Submission not found" });
+  const posted = await postSubmissionMessageInTransaction(input, number);
+  const { reopenWorkItemId, ...result } = posted as typeof posted & {
+    reopenWorkItemId?: string;
+  };
+  if (reopenWorkItemId) {
+    // WF-21: the reopen request is already durable (a non-warning `reopen_received` row written
+    // in the reply transaction; `reopen_requested` is the post-commit refusal flag only), so a failure here never fails the committed reply; it is
+    // logged, never swallowed.
+    try {
+      await requestCustomerReopen({
+        workItemId: reopenWorkItemId,
+        source: "reply",
+      });
+    } catch {
+      logTaskDesk({
+        module: "jobs",
+        message: "jobs.failure",
+        level: "error",
+        result: "degraded",
+      });
+    }
+  }
+  return result;
+}
+
+async function postSubmissionMessageInTransaction(
+  input: {
+    ref: string;
+    workspaceId?: string;
+    requesterId?: string;
+    actorId: string;
+    actorType: "customer" | "triager";
+    body: string;
+  },
+  number: number,
+) {
   return db.transaction(async (tx) => {
     const [row] = await tx
       .select({
@@ -2186,7 +2747,7 @@ export async function postSubmissionMessage(input: {
     if (row.submission.state === "accepted" && input.actorType === "customer") {
       if (!row.workItem)
         throw new HTTPException(409, {
-          message: "Accepted work item is unavailable",
+          message: "This request is temporarily unavailable",
         });
       const now = new Date();
       const [comment] = await tx
@@ -2222,7 +2783,7 @@ export async function postSubmissionMessage(input: {
           visibility: "public",
         },
       });
-      await appendAuditLog(tx, {
+      await appendIntakeAudit(tx, {
         actorId: input.actorId,
         actorType: "person",
         workspaceId: row.workspaceId,
@@ -2232,21 +2793,32 @@ export async function postSubmissionMessage(input: {
         entityId: row.submission.id,
         after: { number, by: "customer", workItemId: row.workItem.id },
       });
-      await enqueueOutboxEvent(tx, {
-        id: `evt_${createId()}`,
-        kind: "submission.replied",
-        occurredAt: now.toISOString(),
-        actor: { type: "person", id: input.actorId, name: "Customer" },
-        scope: eventScope({
+      await enqueueNotificationEvent(
+        tx,
+        {
+          id: `evt_${createId()}`,
+          kind: "submission.replied",
+          occurredAt: now.toISOString(),
+          actor: { type: "person", id: input.actorId, name: "Customer" },
+          scope: eventScope({
+            workspaceId: row.workspaceId,
+            organisationId: row.submission.organisationId,
+            projectId: row.workItem.projectId,
+          }),
+          payload: { ref: input.ref, by: "customer" },
+          causationId: null,
+          depth: 0,
+          originAutomationId: null,
+        },
+        { resolveRecipients: resolveSubmissionRepliedRecipients },
+      );
+      if (row.workItem.resolvedAt) {
+        await recordReopenRequested(tx, {
           workspaceId: row.workspaceId,
-          organisationId: row.submission.organisationId,
-          projectId: row.workItem.projectId,
-        }),
-        payload: { ref: input.ref, by: "customer" },
-        causationId: null,
-        depth: 0,
-        originAutomationId: null,
-      });
+          workItemId: row.workItem.id,
+          source: "reply",
+        });
+      }
       return {
         id: row.submission.id,
         ref: input.ref,
@@ -2258,6 +2830,8 @@ export async function postSubmissionMessage(input: {
           body: input.body,
           createdAt: comment.createdAt,
         },
+        // WF-21: a reply to a closed request reopens it; done after this commit.
+        reopenWorkItemId: row.workItem.id,
       };
     }
     const now = new Date();
@@ -2269,8 +2843,11 @@ export async function postSubmissionMessage(input: {
         state: before.state as never,
         claimedBy: before.claimedBy,
         claimedAt: before.claimedAt,
+        // IQ-15: the stored period start; `updated_at` only for rows that pre-date the column.
         clarifyingSince:
-          before.state === "clarifying" ? before.updatedAt : null,
+          before.state === "clarifying"
+            ? (before.clarifyingSince ?? before.updatedAt)
+            : null,
         staffMessageCount:
           input.actorType === "triager" && before.claimedBy ? 1 : 0,
       },
@@ -2296,6 +2873,9 @@ export async function postSubmissionMessage(input: {
       .update(schema.submissionTable)
       .set({
         state: transitioned.to,
+        // IQ-15 / IQ-13: a staff clarification (re)starts the window, the customer's reply
+        // ends it.
+        clarifyingSince: transitioned.record.clarifyingSince,
         claimedBy:
           input.actorType === "triager"
             ? (before.claimedBy ?? input.actorId)
@@ -2318,7 +2898,7 @@ export async function postSubmissionMessage(input: {
       throw new HTTPException(409, {
         message: "Submission changed; reload before replying",
       });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId: input.actorId,
       actorType: "person",
       workspaceId: row.workspaceId,
@@ -2328,28 +2908,34 @@ export async function postSubmissionMessage(input: {
       entityId: before.id,
       after: { number, by: input.actorType },
     });
-    await enqueueOutboxEvent(tx, {
-      id: `evt_${createId()}`,
-      kind: "submission.replied",
-      occurredAt: now.toISOString(),
-      actor: {
-        type: "person",
-        id: input.actorId,
-        name: input.actorType === "customer" ? "Customer" : "Staff",
+    // IQ-12 / EV-1: the customer (staff message) or last handler (customer reply) is notified in
+    // this same transaction; the row is keyed `(event_id, person_id)`, so a replay is a no-op.
+    await enqueueNotificationEvent(
+      tx,
+      {
+        id: `evt_${createId()}`,
+        kind: "submission.replied",
+        occurredAt: now.toISOString(),
+        actor: {
+          type: "person",
+          id: input.actorId,
+          name: input.actorType === "customer" ? "Customer" : "Staff",
+        },
+        scope: eventScope({
+          workspaceId: row.workspaceId,
+          organisationId: before.organisationId,
+          projectId: null,
+        }),
+        payload: {
+          ref: input.ref,
+          by: input.actorType === "customer" ? "customer" : "staff",
+        },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
       },
-      scope: eventScope({
-        workspaceId: row.workspaceId,
-        organisationId: before.organisationId,
-        projectId: null,
-      }),
-      payload: {
-        ref: input.ref,
-        by: input.actorType === "customer" ? "customer" : "staff",
-      },
-      causationId: null,
-      depth: 0,
-      originAutomationId: null,
-    });
+      { resolveRecipients: resolveSubmissionRepliedRecipients },
+    );
     return { id: updated.id, ref: input.ref, state: updated.state, message };
   });
 }
@@ -2416,7 +3002,7 @@ export async function withdrawSubmission(ref: string, requesterId: string) {
       throw new HTTPException(409, {
         message: "Submission changed; reload before withdrawing",
       });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId: requesterId,
       actorType: "person",
       workspaceId: row.workspaceId,
@@ -2494,7 +3080,11 @@ export async function declineSubmission(
       )
       .returning();
     if (!updated)
-      throw new HTTPException(409, { message: "Submission is no longer open" });
+      throw intakeError(
+        409,
+        "submission_not_open",
+        "Submission is no longer open",
+      );
     const [message] = await tx
       .insert(schema.submissionMessageTable)
       .values({
@@ -2509,7 +3099,7 @@ export async function declineSubmission(
       throw new HTTPException(500, {
         message: "Could not record decline reason",
       });
-    await appendAuditLog(tx, {
+    await appendIntakeAudit(tx, {
       actorId,
       actorType: "person",
       workspaceId,
@@ -2519,21 +3109,26 @@ export async function declineSubmission(
       entityId: before.id,
       after: { number, reason },
     });
-    await enqueueOutboxEvent(tx, {
-      id: `evt_${createId()}`,
-      kind: "submission.declined",
-      occurredAt: now.toISOString(),
-      actor: { type: "person", id: actorId, name: "Staff" },
-      scope: eventScope({
-        workspaceId,
-        organisationId: before.organisationId,
-        projectId: null,
-      }),
-      payload: { ref, reason },
-      causationId: null,
-      depth: 0,
-      originAutomationId: null,
-    });
+    // NO-21: the requester is told, with the reason verbatim (same path as IQ-15's auto-decline).
+    await enqueueNotificationEvent(
+      tx,
+      {
+        id: `evt_${createId()}`,
+        kind: "submission.declined",
+        occurredAt: now.toISOString(),
+        actor: { type: "person", id: actorId, name: "Staff" },
+        scope: eventScope({
+          workspaceId,
+          organisationId: before.organisationId,
+          projectId: null,
+        }),
+        payload: { ref, reason },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      },
+      { resolveRecipients: resolveSubmissionRepliedRecipients },
+    );
     return { ref, state: updated.state, reason, message };
   });
 }

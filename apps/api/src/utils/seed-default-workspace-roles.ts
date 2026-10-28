@@ -1,5 +1,9 @@
 import { DEFAULT_ROLE_NAMES, defaultRolePayloads } from "@taskdesk/permissions";
 import db, { type schema } from "../database";
+import {
+  listAllWorkspaceIdsForRoleSeed,
+  seedWorkspaceBuiltInRolesFor,
+} from "../workspace/built-in-roles.repository";
 import { listAllWorkspaceIds, listWorkspaceRoleKeys } from "./repository";
 import {
   healSystemRoleRows,
@@ -117,6 +121,23 @@ export async function seedDefaultWorkspaceRoles() {
     );
   } catch (error) {
     console.error("❌ Failed to seed default workspace roles:", error);
+    throw error;
+  }
+}
+
+/**
+ * Backfill the six canonical workspace-scope built-in `role` rows (owner, admin, manager, lead,
+ * member, viewer) for every workspace missing them, and fill an empty owner/admin reach carrier.
+ * Idempotent and conflict-safe across concurrent boots (`ON CONFLICT DO NOTHING`); migration
+ * `0145` does the same for rows that exist at migration time, this covers workspaces created by
+ * an older binary during a rolling deploy. Runs after `seedDefaultWorkspaceRoles`.
+ */
+export async function seedCanonicalWorkspaceRoles() {
+  try {
+    const workspaceIds = await listAllWorkspaceIdsForRoleSeed(db);
+    await seedWorkspaceBuiltInRolesFor(db, workspaceIds);
+  } catch (error) {
+    console.error("❌ Failed to seed canonical workspace roles:", error);
     throw error;
   }
 }

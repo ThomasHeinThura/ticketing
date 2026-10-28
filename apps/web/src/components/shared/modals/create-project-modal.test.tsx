@@ -265,3 +265,43 @@ describe("CreateProjectModal customer organisation selector", () => {
     );
   });
 });
+
+describe("CreateProjectModal project key validation (PR-13)", () => {
+  function typeName(value: string) {
+    fireEvent.change(
+      screen.getByPlaceholderText("common:modals.createProject.projectName"),
+      { target: { value } },
+    );
+  }
+
+  it("explains an invalid key and blocks creation until it is 2-8 uppercase letters", async () => {
+    render(<CreateProjectModal open onClose={vi.fn()} />);
+    // "2024" derives the key "2024", which the API would refuse.
+    typeName("2024");
+    expect(screen.getByTestId("project-key-error").textContent).toBe(
+      "common:modals.createProject.keyInvalid",
+    );
+    const create = screen.getByRole("button", {
+      name: "common:modals.createProject.createButton",
+    }) as HTMLButtonElement;
+    expect(create.disabled).toBe(true);
+    fireEvent.click(create);
+    expect(mocks.createProject).not.toHaveBeenCalled();
+
+    // Typing a key folds to uppercase and clears the message.
+    fireEvent.change(screen.getByPlaceholderText("PRO"), {
+      target: { value: "web" },
+    });
+    expect(screen.queryByTestId("project-key-error")).toBeNull();
+    expect(create.disabled).toBe(false);
+  });
+
+  it("flags a single-letter key as too short", () => {
+    render(<CreateProjectModal open onClose={vi.fn()} />);
+    typeName("Zed");
+    fireEvent.change(screen.getByPlaceholderText("PRO"), {
+      target: { value: "Z" },
+    });
+    expect(screen.getByTestId("project-key-error")).toBeTruthy();
+  });
+});

@@ -1,0 +1,235 @@
+{
+	"artifact": "codex-20261025-keyboard-fast-getter-debug",
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"errors": [],
+	"debugBundle": {
+		"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+		"injected": true,
+		"originalSha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be",
+		"debugSha256": "5ab6f07c51781b583e170f1371f8b294f1a77da528275147ee2ca0e0d78e1fe4"
+	},
+	"loadedBundles": [
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "5ab6f07c51781b583e170f1371f8b294f1a77da528275147ee2ca0e0d78e1fe4"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"status": 200,
+			"sha256": "5ab6f07c51781b583e170f1371f8b294f1a77da528275147ee2ca0e0d78e1fe4"
+		},
+		{
+			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"status": 200,
+			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		}
+	],
+	"requests": [
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"body": {
+				"beforeId": "a03fohihmsd74wy8dcaiifa8",
+				"afterId": "a07nduomdh0ox0zm921an8bh"
+			}
+		}
+	],
+	"responses": [
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"status": 200,
+			"contentType": "application/json",
+			"json": {
+				"key": "PERF-7972",
+				"position": "2.9960937500",
+				"version": 8
+			}
+		}
+	],
+	"keyboardTrace": [
+		{
+			"code": "ArrowDown",
+			"activeId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeIndex": 0,
+			"collisionIds": [
+				"a03oizj1k8xx8cnnaxa09dva",
+				"a03fohihmsd74wy8dcaiifa8",
+				"a07nduomdh0ox0zm921an8bh",
+				"jl0274bnit11fe8he14xo55c",
+				"a0c03v0fq6mug1plfjy029hk",
+				"u6kq7tjv7128lekai9porx0f",
+				"wmkv7x0kxsqftojwckwf5c8d",
+				"a0crrhqz1ldohhc3opcbb5cq",
+				"a0dh0a7ez8xl2va8aeil53vs",
+				"dzuzn88w7vrscjhf5y1j024r",
+				"a0djeteqqyaa9raxbd6zqx3x",
+				"bclb9lp2ohj2kcg5wflneehh",
+				"a0f9c7prpg9hn18h4ysrui43",
+				"a0fiu4q56oft81np31sxbwid",
+				"mka5vkyrdn8viyqewuu4p18h"
+			],
+			"overId": "a03oizj1k8xx8cnnaxa09dva",
+			"overIndex": 0,
+			"currentCoordinates": {
+				"x": 957.5752563476562,
+				"y": 155.38433837890625
+			},
+			"collisionRect": {
+				"left": 957.5752563476562,
+				"top": 155.38433837890625
+			},
+			"targetId": "a03fohihmsd74wy8dcaiifa8",
+			"targetRect": {
+				"left": 942,
+				"top": 285
+			},
+			"result": {
+				"x": 942,
+				"y": 275.7686767578125
+			}
+		},
+		{
+			"code": "ArrowDown",
+			"activeId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeIndex": 0,
+			"collisionIds": [
+				"a03fohihmsd74wy8dcaiifa8",
+				"a03oizj1k8xx8cnnaxa09dva",
+				"a07nduomdh0ox0zm921an8bh",
+				"a0c03v0fq6mug1plfjy029hk",
+				"jl0274bnit11fe8he14xo55c",
+				"a0crrhqz1ldohhc3opcbb5cq",
+				"u6kq7tjv7128lekai9porx0f",
+				"wmkv7x0kxsqftojwckwf5c8d",
+				"a0dh0a7ez8xl2va8aeil53vs",
+				"a0djeteqqyaa9raxbd6zqx3x",
+				"dzuzn88w7vrscjhf5y1j024r",
+				"bclb9lp2ohj2kcg5wflneehh",
+				"a0f9c7prpg9hn18h4ysrui43",
+				"a0fiu4q56oft81np31sxbwid",
+				"mka5vkyrdn8viyqewuu4p18h"
+			],
+			"overId": "a03fohihmsd74wy8dcaiifa8",
+			"overIndex": 1,
+			"currentCoordinates": {
+				"x": 942,
+				"y": 275.7686767578125
+			},
+			"collisionRect": {
+				"left": 942,
+				"top": 275.7686767578125
+			},
+			"targetId": "a07nduomdh0ox0zm921an8bh",
+			"targetRect": {
+				"left": 942,
+				"top": 414
+			},
+			"result": {
+				"x": 942,
+				"y": 404.7686767578125
+			}
+		},
+		{
+			"code": "ArrowUp",
+			"activeId": "a03oizj1k8xx8cnnaxa09dva",
+			"activeIndex": 0,
+			"collisionIds": [
+				"a07nduomdh0ox0zm921an8bh",
+				"a03fohihmsd74wy8dcaiifa8",
+				"a0c03v0fq6mug1plfjy029hk",
+				"a03oizj1k8xx8cnnaxa09dva",
+				"a0crrhqz1ldohhc3opcbb5cq",
+				"jl0274bnit11fe8he14xo55c",
+				"a0dh0a7ez8xl2va8aeil53vs",
+				"u6kq7tjv7128lekai9porx0f",
+				"wmkv7x0kxsqftojwckwf5c8d",
+				"a0djeteqqyaa9raxbd6zqx3x",
+				"a0f9c7prpg9hn18h4ysrui43",
+				"dzuzn88w7vrscjhf5y1j024r",
+				"bclb9lp2ohj2kcg5wflneehh",
+				"a0fiu4q56oft81np31sxbwid",
+				"mka5vkyrdn8viyqewuu4p18h"
+			],
+			"overId": "a07nduomdh0ox0zm921an8bh",
+			"overIndex": 2,
+			"currentCoordinates": {
+				"x": 942,
+				"y": 404.7686767578125
+			},
+			"collisionRect": {
+				"left": 942,
+				"top": 404.7686767578125
+			},
+			"targetId": "a03fohihmsd74wy8dcaiifa8",
+			"targetRect": {
+				"left": 942,
+				"top": 285
+			},
+			"result": {
+				"x": 942,
+				"y": 285
+			}
+		}
+	],
+	"originalTopThree": ["PERF-7972", "PERF-1863", "PERF-6219"],
+	"cleanupDone": true,
+	"afterTopThree": ["PERF-1863", "PERF-7972", "PERF-6219"],
+	"checks": [
+		{
+			"name": "fast keyboard getter trace captured",
+			"pass": true,
+			"steps": 3
+		},
+		{
+			"name": "fast keyboard outcome persisted or left unchanged",
+			"pass": true,
+			"originalTopThree": ["PERF-7972", "PERF-1863", "PERF-6219"],
+			"afterTopThree": ["PERF-1863", "PERF-7972", "PERF-6219"],
+			"requests": [
+				{
+					"method": "POST",
+					"path": "/api/work-items/PERF-7972/rank",
+					"body": {
+						"beforeId": "a03fohihmsd74wy8dcaiifa8",
+						"afterId": "a07nduomdh0ox0zm921an8bh"
+					}
+				}
+			],
+			"responses": [
+				{
+					"method": "POST",
+					"path": "/api/work-items/PERF-7972/rank",
+					"status": 200,
+					"contentType": "application/json",
+					"json": {
+						"key": "PERF-7972",
+						"position": "2.9960937500",
+						"version": 8
+					}
+				}
+			]
+		}
+	]
+}

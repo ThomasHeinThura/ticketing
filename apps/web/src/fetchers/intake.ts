@@ -1,9 +1,12 @@
 import { client } from "@taskdesk/libs";
+import type { IntakeServerFilters } from "@/lib/intake-queue";
+import { recordServerDate, serverInstant } from "@/lib/server-clock";
 
 export async function getSubmissions(
   workspaceId: string,
   state?: string,
   cursor?: string,
+  filters: IntakeServerFilters = {},
 ) {
   const response = await client.submissions.$get({
     query: {
@@ -20,12 +23,23 @@ export async function getSubmissions(
           }
         : {}),
       ...(cursor ? { cursor } : {}),
+      // `IQ-21`: applied by the server so a shared URL shows the same queue on any page.
+      ...(filters.requestTypeKey
+        ? { requestTypeKey: filters.requestTypeKey }
+        : {}),
+      ...(filters.assignee ? { assignee: filters.assignee } : {}),
+      ...(filters.olderThanDays !== undefined
+        ? { olderThanDays: String(filters.olderThanDays) }
+        : {}),
       limit: "50",
     },
   });
   if (!response.ok)
     throw new Error((await response.text()) || "Unable to load submissions");
-  return response.json();
+  // `IQ-5`: the queue ages rows against the server's clock, carried by the response itself.
+  recordServerDate(response);
+  const serverNow = serverInstant(response.headers.get("date"));
+  return { ...(await response.json()), serverNow };
 }
 
 export async function getRequestTypes(workspaceId: string) {
@@ -190,6 +204,21 @@ export async function getPortalSubmission(ref: string) {
   return response.json();
 }
 
+export async function getPortalSubmissions(query?: {
+  cursor?: string;
+  limit?: string;
+}) {
+  const response = await client.portal.submissions.$get({
+    query: {
+      cursor: query?.cursor,
+      limit: query?.limit,
+    },
+  });
+  if (!response.ok)
+    throw new Error((await response.text()) || "Unable to load submissions");
+  return response.json();
+}
+
 export async function replyPortalSubmission(input: {
   ref: string;
   body: string;
@@ -223,6 +252,18 @@ export async function getPortalSubmissionAttachments(ref: string) {
   return response.json();
 }
 
+/** Relative, deterministic API paths for the sandboxed submission PDF viewer. */
+export function portalSubmissionAttachmentPreviewPath(ref: string, id: string) {
+  return `/portal/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(id)}/preview`;
+}
+
+export function portalSubmissionAttachmentDownloadPath(
+  ref: string,
+  id: string,
+) {
+  return `/portal/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(id)}`;
+}
+
 export async function getSubmissionAttachments(ref: string) {
   const response = await client.submissions[":ref"].attachments.$get({
     param: { ref },
@@ -232,6 +273,15 @@ export async function getSubmissionAttachments(ref: string) {
       (await response.text()) || "Unable to load submission attachments",
     );
   return response.json();
+}
+
+/** Staff-only submission paths; callers must still use the triage attachment API. */
+export function staffSubmissionAttachmentPreviewPath(ref: string, id: string) {
+  return `/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(id)}/preview`;
+}
+
+export function staffSubmissionAttachmentDownloadPath(ref: string, id: string) {
+  return `/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(id)}`;
 }
 
 export async function downloadSubmissionAttachment(input: {

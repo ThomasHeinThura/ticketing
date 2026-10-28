@@ -10,3 +10,16 @@
 .env.*
 !apps/web/.env.production
 *.log
+
+# Laptop/SIT runtime material must never enter a build context or cache.
+deploy/local/
+backups/
+.claude/
+.pi/
+.qodo/
+.codex/
+.agents/
+.worktrees/
+
+# Historical snapshots stay local; maintained contracts live under docs/.
+archive*

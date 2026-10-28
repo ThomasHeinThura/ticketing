@@ -4,6 +4,10 @@ import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import {
+  loadProjectAncestorIdsForRequest,
+  loadProjectOwnerTeamId,
+} from "../project/hierarchy.repository";
+import {
   projectCapabilityRefused,
   projectReadDecision,
 } from "./has-project-reach";
@@ -39,8 +43,17 @@ export async function assertWorkItemProjectReach(
     workspaceId: facts.workspaceId,
     organisationId: workspace?.organisationId ?? null,
     workItemId: facts.workItemId,
-    ancestorProjectIds: [],
-    ownerTeamId: null,
+    ancestorProjectIds: await loadProjectAncestorIdsForRequest(
+      c,
+      db,
+      facts.workspaceId,
+      facts.projectId,
+    ),
+    ownerTeamId: await loadProjectOwnerTeamId(
+      db,
+      facts.workspaceId,
+      facts.projectId,
+    ),
   });
   if (!decision) {
     throw new HTTPException(500, {

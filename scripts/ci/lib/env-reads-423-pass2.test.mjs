@@ -3,7 +3,7 @@ import test from "node:test";
 import { findEnvReads } from "./env-reads.mjs";
 
 // Opus review of #423 pass 2 (delta on the structural fix), F1-F4
-// (docs/07-planning/security-reviews/423-env-reads-ast-rewrite.md). Each case below is
+// (archive/2026-10-22/docs/07-planning/security-reviews/423-env-reads-ast-rewrite.md). Each case below is
 // confirmed, by running against `96df604` (this delta's pre-fix head), to reproduce the
 // finding described; and to be fixed after it.
 

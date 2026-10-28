@@ -6,11 +6,15 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { CANNED_RESPONSE_DELETION_ROUTE } from "./canned-response-deletion-target";
 import createCannedResponse from "./controllers/create-canned-response";
-import deleteCannedResponse from "./controllers/delete-canned-response";
 import listCannedResponses from "./controllers/list-canned-responses";
 import updateCannedResponse from "./controllers/update-canned-response";
 import { listCannedResponsesForManagement } from "./repository";
@@ -127,17 +131,23 @@ const deleteCannedResponseRoute = createRoute({
   path: "/{id}",
   tags: ["Canned responses"],
   summary: "Delete canned response",
+  description:
+    "Requests a durable pending deletion (202); the canned response is unchanged until the requester approves.",
   middleware: [
     requireCannedResponseReach(),
     requireWorkspaceCapability("workspace:manage_settings"),
   ] as const,
   request: { params: cannedResponseIdParam },
   responses: {
-    200: jsonResponse("The deleted canned response", cannedResponseSchema),
+    202: jsonResponse(
+      "Pending deletion; canned response unchanged",
+      registeredDeletionRequestSchema,
+    ),
     403: errorResponse(
       "No workspace access, or missing workspace:manage_settings permission",
     ),
     404: errorResponse("Canned response not found"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -188,12 +198,13 @@ const cannedResponse = apiRouter<BaseVariables & { workspaceId: string }>()
     return c.json(updated, 200);
   })
   .openapi(deleteCannedResponseRoute, async (c) => {
-    const { id } = c.req.valid("param");
-    const workspaceId = c.get("workspaceId");
-    const identity = await resolveCallerIdentity(c, c.get("userId"));
-    if (!identity) throw new HTTPException(401, { message: "Unauthorized" });
-    const deleted = await deleteCannedResponse(identity, id, workspaceId);
-    return c.json(deleted, 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: CANNED_RESPONSE_DELETION_ROUTE,
+      targetType: "canned_response",
+      id: c.req.valid("param").id,
+      workspaceId: c.get("workspaceId"),
+    });
+    return c.json(pending, 202);
   });
 
 export default cannedResponse;

@@ -13,6 +13,7 @@ import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-proje
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
 import { seedProjectStates } from "../src/utils/seed-project-states";
 import { seedWorkspaceDefaults } from "../src/utils/seed-workspace-defaults";
+import { deleteWorkspaceRoleDependents } from "../src/workspace/controllers/delete-workspace-role-dependents";
 import { seed } from "./seed-profile";
 
 const unrelatedUser = {
@@ -52,6 +53,20 @@ async function profileCounts(profile: SeedProfile) {
     people: Number(people?.total ?? 0),
     items: Number(items?.total ?? 0),
   };
+}
+
+async function deleteWorkspaceForTest(
+  database: typeof db,
+  workspaceId: string,
+) {
+  // Workspace-scoped rows hold RESTRICT references (default workflow bindings,
+  // workflow transitions); remove them the way workspace deletion does.
+  await database.transaction((tx) =>
+    deleteWorkspaceRoleDependents(tx, [workspaceId]),
+  );
+  await database
+    .delete(schema.workspaceTable)
+    .where(eq(schema.workspaceTable.id, workspaceId));
 }
 
 describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () => {
@@ -135,9 +150,7 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
     } finally {
       // This test's deliberately created conflict exists only in the disposable
       // Testcontainers database; remove that test-owned workspace for later tests.
-      await db
-        .delete(schema.workspaceTable)
-        .where(eq(schema.workspaceTable.id, workspaceId));
+      await deleteWorkspaceForTest(db, workspaceId);
     }
   });
 
@@ -166,9 +179,7 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
       expect(workspace).toMatchObject(workspaceValues);
       await expectNoSeedRowsInWorkspace(workspaceId, namespace);
     } finally {
-      await db
-        .delete(schema.workspaceTable)
-        .where(eq(schema.workspaceTable.id, workspaceId));
+      await deleteWorkspaceForTest(db, workspaceId);
     }
   });
 
@@ -237,9 +248,7 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
       expect(templatesAfter).toEqual(templatesBefore);
       await expectNoProfileRows(namespace);
     } finally {
-      await db
-        .delete(schema.workspaceTable)
-        .where(eq(schema.workspaceTable.id, workspaceId));
+      await deleteWorkspaceForTest(db, workspaceId);
     }
   });
 
@@ -267,6 +276,15 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
             ),
           );
       } else {
+        // The default workflow's transitions reference the template (RESTRICT):
+        // detach and remove the workspace's workflows first.
+        await db
+          .update(schema.workItemTypeTable)
+          .set({ workflowId: null })
+          .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+        await db
+          .delete(schema.workflowTable)
+          .where(eq(schema.workflowTable.workspaceId, workspaceId));
         await db
           .delete(schema.stateTemplateTable)
           .where(
@@ -310,9 +328,7 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
           .where(eq(schema.projectTable.workspaceId, workspaceId));
         expect(projects).toHaveLength(0);
       } finally {
-        await db
-          .delete(schema.workspaceTable)
-          .where(eq(schema.workspaceTable.id, workspaceId));
+        await deleteWorkspaceForTest(db, workspaceId);
       }
     },
   );
@@ -446,9 +462,7 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
         await db
           .delete(schema.projectSlugClaimTable)
           .where(eq(schema.projectSlugClaimTable.slug, projectId));
-        await db
-          .delete(schema.workspaceTable)
-          .where(eq(schema.workspaceTable.id, workspaceId));
+        await deleteWorkspaceForTest(db, workspaceId);
       }
     },
   );

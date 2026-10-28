@@ -7,11 +7,14 @@ function isDisallowedIpv4(ip: string): boolean {
     return true;
   }
 
-  const [a, b] = parts as [number, number, number, number];
+  const [a, b, c] = parts as [number, number, number, number];
 
   return (
     a === 0 ||
     a === 10 ||
+    a >= 224 ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 198 && (b === 18 || b === 19)) ||
     a === 127 ||
     // 100.64.0.0/10, RFC 6598. Several hosted Kubernetes offerings put pod
     // and service networks in here, where it reaches the same neighbours
@@ -52,6 +55,12 @@ function isDisallowedIpv6(ip: string): boolean {
     normalized.startsWith("fe9") ||
     normalized.startsWith("fea") ||
     normalized.startsWith("feb") ||
+    normalized.startsWith("fec") ||
+    normalized.startsWith("fed") ||
+    normalized.startsWith("fee") ||
+    normalized.startsWith("fef") ||
+    normalized.startsWith("ff") ||
+    normalized.startsWith("64:ff9b:") ||
     normalized.startsWith("fc") ||
     normalized.startsWith("fd")
   );
@@ -78,10 +87,15 @@ export function isDisallowedAddress(address: string): boolean {
   return false;
 }
 
+function developmentRelaxationActive(): boolean {
+  return process.env.NODE_ENV === "development";
+}
+
 function privateDestinationsAllowed(): boolean {
   return (
-    process.env.KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS === "true" ||
-    process.env.KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS === "1"
+    developmentRelaxationActive() &&
+    (process.env.KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS === "true" ||
+      process.env.KANEO_ALLOW_PRIVATE_WEBHOOK_DESTINATIONS === "1")
   );
 }
 
@@ -97,8 +111,15 @@ export async function assertPublicDestination(
 ): Promise<void> {
   const url = new URL(destinationUrl);
 
+  const relaxed = developmentRelaxationActive();
+  if (url.username !== "" || url.password !== "") {
+    throw new Error(`${label} URL must not contain credentials`);
+  }
   if (!(ALLOWED_URL_PROTOCOLS as readonly string[]).includes(url.protocol)) {
     throw new Error(`${label} URL must use http or https`);
+  }
+  if (url.protocol !== "https:" && !(relaxed && url.protocol === "http:")) {
+    throw new Error(`${label} URL must use https`);
   }
 
   if (privateDestinationsAllowed()) {

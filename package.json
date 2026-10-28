@@ -23,7 +23,7 @@
     "test:integration": "turbo test:integration",
     "test:no-inherited-routes": "pnpm test:permissions -- no-inherited-integration-routes.test.ts",
     "test:permissions": "turbo test:permissions",
-    "typecheck": "turbo typecheck",
+    "typecheck": "turbo typecheck --concurrency=1",
     "prepare": "husky",
     "seed": "pnpm --filter @taskdesk/api exec tsx ../../scripts/seed.ts",
     "check:dockerfile-deps": "node ./scripts/ci/check-dockerfile-deps.mjs",
@@ -50,7 +50,8 @@
     "lint:ci": "biome ci .",
     "openapi:write": "node ./scripts/ci/check-openapi.mjs --write",
     "test:all": "node ./scripts/ci/test-all.mjs",
-    "test:ci-scripts": "node --test 'scripts/ci/**/*.test.mjs'"
+    "test:ci-scripts": "node --test 'scripts/ci/**/*.test.mjs'",
+    "check:kaneo-parity": "node scripts/kaneo-parity/check.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.7",

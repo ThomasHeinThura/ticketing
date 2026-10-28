@@ -1,0 +1,1320 @@
+{
+	"date": "2026-10-26",
+	"canonicalKaneoPatterns": [
+		"Filter menu: DropdownMenu + DropdownMenuSub + CheckboxItem + ActiveFilterChip (components/board/board-toolbar.tsx)",
+		"Property picker: Popover + PopoverTrigger asChild Button + list of ghost Buttons with Check (components/task/task-priority-popover.tsx, create-work-item-template-picker.tsx)",
+		"Searchable add-relation picker: CommandDialog + Command (task-relations.tsx)",
+		"Form field: Select inside forms and popover forms (task-move-popover.tsx, settings)"
+	],
+	"counts": {
+		"keep": 133,
+		"change": 12
+	},
+	"rows": [
+		{
+			"file": "apps/web/src/components/account/canonical-mention-preference.tsx",
+			"line": 275,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/account/notification-preferences-settings.tsx",
+			"line": 666,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/account/portal-canonical-preferences.tsx",
+			"line": 231,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/account/quiet-hours-preference.tsx",
+			"line": 143,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/automation/picker-select.tsx",
+			"line": 40,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/custom-field/custom-field-value-input.tsx",
+			"line": 339,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Value input for a custom field inside a form-like properties panel; kept pending design decision on inline property pickers."
+		},
+		{
+			"file": "apps/web/src/components/custom-field/custom-field-value-input.tsx",
+			"line": 373,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Value input for a custom field inside a form-like properties panel; kept pending design decision on inline property pickers."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/imports/import-run-create-dialog.tsx",
+			"line": 118,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/imports/import-run-create-dialog.tsx",
+			"line": 141,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/imports/import-runs-panel.tsx",
+			"line": 117,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/instance-settings-form.tsx",
+			"line": 251,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/instance-settings-form.tsx",
+			"line": 289,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx",
+			"line": 163,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/organisation-profile-editor.tsx",
+			"line": 465,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/organisation-profile-editor.tsx",
+			"line": 591,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/organisation-profile-editor.tsx",
+			"line": 631,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/organisation-profile-editor.tsx",
+			"line": 742,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx",
+			"line": 326,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/scim-group-mappings-settings.tsx",
+			"line": 351,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/scim-settings-sections.tsx",
+			"line": 147,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/scim-settings-sections.tsx",
+			"line": 252,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/god-mode/step-up-fields.tsx",
+			"line": 60,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/intake/queue-picker.tsx",
+			"line": 173,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Popover picker",
+			"verdict": "change",
+			"reason": "Queue chooser at top of Triage page (page-level view switcher); converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/components/intake/queue-picker.tsx",
+			"line": 249,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/intake/queue-picker.tsx",
+			"line": 273,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/kb/agent/kb-article-editor.tsx",
+			"line": 424,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/kb/agent/kb-article-editor.tsx",
+			"line": 458,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/kb/agent/kb-article-editor.tsx",
+			"line": 510,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/kb/agent/kb-categories.tsx",
+			"line": 213,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/kb/agent/kb-list.tsx",
+			"line": 205,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Popover property/filter picker",
+			"verdict": "change",
+			"reason": "List filter (status/category); converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/components/kb/agent/kb-list.tsx",
+			"line": 230,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Popover property/filter picker",
+			"verdict": "change",
+			"reason": "List filter (status/category); converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/components/pages/page-detail.tsx",
+			"line": 467,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/pages/pages-list.tsx",
+			"line": 110,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/pending-action/pending-action-approval.tsx",
+			"line": 1574,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/default-comment-visibility-setting.tsx",
+			"line": 101,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/members/project-members-settings.tsx",
+			"line": 256,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Popover property picker",
+			"verdict": "change",
+			"reason": "Inline per-row role editing; converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/components/project/members/project-members-settings.tsx",
+			"line": 549,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/members/project-members-settings.tsx",
+			"line": 581,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/project-engagement-settings.tsx",
+			"line": 304,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/project-engagement-settings.tsx",
+			"line": 330,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/project-engagement-settings.tsx",
+			"line": 370,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/project-engagement-settings.tsx",
+			"line": 701,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/project-planning-settings.tsx",
+			"line": 414,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/project-planning-settings.tsx",
+			"line": 447,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/project-planning-settings.tsx",
+			"line": 535,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/project-states-editor.tsx",
+			"line": 469,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/project/workflow-editor.tsx",
+			"line": 108,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/reports/dashboard-editor.tsx",
+			"line": 263,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/reports/dashboard-editor.tsx",
+			"line": 416,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/reports/dashboard-view.tsx",
+			"line": 80,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Popover picker",
+			"verdict": "change",
+			"reason": "Dashboard chooser; converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/components/reports/report-builder.tsx",
+			"line": 95,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/reports/report-filters.tsx",
+			"line": 57,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Filter picker",
+			"verdict": "change",
+			"reason": "Report filter; converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/components/saved-view/saved-view-audience-fields.tsx",
+			"line": 97,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/saved-view/saved-view-audience-fields.tsx",
+			"line": 121,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/saved-view/saved-view-editor.tsx",
+			"line": 173,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/saved-view/saved-view-editor.tsx",
+			"line": 204,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-calendar/holiday-fields.tsx",
+			"line": 55,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-calendar/holiday-preset-panel.tsx",
+			"line": 105,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/change-section.tsx",
+			"line": 86,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/change-section.tsx",
+			"line": 268,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/release-detail.tsx",
+			"line": 139,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/releases-list.tsx",
+			"line": 171,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/releases-list.tsx",
+			"line": 284,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Filter picker",
+			"verdict": "change",
+			"reason": "List filter by service; converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/components/service-management/service-detail.tsx",
+			"line": 132,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/service-detail.tsx",
+			"line": 357,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/service-detail.tsx",
+			"line": 384,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/service-detail.tsx",
+			"line": 414,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/service-detail.tsx",
+			"line": 602,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/service-detail.tsx",
+			"line": 652,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/services-list.tsx",
+			"line": 174,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/services-list.tsx",
+			"line": 201,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/service-management/services-list.tsx",
+			"line": 231,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/create-api-key-dialog.tsx",
+			"line": 296,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/create-service-key-dialog.tsx",
+			"line": 166,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/custom-fields/custom-field-editor.tsx",
+			"line": 291,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/custom-fields/custom-field-editor.tsx",
+			"line": 321,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/custom-fields/custom-field-editor.tsx",
+			"line": 500,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/custom-fields/custom-field-editor.tsx",
+			"line": 578,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/custom-fields/custom-field-editor.tsx",
+			"line": 611,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/customer-invitations/customer-invitations.tsx",
+			"line": 326,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/roles/create-role-dialog.tsx",
+			"line": 169,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/roles/role-insight-panels.tsx",
+			"line": 195,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/roles/role-people-panel.tsx",
+			"line": 251,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/teams/team-detail.tsx",
+			"line": 244,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/terminology-editor.tsx",
+			"line": 231,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/terminology-editor.tsx",
+			"line": 255,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/terminology-editor.tsx",
+			"line": 275,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/workspace-project-defaults-panel.tsx",
+			"line": 282,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/workspace-project-defaults-panel.tsx",
+			"line": 321,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/workspace-state-templates-panel.tsx",
+			"line": 332,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/settings/workspace-state-templates-panel.tsx",
+			"line": 424,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/shared/modals/create-project-modal.tsx",
+			"line": 316,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/sla-policy/sla-policy-editor.tsx",
+			"line": 458,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/task/task-move-popover.tsx",
+			"line": 206,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/task/task-move-popover.tsx",
+			"line": 248,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/team/members-table.tsx",
+			"line": 277,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Popover property picker",
+			"verdict": "change",
+			"reason": "Inline per-row role editing; converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/components/time-tracking/rates-settings.tsx",
+			"line": 140,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/time-tracking/rates-settings.tsx",
+			"line": 163,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/time-tracking/time-settings.tsx",
+			"line": 218,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/time-tracking/time-shared.tsx",
+			"line": 79,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/time-tracking/work-item-costs.tsx",
+			"line": 167,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/work-item/move-work-item-dialog.tsx",
+			"line": 112,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/work-item/work-item-activity.tsx",
+			"line": 454,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Popover property/filter picker",
+			"verdict": "change",
+			"reason": "Timeline filter; converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/components/work-item/work-item-approval-request.tsx",
+			"line": 297,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/work-item/work-item-approval-request.tsx",
+			"line": 334,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/work-item/work-item-comment-composer.tsx",
+			"line": 515,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Insert-action control in composer footer with no Kaneo equivalent; left as Select pending design decision."
+		},
+		{
+			"file": "apps/web/src/components/work-item/work-item-filter-editor.tsx",
+			"line": 279,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/work-item/work-item-filter-editor.tsx",
+			"line": 303,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/work-item/work-item-filter-editor.tsx",
+			"line": 356,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/work-item/work-item-filter-editor.tsx",
+			"line": 423,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/work-item/work-item-relations.tsx",
+			"line": 402,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/workflow/workflow-add-transition-dialog.tsx",
+			"line": 81,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/workflow/workflow-add-transition-dialog.tsx",
+			"line": 105,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/workflow/workflow-add-transition-dialog.tsx",
+			"line": 129,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/workflow/workflow-add-transition-dialog.tsx",
+			"line": 158,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+			"line": 113,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Filter picker",
+			"verdict": "change",
+			"reason": "Row limit filter; converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx",
+			"line": 331,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx",
+			"line": 364,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx",
+			"line": 964,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/canned-responses.tsx",
+			"line": 168,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+			"line": 577,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+			"line": 732,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+			"line": 828,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+			"line": 883,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+			"line": 915,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/request-types.tsx",
+			"line": 1046,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/work-item-templates.tsx",
+			"line": 183,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/settings/work-item-templates.tsx",
+			"line": 270,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+			"line": 629,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Popover property/filter picker",
+			"verdict": "change",
+			"reason": "Destination project / work item type pickers in triage detail; converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+			"line": 657,
+			"control": "SelectTrigger",
+			"currentPattern": "Select",
+			"kaneoPattern": "Popover property/filter picker",
+			"verdict": "change",
+			"reason": "Destination project / work item type pickers in triage detail; converted to shared PickerPopover (Popover + ghost option buttons, Kaneo property-picker pattern)."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx",
+			"line": 131,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx",
+			"line": 178,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx",
+			"line": 227,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx",
+			"line": 268,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx",
+			"line": 312,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx",
+			"line": 138,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx",
+			"line": 495,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx",
+			"line": 274,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx",
+			"line": 335,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx",
+			"line": 362,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx",
+			"line": 418,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/portal/catalogue.tsx",
+			"line": 369,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/routes/portal/catalogue.tsx",
+			"line": 494,
+			"control": "SelectTrigger",
+			"currentPattern": "Select (form field)",
+			"kaneoPattern": "Select (Kaneo settings forms and task-move-popover use Select for form fields)",
+			"verdict": "keep",
+			"reason": "Form field inside a settings form, dialog or create/edit surface; Kaneo uses Select there."
+		},
+		{
+			"file": "apps/web/src/components/intake/triage-filter-menu.tsx",
+			"line": 1,
+			"control": "DropdownMenu filter with submenus",
+			"currentPattern": "DropdownMenu + submenus + removable chips",
+			"kaneoPattern": "Same as components/board/board-toolbar.tsx filter menu",
+			"verdict": "keep",
+			"reason": "Already the Kaneo board-toolbar filter pattern; no Select used."
+		},
+		{
+			"file": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx",
+			"line": 0,
+			"control": "Header status filter DropdownMenuCheckboxItem",
+			"currentPattern": "DropdownMenu checkbox items with raw state strings",
+			"kaneoPattern": "Board-toolbar filter menu with translated labels",
+			"verdict": "keep",
+			"reason": "Right pattern; raw untranslated state labels and hard-coded English strings (\"Download\", \"Destination project\") are an i18n gap, flagged not changed."
+		}
+	]
+}

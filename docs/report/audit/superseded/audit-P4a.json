@@ -1,0 +1,482 @@
+{
+	"phase": "P4",
+	"items": [
+		{
+			"id": "RL-1",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx (grouped by legacy better-auth statement resource); packages/ui/src/components/capability-matrix.tsx (grouped, unused in apps/web)",
+			"gap": "Roles UI groups ~17 legacy statement actions, not the canonical capability registry; CapabilityMatrix not mounted"
+		},
+		{
+			"id": "RL-2",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx hard-coded descriptions; packages/permissions/src/capabilities.ts description field",
+			"gap": "Descriptions are hard-coded for legacy resources, not sourced from rbac capability descriptions"
+		},
+		{
+			"id": "RL-3",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/workspace/controllers/create-workspace-role.ts, apps/api/src/workspace/controllers/update-workspace-role.ts missingGrants; tests/api-integration/workspace-role-writes.test.ts (F2 describe)",
+			"gap": "Server enforced; UI does not disable un-held checkboxes with explanation"
+		},
+		{
+			"id": "RL-4",
+			"state": "missing",
+			"evidence": "packages/permissions/src/roles.ts (rank on built-ins only); workspace_role table has no rank",
+			"gap": "No rank on custom roles; no edit-above-own-rank check"
+		},
+		{
+			"id": "RL-14",
+			"state": "missing",
+			"evidence": "apps/api/src/database/schema.ts workspaceRoleTable (no rank column)",
+			"gap": "No rank field/validation for create/edit"
+		},
+		{
+			"id": "RL-5",
+			"state": "partial",
+			"evidence": "packages/permissions/src/capabilities.ts implies[]; packages/permissions/src/capabilities.test.ts; apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx",
+			"gap": "Implication metadata exists; roles editor does not auto-tick implied capabilities"
+		},
+		{
+			"id": "RL-6",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/workspace/controllers/create-workspace-role.ts reserved names incl. owner/instance_admin; update/delete owner guard; tests/api-integration/workspace-role-writes.test.ts (issue #318 describe)",
+			"gap": ""
+		},
+		{
+			"id": "RL-7",
+			"state": "missing",
+			"evidence": "apps/api/src/workspace/controllers/update-workspace-role.ts, apps/api/src/workspace/controllers/delete-workspace-role.ts",
+			"gap": "No last-active-manage_roles holder check on role save/delete"
+		},
+		{
+			"id": "RL-8",
+			"state": "partial",
+			"evidence": "apps/api/src/workspace/controllers/delete-workspace-role.ts (direct db delete, refuses assigned); apps/api/src/workspace/index.ts DELETE /roles/{roleId}",
+			"gap": "Role deletion is immediate, not a click-level pending action"
+		},
+		{
+			"id": "RL-9",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/utils/require-workspace-role-authority.ts reads current DB row; tests/api-integration/workspace-role-writes.test.ts '403s a viewer once their OWN row's permission JSON is edited'",
+			"gap": ""
+		},
+		{
+			"id": "RL-10",
+			"state": "missing",
+			"evidence": "apps/api/src/audit/actions.ts declares role.created/updated/deleted but no writer calls them in apps/api/src/workspace",
+			"gap": "No audit row with added/removed capabilities on role writes"
+		},
+		{
+			"id": "RL-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/workspace/controllers/delete-workspace-role.ts, apps/api/src/workspace/controllers/delete-workspace-role-dependents.ts; tests/api-integration/workspace-role-writes.test.ts; tests/api-integration/workspace-delete-role-dependents.test.ts; tests/api/workspace/delete-workspace-role.test.ts",
+			"gap": ""
+		},
+		{
+			"id": "RL-11",
+			"state": "missing",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx",
+			"gap": "No 'What can this role do?' plain-sentence panel"
+		},
+		{
+			"id": "RL-12",
+			"state": "missing",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx",
+			"gap": "No 'Test as this role' preview"
+		},
+		{
+			"id": "RL-13",
+			"state": "missing",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx",
+			"gap": "No role diff view"
+		},
+		{
+			"id": "TM-1",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts teamTable/teamMemberTable; apps/api/src/workspace/controllers/create-workspace.ts (default team)",
+			"gap": "Schema only; no team CRUD/membership API or UI"
+		},
+		{
+			"id": "TM-2",
+			"state": "missing",
+			"evidence": "no team membership write path in apps/api/src",
+			"gap": "No staff-only membership enforcement"
+		},
+		{
+			"id": "TM-3",
+			"state": "missing",
+			"evidence": "teamMemberTable has no lead flag",
+			"gap": "No team leads concept"
+		},
+		{
+			"id": "TM-4",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/utils/caller-reach.ts, apps/api/src/work-item/require-work-item-reach.ts (ownerTeamId); tests/api-integration/ws-project-reach.test.ts, tests/api/ws/project-read-authorization.test.ts",
+			"gap": "No UI to set owner team"
+		},
+		{
+			"id": "TM-5",
+			"state": "partial",
+			"evidence": "teamTable.isCab (drizzle/0116); apps/api/src/approval/service.ts; tests/api-integration/approval-lifecycle.test.ts (non-CAB member decision 403)",
+			"gap": "No at-most-one is_cab constraint; no UI to designate CAB"
+		},
+		{
+			"id": "TM-6",
+			"state": "partial",
+			"evidence": "apps/api/src/approval/service.ts current-membership check; tests/api-integration/approval-lifecycle.test.ts",
+			"gap": "Removal path not exposed; pending-unactionable behaviour only implicitly tested"
+		},
+		{
+			"id": "TM-7",
+			"state": "missing",
+			"evidence": "no team delete route",
+			"gap": "No refusal logic for team deletion with dependents"
+		},
+		{
+			"id": "TM-8",
+			"state": "missing",
+			"evidence": "apps/api/src/instance/users/index.ts (deactivation does not touch team_member)",
+			"gap": "Deactivation does not update active roster/shared-view ownership"
+		},
+		{
+			"id": "TM-9",
+			"state": "missing",
+			"evidence": "no automations module in apps/api/src",
+			"gap": "Team-targeted notification action absent"
+		},
+		{
+			"id": "CF-1",
+			"state": "partial",
+			"evidence": "apps/api/drizzle/0098_custom_fields_runtime.sql; apps/api/src/database/migration-schema.ts",
+			"gap": "schema/migration only (custom_field*, 0098); no API, repository, validation or UI"
+		},
+		{
+			"id": "CF-2",
+			"state": "partial",
+			"evidence": "apps/api/drizzle/0098_custom_fields_runtime.sql; apps/api/src/database/migration-schema.ts custom_field_type_visibility",
+			"gap": "schema/migration only (custom_field*, 0098); no API, repository, validation or UI"
+		},
+		{
+			"id": "CF-3",
+			"state": "missing",
+			"evidence": "apps/web task/work-item forms have no custom field rendering",
+			"gap": "No form rendering"
+		},
+		{
+			"id": "CF-4",
+			"state": "missing",
+			"evidence": "apps/api/src/work-item/workflow-transition-context.ts (fieldValues: {} placeholder)",
+			"gap": "Required-field transition/creation block not enforced"
+		},
+		{
+			"id": "CF-5",
+			"state": "partial",
+			"evidence": "apps/api/drizzle/0098_custom_fields_runtime.sql; apps/api/src/database/migration-schema.ts default_value",
+			"gap": "schema/migration only (custom_field*, 0098); no API, repository, validation or UI"
+		},
+		{
+			"id": "CF-6",
+			"state": "partial",
+			"evidence": "apps/api/drizzle/0098_custom_fields_runtime.sql; apps/api/src/database/migration-schema.ts visibility_condition",
+			"gap": "schema/migration only (custom_field*, 0098); no API, repository, validation or UI"
+		},
+		{
+			"id": "CF-7",
+			"state": "partial",
+			"evidence": "apps/api/drizzle/0098_custom_fields_runtime.sql; apps/api/src/database/migration-schema.ts options jsonb",
+			"gap": "schema/migration only (custom_field*, 0098); no API, repository, validation or UI; no key/label option handling"
+		},
+		{
+			"id": "CF-8",
+			"state": "partial",
+			"evidence": "apps/api/drizzle/0098_custom_fields_runtime.sql; apps/api/src/database/migration-schema.ts deleted_at",
+			"gap": "schema/migration only (custom_field*, 0098); no API, repository, validation or UI; no pending-action deletion"
+		},
+		{
+			"id": "CF-9",
+			"state": "missing",
+			"evidence": "no field update route",
+			"gap": "No format-change refusal"
+		},
+		{
+			"id": "CF-10",
+			"state": "missing",
+			"evidence": "apps/api/src/work-item/search (no cf.<key> DSL)",
+			"gap": "Not filterable"
+		},
+		{
+			"id": "CF-11",
+			"state": "partial",
+			"evidence": "apps/api/drizzle/0098_custom_fields_runtime.sql; apps/api/src/database/migration-schema.ts customer_visible",
+			"gap": "schema/migration only (custom_field*, 0098); no API, repository, validation or UI; no portal rendering"
+		},
+		{
+			"id": "GM-1",
+			"state": "partial",
+			"evidence": "apps/api/src/audit/audit-writer.ts; apps/api/src/instance/users/index.ts appendAuditLog; tests/api-integration/audit-log.test.ts, audit-read.test.ts",
+			"gap": "Only users/identity/provider sections audited; most God Mode sections do not exist"
+		},
+		{
+			"id": "GM-2",
+			"state": "implemented_tested",
+			"evidence": "packages/permissions/src/elevated.ts; apps/api/src/auth/step-up-api.ts; tests/permissions/elevated-actions.test.ts; packages/permissions/src/elevated.test.ts; tests/api/identity/step-up-canonicalization.test.ts",
+			"gap": "Applied to existing elevated routes only"
+		},
+		{
+			"id": "GM-3",
+			"state": "partial",
+			"evidence": "apps/api/src/notification-provider/runtime.ts; tests/api/notification-provider/runtime.test.ts",
+			"gap": "Live reload proven for notification provider only"
+		},
+		{
+			"id": "GM-4",
+			"state": "partial",
+			"evidence": "apps/api/src/identity/connection-admin.ts (connection test); apps/api/src/notification-provider/service.ts; apps/api/src/plugins/registry.ts",
+			"gap": "Plugin registry has no active integrations/test contract"
+		},
+		{
+			"id": "GM-5",
+			"state": "missing",
+			"evidence": "apps/web/src/components/god-mode/*-editor.tsx hand-written forms",
+			"gap": "No Zod-schema-generated plugin settings forms"
+		},
+		{
+			"id": "GM-6",
+			"state": "partial",
+			"evidence": "apps/api/src/pending-action/service.ts, deletion-targets.ts; tests/api-integration/pending-action-*.test.ts",
+			"gap": "Not applied to all destructive God Mode actions (e.g. role delete)"
+		},
+		{
+			"id": "GM-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/instance/users/index.ts POST /users/{id}/deactivate; tests/api-integration/instance-users.test.ts, instance-users-guards.test.ts; apps/web/e2e/god-mode-users.spec.ts",
+			"gap": ""
+		},
+		{
+			"id": "GM-7",
+			"state": "missing",
+			"evidence": "apps/api/src/auth.ts refuses /admin/* incl. impersonate-user",
+			"gap": "No native impersonation start route/audit"
+		},
+		{
+			"id": "GM-8",
+			"state": "partial",
+			"evidence": "apps/api/src/audit/repository.ts impersonator_id column/write",
+			"gap": "Impersonation itself not available so never populated"
+		},
+		{
+			"id": "GM-9",
+			"state": "missing",
+			"evidence": "many routes refuse impersonation sessions (e.g. apps/api/src/user-preference/index.ts)",
+			"gap": "No impersonation feature to constrain"
+		},
+		{
+			"id": "GM-10",
+			"state": "missing",
+			"evidence": "n/a",
+			"gap": "No impersonation"
+		},
+		{
+			"id": "GM-11",
+			"state": "missing",
+			"evidence": "apps/web/src (no banner)",
+			"gap": "No impersonation banner/exit control"
+		},
+		{
+			"id": "GM-12",
+			"state": "partial",
+			"evidence": "apps/api/src/identity/client-secret.ts (TASKDESK_ENCRYPTION_KEY_PREVIOUS read); tests/api/identity/client-secret.test.ts",
+			"gap": "Only identity client secret envelope; other encrypted secrets unverified"
+		},
+		{
+			"id": "GM-13",
+			"state": "missing",
+			"evidence": "no secrets-rekey job in apps/api/src/scheduler",
+			"gap": "No Rotate secrets job/UI"
+		},
+		{
+			"id": "GM-14",
+			"state": "missing",
+			"evidence": "no health key_id reporting",
+			"gap": "No rekey completion health signal"
+		},
+		{
+			"id": "ST-1",
+			"state": "implemented_tested",
+			"evidence": "packages/permissions/src/features.ts resolveFeatureFlag; schema instance/workspace/projectFeatureFlagTable; packages/permissions/src/features.test.ts; tests/api-integration/approval-feature-flag.test.ts, intake-feature-gate.test.ts",
+			"gap": "Read-side only; no flag admin API/UI"
+		},
+		{
+			"id": "ST-11",
+			"state": "partial",
+			"evidence": "tests/api-integration/approval-feature-flag.test.ts, intake-feature-gate.test.ts",
+			"gap": "Covered for approvals/intake only"
+		},
+		{
+			"id": "ST-2",
+			"state": "partial",
+			"evidence": "packages/permissions/src/features.ts locked precedence",
+			"gap": "No write API so locked-override error response not implemented"
+		},
+		{
+			"id": "ST-3",
+			"state": "partial",
+			"evidence": "apps/api/src/database/schema.ts workspace.defaultSlaPolicyId",
+			"gap": "Inheritance set not verified across all listed settings"
+		},
+		{
+			"id": "ST-4",
+			"state": "missing",
+			"evidence": "apps/web/src (no 'Inherited from workspace' indicator)",
+			"gap": "No inherited/override indicator"
+		},
+		{
+			"id": "ST-5",
+			"state": "missing",
+			"evidence": "settings routes",
+			"gap": "No last-changed-by/when on settings screens"
+		},
+		{
+			"id": "ST-6",
+			"state": "partial",
+			"evidence": "apps/api/src/audit/index.ts, apps/api/src/audit/schema.ts (no entity_type/entity_id filter)",
+			"gap": "No /api/audit?entity_type&entity_id or History affordance"
+		},
+		{
+			"id": "ST-7",
+			"state": "partial",
+			"evidence": "settings mutations immediate",
+			"gap": "No wide-consequence confirmation summary for role change/workflow publish"
+		},
+		{
+			"id": "ST-8",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx dangerZone",
+			"gap": "Danger zone only on workspace/project general; typed-name confirmation not uniform"
+		},
+		{
+			"id": "ST-9",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/routes/.../dashboard/settings/**; apps/web/e2e/settings-forms-direct-load.spec.ts; apps/web/src/components/settings-sidebar.test.tsx",
+			"gap": "Many God Mode sections have no route"
+		},
+		{
+			"id": "ST-10",
+			"state": "missing",
+			"evidence": "no project move route",
+			"gap": "Cross-workspace project move/remap absent"
+		},
+		{
+			"id": "ST-12",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/user-preference/index.ts, policy.ts; tests/api-integration/user-preference.test.ts",
+			"gap": ""
+		},
+		{
+			"id": "ST-13",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/user-preference/schema.ts, response.ts; tests/api-integration/user-preference.test.ts",
+			"gap": ""
+		},
+		{
+			"id": "ST-14",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/user-preference/whitelist.ts; tests/api-integration/user-preference.test.ts",
+			"gap": ""
+		},
+		{
+			"id": "ST-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/user-preference/service.ts; tests/api-integration/user-preference.test.ts (layout 404/clear stale)",
+			"gap": ""
+		},
+		{
+			"id": "ST-16",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/user-preference/index.ts; tests/api-integration/user-preference.test.ts (4 KiB/20 keys/500 rows)",
+			"gap": ""
+		},
+		{
+			"id": "ST-17",
+			"state": "implemented_tested",
+			"evidence": "apps/web/src/lib/user-preference-sync.ts; apps/web/src/lib/user-preference-sync.test.ts; apps/web/src/components/providers/user-preferences-sync.test.tsx",
+			"gap": ""
+		},
+		{
+			"id": "NO-22",
+			"state": "missing",
+			"evidence": "apps/api/src/notification/recipient-resolvers.ts (no stakeholder/escalation resolver)",
+			"gap": "Escalation-path recipient resolution absent"
+		},
+		{
+			"id": "NO-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/preferences.ts defaultExternalPreference; tests/api/notification/preferences.test.ts",
+			"gap": ""
+		},
+		{
+			"id": "NO-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/preference-link.ts, preference-handoff.ts; tests/api/notification/preference-link.test.ts; tests/api-integration/notification-preference-handoff.test.ts",
+			"gap": "Portal preference delivery open per docs/status.md"
+		},
+		{
+			"id": "NO-3",
+			"state": "partial",
+			"evidence": "apps/api/src/notification/current-eligibility.ts returns quiet_hours_unresolved; tests/api-integration/helpers/notification-outbox-suite.ts (NO-3 cases)",
+			"gap": "Configured quiet hours are never evaluated; deliveries stay pending; no quiet-hours UI"
+		},
+		{
+			"id": "NO-4",
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/notification/recipient-resolvers.ts:45 actor exclusion",
+			"gap": "No test asserting self-action exclusion found"
+		},
+		{
+			"id": "NO-5",
+			"state": "partial",
+			"evidence": "apps/api/src/notification/fanout.ts (attachDigest hook); schema notificationDigestTable",
+			"gap": "No digest-window writer: digest preference throws; no digest assignment UI"
+		},
+		{
+			"id": "NO-6",
+			"state": "missing",
+			"evidence": "schema notificationDigestTable only",
+			"gap": "No digest builder/sender job"
+		},
+		{
+			"id": "NO-7",
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/notification/fanout.ts URGENT_EVENT_KINDS forces cadence off",
+			"gap": "No test for urgent bypass"
+		},
+		{
+			"id": "NO-8",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/notification/fanout.ts enqueueNotificationEvent in mutation tx (create-comment, approval/service); apps/api/src/scheduler/outbox-drain.ts; tests/api-integration/notification-immediate-mention.test.ts, notification-outbox-delivery*.test.ts",
+			"gap": "Producer coverage incomplete per docs/status.md"
+		}
+	],
+	"top_gaps": [
+		"Custom fields: schema only (migration 0098); no API, validation, form rendering, filtering or portal visibility (CF-1..11)",
+		"Teams: no team CRUD/membership/lead API or UI; no single-CAB constraint; deactivation does not touch rosters (TM-1..3,5..9)",
+		"Impersonation entirely absent (better-auth admin endpoints blocked, no native route/banner/audit) (GM-7..11)",
+		"Role governance: no rank on custom roles, no last-manage_roles guard, no audit rows, role delete not a pending action, no explain/test-as/diff (RL-4,7,8,10..14)",
+		"Feature flags: resolver tested but no instance/workspace/project write API or UI; locked-write error unimplemented (ST-1,2)",
+		"Secrets rotation job (secrets-rekey) and health key_id reporting missing (GM-13,14); Zod-generated plugin forms missing (GM-5)",
+		"Notifications: quiet hours never resolved, digest writer/builder missing, escalation-path resolver missing (NO-3,5,6,22)",
+		"Settings UX: no inherited indicator, last-changed metadata, entity-scoped History (/api/audit entity filter), project move (ST-4..6,10)"
+	],
+	"tonight_actions": [
+		"Write role.created/updated/deleted audit rows with added/removed capability diff in create/update/delete-workspace-role controllers + integration test",
+		"Add last-active workspace:manage_roles holder guard to update/delete role (and member role change) with integration test",
+		"Route workspace role deletion through pending-action deletion-targets (click-level) and update roles.tsx confirm flow",
+		"Add entity_type/entity_id filter to apps/api/src/audit/schema.ts + repository and a History drawer on settings screens",
+		"Add partial unique index team(workspace_id) WHERE is_cab and team CRUD/membership routes (staff-only, delete refusals) with tests",
+		"Implement custom field definition CRUD API over existing 0098 tables (sections, per-type visibility, options key/label, format-change refusal, soft delete)",
+		"Add feature-flag write routes (instance/workspace/project) honoring locked with 409/422, plus Kaneo settings toggle UI",
+		"Add unit tests for NO-4 self-exclusion and NO-7 urgent digest bypass; implement quiet-hours evaluation in current-eligibility.ts",
+		"Wire roles.tsx to CapabilityMatrix with held-capability disabling and implies auto-tick"
+	]
+}

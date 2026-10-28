@@ -5,10 +5,12 @@ import {
   loadLocale,
   supportedLocales,
 } from "@i18n/resources";
+import type { i18n as I18nInstance } from "i18next";
 import i18n from "i18next";
 import resourcesToBackend from "i18next-resources-to-backend";
 import { initReactI18next } from "react-i18next";
 import { afterFirstPaint } from "./after-first-paint";
+import slimGroupLoaders from "./group-loaders-slim";
 import {
   WORK_LIST_PATH_PATTERN,
   WORK_ROUTE_I18N_NAMESPACES,
@@ -58,10 +60,13 @@ type NamespaceGroup = "slim" | "rest";
 
 const groupResources = new Map<string, Promise<Record<string, unknown>>>();
 
-// Two separate call sites: the bundler preloads a dynamic import's dependencies per call, and a
-// conditional expression would make the first-paint group also fetch the deferred one's loader.
+// The first-paint group's loader table is part of the entry: fetched as its own chunk it was
+// the last of the work route's preloads, and every translated component waited for it (G11
+// work-list LCP). It is a few hundred bytes of `() => import(...)` per locale (an empty table in
+// the portal build); the locale chunks themselves stay separate. The deferred group's table
+// stays a separate call site, so loading it never makes the first-paint group fetch it.
 function importGroupLoaders(group: NamespaceGroup) {
-  if (group === "slim") return import("./group-loaders-slim");
+  if (group === "slim") return Promise.resolve({ default: slimGroupLoaders });
   return import("./group-loaders-rest");
 }
 
@@ -117,6 +122,13 @@ function loadLocaleResources(
 const allNamespaces = new Map<AppLocale, Promise<void>>();
 
 /**
+ * Runtime-scoped instances (terminology clones) created in group mode. They are seeded with the
+ * first-paint namespaces only, and components under them read `t("ns:key")` through their own
+ * store, so every namespace the base instance loads must reach them too.
+ */
+const scopedGroupInstances = new Map<AppLocale, Set<I18nInstance>>();
+
+/**
  * Loads every namespace of a locale in group mode: the deferred group, one retry, then the full
  * catalog from its own chunk. Rejects only if all three fail; a screen must never render raw
  * keys because a fetch failed.
@@ -137,6 +149,11 @@ function ensureAllNamespaces(locale: AppLocale): Promise<void> {
       }
     }
     await i18n.loadNamespaces(namespaces);
+    await Promise.all(
+      [...(scopedGroupInstances.get(locale) ?? [])].map((scoped) =>
+        scoped.loadNamespaces(namespaces),
+      ),
+    );
   })();
   allNamespaces.set(locale, pending);
   pending.catch(() => allNamespaces.delete(locale));
@@ -161,6 +178,79 @@ export function preloadNamespaces(locale: AppLocale): Promise<void> {
   return loadLocaleResources(locale).then((resources) =>
     i18n.loadNamespaces(Object.keys(resources)),
   );
+}
+
+/**
+ * Create a runtime-scoped i18next instance with its own backend connector and resource store.
+ * Loaded locale bundles are copied by value; lazy namespaces use the shared immutable group
+ * loaders but are added only to this instance.
+ */
+export async function createScopedI18n(
+  localeInput: string,
+  initialNamespacesOverride?: readonly string[],
+): Promise<I18nInstance> {
+  const locale = resolveLocale(localeInput);
+  const scopedI18n = i18n.createInstance();
+  const initialNamespaces = initialNamespacesOverride
+    ? [...initialNamespacesOverride]
+    : useNamespaceGroups
+      ? [...WORK_ROUTE_I18N_NAMESPACES]
+      : Object.keys(await loadLocaleResources(locale));
+  const loadedResources = i18n.getDataByLanguage(locale);
+  const loadedInitialResources = Object.fromEntries(
+    initialNamespaces.flatMap((namespace) =>
+      loadedResources?.[namespace] === undefined
+        ? []
+        : [[namespace, structuredClone(loadedResources[namespace])]],
+    ),
+  );
+  const seedResources =
+    Object.keys(loadedInitialResources).length > 0
+      ? { [locale]: loadedInitialResources }
+      : undefined;
+
+  await scopedI18n
+    .use(
+      resourcesToBackend((language: string, namespace: string) => {
+        const resolved = isSupportedLocale(language) ? language : defaultLocale;
+        // Portal builds intentionally omit agent group loader tables.
+        if (useNamespaceGroups)
+          return loadNamespaceFromGroups(resolved, namespace);
+        return loadLocaleResources(resolved).then(
+          (resources) => resources[namespace],
+        );
+      }),
+    )
+    .init({
+      lng: locale,
+      fallbackLng: defaultLocale,
+      defaultNS: "common",
+      ns: initialNamespaces,
+      resources: seedResources,
+      partialBundledLanguages: Boolean(seedResources),
+      react: { bindI18nStore: "added" },
+      interpolation: {
+        escapeValue: false,
+        skipOnVariables: true,
+      },
+    });
+
+  if (useNamespaceGroups && !initialNamespacesOverride) {
+    const instances = scopedGroupInstances.get(locale) ?? new Set();
+    instances.add(scopedI18n);
+    scopedGroupInstances.set(locale, instances);
+    // Created after the deferred group was requested: catch up before first use, so a screen
+    // reached through `whenAllNamespacesLoaded` never renders raw keys from this clone.
+    const loadingAll = allNamespaces.get(locale);
+    if (loadingAll) {
+      await loadingAll.catch(() => undefined);
+      await scopedI18n.loadNamespaces(
+        Object.keys(i18n.getDataByLanguage(locale) ?? {}),
+      );
+    }
+  }
+
+  return scopedI18n;
 }
 
 const initialLocale = resolveLocale(null, getBrowserLocale());
@@ -190,6 +280,7 @@ void i18n
       : {}),
     interpolation: {
       escapeValue: false,
+      skipOnVariables: true,
     },
   })
   .then(() => preloadNamespaces(initialLocale));

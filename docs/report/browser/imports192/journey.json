@@ -1,0 +1,65 @@
+{
+	"recordedAt": "2026-10-26T04:16:22.784Z",
+	"scope": "Owned persisted import run create/history/detail on deployed192; no record import executed",
+	"strictTls": true,
+	"priorCreationEvidence": "create-before-theme-harness-fix.json",
+	"checks": [
+		{
+			"name": "Owned admin session",
+			"pass": true
+		},
+		{
+			"name": "Resume exact own fixture",
+			"pass": true
+		},
+		{
+			"name": "Fresh persisted detail read",
+			"pass": true
+		},
+		{
+			"name": "Direct detail resolves persisted workspace URL",
+			"pass": true
+		},
+		{
+			"name": "Back restores correct persisted history workspace",
+			"pass": true
+		},
+		{
+			"name": "Detail 375 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Detail 768 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Detail 1440 light no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Detail 375 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Detail 768 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "Detail 1440 dark no page overflow",
+			"pass": true
+		},
+		{
+			"name": "No browser JavaScript errors",
+			"pass": true
+		}
+	],
+	"screenshots": [
+		"detail-375-light.png",
+		"detail-768-light.png",
+		"detail-1440-light.png",
+		"detail-375-dark.png",
+		"detail-768-dark.png",
+		"detail-1440-dark.png"
+	],
+	"outcome": "passed"
+}

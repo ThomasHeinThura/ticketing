@@ -28,6 +28,7 @@ import {
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { CalendarSummaryCard } from "@/components/service-calendar/calendar-summary-card";
+import { WorkspaceFeatureGate } from "@/components/settings/workspace-feature-gate";
 import { useServiceCalendars } from "@/hooks/queries/service-calendar/use-service-calendars";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -40,7 +41,16 @@ export const Route = createFileRoute(
   component: ServiceCalendarsRoute,
 });
 
+/** P4R2-M1: the list and its detail routes exist only while `feature.sla` is on. */
 function ServiceCalendarsRoute() {
+  return (
+    <WorkspaceFeatureGate feature="feature.sla" off="sla">
+      <ServiceCalendarsRouteContent />
+    </WorkspaceFeatureGate>
+  );
+}
+
+function ServiceCalendarsRouteContent() {
   const { t } = useTranslation("serviceCalendars");
   const location = useLocation();
   const navigate = useNavigate({ from: Route.fullPath });

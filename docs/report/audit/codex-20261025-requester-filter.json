@@ -1,0 +1,28 @@
+{
+	"recordedAt": "2026-10-25T04:50:49.165835+00:00",
+	"requirement": "VW-32",
+	"implementation": "requester eq @me resolves at execution to current person.id in the existing scoped search API; existing visual/text filter editor retained",
+	"checks": [
+		{
+			"check": "API query grammar",
+			"passed": 12,
+			"log": "requester-filter-api-unit.log"
+		},
+		{
+			"check": "Web grammar/editor",
+			"passed": 51,
+			"log": "requester-filter-web-unit.log"
+		},
+		{
+			"check": "Structured search integration",
+			"passed": 3,
+			"log": "requester-filter-integration.log",
+			"coverage": "same literal resolves to each authenticated viewer; requester-matching hidden project excluded; null and other requester excluded; existing cursor/tenant/API-key ceilings retained"
+		}
+	],
+	"database": "taskdesk_codex_requester_filter_20261025_test",
+	"browser": "scoped_pass",
+	"independentReview": "pending",
+	"limits": "Scoped grammar/API/saved-view browser checks passed. Full phase sign-off remains pending.",
+	"browserEvidence": "docs/report/browser/codex-20261025-requester-filter.json"
+}

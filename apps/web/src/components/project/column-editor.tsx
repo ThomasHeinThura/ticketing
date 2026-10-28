@@ -17,6 +17,7 @@ import { useDeleteColumn } from "@/hooks/mutations/column/use-delete-column";
 import { useReorderColumns } from "@/hooks/mutations/column/use-reorder-columns";
 import { useUpdateColumn } from "@/hooks/mutations/column/use-update-column";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { getColumnIcon } from "@/lib/column";
@@ -32,6 +33,7 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
   const { mutateAsync: createColumn } = useCreateColumn();
   const { mutateAsync: updateColumn } = useUpdateColumn();
   const { mutateAsync: deleteColumn } = useDeleteColumn();
+  const openPendingAction = useOpenPendingAction();
   const { mutateAsync: reorderColumns } = useReorderColumns();
   const { canManageProjects } = useWorkspacePermission();
   const canEdit = canManageProjects();
@@ -117,8 +119,9 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteColumn({ id, projectId });
-      toast.success(t("settings:columnEditor.toastDeleted"));
+      // Deletion is only requested; the column stays until the requester approves it.
+      const pendingAction = await deleteColumn({ id, projectId });
+      await openPendingAction(pendingAction);
     } catch (error) {
       toast.error(
         error instanceof Error

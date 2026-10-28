@@ -1,0 +1,345 @@
+{
+	"recordedAt": "2026-10-26T14:30:46.571Z",
+	"scope": "Workspace label, service-calendar and SLA-policy stable-key creation, validation, rename/reload and read-only editing; own QA workspace only",
+	"strictTls": true,
+	"checks": [
+		{
+			"name": "Own audit administrator",
+			"pass": true
+		},
+		{
+			"name": "Original workspace can be restored",
+			"pass": true
+		},
+		{
+			"name": "Workspace activation200",
+			"pass": true
+		},
+		{
+			"name": "calendar create 375 light invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "calendar create 375 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar create 768 light invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "calendar create 768 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar create 1440 light invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "calendar create 1440 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar create 375 dark invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "calendar create 375 dark no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar create 768 dark invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "calendar create 768 dark no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar create 1440 dark invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "calendar create 1440 dark no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar creation succeeds",
+			"pass": true
+		},
+		{
+			"name": "calendar persists requested stable key",
+			"pass": true
+		},
+		{
+			"name": "calendar key is read-only",
+			"pass": true
+		},
+		{
+			"name": "calendar current key matches",
+			"pass": true
+		},
+		{
+			"name": "calendar rename succeeds",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 375 light key persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 375 light renamed name persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 375 light key remains read-only",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 375 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 768 light key persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 768 light renamed name persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 768 light key remains read-only",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 768 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 1440 light key persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 1440 light renamed name persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 1440 light key remains read-only",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 1440 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 375 dark key persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 375 dark renamed name persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 375 dark key remains read-only",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 375 dark no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 768 dark key persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 768 dark renamed name persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 768 dark key remains read-only",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 768 dark no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 1440 dark key persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 1440 dark renamed name persists",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 1440 dark key remains read-only",
+			"pass": true
+		},
+		{
+			"name": "calendar saved 1440 dark no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "label create 375 light invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "label create 375 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "label create 768 light invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "label create 768 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "label create 1440 light invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "label create 1440 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "label create 375 dark invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "label create 375 dark no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "label create 768 dark invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "label create 768 dark no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "label create 1440 dark invalid key marked",
+			"pass": true
+		},
+		{
+			"name": "label create 1440 dark no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "label creation succeeds",
+			"pass": true
+		},
+		{
+			"name": "label persists requested stable key",
+			"pass": true
+		},
+		{
+			"name": "label key is read-only",
+			"pass": true
+		},
+		{
+			"name": "label current key matches",
+			"pass": true
+		},
+		{
+			"name": "label rename succeeds",
+			"pass": true
+		},
+		{
+			"name": "label saved 375 light key persists",
+			"pass": true
+		},
+		{
+			"name": "label saved 375 light renamed name persists",
+			"pass": true
+		},
+		{
+			"name": "label saved 375 light key remains read-only",
+			"pass": true
+		},
+		{
+			"name": "label saved 375 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "label saved 768 light key persists",
+			"pass": true
+		},
+		{
+			"name": "label saved 768 light renamed name persists",
+			"pass": true
+		},
+		{
+			"name": "label saved 768 light key remains read-only",
+			"pass": true
+		},
+		{
+			"name": "label saved 768 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "label saved 1440 light key persists",
+			"pass": true
+		},
+		{
+			"name": "label saved 1440 light renamed name persists",
+			"pass": true
+		},
+		{
+			"name": "label saved 1440 light key remains read-only",
+			"pass": true
+		},
+		{
+			"name": "label saved 1440 light no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "label saved 375 dark key persists",
+			"pass": true
+		},
+		{
+			"name": "label saved 375 dark renamed name persists",
+			"pass": true
+		},
+		{
+			"name": "label saved 375 dark key remains read-only",
+			"pass": true
+		},
+		{
+			"name": "label saved 375 dark no horizontal overflow",
+			"pass": true
+		},
+		{
+			"name": "Workspace activation200",
+			"pass": true
+		}
+	],
+	"screenshots": [
+		"calendar-create-375-light.png",
+		"calendar-create-768-light.png",
+		"calendar-create-1440-light.png",
+		"calendar-create-375-dark.png",
+		"calendar-create-768-dark.png",
+		"calendar-create-1440-dark.png",
+		"calendar-saved-375-light.png",
+		"calendar-saved-768-light.png",
+		"calendar-saved-1440-light.png",
+		"calendar-saved-375-dark.png",
+		"calendar-saved-768-dark.png",
+		"calendar-saved-1440-dark.png",
+		"label-create-375-light.png",
+		"label-create-768-light.png",
+		"label-create-1440-light.png",
+		"label-create-375-dark.png",
+		"label-create-768-dark.png",
+		"label-create-1440-dark.png",
+		"label-saved-375-light.png",
+		"label-saved-768-light.png",
+		"label-saved-1440-light.png",
+		"label-saved-375-dark.png"
+	],
+	"outcome": "failed",
+	"failurePhase": "label saved 768 dark"
+}

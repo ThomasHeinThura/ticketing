@@ -15,7 +15,7 @@ function AgentInboxRoute() {
       filter={search.filter ?? "all"}
       onFilterChange={(next) =>
         void navigate({
-          search: next === "unread" ? { filter: "unread" } : {},
+          search: next === "all" ? {} : { filter: next },
           replace: true,
         })
       }

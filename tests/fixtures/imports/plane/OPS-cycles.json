@@ -1,0 +1,16 @@
+[
+	{
+		"id": "72000001-aaaa-4bbb-8ccc-000000000977",
+		"name": "Q4 Hardening",
+		"start_date": "2025-09-01",
+		"end_date": "2025-09-14",
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	},
+	{
+		"id": "72000002-aaaa-4bbb-8ccc-000000001954",
+		"name": "Q3 Hardening",
+		"start_date": "2025-09-15",
+		"end_date": "2025-09-28",
+		"project": "33000002-aaaa-4bbb-8ccc-000000001954"
+	}
+]

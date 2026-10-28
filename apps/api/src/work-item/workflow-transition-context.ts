@@ -10,6 +10,7 @@ import {
   type WorkflowTransition,
 } from "@taskdesk/domain";
 import { and, eq, isNull } from "drizzle-orm";
+import { guardFieldValues } from "../custom-field/repository";
 import db from "../database";
 import {
   membershipTable,
@@ -21,6 +22,8 @@ import {
   workItemTable,
   workItemTypeTable,
 } from "../database/schema";
+import { loadChangeTransitionFacts } from "../service-management/change-repository";
+import { hasOpenBlockers } from "../work-item-relation/blockers";
 
 /**
  * Issue #442's shared loader: everything `POST /api/work-items/{key}/transition` and
@@ -29,9 +32,9 @@ import {
  * query set on its own -- see each controller's own doc comment for why they share it.
  *
  * NOT DONE, disclosed here once rather than at every call site (PR body's own "Not
- * done" section repeats this for reviewers who don't read source): `work_item_relation`,
- * `sla_pause`, a custom-field/satellite value store and a change-risk column do not
- * exist in this schema yet, so `no_open_blockers`/`field_required`/`change_risk_at_most`
+ * done" section repeats this for reviewers who don't read source): a custom-field/satellite
+ * value store and a change-risk column remain unavailable, so
+ * `field_required`/`change_risk_at_most`
  * guard context can never be resolved from real data -- see `buildGuardContext` below,
  * which fails every one of them CLOSED (blocked) rather than fabricate a fact.
  */
@@ -289,9 +292,8 @@ export async function resolveActorRoleIds(
  * each child's mapped `state_template.group` -- vacuously true with no children) and
  * `assignee_present` (`work_item.assignee_id`).
  *
- * FAILS CLOSED, DISCLOSED, NOT FAKED: `no_open_blockers` (`work_item_relation` does not
- * exist in this schema yet -- `hasOpenBlockers: true` unconditionally, so the guard is
- * always reported blocked rather than silently satisfied), `field_required`
+ * `no_open_blockers` resolves canonical live block edges and their mapped state groups.
+ * FAILS CLOSED: `field_required`
  * (`fieldValues: {}` -- no custom-field/satellite value store exists yet, so
  * `isFieldPresent` is always false for any key), `change_risk_at_most`
  * (`changeRiskLevel: null` -- no change-risk column exists yet; `evaluateGuard` already
@@ -319,11 +321,20 @@ export async function buildGuardContext(
     return group === "completed" || group === "cancelled";
   });
 
+  const change = ctx.isChangeType
+    ? await loadChangeTransitionFacts(db, ctx.workItem.id)
+    : null;
+
   return {
     allChildrenClosed,
-    hasOpenBlockers: true,
+    hasOpenBlockers: await hasOpenBlockers(ctx.workItem.id),
     assigneePresent: ctx.workItem.assigneeId !== null,
-    fieldValues: {},
-    changeRiskLevel: null,
+    // WF-15: `cf.<key>` guards resolve from the real custom field values; a change also supplies
+    // its satellite key `change.rollback_plan` and its risk (feature-contracts-p5.md CH-1, CH-6).
+    fieldValues: {
+      ...(await guardFieldValues(db, ctx.workItem.id)),
+      ...change?.fieldValues,
+    },
+    changeRiskLevel: change?.risk ?? null,
   };
 }

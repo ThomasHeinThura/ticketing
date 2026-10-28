@@ -1,0 +1,1675 @@
+{
+	"phase": "P3",
+	"items": [
+		{
+			"id": "CP-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts (portalIdentity, findSubmission requesterId filter, listOwnSubmissions); apps/api/src/intake/policy.ts portal:customer; tests/api-integration/intake-reach-negative.test.ts; tests/api-integration/approval-portal.test.ts; packages/domain/src/identity/identity.test.ts 'CP-1/CP-2'",
+			"gap": "Only submissions/approvals exist on portal; reach for work items/projects on portal not built",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-reach-negative.test.ts:95",
+					"tests/api-integration/portal-p3-lifecycle.test.ts:548"
+				],
+				"assertions": [
+					"other requester and organisation cannot read",
+					"participant from another organisation cannot widen reach"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:97"
+			}
+		},
+		{
+			"id": "CP-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts findSubmission throws 404; tests/api-integration/intake-reach-negative.test.ts:95 (other requester/org -> 404); tests/api-integration/approval-portal.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/intake-reach-negative.test.ts:95"],
+				"assertions": ["foreign requester/organisation receives 404"],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:99"
+			}
+		},
+		{
+			"id": "CP-3",
+			"state": "implemented_untested",
+			"evidence": "apps/api/src/intake/repository.ts findSubmission linked comments filtered visibility='public' server-side; apps/api/src/intake/submission-linked-work-item.ts",
+			"gap": "No portal test asserting an internal comment on the linked work item is absent from GET /api/portal/submissions/{ref}",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/portal-p3-lifecycle.test.ts:75"],
+				"assertions": [
+					"internal comment absent from response while public comment appears"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:100"
+			}
+		},
+		{
+			"id": "CP-4",
+			"state": "partial",
+			"evidence": "apps/api/src/intake/response.ts + repository.ts findPortalSubmission (no assignee field); tests/api-integration/intake-portal-response-shape.test.ts",
+			"gap": "Assignee absent and shape-tested; 'named staff appear on public comments' half unverified (portal messages carry actorType only)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/portal-p3-lifecycle.test.ts:75",
+					"tests/api-integration/portal-p3-lifecycle.test.ts:137"
+				],
+				"assertions": [
+					"staff named on public comment and assignee hidden",
+					"customer identity hidden"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/intake/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:102"
+			}
+		},
+		{
+			"id": "CP-5",
+			"state": "partial",
+			"evidence": "i18n/en-US.json portal.* ; apps/web/src/routes/portal/submissions/$ref.tsx",
+			"gap": "portal.intake.accepted copy says 'This request is now a work item'; requests.description claims org-wide view not implemented",
+			"currentAssessment": {
+				"implementation": "partial",
+				"testFiles": [
+					"apps/web/src/routes/portal/submissions/$ref.actions.test.tsx:137",
+					"tests/api/intake/portal-status.test.ts"
+				],
+				"assertions": [
+					"rendered request detail has no work-item, triager or assignee terminology",
+					"customer status vocabulary"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Default portal wording uses request language, but portal routes/components do not consume the instance customer-scope terminology overlay; renaming request to case cannot change portal vocabulary."
+				],
+				"paths": [
+					"apps/web/src/routes/portal/submissions/$ref.tsx",
+					"apps/web/src/components/portal/portal-request-state.tsx",
+					"i18n/en-US.json"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:109"
+			}
+		},
+		{
+			"id": "CP-6",
+			"state": "missing",
+			"evidence": "apps/web/src/routes/portal/* (no SLA/due rendering); findPortalSubmission returns no SLA",
+			"gap": "No customer-facing due time / plain-language SLA state in portal API or UI",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/portal-p3-lifecycle.test.ts:587",
+					"apps/web/src/components/portal/portal-sla-status.test.tsx:31"
+				],
+				"assertions": [
+					"list and detail carry same state/dueAt and null without SLA",
+					"plain-language due time rendered"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/portal-sla.ts",
+					"apps/web/src/components/portal/portal-sla-status.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:114"
+			}
+		},
+		{
+			"id": "CP-7",
+			"state": "missing",
+			"evidence": "no portal priority/escalate route in apps/api/src/intake/policy.ts or approval/policy.ts; no portal-cannot-deescalate.spec.ts",
+			"gap": "Escalate-only priority endpoint, activity entry, team notification and UI absent",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/portal-p3-lifecycle.test.ts:170",
+					"tests/api-integration/portal-p3-lifecycle.test.ts:237"
+				],
+				"assertions": [
+					"increase writes activity/audit/event and decrease 403",
+					"null and closed cases"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/portal-actions.ts",
+					"apps/web/src/components/portal/portal-request-actions.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:116"
+			}
+		},
+		{
+			"id": "CP-8",
+			"state": "missing",
+			"evidence": "work_item_transition is_reopen exists (apps/api/src/database/schema.ts:3267) but no portal reopen route/UI; no reopen_window_days setting found",
+			"gap": "Customer reopen within window via system actor is_reopen transition not implemented",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/portal-p3-lifecycle.test.ts:272",
+					"tests/api-integration/portal-p3-lifecycle.test.ts:294",
+					"tests/api-integration/portal-p3-lifecycle.test.ts:318"
+				],
+				"assertions": [
+					"in-window reopen by system",
+					"outside-window refusal",
+					"failed workflow raises staff flag and customer message"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/portal-actions.ts",
+					"apps/web/src/routes/portal/submissions/$ref.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:120"
+			}
+		},
+		{
+			"id": "CP-9",
+			"state": "missing",
+			"evidence": "grep -rli satisfaction apps packages: only packages/domain/src/approvals (unrelated)",
+			"gap": "No satisfaction rating schema/API/UI",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/portal-p3-lifecycle.test.ts:405",
+					"tests/api-integration/portal-p3-lifecycle.test.ts:451"
+				],
+				"assertions": [
+					"rating once/change in window/lock after and staff view",
+					"unresolved and out-of-range refused"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/portal-actions.ts",
+					"apps/web/src/routes/portal/submissions/$ref.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:125"
+			}
+		},
+		{
+			"id": "CP-10",
+			"state": "partial",
+			"evidence": "apps/api/src/portal-client-routes.ts /submissions/$ref; apps/api/src/intake/repository.ts findPortalSubmission joins linked work item; apps/web/src/routes/portal/submissions/$ref.tsx",
+			"gap": "Same URL kept, but UI copy discloses conversion ('now a work item'); no test of post-accept durable page on portal",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/portal/submissions/$ref.actions.test.tsx:137",
+					"tests/api-integration/portal-p3-lifecycle.test.ts:75"
+				],
+				"assertions": [
+					"conversion hidden in durable detail",
+					"linked work-item still projected through submission detail"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/portal/submissions/$ref.tsx",
+					"apps/api/src/intake/index.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:128"
+			}
+		},
+		{
+			"id": "CP-11",
+			"state": "missing",
+			"evidence": "apps/api/src/invitation/* is workspace (staff) invitation only; docs/technical/feature-contracts-p3.md:400-412 contract hold",
+			"gap": "Customer-organisation invitation/admission adapter not specified or built",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-invite-reach.test.ts:472",
+					"tests/api-integration/p5-invite-reach.test.ts:84"
+				],
+				"assertions": [
+					"inviter sees only served organisations",
+					"portal session cannot use agent invitation routes"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/customer-invitation/service.ts",
+					"apps/api/src/customer-invitation/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:134"
+			}
+		},
+		{
+			"id": "CP-12",
+			"state": "missing",
+			"evidence": "apps/web/src/routes/portal/sign-in.tsx (password+TOTP only for already admitted customers); feature-contracts-p3.md:166-178",
+			"gap": "Invitee acceptance/sign-up via password/OTP/magic link/SSO closed pending CP-11/12 contract",
+			"currentAssessment": {
+				"implementation": "partial",
+				"testFiles": [
+					"tests/api-integration/p5-invite-signup.test.ts:203",
+					"tests/api-integration/p5-invite-signup.test.ts:438"
+				],
+				"assertions": [
+					"new invitee password signup and accept creates customer-only session",
+					"password provider disabled blocks signup"
+				],
+				"browser": "scoped_pass",
+				"executed": false,
+				"gaps": [
+					"Invitation-gated password signup and customer-only acceptance exist; the invite page still offers no new-user email OTP, magic-link or scoped SSO signup/accept path. Local OTP/magic sign-in endpoint support does not supply that signup flow."
+				],
+				"paths": [
+					"apps/api/src/auth.ts",
+					"apps/web/src/components/portal/accept-invitation.tsx",
+					"apps/web/src/routes/portal/sign-in.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:136",
+				"browserEvidence": "docs/report/browser/cp23-initial-contact/cp23-initial-contact-acceptance-20261026.json",
+				"verificationRemaining": [
+					"One owned initial-contact journey exercised invited password signup, acceptance and fresh portal login. That does not verify email OTP, magic-link or scoped SSO signup/accept; those remain implementation gaps.",
+					"Full final-tree gates and phase review remain pending."
+				]
+			}
+		},
+		{
+			"id": "CP-13",
+			"state": "missing",
+			"evidence": "no customer invitation path exists",
+			"gap": "Cannot be enforced/tested until customer invitations exist",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-invite-reach.test.ts:187",
+					"tests/api-integration/p5-invite-reach.test.ts:259"
+				],
+				"assertions": [
+					"staff/admin/team/workspace role bodies refused 422 with no row",
+					"tampered stored role refused at accept"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/customer-invitation/logic.ts",
+					"apps/api/src/customer-invitation/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:138"
+			}
+		},
+		{
+			"id": "CP-14",
+			"state": "missing",
+			"evidence": "apps/web/src/routes/portal/index.tsx (no orientation/dismiss state)",
+			"gap": "First-time dismissible orientation absent",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["apps/web/src/hooks/use-portal-orientation.test.ts:8"],
+				"assertions": [
+					"First-visit orientation is shown once and stays dismissed for that customer."
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/components/portal/portal-orientation.tsx",
+					"apps/web/src/routes/portal/index.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:139"
+			}
+		},
+		{
+			"id": "CP-16",
+			"state": "partial",
+			"evidence": "apps/api/src/intake/repository.ts createSubmission customerVisibility + org default; schema.ts request_participant table; apps/web/src/routes/portal/catalogue.tsx visibility select; packages/domain/src/identity/identity.test.ts CP-16 domain tests",
+			"gap": "listOwnSubmissions/findSubmission are requester-only: organisation-visible colleagues cannot list/view; request_participant unused by API; no integration test",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/organisation-customer-visibility.test.ts"
+				],
+				"assertions": [
+					"same-organisation colleague reads organisation-visible but private hidden",
+					"colleague cannot act",
+					"foreign participant row cannot widen reach"
+				],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/instance/organisation-customer-visibility.ts",
+					"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:141",
+				"executionScope": "God Mode organisation Identity page now composes an independent request-visibility Card; persisted session-only admin GET/PATCH has closed enum, current live customer organisation guard, CAS and transactional metadata audit. Four integration and eight UI tests plus API/web TypeScript pass. Persisted browser and final full-tree gates pending.",
+				"independentReview": "pending",
+				"repairReconciledAt": "2026-10-24T23:48:45.612663+00:00"
+			}
+		},
+		{
+			"id": "CP-17",
+			"state": "partial",
+			"evidence": "apps/api/src/identity/connection-admin.ts (customer portalScope bound to org); apps/api/src/identity/oidc-login.ts identityOidcPlugin('customer'); tests/api-integration/identity/oidc-jit-login.test.ts:1031,1053",
+			"gap": "No God Mode Organisations->Identity UI to configure customer connections; portal sign-in has no SSO entry; real Entra external_blocked",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/organisations/$id/identity.test.tsx:89",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/organisations/$id/identity.test.tsx:135",
+					"tests/api-integration/portal-home-realm.test.ts:93",
+					"apps/web/src/routes/portal/sign-in.test.tsx:94"
+				],
+				"assertions": [
+					"God Mode organisation Identity tab exposes the customer connection editor and denies non-admins.",
+					"Portal email step calls typed-domain home-realm discovery and starts a fixed-target customer OIDC continuation."
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Local source covers organisation-bound portal initiation; live Microsoft Entra sign-in, provisioning and removal remain external acceptance, and this audit did not execute the new home-realm tests or a browser SSO journey."
+				],
+				"paths": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/organisations/$id/identity.tsx",
+					"apps/web/src/routes/portal/sign-in.tsx",
+					"apps/api/src/identity/home-realm.ts",
+					"apps/api/src/identity/home-realm-continuation.ts",
+					"apps/api/src/identity/oidc-login.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:150"
+			}
+		},
+		{
+			"id": "CP-18",
+			"state": "partial",
+			"evidence": "apps/web/src/routes/portal/sign-in.tsx; apps/web/src/routes/portal/sign-in.test.tsx:70 (email step local, no provider list)",
+			"gap": "No-provider-list holds; typed-domain routing to customer OIDC missing (needs discovery route contract)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/portal/sign-in.test.tsx",
+					"tests/api-integration/portal-home-realm.test.ts",
+					"tests/api/identity/home-realm-continuation.test.ts"
+				],
+				"assertions": ["email-first local login and no provider inventory"],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/portal/sign-in.tsx",
+					"apps/api/src/identity/home-realm.ts",
+					"apps/api/src/identity/home-realm-continuation.ts",
+					"apps/api/src/identity/home-realm-rate-limit.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:157",
+				"repairReconciledAt": "2026-10-24T20:30:35.726988+00:00",
+				"independentReview": "pending",
+				"executionScope": "Home-realm integration 5/5, continuation unit 4/4 and portal UI 13/13 scoped runs passed; current final-tree browser SSO matrix pending."
+			}
+		},
+		{
+			"id": "CP-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/intake/repository.ts withdrawSubmission; POST /api/portal/submissions/{ref}/withdraw; apps/web/src/routes/portal/submissions/$ref.tsx; tests/api-integration/intake-triage-negative.test.ts:28-",
+			"gap": "No UI unit test for withdraw button",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/intake-triage-negative.test.ts:31",
+					"apps/web/src/routes/portal/submissions/$ref.actions.test.tsx:323"
+				],
+				"assertions": [
+					"withdraw only before acceptance",
+					"withdraw action rendered conditionally"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/intake/index.ts",
+					"apps/web/src/routes/portal/submissions/$ref.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:179"
+			}
+		},
+		{
+			"id": "CP-19",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/portal-client-routes.ts; apps/api/src/index.ts host guard; tests/api/two-entry-host.test.ts; tests/api/auth/portal-cookie-boundary.test.ts:53; tests/api-integration/portal-identity-boundary.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/two-entry-host.test.ts:115",
+					"tests/api-integration/portal-identity-boundary.test.ts"
+				],
+				"assertions": [
+					"portal-origin gate rejects staff routes",
+					"agent and portal sessions separated"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/auth.ts", "apps/api/src/intake/policy.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:195"
+			}
+		},
+		{
+			"id": "IP-1",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/connection-admin.ts portalScope enum + org validation; packages/domain/src/identity/identity.test.ts:352",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/identity/identity.test.ts:352"],
+				"assertions": ["connection portal scope and identity shape validated"],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"packages/domain/src/identity",
+					"apps/api/src/identity/connection-admin.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:508"
+			}
+		},
+		{
+			"id": "IP-2",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/oidc-login.ts JIT role scope; tests/api-integration/identity/mapping-role-guards.test.ts; tests/api-integration/identity/oidc-jit-login.test.ts:386",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/mapping-role-guards.test.ts:202",
+					"tests/api-integration/identity/mapping-role-guards.test.ts:272"
+				],
+				"assertions": [
+					"customer role must be exact built-in",
+					"customer mapping cannot target other organisation"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/identity/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:513"
+			}
+		},
+		{
+			"id": "IP-3",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/identity/mapping-role-guards.test.ts; packages/domain/src/identity/identity.test.ts:352,572",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/mapping-role-guards.test.ts:239",
+					"tests/api-integration/identity/mapping-role-guards.test.ts:307"
+				],
+				"assertions": [
+					"SCIM agent admin/owner mapping refused",
+					"OIDC agent admin/owner mapping refused"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/identity/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:519"
+			}
+		},
+		{
+			"id": "IP-4",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/identity/identity.ts forbidden_attribute; packages/domain/src/identity/identity.test.ts:407,481",
+			"gap": "HTTP-level forbidden_attribute SCIM test not found",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/identity/identity.test.ts:436",
+					"packages/domain/src/identity/identity.test.ts:498"
+				],
+				"assertions": [
+					"Authority-bearing SCIM fields yield forbidden_attribute.",
+					"Forbidden PATCH attribute yields forbidden_attribute."
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/scim-protocol.ts",
+					"apps/api/src/identity/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:553"
+			}
+		},
+		{
+			"id": "IP-5",
+			"state": "partial",
+			"evidence": "apps/api/src/identity/connection-admin.ts; tests/api-integration/identity-connection-admin.test.ts:514; apps/web/e2e/identity-connection-admin.spec.ts (UI fixture helper mocks API); apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx",
+			"gap": "Admin-only enforced and tested; customer connections point to an organisation Identity tab that does not exist in web routes",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/organisations/$id/identity.test.tsx:89",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/organisations/$id/identity.test.tsx:135"
+				],
+				"assertions": [
+					"customer organisation Identity editor",
+					"non-admin denied"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/connection-admin.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/organisations/$id/identity.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:557"
+			}
+		},
+		{
+			"id": "IP-6",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/connection-admin.ts, scim-admin.ts PA-15 step-up; tests/api-integration/identity-connection-admin.test.ts:1538,1685; tests/api/identity/step-up-canonicalization.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity-connection-admin.test.ts"
+				],
+				"assertions": [
+					"connection configuration and token lifecycle require administrator proof"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/identity/connection-admin.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:562"
+			}
+		},
+		{
+			"id": "IP-7",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/oidc-login.ts (state/nonce/PKCE cookie), oidc-token.ts, oidc-provider.ts; tests/api/identity/oidc-token.test.ts; tests/api/identity/oidc-provider.test.ts",
+			"gap": "Locally tested against fake issuer; not real-Entra accepted (protocol floor itself is locally verifiable)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/identity/oidc-jit-login.test.ts"],
+				"assertions": [
+					"signature issuer tenant audience nonce and time validation",
+					"bad signature/algorithm/key refused"
+				],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/api/src/identity/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:612",
+				"latestEvidence": "Single-use OIDC state now persists organisationId; callback rechecks selected connection portal/scope, browser cookie, expiry and organisation snapshot. Explicit changed-scope denial and replay/missing/mismatched-state tests are present in the35-test executed identity-ledger wave. Real Entra acceptance remains separately pending.",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "IP-8",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/oidc-login.ts originForPortal; apps/api/src/auth.ts per-portal instance; tests/api/auth/portal-cookie-boundary.test.ts; tests/api/csrf-portal-origin.test.ts; tests/api-integration/identity-connection-admin.test.ts:550",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/auth/portal-cookie-boundary.test.ts",
+					"tests/api-integration/portal-identity-boundary.test.ts"
+				],
+				"assertions": ["portal cookie boundary", "cross-host identity denied"],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/api/src/auth.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:620"
+			}
+		},
+		{
+			"id": "IP-9",
+			"state": "partial",
+			"evidence": "packages/domain/src/identity/identity.ts domain owners; apps/api/src/identity/repository.ts listEnabledOidcDomainOwners; packages/domain/src/identity/identity.test.ts:137-284",
+			"gap": "Collision/admission side tested; unauthenticated typed-domain routing initiation not implemented",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/oidc-jit-login.test.ts:919",
+					"tests/api-integration/identity/oidc-jit-login.test.ts:941"
+				],
+				"assertions": [
+					"cross-connection subject is not linked",
+					"email-only placeholder is not claimed"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/home-realm.ts",
+					"apps/api/src/identity/home-realm-continuation.ts",
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/web/src/routes/portal/sign-in.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:623",
+				"verificationRemaining": [
+					"Typed-domain initiation, selected-connection/portal/organisation state binding and deny-only callback collision are present in source. Scoped identity-ledger tests are recorded elsewhere in the audit; this row does not claim a complete portal callback browser matrix or real Entra owner validation.",
+					"Full final-tree gates and phase review remain pending."
+				]
+			}
+		},
+		{
+			"id": "IP-10",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/identity/jit-policy.ts; tests/api-integration/identity/oidc-jit-login.test.ts; tests/api-integration/identity/jit-policy-transition.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/oidc-jit-login.test.ts:365",
+					"tests/api-integration/identity/oidc-jit-login.test.ts:386"
+				],
+				"assertions": [
+					"agent JIT creates account/person/grant",
+					"tampered customer role refuses JIT"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/api/src/identity/connection-admin.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:648"
+			}
+		},
+		{
+			"id": "IP-26",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/identity/identity.ts:254 refuses /common,/organizations; packages/domain/src/identity/identity.test.ts:352; tests/api/identity/oidc-provider.test.ts",
+			"gap": "Save-time refusal is local and tested; live Entra discovery not exercised",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/identity/identity.test.ts:352",
+					"tests/api/identity/oidc-token.test.ts:39"
+				],
+				"assertions": [
+					"tenant-specific issuer shape",
+					"tenant and issuer validated"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/connection-admin.ts",
+					"apps/api/src/identity/oidc-token.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:653"
+			}
+		},
+		{
+			"id": "IP-27",
+			"state": "external_blocked",
+			"evidence": "apps/api/src/identity/oidc-login.ts validateEntraAdmission each login; packages/domain/src/identity/jit-policy.ts; packages/domain/src/identity/jit-policy.test.ts; tests/api-integration/identity/oidc-jit-login.test.ts:585",
+			"gap": "Implemented and locally tested with fake issuer/SCIM client; requirement acceptance is defined by Entra interop behaviour pending real Entra",
+			"currentAssessment": {
+				"implementation": "external_blocked",
+				"testFiles": [
+					"tests/api-integration/identity/oidc-jit-login.test.ts:365",
+					"tests/api-integration/identity/oidc-jit-login.test.ts:386"
+				],
+				"assertions": [
+					"local agent Entra JIT admission",
+					"tampered customer role denied"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Local Entra admission source and mocks inspected; live Entra app-role/removal behavior remains external acceptance."
+				],
+				"paths": ["apps/api/src/identity/oidc-login.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:661"
+			}
+		},
+		{
+			"id": "IP-29",
+			"state": "missing",
+			"evidence": "apps/web/src/routes/portal/sign-in.tsx; feature-contracts-p3.md:166-178,411",
+			"gap": "Limited domain-specific SSO disclosure flow not built (no discovery route contract)",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/portal-home-realm.test.ts:93",
+					"tests/api/identity/home-realm-continuation.test.ts:25",
+					"apps/web/src/routes/portal/sign-in.test.tsx:94"
+				],
+				"assertions": [
+					"Anonymous portal email-domain discovery returns local or SSO and binds a fixed-target continuation.",
+					"Portal sign-in invokes discovery before choosing local password or SSO initiation."
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Local source provides the limited typed-domain flow; cited new tests were not executed by this audit, browser flow and live Entra acceptance remain pending."
+				],
+				"paths": [
+					"apps/web/src/routes/portal/sign-in.tsx",
+					"apps/api/src/identity/home-realm.ts",
+					"apps/api/src/identity/home-realm-continuation.ts",
+					"apps/api/src/identity/home-realm-rate-limit.ts",
+					"apps/api/src/identity/oidc-login.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:718"
+			}
+		},
+		{
+			"id": "IP-11",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/scim-protocol.ts (Users, Groups, ServiceProviderConfig, ResourceTypes, Schemas); apps/api/src/index.ts:705-815 agent-only; tests/api-integration/scim-admin.test.ts:1423,1625",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["tests/api-integration/scim-admin.test.ts"],
+				"assertions": [
+					"SCIM Users and Groups routes constrained to agent host"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/identity/scim-protocol.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:745"
+			}
+		},
+		{
+			"id": "IP-12",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/scim-admin.ts rotate-token/revoke-token; apps/api/src/identity/scim-authentication.ts; tests/api-integration/scim-admin.test.ts:272; apps/web/e2e/scim-match-attributes.spec.ts (UI-mocked API):71,98; API: tests/api-integration/scim-admin.test.ts:272 asserts 401 after concurrent rotation",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/scim-admin.test.ts",
+					"tests/api-integration/identity/scim-limits-and-auth-events.test.ts:96"
+				],
+				"assertions": [
+					"bearer token authentication and rotation",
+					"disabled connection token refused/audited"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/identity/scim-authentication.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:749"
+			}
+		},
+		{
+			"id": "IP-13",
+			"state": "external_blocked",
+			"evidence": "apps/api/src/identity/scim-protocol.ts; tests/api-integration/scim-admin.test.ts:1423,1494,1607; packages/domain/src/identity/scim-match-attributes.test.ts",
+			"gap": "Implemented and locally tested with fake issuer/SCIM client; requirement acceptance is defined by Entra interop behaviour pending real Entra",
+			"currentAssessment": {
+				"implementation": "external_blocked",
+				"testFiles": ["tests/api-integration/scim-admin.test.ts"],
+				"assertions": ["local mock SCIM Users/Groups operations"],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Local source and mock tests present; real Microsoft Entra provisioning interoperability remains external acceptance."
+				],
+				"paths": ["apps/api/src/identity/scim-protocol.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:756"
+			}
+		},
+		{
+			"id": "IP-14",
+			"state": "partial",
+			"evidence": "apps/api/src/identity/scim-protocol.ts strict parsers; packages/domain/src/identity/identity.test.ts:407",
+			"gap": "No per-connection SCIM rate limit or explicit oversized-body rejection found",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/identity/scim-limits.test.ts:44",
+					"tests/api/identity/scim-limits.test.ts:76",
+					"tests/api-integration/identity/scim-limits-and-auth-events.test.ts:76"
+				],
+				"assertions": [
+					"per-connection 429 with Retry-After",
+					"oversized SCIM 413",
+					"oversized body rejected before handler"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/scim-limits.ts",
+					"apps/api/src/identity/scim-protocol.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:791"
+			}
+		},
+		{
+			"id": "IP-15",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/scim-lifecycle.ts, person-lifecycle.ts; tests/api-integration/scim-admin.test.ts:1210 (sessionsRevoked/keysRevoked), :295",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/identity/identity.test.ts:660",
+					"tests/api-integration/scim-admin.test.ts"
+				],
+				"assertions": [
+					"deactivation revokes sessions/grants per policy",
+					"SCIM active=false/DELETE deactivation"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/scim-protocol.ts",
+					"apps/api/src/identity/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:794"
+			}
+		},
+		{
+			"id": "IP-16",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/scim-admin.test.ts:1097; packages/domain/src/identity/identity.test.ts:660",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/identity/identity.test.ts:660"],
+				"assertions": ["reactivation only existing linked identity"],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/identity/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:823"
+			}
+		},
+		{
+			"id": "IP-17",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/identity/profile-mapping.ts; packages/domain/src/identity/profile-mapping.test.ts; tests/api-integration/scim-admin.test.ts:1564,1607",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/identity/identity.test.ts:481",
+					"tests/api-integration/scim-admin.test.ts"
+				],
+				"assertions": [
+					"allowed profile fields and forbidden authority fields",
+					"SCIM PATCH/PUT profile update"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/identity/scim-protocol.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:830"
+			}
+		},
+		{
+			"id": "IP-31",
+			"state": "external_blocked",
+			"evidence": "packages/domain/src/identity/identity.ts; packages/domain/src/identity/identity.test.ts:407,481",
+			"gap": "Implemented and locally tested with fake issuer/SCIM client; requirement acceptance is defined by Entra interop behaviour pending real Entra",
+			"currentAssessment": {
+				"implementation": "external_blocked",
+				"testFiles": [
+					"packages/domain/src/identity/identity.test.ts:481",
+					"tests/api-integration/scim-admin.test.ts"
+				],
+				"assertions": [
+					"Entra deviations parsed under authority constraints",
+					"local SCIM protocol acceptance"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Local tolerance source inspected; real Entra deviation acceptance remains external."
+				],
+				"paths": ["apps/api/src/identity/scim-protocol.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:849"
+			}
+		},
+		{
+			"id": "IP-32",
+			"state": "external_blocked",
+			"evidence": "packages/domain/src/identity/identity.test.ts:470; tests/api-integration/scim-admin.test.ts:1396",
+			"gap": "Implemented and locally tested with fake issuer/SCIM client; requirement acceptance is defined by Entra interop behaviour pending real Entra",
+			"currentAssessment": {
+				"implementation": "external_blocked",
+				"testFiles": ["tests/api-integration/scim-admin.test.ts"],
+				"assertions": ["duplicate SCIM create conflict semantics"],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Local duplicate behavior source inspected; live Entra duplicate retry interoperability remains external."
+				],
+				"paths": ["apps/api/src/identity/scim-protocol.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:858"
+			}
+		},
+		{
+			"id": "IP-18",
+			"state": "partial",
+			"evidence": "apps/api/src/identity/oidc-login.ts findOidcEmailOwner refusal; tests/api-integration/identity/oidc-jit-login.test.ts:919,941,972",
+			"gap": "Refusal tested; explicit authenticated, audited cross-connection link confirmation flow not found",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api/identity/account-link.test.ts",
+					"tests/api-integration/identity-account-link.test.ts",
+					"tests/api-integration/identity/oidc-jit-login.test.ts",
+					"tests/api-integration/scim-admin.test.ts"
+				],
+				"assertions": [
+					"Explicit A-session consent after signed B proof creates only the linked identity/account; no new session/person/grants.",
+					"Session/config changes, replay, collisions, guest/missing-role proofs and wrong-host access fail closed.",
+					"Existing automatic email-link and SCIM conflict refusals remain required."
+				],
+				"browser": "Scoped signed-provider consent and saved-screen reload pass at375/768/1440 in both themes; full phase role/flag matrix remains pending.",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/account-link.ts",
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/web/src/components/settings/connected-accounts-panel.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:869",
+				"browserEvidence": [
+					"docs/report/browser/identity-link194/journey.json",
+					"docs/report/browser/identity-link194/linked-readonly.json"
+				],
+				"reconciledAt": "2026-10-26T06:52:35.347046+00:00",
+				"repairReconciliation": "Deployed194:11 mounted integration cases,23 browser flow checks and20 fresh saved-screen checks pass. Mock B uses a valid Entra GUID. Real Entra remains Thomas-owned; this is implementation/scoped evidence, not phase acceptance."
+			}
+		},
+		{
+			"id": "IP-19",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/identity/oidc-jit-login.test.ts:861,1031",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/oidc-jit-login.test.ts:861"
+				],
+				"assertions": [
+					"same-connection exact SCIM subject linked on first OIDC login"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/identity/oidc-login.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:876"
+			}
+		},
+		{
+			"id": "IP-30",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/identity/oidc-jit-login.test.ts:861,941; packages/domain/src/identity/identity.test.ts:660",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/oidc-jit-login.test.ts:941",
+					"tests/api-integration/identity/oidc-jit-login.test.ts:861",
+					"tests/api-integration/identity/placeholder-claim.test.ts",
+					"tests/api-integration/identity/placeholder-auth.test.ts"
+				],
+				"assertions": [
+					"email-only SSO placeholder claim denied",
+					"SCIM same-subject link works"
+				],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/auth.ts",
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/api/src/customer-invitation/service.ts",
+					"apps/api/src/identity/placeholder-claim.ts",
+					"apps/api/src/auth/verified-placeholder-claim.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:886",
+				"executionScope": "Imported placeholders can be claimed after consumed TaskDesk OTP/magic proof only; customer claims require the invitation scope. SSO never claims by email.15 service and7 real-auth tests pass, including duplicate/SCIM/authority denials, returning-customer login and proof replay. Browser verification and the full P6 import-author producer remain pending.",
+				"repairReconciledAt": "2026-10-26T03:45:46.066578+00:00",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "IP-20",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/scim-protocol.ts Groups; apps/web/src/components/god-mode/scim-group-mappings-settings.tsx; tests/api-integration/scim-admin.test.ts:1396,1423; apps/web/e2e/scim-match-attributes.spec.ts (UI-mocked API):140",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"packages/domain/src/identity/identity.test.ts:572",
+					"tests/api-integration/scim-admin.test.ts"
+				],
+				"assertions": [
+					"SCIM groups role mapping allowlist semantics",
+					"group membership operations"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/scim-protocol.ts",
+					"apps/api/src/identity/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:903"
+			}
+		},
+		{
+			"id": "IP-21",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/identity/mapping-role-guards.test.ts; packages/domain/src/identity/identity.test.ts:572",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/mapping-role-guards.test.ts:283",
+					"tests/api-integration/identity/mapping-role-guards.test.ts:239"
+				],
+				"assertions": [
+					"customer OIDC mapping only customer role",
+					"staff admin/owner mapping denied"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/identity/repository.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:918"
+			}
+		},
+		{
+			"id": "IP-22",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/grant-closure-retry.ts, membership-projection.ts; tests/api-integration/identity/oidc-group-mapping-admin.test.ts:848,1351; tests/api-integration/identity/jit-policy-transition.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/workspace-role-governance.test.ts",
+					"tests/api-integration/identity/oidc-group-mapping-admin.test.ts",
+					"tests/api-integration/identity/jit-policy-transition.test.ts"
+				],
+				"assertions": [
+					"mapping edit retires own grants and reprojects",
+					"JIT disable retires defaults/reprojects"
+				],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/workspace/controllers/workspace-role-errors.ts",
+					"apps/api/src/workspace/role-service.ts",
+					"apps/api/src/identity/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:922",
+				"executionScope": "Role/reference closure and safe rank/capability updates repaired; 66 focused integration tests plus one real pg_blocking_pids concurrency barrier pass. Full final-tree integration and browser pending.",
+				"repairReconciledAt": "2026-10-24T23:33:52.008322+00:00",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "IP-23",
+			"state": "implemented_tested",
+			"evidence": "packages/domain/src/identity/identity.test.ts:301 (overage/malformed group claims treated as no groups)",
+			"gap": "Scope exclusion; no nested resolution by design",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": ["packages/domain/src/identity/identity.test.ts:572"],
+				"assertions": ["direct group membership mapping only"],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": ["apps/api/src/identity/scim-protocol.ts"],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:1047"
+			}
+		},
+		{
+			"id": "IP-28",
+			"state": "external_blocked",
+			"evidence": "apps/api/src/identity/oidc-login.ts group re-derivation; tests/api-integration/identity-connection-admin.test.ts:630",
+			"gap": "Implemented and locally tested with fake issuer/SCIM client; requirement acceptance is defined by Entra interop behaviour pending real Entra",
+			"currentAssessment": {
+				"implementation": "external_blocked",
+				"testFiles": [
+					"tests/api-integration/identity/oidc-group-mapping-admin.test.ts:848",
+					"tests/api-integration/identity/oidc-jit-login.test.ts:585"
+				],
+				"assertions": [
+					"OIDC mapping change reprojects",
+					"failed admission retires OIDC grant"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [
+					"Local group rederivation source present; live Entra group/app-role behavior remains external acceptance."
+				],
+				"paths": [
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/api/src/identity/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:1048"
+			}
+		},
+		{
+			"id": "IP-34",
+			"state": "implemented_tested",
+			"evidence": "apps/api/src/identity/oidc-group-mapping-admin.ts; tests/api-integration/identity/oidc-group-mapping-admin.test.ts; tests/api/oidc-group-mapping-contract.test.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/oidc-group-mapping-admin.test.ts:610",
+					"tests/api-integration/identity/oidc-group-mapping-admin.test.ts:1603"
+				],
+				"assertions": [
+					"target validation, PA-15 exact body, no pre-login grant",
+					"config CAS allows one concurrent write"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/connection-admin.ts",
+					"apps/api/src/identity/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:1093"
+			}
+		},
+		{
+			"id": "IP-24",
+			"state": "partial",
+			"evidence": "provisioning_event writes in apps/api/src/identity/scim-protocol.ts, oidc-login.ts (auth.failed), connection-admin.ts; tests/api-integration/identity-connection-admin.test.ts:365; apps/web/e2e/identity-connection-events.spec.ts (UI-mocked API)",
+			"gap": "SCIM bearer authentication failures (scim-authentication.ts 401s) write no provisioning_event",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/scim-limits-and-auth-events.test.ts:96",
+					"tests/api-integration/identity/scim-limits-and-auth-events.test.ts:125"
+				],
+				"assertions": [
+					"disabled known token writes auth.failed event",
+					"unknown token 401 intentionally writes no event"
+				],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/scim-authentication.ts",
+					"apps/api/src/identity/scim-protocol.ts",
+					"apps/api/src/identity/oidc-login.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:1122",
+				"latestEvidence": "Nullable instance-level failure ledger safely records unattributable SCIM/OIDC failures; known-connection attribution and shared denial counters are retained. 35 failure-ledger integration tests and latest guarded SCIM rotation/denial suite 13/13 passed. No raw token/state logged.",
+				"repairReconciledAt": "2026-10-25T02:52:15.647645+00:00",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "IP-25",
+			"state": "missing",
+			"evidence": "no plugin-health / discovery ping found in apps/api/src",
+			"gap": "Connection discovery health check and God Mode Health flag absent",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/connection-health-job.test.ts:43",
+					"tests/api-integration/identity/connection-health-job.test.ts:75"
+				],
+				"assertions": [
+					"unreachable IdP flagged and recovery clears",
+					"invalid tenant flagged"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/connection-health.ts",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:1133"
+			}
+		},
+		{
+			"id": "IP-33",
+			"state": "implemented_tested",
+			"evidence": "tests/api-integration/identity/oidc-jit-login.test.ts:1053; apps/api/src/identity/oidc-login.ts",
+			"gap": "",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/identity/oidc-jit-login.test.ts:1053",
+					"tests/api-integration/identity/oidc-jit-login.test.ts:941"
+				],
+				"assertions": [
+					"customer identity of other organisation refused",
+					"email never identifies SSO subject"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/api/src/identity/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:1227"
+			}
+		},
+		{
+			"id": "CP-20",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-invite-reach.test.ts:472",
+					"tests/api-integration/p5-invite-reach.test.ts:84",
+					"tests/api-integration/p5-invite-lifecycle.test.ts:98"
+				],
+				"assertions": [
+					"inviter reach limited to served organisations",
+					"portal session refused on agent routes",
+					"customer-scoped hash credential row"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/customer-invitation/service.ts",
+					"apps/api/src/customer-invitation/repository.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:139"
+			}
+		},
+		{
+			"id": "CP-21",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-invite-reach.test.ts:187",
+					"tests/api-integration/p5-invite-reach.test.ts:259",
+					"tests/api-integration/p5-invite-reach.test.ts:316"
+				],
+				"assertions": [
+					"forbidden role/team/scope 422 no row",
+					"tampered role refused at accept",
+					"staff accept route generic not-found"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/customer-invitation/logic.ts",
+					"apps/api/src/customer-invitation/service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:140"
+			}
+		},
+		{
+			"id": "CP-22",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-invite-lifecycle.test.ts:455",
+					"tests/api-integration/p5-invite-lifecycle.test.ts:527",
+					"tests/api-integration/p5-invite-lifecycle.test.ts:557",
+					"tests/api-integration/p5-invite-delivery.test.ts:67"
+				],
+				"assertions": [
+					"Resend rotates credential and expiry; approved revoke invalidates it.",
+					"Current policy maps DELETE to member:invite, but the existing lead-revoke test still asserts a 403 under legacy invitation:cancel.",
+					"Delivery answer remains the same for known and unknown addresses."
+				],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/invitation/policy.ts",
+					"apps/api/src/invitation/index.ts",
+					"apps/api/src/permissions/legacy-statements.ts",
+					"apps/api/src/invitation/invitation-deletion-target.ts",
+					"apps/api/src/customer-invitation/service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:141",
+				"latestEvidence": "Lead cancellation test now matches member:invite policy and registered pending-action authority; 32 scoped PostgreSQL tests passed. Full role/browser invitation journey remains pending.",
+				"repairReconciledAt": "2026-10-25T02:52:15.647653+00:00",
+				"independentReview": "pending"
+			}
+		},
+		{
+			"id": "CP-23",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-invite-lifecycle.test.ts:98",
+					"tests/api-integration/p5-invite-lifecycle.test.ts:364",
+					"tests/api-integration/p5-invite-lifecycle.test.ts:755"
+				],
+				"assertions": [
+					"credential hash-only and fragment link",
+					"list gives statuses without credential",
+					"id alone cannot accept"
+				],
+				"browser": "scoped_pass",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/customer-invitation/logic.ts",
+					"apps/api/src/customer-invitation/service.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:142",
+				"testEvidenceStatus": "scoped_execution",
+				"verificationRemaining": [
+					"Scoped cryptographic-expiry queue and focused unit execution are recorded in the cited audit; a separate owned initial-contact journey recorded one Mailpit message, browser acceptance, fresh portal login, assigned catalogue type and /requests load. This browser path does not exercise cryptographic expiry, resend/revoke or concurrency.",
+					"Full final-tree gates and phase review remain pending."
+				],
+				"testEvidence": "docs/report/audit/codex-20261025-crypto-expiry-migration.json",
+				"browserEvidence": "docs/report/browser/cp23-initial-contact/cp23-initial-contact-acceptance-20261026.json"
+			}
+		},
+		{
+			"id": "CP-24",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "partial",
+				"testFiles": [
+					"tests/api-integration/p5-invite-lifecycle.test.ts:770",
+					"tests/api-integration/p5-invite-lifecycle.test.ts:631",
+					"tests/api-integration/p5-invite-signup.test.ts:203"
+				],
+				"assertions": [
+					"accept creates customer person/membership",
+					"concurrent accept affects one row",
+					"password signup/accept customer session only"
+				],
+				"browser": "scoped_pass",
+				"executed": false,
+				"gaps": [
+					"Portal-root invitation acceptance, invited password signup and a fresh customer portal login were exercised on one owned initial-contact journey. CP-12 provider parity remains open: new-user email OTP, magic link and scoped SSO signup/accept are absent. The browser journey does not prove mismatch, wrong-host or concurrent-accept cases."
+				],
+				"paths": [
+					"apps/web/src/routes/portal/invite/$id.tsx",
+					"apps/web/src/components/portal/accept-invitation.tsx",
+					"apps/api/src/customer-invitation/service.ts",
+					"apps/api/src/auth.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:143",
+				"browserEvidence": "docs/report/browser/cp23-initial-contact/cp23-initial-contact-acceptance-20261026.json"
+			}
+		},
+		{
+			"id": "CP-25",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-invite-reach.test.ts:187",
+					"tests/api-integration/p5-invite-lifecycle.test.ts:737",
+					"tests/api-integration/p5-invite-reach.test.ts:334"
+				],
+				"assertions": [
+					"write-role refusal audited without email",
+					"accept refusals audited by reason without credential/address",
+					"wrong-portal refusal audited"
+				],
+				"browser": "pending",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/customer-invitation/service.ts",
+					"apps/api/src/invitation/invitation-deletion-target.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:144"
+			}
+		},
+		{
+			"id": "CP-26",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/p5-invite-lifecycle.test.ts:353",
+					"tests/api-integration/p5-invite-lifecycle.test.ts:482",
+					"tests/api-integration/p5-invite-signup.test.ts:516",
+					"tests/api-integration/god-mode-settings-routes.test.ts:187",
+					"apps/web/src/components/god-mode/instance-settings-form.test.tsx:191"
+				],
+				"assertions": [
+					"per-inviter and per-organisation create limits read changed instance settings",
+					"resend cooldown and anonymous signup limit",
+					"God Mode settings route persists all four invitation limit fields"
+				],
+				"browser": "scoped_pass",
+				"executed": false,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/customer-invitation/repository.ts",
+					"apps/api/src/customer-invitation/service.ts",
+					"apps/api/src/instance/settings/index.ts",
+					"apps/api/src/instance/settings/schema.ts",
+					"apps/web/src/components/god-mode/instance-settings-form.tsx"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:145",
+				"browserEvidence": "docs/report/browser/cp26-general-settings/cp26-general-settings-20261025T190936.json",
+				"testEvidenceStatus": "assertion_inspected",
+				"verificationRemaining": [
+					"The persisted God Mode browser check changed only the per-organisation limit and restored all settings exactly; it did not attempt invitation traffic at the changed threshold. The cited integration assertions were inspected, not executed in this reconciliation.",
+					"Full final-tree gates and phase review remain pending."
+				]
+			}
+		},
+		{
+			"id": "CP-27",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/portal-home-realm.test.ts",
+					"tests/api/identity/home-realm-continuation.test.ts",
+					"apps/web/src/routes/portal/sign-in.test.tsx"
+				],
+				"assertions": [],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/portal/sign-in.tsx",
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/api/src/identity/home-realm.ts",
+					"apps/api/src/identity/home-realm-continuation.ts",
+					"apps/api/src/identity/home-realm-rate-limit.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:186",
+				"repairReconciledAt": "2026-10-24T20:30:35.726997+00:00",
+				"independentReview": "pending",
+				"executionScope": "Home-realm integration 5/5, continuation unit 4/4 and portal UI 13/13 scoped runs passed; current final-tree browser SSO matrix pending."
+			}
+		},
+		{
+			"id": "CP-28",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/portal-home-realm.test.ts",
+					"tests/api/identity/home-realm-continuation.test.ts",
+					"apps/web/src/routes/portal/sign-in.test.tsx"
+				],
+				"assertions": [],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/portal/sign-in.tsx",
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/api/src/identity/home-realm.ts",
+					"apps/api/src/identity/home-realm-continuation.ts",
+					"apps/api/src/identity/home-realm-rate-limit.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:187",
+				"repairReconciledAt": "2026-10-24T20:30:35.727000+00:00",
+				"independentReview": "pending",
+				"executionScope": "Home-realm integration 5/5, continuation unit 4/4 and portal UI 13/13 scoped runs passed; current final-tree browser SSO matrix pending."
+			}
+		},
+		{
+			"id": "CP-29",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/portal-home-realm.test.ts",
+					"tests/api/identity/home-realm-continuation.test.ts",
+					"apps/web/src/routes/portal/sign-in.test.tsx"
+				],
+				"assertions": [],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/web/src/routes/portal/sign-in.tsx",
+					"apps/api/src/identity/home-realm.ts",
+					"apps/api/src/identity/home-realm-continuation.ts",
+					"apps/api/src/identity/home-realm-rate-limit.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:188",
+				"repairReconciledAt": "2026-10-24T20:30:35.727002+00:00",
+				"independentReview": "pending",
+				"executionScope": "Home-realm integration 5/5, continuation unit 4/4 and portal UI 13/13 scoped runs passed; current final-tree browser SSO matrix pending.",
+				"verificationRemaining": [
+					"Generic localized portal SSO failure and server-side failure detail are present; scoped identity-ledger tests are cited in this audit. Complete portal callback browser matrix and real Entra validation remain pending."
+				]
+			}
+		},
+		{
+			"id": "IP-35",
+			"state": "unaudited",
+			"evidence": "Added to retained P3 index after the historical audit; current source-only assessment follows.",
+			"gap": "Historical assessment unavailable.",
+			"currentAssessment": {
+				"implementation": "implemented",
+				"testFiles": [
+					"tests/api-integration/portal-home-realm.test.ts",
+					"tests/api/identity/home-realm-continuation.test.ts",
+					"apps/web/src/routes/portal/sign-in.test.tsx"
+				],
+				"assertions": [],
+				"browser": "pending",
+				"executed": true,
+				"gaps": [],
+				"paths": [
+					"apps/web/src/routes/portal/sign-in.tsx",
+					"apps/api/src/identity/oidc-login.ts",
+					"apps/api/src/identity/home-realm.ts",
+					"apps/api/src/identity/home-realm-continuation.ts",
+					"apps/api/src/identity/home-realm-rate-limit.ts"
+				],
+				"requirementSource": "docs/technical/feature-contracts-p3.md:747",
+				"repairReconciledAt": "2026-10-24T20:30:35.727004+00:00",
+				"independentReview": "pending",
+				"executionScope": "Home-realm integration 5/5, continuation unit 4/4 and portal UI 13/13 scoped runs passed; current final-tree browser SSO matrix pending.",
+				"verificationRemaining": [
+					"Typed-domain route, bounded disclosure, fixed continuation and server-side selected-connection audit are present; scoped identity-ledger tests are cited in this audit. Complete portal callback browser matrix and real Entra validation remain pending."
+				]
+			}
+		}
+	],
+	"top_gaps": [
+		"Portal request lifecycle actions absent: escalate-only priority (CP-7), reopen window (CP-8), satisfaction (CP-9), SLA due display (CP-6)",
+		"Customer invitation/admission (CP-11/12/13) closed pending adapter contract; no customer onboarding (CP-14)",
+		"Organisation visibility (CP-16) stored but portal list/detail are requester-only; request_participant unused",
+		"Typed-domain SSO routing/disclosure (CP-18 SSO half, IP-9 initiation, IP-29) not built; portal sign-in is password+TOTP only",
+		"No God Mode Organisations->Identity UI for customer connections (CP-17, IP-5) though API supports them",
+		"Portal nav lacks projects/engagements and account screens (features.md P3); copy leaks 'work item' (CP-5/CP-10)",
+		"IP-25 plugin-health discovery ping missing; IP-14 per-connection SCIM rate limit/oversize missing; IP-24 SCIM auth-failure events missing",
+		"Real Entra acceptance external_blocked (IP-13/27/28/31/32); identity e2e specs mock the API (UI-only evidence); CP-3 internal-comment filter lacks portal test"
+	],
+	"tonight_actions": [
+		"Add portal integration test: internal comment on linked work item absent from GET /api/portal/submissions/{ref} (CP-3)",
+		"Replace portal.intake.accepted copy and requests.description in i18n/en-US.json with customer terminology; add test (CP-5/CP-10)",
+		"Implement organisation-visible portal list/detail branch (customer_visibility='organisation' same org) plus participants read, with 404 cross-org tests (CP-16)",
+		"Write provisioning_event (auth.failed) on SCIM bearer 401 in apps/api/src/identity/scim-authentication.ts; add per-connection rate limit and body-size cap with tests (IP-14/IP-24)",
+		"Add POST /api/portal/requests/{ref}/priority escalate-only (403 on decrease) with activity + notification and portal-cannot-deescalate test (CP-7)",
+		"Expose customer-safe SLA due time/state in findPortalSubmission and render in $ref.tsx (CP-6)",
+		"Add God Mode organisation Identity tab reusing identity-connection-editor for customer scope (CP-17/IP-5)",
+		"Add plugin-health job pinging enabled connections' discovery docs and surfacing in God Mode (IP-25)"
+	],
+	"notes": [
+		"external_blocked rule: requirement acceptance is defined by Entra interop behaviour; local fake-issuer impl+tests listed as evidence",
+		"No native interactive HTML (<button|input|select|textarea|a>) found in apps/web/src/routes/portal/*, components/portal/*, god-mode identity/scim components; portal uses @taskdesk/ui",
+		"No tests were run; classifications are source/test-file inspection only; nothing browser-verified"
+	],
+	"currentAssessment": {
+		"sourceHead": "aea5d5702ea9ac553573f598e02f425cd79cde87",
+		"method": "Read-only source and test-assertion inspection against all 64 indexed P3 clauses. No tests or browser journeys executed by this reviewer; existing state/evidence/gap fields retained as historical.",
+		"historicalStatesNotCurrentVerdicts": true,
+		"browser": "pending",
+		"executedTests": false,
+		"homeRealmRecommendation": "Keep POST /api/portal/sign-in/home-realm read-only for server persistence: parse and discard local part, resolve only enabled customer domain binding, return SSO/local without connection id and set a short-lived host-only HttpOnly Secure SameSite=Lax AEAD continuation cookie. A fixed portal initiation path consumes and clears the cookie, revalidates connection/domain binding, then calls factored existing OIDC start to create single-use state/nonce/PKCE. Clear stale cookie for local response, rate-limit anonymously, and record selected connection id only server-side. Store and compare immutable persisted organisationId in OIDC state/callback; the existing host-only HttpOnly state cookie binds the anonymous initiating browser, with no authenticated session prerequisite.",
+		"externalAcceptance": "Real Entra interoperability remains pending for IP-13/IP-27/IP-28/IP-31/IP-32; local home-realm omissions are local gaps, not external blockers."
+	},
+	"repairReconciliation": {
+		"recordedAt": "2026-10-26T03:52:55.930957+00:00",
+		"scope": "Later coordinator source/test reconciliation; original source-only audit remains historical. No independent phase review or Thomas acceptance.",
+		"evidence": "codex-20261026-source192-checkpoint.json",
+		"browser": "pending"
+	}
+}

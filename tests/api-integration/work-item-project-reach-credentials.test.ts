@@ -116,7 +116,9 @@ describe("API integration: project reach, capability and credential cases", () =
           const withNull = await route.call(app, world, item);
           setAmbientHeaders({});
           const nullText = await withNull.text();
-          expect(withNull.status, nullText).toBe(403);
+          expect(withNull.status, nullText).toBe(
+            route.unscopedKeyStatus ?? 403,
+          );
           if ((route.readKeyStatus ?? 403) === 403) {
             expect(await snapshot()).toBe(before);
           }
@@ -173,6 +175,37 @@ describe("API integration: project reach, capability and credential cases", () =
   });
 
   describe("POST /api/work-items/search", () => {
+    it("P1-7 (UNRUN: DB integration): a filtered search row carries the same facts keys as the list", async () => {
+      const world = await setupWorld();
+      const { app } = createApp();
+      await createItem(app, world, TITLE);
+      mockAuthenticatedSession(world.projectMember.user);
+      const filtered = await json(app, "POST", "/api/work-items/search", {
+        workspaceId: world.workspaceId,
+        query: {
+          entity: "work_item",
+          filter: {
+            field: "state.group",
+            op: "in",
+            value: [
+              "backlog",
+              "unstarted",
+              "started",
+              "completed",
+              "cancelled",
+            ],
+          },
+        },
+      });
+      expect(filtered.status, await filtered.clone().text()).toBe(200);
+      const body = (await filtered.json()) as {
+        data: Array<Record<string, unknown>>;
+      };
+      // Same decoration as GET list: blockedByOpenCount is always present (0 when none).
+      expect(body.data.length).toBeGreaterThan(0);
+      for (const row of body.data) expect(row.blockedByOpenCount).toBe(0);
+    });
+
     it("refuses a customer principal and shows an outsider nothing", async () => {
       const world = await setupWorld();
       const { app } = createApp();

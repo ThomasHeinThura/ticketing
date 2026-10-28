@@ -8,6 +8,7 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
+import { apiKeyCapabilitySubset } from "../utils/require-api-key-permission-scope";
 import { isCurrentInstanceAdmin } from "./observability/audit-failure-notifier";
 
 /**
@@ -18,7 +19,7 @@ import { isCurrentInstanceAdmin } from "./observability/audit-failure-notifier";
  */
 export async function requireCurrentInstanceAdmin(
   c: Context,
-  method: "GET" | "PATCH" | "POST",
+  method: "GET" | "PATCH" | "POST" | "PUT" | "DELETE",
   path: string,
 ): Promise<void> {
   const userId = c.get("userId") as string | undefined;
@@ -31,6 +32,8 @@ export async function requireCurrentInstanceAdmin(
         readonly id: string;
         readonly userId: string;
         readonly enabled: boolean;
+        readonly isMcp?: boolean;
+        readonly permissions?: Record<string, string[]> | null;
       }
     | undefined;
   const session = c.get("session") as
@@ -42,13 +45,17 @@ export async function requireCurrentInstanceAdmin(
   }
   const identity = await resolveIdentity({
     userId,
-    credential: apiKey ? "api_key" : "session",
+    credential: apiKey ? (apiKey.isMcp ? "mcp_key" : "api_key") : "session",
     apiKey: apiKey
-      ? { enabled: apiKey.enabled, ownerUserId: apiKey.userId }
+      ? {
+          enabled: apiKey.enabled,
+          ownerUserId: apiKey.userId,
+          capabilities: apiKeyCapabilitySubset(apiKey),
+        }
       : undefined,
   });
   const entry = policyRegistry.get(normaliseRouteKey(`${method} ${path}`));
-  if (!entry || entry.kind !== "capability") {
+  if (entry?.kind !== "capability") {
     throw new HTTPException(403, { message: "Forbidden" });
   }
   const decision = evaluatePolicy(entry.policy, {

@@ -2,7 +2,7 @@
  * F15 — the mandatory security review must cover the machinery that decides whether
  * anything gets reviewed, and the dependency graph that decides what code exists.
  *
- * Thomas's decision, 2026-09-08 (docs/07-planning/decision-log.md). Before it, the gate
+ * Thomas's decision, 2026-09-08 (archive/2026-10-22/docs/07-planning/decision-log.md). Before it, the gate
  * could not see changes to itself: PR #19 — the pull request that BUILDS this gate —
  * touched `.github/**`, `scripts/ci/**`, `package.json`, `pnpm-workspace.yaml` and
  * `pnpm-lock.yaml`, and the checker correctly reported "no security-review path touched
@@ -60,7 +60,7 @@ const MUST_REQUIRE_REVIEW = [
   "apps/web/e2e/auth-redirect.spec.ts",
   "turbo.json",
   // the authoritative document that defines the list
-  "docs/04-engineering/ci-cd.md",
+  "docs/technical/ci-gates.md",
   // dependency control
   "package.json",
   "apps/api/package.json",
@@ -87,8 +87,8 @@ const MUST_REQUIRE_REVIEW = [
 const MUST_NOT_REQUIRE_REVIEW = [
   "README.md",
   "CHANGELOG.md",
-  "docs/07-planning/status.md",
-  "docs/02-design/screen-inventory.md",
+  "archive/2026-10-22/docs/07-planning/status.md",
+  "archive/2026-10-22/docs/02-design/screen-inventory.md",
   "apps/web/src/routes/index.tsx",
   "apps/web/src/components/button.tsx",
   "tests/api-integration/organization-plugin-characterization.test.ts",
@@ -106,7 +106,7 @@ describe("security-review paths — F15 scope", () => {
       `${missed.length} path(s) that MUST require an independent security review are not ` +
         "matched by ci-cd.md's list. The gate would not see a change to itself, which is " +
         "the F15 blind spot Thomas's 2026-09-08 decision closed. Restore the globs in " +
-        `docs/04-engineering/ci-cd.md (currently ${globs.length}):\n  ${missed.join("\n  ")}`,
+        `docs/technical/ci-gates.md (currently ${globs.length}):\n  ${missed.join("\n  ")}`,
     );
   });
 

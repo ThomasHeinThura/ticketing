@@ -1,0 +1,58 @@
+{
+	"checks": [
+		{
+			"name": "save and completed reload use persisted organisation default",
+			"passed": true
+		},
+		{
+			"name": "restore original default and verify fresh server read",
+			"passed": true
+		},
+		{
+			"name": "responsive form",
+			"width": 390,
+			"theme": "light",
+			"screenshot": "docs/report/screens/codex-20261025-organisation-visibility-390-light.png",
+			"passed": true
+		},
+		{
+			"name": "responsive form",
+			"width": 390,
+			"theme": "dark",
+			"screenshot": "docs/report/screens/codex-20261025-organisation-visibility-390-dark.png",
+			"passed": true
+		},
+		{
+			"name": "responsive form",
+			"width": 768,
+			"theme": "light",
+			"screenshot": "docs/report/screens/codex-20261025-organisation-visibility-768-light.png",
+			"passed": true
+		},
+		{
+			"name": "responsive form",
+			"width": 768,
+			"theme": "dark",
+			"screenshot": "docs/report/screens/codex-20261025-organisation-visibility-768-dark.png",
+			"passed": true
+		},
+		{
+			"name": "responsive form",
+			"width": 1440,
+			"theme": "light",
+			"screenshot": "docs/report/screens/codex-20261025-organisation-visibility-1440-light.png",
+			"passed": true
+		},
+		{
+			"name": "responsive form",
+			"width": 1440,
+			"theme": "dark",
+			"screenshot": "docs/report/screens/codex-20261025-organisation-visibility-1440-dark.png",
+			"passed": true
+		}
+	],
+	"visualInspection": {
+		"screens": 6,
+		"note": "Coordinator inspected all six captures. Screens were recaptured with the real persisted user-preferences theme set before navigation, avoiding transient mixed-theme captures. No page overflow at390/768/1440. Full original Kaneo comparison and independent phase review remain pending."
+	}
+}

@@ -13,6 +13,7 @@ import {
   createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 const windows = {
   mon: [{ from: 540, to: 1020 }],
@@ -356,6 +357,8 @@ describe("API integration: SLA policy authoring contract", () => {
     );
     expect(createdAudit?.after).toEqual({
       policyId: created.id,
+      // Stable catalogue key (0193), derived from the policy name.
+      key: "response-policy",
       versionId: expect.any(String),
     });
     expect(updatedAudit?.after).toMatchObject({
@@ -401,6 +404,11 @@ describe("API integration: SLA policy authoring contract", () => {
       isDefault: true,
       createdAt,
       updatedAt: createdAt,
+    });
+    await ensureCreationWorkflow({
+      workspaceId: owner.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
     });
     const create = await csrfRequest(
       app,
@@ -470,7 +478,8 @@ describe("API integration: SLA policy authoring contract", () => {
       .where(eq(schema.workItemTypeTable.id, type.id));
     await db
       .update(schema.projectTable)
-      .set({ slaPolicyId: otherPolicy.id })
+      // A project's own policy applies only in override mode; inherit uses the workspace default.
+      .set({ slaPolicyMode: "override", slaPolicyId: otherPolicy.id })
       .where(eq(schema.projectTable.id, project.id));
     const createItem = await csrfRequest(
       app,
@@ -528,6 +537,11 @@ describe("API integration: SLA policy authoring contract", () => {
 
     const createWithType = async (title: string) => {
       const unboundType = await createType(owner.workspace.id);
+      await ensureCreationWorkflow({
+        workspaceId: owner.workspace.id,
+        projectId: project.id,
+        typeId: unboundType.id,
+      });
       const response = await csrfRequest(
         app,
         `/api/projects/${project.id}/work-items`,
@@ -556,7 +570,7 @@ describe("API integration: SLA policy authoring contract", () => {
     expect(projectFallback.versionId).toBe(otherPublished.activeVersion.id);
     await db
       .update(schema.projectTable)
-      .set({ slaPolicyId: null })
+      .set({ slaPolicyMode: "inherit", slaPolicyId: null })
       .where(eq(schema.projectTable.id, project.id));
     await db
       .update(schema.workspaceTable)

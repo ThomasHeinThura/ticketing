@@ -8,6 +8,10 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import {
+  loadProjectAncestorIdsForRequest,
+  loadProjectOwnerTeamId,
+} from "../project/hierarchy.repository";
+import {
   projectCapabilityRefused,
   projectReadDecision,
 } from "../utils/has-project-reach";
@@ -82,6 +86,8 @@ export type WorkItemReachOptions =
        * before request validation without second-guessing those predicates.
        */
       readonly deferCapability?: boolean;
+      /** Allow archived rows only for explicitly opted-in read-only GET routes. */
+      readonly allowArchivedForRead?: true;
     }
   | {
       readonly requireProjectReach: false;
@@ -89,6 +95,7 @@ export type WorkItemReachOptions =
       /** No project reach is resolved on this branch, so there is no capability to defer. */
       readonly deferApiKeyCapability?: never;
       readonly deferCapability?: never;
+      readonly allowArchivedForRead?: never;
     };
 
 export { WORK_ITEM_REACH_MARK, type WorkItemReachMark };
@@ -108,6 +115,11 @@ export function requireWorkItemReach(
     const key = c.req.param(idKey);
     if (!key) {
       throw new HTTPException(400, { message: "Missing work item key" });
+    }
+    if (options.allowArchivedForRead && c.req.method !== "GET") {
+      throw new HTTPException(500, {
+        message: "Archived work-item access is only valid for GET requests",
+      });
     }
     // T4 (independent Opus security review of PR #271, delta round): a NUL byte in `key`
     // reached the `eq(schema.workItemTable.key, key)` lookup below unvalidated -- Postgres
@@ -183,16 +195,43 @@ export function requireWorkItemReach(
               schema.projectTable,
               eq(schema.workItemTable.projectId, schema.projectTable.id),
             );
-    const [workItem] = await workItemQuery
-      .where(
-        and(
-          eq(schema.workItemTable.key, key),
-          isNull(schema.workItemTable.deletedAt),
-          isNull(schema.workItemTable.archivedAt),
-          isNull(schema.projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
+    const findByKey = (lookupKey: string) =>
+      workItemQuery
+        .where(
+          and(
+            eq(schema.workItemTable.key, lookupKey),
+            isNull(schema.workItemTable.deletedAt),
+            options.allowArchivedForRead
+              ? undefined
+              : isNull(schema.workItemTable.archivedAt),
+            isNull(schema.projectTable.deletedAt),
+          ),
+        )
+        .limit(1);
+    let [workItem] = await findByKey(key);
+
+    // `RH-12`: a cross-project move re-keys the item and records the old key in
+    // `work_item_key_alias`. A READ of the old key resolves through the alias to the item's
+    // current key and answers a permanent redirect, but only AFTER every reach and capability
+    // check below ran against the real, current row: an alias never grants access, and a caller
+    // who cannot reach the moved item gets the same 404 as for any unknown key. Writes never
+    // follow an alias, so an old key can never mutate the item by accident.
+    let redirectToKey: string | undefined;
+    if (!workItem && (c.req.method === "GET" || c.req.method === "HEAD")) {
+      const [alias] = await db
+        .select({ currentKey: schema.workItemTable.key })
+        .from(schema.workItemKeyAliasTable)
+        .innerJoin(
+          schema.workItemTable,
+          eq(schema.workItemKeyAliasTable.workItemId, schema.workItemTable.id),
+        )
+        .where(eq(schema.workItemKeyAliasTable.oldKey, key))
+        .limit(1);
+      if (alias && alias.currentKey !== key) {
+        [workItem] = await findByKey(alias.currentKey);
+        if (workItem) redirectToKey = alias.currentKey;
+      }
+    }
 
     if (!workItem) {
       throw new HTTPException(404, { message: "Work item not found" });
@@ -209,13 +248,25 @@ export function requireWorkItemReach(
     // Same-query persisted project/workspace facts let the observer evaluate canonical
     // membership independently of this middleware's native reach result. Current schema
     // has no hierarchy or owner-team columns, so those remain explicit empty facts.
+    // PR-2: inherited project membership, read at call time.
+    const ancestorProjectIds = await loadProjectAncestorIdsForRequest(
+      c,
+      db,
+      workItem.workspaceId,
+      workItem.projectId,
+    );
+    const ownerTeamId = await loadProjectOwnerTeamId(
+      db,
+      workItem.workspaceId,
+      workItem.projectId,
+    );
     if (policyShadowEnabled && "organisationId" in workItem) {
       c.set("projectReachFacts", {
         projectId: workItem.projectId,
         workspaceId: workItem.workspaceId,
         organisationId: workItem.organisationId,
-        ancestorProjectIds: [],
-        ownerTeamId: null,
+        ancestorProjectIds,
+        ownerTeamId,
       });
     }
 
@@ -242,8 +293,8 @@ export function requireWorkItemReach(
         workspaceId: workItem.workspaceId,
         organisationId,
         workItemId: workItem.id,
-        ancestorProjectIds: [],
-        ownerTeamId: null,
+        ancestorProjectIds,
+        ownerTeamId,
       });
       if (!decision) {
         throw new HTTPException(500, {
@@ -277,6 +328,19 @@ export function requireWorkItemReach(
     }
 
     setShadowLegacyAuthorization(c, "allowed");
+    if (redirectToKey !== undefined) {
+      const url = new URL(c.req.url);
+      const oldSegment = encodeURIComponent(key);
+      url.pathname = url.pathname
+        .split("/")
+        .map((segment) =>
+          segment === oldSegment || segment === key
+            ? encodeURIComponent(redirectToKey)
+            : segment,
+        )
+        .join("/");
+      return c.redirect(`${url.pathname}${url.search}`, 308);
+    }
     return next();
   };
   const mark: WorkItemReachMark = {

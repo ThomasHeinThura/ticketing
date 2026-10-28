@@ -17,6 +17,7 @@ import {
 } from "@taskdesk/ui";
 import { RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import PageTitle from "@/components/page-title";
 import { useDensityPreference } from "@/hooks/use-density-preference";
 import { useLocale } from "@/hooks/use-locale";
 import {
@@ -95,6 +96,7 @@ function RouteComponent() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
+      <PageTitle title={t("settings:preferencesPage.title")} />
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">
           {t("settings:preferencesPage.title")}
@@ -117,7 +119,7 @@ function RouteComponent() {
         <div className="space-y-4 border border-border rounded-md p-4 bg-sidebar">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label htmlFor="preference-theme" className="text-sm font-medium">
                 {t("settings:preferencesPage.theme")}
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -128,7 +130,11 @@ function RouteComponent() {
               value={theme}
               onValueChange={(value) => value && setTheme(value)}
             >
-              <SelectTrigger size="sm" className="w-full sm:w-40">
+              <SelectTrigger
+                id="preference-theme"
+                size="sm"
+                className="w-full sm:w-40"
+              >
                 <SelectValue
                   placeholder={t("settings:preferencesPage.selectTheme")}
                 >
@@ -153,7 +159,10 @@ function RouteComponent() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label
+                htmlFor="preference-language"
+                className="text-sm font-medium"
+              >
                 {t("settings:preferencesPage.language")}
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -168,7 +177,11 @@ function RouteComponent() {
                 }
               }}
             >
-              <SelectTrigger size="sm" className="w-full sm:w-40">
+              <SelectTrigger
+                id="preference-language"
+                size="sm"
+                className="w-full sm:w-40"
+              >
                 <SelectValue
                   placeholder={t("settings:preferencesPage.selectLanguage")}
                 >
@@ -189,7 +202,10 @@ function RouteComponent() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label
+                htmlFor="preference-week-start"
+                className="text-sm font-medium"
+              >
                 {t("settings:preferencesPage.firstDayOfWeek")}
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -210,7 +226,11 @@ function RouteComponent() {
                 }
               }}
             >
-              <SelectTrigger size="sm" className="w-full sm:w-40">
+              <SelectTrigger
+                id="preference-week-start"
+                size="sm"
+                className="w-full sm:w-40"
+              >
                 <SelectValue
                   placeholder={t(
                     "settings:preferencesPage.selectFirstDayOfWeek",
@@ -233,7 +253,10 @@ function RouteComponent() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label
+                htmlFor="preference-default-view"
+                className="text-sm font-medium"
+              >
                 {t("settings:preferencesPage.defaultView")}
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -244,7 +267,11 @@ function RouteComponent() {
               value={viewMode}
               onValueChange={(value) => value && setViewMode(value)}
             >
-              <SelectTrigger size="sm" className="w-full sm:w-40">
+              <SelectTrigger
+                id="preference-default-view"
+                size="sm"
+                className="w-full sm:w-40"
+              >
                 <SelectValue
                   placeholder={t("settings:preferencesPage.selectViewMode")}
                 >
@@ -266,7 +293,10 @@ function RouteComponent() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label
+                htmlFor="preference-density"
+                className="text-sm font-medium"
+              >
                 {t("settings:preferencesPage.density")}
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -285,6 +315,7 @@ function RouteComponent() {
                 size="sm"
                 className="w-full sm:w-40"
                 data-testid="density-select"
+                id="preference-density"
               >
                 <SelectValue
                   placeholder={t("settings:preferencesPage.selectDensity")}
@@ -305,7 +336,10 @@ function RouteComponent() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label
+                htmlFor="preference-sidebar-default"
+                className="text-sm font-medium"
+              >
                 {t("settings:preferencesPage.sidebarDefault")}
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -313,6 +347,7 @@ function RouteComponent() {
               </p>
             </div>
             <Switch
+              id="preference-sidebar-default"
               checked={sidebarDefaultOpen}
               onCheckedChange={setSidebarDefaultOpen}
             />
@@ -344,7 +379,10 @@ function RouteComponent() {
         <div className="space-y-4 border border-border rounded-md p-4 bg-sidebar">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label
+                htmlFor="preference-task-numbers"
+                className="text-sm font-medium"
+              >
                 {t("settings:preferencesPage.taskNumbers")}
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -352,6 +390,7 @@ function RouteComponent() {
               </p>
             </div>
             <Switch
+              id="preference-task-numbers"
               checked={showTaskNumbers}
               onCheckedChange={setShowTaskNumbers}
             />
@@ -361,7 +400,10 @@ function RouteComponent() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label
+                htmlFor="preference-assignees"
+                className="text-sm font-medium"
+              >
                 {t("settings:preferencesPage.assignees")}
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -369,6 +411,7 @@ function RouteComponent() {
               </p>
             </div>
             <Switch
+              id="preference-assignees"
               checked={showAssignees}
               onCheckedChange={setShowAssignees}
             />
@@ -378,42 +421,63 @@ function RouteComponent() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label
+                htmlFor="preference-due-dates"
+                className="text-sm font-medium"
+              >
                 {t("settings:preferencesPage.dueDates")}
               </Label>
               <p className="text-xs text-muted-foreground">
                 {t("settings:preferencesPage.dueDatesDescription")}
               </p>
             </div>
-            <Switch checked={showDueDates} onCheckedChange={setShowDueDates} />
+            <Switch
+              id="preference-due-dates"
+              checked={showDueDates}
+              onCheckedChange={setShowDueDates}
+            />
           </div>
 
           <Separator />
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label
+                htmlFor="preference-labels"
+                className="text-sm font-medium"
+              >
                 {t("settings:preferencesPage.labels")}
               </Label>
               <p className="text-xs text-muted-foreground">
                 {t("settings:preferencesPage.labelsDescription")}
               </p>
             </div>
-            <Switch checked={showLabels} onCheckedChange={setShowLabels} />
+            <Switch
+              id="preference-labels"
+              checked={showLabels}
+              onCheckedChange={setShowLabels}
+            />
           </div>
 
           <Separator />
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">
+              <Label
+                htmlFor="preference-priority"
+                className="text-sm font-medium"
+              >
                 {t("settings:preferencesPage.priority")}
               </Label>
               <p className="text-xs text-muted-foreground">
                 {t("settings:preferencesPage.priorityDescription")}
               </p>
             </div>
-            <Switch checked={showPriority} onCheckedChange={setShowPriority} />
+            <Switch
+              id="preference-priority"
+              checked={showPriority}
+              onCheckedChange={setShowPriority}
+            />
           </div>
         </div>
       </div>

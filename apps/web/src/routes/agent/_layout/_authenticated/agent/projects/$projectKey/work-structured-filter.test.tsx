@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -18,8 +19,21 @@ const state = vi.hoisted(() => ({
   fetchNextPage: vi.fn(),
   panelProps: undefined as Record<string, unknown> | undefined,
   controlsProps: undefined as Record<string, unknown> | undefined,
+  storedColumns: undefined as string[] | undefined,
+  setColumns: vi.fn(),
+  getCustomFields: vi.fn(),
 }));
 
+vi.mock("@/hooks/use-project-view-preference", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/hooks/use-project-view-preference")
+  >()),
+  useProjectViewPreference: ({ name }: { name: string }) => ({
+    value: name === "columns" ? state.storedColumns : undefined,
+    set: name === "columns" ? state.setColumns : vi.fn(),
+    settled: true,
+  }),
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
@@ -38,6 +52,9 @@ vi.mock("@/components/work-item/work-item-selection-toggle", () => ({
 }));
 vi.mock("@/components/work-item/work-item-list-loading", () => ({
   default: () => <div data-testid="list-loading" />,
+}));
+vi.mock("@/fetchers/custom-field", () => ({
+  getCustomFields: state.getCustomFields,
 }));
 vi.mock("@/components/work-item/work-items-panel", () => ({
   default: (props: Record<string, unknown>) => {
@@ -85,7 +102,14 @@ import { Route } from "./work";
 
 async function renderRoute() {
   const Component = Route.options.component as () => React.JSX.Element;
-  const view = render(<Component />);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <Component />
+    </QueryClientProvider>,
+  );
   await screen.findByTestId(
     state.search.layout === "board" ? "board" : "panel",
   );
@@ -120,6 +144,12 @@ beforeEach(() => {
   state.panelProps = undefined;
   state.controlsProps = undefined;
   state.navigate.mockReset();
+  state.storedColumns = undefined;
+  state.setColumns.mockReset();
+  state.getCustomFields.mockReset().mockResolvedValue({
+    data: [],
+    meta: { total: 0, manyFieldsWarning: false },
+  });
   vi.spyOn(Route, "useParams").mockReturnValue({ projectKey: "WLP" } as never);
   vi.spyOn(Route, "useSearch").mockImplementation(
     (() => state.search) as never,
@@ -166,6 +196,15 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
     expect(screen.getByRole("button", { name: "Filter" })).toHaveAttribute(
       "aria-expanded",
       "false",
+    );
+    expect(state.getCustomFields).not.toHaveBeenCalled();
+  });
+
+  it("loads custom-field grouping metadata only for board layout", async () => {
+    state.search = { layout: "board", sort: "key", dir: "asc" };
+    await renderRoute();
+    await waitFor(() =>
+      expect(state.getCustomFields).toHaveBeenCalledWith("ws_1"),
     );
   });
 
@@ -318,6 +357,40 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
       layout: "table",
       columns: ["key", "state"],
     });
+  });
+});
+
+describe("work route chosen columns persist per person and project (VW-19)", () => {
+  it("uses the stored columns when the URL names none", async () => {
+    state.search = { layout: "table", sort: "key", dir: "asc" };
+    state.storedColumns = ["key", "title", "dueDate"];
+    await renderRoute();
+    expect(state.panelProps?.columns).toEqual(["key", "title", "dueDate"]);
+    expect(state.hookArgs?.columns).toEqual(["key", "title", "dueDate"]);
+  });
+
+  it("lets a columns URL win over the stored choice", async () => {
+    state.search = {
+      layout: "table",
+      sort: "key",
+      dir: "asc",
+      columns: ["state", "assignee"],
+    };
+    state.storedColumns = ["key", "title"];
+    await renderRoute();
+    expect(state.panelProps?.columns).toEqual(["state", "assignee"]);
+  });
+
+  it("stores a column change, and clears the stored choice when reset", async () => {
+    state.search = { layout: "table", sort: "key", dir: "asc" };
+    await renderRoute();
+    await screen.findByTestId("panel");
+    fireEvent.click(screen.getByRole("button", { name: "Filter" }));
+    await screen.findByTestId("controls");
+    callControl("onColumnsChange", ["key", "state"]);
+    expect(state.setColumns).toHaveBeenLastCalledWith(["key", "state"]);
+    callControl("onColumnsChange", undefined);
+    expect(state.setColumns).toHaveBeenLastCalledWith(null);
   });
 });
 

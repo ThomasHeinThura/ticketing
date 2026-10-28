@@ -1,0 +1,58 @@
+{
+	"run": "CP23 owned QA initial contact email delivery",
+	"status": "failed_delivery_wait",
+	"fixture": {
+		"organisationName": "Codex QA Initial Contact 20261026",
+		"organisationKey": "qaic26",
+		"email": "fakecontactqa-initial-contact-20261026@taskdesk.invalid",
+		"requestTypeName": "Report a problem",
+		"workspaceName": "TaskDesk Service Desk"
+	},
+	"smtpMode": "private original-bootstrap SMTP transport to loopback Mailpit; persisted provider remains unconfigured",
+	"screenshots": [
+		"new-organisation-contact-20261025T192939.png",
+		"created-profile-20261025T192939.png"
+	],
+	"baselineOutsideOrganisation": {
+		"count": 2,
+		"digest": "d46a4f01ecbbb7acc1d476ef4d9b455ae090f12590d19ad4f309afd31bb8fc97"
+	},
+	"mailboxBaseline": {
+		"total": 0,
+		"unread": 0,
+		"messageCount": 0
+	},
+	"domainAvailable": true,
+	"requestTypeWorkspaceMatch": true,
+	"createHttpStatus": 201,
+	"initialInvitation": {
+		"status": "pending",
+		"expiresAt": "2026-10-27T19:29:40.112Z"
+	},
+	"initialInvitationQueuedAcknowledgementVisible": false,
+	"outsideOrganisationUnchanged": true,
+	"createdProfile": {
+		"active": true,
+		"portalAccess": true,
+		"emailDomainMatchesFakeContact": true,
+		"assignedTypeName": "Report a problem",
+		"assignedTypeCount": 1,
+		"noProjectCreated": true
+	},
+	"mailboxAfterQueue": {
+		"total": 0,
+		"unread": 0,
+		"messageCount": 0,
+		"ownedRecipientMatchCount": 0
+	},
+	"result": "failed",
+	"failureStage": "No matching Mailpit message within 15 seconds; invitation remains pending and must not be resent blindly.",
+	"invitationList": {
+		"httpStatus": 200,
+		"rowCount": 1,
+		"status": "pending",
+		"expiresAt": "2026-10-27T19:29:40.112Z",
+		"lastSentAt": "2026-10-25T19:29:40.112Z",
+		"acceptedAt": null
+	}
+}

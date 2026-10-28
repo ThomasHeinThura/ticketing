@@ -1,0 +1,166 @@
+{
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"sourceKey": "PERF-1181",
+	"originalPriority": "urgent",
+	"targetPriority": "high",
+	"steps": [
+		{
+			"step": "picked-up-for-high",
+			"dragging": true,
+			"activeKey": "PERF-1181",
+			"overKey": "PERF-1181",
+			"overGroup": "group:priority:urgent",
+			"overType": null,
+			"sortableContainerId": "Sortable-0"
+		},
+		{
+			"step": "over-group:priority:high",
+			"dragging": true,
+			"activeKey": "PERF-1181",
+			"overKey": "PERF-3454",
+			"overGroup": "group:priority:high",
+			"overType": null,
+			"sortableContainerId": "Sortable-1"
+		},
+		{
+			"step": "write-high",
+			"response": {
+				"method": "PATCH",
+				"path": "/api/work-items/PERF-1181",
+				"status": 200,
+				"contentType": "application/json",
+				"json": {
+					"key": "PERF-1181",
+					"version": 3,
+					"priority": "high"
+				},
+				"request": {
+					"bodyKeys": [],
+					"priority": null,
+					"ifMatchPresent": true,
+					"ifMatchVersion": 2
+				}
+			}
+		},
+		{
+			"step": "picked-up-for-urgent",
+			"dragging": true,
+			"activeKey": "PERF-1181",
+			"overKey": "PERF-1181",
+			"overGroup": "group:priority:high",
+			"overType": null,
+			"sortableContainerId": "Sortable-1"
+		},
+		{
+			"step": "over-group:priority:urgent",
+			"dragging": true,
+			"activeKey": "PERF-1181",
+			"overKey": "PERF-817",
+			"overGroup": "group:priority:urgent",
+			"overType": null,
+			"sortableContainerId": "Sortable-0"
+		},
+		{
+			"step": "write-urgent",
+			"response": {
+				"method": "PATCH",
+				"path": "/api/work-items/PERF-1181",
+				"status": 200,
+				"contentType": "application/json",
+				"json": {
+					"key": "PERF-1181",
+					"version": 4,
+					"priority": "urgent"
+				},
+				"request": {
+					"bodyKeys": [],
+					"priority": null,
+					"ifMatchPresent": true,
+					"ifMatchVersion": 3
+				}
+			}
+		}
+	],
+	"writes": [
+		{
+			"method": "PATCH",
+			"path": "/api/work-items/PERF-1181",
+			"bodyKeys": [],
+			"priority": null,
+			"ifMatchPresent": true,
+			"ifMatchVersion": 2
+		},
+		{
+			"method": "PATCH",
+			"path": "/api/work-items/PERF-1181",
+			"status": 200,
+			"contentType": "application/json",
+			"json": {
+				"key": "PERF-1181",
+				"version": 3,
+				"priority": "high"
+			}
+		},
+		{
+			"method": "PATCH",
+			"path": "/api/work-items/PERF-1181",
+			"bodyKeys": [],
+			"priority": null,
+			"ifMatchPresent": true,
+			"ifMatchVersion": 3
+		},
+		{
+			"method": "PATCH",
+			"path": "/api/work-items/PERF-1181",
+			"status": 200,
+			"contentType": "application/json",
+			"json": {
+				"key": "PERF-1181",
+				"version": 4,
+				"priority": "urgent"
+			}
+		}
+	],
+	"errors": [
+		"Conditional priority write failed: {\"method\":\"PATCH\",\"path\":\"/api/work-items/PERF-1181\",\"status\":200,\"contentType\":\"application/json\",\"json\":{\"key\":\"PERF-1181\",\"version\":3,\"priority\":\"high\"},\"request\":{\"bodyKeys\":[],\"priority\":null,\"ifMatchPresent\":true,\"ifMatchVersion\":2}}"
+	],
+	"cleanup": {
+		"attempted": true,
+		"pass": false,
+		"error": "Conditional priority write failed: {\"method\":\"PATCH\",\"path\":\"/api/work-items/PERF-1181\",\"status\":200,\"contentType\":\"application/json\",\"json\":{\"key\":\"PERF-1181\",\"version\":4,\"priority\":\"urgent\"},\"request\":{\"bodyKeys\":[],\"priority\":null,\"ifMatchPresent\":true,\"ifMatchVersion\":3}}"
+	},
+	"before": {
+		"key": "PERF-1181",
+		"id": "a13e373wobm6whmrfm52kab6",
+		"priority": "urgent",
+		"version": 2,
+		"position": "13.0000000000"
+	},
+	"groupOrder": [
+		{
+			"id": "group:priority:urgent",
+			"firstKey": "PERF-1181"
+		},
+		{
+			"id": "group:priority:high",
+			"firstKey": "PERF-3454"
+		},
+		{
+			"id": "group:priority:medium",
+			"firstKey": "PERF-1863"
+		},
+		{
+			"id": "group:priority:low",
+			"firstKey": "PERF-7972"
+		},
+		{
+			"id": "group:priority:none",
+			"firstKey": null
+		}
+	]
+}

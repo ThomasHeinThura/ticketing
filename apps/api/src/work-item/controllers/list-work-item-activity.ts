@@ -2,7 +2,9 @@ import {
   and,
   desc,
   eq,
+  isNull,
   lt,
+  lte,
   or,
   type SQL,
   type SQLWrapper,
@@ -15,6 +17,12 @@ import {
   commentTable,
   workItemTable,
 } from "../../database/schema";
+import {
+  type CommentViewer,
+  commentAccess,
+  loadCommentCaller,
+  resolveCommentAuthorProfiles,
+} from "../comment-access";
 
 // #23's fourth slice: `GET /api/work-items/{key}/activity` (`work_item:read`, plus
 // reach). Issue #292 / the merged `activity.ts` module already built the WRITE side
@@ -97,10 +105,24 @@ import {
 // millisecond precision, so the value returned to the caller and encoded into the next
 // cursor was never the bug -- only the SQL-side comparison was.
 
+// Optional comment focus starts this same stream at an authorized comment, retaining CA-18 tombstones.
+// Both streams share one read snapshot. Focus continuations bind workspace/item/comment and row kind;
+// the kind tie-break keeps an identically named activity after its comment at the same millisecond.
+// Ordinary feed cursors and ordering retain their existing contract.
 export const DEFAULT_WORK_ITEM_ACTIVITY_LIMIT = 50;
 export const MAX_WORK_ITEM_ACTIVITY_LIMIT = 200;
 
-export type WorkItemActivityCursor = { createdAt: string; id: string };
+type CommentFocusCursor = {
+  workspaceId: string;
+  workItemId: string;
+  commentId: string;
+  kind: "activity" | "comment";
+};
+export type WorkItemActivityCursor = {
+  createdAt: string;
+  id: string;
+  focus?: CommentFocusCursor;
+};
 
 export function encodeActivityCursor(cursor: WorkItemActivityCursor): string {
   return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
@@ -127,6 +149,33 @@ export function decodeActivityCursor(raw: string): WorkItemActivityCursor {
   ) {
     throw new HTTPException(400, { message: "cursor: malformed" });
   }
+  const focus = (parsed as Record<string, unknown>).focus;
+  if (focus !== undefined) {
+    if (!focus || typeof focus !== "object" || Array.isArray(focus))
+      throw new HTTPException(400, { message: "cursor: malformed" });
+    const value = focus as Record<string, unknown>;
+    if (
+      ["workspaceId", "workItemId", "commentId"].some(
+        (k) =>
+          typeof value[k] !== "string" ||
+          !(value[k] as string).length ||
+          (value[k] as string).length > 256 ||
+          (value[k] as string).includes("\u0000"),
+      ) ||
+      (value.kind !== "activity" && value.kind !== "comment")
+    )
+      throw new HTTPException(400, { message: "cursor: malformed" });
+    return {
+      createdAt,
+      id,
+      focus: {
+        workspaceId: value.workspaceId as string,
+        workItemId: value.workItemId as string,
+        commentId: value.commentId as string,
+        kind: value.kind,
+      },
+    };
+  }
   return { createdAt, id };
 }
 
@@ -149,12 +198,19 @@ type ActivityStreamRow = {
   visibility: string;
   workflowVersionId: string | null;
   createdAt: Date;
+  /** `imported`: a historical row written by an import (`createdAt` is the source time). */
+  origin: string | null;
+  importedAt: Date | null;
   body: unknown;
   activityId: string | null;
   editedAt: Date | null;
   deletedAt: Date | null;
   deletedBy: string | null;
   updatedAt?: Date;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  actorPersonId?: string | null;
+  actorDisplayName?: string | null;
 };
 
 // `createdAtExpr` accepts either a plain column (activity's own, already
@@ -187,11 +243,15 @@ function cursorContinuationOn(
   idColumn: typeof activityTable.id | typeof commentTable.id,
   cursorDate: Date,
   cursorId: string,
+  inclusiveId = false,
 ): SQL | undefined {
   const cursorParam = sql.param(cursorDate, createdAtColumnForEncoding);
   return or(
     lt(createdAtExpr, cursorParam),
-    and(eq(createdAtExpr, cursorParam), lt(idColumn, cursorId)),
+    and(
+      eq(createdAtExpr, cursorParam),
+      inclusiveId ? lte(idColumn, cursorId) : lt(idColumn, cursorId),
+    ),
   );
 }
 
@@ -205,148 +265,264 @@ const commentCreatedAtMs = sql`date_trunc('milliseconds', ${commentTable.created
 export async function listWorkItemActivity(
   key: string,
   workspaceId: string,
-  options: { cursor?: string; limit?: number },
+  options: {
+    cursor?: string;
+    limit?: number;
+    comment?: string;
+    allowArchivedForRead?: true;
+    viewer?: CommentViewer;
+  },
 ) {
-  const item = await db.query.workItemTable.findFirst({
-    where: eq(workItemTable.key, key),
-  });
-  if (!item || item.workspaceId !== workspaceId) {
-    throw new HTTPException(404, { message: "Work item not found" });
-  }
+  return db.transaction(
+    async (tx) => {
+      const item = await tx.query.workItemTable.findFirst({
+        where: and(
+          eq(workItemTable.key, key),
+          eq(workItemTable.workspaceId, workspaceId),
+          isNull(workItemTable.deletedAt),
+          ...(options.allowArchivedForRead
+            ? []
+            : [isNull(workItemTable.archivedAt)]),
+        ),
+      });
+      if (!item || item.workspaceId !== workspaceId) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
 
-  const limit = options.limit ?? DEFAULT_WORK_ITEM_ACTIVITY_LIMIT;
-  const fetchLimit = limit + 1;
+      const limit = options.limit ?? DEFAULT_WORK_ITEM_ACTIVITY_LIMIT;
+      const fetchLimit = limit + 1;
 
-  const cursor = options.cursor
-    ? decodeActivityCursor(options.cursor)
-    : undefined;
-  const cursorDate = cursor ? new Date(cursor.createdAt) : undefined;
+      const [anchor] = options.comment
+        ? await tx
+            .select({ id: commentTable.id, createdAt: commentTable.createdAt })
+            .from(commentTable)
+            .where(
+              and(
+                eq(commentTable.id, options.comment),
+                eq(commentTable.workItemId, item.id),
+              ),
+            )
+            .limit(1)
+        : [];
+      if (options.comment && !anchor)
+        throw new HTTPException(404, { message: "Comment not found" });
+      const cursor = options.cursor
+        ? decodeActivityCursor(options.cursor)
+        : undefined;
+      if (
+        cursor &&
+        (options.comment
+          ? !cursor.focus ||
+            cursor.focus.workspaceId !== workspaceId ||
+            cursor.focus.workItemId !== item.id ||
+            cursor.focus.commentId !== options.comment
+          : Boolean(cursor.focus))
+      )
+        throw new HTTPException(400, { message: "cursor: scope mismatch" });
+      const cursorDate = cursor ? new Date(cursor.createdAt) : undefined;
 
-  const activityConditions: SQL[] = [eq(activityTable.workItemId, item.id)];
-  const commentConditions: SQL[] = [eq(commentTable.workItemId, item.id)];
-  if (cursor && cursorDate) {
-    const activityContinuation = cursorContinuationOn(
-      activityTable.createdAt,
-      activityTable.createdAt,
-      activityTable.id,
-      cursorDate,
-      cursor.id,
-    );
-    if (activityContinuation) activityConditions.push(activityContinuation);
-    const commentContinuation = cursorContinuationOn(
-      commentCreatedAtMs,
-      commentTable.createdAt,
-      commentTable.id,
-      cursorDate,
-      cursor.id,
-    );
-    if (commentContinuation) commentConditions.push(commentContinuation);
-  }
+      const activityConditions: SQL[] = [eq(activityTable.workItemId, item.id)];
+      const commentConditions: SQL[] = [eq(commentTable.workItemId, item.id)];
+      if (anchor) {
+        const activityBoundary = cursorContinuationOn(
+          activityTable.createdAt,
+          activityTable.createdAt,
+          activityTable.id,
+          anchor.createdAt,
+          anchor.id,
+          true,
+        );
+        const commentBoundary = cursorContinuationOn(
+          commentCreatedAtMs,
+          commentTable.createdAt,
+          commentTable.id,
+          anchor.createdAt,
+          anchor.id,
+          true,
+        );
+        if (activityBoundary) activityConditions.push(activityBoundary);
+        if (commentBoundary) commentConditions.push(commentBoundary);
+      }
+      if (cursor && cursorDate) {
+        const activityContinuation = cursorContinuationOn(
+          activityTable.createdAt,
+          activityTable.createdAt,
+          activityTable.id,
+          cursorDate,
+          cursor.id,
+          cursor.focus?.kind === "comment",
+        );
+        if (activityContinuation) activityConditions.push(activityContinuation);
+        const commentContinuation = cursorContinuationOn(
+          commentCreatedAtMs,
+          commentTable.createdAt,
+          commentTable.id,
+          cursorDate,
+          cursor.id,
+        );
+        if (commentContinuation) commentConditions.push(commentContinuation);
+      }
 
-  const [activityRows, commentRows] = await Promise.all([
-    db
-      .select({
-        id: activityTable.id,
-        workItemId: activityTable.workItemId,
-        actorId: activityTable.actorId,
-        actorType: activityTable.actorType,
-        verb: activityTable.verb,
-        field: activityTable.field,
-        oldValue: activityTable.oldValue,
-        newValue: activityTable.newValue,
-        payload: activityTable.payload,
-        visibility: activityTable.visibility,
-        workflowVersionId: activityTable.workflowVersionId,
-        createdAt: activityTable.createdAt,
-      })
-      .from(activityTable)
-      .where(and(...activityConditions))
-      .orderBy(desc(activityTable.createdAt), desc(activityTable.id))
-      .limit(fetchLimit),
-    db
-      .select({
-        id: commentTable.id,
-        workItemId: commentTable.workItemId,
-        authorId: commentTable.authorId,
-        actorType: commentTable.actorType,
-        body: commentTable.body,
-        visibility: commentTable.visibility,
-        activityId: commentTable.activityId,
-        editedAt: commentTable.editedAt,
-        deletedAt: commentTable.deletedAt,
-        deletedBy: commentTable.deletedBy,
-        createdAt: commentTable.createdAt,
-        updatedAt: commentTable.updatedAt,
-      })
-      .from(commentTable)
-      .where(and(...commentConditions))
-      .orderBy(desc(commentCreatedAtMs), desc(commentTable.id))
-      .limit(fetchLimit),
-  ]);
+      const [activityRows, commentRows] = await Promise.all([
+        tx
+          .select({
+            id: activityTable.id,
+            workItemId: activityTable.workItemId,
+            actorId: activityTable.actorId,
+            actorType: activityTable.actorType,
+            verb: activityTable.verb,
+            field: activityTable.field,
+            oldValue: activityTable.oldValue,
+            newValue: activityTable.newValue,
+            payload: activityTable.payload,
+            visibility: activityTable.visibility,
+            workflowVersionId: activityTable.workflowVersionId,
+            createdAt: activityTable.createdAt,
+            origin: activityTable.origin,
+            importedAt: activityTable.importedAt,
+          })
+          .from(activityTable)
+          .where(and(...activityConditions))
+          .orderBy(desc(activityTable.createdAt), desc(activityTable.id))
+          .limit(fetchLimit),
+        tx
+          .select({
+            id: commentTable.id,
+            workItemId: commentTable.workItemId,
+            authorId: commentTable.authorId,
+            actorType: commentTable.actorType,
+            body: commentTable.body,
+            visibility: commentTable.visibility,
+            activityId: commentTable.activityId,
+            editedAt: commentTable.editedAt,
+            deletedAt: commentTable.deletedAt,
+            deletedBy: commentTable.deletedBy,
+            createdAt: commentTable.createdAt,
+            updatedAt: commentTable.updatedAt,
+            origin: commentTable.origin,
+            importedAt: commentTable.importedAt,
+          })
+          .from(commentTable)
+          .where(and(...commentConditions))
+          .orderBy(desc(commentCreatedAtMs), desc(commentTable.id))
+          .limit(fetchLimit),
+      ]);
 
-  const merged: ActivityStreamRow[] = [
-    ...activityRows.map((row) => ({
-      ...row,
-      kind: "activity" as const,
-      body: null,
-      activityId: null,
-      editedAt: null,
-      deletedAt: null,
-      deletedBy: null,
-      updatedAt: undefined,
-    })),
-    // `verb: "commented"` is a real, honest description of what happened -- matching
-    // this table's own existing verb vocabulary (`created`, `transitioned`, `updated`,
-    // ...) -- not a fabricated placeholder. `field`/`oldValue`/`newValue`/`payload` are
-    // null because a comment carries no field-level diff; `workflowVersionId` is null
-    // because it is not applicable to a comment.
-    ...commentRows.map((row) => ({
-      kind: "comment" as const,
-      id: row.id,
-      workItemId: row.workItemId,
-      actorId: row.authorId,
-      actorType: row.actorType,
-      verb: "commented",
-      field: null,
-      oldValue: null,
-      newValue: null,
-      payload: null,
-      visibility: row.visibility,
-      workflowVersionId: null,
-      createdAt: row.createdAt,
-      body: row.body,
-      activityId: row.activityId,
-      editedAt: row.editedAt,
-      deletedAt: row.deletedAt,
-      // CA-18: the tombstone names its deleter, who can differ from the author
-      // (`comment:delete_any`). Only a deleted row carries one.
-      deletedBy: row.deletedAt ? row.deletedBy : null,
-      updatedAt: row.updatedAt,
-    })),
-  ].sort((a, b) => {
-    const byTime = b.createdAt.getTime() - a.createdAt.getTime();
-    if (byTime !== 0) return byTime;
-    if (a.id === b.id) return 0;
-    return a.id < b.id ? 1 : -1; // descending id tie-break, matching each source query
-  });
+      const caller = options.viewer
+        ? await loadCommentCaller(tx, options.viewer, {
+            workspaceId,
+            projectId: item.projectId,
+            workItemId: item.id,
+          })
+        : null;
+      const authors = options.viewer
+        ? await resolveCommentAuthorProfiles(
+            tx,
+            commentRows.map((row) => row.authorId),
+          )
+        : new Map<
+            string,
+            { personId: string; displayName: string | null } | null
+          >();
+      const commentPermissions = (row: (typeof commentRows)[number]) => {
+        if (!options.viewer) return {};
+        const profile = row.authorId ? authors.get(row.authorId) : null;
+        const { canEdit, canDelete } = commentAccess(
+          caller,
+          profile?.personId ?? null,
+          row,
+        );
+        return {
+          canEdit,
+          canDelete,
+          actorPersonId: profile?.personId ?? null,
+          actorDisplayName: profile?.displayName ?? null,
+        };
+      };
+      const merged: ActivityStreamRow[] = [
+        ...activityRows.map((row) => ({
+          ...row,
+          kind: "activity" as const,
+          body: null,
+          activityId: null,
+          editedAt: null,
+          deletedAt: null,
+          deletedBy: null,
+          updatedAt: undefined,
+        })),
+        // `verb: "commented"` is a real, honest description of what happened -- matching
+        // this table's own existing verb vocabulary (`created`, `transitioned`, `updated`,
+        // ...) -- not a fabricated placeholder. `field`/`oldValue`/`newValue`/`payload` are
+        // null because a comment carries no field-level diff; `workflowVersionId` is null
+        // because it is not applicable to a comment.
+        ...commentRows.map((row) => ({
+          kind: "comment" as const,
+          ...commentPermissions(row),
+          id: row.id,
+          workItemId: row.workItemId,
+          actorId: row.authorId,
+          actorType: row.actorType,
+          verb: "commented",
+          field: null,
+          oldValue: null,
+          newValue: null,
+          payload: null,
+          visibility: row.visibility,
+          workflowVersionId: null,
+          createdAt: row.createdAt,
+          origin: row.origin,
+          importedAt: row.importedAt,
+          body: row.deletedAt ? null : row.body,
+          activityId: row.activityId,
+          editedAt: row.editedAt,
+          deletedAt: row.deletedAt,
+          // CA-18: the tombstone names its deleter, who can differ from the author
+          // (`comment:delete_any`). Only a deleted row carries one.
+          deletedBy: row.deletedAt ? row.deletedBy : null,
+          updatedAt: row.updatedAt,
+        })),
+      ].sort((a, b) => {
+        const byTime = b.createdAt.getTime() - a.createdAt.getTime();
+        if (byTime !== 0) return byTime;
+        if (a.id === b.id)
+          return options.comment && a.kind !== b.kind
+            ? a.kind === "comment"
+              ? -1
+              : 1
+            : 0;
+        return a.id < b.id ? 1 : -1; // descending id tie-break, matching each source query
+      });
 
-  const hasMore = merged.length > limit;
-  const page = hasMore ? merged.slice(0, limit) : merged;
-  const lastRow = page.at(-1);
+      const hasMore = merged.length > limit;
+      const page = hasMore ? merged.slice(0, limit) : merged;
+      const lastRow = page.at(-1);
 
-  return {
-    data: page,
-    page: {
-      hasMore,
-      nextCursor:
-        hasMore && lastRow
-          ? encodeActivityCursor({
-              createdAt: lastRow.createdAt.toISOString(),
-              id: lastRow.id,
-            })
-          : null,
+      return {
+        data: page,
+        page: {
+          hasMore,
+          nextCursor:
+            hasMore && lastRow
+              ? encodeActivityCursor({
+                  createdAt: lastRow.createdAt.toISOString(),
+                  id: lastRow.id,
+                  ...(options.comment
+                    ? {
+                        focus: {
+                          workspaceId,
+                          workItemId: item.id,
+                          commentId: options.comment,
+                          kind: lastRow.kind,
+                        },
+                      }
+                    : {}),
+                })
+              : null,
+        },
+      };
     },
-  };
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
 }
 
 export default listWorkItemActivity;

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  execute: vi.fn(),
   resolveIdentity: vi.fn(),
   findNotificationPerson: vi.fn(),
   findCurrentNotificationResource: vi.fn(),
@@ -21,7 +22,7 @@ import type {
 } from "../../apps/api/src/events/outbox";
 import { resolveMentionEventRecipient } from "../../apps/api/src/notification/recipient-resolvers";
 
-const tx = {} as DbTransaction;
+const tx = { execute: mocks.execute } as unknown as DbTransaction;
 
 function mentionEvent(
   personId: string,
@@ -77,6 +78,7 @@ const privateResource = {
 describe("native mention recipient reach", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.execute.mockResolvedValue({ rows: [] });
     mocks.findNotificationPerson.mockResolvedValue({
       userId: "recipient-user",
       side: "staff",
@@ -112,6 +114,35 @@ describe("native mention recipient reach", () => {
     ]);
   });
 
+  it.each([false, true])(
+    "materializes only the currently configured mention channel (enabled: %s)",
+    async (configured) => {
+      mocks.execute.mockResolvedValue({
+        rows: configured ? [{ "?column?": 1 }] : [],
+      });
+      mocks.resolveIdentity.mockResolvedValue(
+        identity({
+          personId: "staff-recipient",
+          userId: "recipient-user",
+          side: "staff",
+          memberships: [
+            { scope: "project", scopeId: "project-1", seesAll: false },
+          ],
+          reach: { kind: "membership" },
+        }),
+      );
+      const candidates = await resolveMentionEventRecipient(
+        tx,
+        mentionEvent("staff-recipient"),
+      );
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0]?.channels).toEqual(
+        configured ? ["notify.email"] : [],
+      );
+      expect(mocks.execute).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("retains the private audience boundary for customers outside the audience", async () => {
     mocks.findNotificationPerson.mockResolvedValue({
       userId: "customer-user",
@@ -134,6 +165,7 @@ describe("native mention recipient reach", () => {
     await expect(
       resolveMentionEventRecipient(tx, mentionEvent("outside-customer")),
     ).resolves.toEqual([]);
+    expect(mocks.execute).not.toHaveBeenCalled();
   });
 
   it("suppresses a staff mention after current project reach is lost", async () => {
@@ -150,5 +182,6 @@ describe("native mention recipient reach", () => {
     await expect(
       resolveMentionEventRecipient(tx, mentionEvent("staff-recipient")),
     ).resolves.toEqual([]);
+    expect(mocks.execute).not.toHaveBeenCalled();
   });
 });

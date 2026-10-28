@@ -1,7 +1,8 @@
 import { evaluateAssigneeEligibility } from "@taskdesk/domain";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type db from "../database";
-import { membershipTable, personTable } from "../database/schema";
+import { membershipTable, personTable, projectTable } from "../database/schema";
+import { loadProjectAncestorIds } from "../project/hierarchy.repository";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -23,6 +24,16 @@ export async function resolveAssigneeEligibility(
   projectId: string,
   personId: string,
 ): Promise<ReturnType<typeof evaluateAssigneeEligibility>> {
+  // PR-2: members of a parent project are members of its children, so the roster is this
+  // project plus its ancestors (same workspace, bounded depth).
+  const [project] = await dbOrTx
+    .select({ workspaceId: projectTable.workspaceId })
+    .from(projectTable)
+    .where(eq(projectTable.id, projectId))
+    .limit(1);
+  const ancestorIds = project
+    ? await loadProjectAncestorIds(dbOrTx, project.workspaceId, projectId)
+    : [];
   const [roster] = await dbOrTx
     .select({ active: personTable.active })
     .from(membershipTable)
@@ -30,7 +41,7 @@ export async function resolveAssigneeEligibility(
     .where(
       and(
         eq(membershipTable.scope, "project"),
-        eq(membershipTable.scopeId, projectId),
+        inArray(membershipTable.scopeId, [projectId, ...ancestorIds]),
         eq(membershipTable.personId, personId),
       ),
     )

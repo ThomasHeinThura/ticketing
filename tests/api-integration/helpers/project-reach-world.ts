@@ -20,6 +20,8 @@ export const PROJECT_ADMIN_CAPABILITIES = [
   "project:update",
   "project:delete",
   "project:manage_settings",
+  // PATCH /api/projects/{id}/ownership (PR-1) is gated on project:manage_members.
+  "project:manage_members",
   "work_item:read",
   "work_item:create",
   "work_item:update",
@@ -29,15 +31,28 @@ export const PROJECT_ADMIN_CAPABILITIES = [
   "time_entry:create",
   "time_entry:read_any",
   "time_entry:update_any",
+  // POST /api/projects/{id}/costs writes cost entries, which needs the rate-management capability.
+  "time_entry:manage_rates",
+  // P5 time and cost: project budgets are read and managed by the caller's project role.
+  "budget:read",
+  "budget:manage",
   "workspace:read",
 ] as const;
 
 /** An API-key permission scope wide enough for every project-scoped route. */
 export const PROJECT_KEY_SCOPE = {
-  project: ["read", "create", "update", "delete", "manage_settings"],
+  project: [
+    "read",
+    "create",
+    "update",
+    "delete",
+    "manage_settings",
+    "manage_members",
+  ],
   work_item: ["read", "create", "update", "delete", "assign"],
-  label: ["create", "update", "delete"],
-  time_entry: ["create", "read_any", "update_any"],
+  label: ["create", "update", "delete", "manage"],
+  time_entry: ["create", "read_any", "update_any", "manage_rates"],
+  budget: ["read", "manage"],
   workspace: ["read"],
 };
 
@@ -247,8 +262,8 @@ export async function projectSnapshot() {
       .orderBy(schema.labelTable.id),
     timeEntries: await db
       .select()
-      .from(schema.timeEntryTable)
-      .orderBy(schema.timeEntryTable.id),
+      .from(schema.taskTimeEntryTable)
+      .orderBy(schema.taskTimeEntryTable.id),
   };
   return JSON.stringify(tables);
 }

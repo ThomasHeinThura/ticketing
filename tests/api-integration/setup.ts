@@ -1,8 +1,10 @@
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, vi } from "vitest";
 import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
+import { assertDisposableTestDatabaseUrl } from "./helpers/disposable-database";
 import { deriveWorktreeTestDatabaseUrl } from "./helpers/worktree-database-name";
 
 // Prevent dotenv-mono from loading the local .env file during tests.
@@ -58,13 +60,7 @@ function deriveTestDatabaseUrl(connectionString: string) {
 }
 
 function assertTestDatabaseUrl(connectionString: string) {
-  const url = new URL(connectionString);
-  const databaseName = url.pathname.replace(/^\//, "");
-  if (!databaseName.endsWith("_test")) {
-    throw new Error(
-      `Integration tests require TASKDESK_DATABASE_URL to use a database name ending in _test (got "${databaseName}")`,
-    );
-  }
+  assertDisposableTestDatabaseUrl(connectionString);
 }
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -101,6 +97,10 @@ assertTestDatabaseUrl(process.env.TASKDESK_DATABASE_URL);
 
 process.env.NODE_ENV = "test";
 process.env.TASKDESK_AUTH_SECRET = "test-secret-with-at-least-32-chars";
+// Ciphertext fixtures use an isolated test key, never a launcher's customer key.
+// Individual rotation/unconfigured-key tests still override it explicitly.
+process.env.TASKDESK_ENCRYPTION_KEY = randomBytes(32).toString("hex");
+process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS = "";
 process.env.KANEO_API_URL = "http://localhost:1337";
 process.env.TASKDESK_AGENT_URL = "http://localhost:1337";
 process.env.TASKDESK_PORTAL_URL = "http://portal.localhost:5174";

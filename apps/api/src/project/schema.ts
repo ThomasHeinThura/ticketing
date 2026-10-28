@@ -234,18 +234,54 @@ export const createDocumentLinkBody = z.object({
 
 export const workspaceIdQuery = z.object({ workspaceId: z.string() });
 
+// PR-13: a project key (stored as `project.slug`, the prefix of every work item key) is 2-8
+// uppercase letters. Create always enforces it. Update enforces it only when the key CHANGES
+// (`update-project.ts`): projects created before this rule may hold a legacy key, and the
+// general-settings form re-sends the stored key on every save, so a blanket check would
+// make those projects uneditable.
+export const PROJECT_KEY_PATTERN = /^[A-Z]{2,8}$/;
+export const PROJECT_KEY_MESSAGE =
+  "PR-13: a project key is 2-8 uppercase letters (A-Z)";
+export const projectKey = z
+  .string()
+  .regex(PROJECT_KEY_PATTERN, PROJECT_KEY_MESSAGE);
+
+// PR-10: calendar dates, `YYYY-MM-DD`, no time-of-day.
+const projectCalendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "must be a calendar date, YYYY-MM-DD")
+  .refine(
+    (value) => {
+      const rebuilt = new Date(`${value}T00:00:00.000Z`);
+      return (
+        !Number.isNaN(rebuilt.getTime()) &&
+        rebuilt.toISOString().slice(0, 10) === value &&
+        rebuilt.getUTCFullYear() >= 1900
+      );
+    },
+    { message: "must be a real calendar date" },
+  );
+
 export const listProjectsQuery = z.object({
   workspaceId: z.string(),
   includeArchived: z.string().optional().openapi({
     description: 'Pass "true" to include archived projects in the list.',
   }),
+  includeDeleted: z
+    .string()
+    .optional()
+    .openapi({
+      description:
+        'PR-16: pass "true" to also reveal soft-deleted projects (within their 30-day ' +
+        "recovery window). Independent of includeArchived.",
+    }),
 });
 
 export const createProjectBody = z.object({
   name: z.string(),
   workspaceId: z.string(),
   icon: z.string(),
-  slug: z.string(),
+  slug: projectKey,
   kind: z.enum(["project", "managed_service"]).default("project"),
   supportLevel: z.enum(["L1", "L2", "L3"]).nullable().optional(),
   serviceCalendarId: nulSafeId.nullable().optional(),
@@ -260,11 +296,43 @@ export const createProjectBody = z.object({
     }),
 });
 
+// `parentId` and `ownerTeamId` are deliberately NOT fields here: they are the reach-affecting
+// fields and travel only through `PATCH /api/projects/{id}/ownership`. The object is not
+// strict, so a client that sends them anyway has them dropped, never written
+// (`project-ownership.test.ts` pins this).
 export const updateProjectBody = z.object({
   name: z.string(),
   icon: z.string(),
-  slug: z.string(),
+  slug: z.string().openapi({
+    description:
+      "PR-13: when it differs from the stored key it must be 2-8 uppercase letters. " +
+      "Existing work items keep the old prefix (PR-14).",
+  }),
   description: z.string(),
+  managerId: nulSafeId
+    .nullable()
+    .optional()
+    .openapi({
+      description:
+        "PR-6: the project manager. Must be an active person on the project roster. " +
+        "Omit to leave unchanged, null to clear. Needs project:manage_settings.",
+    }),
+  startDate: projectCalendarDate.nullable().optional().openapi({
+    description:
+      "PR-10: YYYY-MM-DD. Omit to leave unchanged, null to clear. Needs project:manage_settings.",
+  }),
+  endDate: projectCalendarDate.nullable().optional().openapi({
+    description:
+      "Optional end date, YYYY-MM-DD; not before the start date. Needs project:manage_settings.",
+  }),
+  defaultAssigneeId: nulSafeId
+    .nullable()
+    .optional()
+    .openapi({
+      description:
+        "AS-11: assigned to work items created with no assignee. Must be an active person on " +
+        "the project roster. Omit to leave unchanged, null to clear. Needs project:manage_settings.",
+    }),
   kind: z.enum(["project", "managed_service"]).optional(),
   supportLevel: z.enum(["L1", "L2", "L3"]).nullable().optional(),
   serviceCalendarId: nulSafeId.nullable().optional(),
@@ -275,6 +343,52 @@ export const updateProjectBody = z.object({
       "capability (and the matching API-key scope), not just project:update.",
   }),
 });
+
+export const updateProjectOwnershipBody = z
+  .object({
+    parentId: nulSafeId.nullable().optional().openapi({
+      description:
+        "PR-1: the parent project (same workspace, depth at most 4), or null for a root project. Omit to leave unchanged.",
+    }),
+    ownerTeamId: nulSafeId
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          "TM-4: the team whose active members reach this project (reach only, never a capability). " +
+          "Must be a team of the project's workspace; null clears it. Omit to leave unchanged.",
+      }),
+  })
+  .refine(
+    (body) => body.parentId !== undefined || body.ownerTeamId !== undefined,
+    { message: "parentId or ownerTeamId is required" },
+  );
+
+export const createProjectStateBody = z.object({
+  stateTemplateId: nulSafeId.openapi({
+    description:
+      "The workspace state template this concrete project state maps to (PR-17).",
+  }),
+});
+
+export const projectStateParam = z.object({
+  projectId: z.string(),
+  stateId: nulSafeId,
+});
+
+export const updateProjectStateBody = z
+  .object({
+    position: z.number().int().min(0).max(1000).optional().openapi({
+      description: "New zero-based position among the project's active states.",
+    }),
+    isDefault: z.literal(true).optional().openapi({
+      description:
+        "Make this the project's default state for new work items (WI-4). The previous default is cleared; a default cannot be unset, only replaced.",
+    }),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: "at least one field must be supplied",
+  });
 
 export const updateProjectHealthBody = z.object({
   health: z.enum(["red", "amber", "green"]).nullable(),

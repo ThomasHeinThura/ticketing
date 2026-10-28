@@ -1,0 +1,50 @@
+{
+	"checks": [
+		{
+			"mode": "board",
+			"action": "Enter opens detail without drag",
+			"passed": true
+		},
+		{
+			"mode": "board",
+			"action": "Space picks up and Escape cancels without opening",
+			"passed": true
+		},
+		{
+			"mode": "board",
+			"action": "Enter drops active drag without opening",
+			"passed": true
+		},
+		{
+			"mode": "list",
+			"action": "Enter opens detail without drag",
+			"passed": true
+		},
+		{
+			"mode": "list",
+			"action": "Space picks up and Escape cancels without opening",
+			"passed": true
+		},
+		{
+			"mode": "list",
+			"action": "Enter drops active drag without opening",
+			"passed": true
+		},
+		{
+			"mode": "grouped",
+			"action": "Enter opens detail without drag",
+			"passed": true
+		},
+		{
+			"mode": "grouped",
+			"action": "Space picks up and Escape cancels without opening",
+			"passed": true
+		},
+		{
+			"mode": "grouped",
+			"action": "Enter drops active drag without opening",
+			"passed": true
+		}
+	],
+	"writes": []
+}

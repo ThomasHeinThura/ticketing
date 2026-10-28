@@ -19,7 +19,11 @@ export async function listHierarchyChildren(
   identity: ResolvedIdentity,
   key: string,
   workspaceId: string,
-  options: { cursor?: string; limit?: number },
+  options: {
+    cursor?: string;
+    limit?: number;
+    allowArchivedForRead?: true;
+  },
 ) {
   const limit = options.limit ?? DEFAULT_HIERARCHY_PAGE_LIMIT;
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_HIERARCHY_PAGE_LIMIT)
@@ -33,6 +37,7 @@ export async function listHierarchyChildren(
         identity,
         key,
         workspaceId,
+        { allowArchivedForRead: options.allowArchivedForRead },
       );
       if (!item)
         throw new HTTPException(404, { message: "Work item not found" });
@@ -67,6 +72,7 @@ export async function listHierarchyChildren(
           tx,
           scope,
           ancestorId,
+          options.allowArchivedForRead,
         );
         if (!ancestor) break;
         ancestors.unshift(ancestor);

@@ -26,6 +26,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
@@ -51,7 +52,9 @@ export function copyTrackedCheckerSources(sourceRoot, targetRoot) {
     .filter(Boolean)
     .filter(
       (file) =>
-        !file.endsWith(".test.mjs") && !file.startsWith("scripts/ci/probes/"),
+        !file.endsWith(".test.mjs") &&
+        !file.startsWith("scripts/ci/probes/") &&
+        existsSync(path.join(sourceRoot, file)),
     );
 
   for (const file of tracked) {
@@ -193,6 +196,7 @@ export function runChecker(dir, script, args = [], env = {}) {
         ...process.env,
         GITHUB_BASE_REF: "main",
         GITHUB_EVENT_PATH: "",
+        GITHUB_EVENT_NAME: "",
         GITHUB_REF: "",
         ...env,
       },
@@ -236,105 +240,8 @@ export function evaluateInRepo(dir, code) {
  * `.github/pull_request_template.md`, which the scratch repo also carries — the template
  * stays the single definition of "every fixed section", here too.
  */
-export function completeBody({
-  securityModel = "GPT-6 Sol",
-  securityNote = null,
-  gates = [],
-  extraSecurityLines = [],
-} = {}) {
-  const gateRows =
-    gates.length > 0
-      ? gates.map(([gate, result, link]) => `| ${gate} | ${result} | ${link} |`)
-      : [
-          "| G1 — No bespoke primitives | n/a | |",
-          "| Route coverage (`test:permissions`) | pass | |",
-        ];
-
-  return [
-    "## Task",
-    "",
-    "A probe scenario.",
-    "",
-    "**Spec:** n/a — CI infrastructure probe",
-    "**Rules in scope:** n/a — CI infrastructure probe",
-    "",
-    "## Implemented by",
-    "",
-    "**Model:** GPT-6 Luna",
-    "**Session:** implementer-session",
-    "",
-    "## Reviewed by",
-    "",
-    "**Model:** GPT-6 Luna",
-    "**Session:** reviewer-session",
-    "",
-    "## Security review",
-    "",
-    `**Model:** ${securityModel}`,
-    "**Session:** security-reviewer-session",
-    "**Surfaces examined:** the probe's synthetic surface.",
-    `**Note:** ${securityNote ?? "n/a — the probe supplies no note."}`,
-    ...extraSecurityLines,
-    "",
-    "## Sampled big review (optional)",
-    "",
-    "**Selected:** no",
-    "**Model:** n/a — no sample selected.",
-    "**Packet author:** n/a — no sample selected.",
-    "**Verdict:** n/a — no sample selected.",
-    "",
-    "## Screens opened",
-    "",
-    "n/a — the probe touches no apps/web path.",
-    "",
-    "## Gates",
-    "",
-    "| Gate | Result (pass / n/a / waived) | Decision-log link |",
-    "| --- | --- | --- |",
-    ...gateRows,
-    "",
-    "## Checklists",
-    "",
-    "### Any change",
-    "",
-    "- [x] Branch named `feat/…`, `fix/…`, `docs/…`, `chore/…`",
-    "- [x] **Independent security review** completed and recorded",
-    "",
-    "### Backend change",
-    "",
-    "n/a — no backend change in this probe.",
-    "",
-    "### Frontend change",
-    "",
-    "n/a — no frontend change in this probe.",
-    "",
-    "### New `packages/ui` primitive",
-    "",
-    "n/a — no primitive in this probe.",
-    "",
-    "### New feature",
-    "",
-    "n/a — no feature in this probe.",
-    "",
-    "### New plugin",
-    "",
-    "n/a — no plugin in this probe.",
-    "",
-    "### Bug fix",
-    "",
-    "n/a — not a bug fix.",
-    "",
-    "### Phase completion",
-    "",
-    "n/a — no phase completes here.",
-    "",
-    "## Design review H1–H6",
-    "",
-    "## Not done",
-    "",
-    "Everything except the scenario under probe.",
-    "",
-  ].join("\n");
+export function completeBody() {
+  return "## What and why\n\nSynthetic visible result.\n\n## How it was checked\n\nSynthetic local validation; not real acceptance.\n\n## Phase completion\n\n**Phase:** not submitted\n";
 }
 
 /**

@@ -1,0 +1,667 @@
+{
+	"names": {
+		"customfield_10014": "Epic Link",
+		"customfield_10015": "Start date",
+		"customfield_10016": "Story point estimate",
+		"customfield_10019": "Rank",
+		"customfield_10020": "Sprint",
+		"customfield_10031": "Customer impact",
+		"customfield_10032": "Root cause",
+		"customfield_10033": "Build number"
+	},
+	"issues": [
+		{
+			"id": "10029",
+			"key": "ACME-24",
+			"self": "https://acme-fixture.atlassian.net/rest/api/3/issue/10029",
+			"fields": {
+				"summary": "Typo in footer",
+				"issuetype": {
+					"id": "10001",
+					"name": "Bug",
+					"subtask": false
+				},
+				"status": {
+					"name": "Backlog",
+					"statusCategory": {
+						"key": "new",
+						"name": "To Do"
+					}
+				},
+				"resolution": null,
+				"priority": {
+					"name": "Lowest",
+					"id": "5"
+				},
+				"assignee": null,
+				"reporter": {
+					"accountId": "5b10a2844c20165700ede21f",
+					"displayName": "فاطمة الزهراء",
+					"emailAddress": "fatima.z@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"creator": {
+					"accountId": "5b10a2844c20165700ede21f",
+					"displayName": "فاطمة الزهراء",
+					"emailAddress": "fatima.z@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"created": "2025-01-06T09:15:30.123+0100",
+				"updated": "2025-02-01T12:00:00.000+0100",
+				"duedate": null,
+				"labels": [],
+				"components": [],
+				"description": null,
+				"fixVersions": [],
+				"versions": [],
+				"customfield_10015": null,
+				"customfield_10016": null,
+				"customfield_10014": null,
+				"customfield_10020": null,
+				"customfield_10019": "0|i000029:",
+				"comment": {
+					"comments": [],
+					"total": 0,
+					"maxResults": 50,
+					"startAt": 0
+				},
+				"attachment": [],
+				"issuelinks": [],
+				"worklog": {
+					"worklogs": [],
+					"total": 0,
+					"maxResults": 20,
+					"startAt": 0
+				},
+				"watches": {
+					"watchCount": 2
+				}
+			}
+		},
+		{
+			"id": "10031",
+			"key": "ACME-26",
+			"self": "https://acme-fixture.atlassian.net/rest/api/3/issue/10031",
+			"fields": {
+				"summary": "",
+				"issuetype": {
+					"id": "10001",
+					"name": "Task",
+					"subtask": false
+				},
+				"status": {
+					"name": "To Do",
+					"statusCategory": {
+						"key": "new",
+						"name": "To Do"
+					}
+				},
+				"resolution": null,
+				"priority": {
+					"name": "Medium",
+					"id": "3"
+				},
+				"assignee": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"reporter": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"creator": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"created": "2025-01-06T09:15:30.123+0100",
+				"updated": "2025-02-01T12:00:00.000+0100",
+				"duedate": null,
+				"labels": [],
+				"components": [],
+				"description": null,
+				"fixVersions": [],
+				"versions": [],
+				"customfield_10015": null,
+				"customfield_10016": null,
+				"customfield_10014": null,
+				"customfield_10020": null,
+				"customfield_10019": "0|i000031:",
+				"comment": {
+					"comments": [],
+					"total": 0,
+					"maxResults": 50,
+					"startAt": 0
+				},
+				"attachment": [],
+				"issuelinks": [],
+				"worklog": {
+					"worklogs": [],
+					"total": 0,
+					"maxResults": 20,
+					"startAt": 0
+				},
+				"watches": {
+					"watchCount": 2
+				}
+			}
+		},
+		{
+			"id": "10032",
+			"key": "ACME-27",
+			"self": "https://acme-fixture.atlassian.net/rest/api/3/issue/10032",
+			"fields": {
+				"summary": "Kaneo-style board filters",
+				"issuetype": {
+					"id": "10001",
+					"name": "Story",
+					"subtask": false
+				},
+				"status": {
+					"name": "To Do",
+					"statusCategory": {
+						"key": "new",
+						"name": "To Do"
+					}
+				},
+				"resolution": null,
+				"priority": {
+					"name": "Medium",
+					"id": "3"
+				},
+				"assignee": {
+					"accountId": "5b10a2844c20165700ede21e",
+					"displayName": "山田 恵美",
+					"emailAddress": "emi.yamada@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"reporter": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"creator": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"created": "2025-01-06T09:15:30.123+0100",
+				"updated": "2025-02-01T12:00:00.000+0100",
+				"duedate": null,
+				"labels": [],
+				"components": [],
+				"description": {
+					"version": 1,
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{
+									"type": "text",
+									"text": "Status "
+								},
+								{
+									"type": "status",
+									"attrs": {
+										"text": "READY",
+										"color": "green"
+									}
+								},
+								{
+									"type": "text",
+									"text": " and "
+								},
+								{
+									"type": "mention",
+									"attrs": {
+										"id": "5b10",
+										"text": "@Ana Ferreira"
+									}
+								}
+							]
+						}
+					]
+				},
+				"fixVersions": [],
+				"versions": [],
+				"customfield_10015": null,
+				"customfield_10016": 2.0,
+				"customfield_10014": "ACME-1",
+				"customfield_10020": null,
+				"customfield_10019": "0|i000032:",
+				"comment": {
+					"comments": [],
+					"total": 0,
+					"maxResults": 50,
+					"startAt": 0
+				},
+				"attachment": [],
+				"issuelinks": [],
+				"worklog": {
+					"worklogs": [],
+					"total": 0,
+					"maxResults": 20,
+					"startAt": 0
+				},
+				"watches": {
+					"watchCount": 2
+				}
+			}
+		},
+		{
+			"id": "10033",
+			"key": "ACME-28",
+			"self": "https://acme-fixture.atlassian.net/rest/api/3/issue/10033",
+			"fields": {
+				"summary": "Data retention policy",
+				"issuetype": {
+					"id": "10001",
+					"name": "Task",
+					"subtask": false
+				},
+				"status": {
+					"name": "In Review",
+					"statusCategory": {
+						"key": "indeterminate",
+						"name": "In Progress"
+					}
+				},
+				"resolution": null,
+				"priority": {
+					"name": "Medium",
+					"id": "3"
+				},
+				"assignee": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"reporter": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"creator": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"created": "2025-01-06T09:15:30.123+0100",
+				"updated": "2025-02-01T12:00:00.000+0100",
+				"duedate": null,
+				"labels": ["compliance"],
+				"components": [],
+				"description": null,
+				"fixVersions": [
+					{
+						"name": "2025.2"
+					}
+				],
+				"versions": [],
+				"customfield_10015": null,
+				"customfield_10016": null,
+				"customfield_10014": null,
+				"customfield_10020": null,
+				"customfield_10019": "0|i000033:",
+				"comment": {
+					"comments": [],
+					"total": 0,
+					"maxResults": 50,
+					"startAt": 0
+				},
+				"attachment": [],
+				"issuelinks": [],
+				"worklog": {
+					"worklogs": [],
+					"total": 0,
+					"maxResults": 20,
+					"startAt": 0
+				},
+				"watches": {
+					"watchCount": 2
+				}
+			}
+		},
+		{
+			"id": "10034",
+			"key": "ACME-29",
+			"self": "https://acme-fixture.atlassian.net/rest/api/3/issue/10034",
+			"fields": {
+				"summary": "Mobile nav regression",
+				"issuetype": {
+					"id": "10001",
+					"name": "Bug",
+					"subtask": false
+				},
+				"status": {
+					"name": "Done",
+					"statusCategory": {
+						"key": "done",
+						"name": "Done"
+					}
+				},
+				"resolution": {
+					"name": "Done"
+				},
+				"priority": {
+					"name": "High",
+					"id": "2"
+				},
+				"assignee": {
+					"accountId": "5b10a2844c20165700ede21e",
+					"displayName": "山田 恵美",
+					"emailAddress": "emi.yamada@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"reporter": {
+					"accountId": "5b10a2844c20165700ede21f",
+					"displayName": "فاطمة الزهراء",
+					"emailAddress": "fatima.z@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"creator": {
+					"accountId": "5b10a2844c20165700ede21f",
+					"displayName": "فاطمة الزهراء",
+					"emailAddress": "fatima.z@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"created": "2025-01-06T09:15:30.123+0100",
+				"updated": "2025-02-02T08:00:00.000+0100",
+				"duedate": null,
+				"labels": [],
+				"components": [],
+				"description": null,
+				"fixVersions": [],
+				"versions": [],
+				"customfield_10015": null,
+				"customfield_10016": null,
+				"customfield_10014": null,
+				"customfield_10020": [
+					{
+						"id": 3,
+						"name": "Sprint 3 — Überholung 🚀",
+						"state": "active",
+						"boardId": 7,
+						"goal": ""
+					}
+				],
+				"customfield_10019": "0|i000034:",
+				"comment": {
+					"comments": [],
+					"total": 0,
+					"maxResults": 50,
+					"startAt": 0
+				},
+				"attachment": [],
+				"issuelinks": [],
+				"worklog": {
+					"worklogs": [],
+					"total": 0,
+					"maxResults": 20,
+					"startAt": 0
+				},
+				"watches": {
+					"watchCount": 2
+				}
+			}
+		},
+		{
+			"id": "10035",
+			"key": "ACME-30",
+			"self": "https://acme-fixture.atlassian.net/rest/api/3/issue/10035",
+			"fields": {
+				"summary": "Archive old attachments",
+				"issuetype": {
+					"id": "10001",
+					"name": "Task",
+					"subtask": false
+				},
+				"status": {
+					"name": "Backlog",
+					"statusCategory": {
+						"key": "new",
+						"name": "To Do"
+					}
+				},
+				"resolution": null,
+				"priority": {
+					"name": "Low",
+					"id": "4"
+				},
+				"assignee": {
+					"accountId": "5b10a2844c20165700ede21c",
+					"displayName": "Chidi Okafor",
+					"emailAddress": "chidi.okafor@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"reporter": {
+					"accountId": "5b10a2844c20165700ede21c",
+					"displayName": "Chidi Okafor",
+					"emailAddress": "chidi.okafor@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"creator": {
+					"accountId": "5b10a2844c20165700ede21c",
+					"displayName": "Chidi Okafor",
+					"emailAddress": "chidi.okafor@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"created": "2025-01-06T09:15:30.123+0100",
+				"updated": "2025-02-01T12:00:00.000+0100",
+				"duedate": null,
+				"labels": ["storage"],
+				"components": [],
+				"description": null,
+				"fixVersions": [],
+				"versions": [],
+				"customfield_10015": null,
+				"customfield_10016": null,
+				"customfield_10014": null,
+				"customfield_10020": null,
+				"customfield_10019": "0|i000035:",
+				"comment": {
+					"comments": [],
+					"total": 0,
+					"maxResults": 50,
+					"startAt": 0
+				},
+				"attachment": [],
+				"issuelinks": [],
+				"worklog": {
+					"worklogs": [],
+					"total": 0,
+					"maxResults": 20,
+					"startAt": 0
+				},
+				"watches": {
+					"watchCount": 2
+				}
+			}
+		},
+		{
+			"id": "10037",
+			"key": "ACME-32",
+			"self": "https://acme-fixture.atlassian.net/rest/api/3/issue/10037",
+			"fields": {
+				"summary": "Cross-project parent",
+				"issuetype": {
+					"id": "10001",
+					"name": "Sub-task",
+					"subtask": true
+				},
+				"status": {
+					"name": "To Do",
+					"statusCategory": {
+						"key": "new",
+						"name": "To Do"
+					}
+				},
+				"resolution": null,
+				"priority": {
+					"name": "Medium",
+					"id": "3"
+				},
+				"assignee": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"reporter": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"creator": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"created": "2025-01-06T09:15:30.123+0100",
+				"updated": "2025-02-01T12:00:00.000+0100",
+				"duedate": null,
+				"labels": [],
+				"components": [],
+				"description": null,
+				"fixVersions": [],
+				"versions": [],
+				"customfield_10015": null,
+				"customfield_10016": null,
+				"customfield_10014": null,
+				"customfield_10020": null,
+				"customfield_10019": "0|i000037:",
+				"parent": {
+					"id": "x",
+					"key": "OTHER-77"
+				},
+				"comment": {
+					"comments": [],
+					"total": 0,
+					"maxResults": 50,
+					"startAt": 0
+				},
+				"attachment": [],
+				"issuelinks": [],
+				"worklog": {
+					"worklogs": [],
+					"total": 0,
+					"maxResults": 20,
+					"startAt": 0
+				},
+				"watches": {
+					"watchCount": 2
+				}
+			}
+		},
+		{
+			"id": "10030",
+			"key": "ACME-25",
+			"self": "https://acme-fixture.atlassian.net/rest/api/3/issue/10030",
+			"fields": {
+				"summary": "Bad date example",
+				"issuetype": {
+					"id": "10001",
+					"name": "Task",
+					"subtask": false
+				},
+				"status": {
+					"name": "To Do",
+					"statusCategory": {
+						"key": "new",
+						"name": "To Do"
+					}
+				},
+				"resolution": null,
+				"priority": {
+					"name": "Medium",
+					"id": "3"
+				},
+				"assignee": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"reporter": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"creator": {
+					"accountId": "5b10a2844c20165700ede21a",
+					"displayName": "Ana Ferreira",
+					"emailAddress": "ana.ferreira@acme.example.test",
+					"active": true,
+					"accountType": "atlassian"
+				},
+				"created": "not-a-date",
+				"updated": "2025-02-01T12:00:00.000+0100",
+				"duedate": null,
+				"labels": [],
+				"components": [],
+				"description": null,
+				"fixVersions": [],
+				"versions": [],
+				"customfield_10015": null,
+				"customfield_10016": null,
+				"customfield_10014": null,
+				"customfield_10020": null,
+				"customfield_10019": "0|i000030:",
+				"comment": {
+					"comments": [],
+					"total": 0,
+					"maxResults": 50,
+					"startAt": 0
+				},
+				"attachment": [],
+				"issuelinks": [],
+				"worklog": {
+					"worklogs": [],
+					"total": 0,
+					"maxResults": 20,
+					"startAt": 0
+				},
+				"watches": {
+					"watchCount": 2
+				}
+			}
+		}
+	],
+	"isLast": true
+}

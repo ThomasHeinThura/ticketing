@@ -16,6 +16,7 @@ import {
   writeSavedViewAudit,
 } from "../audit";
 import {
+  enqueueSavedViewUpdatedEvent,
   findSavedViewById,
   lockSavedViewByIdInTransaction,
   teamMemberInWorkspace,
@@ -46,6 +47,13 @@ async function updateView(
       }
 
       await assertCanEditView(view, personId, userId, apiKey, tx);
+
+      if (view.queuePairId) {
+        throw new HTTPException(409, {
+          message:
+            "This saved view belongs to an intake queue; edit the queue instead",
+        });
+      }
 
       const nextVisibility = input.visibility ?? view.visibility;
       const nextSharedWithTeamId =
@@ -111,6 +119,12 @@ async function updateView(
       if (!updated) {
         throw new HTTPException(404, { message: "Saved view not found" });
       }
+
+      await enqueueSavedViewUpdatedEvent(tx, updated, {
+        personId,
+        userId,
+        apiKeyId: auditActor.apiKeyId ?? undefined,
+      });
 
       return { updated, before: savedViewAuditState(view) };
     },

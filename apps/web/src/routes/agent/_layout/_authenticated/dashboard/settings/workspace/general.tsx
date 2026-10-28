@@ -1,6 +1,5 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
-import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -28,13 +27,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import {
+  FailureAlert,
+  StepUpFields,
+} from "@/components/god-mode/step-up-fields";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { WorkspaceProjectDefaultsPanel } from "@/components/settings/workspace-project-defaults-panel";
 import useDeleteWorkspace from "@/hooks/mutations/workspace/use-delete-workspace";
 import useTransferWorkspaceOwnership from "@/hooks/mutations/workspace/use-transfer-workspace-ownership";
 import useUpdateWorkspace from "@/hooks/mutations/workspace/use-update-workspace";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetFullWorkspace from "@/hooks/queries/workspace/use-get-full-workspace";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
+import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
 
@@ -88,13 +94,10 @@ function RouteComponent() {
     [t],
   );
 
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef(false);
   const queuedSaveRef = useRef<WorkspaceFormValues | null>(null);
   const lastSavedRef = useRef<NormalizedWorkspaceValues | null>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [selectedNewOwnerId, setSelectedNewOwnerId] = useState<string>("");
 
@@ -104,10 +107,15 @@ function RouteComponent() {
     workspaceId: workspace?.id,
   });
   const { mutateAsync: updateWorkspace } = useUpdateWorkspace();
+  const openPendingAction = useOpenPendingAction();
   const { mutateAsync: deleteWorkspace, isPending: isDeleting } =
     useDeleteWorkspace();
+  const deleteWorkspaceButtonRef = useRef<HTMLButtonElement>(null);
   const { mutateAsync: transferOwnership, isPending: isTransferring } =
     useTransferWorkspaceOwnership();
+  // Ownership transfer is elevated: it spends a fresh, single-use verification bound to this
+  // workspace and this new owner.
+  const transferStepUp = useStepUpAction();
   const { canManageWorkspace, canDeleteWorkspace, isOwner } =
     useWorkspacePermission();
   const canEdit = canManageWorkspace();
@@ -238,10 +246,22 @@ function RouteComponent() {
       return;
 
     try {
-      await transferOwnership({
-        workspaceId: workspace.id,
-        newOwnerUserId: selectedMember.id,
-      });
+      const outcome = await transferStepUp.run(
+        {
+          operation: "workspace_ownership_transfer",
+          workspaceId: workspace.id,
+          newOwnerUserId: selectedMember.id,
+        },
+        (token) =>
+          transferOwnership({
+            workspaceId: workspace.id,
+            newOwnerUserId: selectedMember.id,
+            stepUpToken: token,
+          }),
+        { writeErrors: "rethrow" },
+      );
+      // A failed verification is reported inside the dialog; nothing was changed.
+      if (!outcome.ok) return;
       toast.success(
         t("settings:workspaceGeneral.transferOwnership.toastSuccess", {
           defaultValue: "Ownership transferred",
@@ -264,23 +284,24 @@ function RouteComponent() {
     currentOwnerMember,
     selectedMember,
     transferOwnership,
+    transferStepUp,
     t,
   ]);
 
   const handleDeleteWorkspace = useCallback(async () => {
     if (!workspace?.id) return;
+    const deleteTrigger = deleteWorkspaceButtonRef.current;
+    const finalFocus = () =>
+      deleteTrigger?.isConnected ? deleteTrigger : false;
 
     try {
-      await deleteWorkspace({ workspaceId: workspace.id });
-      toast.success(t("settings:workspaceGeneral.toastDeleted"));
-
-      // Invalidate all workspace-related queries. (["active-organization"]
-      // was invalidated here too before -- nothing subscribes to that key,
-      // same as the identical dead call removed from saveWorkspace above and
-      // from use-transfer-workspace-ownership.ts's onSuccess.)
-      await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-
-      navigate({ to: "/dashboard" });
+      // The in-place approval dialog is the single confirmation (PA-3). Deletion is
+      // only requested: the workspace stays (and the user stays in
+      // it) until the requester approves the pending action.
+      const pendingAction = await deleteWorkspace({
+        workspaceId: workspace.id,
+      });
+      await openPendingAction({ ...pendingAction, finalFocus });
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -288,7 +309,7 @@ function RouteComponent() {
           : t("settings:workspaceGeneral.toastDeleteError"),
       );
     }
-  }, [workspace?.id, deleteWorkspace, queryClient, navigate, t]);
+  }, [workspace?.id, deleteWorkspace, openPendingAction, t]);
 
   const debouncedSave = useCallback(
     (data: WorkspaceFormValues) => {
@@ -414,6 +435,10 @@ function RouteComponent() {
           </div>
         </div>
 
+        {workspace?.id ? (
+          <WorkspaceProjectDefaultsPanel workspaceId={workspace.id} />
+        ) : null}
+
         {isOwner ? (
           <div className="space-y-6">
             <div className="space-y-1">
@@ -530,13 +555,17 @@ function RouteComponent() {
                   </p>
                 </div>
                 <Button
+                  ref={deleteWorkspaceButtonRef}
                   variant="ghost"
                   size="sm"
                   className="text-destructive hover:text-destructive transition-colors"
                   type="button"
-                  onClick={() => setIsDeleteModalOpen(true)}
+                  disabled={isDeleting}
+                  onClick={() => void handleDeleteWorkspace()}
                 >
-                  {t("settings:workspaceGeneral.deleteWorkspace")}
+                  {isDeleting
+                    ? t("common:actions.deleting")
+                    : t("settings:workspaceGeneral.deleteWorkspace")}
                 </Button>
               </div>
             </div>
@@ -545,7 +574,10 @@ function RouteComponent() {
 
         <AlertDialog
           open={isTransferModalOpen}
-          onOpenChange={setIsTransferModalOpen}
+          onOpenChange={(open) => {
+            setIsTransferModalOpen(open);
+            if (!open) transferStepUp.clearFailure();
+          }}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -566,6 +598,18 @@ function RouteComponent() {
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="space-y-3 px-6">
+              <StepUpFields
+                action={transferStepUp}
+                idPrefix="transfer-ownership"
+              />
+              <FailureAlert
+                failure={transferStepUp.failure}
+                title={t(
+                  "settings:workspaceGeneral.transferOwnership.stepUpFailedTitle",
+                )}
+              />
+            </div>
             <AlertDialogFooter>
               <AlertDialogClose
                 render={
@@ -578,16 +622,19 @@ function RouteComponent() {
               >
                 {t("common:actions.cancel")}
               </AlertDialogClose>
-              <AlertDialogClose
-                render={
-                  <Button
-                    size="sm"
-                    disabled={!canTransferOwnership || isTransferring}
-                    onClick={handleTransferOwnership}
-                  />
+              {/* Not an AlertDialogClose: the dialog must stay open if the verification fails;
+                  the handler closes it once the transfer succeeded. */}
+              <Button
+                size="sm"
+                disabled={
+                  !canTransferOwnership ||
+                  isTransferring ||
+                  transferStepUp.busy ||
+                  !transferStepUp.canRun
                 }
+                onClick={() => void handleTransferOwnership()}
               >
-                {isTransferring
+                {isTransferring || transferStepUp.busy
                   ? t(
                       "settings:workspaceGeneral.transferOwnership.transferring",
                       { defaultValue: "Transferring…" },
@@ -595,44 +642,7 @@ function RouteComponent() {
                   : t("settings:workspaceGeneral.transferOwnership.confirm", {
                       defaultValue: "Transfer ownership",
                     })}
-              </AlertDialogClose>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog
-          open={isDeleteModalOpen}
-          onOpenChange={setIsDeleteModalOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t("settings:workspaceGeneral.deleteModalTitle")}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t("settings:workspaceGeneral.deleteModalDescription", {
-                  name: workspace?.name ?? "",
-                })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogClose render={<Button variant="outline" size="sm" />}>
-                {t("common:actions.cancel")}
-              </AlertDialogClose>
-              <AlertDialogClose
-                render={
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={isDeleting}
-                    onClick={handleDeleteWorkspace}
-                  />
-                }
-              >
-                {isDeleting
-                  ? t("common:actions.deleting")
-                  : t("settings:workspaceGeneral.deleteModalConfirm")}
-              </AlertDialogClose>
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

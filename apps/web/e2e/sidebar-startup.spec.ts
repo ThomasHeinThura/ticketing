@@ -10,26 +10,31 @@ test("project navigation downloads after primary content without waiting for the
     releaseSidebar = resolve;
   });
   let rowsAtNavigationRequest: number | undefined;
+  // The primary content is the populated work list: Kaneo's grouped list (`[data-task-id]`
+  // rows in its virtual window), or the canonical table (`tbody tr`) where it falls back. The
+  // first-viewport preview painted before it (`work-item-list-preview`) is not.
+  const list = page.locator("[data-testid=work-item-list-populated]");
+  const renderedRows = async () =>
+    Math.max(
+      await list.locator("tbody tr").count(),
+      await list.locator("[data-task-id]").count(),
+    );
   // A serialized sidebar -> navigation download would deadlock this boundary.
   await page.route("**/assets/app-sidebar-*.js", async (route) => {
     await navigationRequested;
     await route.continue();
   });
   await page.route(/\/assets\/nav-projects-[^/]+\.js$/, async (route) => {
-    rowsAtNavigationRequest = await page
-      .locator("[data-testid=work-item-list-populated] tbody tr")
-      .count();
+    rowsAtNavigationRequest = await renderedRows();
     releaseSidebar();
     await route.continue();
   });
   await page.goto("/agent/projects/WLP/work?layout=list");
-  await expect(
-    page.locator("[data-testid=work-item-list-populated] tbody tr"),
-  ).toHaveCount(500);
+  await expect.poll(renderedRows).toBeGreaterThan(0);
   await expect(
     page.getByRole("button", { name: "Inbox", exact: true }),
   ).toBeVisible();
-  expect(rowsAtNavigationRequest).toBe(500);
+  expect(rowsAtNavigationRequest).toBeGreaterThan(0);
   await expect(
     page.getByRole("button", { name: "Performance fixture", exact: true }),
   ).toBeVisible();
@@ -107,11 +112,15 @@ test("sidebar defers project creation code until the user opens the existing dia
       creationRequested = true;
   });
   await page.goto("/agent/projects/WLP/work?layout=list");
-  const addProject = page.getByRole("button", {
-    name: "Add project",
-    exact: true,
-  });
-  await expect(addProject).toBeVisible();
+  // The sidebar names the project through the runtime terminology ("Add Project").
+  const addProject = page.getByRole("button", { name: /^Add project$/iu });
+  await expect(addProject).toBeVisible({ timeout: 15000 });
+  // Let the work route finish settling (its interim table is replaced by the grouped list)
+  // before clicking, so the click lands on the mounted sidebar.
+  await expect(
+    page.getByText("Seeded work item 1", { exact: true }).first(),
+  ).toBeVisible();
+  await page.waitForLoadState("networkidle");
   expect(creationRequested).toBe(false);
   await addProject.click();
   const dialog = page.getByRole("dialog");

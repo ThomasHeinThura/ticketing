@@ -1,0 +1,246 @@
+{
+	"artifact": "codex-20261025-keyboard-10k-final-retest",
+	"target": {
+		"origin": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"fixture": {
+		"projectSlug": "PERF",
+		"expectedRows": 10000
+	},
+	"checks": [
+		{
+			"name": "strict-TLS fixture owner and live API ID/key map",
+			"pass": true,
+			"rowsMapped": 200
+		},
+		{
+			"name": "board Escape cancellation and idle Enter",
+			"pass": true,
+			"fixtureKey": "PERF-1863",
+			"escapeWrites": 0,
+			"idleEnterOpenedDetail": true
+		},
+		{
+			"name": "board paced persisted keyboard rank",
+			"pass": false,
+			"error": "board sent wrong neighbors: {\"expectedBeforeKey\":\"PERF-7972\",\"expectedAfterKey\":\"PERF-6219\",\"actualBeforeKey\":null,\"actualAfterKey\":null}"
+		},
+		{
+			"name": "board fast persisted keyboard rank",
+			"pass": false,
+			"error": "board fast attempt emitted 0 rank writes"
+		},
+		{
+			"name": "list fast persisted keyboard rank",
+			"pass": false,
+			"error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-work-item-key=\"PERF-7972\"][data-task-id], [data-work-item-key=\"PERF-7972\"] [data-task-id]').first() to be visible\u001b[22m\n"
+		},
+		{
+			"name": "grouped priority keyboard field change and UI restoration",
+			"pass": false,
+			"error": "Timed out: group priority PATCH"
+		},
+		{
+			"name": "browser console/page errors",
+			"pass": true,
+			"count": 0
+		}
+	],
+	"traces": [
+		{
+			"layout": "board",
+			"attempt": "paced",
+			"pacing": "paced",
+			"fixtureKey": "PERF-1863",
+			"trace": [
+				{
+					"step": "before-pickup",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				},
+				{
+					"step": "picked-up",
+					"dragging": true,
+					"activeKey": "PERF-1863",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 200,
+						"containerId": "Sortable-2"
+					},
+					"overKey": "PERF-1863",
+					"liveAnnouncements": [
+						"Picked up TaskDeskPerf10k-20261025 #01863 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "after-ArrowDown-1",
+					"dragging": true,
+					"activeKey": "PERF-1863",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 200,
+						"containerId": "Sortable-2"
+					},
+					"overKey": "PERF-7972",
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 is over TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "after-ArrowDown-2",
+					"dragging": true,
+					"activeKey": "PERF-1863",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 200,
+						"containerId": "Sortable-2"
+					},
+					"overKey": "PERF-6219",
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 is over TaskDeskPerf10k-20261025 #06219 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "after-ArrowUp-3",
+					"dragging": true,
+					"activeKey": "PERF-1863",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 200,
+						"containerId": "Sortable-2"
+					},
+					"overKey": "PERF-7972",
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 is over TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "after-drop",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [
+						"PERF-1863 moved to position 2 of 200 in To Do.",
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped on TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "finally",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [
+						"PERF-1863 moved to position 2 of 200 in To Do.",
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped on TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				}
+			]
+		},
+		{
+			"layout": "board",
+			"attempt": "fast",
+			"pacing": "fast-no-delays",
+			"fixtureKey": "PERF-7972",
+			"trace": [
+				{
+					"step": "before-pickup",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				},
+				{
+					"step": "picked-up",
+					"dragging": true,
+					"activeKey": "PERF-7972",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 200,
+						"containerId": "Sortable-2"
+					},
+					"overKey": "PERF-7972",
+					"liveAnnouncements": [
+						"Picked up TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"focusedKey": "PERF-7972"
+				},
+				{
+					"step": "after-drop",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #07972 — 性能測試項目 was dropped."
+					],
+					"focusedKey": "PERF-7972"
+				},
+				{
+					"step": "finally",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [
+						"TaskDeskPerf10k-20261025 #07972 — 性能測試項目 was dropped."
+					],
+					"focusedKey": "PERF-7972"
+				}
+			]
+		},
+		{
+			"layout": "grouped",
+			"pacing": "fast-no-delays",
+			"fixtureKey": "PERF-1181",
+			"trace": [
+				{
+					"step": "group-before-pickup",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				},
+				{
+					"step": "group-picked-up",
+					"dragging": true,
+					"activeKey": "PERF-1181",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 59,
+						"containerId": "Sortable-0"
+					},
+					"overKey": "PERF-1181",
+					"liveAnnouncements": [
+						"Picked up TaskDeskPerf10k-20261025 #01181 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1181"
+				}
+			]
+		}
+	],
+	"errors": [],
+	"screenshots": [
+		"codex-20261025-keyboard-10k-final-board-paced-paced.png",
+		"codex-20261025-keyboard-10k-final-board-fast-fast.png",
+		"codex-20261025-keyboard-10k-final-grouped-priority-change.png"
+	]
+}

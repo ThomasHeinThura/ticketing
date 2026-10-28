@@ -1,0 +1,32 @@
+{
+	"key": "HELP-19",
+	"method": "Real UI edits only on the audit-created item; persisted APIs, no mocked requests",
+	"checks": [
+		{
+			"name": "title-keyboard-edit-reload",
+			"http": 200,
+			"persisted": true,
+			"outcome": "passed"
+		},
+		{
+			"name": "internal-comment-reload",
+			"controls": ["Internal", "Public", "", ""],
+			"http": 200,
+			"persisted": true,
+			"outcome": "passed"
+		},
+		{
+			"name": "priority-edit-reload",
+			"options": ["No priority", "Low2", "Medium3", "High4", "Urgent5"],
+			"persisted": true,
+			"outcome": "passed"
+		},
+		{
+			"name": "state-transition-reload",
+			"options": [],
+			"persisted": true,
+			"outcome": "passed"
+		}
+	],
+	"screenshot": "docs/report/screens/codex-20261025-work-edit.png"
+}

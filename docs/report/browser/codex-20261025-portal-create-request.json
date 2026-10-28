@@ -1,0 +1,18 @@
+{
+	"method": "Real customer UI request submission on isolated copy; own new request only, no mocked APIs",
+	"checks": [
+		{
+			"name": "submit-detail-reload",
+			"outcome": "passed"
+		},
+		{
+			"name": "request-list-persisted",
+			"outcome": "passed"
+		}
+	],
+	"reference": "SUB-3",
+	"http": 200,
+	"creationEvidence": "Prior UI submit returned200 and routed to /submissions/SUB-3; initial exact text assertion was a harness mismatch (heading is Request SUB-3).",
+	"outcome": "passed",
+	"screenshot": "docs/report/screens/codex-20261025-portal-create-request.png"
+}

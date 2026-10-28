@@ -24,6 +24,10 @@ import {
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
 
 async function listWorkflows(workspaceId: string, init?: RequestInit) {
   const { app } = createApp();
@@ -853,12 +857,16 @@ describe("API integration: workflow persistence", () => {
     });
     expect(versionResponse.status).toBe(200);
 
+    // The workspace DELETE only requests (202); the typed-name + step-up approval deletes
+    // it (and, with it, the role-gated workflow).
+    await ensureAgentSession(owner.user.id);
     const { app } = createApp();
-    const deleteResponse = await app.request(
+    await deleteThroughApproval(
+      app,
+      owner.user,
       `/api/workspace/${owner.workspace.id}`,
-      { method: "DELETE" },
+      { typedName: owner.workspace.name },
     );
-    expect(deleteResponse.status).toBe(200);
 
     const remainingWorkflows = await db
       .select()

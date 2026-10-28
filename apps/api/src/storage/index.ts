@@ -19,6 +19,7 @@ import {
   applyKeyPrefix,
   buildObjectKey,
   buildObjectKeyPrefix,
+  DEFAULT_UPLOAD_URL_TTL_SECONDS,
   getFileExtension,
   isImageContentType,
   parseBoolean,
@@ -51,6 +52,86 @@ export {
 };
 
 export type StorageDriverName = "filesystem" | "s3";
+
+export type StorageProbeAdapter = {
+  driver: StorageDriverName;
+  write(key: string, bytes: Uint8Array, signal: AbortSignal): Promise<void>;
+  read(key: string, maxBytes: number, signal: AbortSignal): Promise<Buffer>;
+  delete(key: string, signal: AbortSignal): Promise<void>;
+};
+
+export type StorageBackendStatus = {
+  source: "bootstrap";
+  driver: StorageDriverName | "unsupported";
+  configuration: "configured" | "incomplete" | "unavailable" | "unsupported";
+  connectivity: "not_checked";
+  probeAvailable: boolean;
+};
+
+/** Binds all probe operations to one driver, even if process configuration changes mid-probe. */
+export function getStorageProbeAdapter(): StorageProbeAdapter {
+  const selected = getStorageDriver();
+  if (selected === "s3") {
+    return {
+      driver: selected,
+      write: s3Driver.writeStorageProbeObject,
+      read: s3Driver.readStorageProbeObject,
+      delete: s3Driver.deleteStorageProbeObject,
+    };
+  }
+  return {
+    driver: selected,
+    write: filesystemDriver.writeStorageProbeObject,
+    read: filesystemDriver.readStorageProbeObject,
+    delete: filesystemDriver.deleteStorageProbeObject,
+  };
+}
+
+/** Returns configuration-only readiness; this deliberately performs no provider network I/O. */
+export async function getStorageBackendStatus(): Promise<StorageBackendStatus> {
+  let selected: StorageDriverName;
+  try {
+    selected = getStorageDriver();
+  } catch {
+    return {
+      source: "bootstrap",
+      driver: "unsupported",
+      configuration: "unsupported",
+      connectivity: "not_checked",
+      probeAvailable: false,
+    };
+  }
+
+  if (selected === "s3") {
+    try {
+      s3Driver.assertStorageConfigured();
+      return {
+        source: "bootstrap",
+        driver: selected,
+        configuration: "configured",
+        connectivity: "not_checked",
+        probeAvailable: true,
+      };
+    } catch {
+      return {
+        source: "bootstrap",
+        driver: selected,
+        configuration: "incomplete",
+        connectivity: "not_checked",
+        probeAvailable: false,
+      };
+    }
+  }
+
+  const configuration = await filesystemDriver.getStorageProbeReadiness();
+  return {
+    source: "bootstrap",
+    driver: selected,
+    configuration,
+    connectivity: "not_checked",
+    probeAvailable: configuration === "configured",
+  };
+}
 
 /**
  * Resolves the active storage driver from `TASKDESK_STORAGE_DRIVER`. Empty/unset defaults to
@@ -126,13 +207,19 @@ export async function createAttachmentUploadUrl(
   contentType: string,
   maxBytes: number,
   apiBaseUrl?: string,
+  declaredSize?: number,
 ): Promise<{
   key: string;
   uploadUrl: string;
   headers: Record<string, string>;
 }> {
   if (getStorageDriver() === "s3") {
-    return s3Driver.createAttachmentUploadUrl(key, contentType, maxBytes);
+    return s3Driver.createAttachmentUploadUrl(
+      key,
+      contentType,
+      maxBytes,
+      declaredSize,
+    );
   }
   return filesystemDriver.createAttachmentUploadUrl(
     key,
@@ -140,6 +227,43 @@ export async function createAttachmentUploadUrl(
     maxBytes,
     apiBaseUrl,
   );
+}
+
+/**
+ * How long an attachment upload credential stays writable, per driver. `complete` defers the
+ * removal of the vacated pending key until after this, so a replay of the credential after
+ * `complete` cannot leave an orphan object behind (P1R2-6).
+ */
+export function attachmentUploadUrlTtlSeconds(): number {
+  return getStorageDriver() === "s3"
+    ? s3Driver.getAttachmentUploadTtlSeconds()
+    : DEFAULT_UPLOAD_URL_TTL_SECONDS;
+}
+
+/**
+ * The single attachment object-key builder: the driver's key prefix (S3 only) is applied once,
+ * here, and the result is what rows, the GC queue and every later operation store and use.
+ */
+export function buildAttachmentStorageKey(rawKey: string): string {
+  return getStorageDriver() === "s3"
+    ? s3Driver.buildAttachmentStorageKey(rawKey)
+    : rawKey;
+}
+
+/**
+ * P6 import writer: store a complete attachment object server-side at `key`, regardless of
+ * driver. The caller has already enforced the size and type limits.
+ */
+export async function putAttachmentObject(
+  key: string,
+  bytes: Uint8Array,
+  contentType: string,
+  maxBytes: number,
+): Promise<void> {
+  if (getStorageDriver() === "s3") {
+    return s3Driver.putAttachmentObject({ key, bytes, contentType });
+  }
+  return filesystemDriver.putAttachmentObject({ key, bytes, maxBytes });
 }
 
 /** Issue #28 -- presigned download (`attachments.md` AT-5), regardless of driver. */
@@ -187,4 +311,15 @@ export async function finalizeStorageObject(
     return s3Driver.finalizeAttachmentObject(oldKey, newKey);
   }
   return filesystemDriver.finalizeAttachmentObject(oldKey, newKey);
+}
+
+/** A misconfigured backend cannot broaden CSP beyond the application origin. */
+export function getStorageBrowserOrigins(): string[] {
+  try {
+    return getStorageDriver() === "filesystem"
+      ? []
+      : s3Driver.getBrowserStorageOrigins();
+  } catch {
+    return [];
+  }
 }

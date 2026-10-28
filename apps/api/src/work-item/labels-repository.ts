@@ -9,7 +9,11 @@ import {
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export async function listWorkItemLabels(key: string, workspaceId: string) {
+export async function listWorkItemLabels(
+  key: string,
+  workspaceId: string,
+  options: { allowArchivedForRead?: true } = {},
+) {
   const [item] = await db
     .select({ id: workItemTable.id, projectId: workItemTable.projectId })
     .from(workItemTable)
@@ -18,7 +22,9 @@ export async function listWorkItemLabels(key: string, workspaceId: string) {
         eq(workItemTable.key, key),
         eq(workItemTable.workspaceId, workspaceId),
         isNull(workItemTable.deletedAt),
-        isNull(workItemTable.archivedAt),
+        ...(options.allowArchivedForRead
+          ? []
+          : [isNull(workItemTable.archivedAt)]),
       ),
     );
   if (!item) throw new HTTPException(404, { message: "Work item not found" });

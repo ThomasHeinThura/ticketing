@@ -1,0 +1,7 @@
+{
+	"recordedAt": "2026-10-26T14:36:24.039Z",
+	"scope": "Own QA customer email-code sign-in through local Mailpit; no codes, mail bodies or session secrets recorded",
+	"checks": [],
+	"outcome": "failed",
+	"failureStage": "portal"
+}

@@ -13,6 +13,11 @@ import {
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
+import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
 
 type CreateTaskBody = {
   title: string;
@@ -51,27 +56,12 @@ async function createWorkspaceRoleRow(
   role: string,
   permission: Record<string, string[]> | string,
 ) {
-  // Delete-then-insert rather than a blind insert: `createWorkspaceMember`
-  // now auto-seeds a `workspace_role` row for default role names (issue
-  // #66), so a test that overrides one of those roles' permissions (e.g.
-  // "viewer") would otherwise leave TWO rows for the same
-  // (workspaceId, role) pair -- there is no unique constraint on that pair
-  // at the DB level -- and which one `hasWorkspacePermission`'s
-  // unordered `.limit(1)` picks would be undefined.
-  await db
-    .delete(schema.workspaceRoleTable)
-    .where(
-      and(
-        eq(schema.workspaceRoleTable.workspaceId, workspaceId),
-        eq(schema.workspaceRoleTable.role, role),
-      ),
-    );
-  await db.insert(schema.workspaceRoleTable).values({
-    workspaceId,
-    role,
-    permission:
-      typeof permission === "string" ? permission : JSON.stringify(permission),
-  });
+  // Delete-then-insert rather than a blind insert: `createWorkspaceMember` auto-seeds the
+  // rows for default role names (issue #66), so a test that overrides one of those roles'
+  // permissions (e.g. "viewer") would otherwise leave TWO rows for the same (workspaceId,
+  // role) pair. Owner decision, 23 Oct: the helper writes the canonical `role` row too, which
+  // is where a custom role's capabilities live.
+  await upsertWorkspaceRoleRows(workspaceId, role, permission);
 }
 
 async function postCreateTask(
@@ -166,7 +156,7 @@ describe("API integration: workspace RBAC enforcement", () => {
       expect(stillThere).toBeDefined();
     });
 
-    it("allows an admin to delete a task (admin role grants work_item:delete)", async () => {
+    it("lets an admin through to the retired task delete, which answers 410 (admin role grants work_item:delete)", async () => {
       const member = await createWorkspaceMember({ role: "admin" });
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
@@ -180,15 +170,18 @@ describe("API integration: workspace RBAC enforcement", () => {
       mockAuthenticatedSession(member.user);
       const { app } = createApp();
 
+      // Legacy `DELETE /api/task/{id}` is retired (410 Gone). An admin still passes the
+      // work_item:delete authority check (a member gets 403 above), reaches the Gone
+      // handler, and nothing is deleted.
       const response = await app.request(`/api/task/${task.id}`, {
         method: "DELETE",
       });
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(410);
 
-      const gone = await db.query.taskTable.findFirst({
+      const kept = await db.query.taskTable.findFirst({
         where: eq(schema.taskTable.id, task.id),
       });
-      expect(gone).toBeUndefined();
+      expect(kept).toBeDefined();
     });
 
     it.each([
@@ -197,7 +190,7 @@ describe("API integration: workspace RBAC enforcement", () => {
       ["In Review", "in-review", "inReview"],
       ["Done", "done", "done"],
     ] as const)(
-      "allows an owner to delete a task from %s",
+      "lets an owner through to the retired task delete (410) from %s",
       async (_label, status, columnKey) => {
         const member = await createWorkspaceMember({ role: "owner" });
         const { project, columns } = await createProjectFixture({
@@ -220,16 +213,14 @@ describe("API integration: workspace RBAC enforcement", () => {
         const response = await app.request(`/api/task/${task.id}`, {
           method: "DELETE",
         });
-        expect(response.status).toBe(200);
-        await expect(response.json()).resolves.toMatchObject({
-          id: task.id,
-          status,
-        });
+        // Retired legacy route: the owner passes authorization, the answer is 410 Gone,
+        // and the task (in every column) is left untouched.
+        expect(response.status).toBe(410);
 
-        const deletedTask = await db.query.taskTable.findFirst({
+        const keptTask = await db.query.taskTable.findFirst({
           where: eq(schema.taskTable.id, task.id),
         });
-        expect(deletedTask).toBeUndefined();
+        expect(keptTask).toMatchObject({ id: task.id, status });
       },
     );
 
@@ -1396,12 +1387,18 @@ describe("API integration: workspace RBAC enforcement", () => {
         project.id,
       );
       mockAuthenticatedSession(member.user);
+      await ensureAgentSession(member.user.id);
       const { app } = createApp();
 
-      const response = await app.request(`/api/project/${project.id}`, {
-        method: "DELETE",
-      });
-      expect(response.status).toBe(200);
+      // The admin's request is accepted (202); the soft delete happens on approval.
+      await deleteThroughApproval(
+        app,
+        member.user,
+        `/api/project/${project.id}`,
+        {
+          typedName: project.slug,
+        },
+      );
     });
   });
 
@@ -1440,7 +1437,40 @@ describe("API integration: workspace RBAC enforcement", () => {
       expect(response.status).toBe(403);
     });
 
-    it("allows a member to delete a label", async () => {
+    it("allows an admin to delete a label (label:manage is admin-tier)", async () => {
+      const member = await createWorkspaceMember({ role: "admin" });
+      const { project, columns } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+      });
+      await grantProjectAccessToWorkspaceMembers(
+        member.workspace.id,
+        project.id,
+      );
+      const task = await seedTask(project.id, columns.todo.id);
+      // deleteLabel requires the label to be attached to a task; without a
+      // taskId the controller rejects with 400 before checking permissions.
+      const label = requireRow(
+        await db
+          .insert(schema.labelTable)
+          .values({
+            name: "scratch",
+            color: "#abcdef",
+            workspaceId: member.workspace.id,
+            taskId: task.id,
+          })
+          .returning(),
+        "label",
+      );
+
+      mockAuthenticatedSession(member.user);
+      await ensureAgentSession(member.user.id);
+      const { app } = createApp();
+
+      // The admin's request is accepted (202); the label is removed on approval.
+      await deleteThroughApproval(app, member.user, `/api/label/${label.id}`);
+    });
+
+    it("blocks a member from deleting a label (label:manage is admin-tier)", async () => {
       const member = await createWorkspaceMember({ role: "member" });
       const { project, columns } = await createProjectFixture({
         workspaceId: member.workspace.id,
@@ -1466,12 +1496,19 @@ describe("API integration: workspace RBAC enforcement", () => {
       );
 
       mockAuthenticatedSession(member.user);
+      await ensureAgentSession(member.user.id);
       const { app } = createApp();
 
+      // The durable request is evaluated against label:manage, which `member` lacks.
       const response = await app.request(`/api/label/${label.id}`, {
         method: "DELETE",
       });
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(403);
+      expect(
+        await db.query.labelTable.findFirst({
+          where: eq(schema.labelTable.id, label.id),
+        }),
+      ).toBeDefined();
     });
 
     it("blocks a viewer from deleting a label", async () => {

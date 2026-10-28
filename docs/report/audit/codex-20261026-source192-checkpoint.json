@@ -1,0 +1,66 @@
+{
+	"recordedAt": "2026-10-26T03:52:55.930957+00:00",
+	"runtimeBefore": 190,
+	"candidate": 192,
+	"deployed": true,
+	"formalPhaseReviewRoundsUsed": 0,
+	"checks": {
+		"apiUnit": {
+			"passed": 2170,
+			"failed": 0,
+			"files": 277
+		},
+		"webUnit": {
+			"passed": 3052,
+			"failed": 0,
+			"files": 468
+		},
+		"consolidatedPostgreSQL": {
+			"passed": 92,
+			"failed": 0,
+			"files": 8
+		},
+		"permissions": {
+			"passed": 118,
+			"failed": 0
+		},
+		"apiTypechecks": "five configs pass checkpoint",
+		"webTypechecks": "app and node pass",
+		"bundleG11G12": "pass",
+		"strictTlsReadiness": {
+			"passed": 6,
+			"apiHashesMatch": true
+		},
+		"inventory": "pass: canonical inventory reconciled",
+		"rawUI": "pass: zero native controls"
+	},
+	"sourceBackup": {
+		"changedFilesIndividuallyVerified": 2316,
+		"archiveBytes": 61624570,
+		"trackedBinaryPatchParsed": true
+	},
+	"artifactBackup": {
+		"filesFullyDecodedAndHashVerified": 2183,
+		"archiveBytes": 29562345
+	},
+	"rehearsal": "codex-20261026-placeholder-claim-rehearsal.json",
+	"remaining": [
+		"Bulk approval, impact preview and verified-claim browser journeys pending.",
+		"Full P0\u2013P5 browser matrix, remaining source gaps and final gates pending.",
+		"Independent phase reviews0/3; no new commit, PR or merge."
+	],
+	"deployedAt": "2026-10-26T04:20:10.430652+00:00",
+	"browserEvidence": [
+		"../browser/imports192/journey.json",
+		"../browser/imports192/non-admin.json",
+		"../browser/intake-queues192/readonly.json"
+	],
+	"browserRepair": {
+		"sourceFilesBackedUp": 11,
+		"focusedTestsPassed": 79,
+		"historyDetailWorkspaceNavigation": true,
+		"responsiveThemeCaptures": 6,
+		"nonAdminChecks": 5,
+		"scope": "Run management only; large-batch approval browser journey pending."
+	}
+}

@@ -1,0 +1,572 @@
+import { isCapability } from "@taskdesk/permissions";
+import {
+  and,
+  desc,
+  eq,
+  gt,
+  isNotNull,
+  isNull,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
+import db from "../database";
+import { type Executor, executorOrDefault } from "../database/executor";
+import {
+  apiKeyExtensionTable,
+  apikeyTable,
+  instanceSettingTable,
+  personTable,
+  userTable,
+  workspaceTable,
+} from "../database/schema";
+import { type ApiKeyKind, legacyPersonalKeyKind } from "./credential";
+import {
+  MAX_API_KEY_BURST_THRESHOLD,
+  MIN_API_KEY_BURST_THRESHOLD,
+} from "./rate-limit";
+
+export async function loadApiKeyKind(
+  apiKeyId: string,
+  executor?: Executor,
+): Promise<ApiKeyKind> {
+  const [row] = await executorOrDefault(executor)
+    .select({
+      workspaceId: apiKeyExtensionTable.workspaceId,
+      personId: apiKeyExtensionTable.personId,
+      isMcp: apiKeyExtensionTable.isMcp,
+      ipAllowlist: apiKeyExtensionTable.ipAllowlist,
+      rateLimitPerMinute: apiKeyExtensionTable.rateLimitPerMinute,
+      disabledAt: apiKeyExtensionTable.disabledAt,
+      capabilities: apiKeyExtensionTable.capabilities,
+    })
+    .from(apiKeyExtensionTable)
+    .where(eq(apiKeyExtensionTable.apikeyId, apiKeyId))
+    .limit(1);
+  if (!row) return legacyPersonalKeyKind(apiKeyId);
+  const storedCapabilities =
+    Array.isArray(row.capabilities) &&
+    row.capabilities.every((entry) => typeof entry === "string")
+      ? row.capabilities
+      : null;
+  if (storedCapabilities?.some((entry) => !isCapability(entry))) {
+    // Import only after an actual stored anomaly, outside application registry boot.
+    // The closed log event contains no key identifier, secret or untrusted storage value.
+    const { logTaskDesk } = await import("../instance/observability/runtime");
+    logTaskDesk({
+      module: "auth",
+      message: "auth.unknown_key_capability",
+      level: "warn",
+      result: "degraded",
+    });
+  }
+
+  return {
+    id: apiKeyId,
+    kind: row.workspaceId ? "service" : "personal",
+    isMcp: row.isMcp,
+    workspaceId: row.workspaceId,
+    personId: row.personId,
+    ipAllowlist: row.ipAllowlist,
+    rateLimitPerMinute: row.rateLimitPerMinute,
+    disabledAt: row.disabledAt,
+    // Malformed storage grants nothing: only an array of strings counts.
+    capabilities: storedCapabilities?.filter(isCapability) ?? null,
+  };
+}
+
+/** Read the current, validated instance-wide MCP write ceiling. Storage failures fail closed. */
+export async function loadMcpWriteCeilingPerMinute(): Promise<number> {
+  const [row] = await db
+    .select({ ceiling: instanceSettingTable.mcpWriteCeilingPerMinute })
+    .from(instanceSettingTable)
+    .where(eq(instanceSettingTable.id, "singleton"))
+    .limit(1);
+  if (
+    !row ||
+    !Number.isInteger(row.ceiling) ||
+    row.ceiling < 1 ||
+    row.ceiling > 100
+  )
+    throw new Error("MCP write ceiling unavailable");
+  return row.ceiling;
+}
+
+/** Read the current, validated instance-wide MCP write-attempt auto-disable threshold. */
+export async function loadApiKeyBurstThreshold(): Promise<number> {
+  const [row] = await db
+    .select({ threshold: instanceSettingTable.apiKeyBurstThreshold })
+    .from(instanceSettingTable)
+    .where(eq(instanceSettingTable.id, "singleton"))
+    .limit(1);
+  if (
+    !row ||
+    !Number.isInteger(row.threshold) ||
+    row.threshold < MIN_API_KEY_BURST_THRESHOLD ||
+    row.threshold > MAX_API_KEY_BURST_THRESHOLD
+  )
+    throw new Error("API key burst threshold unavailable");
+  return row.threshold;
+}
+
+const LAST_USED_WRITE_INTERVAL_SECONDS = 60;
+
+/**
+ * AK-5: record the last-used time and IP for an authenticated key request. The write is
+ * throttled to once a minute per key (a conditional update, so a busy agent does not turn
+ * every request into a row write) and never throws into the request path.
+ */
+export async function recordApiKeyUse(
+  apiKeyId: string,
+  clientIp: string | null,
+): Promise<void> {
+  try {
+    await db
+      .update(apiKeyExtensionTable)
+      .set({ lastUsedAt: sql`now()`, lastUsedIp: clientIp })
+      .where(
+        and(
+          eq(apiKeyExtensionTable.apikeyId, apiKeyId),
+          or(
+            isNull(apiKeyExtensionTable.lastUsedAt),
+            sql`${apiKeyExtensionTable.lastUsedAt} < now() - make_interval(secs => ${LAST_USED_WRITE_INTERVAL_SECONDS})`,
+            sql`${apiKeyExtensionTable.lastUsedIp} IS DISTINCT FROM ${clientIp}`,
+          ),
+        ),
+      );
+    await db
+      .update(apikeyTable)
+      .set({ lastRequest: sql`now()` })
+      .where(
+        and(
+          eq(apikeyTable.id, apiKeyId),
+          or(
+            isNull(apikeyTable.lastRequest),
+            sql`${apikeyTable.lastRequest} < now() - make_interval(secs => ${LAST_USED_WRITE_INTERVAL_SECONDS})`,
+          ),
+        ),
+      );
+  } catch {
+    // Observability only: a failed last-used write must never fail an authenticated request.
+  }
+}
+
+/**
+ * AK-2 lookup: an Argon2id hash is salted, so the row cannot be found by equality. The visible
+ * selector (`apikey.start`, 12 characters) narrows to a handful of candidates, each of which is
+ * then verified in constant time. Only enabled, unexpired Argon2id rows are candidates; a
+ * legacy SHA-256 row is found by digest instead (`utils/access-lookups.repository.ts`).
+ */
+export const MAX_SELECTOR_CANDIDATES = 4;
+
+export async function findActiveApiKeysBySelector(selector: string) {
+  return db
+    .select()
+    .from(apikeyTable)
+    .where(
+      and(
+        eq(apikeyTable.start, selector),
+        sql`${apikeyTable.key} LIKE '$argon2id$%'`,
+        eq(apikeyTable.enabled, true),
+        or(
+          isNull(apikeyTable.expiresAt),
+          gt(apikeyTable.expiresAt, new Date()),
+        ),
+      ),
+    )
+    .limit(MAX_SELECTOR_CANDIDATES);
+}
+
+/**
+ * Transparent upgrade on verify: swap a legacy or outdated stored hash for a fresh Argon2id
+ * one. Compare-and-swap on the old value, so two concurrent upgrades cannot interleave and a
+ * revoked or rotated row is never resurrected.
+ */
+export async function upgradeApiKeyHash(
+  apiKeyId: string,
+  previousStoredHash: string,
+  nextStoredHash: string,
+  selector: string,
+): Promise<boolean> {
+  const [row] = await db
+    .update(apikeyTable)
+    .set({ key: nextStoredHash, start: selector })
+    .where(
+      and(
+        eq(apikeyTable.id, apiKeyId),
+        eq(apikeyTable.key, previousStoredHash),
+      ),
+    )
+    .returning({ id: apikeyTable.id });
+  return row !== undefined;
+}
+
+/* ------------------------------------------------------------------ *
+ * Issuance, listing and revocation
+ * ------------------------------------------------------------------ */
+
+export type StoredApiKey = {
+  id: string;
+  name: string | null;
+  prefix: string | null;
+  start: string | null;
+  enabled: boolean;
+  permissions: string | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  isMcp: boolean;
+  workspaceId: string | null;
+  personId: string | null;
+  capabilities: string[] | null;
+  ipAllowlist: string[] | null;
+  rateLimitPerMinute: number | null;
+  lastUsedAt: Date | null;
+  lastUsedIp: string | null;
+  disabledAt: Date | null;
+  disabledReason: string | null;
+  adminOwnershipTransferredAt: Date | null;
+  formerCreatorAt: Date | null;
+  reattestationRequiredAt: Date | null;
+  reattestedAt: Date | null;
+  reattestedByPersonId: string | null;
+  accountabilityVersion: number;
+};
+
+const storedKeyColumns = {
+  id: apikeyTable.id,
+  name: apikeyTable.name,
+  prefix: apikeyTable.prefix,
+  start: apikeyTable.start,
+  enabled: apikeyTable.enabled,
+  permissions: apikeyTable.permissions,
+  expiresAt: apikeyTable.expiresAt,
+  createdAt: apikeyTable.createdAt,
+  lastRequest: apikeyTable.lastRequest,
+  isMcp: apiKeyExtensionTable.isMcp,
+  workspaceId: apiKeyExtensionTable.workspaceId,
+  personId: apiKeyExtensionTable.personId,
+  capabilities: apiKeyExtensionTable.capabilities,
+  ipAllowlist: apiKeyExtensionTable.ipAllowlist,
+  rateLimitPerMinute: apiKeyExtensionTable.rateLimitPerMinute,
+  lastUsedAt: apiKeyExtensionTable.lastUsedAt,
+  lastUsedIp: apiKeyExtensionTable.lastUsedIp,
+  disabledAt: apiKeyExtensionTable.disabledAt,
+  disabledReason: apiKeyExtensionTable.disabledReason,
+  adminOwnershipTransferredAt: apiKeyExtensionTable.adminOwnershipTransferredAt,
+  formerCreatorAt: apiKeyExtensionTable.formerCreatorAt,
+  reattestationRequiredAt: apiKeyExtensionTable.reattestationRequiredAt,
+  reattestedAt: apiKeyExtensionTable.reattestedAt,
+  reattestedByPersonId: apiKeyExtensionTable.reattestedByPersonId,
+  accountabilityVersion: apiKeyExtensionTable.accountabilityVersion,
+};
+
+/**
+ * Every key joined to its (optional) extension row. A key with no extension row is a legacy
+ * personal key: `is_mcp`, owner and the rest come back null and read as the defaults.
+ */
+function keySelect(executor: Executor) {
+  return executor
+    .select(storedKeyColumns)
+    .from(apikeyTable)
+    .leftJoin(
+      apiKeyExtensionTable,
+      eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+    );
+}
+
+function toStored(
+  row: Awaited<ReturnType<typeof listRaw>>[number],
+): StoredApiKey {
+  return {
+    ...row,
+    enabled: row.enabled ?? false,
+    isMcp: row.isMcp ?? false,
+    workspaceId: row.workspaceId ?? null,
+    personId: row.personId ?? null,
+    capabilities: row.capabilities ?? null,
+    ipAllowlist: row.ipAllowlist ?? null,
+    rateLimitPerMinute: row.rateLimitPerMinute ?? null,
+    lastUsedAt: row.lastUsedAt ?? row.lastRequest ?? null,
+    lastUsedIp: row.lastUsedIp ?? null,
+    disabledAt: row.disabledAt ?? null,
+    disabledReason: row.disabledReason ?? null,
+    adminOwnershipTransferredAt: row.adminOwnershipTransferredAt ?? null,
+    formerCreatorAt: row.formerCreatorAt ?? null,
+    reattestationRequiredAt: row.reattestationRequiredAt ?? null,
+    reattestedAt: row.reattestedAt ?? null,
+    reattestedByPersonId: row.reattestedByPersonId ?? null,
+    accountabilityVersion: row.accountabilityVersion ?? 1,
+  };
+}
+
+function listRaw(executor: Executor, where: SQL | undefined) {
+  return keySelect(executor).where(where).orderBy(desc(apikeyTable.createdAt));
+}
+
+function personalKeyOwnedBy(userId: string) {
+  return and(
+    or(eq(apikeyTable.userId, userId), eq(apikeyTable.referenceId, userId)),
+    // A service key is never a person's key even if a stray user id were stored on it.
+    isNull(apiKeyExtensionTable.workspaceId),
+  );
+}
+
+export async function listKeysForUser(
+  userId: string,
+  executor?: Executor,
+): Promise<StoredApiKey[]> {
+  const rows = await listRaw(
+    executorOrDefault(executor),
+    personalKeyOwnedBy(userId),
+  );
+  return rows.map(toStored);
+}
+
+export type InstanceKeyRow = StoredApiKey & {
+  ownerName: string | null;
+  workspaceName: string | null;
+};
+
+/**
+ * AK-7 God Mode list: every key on the instance, newest first, with the owning person (personal
+ * key) or workspace (service key). `limit + 1` rows are read so the caller can say whether more
+ * exist. Never returns a secret or its hash.
+ */
+export async function listKeysForInstance(
+  limit: number,
+): Promise<{ rows: InstanceKeyRow[]; hasMore: boolean }> {
+  const rows = await db
+    .select({
+      ...storedKeyColumns,
+      ownerName: userTable.name,
+      workspaceName: workspaceTable.name,
+    })
+    .from(apikeyTable)
+    .leftJoin(
+      apiKeyExtensionTable,
+      eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+    )
+    .leftJoin(userTable, eq(userTable.id, apikeyTable.userId))
+    .leftJoin(
+      workspaceTable,
+      eq(workspaceTable.id, apiKeyExtensionTable.workspaceId),
+    )
+    .orderBy(desc(apikeyTable.createdAt), desc(apikeyTable.id))
+    .limit(limit + 1);
+  return {
+    hasMore: rows.length > limit,
+    rows: rows.slice(0, limit).map((row) => ({
+      ...toStored(row),
+      ownerName: row.ownerName ?? null,
+      workspaceName: row.workspaceName ?? null,
+    })),
+  };
+}
+
+export async function listKeysForWorkspace(
+  workspaceId: string,
+  executor?: Executor,
+): Promise<StoredApiKey[]> {
+  const rows = await listRaw(
+    executorOrDefault(executor),
+    eq(apiKeyExtensionTable.workspaceId, workspaceId),
+  );
+  return rows.map(toStored);
+}
+
+export async function findKeyForUser(
+  executor: Executor,
+  keyId: string,
+  userId: string,
+): Promise<StoredApiKey | undefined> {
+  const [row] = await listRaw(
+    executor,
+    and(eq(apikeyTable.id, keyId), personalKeyOwnedBy(userId)),
+  ).limit(1);
+  return row ? toStored(row) : undefined;
+}
+
+export async function findKeyForWorkspace(
+  executor: Executor,
+  keyId: string,
+  workspaceId: string,
+): Promise<StoredApiKey | undefined> {
+  const [row] = await listRaw(
+    executor,
+    and(
+      eq(apikeyTable.id, keyId),
+      eq(apiKeyExtensionTable.workspaceId, workspaceId),
+    ),
+  ).limit(1);
+  return row ? toStored(row) : undefined;
+}
+
+/** Lock one workspace service-key accountability row before re-attestation. */
+export async function lockServiceKeyAccountability(
+  executor: Executor,
+  keyId: string,
+  workspaceId: string,
+): Promise<StoredApiKey | undefined> {
+  const [row] = await executor
+    .select(storedKeyColumns)
+    .from(apikeyTable)
+    .innerJoin(
+      apiKeyExtensionTable,
+      eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+    )
+    .where(
+      and(
+        eq(apikeyTable.id, keyId),
+        eq(apiKeyExtensionTable.workspaceId, workspaceId),
+      ),
+    )
+    .for("update", { of: apiKeyExtensionTable })
+    .limit(1);
+  return row ? toStored(row) : undefined;
+}
+
+export type NewApiKey = {
+  id: string;
+  name: string;
+  prefix: string;
+  start: string;
+  hashedKey: string;
+  /** null for a service key: no person, no user behind it. */
+  userId: string | null;
+  permissions: Record<string, string[]>;
+  expiresAt: Date | null;
+  rateLimitPerMinute: number | null;
+  extension: {
+    workspaceId: string | null;
+    personId: string | null;
+    createdByPersonId: string;
+    capabilities: string[] | null;
+    ipAllowlist: string[] | null;
+    isMcp: boolean;
+  };
+};
+
+export async function insertApiKey(
+  executor: Executor,
+  input: NewApiKey,
+): Promise<void> {
+  const now = new Date();
+  await executor.insert(apikeyTable).values({
+    id: input.id,
+    configId: "default",
+    name: input.name,
+    start: input.start,
+    prefix: input.prefix,
+    key: input.hashedKey,
+    userId: input.userId,
+    referenceId: input.userId,
+    enabled: true,
+    rateLimitEnabled: true,
+    rateLimitTimeWindow: 60_000,
+    rateLimitMax: input.rateLimitPerMinute ?? 100,
+    requestCount: 0,
+    expiresAt: input.expiresAt,
+    createdAt: now,
+    updatedAt: now,
+    permissions: JSON.stringify(input.permissions),
+  });
+  await executor.insert(apiKeyExtensionTable).values({
+    apikeyId: input.id,
+    workspaceId: input.extension.workspaceId,
+    personId: input.extension.personId,
+    createdByPersonId: input.extension.createdByPersonId,
+    capabilities: input.extension.capabilities,
+    ipAllowlist: input.extension.ipAllowlist,
+    rateLimitPerMinute: input.rateLimitPerMinute,
+    isMcp: input.extension.isMcp,
+  });
+}
+
+/** Row lock on the key being revoked or deleted, so two revocations serialise. */
+export async function lockApiKey(executor: Executor, keyId: string) {
+  const [row] = await executor
+    .select({ id: apikeyTable.id, enabled: apikeyTable.enabled })
+    .from(apikeyTable)
+    .where(eq(apikeyTable.id, keyId))
+    .for("update");
+  return row;
+}
+
+/** AK-6: revocation is immediate and keeps the row (it is not a deletion). */
+export async function disableApiKey(
+  executor: Executor,
+  keyId: string,
+  reason: string,
+): Promise<boolean> {
+  const [disabled] = await executor
+    .update(apikeyTable)
+    .set({ enabled: false, updatedAt: new Date() })
+    .where(eq(apikeyTable.id, keyId))
+    .returning({ id: apikeyTable.id });
+  if (!disabled) return false;
+  await executor
+    .update(apiKeyExtensionTable)
+    .set({ disabledAt: sql`now()`, disabledReason: reason })
+    .where(
+      and(
+        eq(apiKeyExtensionTable.apikeyId, keyId),
+        isNull(apiKeyExtensionTable.disabledAt),
+      ),
+    );
+  return true;
+}
+
+export async function findPersonIdForUser(
+  userId: string,
+  executor?: Executor,
+): Promise<string | undefined> {
+  const [row] = await executorOrDefault(executor)
+    .select({ id: personTable.id })
+    .from(personTable)
+    .where(eq(personTable.userId, userId))
+    .limit(1);
+  return row?.id;
+}
+
+/** The locked service-key row a deletion request or approval works from (AK-11). */
+export async function loadServiceKeyForDeletion(
+  executor: Executor,
+  keyId: string,
+) {
+  const [row] = await executor
+    .select({
+      id: apikeyTable.id,
+      name: apikeyTable.name,
+      enabled: apikeyTable.enabled,
+      expiresAt: apikeyTable.expiresAt,
+      workspaceId: apiKeyExtensionTable.workspaceId,
+      capabilities: apiKeyExtensionTable.capabilities,
+      ipAllowlist: apiKeyExtensionTable.ipAllowlist,
+      disabledAt: apiKeyExtensionTable.disabledAt,
+    })
+    .from(apikeyTable)
+    .innerJoin(
+      apiKeyExtensionTable,
+      eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+    )
+    .where(
+      and(
+        eq(apikeyTable.id, keyId),
+        isNotNull(apiKeyExtensionTable.workspaceId),
+      ),
+    )
+    .for("update", { of: apikeyTable })
+    .limit(1);
+  return row;
+}
+
+export async function deleteApiKeyRow(
+  executor: Executor,
+  keyId: string,
+): Promise<boolean> {
+  const [deleted] = await executor
+    .delete(apikeyTable)
+    .where(eq(apikeyTable.id, keyId))
+    .returning({ id: apikeyTable.id });
+  return deleted !== undefined;
+}

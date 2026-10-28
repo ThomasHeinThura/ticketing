@@ -1,0 +1,406 @@
+{
+	"artifact": "codex-20261025-performance-10k-mixed-search-parallel-reads",
+	"target": {
+		"agent": "https://ticketing.localhost:1443",
+		"database": "taskdesk_codex_performance_20261025_test",
+		"databasePort": 62871,
+		"strictTls": true
+	},
+	"fixture": {
+		"projectSlug": "PERF",
+		"titlePrefix": "TaskDeskPerf10k-20261025",
+		"expectedRows": 10000
+	},
+	"journey": "Cmd/Ctrl+K opens the existing Kaneo command palette; each query is entered by direct sequential keyboard typing.",
+	"metric": "Input-to-visible matching result latency; measured from the first typed character through the matching palette result becoming visible.",
+	"diagnosticMetrics": "Per sample, records passive DOM input event timestamps/count, typing duration, and last-input-to-response/visible latency. The original input-to-visible p95 remains the acceptance metric.",
+	"paletteStartup": {
+		"shortcut": "Meta",
+		"shortcutToDialogVisibleMs": 47.19999998807907,
+		"warmupMarks": [
+			{
+				"name": "taskdesk.palette.primary-ready",
+				"startTimeMs": 384.5
+			},
+			{
+				"name": "taskdesk.palette.import-start",
+				"startTimeMs": 384.60000002384186
+			},
+			{
+				"name": "taskdesk.palette.import-resolved",
+				"startTimeMs": 461.69999998807907
+			},
+			{
+				"name": "taskdesk.palette.sidebar-shown",
+				"startTimeMs": 854.6000000238419
+			},
+			{
+				"name": "taskdesk.palette.sidebar-ready",
+				"startTimeMs": 854.6999999880791
+			},
+			{
+				"name": "taskdesk.palette.frames-scheduled",
+				"startTimeMs": 854.6999999880791
+			},
+			{
+				"name": "taskdesk.palette.first-frame",
+				"startTimeMs": 855.6999999880791
+			},
+			{
+				"name": "taskdesk.palette.second-frame",
+				"startTimeMs": 858.1000000238419
+			},
+			{
+				"name": "taskdesk.palette.idle-fired",
+				"startTimeMs": 861
+			},
+			{
+				"name": "taskdesk.palette.warm-commit",
+				"startTimeMs": 861.3000000119209
+			}
+		],
+		"paletteResourcesBeforeFirstQuery": [
+			"/assets/search-targets-C96IVZWR.js",
+			"/assets/command-palette-CQmkXqqf.js",
+			"/assets/use-global-search-_5Sku87L.js",
+			"/assets/search-command-menu-Cm4pRu-Q.js"
+		],
+		"firstQueryStartedInFreshBrowserContext": true,
+		"serverDatabaseCache": "Unknown; no cache reset or cache state API was used."
+	},
+	"paletteChunks": [
+		{
+			"path": "/assets/use-global-search-_5Sku87L.js",
+			"status": 200
+		},
+		{
+			"path": "/assets/search-targets-C96IVZWR.js",
+			"status": 200
+		},
+		{
+			"path": "/assets/command-palette-CQmkXqqf.js",
+			"status": 200
+		},
+		{
+			"path": "/assets/search-command-menu-Cm4pRu-Q.js",
+			"status": 200
+		}
+	],
+	"counts": {
+		"exactKeys": 4,
+		"titlePrefixes": 4,
+		"cjkPrefixes": 4
+	},
+	"samples": [
+		{
+			"index": 1,
+			"kind": "exact-key",
+			"query": "PERF-1",
+			"cacheState": "first query in fresh browser context; browser query cache cold; server/database cache unknown",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 53.251000000000005,
+				"completeMs": 53.738
+			},
+			"shortcutToDialogMs": 47.19999998807907,
+			"inputToResponseMs": 78.30000001192093,
+			"firstDomInputAtMs": 1571.699999988079,
+			"lastDomInputAtMs": 1588,
+			"inputEventCount": 6,
+			"typingDurationMs": 16.30000001192093,
+			"lastInputToResponseMs": 57.90000003576279,
+			"inputToVisibleResultMs": 85.59999996423721,
+			"lastInputToVisibleResultMs": 65.19999998807907,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-1 TaskDeskPerf10k-20261025 #00001 — 性能測試項目"
+		},
+		{
+			"index": 2,
+			"kind": "exact-key",
+			"query": "PERF-2",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 37.65,
+				"completeMs": 38.166000000000004
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 55.30000001192093,
+			"firstDomInputAtMs": 1671.9000000357628,
+			"lastDomInputAtMs": 1683.5,
+			"inputEventCount": 6,
+			"typingDurationMs": 11.599999964237213,
+			"lastInputToResponseMs": 41.5,
+			"inputToVisibleResultMs": 60,
+			"lastInputToVisibleResultMs": 46.19999998807907,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-2 TaskDeskPerf10k-20261025 #00005 — 性能測試項目"
+		},
+		{
+			"index": 3,
+			"kind": "exact-key",
+			"query": "PERF-3",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 28.6,
+				"completeMs": 29.061
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 46.09999996423721,
+			"firstDomInputAtMs": 1744.4000000357628,
+			"lastDomInputAtMs": 1756.199999988079,
+			"inputEventCount": 6,
+			"typingDurationMs": 11.799999952316284,
+			"lastInputToResponseMs": 32.5,
+			"inputToVisibleResultMs": 50.89999997615814,
+			"lastInputToVisibleResultMs": 37.30000001192093,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-3 TaskDeskPerf10k-20261025 #00009 — 性能測試項目"
+		},
+		{
+			"index": 4,
+			"kind": "exact-key",
+			"query": "PERF-4",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 18.069,
+				"completeMs": 18.651999999999997
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 34.19999998807907,
+			"firstDomInputAtMs": 1807.699999988079,
+			"lastDomInputAtMs": 1818.199999988079,
+			"inputEventCount": 6,
+			"typingDurationMs": 10.5,
+			"lastInputToResponseMs": 21.80000001192093,
+			"inputToVisibleResultMs": 37.19999998807907,
+			"lastInputToVisibleResultMs": 24.80000001192093,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-4 TaskDeskPerf10k-20261025 #00013 — 性能測試項目"
+		},
+		{
+			"index": 5,
+			"kind": "title-prefix",
+			"query": "TaskDeskPerf10k-20261025 #00001",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 25.339,
+				"completeMs": 25.768
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 92.40000003576279,
+			"firstDomInputAtMs": 1858.199999988079,
+			"lastDomInputAtMs": 1920.699999988079,
+			"inputEventCount": 31,
+			"typingDurationMs": 62.5,
+			"lastInputToResponseMs": 28.200000047683716,
+			"inputToVisibleResultMs": 94.30000001192093,
+			"lastInputToVisibleResultMs": 30.100000023841858,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-1 TaskDeskPerf10k-20261025 #00001 — 性能測試項目"
+		},
+		{
+			"index": 6,
+			"kind": "title-prefix",
+			"query": "TaskDeskPerf10k-20261025 #00002",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 28.222,
+				"completeMs": 28.679
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 95.30000001192093,
+			"firstDomInputAtMs": 1961.699999988079,
+			"lastDomInputAtMs": 2023.9000000357628,
+			"inputEventCount": 31,
+			"typingDurationMs": 62.200000047683716,
+			"lastInputToResponseMs": 31.399999976158142,
+			"inputToVisibleResultMs": 97.40000003576279,
+			"lastInputToVisibleResultMs": 33.5,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-119 TaskDeskPerf10k-20261025 #00002 — 性能測試項目"
+		},
+		{
+			"index": 7,
+			"kind": "title-prefix",
+			"query": "TaskDeskPerf10k-20261025 #00003",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 21.347,
+				"completeMs": 21.842000000000002
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 92.39999997615814,
+			"firstDomInputAtMs": 2072.400000035763,
+			"lastDomInputAtMs": 2137.900000035763,
+			"inputEventCount": 31,
+			"typingDurationMs": 65.5,
+			"lastInputToResponseMs": 24.599999964237213,
+			"inputToVisibleResultMs": 95,
+			"lastInputToVisibleResultMs": 27.19999998807907,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-20 TaskDeskPerf10k-20261025 #00003 — 性能測試項目"
+		},
+		{
+			"index": 8,
+			"kind": "title-prefix",
+			"query": "TaskDeskPerf10k-20261025 #00004",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 21.711,
+				"completeMs": 22.132
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 88.19999998807907,
+			"firstDomInputAtMs": 2177,
+			"lastDomInputAtMs": 2239.300000011921,
+			"inputEventCount": 31,
+			"typingDurationMs": 62.30000001192093,
+			"lastInputToResponseMs": 24.19999998807907,
+			"inputToVisibleResultMs": 90.60000002384186,
+			"lastInputToVisibleResultMs": 26.600000023841858,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-120 TaskDeskPerf10k-20261025 #00004 — 性能測試項目"
+		},
+		{
+			"index": 9,
+			"kind": "cjk-prefix",
+			"query": "性能",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 29.340999999999998,
+				"completeMs": 29.802
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 40.09999996423721,
+			"firstDomInputAtMs": 2280.800000011921,
+			"lastDomInputAtMs": 2283.199999988079,
+			"inputEventCount": 2,
+			"typingDurationMs": 2.399999976158142,
+			"lastInputToResponseMs": 32.80000001192093,
+			"inputToVisibleResultMs": 44.299999952316284,
+			"lastInputToVisibleResultMs": 37,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-10000 TaskDeskPerf10k-20261025 #10000 — 性能測試項目"
+		},
+		{
+			"index": 10,
+			"kind": "cjk-prefix",
+			"query": "性能測",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 31.132,
+				"completeMs": 31.579
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 40.90000003576279,
+			"firstDomInputAtMs": 2334,
+			"lastDomInputAtMs": 2338.5,
+			"inputEventCount": 3,
+			"typingDurationMs": 4.5,
+			"lastInputToResponseMs": 34.60000002384186,
+			"inputToVisibleResultMs": 43.60000002384186,
+			"lastInputToVisibleResultMs": 37.30000001192093,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-10000 TaskDeskPerf10k-20261025 #10000 — 性能測試項目"
+		},
+		{
+			"index": 11,
+			"kind": "cjk-prefix",
+			"query": "性能測試",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 28.366,
+				"completeMs": 28.971
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 40.69999998807907,
+			"firstDomInputAtMs": 2390.199999988079,
+			"lastDomInputAtMs": 2397.100000023842,
+			"inputEventCount": 4,
+			"typingDurationMs": 6.900000035762787,
+			"lastInputToResponseMs": 32.09999996423721,
+			"inputToVisibleResultMs": 45.80000001192093,
+			"lastInputToVisibleResultMs": 37.19999998807907,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-10000 TaskDeskPerf10k-20261025 #10000 — 性能測試項目"
+		},
+		{
+			"index": 12,
+			"kind": "cjk-prefix",
+			"query": "性能測試項目",
+			"cacheState": "new query key in same browser context; server/database cache may be warm",
+			"inputMethod": "Cmd/Ctrl+K palette; clear previous text with modifier+A; direct sequential keyboard typing",
+			"status": 200,
+			"endpoint": {
+				"method": "GET",
+				"path": "/api/search",
+				"ttfbMs": 31.14,
+				"completeMs": 31.613
+			},
+			"shortcutToDialogMs": null,
+			"inputToResponseMs": 46.69999998807907,
+			"firstDomInputAtMs": 2449.400000035763,
+			"lastDomInputAtMs": 2459.100000023842,
+			"inputEventCount": 6,
+			"typingDurationMs": 9.699999988079071,
+			"lastInputToResponseMs": 34.69999998807907,
+			"inputToVisibleResultMs": 51.39999997615814,
+			"lastInputToVisibleResultMs": 39.39999997615814,
+			"visible": true,
+			"visibleResultLabel": "work_item: PERF-10000 TaskDeskPerf10k-20261025 #10000 — 性能測試項目"
+		}
+	],
+	"p95": {
+		"endpointCompleteMs": 53.738,
+		"inputToVisibleResultMs": 97.40000003576279,
+		"requirementMs": 100,
+		"visibleSamples": 12,
+		"totalSamples": 12,
+		"allSamplesVisible": true
+	},
+	"pass": true,
+	"browserErrors": []
+}

@@ -50,6 +50,18 @@ describe("native activity fetchers", () => {
     });
   });
 
+  it("retains the exact comment selector on cursor continuation", async () => {
+    await getWorkItemActivity({
+      key: "SUP-123",
+      cursor: "bound-cursor",
+      comment: "comment-deep",
+    });
+    expect(mocks.getActivity).toHaveBeenCalledWith({
+      param: { key: "SUP-123" },
+      query: { limit: "50", cursor: "bound-cursor", comment: "comment-deep" },
+    });
+  });
+
   it("posts a Tiptap JSON body with explicit visibility", async () => {
     const body = { type: "doc", content: [{ type: "paragraph" }] };
     await createWorkItemComment({

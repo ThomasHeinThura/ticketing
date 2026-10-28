@@ -2,6 +2,7 @@ import { builtInRoles } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import { capabilitiesSatisfyLegacyStatements } from "../permissions/legacy-statements";
 import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
@@ -9,7 +10,7 @@ import {
 import { isInstanceAdmin } from "./is-instance-admin";
 import {
   resolveMembershipRole,
-  workspaceRolePermission,
+  workspaceRoleAuthority,
 } from "./workspace-member-roles";
 
 type PermissionMap = Record<string, string[]>;
@@ -93,12 +94,15 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
     }
     const role = membership.role;
 
-    const statements =
+    const allowed =
       role === "owner"
-        ? (builtInRoles.owner.statements as Record<string, readonly string[]>)
-        : await ownRoleStatements(workspaceId, role);
+        ? satisfies(
+            builtInRoles.owner.statements as Record<string, readonly string[]>,
+            permissions,
+          )
+        : await ownRoleSatisfies(workspaceId, role, permissions);
 
-    if (!statements || !satisfies(statements, permissions)) {
+    if (!allowed) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient permissions" });
     }
@@ -109,25 +113,32 @@ export function requireWorkspaceRoleAuthority(permissions: PermissionMap) {
 }
 
 /**
- * The workspace's OWN row for this role — no compiled substitute. Returns `null` when the
- * row is absent (deliberately: see the module comment) or malformed.
+ * The workspace's OWN role for this key: a custom role from its canonical `role.capabilities`,
+ * a built-in default row from its legacy statements. No compiled substitute: an absent or
+ * malformed row denies.
  */
-async function ownRoleStatements(
+async function ownRoleSatisfies(
   workspaceId: string,
   role: string,
-): Promise<Record<string, readonly string[]> | null> {
-  // #118: ALL rows, refusing on more than one. See `workspaceRolePermission`.
-  const permission = await workspaceRolePermission(db, workspaceId, role);
-  if (!permission) return null;
+  required: PermissionMap,
+): Promise<boolean> {
+  const authority = await workspaceRoleAuthority(db, workspaceId, role);
+  if (authority.kind === "capabilities") {
+    return capabilitiesSatisfyLegacyStatements(
+      authority.capabilities,
+      required,
+    );
+  }
+  if (authority.kind === "none") return false;
 
   let value: unknown;
   try {
-    value = JSON.parse(permission);
+    value = JSON.parse(authority.permission);
   } catch {
-    return null;
+    return false;
   }
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
+    return false;
   }
 
   const result: Record<string, string[]> = {};
@@ -142,7 +153,7 @@ async function ownRoleStatements(
       result[resource] = filtered;
     }
   }
-  return result;
+  return satisfies(result, required);
 }
 
 function satisfies(

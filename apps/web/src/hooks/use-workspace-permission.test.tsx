@@ -379,6 +379,19 @@ describe("useWorkspacePermission", () => {
     expect(denied.result.current.canManageServiceCalendars()).toBe(false);
   });
 
+  it("uses only the explicit canonical intake capability for queue management", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...fullCapabilityMap(), triageIntake: true }),
+    });
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(result.current.canTriageIntake()).toBe(true);
+  });
   it("exposes the saved-view audience capabilities from their exact canonical keys", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,
@@ -428,6 +441,7 @@ describe("useWorkspacePermission", () => {
       wrapper: createWrapper(),
     });
     expect(result.current.canShareSavedViews()).toBe(false);
+    expect(result.current.canTriageIntake()).toBe(false);
     expect(result.current.canManageWorkspaceSettings()).toBe(false);
   });
 });

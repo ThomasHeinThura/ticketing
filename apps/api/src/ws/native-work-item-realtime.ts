@@ -1,5 +1,10 @@
 import type { WSContext } from "hono/ws";
 import { z } from "zod";
+import db from "../database";
+import {
+  loadProjectAncestorIdsFor,
+  loadProjectOwnerTeamIdFor,
+} from "../project/hierarchy.repository";
 import { evaluateProjectRead } from "../utils/has-project-reach";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import type {
@@ -116,8 +121,19 @@ export async function authorizeNativeTopic(
       projectId: item.projectId,
       workspaceId: item.workspaceId,
       organisationId: item.organisationId,
-      ancestorProjectIds: [],
-      ownerTeamId: null,
+      ancestorProjectIds: await loadProjectAncestorIdsFor(
+        db,
+        db,
+        identity,
+        item.workspaceId,
+        item.projectId,
+      ),
+      ownerTeamId: await loadProjectOwnerTeamIdFor(
+        db,
+        identity,
+        item.workspaceId,
+        item.projectId,
+      ),
     } as const;
     const decision = evaluateProjectRead(
       identity,

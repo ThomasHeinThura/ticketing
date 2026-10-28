@@ -1,0 +1,101 @@
+{
+	"recordedAt": "2026-10-25T06:41:29Z",
+	"requirement": "RP-9",
+	"assessment": "partial",
+	"summary": "Daily closed-period report facts now cover twelve families. Readers use v2 coverage markers, reapply current reach and filters, and compute uncovered or partial days live. Source provenance is exposed in the report envelope and UI. The selected-window boundary excludes comparison-only reads.",
+	"snapshotVersion": 2,
+	"factFamilies": [
+		"sla_resolution",
+		"sla_first_response",
+		"throughput",
+		"item_created",
+		"item_resolved",
+		"sla_due_outcome",
+		"satisfaction_rating",
+		"time_logged",
+		"cost_entry",
+		"escalation_started",
+		"kb_deflection",
+		"cycle_completion"
+	],
+	"executedChecks": [
+		{
+			"name": "snapshot logic and report logic unit tests",
+			"result": "passed",
+			"tests": 36
+		},
+		{
+			"name": "report view source-boundary tests",
+			"result": "passed",
+			"tests": 17
+		},
+		{
+			"name": "report snapshot integration suite on dedicated disposable database at migration 172",
+			"result": "passed",
+			"tests": 19,
+			"coverage": [
+				"twelve-family parity and privacy scopes",
+				"workspace-wide invalidation and two-day catch-up",
+				"source transaction rollback and writer serialization",
+				"whole-day retention for held person facts",
+				"person deletion purges opaque IDs from every JSON dimension",
+				"legacy marker defaults to v1, is not trusted as v2, and leaves sibling v2 coverage intact",
+				"HTTP boundary envelope"
+			],
+			"log": "report-facts-snapshot-final.log"
+		},
+		{
+			"name": "related core, data, drill, and export report integration suites on dedicated disposable database",
+			"result": "passed",
+			"tests": 66,
+			"log": "report-facts-related-integration-rerun.log"
+		},
+		{
+			"name": "owner, member, and lead report catalogue regression including empty-time utilisation ordering",
+			"result": "passed",
+			"tests": 1,
+			"log": "report-utilisation-focused.log"
+		},
+		{
+			"name": "API integration test TypeScript project (before the final boundary-only run.ts adjustment)",
+			"result": "passed"
+		}
+	],
+	"changedPaths": [
+		"apps/api/src/report/context.ts",
+		"apps/api/src/report/custom.ts",
+		"apps/api/src/report/export.service.ts",
+		"apps/api/src/report/feature.ts",
+		"apps/api/src/report/present.ts",
+		"apps/api/src/report/registry.ts",
+		"apps/api/src/report/reports/agile.ts",
+		"apps/api/src/report/reports/customers.ts",
+		"apps/api/src/report/reports/delivery.ts",
+		"apps/api/src/report/reports/drill-extra.ts",
+		"apps/api/src/report/reports/inactive-assignees.ts",
+		"apps/api/src/report/reports/kb.ts",
+		"apps/api/src/report/reports/leadership.ts",
+		"apps/api/src/report/reports/people.ts",
+		"apps/api/src/report/reports/promises.ts",
+		"apps/api/src/report/reports/shared.ts",
+		"apps/api/src/report/reports/time.ts",
+		"apps/api/src/report/response.ts",
+		"apps/api/src/report/run.ts",
+		"apps/api/src/report/snapshot-facts.ts",
+		"apps/api/src/report/snapshot.logic.ts",
+		"apps/api/src/report/snapshot.repository.ts",
+		"apps/api/src/report/types.ts",
+		"apps/web/src/components/reports/report-view.tsx",
+		"apps/web/src/fetchers/report/index.ts",
+		"i18n/en-US.json",
+		"tests/api-integration/p5-reports-snapshots.test.ts",
+		"tests/api/report/logic.test.ts",
+		"tests/api/report/snapshot.logic.test.ts"
+	],
+	"limitations": [
+		"No browser verification of the report source boundary has been completed in this task.",
+		"Full phase gates and independent review remain pending.",
+		"The dedicated test database is disposable and is not evidence of migration deployment to a runtime database.",
+		"Full API production typecheck and Biome were not rerun after the latest source edits."
+	]
+}

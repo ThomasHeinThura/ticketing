@@ -11,6 +11,7 @@ import {
   ensureInternalOrganisation,
   ensureStaffPersonForUser,
 } from "../../../apps/api/src/utils/seed-internal-organisation";
+import { seedWorkspaceBuiltInRoles } from "../../../apps/api/src/workspace/built-in-roles.repository";
 
 export type SeededMemberContext = {
   user: typeof schema.userTable.$inferSelect;
@@ -127,20 +128,26 @@ export async function createWorkspaceMember(
     joinedAt: new Date(),
   });
 
-  if ((overrides?.seedDefaultRoleRow ?? true) && isDefaultRoleName(role)) {
-    const now = new Date();
-    await db.insert(schema.workspaceRoleTable).values({
-      workspaceId: workspace.id,
-      role,
-      permission: JSON.stringify(defaultRolePayloads[role]),
-      // Issue #318 (security): mirrors what every real creation path now guarantees
-      // (`seed-default-workspace-roles.ts`, `create-workspace.ts`) -- a genuine row, not a
-      // custom one, so `require-workspace-capability.ts` and `resolveIdentity` grant this
-      // built-in's capabilities the same way they would for a real seeded workspace.
-      isSystem: true,
-      createdAt: now,
-      updatedAt: now,
-    });
+  if (overrides?.seedDefaultRoleRow ?? true) {
+    if (isDefaultRoleName(role)) {
+      const now = new Date();
+      await db.insert(schema.workspaceRoleTable).values({
+        workspaceId: workspace.id,
+        role,
+        permission: JSON.stringify(defaultRolePayloads[role]),
+        // Issue #318 (security): mirrors what every real creation path now guarantees
+        // (`seed-default-workspace-roles.ts`, `create-workspace.ts`) -- a genuine row, not a
+        // custom one, so `require-workspace-capability.ts` and `resolveIdentity` grant this
+        // built-in's capabilities the same way they would for a real seeded workspace.
+        isSystem: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    // Owner decision, 23 Oct: the canonical `role` rows are what the strict engine and every
+    // non-legacy reader resolve a `workspace_member.role` key against. Every real creation path
+    // seeds the six built-ins whatever the creator's role; do the same here.
+    await seedWorkspaceBuiltInRoles(db, workspace.id);
   }
 
   return { user, workspace };

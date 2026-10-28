@@ -1,0 +1,110 @@
+{
+	"scope": "Real customer inbox/live invalidation, owned HELP-22/SUB-5 only",
+	"strictTLS": true,
+	"checks": [
+		{
+			"name": "Portal translated notification heading loads",
+			"pass": true
+		},
+		{
+			"name": "No raw notification translation keys",
+			"pass": true
+		},
+		{
+			"name": "Authenticated layout opens its own notification socket",
+			"pass": true
+		},
+		{
+			"name": "Own inbox API succeeds",
+			"pass": true
+		},
+		{
+			"name": "Exactly one owned public QA comment succeeds",
+			"pass": true,
+			"status": 200
+		},
+		{
+			"name": "App displays newly produced inbox row without reload",
+			"pass": true
+		},
+		{
+			"name": "Comment delivers a payload-free frame",
+			"pass": true,
+			"frames": 1
+		},
+		{
+			"name": "Exactly one matching requester-owned inbox row",
+			"pass": true
+		},
+		{
+			"name": "Persisted single read action updates UI",
+			"pass": true
+		},
+		{
+			"name": "Single unread restores new QA notification state",
+			"pass": true
+		},
+		{
+			"name": "Unread tab is URL-backed and retains own new notification",
+			"pass": true
+		},
+		{
+			"name": "Inbox layout 375 light",
+			"pass": true,
+			"viewport": 375,
+			"width": 375,
+			"theme": "light"
+		},
+		{
+			"name": "Inbox layout 768 light",
+			"pass": true,
+			"viewport": 768,
+			"width": 768,
+			"theme": "light"
+		},
+		{
+			"name": "Inbox layout 1440 light",
+			"pass": true,
+			"viewport": 1440,
+			"width": 1440,
+			"theme": "light"
+		},
+		{
+			"name": "Inbox layout 375 dark",
+			"pass": true,
+			"viewport": 375,
+			"width": 375,
+			"theme": "dark"
+		},
+		{
+			"name": "Inbox layout 768 dark",
+			"pass": true,
+			"viewport": 768,
+			"width": 768,
+			"theme": "dark"
+		},
+		{
+			"name": "Inbox layout 1440 dark",
+			"pass": true,
+			"viewport": 1440,
+			"width": 1440,
+			"theme": "dark"
+		},
+		{
+			"name": "Notification deep link opens exact public comment",
+			"pass": true
+		}
+	],
+	"screens": [
+		"inbox-375-light.png",
+		"inbox-768-light.png",
+		"inbox-1440-light.png",
+		"inbox-375-dark.png",
+		"inbox-768-dark.png",
+		"inbox-1440-dark.png"
+	],
+	"unexpectedPayloads": 0,
+	"commentId": "bvsn9f8bg8uyicnrtzfosjiv",
+	"notificationId": "n2jpt09v0kl03d0olw5stxai",
+	"safeFrames": 1
+}

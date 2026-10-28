@@ -19,6 +19,10 @@ import WorkItemList from "./work-item-list";
  * integration point the bug lived in -- with only the underlying fetcher mocked.
  */
 
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({ canUpdateTasks: () => false }),
+}));
+
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
   Link: ({

@@ -1,7 +1,7 @@
 import { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
 import type { StepUpMethod } from "@/fetchers/god-mode/instance-users";
-import { HttpError } from "@/lib/http-error";
+import { HttpError, readErrorDetail } from "@/lib/http-error";
 
 const pendingActions = client.me["pending-actions"];
 
@@ -16,6 +16,20 @@ export type OwnPendingAction = InferResponseType<
 
 async function ensureOk(response: Response, message: string) {
   if (!response.ok) throw new HttpError(response.status, message);
+}
+
+/**
+ * Step-up refusals carry the API's code (`step_up_unavailable` for a wrong proof,
+ * `step_up_attempt_limit` on `429`, `Forbidden`), which the approval UI maps to a specific
+ * message; any other failure keeps the generic one.
+ */
+async function ensureProofOk(response: Response, message: string) {
+  if (response.ok) return;
+  const detail = await readErrorDetail(response, message);
+  throw new HttpError(
+    response.status,
+    response.status === 403 || response.status === 429 ? detail : message,
+  );
 }
 
 export async function getOwnPendingActions(
@@ -53,10 +67,26 @@ export async function createPendingActionProof(input: {
     kind: "pending_action" as const,
     pendingActionId: input.pendingActionId,
   };
+  if (input.method === "sso_prompt_login") {
+    const popup =
+      typeof window === "undefined"
+        ? null
+        : window.open("about:blank", "_blank", "popup,width=520,height=720");
+    if (!popup) throw new Error("Fresh authentication is unavailable");
+    popup.opener = null;
+    try {
+      const { proveSsoStepUpBinding } = await import(
+        "./god-mode/sso-identity-step-up"
+      );
+      return await proveSsoStepUpBinding(binding, popup);
+    } finally {
+      if (!popup.closed) popup.close();
+    }
+  }
   const challengeResponse = await client.me["step-up"].challenges.$post({
     json: binding,
   });
-  await ensureOk(challengeResponse, "Fresh authentication is unavailable");
+  await ensureProofOk(challengeResponse, "Fresh authentication is unavailable");
   const challenge = (await challengeResponse.json()) as {
     challengeId: string;
     nonce: string;
@@ -92,7 +122,10 @@ export async function createPendingActionProof(input: {
               code: input.secret,
             },
           });
-  await ensureOk(proofResponse, "Fresh authentication could not be verified");
+  await ensureProofOk(
+    proofResponse,
+    "Fresh authentication could not be verified",
+  );
   const proof = (await proofResponse.json()) as { token: string };
   return proof.token;
 }
@@ -100,6 +133,7 @@ export async function createPendingActionProof(input: {
 export async function approveOwnPendingAction(input: {
   id: string;
   typedName?: string;
+  typedCount?: string;
   stepUpToken?: string;
 }) {
   const response = await pendingActions[":id"].approve.$post({
@@ -107,7 +141,12 @@ export async function approveOwnPendingAction(input: {
     header: input.stepUpToken
       ? { "x-taskdesk-step-up-token": input.stepUpToken }
       : {},
-    json: input.typedName === undefined ? {} : { typedName: input.typedName },
+    json: {
+      ...(input.typedName === undefined ? {} : { typedName: input.typedName }),
+      ...(input.typedCount === undefined
+        ? {}
+        : { typedCount: input.typedCount }),
+    },
   });
   await ensureOk(response, "Unable to approve this pending action");
   return response.json();

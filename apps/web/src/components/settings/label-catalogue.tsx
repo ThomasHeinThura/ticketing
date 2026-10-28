@@ -43,11 +43,14 @@ import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useDeleteLabel from "@/hooks/mutations/label/use-delete-label";
 import useUpdateLabel from "@/hooks/mutations/label/use-update-label";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
+import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { resolveLabelColor } from "@/lib/label-color";
 import type { LabelCatalogueSearch } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+
+const STABLE_KEY_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/u;
 
 export function LabelCatalogue({
   projectId,
@@ -61,6 +64,7 @@ export function LabelCatalogue({
   onSearchChange: (search: LabelCatalogueSearch) => void;
 }) {
   const { t } = useTranslation();
+  const openPendingAction = useOpenPendingAction();
   const {
     workspace,
     canManageLabels,
@@ -122,7 +126,6 @@ export function LabelCatalogue({
   const projectDelete = useMutation({
     mutationFn: ({ id }: { id: string }) =>
       deleteProjectLabel(projectId ?? "", id),
-    onSuccess: invalidate,
   });
   const createLabel = projectId ? projectCreate : workspaceCreate;
   const updateLabel = projectId ? projectUpdate : workspaceUpdate;
@@ -157,14 +160,17 @@ export function LabelCatalogue({
 
   // Create dialog state
   const [newName, setNewName] = useState("");
+  const [newKey, setNewKey] = useState("");
   const [newColor, setNewColor] = useState("gray");
   const [createError, setCreateError] = useState("");
+  const [createKeyError, setCreateKeyError] = useState("");
 
   // Edit dialog state
   const [editingLabel, setEditingLabel] = useState<{
     id: string;
     name: string;
     color: string;
+    key?: string | null;
   } | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("gray");
@@ -210,8 +216,10 @@ export function LabelCatalogue({
 
   const resetCreate = () => {
     setNewName("");
+    setNewKey("");
     setNewColor("gray");
     setCreateError("");
+    setCreateKeyError("");
   };
 
   const openCreate = () => {
@@ -223,6 +231,7 @@ export function LabelCatalogue({
     const submittedBinding = liveBinding.current;
     if (!submittedBinding) return;
     const trimmed = newName.trim();
+    const stableKey = newKey.trim();
     if (!trimmed) {
       setCreateError(
         t("settings:workspaceLabels.nameRequired", {
@@ -231,12 +240,17 @@ export function LabelCatalogue({
       );
       return;
     }
+    if (!projectId && !STABLE_KEY_PATTERN.test(stableKey)) {
+      setCreateKeyError(t("settings:workspaceLabels.stableKeyInvalid"));
+      return;
+    }
 
     try {
       await createLabel.mutateAsync({
         name: trimmed,
         color: newColor,
         workspaceId,
+        ...(!projectId ? { key: stableKey } : {}),
       });
       if (liveBinding.current !== submittedBinding) return;
       toast.success(
@@ -258,7 +272,12 @@ export function LabelCatalogue({
     }
   };
 
-  const openEdit = (label: { id: string; name: string; color: string }) => {
+  const openEdit = (label: {
+    id: string;
+    name: string;
+    color: string;
+    key?: string | null;
+  }) => {
     setEditingLabel(label);
     setEditName(label.name);
     setEditColor(label.color);
@@ -307,26 +326,27 @@ export function LabelCatalogue({
     }
   };
 
-  const openDelete = (label: { id: string; name: string }) => {
-    setDeletingLabel(label);
-    onSearchChange({ action: "delete", label: label.id });
-  };
-
-  const handleDelete = async () => {
+  /**
+   * The delete button requests the deletion at once and the approval dialog is the single
+   * confirmation (PA-3). A `?action=delete&label=` link still opens its own confirmation,
+   * so a link never creates a pending action by itself.
+   */
+  const handleDelete = async (
+    target: { id: string; name: string } | null = deletingLabel,
+  ) => {
     const submittedBinding = liveBinding.current;
     if (!submittedBinding) return;
-    if (!deletingLabel) return;
+    if (!target) return;
 
     try {
-      await deleteLabel.mutateAsync({ id: deletingLabel.id });
+      // Deletion is only requested; the label stays until the requester approves it.
+      const pendingAction = await deleteLabel.mutateAsync({
+        id: target.id,
+      });
       if (liveBinding.current !== submittedBinding) return;
-      toast.success(
-        t("settings:workspaceLabels.deleteSuccess", {
-          defaultValue: "Label deleted",
-        }),
-      );
-      setDeleteOpen(false);
+      if (deleteOpen) setDeleteOpen(false);
       setDeletingLabel(null);
+      await openPendingAction(pendingAction);
     } catch (error) {
       if (liveBinding.current !== submittedBinding) return;
       toast.error(
@@ -452,6 +472,7 @@ export function LabelCatalogue({
                                   id: label.id,
                                   name: label.name,
                                   color: label.color,
+                                  key: label.key,
                                 })
                               }
                             >
@@ -467,8 +488,9 @@ export function LabelCatalogue({
                                 { defaultValue: "Delete" },
                               )}
                               className="h-8 w-8 text-destructive hover:text-destructive"
+                              disabled={deleteLabel.isPending}
                               onClick={() =>
-                                openDelete({
+                                void handleDelete({
                                   id: label.id,
                                   name: label.name,
                                 })
@@ -542,6 +564,33 @@ export function LabelCatalogue({
                 <p className="text-sm text-destructive">{createError}</p>
               )}
             </div>
+
+            {!projectId ? (
+              <div className="space-y-2">
+                <Label htmlFor="new-label-key">
+                  {t("settings:workspaceLabels.stableKeyLabel")}
+                </Label>
+                <Input
+                  id="new-label-key"
+                  value={newKey}
+                  maxLength={64}
+                  autoComplete="off"
+                  aria-invalid={Boolean(createKeyError)}
+                  onChange={(event) => {
+                    setNewKey(event.target.value);
+                    setCreateKeyError("");
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("settings:workspaceLabels.stableKeyHelp")}
+                </p>
+                {createKeyError ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {createKeyError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <Label>
@@ -636,6 +685,22 @@ export function LabelCatalogue({
               )}
             </div>
 
+            {!projectId ? (
+              <div className="space-y-2">
+                <Label htmlFor="edit-label-key">
+                  {t("settings:workspaceLabels.stableKeyReadOnlyLabel")}
+                </Label>
+                <Input
+                  id="edit-label-key"
+                  value={editingLabel?.key ?? ""}
+                  readOnly
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("settings:workspaceLabels.stableKeyHelp")}
+                </p>
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               <Label>
                 {t("settings:workspaceLabels.colorLabel", {
@@ -723,7 +788,7 @@ export function LabelCatalogue({
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDelete}
+              onClick={() => void handleDelete()}
               disabled={deleteLabel.isPending}
             >
               {t("settings:workspaceLabels.deleteLabel", {

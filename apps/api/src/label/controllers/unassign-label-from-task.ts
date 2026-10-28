@@ -2,6 +2,7 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { publishEvent } from "../../events";
+import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import {
   deleteLabelById,
@@ -14,6 +15,7 @@ async function unassignLabelFromTask(
   identity: ResolvedIdentity,
   id: string,
   userId: string,
+  apiKeyId?: string | null,
 ) {
   const { deletedLabel, task } = await db.transaction(async (tx) => {
     const labelSnapshot = await findLabelSnapshot(tx, identity, id);
@@ -51,6 +53,18 @@ async function unassignLabelFromTask(
     }
 
     const deletedLabel = await deleteLabelById(tx, identity, id);
+    if (!deletedLabel) {
+      throw new HTTPException(404, { message: "Label not found" });
+    }
+    await recordLegacyTaskCompatibilityEvent(tx, {
+      kind: "task.label_unassigned",
+      taskId: lockedTask.id,
+      projectId: lockedTask.projectId,
+      workspaceId: labelSnapshot.workspaceId,
+      identity,
+      apiKeyId,
+      payload: { type: "label_unassigned" },
+    });
     return {
       deletedLabel,
       task: {

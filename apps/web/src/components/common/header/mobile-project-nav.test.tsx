@@ -30,7 +30,9 @@ describe("MobileProjectNav accessibility", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Project navigation" }),
+      screen.getByRole("button", {
+        name: translate("navigation:mobileProjectNav.menuLabel"),
+      }),
     ).toBeInTheDocument();
   });
 });

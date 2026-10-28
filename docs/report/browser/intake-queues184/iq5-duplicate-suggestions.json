@@ -1,0 +1,23 @@
+{
+	"method": "strict HTTPS owner browser read through existing triage APIs; no writes",
+	"submissionRef": "SUB-7",
+	"targetKey": "HELP-22",
+	"result": {
+		"standardStatus": 200,
+		"standardFound": true,
+		"standardState": "new",
+		"standardSuggestionKeys": ["HELP-22", "HELP-23"],
+		"pairedStatus": 200,
+		"pairedFound": true,
+		"pairedSuggestionKeys": ["HELP-22", "HELP-23"],
+		"pairedWorkItemKeys": [
+			"HELP-14",
+			"HELP-15",
+			"HELP-16",
+			"HELP-17",
+			"HELP-2",
+			"HELP-22",
+			"HELP-23"
+		]
+	}
+}

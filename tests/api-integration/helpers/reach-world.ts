@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { expect } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import type { createApp } from "../../../apps/api/src/index";
+import { seedWorkspaceBuiltInRoles } from "../../../apps/api/src/workspace/built-in-roles.repository";
 import { mockAuthenticatedSession } from "./auth";
 import {
   createProjectFixture,
@@ -54,6 +55,8 @@ export async function seedWorkspaceRole(workspaceId: string, role: string) {
       updatedAt: now,
     })
     .onConflictDoNothing();
+  // The canonical `role` rows the strict engine resolves the member's role key against.
+  await seedWorkspaceBuiltInRoles(db, workspaceId);
 }
 
 export async function addMember(workspaceId: string, role: string) {
@@ -263,6 +266,7 @@ export type Fixture = {
   key: string;
   neighbourId: string;
   parentKey: string;
+  targetProjectId?: string;
   commentId?: string;
   attachmentId?: string;
 };
@@ -280,6 +284,8 @@ export type RouteCase = {
   readOnlyStatus?: number;
   /** Status an API key with read-only scope (owned by a fully-capable project member) gets. Default 403. */
   readKeyStatus?: number;
+  /** Status an UNSCOPED API key (no read capability, so no reach) gets. Default 403. */
+  unscopedKeyStatus?: number;
   call: (app: App, world: World, item: Fixture) => Promise<Response>;
 };
 
@@ -340,6 +346,16 @@ export const ROUTES: RouteCase[] = [
   },
   {
     matrixKey: "DELETE /api/work-items/{key}",
+    successStatus: 202,
+    prepare: async (world) => {
+      await db.insert(schema.sessionTable).values({
+        id: `session-${world.projectMember.user.id}`,
+        userId: world.projectMember.user.id,
+        token: randomUUID(),
+        portal: "agent",
+        expiresAt: new Date(Date.now() + 3_600_000),
+      });
+    },
     call: (app, _w, i) => json(app, "DELETE", `/api/work-items/${i.key}`),
   },
   {
@@ -352,9 +368,15 @@ export const ROUTES: RouteCase[] = [
   {
     matrixKey: "POST /api/work-items/{key}/parent",
     call: (app, _w, i) =>
-      json(app, "POST", `/api/work-items/${i.key}/parent`, {
-        parentKey: i.parentKey,
-      }),
+      json(
+        app,
+        "POST",
+        `/api/work-items/${i.key}/parent`,
+        {
+          parentKey: i.parentKey,
+        },
+        { "if-match": '"1"' },
+      ),
   },
   {
     matrixKey: "DELETE /api/work-items/{key}/parent",
@@ -369,7 +391,85 @@ export const ROUTES: RouteCase[] = [
         .where(eq(schema.workItemTable.key, i.key));
     },
     call: (app, _w, i) =>
-      json(app, "DELETE", `/api/work-items/${i.key}/parent`),
+      json(app, "DELETE", `/api/work-items/${i.key}/parent`, undefined, {
+        "if-match": '"1"',
+      }),
+  },
+  {
+    matrixKey: "POST /api/v2/work-items/{key}/archive",
+    call: (app, _w, i) =>
+      json(app, "POST", `/api/v2/work-items/${i.key}/archive`, undefined, {
+        "if-match": '"1"',
+      }),
+  },
+  {
+    matrixKey: "POST /api/v2/work-items/{key}/move",
+    // A second live project in the same workspace that the project member reaches with the
+    // create and update capabilities, whose states share the source's state templates.
+    prepare: async (w, i) => {
+      const { project: target } = await createProjectFixture({
+        workspaceId: w.workspaceId,
+      });
+      const now = new Date();
+      await db.insert(schema.stateTable).values([
+        {
+          projectId: target.id,
+          stateTemplateId: w.transition.fromStateTemplateId as string,
+          isDefault: true,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          projectId: target.id,
+          stateTemplateId: w.started.stateTemplate.id,
+          isDefault: false,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]);
+      await grantProjectRole(w.projectMember.user.id, target.id, [
+        ...WORK_ITEM_PROJECT_CAPABILITIES,
+      ]);
+      i.targetProjectId = target.id;
+    },
+    call: (app, _w, i) =>
+      json(
+        app,
+        "POST",
+        `/api/v2/work-items/${i.key}/move`,
+        { targetProjectId: i.targetProjectId, moveChildren: false },
+        { "if-match": '"1"' },
+      ),
+  },
+  {
+    matrixKey: "POST /api/v2/work-items/{key}/parent",
+    call: (app, _w, i) =>
+      json(
+        app,
+        "POST",
+        `/api/v2/work-items/${i.key}/parent`,
+        {
+          parentKey: i.parentKey,
+        },
+        { "if-match": '"1"' },
+      ),
+  },
+  {
+    matrixKey: "DELETE /api/v2/work-items/{key}/parent",
+    prepare: async (_w, i) => {
+      const [parent] = await db
+        .select({ id: schema.workItemTable.id })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.key, i.parentKey));
+      await db
+        .update(schema.workItemTable)
+        .set({ parentId: parent?.id ?? null })
+        .where(eq(schema.workItemTable.key, i.key));
+    },
+    call: (app, _w, i) =>
+      json(app, "DELETE", `/api/v2/work-items/${i.key}/parent`, undefined, {
+        "if-match": '"1"',
+      }),
   },
   {
     matrixKey: "POST /api/work-items/{key}/watch",
@@ -414,10 +514,28 @@ async function asProjectMember(world: World, fn: () => Promise<void>) {
   await fn();
 }
 
+async function ensureProjectMemberSession(world: World) {
+  await db
+    .insert(schema.sessionTable)
+    .values({
+      id: `session-${world.projectMember.user.id}`,
+      userId: world.projectMember.user.id,
+      token: randomUUID(),
+      portal: "agent",
+      expiresAt: new Date(Date.now() + 3_600_000),
+    })
+    .onConflictDoNothing();
+}
+
 ROUTES.push(
   {
     matrixKey: "DELETE /api/attachments/{id}",
+    // Durable deletion: the capable member's request is accepted (202) against their live
+    // session; an unscoped key holds no read capability, so the target is masked as 404.
+    successStatus: 202,
+    unscopedKeyStatus: 404,
     prepare: async (w, i, app) => {
+      await ensureProjectMemberSession(w);
       await asProjectMember(w, async () => {
         const r = await json(
           app,
@@ -480,7 +598,9 @@ ROUTES.push(
   },
   {
     matrixKey: "DELETE /api/comments/{id}",
+    successStatus: 202,
     prepare: async (w, i, app) => {
+      await ensureProjectMemberSession(w);
       await asProjectMember(w, async () => {
         const r = await json(app, "POST", `/api/work-items/${i.key}/comments`, {
           body: { type: "doc", content: [] },

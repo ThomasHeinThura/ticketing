@@ -6,6 +6,7 @@ import { createApp } from "../../apps/api/src/index";
 import * as hierarchyRepository from "../../apps/api/src/work-item/hierarchy-page.repository";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
+import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 import {
   createItem,
   json,
@@ -43,6 +44,90 @@ describe("hierarchy child pagination and complete SQL roll-up", () => {
     vi.restoreAllMocks();
   });
 
+  it("returns actual roster assignees for children/context without leaking a foreign workspace's name", async () => {
+    const { world, app, parent, row } = await arrange();
+    const foreign = await createWorkspaceMember({ role: "member" });
+    await db
+      .update(schema.userTable)
+      .set({ name: "Private foreign assignee" })
+      .where(eq(schema.userTable.id, foreign.user.id));
+    const foreignPerson = requireRow(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, foreign.user.id)),
+      "foreign person",
+    );
+    await db
+      .update(schema.workItemTable)
+      .set({ assigneeId: world.projectMember.personId })
+      .where(eq(schema.workItemTable.id, parent.id));
+    const children = await db
+      .insert(schema.workItemTable)
+      .values([
+        {
+          workspaceId: world.workspaceId,
+          projectId: world.project.id,
+          typeId: world.type.id,
+          number: 901,
+          key: `${world.project.slug}-901`,
+          title: "Roster assigned child",
+          parentId: parent.id,
+          stateId: row.stateId,
+          assigneeId: world.projectMember.personId,
+          position: "1",
+        },
+        {
+          workspaceId: world.workspaceId,
+          projectId: world.project.id,
+          typeId: world.type.id,
+          number: 902,
+          key: `${world.project.slug}-902`,
+          title: "Foreign assignment stays private",
+          parentId: parent.id,
+          stateId: row.stateId,
+          assigneeId: foreignPerson.id,
+          position: "2",
+        },
+      ])
+      .returning();
+    mockAuthenticatedSession(world.readerLead.user);
+    const response = await json(
+      app,
+      "GET",
+      `/api/work-items/${parent.key}/children`,
+    );
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as {
+      parent: { assigneeName: string | null };
+      data: {
+        key: string;
+        assigneeId: string | null;
+        assigneeName: string | null;
+      }[];
+    };
+    expect(data.parent.assigneeName).toBe(world.projectMember.user.name);
+    expect(data.data[0]).toMatchObject({
+      assigneeId: world.projectMember.personId,
+      assigneeName: world.projectMember.user.name,
+    });
+    expect(data.data[1]).toMatchObject({
+      assigneeId: foreignPerson.id,
+      assigneeName: null,
+    });
+    expect(JSON.stringify(data)).not.toContain("Private foreign assignee");
+    const child = requireRow(children, "assigned child");
+    const context = await json(
+      app,
+      "GET",
+      `/api/work-items/${child.key}/children`,
+    );
+    expect(context.status).toBe(200);
+    expect(await context.json()).toMatchObject({
+      parent: { assigneeName: world.projectMember.user.name },
+      ancestors: [{ assigneeName: world.projectMember.user.name }],
+    });
+  });
   it("pages every sibling beyond the legacy 500 cap, preserving ties and exact decimal ordering", async () => {
     const { world, app, parent, row } = await arrange();
     const completeStates: string[] = [];

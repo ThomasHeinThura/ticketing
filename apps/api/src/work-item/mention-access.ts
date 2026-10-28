@@ -2,6 +2,10 @@ import { type ProjectReachFacts, reaches } from "@taskdesk/permissions";
 import type { DbTransaction } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import {
+  projectAncestryFor,
+  projectOwnerTeamFor,
+} from "../utils/project-ancestry";
+import {
   findWorkItemMentionContextQuery,
   listWorkItemMentionParticipantIdsQuery,
   listWorkItemMentionPeopleQuery,
@@ -23,8 +27,9 @@ export type MentionCandidate = {
 export async function findWorkItemMentionContext(
   executor: DbTransaction,
   workItemId: string,
+  options: { allowArchivedForRead?: true } = {},
 ): Promise<WorkItemMentionContext | null> {
-  return findWorkItemMentionContextQuery(executor, workItemId);
+  return findWorkItemMentionContextQuery(executor, workItemId, options);
 }
 
 export async function classifyWorkItemMentionPeople(
@@ -78,6 +83,19 @@ export async function classifyWorkItemMentionPeople(
     if (!identity || identity.personId !== row.personId) continue;
     const reachable = reaches(identity, {
       ...reachFacts,
+      // PR-2: a member of an ancestor project reaches this one.
+      ancestorProjectIds: await projectAncestryFor(
+        tx,
+        identity,
+        reachFacts.workspaceId,
+        reachFacts.projectId,
+      ),
+      ownerTeamId: await projectOwnerTeamFor(
+        tx,
+        identity,
+        reachFacts.workspaceId,
+        reachFacts.projectId,
+      ),
       // `customer_visibility` constrains customer organisation reach. It does not
       // restrict staff with canonical project reach (CP-16 / RBAC § Reach).
       visibleToPersonIds:

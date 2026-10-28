@@ -8,14 +8,9 @@
  *   | Service  | Incident · Service Request · Change · Problem |
  *   | Delivery | Epic · Story · Task · Bug · Sub-task |
  *
- * Pure data, no I/O -- issue #309 (PR-17). `workflowId`/`slaPolicyId` are deliberately
- * left unset: `work_item_type.workflow_id`/`.sla_policy_id` are plain nullable columns
- * with NO foreign key yet (`workflow` and `sla_policy` are P2/P5 scope and do not exist
- * in this schema -- `schema.ts`'s own comment on `workItemTypeTable`). "A type carries
- * its workflow" (issue #309's own framing) therefore has nothing to point at today; there
- * is no default workflow to invent, and none is created here. `WI-4`'s own comment in
- * `create-work-item.ts` already flags the "leaveable state" validation this implies as a
- * TODO for the future workflow-engine slice, not an omission in this one.
+ * Pure catalogue data. Workspace bootstrap creates a validated, published default
+ * workflow and attaches only builtin types that have no configured workflow. Existing
+ * customer workflows and type configuration remain authoritative.
  */
 export type DefaultWorkItemTypeCategory = "service" | "delivery";
 

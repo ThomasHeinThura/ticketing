@@ -1,0 +1,77 @@
+{
+	"recordedAt": "2026-10-26T05:29:00.630Z",
+	"scope": "Isolated rehearsal only; mutation checks rolled back",
+	"checks": [
+		{
+			"name": "Exact disposable rehearsal database",
+			"pass": true
+		},
+		{
+			"name": "Migration194",
+			"pass": true
+		},
+		{
+			"name": "Normalized stable-key backfill 2",
+			"pass": true
+		},
+		{
+			"name": "Normalized stable-key backfill 3",
+			"pass": true
+		},
+		{
+			"name": "Normalized stable-key backfill 4",
+			"pass": true
+		},
+		{
+			"name": "Normalized stable-key backfill 5",
+			"pass": true
+		},
+		{
+			"name": "label existing catalogue keys populated",
+			"pass": true
+		},
+		{
+			"name": "label key mutation refused by database",
+			"pass": true
+		},
+		{
+			"name": "sla_policy existing catalogue keys populated",
+			"pass": true
+		},
+		{
+			"name": "sla_policy key mutation refused by database",
+			"pass": true
+		},
+		{
+			"name": "service_calendar existing catalogue keys populated",
+			"pass": true
+		},
+		{
+			"name": "service_calendar key mutation refused by database",
+			"pass": true
+		},
+		{
+			"name": "Four key triggers installed",
+			"pass": true
+		}
+	],
+	"counts": [
+		{
+			"table": "label",
+			"total": 3,
+			"keyed": 3
+		},
+		{
+			"table": "sla_policy",
+			"total": 1,
+			"keyed": 1
+		},
+		{
+			"table": "service_calendar",
+			"total": 1,
+			"keyed": 1
+		}
+	],
+	"runtimeCopiesMigrated": false,
+	"protectedDatabaseTargeted": false
+}

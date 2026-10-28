@@ -1,0 +1,78 @@
+{
+	"recordedAt": "2026-10-26T07:22:38.346Z",
+	"oneComposeFile": "deploy/compose.testing.yml",
+	"oneRunningDeployment": true,
+	"runningServices": [
+		{
+			"service": "mailpit",
+			"healthy": "healthy"
+		},
+		{
+			"service": "taskdesk",
+			"healthy": "healthy"
+		},
+		{
+			"service": "valkey",
+			"healthy": "healthy"
+		},
+		{
+			"service": "traefik",
+			"healthy": "not_configured"
+		},
+		{
+			"service": "postgres",
+			"healthy": "healthy"
+		}
+	],
+	"imageId": "sha256:d7cc99e6a5cdf71a790288df6bb1c94227be75b334c844dee5efff92cfc30da4",
+	"artifactDigest": "cebbd8efc379fd77e8c45438f7139a22acfee2a706a5141995f7c0afdfdc657c",
+	"verifiedArtifacts": 1775,
+	"migrationCount": 195,
+	"businessCounts": {
+		"user": 11,
+		"person": 11,
+		"work_item": 84,
+		"task": 0,
+		"project": 6,
+		"workspace": 3,
+		"organisation": 4,
+		"team": 36
+	},
+	"restoredAll172TableCountsUnchanged": true,
+	"ownerCredentialAbsentFromApi": true,
+	"applicationSourceBindMounts": false,
+	"endpoints": [
+		{
+			"origin": "https://ticketing.localhost",
+			"path": "/api/public/health/ready",
+			"status": 200
+		},
+		{
+			"origin": "https://ticketing.localhost",
+			"path": "/api/public/health/live",
+			"status": 200
+		},
+		{
+			"origin": "https://ticketing.localhost",
+			"path": "/",
+			"status": 200
+		},
+		{
+			"origin": "https://portal.localhost",
+			"path": "/api/public/health/ready",
+			"status": 200
+		},
+		{
+			"origin": "https://portal.localhost",
+			"path": "/api/public/health/live",
+			"status": 200
+		},
+		{
+			"origin": "https://portal.localhost",
+			"path": "/",
+			"status": 200
+		}
+	],
+	"protectedDatabaseTargeted": false,
+	"phaseSignOff": false
+}

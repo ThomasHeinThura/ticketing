@@ -1,8 +1,14 @@
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { projectSlugClaimTable, projectTable } from "../../database/schema";
+import {
+  projectSlugClaimTable,
+  projectTable,
+  workspaceTable,
+} from "../../database/schema";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import { resolveProjectServiceCalendarId } from "../effective-settings";
+import { PROJECT_KEY_MESSAGE, PROJECT_KEY_PATTERN } from "../schema";
 import { ProjectSlugTakenError } from "./create-project";
 
 async function updateProject(
@@ -16,7 +22,12 @@ async function updateProject(
     kind?: "project" | "managed_service";
     supportLevel?: "L1" | "L2" | "L3" | null;
     serviceCalendarId?: string | null;
+    serviceCalendarMode?: "inherit" | "override";
     defaultCommentVisibility?: "public" | "internal";
+    managerId?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    defaultAssigneeId?: string | null;
   },
 ) {
   // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
@@ -26,6 +37,17 @@ async function updateProject(
   // unclaimed after a rename that did succeed). Wrapped in a transaction for exactly that
   // reason -- `create-project.ts`'s own create path is the same shape.
   return db.transaction(async (tx) => {
+    const [workspace] = await tx
+      .select({
+        id: workspaceTable.id,
+        defaultServiceCalendarId: workspaceTable.defaultServiceCalendarId,
+      })
+      .from(workspaceTable)
+      .where(eq(workspaceTable.id, workspaceId))
+      .for("share")
+      .limit(1);
+    if (!workspace)
+      throw new HTTPException(404, { message: "Project not found" });
     const [existingProject] = await tx
       .select()
       .from(projectTable)
@@ -38,15 +60,49 @@ async function updateProject(
           // re-described while "deleted". Same exclusion `get-project.ts` applies.
           isNull(projectTable.deletedAt),
         ),
-      );
+      )
+      .for("update")
+      .limit(1);
 
-    const isProjectExisting = Boolean(existingProject);
-
-    if (!isProjectExisting) {
+    if (!existingProject) {
       throw new HTTPException(404, {
         message:
           "Project doesn't exist or doesn't belong to the specified workspace",
       });
+    }
+    const effectiveServiceCalendarId = resolveProjectServiceCalendarId({
+      mode: (configuration.serviceCalendarMode ??
+        existingProject.serviceCalendarMode) as "inherit" | "override",
+      overrideId:
+        configuration.serviceCalendarId === undefined
+          ? existingProject.serviceCalendarId
+          : configuration.serviceCalendarId,
+      workspaceDefaultId: workspace.defaultServiceCalendarId,
+    });
+    const nextKind =
+      configuration.kind ??
+      (existingProject.kind as "project" | "managed_service");
+    const nextSupportLevel =
+      configuration.supportLevel === undefined
+        ? existingProject.supportLevel
+        : configuration.supportLevel;
+    if (
+      nextKind === "managed_service" &&
+      (!nextSupportLevel || !effectiveServiceCalendarId)
+    )
+      throw new HTTPException(422, {
+        message:
+          "PR-9: managed services require a support level and service calendar",
+      });
+
+    // PR-13: only a CHANGED key must match 2-8 uppercase letters (see `PROJECT_KEY_PATTERN`):
+    // a project created before the rule keeps its legacy key and stays editable.
+    if (
+      existingProject &&
+      slug !== existingProject.slug &&
+      !PROJECT_KEY_PATTERN.test(slug)
+    ) {
+      throw new HTTPException(400, { message: PROJECT_KEY_MESSAGE });
     }
 
     // #23's mandatory Opus security review of PR #261, finding F1: answer a slug collision
@@ -94,11 +150,31 @@ async function updateProject(
           ...(configuration.serviceCalendarId !== undefined
             ? { serviceCalendarId: configuration.serviceCalendarId }
             : {}),
+          ...(configuration.serviceCalendarMode !== undefined
+            ? { serviceCalendarMode: configuration.serviceCalendarMode }
+            : {}),
+          ...(configuration.serviceCalendarMode !== undefined
+            ? {
+                projectSettingsVersion: sql`${projectTable.projectSettingsVersion} + 1`,
+              }
+            : {}),
           ...(configuration.defaultCommentVisibility !== undefined
             ? {
                 defaultCommentVisibility:
                   configuration.defaultCommentVisibility,
               }
+            : {}),
+          ...(configuration.managerId !== undefined
+            ? { managerId: configuration.managerId }
+            : {}),
+          ...(configuration.startDate !== undefined
+            ? { startDate: configuration.startDate }
+            : {}),
+          ...(configuration.endDate !== undefined
+            ? { endDate: configuration.endDate }
+            : {}),
+          ...(configuration.defaultAssigneeId !== undefined
+            ? { defaultAssigneeId: configuration.defaultAssigneeId }
             : {}),
         })
         .where(eq(projectTable.id, id))

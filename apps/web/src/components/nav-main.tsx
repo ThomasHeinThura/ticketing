@@ -15,8 +15,12 @@ import { ChevronRight } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
+import { useCatalogueStatus } from "@/hooks/queries/service-management";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useInstanceAdminSignal } from "@/hooks/use-instance-admin-signal";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { routes } from "@/lib/routes";
 import { savedViewKeys } from "@/lib/saved-view-keys";
@@ -41,6 +45,7 @@ function loadSavedViewFetchers(): Promise<SavedViewFetchers> {
 export function NavMain() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
+  const isInstanceAdmin = useInstanceAdminSignal();
   const navigate = useNavigate();
   const { data: invitations = [] } = usePendingInvitations();
   const { user } = useAuth();
@@ -64,6 +69,23 @@ export function NavMain() {
     },
     enabled: Boolean(workspace?.id && user?.id && shellPainted),
   });
+  // `feature.knowledge_base` off: the entry is gone (P5, `docs/technical/architecture-and-experience.md`).
+  // The resolved read is open to every workspace member; the admin switch list is not.
+  const features = useWorkspaceFeatures(workspace?.id, shellPainted);
+  const knowledgeBaseOn = features.isOn("feature.knowledge_base");
+  // `feature.time_tracking` off: the Timesheet entry is gone (P5 time and cost).
+  // The time APIs need time_entry:create (the built-in Viewer role lacks it), so the entry also
+  // follows the strict `logTime` capability.
+  const { canLogTime } = useWorkspacePermission();
+  const timeTrackingOn = features.isOn("feature.time_tracking") && canLogTime();
+  // `feature.reports` off: the Reports and Dashboard entries are gone (P5 reports).
+  const reportsOn = features.isOn("feature.reports");
+  // `feature.service_catalogue` off: the service management entry is gone (P5). The status read
+  // is open to everyone who can read projects, unlike the switch list.
+  const catalogue = useCatalogueStatus(
+    shellPainted ? (workspace?.id ?? "") : "",
+  );
+  const serviceManagementOn = catalogue.data?.enabled === true;
   const pinnedViews = (savedViews.data ?? []).filter((view) => view.isPinned);
   const pinnedCounts = useQueries({
     queries: pinnedViews.map((view) => ({
@@ -116,6 +138,52 @@ export function NavMain() {
       isActive: path === routes.savedViews.path,
       badge: null,
     },
+    ...(knowledgeBaseOn
+      ? [
+          {
+            title: t("navigation:sidebar.knowledgeBase"),
+            url: routes.kb.path,
+            isActive: path.startsWith(routes.kb.path),
+            badge: null,
+          },
+        ]
+      : []),
+    ...(timeTrackingOn
+      ? [
+          {
+            title: t("navigation:sidebar.timesheet"),
+            url: routes.timesheet.path,
+            isActive: path.startsWith(routes.timesheet.path),
+            badge: null,
+          },
+        ]
+      : []),
+    ...(reportsOn
+      ? [
+          {
+            title: t("navigation:sidebar.reports"),
+            url: routes.reports.path,
+            isActive: path.startsWith(routes.reports.path),
+            badge: null,
+          },
+          {
+            title: t("navigation:sidebar.dashboard"),
+            url: routes.agentDashboard.path,
+            isActive: path.startsWith(routes.agentDashboard.path),
+            badge: null,
+          },
+        ]
+      : []),
+    ...(serviceManagementOn
+      ? [
+          {
+            title: t("navigation:sidebar.serviceManagement"),
+            url: routes.serviceManagementServices.path,
+            isActive: path.startsWith("/agent/service-management"),
+            badge: null,
+          },
+        ]
+      : []),
     {
       title: t("navigation:sidebar.members"),
       url: `/dashboard/workspace/${workspace.id}/members`,
@@ -128,15 +196,39 @@ export function NavMain() {
       isActive: path === "/dashboard/invitations",
       badge: pendingCount > 0 ? pendingCount : null,
     },
-    {
-      // kaneo's settings shell holds the API-wired settings; the /agent/settings copies
-      // are replaced in the next change (docs/07-planning/status.md § Next).
-      title: t("navigation:sidebar.settings"),
-      url: "/dashboard/settings/workspace/general",
-      isActive: path.startsWith("/dashboard/settings"),
-      badge: null,
-    },
   ];
+  const settingsItems = [
+    {
+      title: t("navigation:page.settingsAccountTab"),
+      url: "/dashboard/settings/account/information",
+      isActive:
+        path.startsWith("/dashboard/settings/account") ||
+        path.startsWith("/agent/settings/profile"),
+    },
+    {
+      title: t("navigation:page.settingsWorkspaceTab"),
+      url: "/dashboard/settings/workspace/general",
+      isActive:
+        path.startsWith("/dashboard/settings/workspace") ||
+        (path.startsWith("/agent/settings") &&
+          !path.startsWith("/agent/settings/profile")),
+    },
+    {
+      title: t("navigation:projectList.projectSettings"),
+      url: "/dashboard/settings/projects",
+      isActive: path.startsWith("/dashboard/settings/projects"),
+    },
+    ...(isInstanceAdmin
+      ? [
+          {
+            title: t("navigation:sidebar.godMode"),
+            url: routes.godModeHealth.path,
+            isActive: path.startsWith(routes.godModeHealth.path),
+          },
+        ]
+      : []),
+  ];
+  const settingsActive = settingsItems.some((item) => item.isActive);
 
   return (
     <Collapsible defaultOpen className="group/collapsible">
@@ -208,6 +300,44 @@ export function NavMain() {
                     : null}
                 </Fragment>
               ))}
+              <SidebarMenuItem>
+                <Collapsible
+                  defaultOpen={settingsActive}
+                  className="group/settings"
+                >
+                  <CollapsibleTrigger
+                    className="data-panel-open:[&_svg]:rotate-90"
+                    render={
+                      <SidebarMenuButton
+                        tooltip={t("navigation:sidebar.settings")}
+                        isActive={settingsActive}
+                        size="default"
+                        className="h-8 justify-between ps-3.5 text-sm hover:bg-transparent hover:text-sidebar-accent-foreground active:bg-transparent"
+                      />
+                    }
+                  >
+                    <span>{t("navigation:sidebar.settings")}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground transition-transform duration-200" />
+                  </CollapsibleTrigger>
+                  <CollapsiblePanel>
+                    <SidebarMenu className="gap-0.5 pt-0.5">
+                      {settingsItems.map((item) => (
+                        <SidebarMenuItem key={item.url}>
+                          <SidebarMenuButton
+                            tooltip={item.title}
+                            isActive={item.isActive}
+                            size="default"
+                            className="h-8 ps-6 text-sm hover:bg-transparent hover:text-sidebar-accent-foreground active:bg-transparent"
+                            onClick={() => navigate({ to: item.url })}
+                          >
+                            <span>{item.title}</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </CollapsiblePanel>
+                </Collapsible>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </CollapsiblePanel>

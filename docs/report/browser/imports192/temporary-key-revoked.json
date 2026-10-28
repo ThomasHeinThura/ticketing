@@ -1,0 +1,5 @@
+{
+	"recordedAt": "2026-10-26T05:19:37.587Z",
+	"revoked": true,
+	"reason": "Temporary bulk-import QA key revoked after persisted approval/replay verification"
+}

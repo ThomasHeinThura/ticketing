@@ -7,6 +7,8 @@
 
 /** Writes addressed to one project, directly (`{id}`/`{projectId}`) or through a child row. */
 export const PROJECT_WRITE_ROUTE_KEYS = [
+  "PATCH /api/projects/{projectId}/settings/inheritance",
+  "PATCH /api/projects/{projectId}/state-set",
   "PUT /api/project/{id}",
   "PATCH /api/project/{id}/health",
   "DELETE /api/project/{id}",
@@ -24,6 +26,16 @@ export const PROJECT_WRITE_ROUTE_KEYS = [
   "POST /api/project/{id}/document-links",
   "DELETE /api/project/{id}/document-links/{documentLinkId}",
   "POST /api/projects/{projectId}/work-items",
+  "PATCH /api/projects/{projectId}/ownership",
+  "POST /api/projects/{projectId}/members",
+  "PATCH /api/projects/{projectId}/members/{personId}",
+  "DELETE /api/projects/{projectId}/members/{personId}",
+  "POST /api/projects/{projectId}/states",
+  "PATCH /api/projects/{projectId}/states/{stateId}",
+  "PATCH /api/projects/{projectId}/features",
+  "POST /api/projects/{key}/automations",
+  "POST /api/projects/{projectId}/budgets",
+  "POST /api/projects/{projectId}/costs",
   "POST /api/task/{projectId}",
   "POST /api/task/import/{projectId}",
   "POST /api/column/{projectId}",
@@ -34,8 +46,14 @@ export const PROJECT_WRITE_ROUTE_KEYS = [
   "DELETE /api/workflow-rule/{id}",
 ] as const;
 
+/** Dedicated project-recovery.test.ts covers hidden reach and missing update capability. */
+export const PROJECT_RECOVERY_ROUTE_KEYS = [
+  "PUT /api/project/{id}/restore",
+] as const;
+
 /** Reads of one project's own data. */
 export const PROJECT_READ_ROUTE_KEYS = [
+  "GET /api/projects/{projectId}/settings/inheritance",
   "GET /api/project/{id}",
   "GET /api/project/{id}/health",
   "GET /api/project/{id}/milestones",
@@ -44,7 +62,18 @@ export const PROJECT_READ_ROUTE_KEYS = [
   "GET /api/project/{id}/document-links",
   "GET /api/projects/{projectId}/assignable",
   "GET /api/projects/{projectId}/states",
+  "GET /api/projects/{projectId}/state-templates",
+  "GET /api/projects/{projectId}/members",
+  "GET /api/projects/{projectId}/members/candidates",
+  "GET /api/projects/{projectId}/ownership/preview",
+  "GET /api/projects/{projectId}/features",
+  "GET /api/projects/{key}/automations",
+  "GET /api/projects/{projectId}/budget",
+  "GET /api/projects/{projectId}/costs",
+  "GET /api/features/resolved",
   "GET /api/projects/{projectId}/work-items",
+  "GET /api/projects/{projectId}/work-items/combined",
+  "POST /api/projects/{projectId}/work-items/combined",
   "GET /api/task/tasks/{projectId}",
   "GET /api/task/export/{projectId}",
   "GET /api/column/{projectId}",
@@ -133,4 +162,59 @@ export const PROJECT_LABEL_ROUTE_KEYS = [
   "POST /api/label/project/{projectId}/catalogue",
   "PATCH /api/label/project/{projectId}/catalogue/{id}",
   "DELETE /api/label/project/{projectId}/catalogue/{id}",
+] as const;
+
+/**
+ * P5 agile planning (cycles, modules, estimates, WIP limits, dependency edges): project-scoped
+ * routes driven by the per-route reach and capability table in p5-agile-reach.test.ts, which
+ * asserts its table matches this list exactly.
+ */
+export const PROJECT_AGILE_ROUTE_KEYS = [
+  "GET /api/projects/{key}/cycles",
+  "POST /api/projects/{key}/cycles",
+  "GET /api/cycles/{id}",
+  "PATCH /api/cycles/{id}",
+  "DELETE /api/cycles/{id}",
+  "POST /api/cycles/{id}/complete",
+  "POST /api/cycles/{id}/work-items",
+  "DELETE /api/cycles/{id}/work-items/{workItemKey}",
+  "GET /api/cycles/{id}/burndown",
+  "GET /api/projects/{key}/modules",
+  "POST /api/projects/{key}/modules",
+  "GET /api/modules/{id}",
+  "PATCH /api/modules/{id}",
+  "DELETE /api/modules/{id}",
+  "POST /api/modules/{id}/work-items",
+  "DELETE /api/modules/{id}/work-items/{workItemKey}",
+  "GET /api/projects/{key}/estimates",
+  "PATCH /api/projects/{key}/estimates",
+  "GET /api/projects/{key}/agile-settings",
+  "PATCH /api/projects/{key}/agile-settings",
+  "GET /api/projects/{key}/wip-limits",
+  "PUT /api/projects/{key}/wip-limits/{stateId}",
+  "GET /api/projects/{key}/dependencies",
+] as const;
+
+/**
+ * P5 project pages: staff-only, project-scoped routes driven by the per-route table in
+ * p5-pages-reach.test.ts, which asserts its table matches this list exactly.
+ */
+export const PROJECT_PAGES_ROUTE_KEYS = [
+  "GET /api/projects/{projectId}/pages",
+  "POST /api/projects/{projectId}/pages",
+  "GET /api/projects/{projectId}/pages/{id}",
+  "PATCH /api/projects/{projectId}/pages/{id}",
+  "GET /api/projects/{projectId}/pages/{id}/versions",
+  "GET /api/projects/{projectId}/pages/{id}/versions/{number}",
+  "POST /api/projects/{projectId}/pages/{id}/restore",
+  "POST /api/projects/{projectId}/pages/{id}/undelete",
+  "DELETE /api/projects/{projectId}/pages/{id}",
+] as const;
+
+/** The item-scoped agile routes, covered by the same table (the work-item reach guard reads them). */
+export const PROJECT_AGILE_ITEM_ROUTE_KEYS = [
+  "GET /api/work-items/{key}/estimate",
+  "PUT /api/work-items/{key}/estimate",
+  "PUT /api/work-items/{key}/cycle",
+  "PUT /api/work-items/{key}/module",
 ] as const;

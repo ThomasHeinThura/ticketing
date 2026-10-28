@@ -1,0 +1,103 @@
+{
+	"run": "organisation-lifecycle-183",
+	"result": "passed",
+	"fixtureScope": "existing owned QA organisation and existing QALIFE project only",
+	"deleteRequestStatus": 202,
+	"restoreStatus": 200,
+	"screenshots": [
+		"deleted-375-light-20261025T190527.png",
+		"deleted-375-dark-20261025T190527.png",
+		"deleted-768-light-20261025T190527.png",
+		"deleted-768-dark-20261025T190527.png",
+		"deleted-1440-light-20261025T190527.png",
+		"deleted-1440-dark-20261025T190527.png",
+		"restored-375-light-20261025T190527.png",
+		"restored-375-dark-20261025T190527.png",
+		"restored-768-light-20261025T190527.png",
+		"restored-768-dark-20261025T190527.png",
+		"restored-1440-light-20261025T190527.png",
+		"restored-1440-dark-20261025T190527.png",
+		"plugins-rotation-dialog-375-light-20261025T190527.png",
+		"plugins-rotation-panel-375-light-20261025T190527.png",
+		"plugins-rotation-dialog-375-dark-20261025T190527.png",
+		"plugins-rotation-panel-375-dark-20261025T190527.png",
+		"plugins-rotation-dialog-768-light-20261025T190527.png",
+		"plugins-rotation-panel-768-light-20261025T190527.png",
+		"plugins-rotation-dialog-768-dark-20261025T190527.png",
+		"plugins-rotation-panel-768-dark-20261025T190527.png",
+		"plugins-rotation-dialog-1440-light-20261025T190527.png",
+		"plugins-rotation-panel-1440-light-20261025T190527.png",
+		"plugins-rotation-dialog-1440-dark-20261025T190527.png",
+		"plugins-rotation-panel-1440-dark-20261025T190527.png"
+	],
+	"outsideDirectoryBaseline": {
+		"count": 1,
+		"digest": "5b364d452dded55fb75d1da21d5fd9a1208b478ee9a65729869ba1fd77fc3dca"
+	},
+	"pendingDialogLabels": ["Delete", "Cancel request"],
+	"pendingAction": {
+		"sameSessionRequester": true,
+		"sessionCredential": true,
+		"targetAndConfirmation": "organisation / typed_name_step_up"
+	},
+	"approvalStatus": 200,
+	"deletedState": {
+		"directoryEntryVisible": true,
+		"active": false,
+		"portalAccess": false,
+		"projectArchived": true,
+		"priorProjectWasArchived": false,
+		"outsideDirectoryUnchanged": true
+	},
+	"restorePageLabels": [
+		"Back to Workspace",
+		"Account",
+		"Workspace",
+		"Projects",
+		"God Mode",
+		"New organisation",
+		"Acme Corpacme3",
+		"Codex QA Organisation Lifecycle 20261025T181626 Updated 20261025T183822qo5ftegDeleted",
+		"Password",
+		"Restore organisation"
+	],
+	"restoredState": {
+		"active": true,
+		"portalAccess": true,
+		"projectArchiveMatchesPriorState": true,
+		"outsideDirectoryUnchanged": true
+	},
+	"pluginsRotationPanel": {
+		"widths": [375, 768, 1440],
+		"themes": ["light", "dark"],
+		"dialogLabels": ["password", "Cancel", "Start rotation"],
+		"liveHealth": {
+			"state": "ok",
+			"secretsTotal": 0,
+			"secretsPendingRekey": 0,
+			"rekeyComplete": true,
+			"safeToRemovePreviousKey": false,
+			"keyConfigured": true
+		},
+		"healthUnchangedAfterOpenClose": true,
+		"noRotationStarted": true,
+		"screenshots": [
+			"plugins-rotation-dialog-375-light-20261025T190527.png",
+			"plugins-rotation-panel-375-light-20261025T190527.png",
+			"plugins-rotation-dialog-375-dark-20261025T190527.png",
+			"plugins-rotation-panel-375-dark-20261025T190527.png",
+			"plugins-rotation-dialog-768-light-20261025T190527.png",
+			"plugins-rotation-panel-768-light-20261025T190527.png",
+			"plugins-rotation-dialog-768-dark-20261025T190527.png",
+			"plugins-rotation-panel-768-dark-20261025T190527.png",
+			"plugins-rotation-dialog-1440-light-20261025T190527.png",
+			"plugins-rotation-panel-1440-light-20261025T190527.png",
+			"plugins-rotation-dialog-1440-dark-20261025T190527.png",
+			"plugins-rotation-panel-1440-dark-20261025T190527.png"
+		]
+	},
+	"outsideDirectoryAfterRestore": {
+		"count": 1,
+		"digest": "5b364d452dded55fb75d1da21d5fd9a1208b478ee9a65729869ba1fd77fc3dca"
+	}
+}

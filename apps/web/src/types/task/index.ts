@@ -33,7 +33,11 @@ type Task = {
   assigneeImage?: string | null;
   projectId: string;
   columnId?: string | null;
+  /** P5: the module the work item belongs to, when it has one (timeline grouping). */
+  moduleId?: string | null;
   labels?: TaskLabel[];
+  /** Canonical rich-text checklist projection; null means unavailable. */
+  taskItemStats?: { total: number; completed: number } | null;
   externalLinks?: TaskExternalLink[];
 };
 

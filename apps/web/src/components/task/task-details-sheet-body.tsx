@@ -55,7 +55,14 @@ export default function TaskDetailsSheetBody({
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <TaskDeleteButton taskId={taskId} onDeleted={onClose} />
+          <TaskDeleteButton
+            workItemKey={
+              project?.slug && task?.number
+                ? `${project.slug}-${task.number}`
+                : undefined
+            }
+            onRequested={onClose}
+          />
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

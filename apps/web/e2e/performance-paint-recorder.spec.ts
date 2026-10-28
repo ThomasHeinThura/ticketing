@@ -15,12 +15,37 @@ const BOARD_OPTIONS: LastItemPaintRecorderOptions = {
   metric: "boardPaint",
 };
 
-function listMarkup(count = 500, targetStyle = "") {
-  const rows = Array.from(
-    { length: count },
-    (_, index) => `<tr><td>Work item ${index + 1}</td></tr>`,
-  ).join("");
-  return `<table data-testid="work-item-list-populated"><tbody style="${targetStyle}">${rows}</tbody></table>`;
+/**
+ * The virtualized work table (G11 work-list render, Thomas 28 Oct 2026): `loaded` rows stated
+ * by `aria-rowcount`, of which `mounted` (from row 1) are in the DOM, then bottom padding.
+ */
+function listMarkup({
+  loaded = 500,
+  mounted = 40,
+  skip,
+  virtualized = true,
+}: {
+  loaded?: number;
+  mounted?: number;
+  skip?: number;
+  virtualized?: boolean;
+} = {}) {
+  if (!virtualized) {
+    const rows = Array.from(
+      { length: loaded },
+      (_, index) => `<tr><td>Work item ${index + 1}</td></tr>`,
+    ).join("");
+    return `<table data-testid="work-item-list-populated"><tbody>${rows}</tbody></table>`;
+  }
+  const rows = Array.from({ length: mounted }, (_, offset) => offset + 1)
+    .filter((index) => index !== skip)
+    .map(
+      (index) =>
+        `<tr data-virtual-row-id="item-${index}" aria-rowindex="${index + 1}"><td>Work item ${index}</td></tr>`,
+    )
+    .join("");
+  const padding = Math.max(0, loaded - mounted) * 28;
+  return `<table data-testid="work-item-list-populated" data-virtualized-table="true" aria-rowcount="${loaded + 1}"><thead><tr aria-rowindex="1"><th>Title</th></tr></thead><tbody>${rows}<tr aria-hidden="true"><td style="height:${padding}px;padding:0"></td></tr></tbody></table>`;
 }
 
 function boardMarkup(
@@ -121,7 +146,7 @@ async function waitForMark(page: Page, metric: string) {
 }
 
 test.describe("G11 last-item paint recorder in Chromium", () => {
-  test("keeps 500 real rows, scrolls the terminal row once, and marks after two frames", async ({
+  test("marks the virtualized table's first filled viewport after two frames, without scrolling", async ({
     page,
   }) => {
     await mountFixture(page, listMarkup());
@@ -137,50 +162,46 @@ test.describe("G11 last-item paint recorder in Chromium", () => {
     await install(page, LIST_OPTIONS);
     await waitForMark(page, "listPaint");
 
-    const evidence = await page.evaluate(() => {
-      const body = document.querySelector<HTMLTableSectionElement>(
-        '[data-testid="work-item-list-populated"] tbody',
-      );
-      const target = body?.rows.item(499);
-      const rect = target?.getBoundingClientRect();
-      return {
-        rowCount: body?.rows.length,
-        targetText: target?.textContent,
-        connected: Boolean(target?.isConnected),
-        rect: rect
-          ? {
-              x: rect.x,
-              y: rect.y,
-              width: rect.width,
-              height: rect.height,
-              top: rect.top,
-              right: rect.right,
-              bottom: rect.bottom,
-              left: rect.left,
-            }
-          : null,
-        visible: Boolean(
-          rect &&
-            rect.width > 0 &&
-            rect.height > 0 &&
-            rect.top >= 0 &&
-            rect.bottom <= window.innerHeight,
-        ),
-        scrollCalls: (window as Window & { __scrollCalls?: number })
-          .__scrollCalls,
-        frameCount: (
-          window as Window & {
-            __g11PaintDebug?: { lastPaintFrameCount: number };
-          }
-        ).__g11PaintDebug?.lastPaintFrameCount,
-      };
-    });
-    console.info("G11 actual terminal row evidence", JSON.stringify(evidence));
-    expect(evidence.rowCount).toBe(500);
-    expect(evidence.targetText).toContain("Work item 500");
-    expect(evidence.visible).toBe(true);
-    expect(evidence.scrollCalls).toBe(1);
+    const evidence = await page.evaluate(() => ({
+      mountedRows: document.querySelectorAll("tbody tr[data-virtual-row-id]")
+        .length,
+      scrollY: window.scrollY,
+      scrollCalls: (window as Window & { __scrollCalls?: number })
+        .__scrollCalls,
+      frameCount: (
+        window as Window & {
+          __g11PaintDebug?: { lastPaintFrameCount: number };
+        }
+      ).__g11PaintDebug?.lastPaintFrameCount,
+    }));
+    expect(evidence.mountedRows).toBe(40);
+    expect(evidence.scrollY).toBe(0);
+    expect(evidence.scrollCalls).toBe(0);
     expect(evidence.frameCount).toBe(2);
+  });
+
+  test("does not mark the interim full table, even with 500 rows", async ({
+    page,
+  }) => {
+    await mountFixture(page, listMarkup({ virtualized: false }));
+    await install(page, LIST_OPTIONS);
+    await expectNoMark(page, "listPaint");
+  });
+
+  test("does not mark a viewport the window has not filled", async ({
+    page,
+  }) => {
+    await mountFixture(page, listMarkup({ mounted: 10 }));
+    await install(page, LIST_OPTIONS);
+    await expectNoMark(page, "listPaint");
+  });
+
+  test("does not mark a window with a missing row in the viewport", async ({
+    page,
+  }) => {
+    await mountFixture(page, listMarkup({ skip: 5 }));
+    await install(page, LIST_OPTIONS);
+    await expectNoMark(page, "listPaint");
   });
 
   test("requires all 200 unique board IDs including the actual terminal card", async ({
@@ -281,10 +302,10 @@ test.describe("G11 last-item paint recorder in Chromium", () => {
     expect(evidence.revalidatedAttempts).toBeGreaterThan(0);
   });
 
-  test("does not mark until an incomplete list reaches 500 actual rows", async ({
+  test("does not mark until the table has loaded all 500 rows", async ({
     page,
   }) => {
-    await mountFixture(page, listMarkup(499));
+    await mountFixture(page, listMarkup({ loaded: 499 }));
     await install(page, LIST_OPTIONS);
     await expectNoMark(page, "listPaint");
   });
@@ -309,12 +330,6 @@ test.describe("G11 last-item paint recorder in Chromium", () => {
     page,
   }) => {
     await mountFixture(page, listMarkup());
-    await page.evaluate(() => {
-      const style = document.createElement("style");
-      style.textContent =
-        "tbody tr { transform: translateY(-2000px) } tbody tr:last-child { transform: none }";
-      document.head.append(style);
-    });
     await mutateOnFirstAnimationFrame(page, "replace-list-body");
     await install(page, LIST_OPTIONS);
     await waitForMark(page, "listPaint");

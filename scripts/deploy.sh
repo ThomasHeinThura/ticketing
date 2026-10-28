@@ -3,6 +3,7 @@
 # TaskDesk deployment script.
 #
 #   scripts/deploy.sh local                  bring the stack up for development
+#   scripts/deploy.sh sit                    bring the stack up for SIT rehearsal
 #   scripts/deploy.sh production             bring the stack up behind Traefik
 #   scripts/deploy.sh upgrade                verify signature -> pull -> up -d --wait
 #   scripts/deploy.sh rollback <digest> <tag> go back to a known-good release
@@ -67,7 +68,7 @@ usage() { sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-1}"; }
 [ $# -ge 1 ] || usage
 MODE="$1"; shift
 case "$MODE" in
-  local|production|upgrade) ;;
+  local|production|upgrade|sit) ;;
   rollback)
     [ $# -ge 2 ] || die "rollback needs a digest and its signed release tag: scripts/deploy.sh rollback sha256:… v2.0.0"
     ROLLBACK_DIGEST="$1"; shift
@@ -101,6 +102,8 @@ COMPOSE_FILES=(-f compose.yml)
 case "$MODE" in
   local)
     COMPOSE_FILES+=(-f deploy/compose.local.yml -f deploy/compose.traefik.yml) ;;
+  sit)
+    COMPOSE_FILES+=(-f deploy/compose.sit.yml) ;;
   production|upgrade|rollback)
     COMPOSE_FILES+=(-f deploy/compose.prod.yml) ;;
 esac
@@ -421,10 +424,10 @@ print_setup_token() {
 }
 
 seed_if_permitted() {
-  [ "$MODE" = "local" ] || return 0
-  say "seeding local SIT accounts, catalogue and submissions inside the application container"
+  [ "$MODE" = "local" ] || [ "$MODE" = "sit" ] || return 0
+  say "seeding SIT accounts, catalogue and submissions inside the application container"
   dc exec -T taskdesk node apps/api/dist/seed-sit-users.js --sit \
-    || die "SIT seeding failed. The stack is up; fix the error above and rerun scripts/deploy.sh local."
+    || die "SIT seeding failed. The stack is up; fix the error above and rerun scripts/deploy.sh."
 }
 
 print_urls() {
@@ -469,6 +472,21 @@ case "$MODE" in
     dc up -d --wait
     probe_api
     print_setup_token
+    seed_if_permitted
+    print_urls
+    ;;
+
+  sit)
+    wait_for_deps
+    say "running migrations under the advisory lock"
+    dc run --rm migrate
+    say "creating the application containers (not started) to check their port configuration"
+    dc up --no-start
+    assert_port_unpublished
+    say "starting the application"
+    dc up -d --wait taskdesk
+    assert_port_unpublished
+    probe_api
     seed_if_permitted
     print_urls
     ;;

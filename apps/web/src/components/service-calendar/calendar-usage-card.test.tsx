@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarUsageCard, usageIsInUse } from "./calendar-usage-card";
 
 const mocks = vi.hoisted(() => ({
-  navigate: vi.fn(),
+  openPending: vi.fn(),
   mutateAsync: vi.fn(),
   toastError: vi.fn(),
   toastInfo: vi.fn(),
@@ -18,8 +18,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => mocks.navigate,
+vi.mock("@/hooks/use-open-pending-action", () => ({
+  useOpenPendingAction: () => mocks.openPending,
 }));
 vi.mock(
   "@/hooks/mutations/service-calendar/use-request-service-calendar-deletion",
@@ -61,7 +61,7 @@ describe("usageIsInUse", () => {
 describe("CalendarUsageCard", () => {
   afterEach(cleanup);
   beforeEach(() => {
-    mocks.navigate.mockReset();
+    mocks.openPending.mockReset();
     mocks.mutateAsync.mockReset();
     mocks.toastError.mockReset();
     mocks.toastInfo.mockReset();
@@ -116,7 +116,7 @@ describe("CalendarUsageCard", () => {
     ).toBeNull();
   });
 
-  it("requests deletion and opens the pending-action approval page", async () => {
+  it("requests deletion and opens the approval dialog in place, with no second confirmation", async () => {
     mocks.mutateAsync.mockResolvedValue({ pendingActionId: "pa 1" });
     render(
       <CalendarUsageCard
@@ -128,15 +128,14 @@ describe("CalendarUsageCard", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "usage.requestDeletion" }),
     );
-    fireEvent.click(
-      await screen.findByRole("button", { name: "usage.confirmRequest" }),
-    );
     await waitFor(() =>
-      expect(mocks.navigate).toHaveBeenCalledWith({
-        to: "/agent/settings/profile/pending-actions/$id",
-        params: { id: "pa 1" },
+      expect(mocks.openPending).toHaveBeenCalledWith({
+        pendingActionId: "pa 1",
       }),
     );
+    expect(
+      screen.queryByRole("button", { name: "usage.confirmRequest" }),
+    ).toBeNull();
     expect(mocks.mutateAsync).toHaveBeenCalledWith("cal-1");
   });
 
@@ -152,12 +151,9 @@ describe("CalendarUsageCard", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "usage.requestDeletion" }),
     );
-    fireEvent.click(
-      await screen.findByRole("button", { name: "usage.confirmRequest" }),
-    );
     await waitFor(() =>
       expect(mocks.toastError).toHaveBeenCalledWith("Calendar is in use"),
     );
-    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(mocks.openPending).not.toHaveBeenCalled();
   });
 });

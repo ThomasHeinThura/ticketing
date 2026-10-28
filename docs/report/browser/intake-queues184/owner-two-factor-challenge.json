@@ -1,0 +1,18 @@
+{
+	"method": "One ordinary strict-HTTPS owner sign-in attempt; no TLS bypass and no backup code",
+	"signInRequest": {
+		"path": "/api/auth/sign-in/email",
+		"method": "POST",
+		"status": 200,
+		"responseBodyKeys": [],
+		"errorCode": null,
+		"setCookiePresent": true,
+		"retryAfter": null
+	},
+	"visibleFlow": {
+		"path": "/auth/two-factor",
+		"visibleError": null
+	},
+	"outcome": "The ordinary password flow reached the expected TOTP screen, but the browser context closed before the code was entered. No authenticated owner state was saved.",
+	"followUp": "Requires a separately authorized ordinary sign-in attempt through the complete TOTP screen; no bypass or account changes were used."
+}

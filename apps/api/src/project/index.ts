@@ -6,6 +6,7 @@ import {
   organisationTable,
   projectTable,
   serviceCalendarTable,
+  workspaceTable,
 } from "../database/schema";
 import {
   apiRouter,
@@ -16,6 +17,10 @@ import {
   z,
 } from "../openapi";
 import {
+  registeredDeletionRequestSchema,
+  requestRegisteredDeletion,
+} from "../pending-action/deletion-targets";
+import {
   evaluateProjectRead,
   resolveCallerIdentity,
 } from "../utils/has-project-reach";
@@ -23,9 +28,13 @@ import {
   listReachOf,
   requireReachFilteredList,
 } from "../utils/reach-filtered-list";
+import { apiKeyScopeSatisfies } from "../utils/require-api-key-permission-scope";
+import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { resolveAssigneeEligibility } from "../work-item/assignee-eligibility";
+import { compositionWarnings } from "./composition";
 import addDocumentLinkCtrl from "./controllers/add-document-link";
 import addStakeholderCtrl from "./controllers/add-stakeholder";
 import archiveProjectCtrl from "./controllers/archive-project";
@@ -35,10 +44,6 @@ import createProjectCtrl, {
   InvalidProjectOrganisationError,
   ProjectSlugTakenError,
 } from "./controllers/create-project";
-import deleteDocumentLinkCtrl from "./controllers/delete-document-link";
-import deleteMilestoneCtrl from "./controllers/delete-milestone";
-import deletePrerequisiteCtrl from "./controllers/delete-prerequisite";
-import deleteProjectCtrl from "./controllers/delete-project";
 import getProjectCtrl from "./controllers/get-project";
 import getProjectsCtrl from "./controllers/get-projects";
 import listDocumentLinksCtrl from "./controllers/list-document-links";
@@ -46,21 +51,60 @@ import listMilestonesCtrl from "./controllers/list-milestones";
 import listPrerequisitesCtrl from "./controllers/list-prerequisites";
 import listProjectStatesCtrl from "./controllers/list-project-states";
 import listStakeholdersCtrl from "./controllers/list-stakeholders";
+import {
+  createProjectState,
+  listProjectStateTemplates,
+  updateProjectState,
+} from "./controllers/manage-project-states";
 import reorderProjectsCtrl from "./controllers/reorder-projects";
+import restoreProjectCtrl from "./controllers/restore-project";
 import standDownStakeholderCtrl from "./controllers/stand-down-stakeholder";
 import unarchiveProjectCtrl from "./controllers/unarchive-project";
 import updateMilestoneCtrl from "./controllers/update-milestone";
 import updatePrerequisiteCtrl from "./controllers/update-prerequisite";
 import updateProjectCtrl from "./controllers/update-project";
+import updateProjectOwnershipCtrl from "./controllers/update-project-ownership";
 import updateStakeholderCtrl from "./controllers/update-stakeholder";
+import { resolveProjectServiceCalendarId } from "./effective-settings";
+import { countProjectRosterRows } from "./hierarchy.repository";
+import {
+  assertCanManageProspectiveParent,
+  resolveRosterActor,
+} from "./members/actor";
+import {
+  addProjectMemberBody,
+  projectMemberCandidateSchema,
+  projectMemberParam,
+  projectMemberSchema,
+  projectMembersResponseSchema,
+  reparentPreviewQuery,
+  reparentPreviewSchema,
+  updateProjectMemberBody,
+} from "./members/schema";
+import {
+  addProjectMember,
+  listProjectMemberCandidates,
+  listProjectMembers,
+  previewReparent,
+  removeProjectMember,
+  updateProjectMemberRole,
+} from "./members/service";
+import {
+  DOCUMENT_LINK_DELETION_ROUTE,
+  MILESTONE_DELETION_ROUTE,
+  PREREQUISITE_DELETION_ROUTE,
+  PROJECT_DELETION_ROUTE,
+} from "./project-deletion-target";
 import {
   customerOrganisationListSchema,
   documentLinkSchema,
   milestoneSchema,
   prerequisiteSchema,
+  projectDetailSchema,
   projectListSchema,
   projectSchema,
   projectStateSchema,
+  projectStateTemplateSchema,
   stakeholderSchema,
 } from "./response";
 import {
@@ -68,18 +112,22 @@ import {
   createMilestoneBody,
   createPrerequisiteBody,
   createProjectBody,
+  createProjectStateBody,
   createStakeholderBody,
   documentLinkParam,
   listProjectsQuery,
   milestoneParam,
   prerequisiteParam,
   projectParam,
+  projectStateParam,
   reorderProjectsBody,
   stakeholderParam,
   updateMilestoneBody,
   updatePrerequisiteBody,
   updateProjectBody,
   updateProjectHealthBody,
+  updateProjectOwnershipBody,
+  updateProjectStateBody,
   updateStakeholderBody,
   workspaceIdQuery,
 } from "./schema";
@@ -118,6 +166,58 @@ function assertManagedServiceConfiguration(value: {
       message:
         "PR-9: managed services require a support level and service calendar",
     });
+  }
+}
+
+/**
+ * PR-6 / AS-11 / PR-10 write validation for the general update. A person is validated only
+ * when the request NEWLY sets them (so a manager who was later deactivated does not block an
+ * unrelated save): they must be an active person on the project roster (`AS-5`'s rule, the
+ * one `resolveAssigneeEligibility`). Dates are checked against the values the row will hold
+ * after this write; the database CHECK `project_dates_ordered` is only the backstop.
+ */
+async function assertProjectPeopleAndDates(
+  projectId: string,
+  current: {
+    managerId: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    defaultAssigneeId: string | null;
+  },
+  body: {
+    managerId?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    defaultAssigneeId?: string | null;
+  },
+) {
+  const people: Array<[string | null | undefined, string | null, string]> = [
+    [
+      body.managerId,
+      current.managerId,
+      "manager_must_be_active_project_member",
+    ],
+    [
+      body.defaultAssigneeId,
+      current.defaultAssigneeId,
+      "default_assignee_must_be_active_project_member",
+    ],
+  ];
+  for (const [requested, stored, message] of people) {
+    if (requested == null || requested === stored) continue;
+    const eligibility = await resolveAssigneeEligibility(
+      db,
+      projectId,
+      requested,
+    );
+    if (!eligibility.eligible) throw new HTTPException(422, { message });
+  }
+
+  const start =
+    body.startDate === undefined ? current.startDate : body.startDate;
+  const end = body.endDate === undefined ? current.endDate : body.endDate;
+  if (start !== null && end !== null && end < start) {
+    throw new HTTPException(422, { message: "end_date_before_start_date" });
   }
 }
 
@@ -206,13 +306,14 @@ const getProjectRoute = createRoute({
   path: "/{id}",
   tags: ["Projects"],
   summary: "Get project",
-  description: "Get a single project by ID.",
+  description:
+    "Get a single project by ID, with the warning-only composition rules it currently violates (PR-6, PR-7, PR-10).",
   middleware: [
     workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: { params: projectParam },
   responses: {
-    200: jsonResponse("Project details", projectSchema),
+    200: jsonResponse("Project details", projectDetailSchema),
     400: errorResponse("Malformed project ID (including a NUL byte)"),
     404: errorResponse("Project not found or out of reach"),
   },
@@ -283,8 +384,10 @@ const updateProjectRoute = createRoute({
   summary: "Update project",
   description:
     "Replace a project's name, icon, slug, description, and visibility. " +
-    "defaultCommentVisibility (CA-2) and the engagement fields kind, supportLevel and " +
-    "serviceCalendarId (#766) are optional and each needs project:manage_settings.",
+    "defaultCommentVisibility (CA-2), the engagement fields kind, supportLevel and " +
+    "serviceCalendarId (#766), and managerId, startDate, endDate and defaultAssigneeId " +
+    "(PR-6, PR-10, AS-11) are optional and each needs project:manage_settings. " +
+    "parentId is never accepted here: re-parenting is PATCH /api/projects/{id}/ownership.",
   middleware: [
     workspaceAccess.fromProject("id", {
       requireProjectReach: true,
@@ -309,7 +412,7 @@ const updateProjectRoute = createRoute({
       "Project doesn't exist or doesn't belong to the specified workspace",
     ),
     422: errorResponse(
-      "PR-9 or same-workspace service calendar validation failed",
+      "PR-9, same-workspace service calendar, manager or default assignee not an active roster member, or end date before start date",
     ),
     409: errorResponse("That project slug is already taken"),
   },
@@ -374,8 +477,11 @@ const deleteProjectRoute = createRoute({
     "Soft-delete a project: it disappears from ordinary use immediately and, along " +
     "with its work items, comments, attachments and time entries, is eligible for " +
     "purge 30 days later, once the purge job (#198) exists. Archive it instead if " +
-    "you just want it out of the way without starting that clock.",
+    "you just want it out of the way without starting that clock. Requests a durable " +
+    "pending deletion (202); nothing changes until the requester approves it in a current " +
+    "browser session by typing the exact project name and completing step-up.",
   middleware: [
+    requireSessionOnly(),
     workspaceAccess.fromProject("id", {
       requireProjectReach: true,
       deferApiKeyCapability: true,
@@ -384,10 +490,17 @@ const deleteProjectRoute = createRoute({
   ] as const,
   request: { params: projectParam },
   responses: {
-    200: jsonResponse("The deleted project", projectSchema),
+    202: jsonResponse(
+      "Pending deletion; project unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse("Malformed project ID (including a NUL byte)"),
-    403: errorResponse("Missing project:delete permission"),
+    401: errorResponse("No browser session"),
+    403: errorResponse(
+      "An API key or impersonation session (session_required), or missing project:delete permission",
+    ),
     404: errorResponse("Project not found"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -438,6 +551,35 @@ const unarchiveProjectRoute = createRoute({
     403: errorResponse("Missing project:update permission"),
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
+    ),
+  },
+});
+
+const restoreProjectRoute = createRoute({
+  method: "put",
+  operationId: "restoreProject",
+  path: "/{id}/restore",
+  tags: ["Projects"],
+  summary: "Restore a soft-deleted project",
+  description:
+    "Return a soft-deleted project to ordinary use during its 30-day recovery window. " +
+    "A soft-deleted or archived parent must be restored first. The project's prior " +
+    "archive state is preserved.",
+  middleware: [
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
+  ] as const,
+  request: { params: projectParam },
+  responses: {
+    200: jsonResponse("The restored project", projectSchema),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    403: errorResponse("Missing project:update permission"),
+    404: errorResponse("Project not found or out of reach"),
+    409: errorResponse(
+      "The 30-day restore window passed or the parent project must be restored first",
     ),
   },
 });
@@ -542,12 +684,16 @@ const deleteMilestoneRoute = createRoute({
   ] as const,
   request: { params: milestoneParam },
   responses: {
-    200: jsonResponse("The deleted milestone", milestoneSchema),
+    202: jsonResponse(
+      "Pending deletion; milestone unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project or milestone not found"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -646,12 +792,16 @@ const deletePrerequisiteRoute = createRoute({
   ] as const,
   request: { params: prerequisiteParam },
   responses: {
-    200: jsonResponse("The deleted prerequisite", prerequisiteSchema),
+    202: jsonResponse(
+      "Pending deletion; prerequisite unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project or prerequisite not found"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -820,12 +970,16 @@ const deleteDocumentLinkRoute = createRoute({
   ] as const,
   request: { params: documentLinkParam },
   responses: {
-    200: jsonResponse("The deleted document link", documentLinkSchema),
+    202: jsonResponse(
+      "Pending deletion; document link unchanged",
+      registeredDeletionRequestSchema,
+    ),
     400: errorResponse(
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project or document link not found"),
+    409: errorResponse("An equivalent deletion is already pending"),
   },
 });
 
@@ -854,11 +1008,44 @@ const project = apiRouter<
   })
   .openapi(listProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
-    const { includeArchived } = c.req.valid("query");
+    const { includeArchived, includeDeleted } = c.req.valid("query");
+    const reach = listReachOf(c);
+    const reachableProjectIds = await reach.reachableProjectIds([workspaceId], {
+      includeDeleted: includeDeleted === "true",
+    });
+    const reachable = new Set(reachableProjectIds);
+    const readableProjectIds = apiKeyScopeSatisfies(c.get("apiKey"), {
+      work_item: ["read"],
+    })
+      ? (
+          await Promise.all(
+            (
+              await reach.projectFactsFor([workspaceId])
+            )
+              .filter(
+                (project) =>
+                  reachable.has(project.id) &&
+                  !project.deleted &&
+                  !project.archived,
+              )
+              .map(async (project) =>
+                (await reach.can("work_item:read", {
+                  projectId: project.id,
+                  workspaceId,
+                  organisationId: project.organisationId,
+                }))
+                  ? project.id
+                  : null,
+              ),
+          )
+        ).filter((id): id is string => id !== null)
+      : [];
     const projects = await getProjectsCtrl(
       workspaceId,
       includeArchived === "true",
-      await listReachOf(c).reachableProjectIds([workspaceId]),
+      reachableProjectIds,
+      includeDeleted === "true",
+      readableProjectIds,
     );
     return c.json(projects, 200);
   })
@@ -873,11 +1060,6 @@ const project = apiRouter<
       organisationId,
     } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
-    assertManagedServiceConfiguration({
-      kind,
-      supportLevel,
-      serviceCalendarId,
-    });
     await assertProjectCalendar(workspaceId, serviceCalendarId);
     try {
       const newProject = await createProjectCtrl(
@@ -888,10 +1070,11 @@ const project = apiRouter<
         {
           kind,
           supportLevel: supportLevel ?? null,
-          serviceCalendarId: serviceCalendarId ?? null,
+          serviceCalendarId,
           organisationId: organisationId ?? null,
         },
         c.get("userId"),
+        c.get("apiKey")?.id,
       );
       return c.json(newProject, 200);
     } catch (error) {
@@ -910,7 +1093,17 @@ const project = apiRouter<
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const projectData = await getProjectCtrl(id, workspaceId);
-    return c.json(projectData, 200);
+    return c.json(
+      {
+        ...projectData,
+        compositionWarnings: compositionWarnings({
+          managerId: projectData.managerId,
+          startDate: projectData.startDate,
+          memberCount: await countProjectRosterRows(db, id),
+        }),
+      },
+      200,
+    );
   })
   .openapi(getProjectHealthRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -960,7 +1153,11 @@ const project = apiRouter<
       body.defaultCommentVisibility !== undefined ||
       body.kind !== undefined ||
       body.supportLevel !== undefined ||
-      body.serviceCalendarId !== undefined
+      body.serviceCalendarId !== undefined ||
+      body.managerId !== undefined ||
+      body.startDate !== undefined ||
+      body.endDate !== undefined ||
+      body.defaultAssigneeId !== undefined
     ) {
       const userId = c.get("userId");
       if (!workspaceId || !userId) {
@@ -990,6 +1187,11 @@ const project = apiRouter<
         kind: projectTable.kind,
         supportLevel: projectTable.supportLevel,
         serviceCalendarId: projectTable.serviceCalendarId,
+        serviceCalendarMode: projectTable.serviceCalendarMode,
+        managerId: projectTable.managerId,
+        startDate: projectTable.startDate,
+        endDate: projectTable.endDate,
+        defaultAssigneeId: projectTable.defaultAssigneeId,
       })
       .from(projectTable)
       .where(
@@ -1002,6 +1204,16 @@ const project = apiRouter<
       .limit(1);
     if (!current)
       throw new HTTPException(404, { message: "Project not found" });
+    await assertProjectPeopleAndDates(id, current, body);
+    const [workspaceDefaults] = await db
+      .select({
+        defaultServiceCalendarId: workspaceTable.defaultServiceCalendarId,
+      })
+      .from(workspaceTable)
+      .where(eq(workspaceTable.id, workspaceId))
+      .limit(1);
+    if (!workspaceDefaults)
+      throw new HTTPException(404, { message: "Workspace not found" });
     const configuration = {
       kind: body.kind ?? (current.kind as "project" | "managed_service"),
       supportLevel:
@@ -1012,9 +1224,21 @@ const project = apiRouter<
         body.serviceCalendarId === undefined
           ? current.serviceCalendarId
           : body.serviceCalendarId,
+      serviceCalendarMode:
+        body.serviceCalendarId === undefined
+          ? current.serviceCalendarMode
+          : ("override" as const),
       defaultCommentVisibility: body.defaultCommentVisibility,
     };
-    assertManagedServiceConfiguration(configuration);
+    const effectiveServiceCalendarId = resolveProjectServiceCalendarId({
+      mode: configuration.serviceCalendarMode as "inherit" | "override",
+      overrideId: configuration.serviceCalendarId,
+      workspaceDefaultId: workspaceDefaults.defaultServiceCalendarId,
+    });
+    assertManagedServiceConfiguration({
+      ...configuration,
+      serviceCalendarId: effectiveServiceCalendarId,
+    });
     await assertProjectCalendar(workspaceId, configuration.serviceCalendarId);
     try {
       const updatedProject = await updateProjectCtrl(
@@ -1032,7 +1256,13 @@ const project = apiRouter<
           kind: body.kind,
           supportLevel: body.supportLevel,
           serviceCalendarId: body.serviceCalendarId,
+          serviceCalendarMode:
+            body.serviceCalendarId === undefined ? undefined : "override",
           defaultCommentVisibility: body.defaultCommentVisibility,
+          managerId: body.managerId,
+          startDate: body.startDate,
+          endDate: body.endDate,
+          defaultAssigneeId: body.defaultAssigneeId,
         },
       );
       return c.json(updatedProject, 200);
@@ -1047,14 +1277,22 @@ const project = apiRouter<
   })
   .openapi(deleteProjectRoute, async (c) => {
     const { id } = c.req.valid("param");
-    const workspaceId = c.get("workspaceId");
-    const deletedProject = await deleteProjectCtrl(id, workspaceId);
-    return c.json(deletedProject, 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: PROJECT_DELETION_ROUTE,
+      targetType: "project",
+      id,
+      workspaceId: c.get("workspaceId"),
+      projectId: id,
+    });
+    return c.json(pending, 202);
   })
   .openapi(archiveProjectRoute, async (c) => {
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
-    const archivedProject = await archiveProjectCtrl(id, workspaceId);
+    const archivedProject = await archiveProjectCtrl(id, workspaceId, {
+      userId: c.get("userId"),
+      apiKeyId: c.get("apiKey")?.id,
+    });
     return c.json(archivedProject, 200);
   })
   .openapi(unarchiveProjectRoute, async (c) => {
@@ -1062,6 +1300,17 @@ const project = apiRouter<
     const workspaceId = c.get("workspaceId");
     const unarchivedProject = await unarchiveProjectCtrl(id, workspaceId);
     return c.json(unarchivedProject, 200);
+  })
+  .openapi(restoreProjectRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const restoredProject = await restoreProjectCtrl(
+      id,
+      workspaceId,
+      c.get("userId"),
+      c.get("apiKey") ? "api_key" : "person",
+    );
+    return c.json(restoredProject, 200);
   })
   .openapi(listMilestonesRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -1090,9 +1339,14 @@ const project = apiRouter<
   })
   .openapi(deleteMilestoneRoute, async (c) => {
     const { id, milestoneId } = c.req.valid("param");
-    const workspaceId = c.get("workspaceId");
-    const deleted = await deleteMilestoneCtrl(id, milestoneId, workspaceId);
-    return c.json(deleted, 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: MILESTONE_DELETION_ROUTE,
+      targetType: "milestone",
+      id: milestoneId,
+      workspaceId: c.get("workspaceId"),
+      projectId: id,
+    });
+    return c.json(pending, 202);
   })
   .openapi(listPrerequisitesRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -1121,13 +1375,14 @@ const project = apiRouter<
   })
   .openapi(deletePrerequisiteRoute, async (c) => {
     const { id, prerequisiteId } = c.req.valid("param");
-    const workspaceId = c.get("workspaceId");
-    const deleted = await deletePrerequisiteCtrl(
-      id,
-      prerequisiteId,
-      workspaceId,
-    );
-    return c.json(deleted, 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: PREREQUISITE_DELETION_ROUTE,
+      targetType: "prerequisite",
+      id: prerequisiteId,
+      workspaceId: c.get("workspaceId"),
+      projectId: id,
+    });
+    return c.json(pending, 202);
   })
   .openapi(listStakeholdersRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -1179,21 +1434,407 @@ const project = apiRouter<
   })
   .openapi(deleteDocumentLinkRoute, async (c) => {
     const { id, documentLinkId } = c.req.valid("param");
-    const workspaceId = c.get("workspaceId");
-    const deleted = await deleteDocumentLinkCtrl(
-      id,
-      documentLinkId,
-      workspaceId,
-    );
-    return c.json(deleted, 200);
+    const pending = await requestRegisteredDeletion(c, {
+      routeKey: DOCUMENT_LINK_DELETION_ROUTE,
+      targetType: "document_link",
+      id: documentLinkId,
+      workspaceId: c.get("workspaceId"),
+      projectId: id,
+    });
+    return c.json(pending, 202);
   });
 
 export default project;
 
+const listProjectStateTemplatesRoute = createRoute({
+  method: "get",
+  operationId: "listProjectStateTemplates",
+  path: "/{projectId}/state-templates",
+  tags: ["Projects"],
+  summary: "List the workspace state templates a project can adopt",
+  description:
+    "PR-17: the workspace's active state templates, each flagged with whether this project " +
+    "already has a state for it and whether a workflow gives it an outbound transition.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: { params: z.object({ projectId: z.string() }) },
+  responses: {
+    200: jsonResponse("State templates", z.array(projectStateTemplateSchema)),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    403: errorResponse("Missing project:read capability"),
+    404: errorResponse("Project not found or out of reach"),
+  },
+});
+
+const createProjectStateRoute = createRoute({
+  method: "post",
+  operationId: "createProjectState",
+  path: "/{projectId}/states",
+  tags: ["Projects"],
+  summary: "Create a project state from a workspace template",
+  description:
+    "PR-17: add a concrete state mapped to a workspace state template, appended last. " +
+    "Refused (422) when no workflow used by the workspace's work item types has a " +
+    "transition out of the template (WF-2); 409 when the project already has one. " +
+    "Returns the project's active states. Needs project:manage_settings.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: {
+    params: z.object({ projectId: z.string() }),
+    body: {
+      required: true,
+      content: { "application/json": { schema: createProjectStateBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "The project's active states",
+      z.array(projectStateSchema),
+    ),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Missing project:manage_settings capability"),
+    404: errorResponse("Project not found or out of reach"),
+    409: errorResponse("The project already has a state for that template"),
+    422: errorResponse("Template unknown, or no workflow transition out of it"),
+  },
+});
+
+const updateProjectStateRoute = createRoute({
+  method: "patch",
+  operationId: "updateProjectState",
+  path: "/{projectId}/states/{stateId}",
+  tags: ["Projects"],
+  summary: "Reorder or re-default a project state",
+  description:
+    "PR-17: move a state to a new position and/or make it the project's default state. " +
+    "Returns the project's active states. Needs project:manage_settings.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: {
+    params: projectStateParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateProjectStateBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "The project's active states",
+      z.array(projectStateSchema),
+    ),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Missing project:manage_settings capability"),
+    404: errorResponse("Project or state not found, or project out of reach"),
+  },
+});
+
+const updateProjectOwnershipRoute = createRoute({
+  method: "patch",
+  operationId: "updateProjectOwnership",
+  path: "/{projectId}/ownership",
+  tags: ["Projects"],
+  summary: "Set or clear a project's parent or owning team",
+  description:
+    "PR-1: re-parent a project (or make it a root with parentId null). Depth is capped at 4 " +
+    "counting the moved subtree, cycles are refused, an archived project cannot take " +
+    "children. Needs project:manage_members on the project AND on the prospective parent. " +
+    "TM-4: ownerTeamId names the team whose active members reach the project (reach only, " +
+    "never a capability); the team must be in the project's workspace. " +
+    "A reach change: audited as project.reach_changed.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: {
+    params: z.object({ projectId: z.string() }),
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateProjectOwnershipBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The project with its new parent", projectSchema),
+    400: errorResponse("Invalid body"),
+    403: errorResponse(
+      "Missing project:manage_members on the project or on the prospective parent",
+    ),
+    404: errorResponse("Project not found or out of reach"),
+    422: errorResponse(
+      "PR-1: parent not found, archived, itself, a descendant, or the move would exceed depth 4",
+    ),
+  },
+});
+
+const listProjectMembersRoute = createRoute({
+  method: "get",
+  operationId: "listProjectMembers",
+  path: "/{projectId}/members",
+  tags: ["Projects"],
+  summary: "List the project roster",
+  description:
+    "PR-2: the project's direct roster rows plus the rows inherited from ancestor projects " +
+    "(read-only here, naming the ancestor they come from), and the roles a row can be given. " +
+    "Needs project:read.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: { params: z.object({ projectId: z.string() }) },
+  responses: {
+    200: jsonResponse("The roster", projectMembersResponseSchema),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    403: errorResponse("Missing project:read capability"),
+    404: errorResponse("Project not found or out of reach"),
+  },
+});
+
+const listProjectMemberCandidatesRoute = createRoute({
+  method: "get",
+  operationId: "listProjectMemberCandidates",
+  path: "/{projectId}/members/candidates",
+  tags: ["Projects"],
+  summary: "List people who can be added to the project roster",
+  description:
+    "Active staff members of the workspace with no direct roster row on this project. " +
+    "Needs project:manage_members.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: { params: z.object({ projectId: z.string() }) },
+  responses: {
+    200: jsonResponse("Candidates", z.array(projectMemberCandidateSchema)),
+    403: errorResponse("Missing project:manage_members capability"),
+    404: errorResponse("Project not found or out of reach"),
+  },
+});
+
+const addProjectMemberRoute = createRoute({
+  method: "post",
+  operationId: "addProjectMember",
+  path: "/{projectId}/members",
+  tags: ["Projects"],
+  summary: "Add a person to the project roster",
+  description:
+    "Writes a direct project-scope grant (the same grant model as the project creator lead) " +
+    "and projects it onto the roster. Only active staff members of the workspace; the role " +
+    "may not exceed the caller's own rank. Audited as membership.changed. Needs " +
+    "project:manage_members.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: {
+    params: z.object({ projectId: z.string() }),
+    body: {
+      required: true,
+      content: { "application/json": { schema: addProjectMemberBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The updated roster", z.array(projectMemberSchema)),
+    400: errorResponse("Invalid body"),
+    403: errorResponse(
+      "Missing project:manage_members, or the role exceeds the caller's rank",
+    ),
+    404: errorResponse("Project or person not found, or project out of reach"),
+    409: errorResponse("The person already holds a direct roster row"),
+    422: errorResponse("Person not eligible, or role not found"),
+  },
+});
+
+const updateProjectMemberRoute = createRoute({
+  method: "patch",
+  operationId: "updateProjectMemberRole",
+  path: "/{projectId}/members/{personId}",
+  tags: ["Projects"],
+  summary: "Change a roster member's role",
+  description:
+    "PR-3: changes the direct row's role. On an inherited member this writes the explicit " +
+    "child row that overrides the inherited role. Needs project:manage_members.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: {
+    params: projectMemberParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateProjectMemberBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The updated roster", z.array(projectMemberSchema)),
+    400: errorResponse("Invalid body"),
+    403: errorResponse(
+      "Missing project:manage_members, or a role above the caller's rank",
+    ),
+    404: errorResponse("Project or member not found, or project out of reach"),
+    422: errorResponse("Role not found"),
+  },
+});
+
+const removeProjectMemberRoute = createRoute({
+  method: "delete",
+  operationId: "removeProjectMember",
+  path: "/{projectId}/members/{personId}",
+  tags: ["Projects"],
+  summary: "Remove a person's direct roster row",
+  description:
+    "PR-4: removes a direct row only. An inherited membership answers 409 " +
+    "inherited_membership naming the ancestor project it is removed at; a row held by an " +
+    "identity-provider mapping answers 409 managed_membership. Removing an explicit override " +
+    "brings the inherited role back. Needs project:manage_members.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: { params: projectMemberParam },
+  responses: {
+    200: jsonResponse("The updated roster", z.array(projectMemberSchema)),
+    403: errorResponse(
+      "Missing project:manage_members, or a role above the caller's rank",
+    ),
+    404: errorResponse("Project or member not found, or project out of reach"),
+    409: errorResponse(
+      "inherited_membership (remove at the parent) or managed_membership",
+    ),
+  },
+});
+
+const previewProjectOwnershipRoute = createRoute({
+  method: "get",
+  operationId: "previewProjectOwnership",
+  path: "/{projectId}/ownership/preview",
+  tags: ["Projects"],
+  summary: "Preview who gains and loses access if the project is re-parented",
+  description:
+    "Edge-case table: 'a preview shows who gains and loses access'. Computed from the " +
+    "ancestor reach rules without writing anything; a move PR-1 would refuse is reported in " +
+    "refusal. Needs project:manage_members on the project and on the prospective parent.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: {
+    params: z.object({ projectId: z.string() }),
+    query: reparentPreviewQuery,
+  },
+  responses: {
+    200: jsonResponse("The access preview", reparentPreviewSchema),
+    403: errorResponse(
+      "Missing project:manage_members on the project or the prospective parent",
+    ),
+    404: errorResponse("Project not found or out of reach"),
+    422: errorResponse("Prospective parent not found or out of reach"),
+  },
+});
+
 export const projectStates = apiRouter<
   BaseVariables & { workspaceId: string }
->().openapi(listProjectStatesRoute, async (c) => {
-  const { projectId } = c.req.valid("param");
-  const states = await listProjectStatesCtrl(projectId, c.get("workspaceId"));
-  return c.json(states, 200);
-});
+>()
+  .openapi(listProjectStatesRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    const states = await listProjectStatesCtrl(projectId, c.get("workspaceId"));
+    return c.json(states, 200);
+  })
+  .openapi(listProjectStateTemplatesRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    return c.json(
+      await listProjectStateTemplates(projectId, c.get("workspaceId")),
+      200,
+    );
+  })
+  .openapi(createProjectStateRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    const { stateTemplateId } = c.req.valid("json");
+    const workspaceId = c.get("workspaceId");
+    await createProjectState(projectId, workspaceId, stateTemplateId);
+    return c.json(await listProjectStatesCtrl(projectId, workspaceId), 200);
+  })
+  .openapi(updateProjectStateRoute, async (c) => {
+    const { projectId, stateId } = c.req.valid("param");
+    const body = c.req.valid("json");
+    const workspaceId = c.get("workspaceId");
+    await updateProjectState(projectId, workspaceId, stateId, body);
+    return c.json(await listProjectStatesCtrl(projectId, workspaceId), 200);
+  })
+  .openapi(listProjectMembersRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const actor = await resolveRosterActor(c, { workspaceId, projectId });
+    return c.json(
+      await listProjectMembers({ projectId, workspaceId }, actor.rank),
+      200,
+    );
+  })
+  .openapi(listProjectMemberCandidatesRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    return c.json(
+      await listProjectMemberCandidates({
+        projectId,
+        workspaceId: c.get("workspaceId"),
+      }),
+      200,
+    );
+  })
+  .openapi(addProjectMemberRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    const body = c.req.valid("json");
+    const scope = { projectId, workspaceId: c.get("workspaceId") };
+    const actor = await resolveRosterActor(c, scope);
+    return c.json(await addProjectMember(scope, body, actor), 200);
+  })
+  .openapi(updateProjectMemberRoute, async (c) => {
+    const { projectId, personId } = c.req.valid("param");
+    const { roleKey } = c.req.valid("json");
+    const scope = { projectId, workspaceId: c.get("workspaceId") };
+    const actor = await resolveRosterActor(c, scope);
+    return c.json(
+      await updateProjectMemberRole(scope, { personId, roleKey }, actor),
+      200,
+    );
+  })
+  .openapi(removeProjectMemberRoute, async (c) => {
+    const { projectId, personId } = c.req.valid("param");
+    const scope = { projectId, workspaceId: c.get("workspaceId") };
+    const actor = await resolveRosterActor(c, scope);
+    return c.json(await removeProjectMember(scope, { personId }, actor), 200);
+  })
+  .openapi(previewProjectOwnershipRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    const { parentId } = c.req.valid("query");
+    const workspaceId = c.get("workspaceId");
+    const newParentId =
+      parentId === undefined || parentId === "" ? null : parentId;
+    if (newParentId !== null) {
+      await assertCanManageProspectiveParent(c, {
+        workspaceId,
+        parentId: newParentId,
+      });
+    }
+    return c.json(
+      await previewReparent({ projectId, workspaceId }, newParentId),
+      200,
+    );
+  })
+  .openapi(updateProjectOwnershipRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    const { parentId, ownerTeamId } = c.req.valid("json");
+    const workspaceId = c.get("workspaceId");
+    const userId = c.get("userId");
+
+    // The route middleware already required project:manage_members on the CHILD (the
+    // registered policy). Re-parenting also needs it on the prospective parent: otherwise a
+    // lead of one project could hang it under, and so extend reach into, one they do not
+    // manage. An unreachable parent answers exactly like a missing one.
+    if (parentId !== undefined && parentId !== null) {
+      await assertCanManageProspectiveParent(c, { workspaceId, parentId });
+    }
+
+    const updated = await updateProjectOwnershipCtrl({
+      projectId,
+      workspaceId,
+      ...(parentId === undefined ? {} : { parentId }),
+      ...(ownerTeamId === undefined ? {} : { ownerTeamId }),
+      actorId: userId,
+      actorType: c.get("apiKey") ? "api_key" : "person",
+    });
+    return c.json(updated, 200);
+  });

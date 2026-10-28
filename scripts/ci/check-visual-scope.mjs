@@ -6,7 +6,7 @@ import { API } from "typescript/unstable/sync";
 import { repoRoot } from "./lib/repo.mjs";
 
 const manifestPath = "apps/web/e2e/visual-screens.json";
-const inventoryPath = "docs/02-design/screen-inventory.md";
+const inventoryPath = "docs/screens.md";
 const routeTreePaths = [
   "apps/web/src/routeTree.agent.gen.ts",
   "apps/web/src/routeTree.portal.gen.ts",
@@ -232,12 +232,17 @@ if (
 
 function canonicalInventoryRoute(route) {
   const canonical = route.split("?")[0];
-  return canonical
-    .replace("/projects/{key}", "/projects/$projectKey")
-    .replaceAll("{key}", "$key")
-    .replaceAll("{id}", "$id")
-    .replaceAll("{ref}", "$ref")
-    .replaceAll("{typeKey}", "$typeKey");
+  return (
+    canonical
+      .replace("/projects/{key}", "/projects/$projectKey")
+      .replaceAll("{key}", "$key")
+      .replaceAll("{id}", "$id")
+      .replaceAll("{ref}", "$ref")
+      .replaceAll("{typeKey}", "$typeKey")
+      // Any other named placeholder is the generated route's own parameter name
+      // (`{cycleId}` -> `$cycleId`), matching check:inventory's route identity.
+      .replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/gu, "$$$1")
+  );
 }
 
 function isNamedProperty(node, name) {

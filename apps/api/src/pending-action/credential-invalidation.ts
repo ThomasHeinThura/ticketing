@@ -804,227 +804,240 @@ export function createCredentialAwareDrizzleAdapter() {
       },
     })(options);
 
+    // better-auth 1.7 runs core credential writes (e.g. changePassword's
+    // `deleteUserSessions`) inside `runWithTransaction`, which hands the
+    // internal adapter the callback adapter of `adapter.transaction(cb)`, not
+    // this wrapper. The transaction adapter is therefore wrapped too, so PA-9
+    // revocation writes cannot bypass the interception by running in a
+    // transaction. Nested revocation transactions on `base` become savepoints
+    // of the open one through `credentialDatabase`'s transaction context.
+    const wrapped = withCredentialRevocationWrites(base, base);
     return {
-      ...base,
-      update: async <T>(input: AdapterUpdateInput) => {
-        if (input.model !== "apikey") {
-          return base.update<T>(input);
+      ...wrapped,
+      transaction: <R>(
+        callback: (
+          txAdapter: DBTransactionAdapter<BetterAuthOptions>,
+        ) => Promise<R>,
+      ) =>
+        base.transaction<R>((txAdapter) =>
+          callback(withCredentialRevocationWrites(txAdapter, base)),
+        ),
+    };
+  };
+}
+
+function withCredentialRevocationWrites<
+  A extends DBTransactionAdapter<BetterAuthOptions>,
+>(target: A, base: DBAdapter<BetterAuthOptions>): A {
+  return {
+    ...target,
+    update: async <T>(input: AdapterUpdateInput) => {
+      if (input.model !== "apikey") {
+        return target.update<T>(input);
+      }
+      const updatesExpiry = input.update.expiresAt !== undefined;
+      if (
+        input.update.enabled !== false &&
+        input.update.permissions === undefined &&
+        !updatesExpiry
+      ) {
+        return target.update<T>(input);
+      }
+      const selector = exactSelector(input.where, "id");
+      if (!selector || typeof selector.value !== "string") {
+        markCredentialMutationFailure(
+          new Error("Unexpected Better Auth API-key update selector"),
+        );
+        throw new Error("Unexpected Better Auth API-key update selector");
+      }
+      return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
+        const [before] = await tx
+          .select()
+          .from(apikeyTable)
+          .where(eq(apikeyTable.id, selector.value as string))
+          .for("update");
+        const now = new Date();
+        const expiryExtensionAfterExpiry =
+          before?.expiresAt !== null &&
+          before?.expiresAt !== undefined &&
+          before.expiresAt <= now &&
+          input.update.expiresAt instanceof Date &&
+          input.update.expiresAt > now;
+        const expiryAuditFailures =
+          before && expiryExtensionAfterExpiry
+            ? await invalidatePendingActionsForCredential(
+                tx,
+                { type: "api_key", id: before.id },
+                now,
+              )
+            : 0;
+        const result = await txAdapter.update<T>(input);
+        if (input.update.enabled === false) {
+          const auditFailures =
+            expiryAuditFailures +
+            (before
+              ? await invalidatePendingActionsForCredential(tx, {
+                  type: "api_key",
+                  id: before.id,
+                })
+              : 0);
+          return { result, auditFailures };
         }
-        const updatesExpiry = input.update.expiresAt !== undefined;
-        if (
-          input.update.enabled !== false &&
-          input.update.permissions === undefined &&
-          !updatesExpiry
-        ) {
-          return base.update<T>(input);
+
+        let auditFailures = expiryAuditFailures;
+        if (before && input.update.permissions !== undefined) {
+          const pendingRows = await tx
+            .select()
+            .from(pendingActionTable)
+            .where(
+              and(
+                eq(pendingActionTable.credentialType, "api_key"),
+                eq(pendingActionTable.credentialId, before.id),
+                eq(pendingActionTable.state, "pending"),
+              ),
+            )
+            .orderBy(pendingActionTable.id)
+            .for("update");
+          const permissionsAfter =
+            typeof input.update.permissions === "string"
+              ? input.update.permissions
+              : null;
+          for (const row of pendingRows) {
+            if (row.credentialType !== "api_key") continue;
+            const requiredAccessInput = {
+              requestedByPersonId: row.requestedByPersonId,
+              credentialType: "api_key" as const,
+              credentialId: row.credentialId,
+              action: row.action,
+              targetType: row.targetType,
+              targetIds: row.targetIds,
+              routeKey: row.routeKey,
+              workspaceId: row.workspaceId,
+              projectId: row.projectId,
+              organisationId: row.organisationId,
+              confirmationRequired: row.confirmationRequired,
+              payload: row.payload,
+              payloadHash: row.payloadHash,
+              targetVersions: row.targetVersions,
+            };
+            const beforeDecision = await evaluateActionRequiredAccess(
+              tx,
+              requiredAccessInput,
+              { apiKeyPermissions: before.permissions },
+            );
+            if (!beforeDecision.allowed) continue;
+            const afterDecision = await evaluateActionRequiredAccess(
+              tx,
+              requiredAccessInput,
+              { apiKeyPermissions: permissionsAfter },
+            );
+            const reason =
+              afterDecision.failure === "reach"
+                ? "reach_lost"
+                : afterDecision.failure === "capability"
+                  ? "capability_removed"
+                  : undefined;
+            if (reason) {
+              auditFailures += await invalidatePendingActionForReason(
+                tx,
+                row.id,
+                reason,
+                new Date(),
+              );
+            }
+          }
         }
+        return { result, auditFailures };
+      });
+    },
+    delete: async (input) => {
+      const state = explicitMutationStorage.getStore();
+      if (state?.kind === "api_key" && input.model === "apikey") {
         const selector = exactSelector(input.where, "id");
         if (!selector || typeof selector.value !== "string") {
           markCredentialMutationFailure(
-            new Error("Unexpected Better Auth API-key update selector"),
+            new Error("Unexpected Better Auth API-key delete selector"),
           );
-          throw new Error("Unexpected Better Auth API-key update selector");
+          throw new Error("Unexpected Better Auth API-key delete selector");
         }
         return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
           const [before] = await tx
-            .select()
+            .select({ id: apikeyTable.id })
             .from(apikeyTable)
             .where(eq(apikeyTable.id, selector.value as string))
             .for("update");
-          const now = new Date();
-          const expiryExtensionAfterExpiry =
-            before?.expiresAt !== null &&
-            before?.expiresAt !== undefined &&
-            before.expiresAt <= now &&
-            input.update.expiresAt instanceof Date &&
-            input.update.expiresAt > now;
-          const expiryAuditFailures =
-            before && expiryExtensionAfterExpiry
-              ? await invalidatePendingActionsForCredential(
-                  tx,
-                  { type: "api_key", id: before.id },
-                  now,
-                )
-              : 0;
-          const result = await txAdapter.update<T>(input);
-          if (input.update.enabled === false) {
-            const auditFailures =
-              expiryAuditFailures +
-              (before
-                ? await invalidatePendingActionsForCredential(tx, {
-                    type: "api_key",
-                    id: before.id,
-                  })
-                : 0);
-            return { result, auditFailures };
-          }
+          const result = await txAdapter.delete(input);
+          const auditFailures = before
+            ? await invalidatePendingActionsForCredential(tx, {
+                type: "api_key",
+                id: before.id,
+              })
+            : 0;
+          return { result, auditFailures };
+        });
+      }
 
-          let auditFailures = expiryAuditFailures;
-          if (before && input.update.permissions !== undefined) {
-            const pendingRows = await tx
-              .select()
-              .from(pendingActionTable)
-              .where(
-                and(
-                  eq(pendingActionTable.credentialType, "api_key"),
-                  eq(pendingActionTable.credentialId, before.id),
-                  eq(pendingActionTable.state, "pending"),
-                ),
-              )
-              .orderBy(pendingActionTable.id)
-              .for("update");
-            const permissionsAfter =
-              typeof input.update.permissions === "string"
-                ? input.update.permissions
-                : null;
-            for (const row of pendingRows) {
-              if (row.credentialType !== "api_key") continue;
-              const requiredAccessInput = {
-                requestedByPersonId: row.requestedByPersonId,
-                credentialType: "api_key" as const,
-                credentialId: row.credentialId,
-                action: row.action,
-                targetType: row.targetType,
-                targetIds: row.targetIds,
-                routeKey: row.routeKey,
-                workspaceId: row.workspaceId,
-                projectId: row.projectId,
-                organisationId: row.organisationId,
-                confirmationRequired: row.confirmationRequired,
-                payload: row.payload,
-                payloadHash: row.payloadHash,
-                targetVersions: row.targetVersions,
-              };
-              const beforeDecision = await evaluateActionRequiredAccess(
-                tx,
-                requiredAccessInput,
-                { apiKeyPermissions: before.permissions },
-              );
-              if (!beforeDecision.allowed) continue;
-              const afterDecision = await evaluateActionRequiredAccess(
-                tx,
-                requiredAccessInput,
-                { apiKeyPermissions: permissionsAfter },
-              );
-              const reason =
-                afterDecision.failure === "reach"
-                  ? "reach_lost"
-                  : afterDecision.failure === "capability"
-                    ? "capability_removed"
-                    : undefined;
-              if (reason) {
-                auditFailures += await invalidatePendingActionForReason(
-                  tx,
-                  row.id,
-                  reason,
-                  new Date(),
-                );
-              }
-            }
+      if (isExplicitSessionMutation(state) && input.model === "session") {
+        const tokenSelector = exactSelector(input.where, "token");
+        const idSelector = exactSelector(input.where, "id");
+        const selector = tokenSelector ?? idSelector;
+        if (!selector || typeof selector.value !== "string") {
+          markCredentialMutationFailure(
+            new Error("Unexpected Better Auth session delete selector"),
+          );
+          throw new Error("Unexpected Better Auth session delete selector");
+        }
+        return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
+          const now = new Date();
+          const condition =
+            selector.field === "token"
+              ? eq(sessionTable.token, selector.value as string)
+              : eq(sessionTable.id, selector.value as string);
+          const revokedRows = await sessionRowsQuery(tx, condition);
+          const result = await txAdapter.delete(input);
+          let auditFailures = 0;
+          for (const row of revokedRows) {
+            auditFailures += await invalidatePendingActionsForCredential(
+              tx,
+              { type: "session", id: row.id },
+              now,
+            );
           }
           return { result, auditFailures };
         });
-      },
-      delete: async (input) => {
-        const state = explicitMutationStorage.getStore();
-        if (state?.kind === "api_key" && input.model === "apikey") {
-          const selector = exactSelector(input.where, "id");
-          if (!selector || typeof selector.value !== "string") {
-            markCredentialMutationFailure(
-              new Error("Unexpected Better Auth API-key delete selector"),
-            );
-            throw new Error("Unexpected Better Auth API-key delete selector");
-          }
-          return runCredentialAdapterTransaction(
-            base,
-            async (txAdapter, tx) => {
-              const [before] = await tx
-                .select({ id: apikeyTable.id })
-                .from(apikeyTable)
-                .where(eq(apikeyTable.id, selector.value as string))
-                .for("update");
-              const result = await txAdapter.delete(input);
-              const auditFailures = before
-                ? await invalidatePendingActionsForCredential(tx, {
-                    type: "api_key",
-                    id: before.id,
-                  })
-                : 0;
-              return { result, auditFailures };
-            },
+      }
+      return target.delete(input);
+    },
+    deleteMany: async (input) => {
+      const state = explicitMutationStorage.getStore();
+      if (isExplicitSessionMutation(state) && input.model === "session") {
+        const userSelector = exactSelector(input.where, "userId");
+        const tokenSelector = exactInSelector(input.where, "token");
+        if (!userSelector && !tokenSelector) {
+          markCredentialMutationFailure(
+            new Error("Unexpected Better Auth session deleteMany selector"),
           );
+          throw new Error("Unexpected Better Auth session deleteMany selector");
         }
-
-        if (isExplicitSessionMutation(state) && input.model === "session") {
-          const tokenSelector = exactSelector(input.where, "token");
-          const idSelector = exactSelector(input.where, "id");
-          const selector = tokenSelector ?? idSelector;
-          if (!selector || typeof selector.value !== "string") {
-            markCredentialMutationFailure(
-              new Error("Unexpected Better Auth session delete selector"),
-            );
-            throw new Error("Unexpected Better Auth session delete selector");
-          }
-          return runCredentialAdapterTransaction(
-            base,
-            async (txAdapter, tx) => {
-              const now = new Date();
-              const condition =
-                selector.field === "token"
-                  ? eq(sessionTable.token, selector.value as string)
-                  : eq(sessionTable.id, selector.value as string);
-              const revokedRows = await sessionRowsQuery(tx, condition);
-              const result = await txAdapter.delete(input);
-              let auditFailures = 0;
-              for (const row of revokedRows) {
-                auditFailures += await invalidatePendingActionsForCredential(
-                  tx,
-                  { type: "session", id: row.id },
-                  now,
-                );
-              }
-              return { result, auditFailures };
-            },
-          );
-        }
-        return base.delete(input);
-      },
-      deleteMany: async (input) => {
-        const state = explicitMutationStorage.getStore();
-        if (isExplicitSessionMutation(state) && input.model === "session") {
-          const userSelector = exactSelector(input.where, "userId");
-          const tokenSelector = exactInSelector(input.where, "token");
-          if (!userSelector && !tokenSelector) {
-            markCredentialMutationFailure(
-              new Error("Unexpected Better Auth session deleteMany selector"),
-            );
-            throw new Error(
-              "Unexpected Better Auth session deleteMany selector",
+        return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
+          const now = new Date();
+          const condition = userSelector
+            ? eq(sessionTable.userId, userSelector.value as string)
+            : inArray(sessionTable.token, tokenSelector?.value as string[]);
+          const revokedRows = await sessionRowsQuery(tx, condition);
+          const result = await txAdapter.deleteMany(input);
+          let auditFailures = 0;
+          for (const row of revokedRows) {
+            auditFailures += await invalidatePendingActionsForCredential(
+              tx,
+              { type: "session", id: row.id },
+              now,
             );
           }
-          return runCredentialAdapterTransaction(
-            base,
-            async (txAdapter, tx) => {
-              const now = new Date();
-              const condition = userSelector
-                ? eq(sessionTable.userId, userSelector.value as string)
-                : inArray(sessionTable.token, tokenSelector?.value as string[]);
-              const revokedRows = await sessionRowsQuery(tx, condition);
-              const result = await txAdapter.deleteMany(input);
-              let auditFailures = 0;
-              for (const row of revokedRows) {
-                auditFailures += await invalidatePendingActionsForCredential(
-                  tx,
-                  { type: "session", id: row.id },
-                  now,
-                );
-              }
-              return { result, auditFailures };
-            },
-          );
-        }
-        return base.deleteMany(input);
-      },
-    };
+          return { result, auditFailures };
+        });
+      }
+      return target.deleteMany(input);
+    },
   };
 }

@@ -5,6 +5,11 @@ import {
   PROJECT_GANTT_PATH,
   type ProjectRouteParams,
 } from "@/lib/routes";
+import { translateLegacyProjectView } from "./legacy-project-view";
+import { parseProjectRouterSearch } from "./project-board-search";
+import { parseWorkItemHierarchySearch } from "./work-item-hierarchy-search";
+import { isValidWorkItemKeyParam } from "./work-item-list-search";
+import { parseWorkItemRelationsSearch } from "./work-item-relations-search";
 
 export type ProjectView = "backlog" | "board" | "calendar" | "gantt" | "list";
 
@@ -17,7 +22,7 @@ const PROJECT_VIEW_SHORTCUTS = [
 ] as const satisfies readonly ProjectView[];
 
 export function createProjectViewShortcutHandlers(
-  params: ProjectRouteParams,
+  params: ProjectRouteParams & { projectKey?: string },
   currentSearch: string,
   navigate: (href: string) => void,
   onLayoutChange?: (layout: "board" | "list") => void,
@@ -33,12 +38,80 @@ export function createProjectViewShortcutHandlers(
   ) as Record<ProjectView, () => void>;
 }
 
+/** A schedule selection is a permanent key; a legacy UUID is never treated as one. */
+export function normalizeCanonicalWorkItemSelection(raw: unknown) {
+  const candidate =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return !isValidWorkItemKeyParam(candidate.item) &&
+    isValidWorkItemKeyParam(candidate.taskId)
+    ? { ...candidate, item: candidate.taskId }
+    : candidate;
+}
+
+function bridgeProjectSelection(
+  query: URLSearchParams,
+  view: ProjectView,
+  canonicalProject: boolean,
+) {
+  const item = query.get("item");
+  const taskId = query.get("taskId");
+  const schedule = view === "calendar" || view === "gantt";
+  const canonical =
+    canonicalProject && ["board", "list", "backlog"].includes(view);
+  let selected = isValidWorkItemKeyParam(item)
+    ? item
+    : isValidWorkItemKeyParam(taskId)
+      ? taskId
+      : undefined;
+  if (schedule && isValidWorkItemKeyParam(item)) {
+    query.set("taskId", item);
+    query.delete("item");
+  } else if (canonical && selected) {
+    query.set("item", selected);
+    if (isValidWorkItemKeyParam(taskId)) query.delete("taskId");
+  } else if (schedule) {
+    selected = isValidWorkItemKeyParam(taskId) ? taskId : undefined;
+  }
+  const hierarchy = parseWorkItemHierarchySearch({
+    hierarchy: query.get("hierarchy"),
+  }).hierarchy;
+  const relations = parseWorkItemRelationsSearch({
+    relations: query.get("relations"),
+  }).relations;
+  for (const [name, state] of [
+    ["hierarchy", hierarchy],
+    ["relations", relations],
+  ] as const) {
+    if (state && (!selected || state.itemKey === selected))
+      query.set(name, JSON.stringify(state));
+    else query.delete(name);
+  }
+}
+
 export function buildProjectViewSwitchUrl(
   view: ProjectView,
-  params: ProjectRouteParams,
+  params: ProjectRouteParams & { projectKey?: string },
   currentSearch: string,
 ) {
   const query = new URLSearchParams(currentSearch);
+  bridgeProjectSelection(query, view, Boolean(params.projectKey));
+  if (params.projectKey && ["board", "list", "backlog"].includes(view)) {
+    if (view !== "backlog") query.set("layout", view);
+    const raw = parseProjectRouterSearch(query.toString());
+    const translated = translateLegacyProjectView(
+      raw,
+      params.projectKey,
+      view === "backlog" ? "backlog" : "board",
+    );
+    // A project switch never silently discards a saved predicate or guesses a legacy
+    // task's canonical key. The compatibility entry point handles both explicitly.
+    if (translated.unsupported.length === 0 && !translated.legacyTaskId) {
+      if (raw.priority || raw.sort === "number") return translated.href;
+      const suffix = query.toString();
+      const path = `/agent/projects/${encodeURIComponent(params.projectKey)}/${view === "backlog" ? "backlog" : "work"}`;
+      return suffix ? `${path}?${suffix}` : path;
+    }
+  }
   let path: string;
   switch (view) {
     case "backlog":

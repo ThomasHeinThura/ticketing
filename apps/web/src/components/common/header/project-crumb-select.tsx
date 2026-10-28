@@ -17,7 +17,7 @@ type ProjectCrumbSelectProps = {
   projectId: string;
   projectName?: string;
   onSelectProject: (projectId: string) => void;
-  onAddProject: () => void;
+  onAddProject?: () => void;
 };
 
 export default function ProjectCrumbSelect({
@@ -33,6 +33,11 @@ export default function ProjectCrumbSelect({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
+        aria-label={
+          projectName
+            ? `${t("navigation:projectViews.selectProject")}: ${projectName}`
+            : t("navigation:projectViews.selectProject")
+        }
         render={
           <Button
             variant="ghost"
@@ -42,7 +47,7 @@ export default function ProjectCrumbSelect({
         }
       >
         <span className="truncate text-left">
-          {projectName || t("settings:projectSwitcher.selectProject")}
+          {projectName || t("navigation:projectViews.selectProject")}
         </span>
         <ChevronsUpDown className="size-3 text-foreground" />
       </DropdownMenuTrigger>
@@ -72,20 +77,24 @@ export default function ProjectCrumbSelect({
               disabled
               className="h-8 text-sm text-muted-foreground"
             >
-              {t("settings:projectSwitcher.noProjects")}
+              {t("navigation:projectViews.noProjects")}
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem
-            onClick={onAddProject}
-            className="h-8 gap-2 text-sm"
-          >
-            <Plus className="size-3.5" />
-            {t("navigation:projectList.addProject")}
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
+        {onAddProject ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem
+                onClick={onAddProject}
+                className="h-8 gap-2 text-sm"
+              >
+                <Plus className="size-3.5" />
+                {t("navigation:projectList.addProject")}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

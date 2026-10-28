@@ -13,6 +13,11 @@ import {
   grantProjectManageAccess,
   grantProjectRole,
 } from "./helpers/fixtures";
+import {
+  approvePendingDeletion,
+  ensureAgentSession,
+  type PendingDeletionBody,
+} from "./helpers/pending-deletion";
 
 async function listPrerequisites(projectId: string) {
   const { app } = createApp();
@@ -97,6 +102,7 @@ describe("API integration: project prerequisites", () => {
     await grantProjectManageAccess(member.user.id, project.id);
     await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
+    await ensureAgentSession(member.user.id);
 
     const createResponse = await createPrerequisite(project.id, {
       title: "Customer signs the SOW",
@@ -128,8 +134,19 @@ describe("API integration: project prerequisites", () => {
     };
     expect(completed.completedAt).not.toBeNull();
 
+    // DELETE only requests: 202 and the prerequisite survives until the requester approves.
     const deleteResponse = await deletePrerequisite(project.id, created.id);
-    expect(deleteResponse.status).toBe(200);
+    expect(deleteResponse.status).toBe(202);
+    const pending = (await deleteResponse.json()) as PendingDeletionBody;
+    const stillListed = (await (
+      await listPrerequisites(project.id)
+    ).json()) as Array<{
+      id: string;
+    }>;
+    expect(stillListed.map((row) => row.id)).toEqual([created.id]);
+    const { app } = createApp();
+    const approved = await approvePendingDeletion(app, member.user.id, pending);
+    expect(approved.status, await approved.clone().text()).toBe(200);
 
     const secondDelete = await deletePrerequisite(project.id, created.id);
     expect(secondDelete.status).toBe(404);

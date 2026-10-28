@@ -14,10 +14,16 @@ export * from "./approvals/types.js";
 export {
   evaluateAssigneeEligibility,
   planAssignment,
+  resolveAssigneeDisplayStatus,
 } from "./assignment/assignment.js";
+export type {
+  AssigneeDisplayFacts,
+  AssigneeDisplayStatus,
+} from "./assignment/types.js";
 export * from "./audit/audit.js";
 export * from "./audit/types.js";
 export * from "./calendar/calendar.js";
+export * from "./calendar/holiday-impact.js";
 export * from "./calendar/holiday-import.js";
 export * from "./calendar/types.js";
 export * from "./canned-response.js";
@@ -37,9 +43,14 @@ export * from "./intake/duplicate.js";
 export * from "./intake/request-type.js";
 export * from "./intake/submission.js";
 export * from "./intake/types.js";
+export * from "./service-management/index.js";
+export * from "./sla/escalation.js";
 export * from "./sla/policy.js";
 export * from "./sla/scan.js";
 export * from "./sla/sla.js";
 export * from "./sla/types.js";
+export * from "./terminology.js";
+export * from "./terminology-defaults.generated.js";
+export * from "./webhook-secret-rotation.js";
 export * from "./workflow/types.js";
 export * from "./workflow/workflow.js";

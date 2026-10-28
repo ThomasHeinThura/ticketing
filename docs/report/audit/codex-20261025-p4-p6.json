@@ -1,0 +1,237 @@
+{
+	"kind": "initial_discovery_audit",
+	"source_sha": "aea5d5702ea9ac553573f598e02f425cd79cde87",
+	"date": "2026-10-25",
+	"scope": ["P4", "P5", "P6 planning"],
+	"method": "Read-only source, requirement, audit, report, and asserting-test inspection. No tests, browser journeys, migrations, or database operations were executed for this audit. This is not an independent phase review or sign-off.",
+	"working_tree_note": "The automation files were being edited by another agent after this source revision was inspected. The automation finding describes aea5d5702 only and must be rechecked on the integrated tree.",
+	"findings": [
+		{
+			"id": "P4-AUTH-1",
+			"severity": "medium",
+			"requirement_ids": ["AM-3"],
+			"summary": "Project automation management checks project:manage_settings rather than the documented automation:manage capability.",
+			"evidence": [
+				"packages/permissions/src/capabilities.ts:484 grants automation:manage for project rules; packages/permissions/src/roles.ts grants it to lead without project:manage_settings",
+				"docs/technical/permissions.md:87 describes automation:manage as project-rule authority",
+				"apps/api/src/automation/access.ts:103-130 uses project:manage_settings for manage operations",
+				"apps/api/src/automation/policy.ts:39-90 declares project:manage_settings or workspace:manage_settings, never automation:manage"
+			],
+			"impact": "A lead with the named automation capability cannot manage project rules, while a custom role with project settings authority but no automation capability can.",
+			"next_action": "Inspect the concurrent fix and add an HTTP test distinguishing lead, custom automation-only, and project-settings-only roles."
+		},
+		{
+			"id": "P5-DRILL-1",
+			"severity": "medium",
+			"requirement_ids": ["RP-12", "TC-12", "TC-13", "TC-14"],
+			"summary": "Cost-to-deliver drill does not list all records behind its displayed actual.",
+			"evidence": [
+				"apps/api/src/report/reports/leadership.ts:247-315 includes cost_entry amounts and budget-period actuals",
+				"apps/api/src/report/reports/drill-extra.ts:175-184 returns time_entry rows only, filtered to the report window",
+				"tests/api-integration/p5-reports-drill.test.ts:205 exercises cost_to_deliver without a cost-entry assertion"
+			],
+			"impact": "A user cannot reconcile the displayed budget actual from the drill, despite the RP-12 underlying-items claim.",
+			"next_action": "Add cost-entry drill records under the same reach and rate checks; align row-specific budget periods, and assert the drill population reconciles with a budget containing both time and cost entries."
+		},
+		{
+			"id": "EVIDENCE-1",
+			"severity": "medium",
+			"requirement_ids": [],
+			"summary": "Phase status and generated report disagree with their cited audits and the current source tree.",
+			"evidence": [
+				"docs/report/audit/audit-P4c.json has 106 implemented_tested, 36 partial, 5 implemented_untested, 4 missing, 1 external_blocked, and 20 browser_verified=true items; docs/report/data.json reports 112 tested and 30 partial, while docs/status.md:3 says no P4/P5 screen was browser-verified",
+				"docs/report/audit/audit-P5.json has 63 implemented_tested and 21 partial; docs/report/data.json and docs/status.md report 62 and 22",
+				"docs/report/data.json:251-301 and report.html describe P5 as uncommitted, integration unrun, and review round 5 pending; docs/status.md:14-21 says committed/pushed, 5011/5011 integration, and round 8 pass",
+				"apps/api/drizzle/0155_p5_cost_and_capacity.sql defines cost_entry and available_hours; apps/api/drizzle/0156_p5_report_snapshots.sql defines metric_snapshot, contradicting the P5 carry text saying these are absent",
+				"docs/report/review contains review-p4-round1.json but no stored P4 rounds 2-5 or P5 review artifacts"
+			],
+			"impact": "Counts, browser evidence, carry lists, and phase-review provenance cannot be relied on as a current consolidated status.",
+			"next_action": "Re-audit changed requirement rows, reconcile browser evidence definitions, preserve final review records, then regenerate data.json and report.html through the report scripts."
+		},
+		{
+			"id": "P6-LEGACY-IMPORT-1",
+			"severity": "high_if_used_for_p6_cutover",
+			"requirement_ids": [
+				"IM-1",
+				"IM-2",
+				"IM-3",
+				"IM-4",
+				"IM-5",
+				"IM-6",
+				"IM-7"
+			],
+			"summary": "The active legacy task JSON importer is not the P6 import path and reruns can create duplicates.",
+			"evidence": [
+				"apps/api/src/task/index.ts:474-506 registers POST /api/task/import/{projectId} and accepts an array without a P6 run or mapping reference",
+				"apps/api/src/task/controllers/import-tasks.ts:33-224 creates legacy task rows one by one, coerces status and priority, and returns individual results without a source-id ledger, dry-run, checkpoint, provenance, or source authorship",
+				"apps/api/src/database/schema.ts:1733-1759 external_link is task-only; apps/api/src/external-link/index.ts exposes only a task-link read",
+				"packages/mcp/src/tools/register.ts:38-43 says bulk_create_work_items, create_import_link, and get_import_link are not offered"
+			],
+			"impact": "Using this endpoint for cutover would violate idempotency and preservation requirements.",
+			"next_action": "Keep it distinct from P6, and move P6 writes through the new authenticated run/ledger/bulk API."
+		}
+	],
+	"spot_checks": {
+		"method": "Read the cited asserting tests and source for implemented_tested audit rows; no test execution is claimed.",
+		"P4": [
+			{
+				"id": "RL-1",
+				"tests": ["tests/api-integration/workspace-role-governance.test.ts"],
+				"assertion": "Stored implication closure, rank/description, role.created audit and clone independence."
+			},
+			{
+				"id": "RL-4",
+				"tests": ["tests/api-integration/workspace-role-governance.test.ts"],
+				"assertion": "At-or-above-rank edit and rank lift return 403; lower-role edit succeeds."
+			},
+			{
+				"id": "TM-1",
+				"tests": [
+					"tests/api-integration/p4-closeout-service-key-http.test.ts",
+					"tests/api-integration/pending-action-registered-deletion.test.ts"
+				],
+				"assertion": "Team API path and retained team until pending deletion approval."
+			},
+			{
+				"id": "CF-1",
+				"tests": ["tests/api-integration/p4-closeout-service-key-http.test.ts"],
+				"assertion": "Custom-field list and section creation only; audit itself notes field-create/update lacks an HTTP integration test."
+			},
+			{
+				"id": "ST-1",
+				"tests": ["tests/api-integration/feature-flag-repository.test.ts"],
+				"assertion": "Project overrides workspace overrides instance, with inherited-source response."
+			},
+			{
+				"id": "NO-1",
+				"tests": ["tests/api/notification/preferences.test.ts"],
+				"assertion": "In-app enabled; email enabled for assignment, mention, approval and SLA breach; other external defaults off."
+			},
+			{
+				"id": "AM-1",
+				"tests": [
+					"tests/api/automation/automation-conditions-and-loops.test.ts",
+					"tests/api-integration/automation-run-pipeline.test.ts"
+				],
+				"assertion": "AND condition semantics and a nonmatching persisted rule."
+			},
+			{
+				"id": "WH-1",
+				"tests": [
+					"tests/api/webhook/webhook-signature.test.ts",
+					"tests/api-integration/webhook-delivery-pipeline.test.ts"
+				],
+				"assertion": "Known HMAC vector and exact raw-body bytes; delivery signing path."
+			},
+			{
+				"id": "AK-3",
+				"tests": [
+					"tests/api-integration/api-key-project-capabilities.test.ts",
+					"tests/api-integration/api-key-owner-state.test.ts"
+				],
+				"assertion": "Key capability/project clamp and owner-state checks cited by the audit; current-tree execution not established here."
+			},
+			{
+				"id": "MC-5",
+				"tests": [
+					"packages/mcp/src/tools/register.test.ts",
+					"tests/mcp/injection.test.ts"
+				],
+				"assertion": "Idempotency-Key header is forwarded; write without a key is refused."
+			}
+		],
+		"P5": [
+			{
+				"id": "CY-2",
+				"tests": ["tests/api-integration/p5-agile-cycles.test.ts"],
+				"assertion": "Overlap returns 409 naming the conflicting cycle; concurrent overlapping creates yield one winner."
+			},
+			{
+				"id": "MO-2",
+				"tests": ["tests/api-integration/p5-agile-modules.test.ts"],
+				"assertion": "One module per item; moving module preserves an independent cycle."
+			},
+			{
+				"id": "ES-3",
+				"tests": ["tests/api-integration/p5-agile-estimates.test.ts"],
+				"assertion": "Preview does not apply; clearing requires confirmation; applied result matches preview and persisted points."
+			},
+			{
+				"id": "TC-1",
+				"tests": ["tests/api-integration/p5-time-entries.test.ts"],
+				"assertion": "Integer minutes, actor, activity, billable default and audit; rejects invalid minute amounts."
+			},
+			{
+				"id": "TC-6",
+				"tests": ["tests/api-integration/p5-time-timer.test.ts"],
+				"assertion": "A second server read returns the timer start and activity; this does not prove a browser reload."
+			},
+			{
+				"id": "RP-18",
+				"tests": ["tests/api-integration/p5-reports-core.test.ts"],
+				"assertion": "Customer is refused across report and dashboard routes with feature on and off."
+			},
+			{
+				"id": "KB-2",
+				"tests": ["tests/api-integration/p5-kb-portal.test.ts"],
+				"assertion": "Portal list, deflection and detail require published, customer-visible articles."
+			},
+			{
+				"id": "SVC-5",
+				"tests": ["tests/api-integration/p5-service-catalogue.test.ts"],
+				"assertion": "Impact walk returns depth, via-service and customers; cycle flag is asserted."
+			},
+			{
+				"id": "CH-5",
+				"tests": ["tests/api-integration/p5-service-changes.test.ts"],
+				"assertion": "Calendar lists freeze and detects same-service overlapping change conflict."
+			},
+			{
+				"id": "REL-4",
+				"tests": ["tests/api-integration/p5-service-releases.test.ts"],
+				"assertion": "Notes generate from linked changes, an edit persists, and explicit regeneration updates them."
+			}
+		]
+	},
+	"P6_plan": [
+		{
+			"slice": 1,
+			"name": "Resolve recovery and authority contracts",
+			"requirement_ids": ["IM-1", "IM-3", "IM-8", "IM-9", "IM-12"],
+			"work": "Specify durable checkpoint/cursor ownership, source-change behavior, and backup/restore versus whole-run undo. Resolve old create_import_mapping versus maintained create_import_link/get_import_link names as one API. Register instance-admin route policies and key capability boundaries before writes.",
+			"gap": "docs/technical/import-and-cutover.md#reconciliation-and-cutover-gaps explicitly leaves checkpoint shape, stale-source semantics and whole-run rollback undefined."
+		},
+		{
+			"slice": 2,
+			"name": "Common run, mapping and dry-run core",
+			"requirement_ids": ["IM-1", "IM-2", "IM-3", "IM-4", "IM-5"],
+			"work": "Create import_run, editable import_mapping_profile, unique import_record_link, generalized external_link provenance, audited APIs for create/list/detail/discover/mapping/dry-run/execute/pause/report and transactional checkpointed chunks. Make every unmapped or rejected value visible."
+		},
+		{
+			"slice": 3,
+			"name": "Source adapters and history",
+			"requirement_ids": ["IM-2", "IM-4", "IM-5", "IM-6", "IM-7"],
+			"work": "Add ADO, Plane, Jira/JSM, Planner, Power Apps and CSV discovery and editable value mapping. Preserve source authors and timestamps, inactive unmatched people, comments, attachments, relations and activity; require explicit state maps. Use general 500-item chunks, ADO 200-item chunks and separately chunked ADO revisions."
+		},
+		{
+			"slice": 4,
+			"name": "Agent path through the same run",
+			"requirement_ids": ["IM-8", "IM-9", "IM-10", "IM-11", "IM-12"],
+			"work": "Implement /api/imports/{id}/records and /links plus bounded MCP bulk_create_work_items, create_import_link and get_import_link on the same ledger. Enforce idempotency, rate caps, owner-clamped API-key capability, audit origin and no second privileged write path."
+		},
+		{
+			"slice": 5,
+			"name": "Kaneo UI, reconciliation and rehearsal",
+			"requirement_ids": [
+				"IM-1",
+				"IM-2",
+				"IM-3",
+				"IM-4",
+				"IM-5",
+				"IM-6",
+				"IM-7"
+			],
+			"work": "Build God Mode run history and editable mapping table from Kaneo/packages/ui, with affected counts, loss report and instance-topic progress. On isolated copies test interrupt/resume/rerun, count and source spot-check reconciliation, files/history/links, backup restore and per-source retirement approval. Do not claim whole-run undo or atomic cutover without its separate contract."
+		}
+	]
+}

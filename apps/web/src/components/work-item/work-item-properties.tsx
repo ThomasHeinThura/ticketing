@@ -1,13 +1,20 @@
+import { dayToIso, isoToDay } from "@/lib/work-item-date";
+
+export { dayToIso, isoToDay } from "@/lib/work-item-date";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
+  Badge,
   Button,
   Calendar,
+  Fieldset,
   Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  ShortcutNumber,
   Textarea,
 } from "@taskdesk/ui";
 import {
@@ -15,19 +22,21 @@ import {
   CalendarDays,
   Check,
   Copy,
-  Tag,
+  Plus,
   TriangleAlert,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
+import { TaskPropertiesPresentation } from "@/components/task/task-detail-presentation";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import { getWorkItemLabels } from "@/fetchers/work-item/get-work-item-labels";
 import transitionWorkItem from "@/fetchers/work-item/transition-work-item";
 import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
 import useGetAssignablePeople from "@/hooks/queries/work-item/use-get-assignable-people";
 import useGetWorkItemTransitions from "@/hooks/queries/work-item/use-get-work-item-transitions";
+import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { getColumnIcon } from "@/lib/column";
@@ -40,16 +49,28 @@ import { getPriorityIcon } from "@/lib/priority";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import {
+  assigneeDisplayText,
+  resolveAssigneeDisplay,
+} from "@/lib/work-item-assignee-display";
+import {
   isWorkItemAccessLost,
   WorkItemVersionConflictError,
 } from "@/lib/work-item-errors";
+import { workItemTransitionReasonKey } from "@/lib/work-item-transition-reasons";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { WorkItemDetailField, WorkItemDetailRow } from "@/types/work-item";
+import {
+  isClosingCategory,
+  useOpenChildrenGuard,
+} from "./open-children-warning";
+import WorkItemAgileRows from "./work-item-agile-rows";
 import {
   useHasWorkItemFeedback,
   useWorkItemFeedback,
   WorkItemFeedbackProvider,
 } from "./work-item-feedback";
+import WorkItemImportOrigin from "./work-item-import-origin";
+import WorkItemParentControl from "./work-item-parent-control";
 import {
   useRefreshWorkItem,
   useSaveWorkItemFields,
@@ -73,22 +94,6 @@ const CATEGORY_ICON: Record<string, string> = {
 };
 
 const PRIORITIES = ["low", "medium", "high", "urgent"] as const;
-
-/** Server reason codes (`workflows.md`) as readable text; an unknown code never shows raw. */
-const REASON_KEYS: Record<string, string> = {
-  "note.required": "reasonNoteRequired",
-  "guard.assignee_present": "reasonAssigneePresent",
-  "guard.children_closed": "reasonChildrenClosed",
-  "guard.no_open_blockers": "reasonNoOpenBlockers",
-  "guard.field_required": "reasonFieldRequired",
-  "guard.change_risk_at_most": "reasonChangeRisk",
-  "approval.pending": "reasonApprovalPending",
-  "cab.pending": "reasonCabPending",
-};
-
-function reasonKey(code: string) {
-  return `workItems:journey.${REASON_KEYS[code] ?? "reasonUnknown"}`;
-}
 
 /** Kaneo's small muted inline message inside a popover or under a field. */
 function InlineMessage({ children }: { children: ReactNode }) {
@@ -152,21 +157,6 @@ function useAccessLostOnQueryError(error: unknown, onAccessLost: () => void) {
  * same day, so the label and the calendar never disagree in a UTC−x zone. A changed day
  * keeps the stored time of day (UTC); a new date lands on UTC midnight.
  */
-export function dayToIso(day: Date | undefined, original: string | null) {
-  if (!day) return null;
-  const y = day.getFullYear();
-  const m = String(day.getMonth() + 1).padStart(2, "0");
-  const d = String(day.getDate()).padStart(2, "0");
-  const timeOfDay = original?.slice(10) || "T00:00:00.000Z";
-  return `${y}-${m}-${d}${timeOfDay}`;
-}
-
-export function isoToDay(value: string | null) {
-  if (!value) return undefined;
-  const [y, m, d] = value.slice(0, 10).split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-
 export function formatWorkItemDay(value: string) {
   return formatDateMedium(isoToDay(value) as Date);
 }
@@ -267,6 +257,72 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
     item.workspaceId,
     item.projectId,
   );
+  const dispatching = useRef(false);
+  const childrenGuard = useOpenChildrenGuard();
+  const canMove =
+    canTransitionTasks() && !item.unavailableFields.includes("stateName");
+  const chooseOffer = (offer: (typeof offers)[number]) => {
+    const onlyNote =
+      offer.blockedBy.length > 0 &&
+      offer.blockedBy.every((reason) => reason.reasonCode === "note.required");
+    if (
+      !canMove ||
+      transition.isPending ||
+      dispatching.current ||
+      (!offer.available && !onlyNote)
+    )
+      return;
+    setError("");
+    // `RH-10`/`WI-18`: closing a parent that still has open children asks first (and never
+    // closes the children). Not asked again for the note step: the move is already chosen.
+    const proceed = () => {
+      if (offer.notePolicy && offer.notePolicy !== "none") {
+        // The warning dialog may have taken focus and closed the popover; reopen it so
+        // the note form is always reachable after "Close anyway".
+        setOpen(true);
+        setNoteFor(offer.transitionId);
+        return;
+      }
+      dispatching.current = true;
+      transition.mutate(
+        {
+          toStateTemplateId: offer.toStateTemplateId,
+          toStateName: offer.toStateName,
+        },
+        {
+          onSettled: () => {
+            dispatching.current = false;
+          },
+        },
+      );
+    };
+    void childrenGuard.guard({
+      key: item.key,
+      closing:
+        isClosingCategory(offer.toStateCategory) &&
+        !isClosingCategory(item.stateCategory),
+      proceed,
+    });
+  };
+  useNumberedShortcuts(
+    open &&
+      !noteFor &&
+      canMove &&
+      !transition.isPending &&
+      !transitions.isLoading &&
+      !transitions.isError,
+    offers.map((offer) => ({
+      onSelect: () => chooseOffer(offer),
+      disabled:
+        !offer.available &&
+        !(
+          offer.blockedBy.length > 0 &&
+          offer.blockedBy.every(
+            (reason) => reason.reasonCode === "note.required",
+          )
+        ),
+    })),
+  );
   const icon = getColumnIcon(CATEGORY_ICON[item.stateCategory] ?? "to-do");
   if (item.unavailableFields.includes("stateName")) {
     return <UnavailableRow compact={compact} icon={icon} field="stateName" />;
@@ -285,110 +341,106 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   if (!canTransitionTasks()) return trigger;
   const noteOffer = offers.find((offer) => offer.transitionId === noteFor);
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) {
-          setNoteFor(null);
-          setNote("");
-          setError("");
-        }
-      }}
-    >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
-        {error ? <InlineMessage>{error}</InlineMessage> : null}
-        {noteOffer ? (
-          <form
-            className="flex flex-col gap-2 p-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              transition.mutate({
-                toStateTemplateId: noteOffer.toStateTemplateId,
-                toStateName: noteOffer.toStateName,
-                note: note.trim() || undefined,
-              });
-            }}
-          >
-            <p className="font-medium text-sm">{noteOffer.toStateName}</p>
-            <Textarea
-              aria-label={t("workItems:properties.transitionNote")}
-              placeholder={t("workItems:properties.transitionNote")}
-              value={note}
-              maxLength={4000}
-              onChange={(event) => setNote(event.target.value)}
-            />
-            <Button
-              type="submit"
-              size="sm"
-              disabled={
-                transition.isPending ||
-                (noteOffer.notePolicy === "required" && !note.trim())
-              }
+    <>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) {
+            setNoteFor(null);
+            setNote("");
+            setError("");
+          }
+        }}
+      >
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <PopoverContent className="w-64 p-0" align="start">
+          {error ? <InlineMessage>{error}</InlineMessage> : null}
+          {noteOffer ? (
+            <form
+              className="flex flex-col gap-2 p-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                transition.mutate({
+                  toStateTemplateId: noteOffer.toStateTemplateId,
+                  toStateName: noteOffer.toStateName,
+                  note: note.trim() || undefined,
+                });
+              }}
             >
-              {t("workItems:properties.move")}
-            </Button>
-          </form>
-        ) : transitions.isLoading ? (
-          <p className="p-3 text-muted-foreground text-sm" role="status">
-            {t("common:empty.loading")}
-          </p>
-        ) : transitions.isError ? (
-          <p className="p-3 text-muted-foreground text-sm" role="alert">
-            {t("workItems:journey.transitionsError")}
-          </p>
-        ) : offers.length === 0 ? (
-          <p className="p-3 text-muted-foreground text-sm">
-            {t("workItems:properties.noTransitions")}
-          </p>
-        ) : (
-          <div>
-            {offers.map((offer) => {
-              // Blocked only for want of a note: runnable once the note is written.
-              const onlyNote =
-                offer.blockedBy.length > 0 &&
-                offer.blockedBy.every(
-                  (reason) => reason.reasonCode === "note.required",
-                );
-              const blocked = !offer.available && !onlyNote;
-              const reasons = offer.blockedBy.length
-                ? offer.blockedBy.map((reason) =>
-                    t(reasonKey(reason.reasonCode)),
-                  )
-                : [t("workItems:journey.reasonUnknown")];
-              return (
-                <Button
-                  key={offer.transitionId}
-                  variant="ghost"
-                  size="sm"
-                  disabled={blocked || transition.isPending}
-                  className="h-auto min-h-8 w-full flex-col items-start gap-0 rounded-none px-2 py-1.5 first:rounded-t-md last:rounded-b-md"
-                  onClick={() => {
-                    setError("");
-                    if (offer.notePolicy !== "none" && offer.notePolicy) {
-                      setNoteFor(offer.transitionId);
-                      return;
-                    }
-                    transition.mutate({
-                      toStateTemplateId: offer.toStateTemplateId,
-                      toStateName: offer.toStateName,
-                    });
-                  }}
-                >
-                  <span className="text-sm">{offer.toStateName}</span>
-                  {blocked ? (
-                    <span className="text-muted-foreground text-xs">
-                      {reasons.join(", ")}
+              <p className="font-medium text-sm">{noteOffer.toStateName}</p>
+              <Textarea
+                aria-label={t("workItems:properties.transitionNote")}
+                placeholder={t("workItems:properties.transitionNote")}
+                value={note}
+                maxLength={4000}
+                onChange={(event) => setNote(event.target.value)}
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={
+                  transition.isPending ||
+                  (noteOffer.notePolicy === "required" && !note.trim())
+                }
+              >
+                {t("workItems:properties.move")}
+              </Button>
+            </form>
+          ) : transitions.isLoading ? (
+            <p className="p-3 text-muted-foreground text-sm" role="status">
+              {t("common:empty.loading")}
+            </p>
+          ) : transitions.isError ? (
+            <p className="p-3 text-muted-foreground text-sm" role="alert">
+              {t("workItems:journey.transitionsError")}
+            </p>
+          ) : offers.length === 0 ? (
+            <p className="p-3 text-muted-foreground text-sm">
+              {t("workItems:properties.noTransitions")}
+            </p>
+          ) : (
+            <div>
+              {offers.map((offer, index) => {
+                // Blocked only for want of a note: runnable once the note is written.
+                const onlyNote =
+                  offer.blockedBy.length > 0 &&
+                  offer.blockedBy.every(
+                    (reason) => reason.reasonCode === "note.required",
+                  );
+                const blocked = !offer.available && !onlyNote;
+                const reasons = offer.blockedBy.length
+                  ? offer.blockedBy.map((reason) =>
+                      t(workItemTransitionReasonKey(reason.reasonCode)),
+                    )
+                  : [t("workItems:journey.reasonUnknown")];
+                return (
+                  <Button
+                    key={offer.transitionId}
+                    variant="ghost"
+                    size="sm"
+                    disabled={blocked || transition.isPending}
+                    className="h-auto min-h-8 w-full flex-col items-start gap-0 rounded-none px-2 py-1.5 first:rounded-t-md last:rounded-b-md"
+                    onClick={() => chooseOffer(offer)}
+                  >
+                    <span className="flex w-full items-center gap-2">
+                      <span className="text-sm">{offer.toStateName}</span>
+                      <ShortcutNumber number={index + 1} />
                     </span>
-                  ) : null}
-                </Button>
-              );
-            })}
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+                    {blocked ? (
+                      <span className="text-muted-foreground text-xs">
+                        {reasons.join(", ")}
+                      </span>
+                    ) : null}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+      {childrenGuard.dialog}
+    </>
   );
 }
 
@@ -400,6 +452,37 @@ function PriorityControl({ item, compact, onAccessLost }: ControlProps) {
     item.projectId,
   );
   const current = item.priority ?? "no-priority";
+  const dispatching = useRef(false);
+  const canEdit =
+    canUpdateTasks() &&
+    canSetPriorityTasks() &&
+    !item.unavailableFields.includes("priority");
+  const choosePriority = (priority: (typeof PRIORITIES)[number] | null) => {
+    if (
+      !canEdit ||
+      update.isPending ||
+      dispatching.current ||
+      priority === item.priority
+    )
+      return;
+    dispatching.current = true;
+    update.mutate(
+      { priority },
+      {
+        onSuccess: () => setOpen(false),
+        onSettled: () => {
+          dispatching.current = false;
+        },
+      },
+    );
+  };
+  useNumberedShortcuts(
+    open && canEdit && !update.isPending,
+    [null, ...PRIORITIES].map((priority) => ({
+      onSelect: () => choosePriority(priority),
+    })),
+  );
+
   if (item.unavailableFields.includes("priority")) {
     return (
       <UnavailableRow
@@ -430,7 +513,7 @@ function PriorityControl({ item, compact, onAccessLost }: ControlProps) {
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-48 p-0" align="start">
         <div>
-          {[null, ...PRIORITIES].map((priority) => {
+          {[null, ...PRIORITIES].map((priority, index) => {
             const value = priority ?? "no-priority";
             return (
               <Button
@@ -438,18 +521,16 @@ function PriorityControl({ item, compact, onAccessLost }: ControlProps) {
                 variant="ghost"
                 size="sm"
                 className="h-8 w-full justify-start gap-2 rounded-none px-2 first:rounded-t-md last:rounded-b-md"
-                onClick={() =>
-                  update.mutate(
-                    { priority },
-                    { onSuccess: () => setOpen(false) },
-                  )
-                }
+                disabled={update.isPending}
+                onClick={() => choosePriority(priority)}
               >
                 {getPriorityIcon(value)}
                 <span className="text-sm">{getPriorityLabel(value)}</span>
                 {current === value ? (
                   <Check className="ml-auto h-4 w-4" />
-                ) : null}
+                ) : (
+                  <ShortcutNumber number={index + 1} />
+                )}
               </Button>
             );
           })}
@@ -499,6 +580,9 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       writeWorkItemResponse(queryClient, item.key, result, {
         assigneeId: person?.personId ?? null,
         assigneeName: person?.name ?? null,
+        // The picker only offers active people on the project roster (AS-5).
+        assigneeActive: person ? true : null,
+        assigneeOnProject: person ? true : null,
       });
       return result;
     },
@@ -537,10 +621,15 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     item.workspaceId,
     item.projectId,
   );
+  // `AS-8`: "Jane Smith (inactive)" / "(no longer on this project)".
   const name =
     item.assigneeId === null
       ? null
-      : (item.assigneeName ?? t("workItems:detail.inactiveAssignee"));
+      : assigneeDisplayText(resolveAssigneeDisplay(item), {
+          unassigned: t("workItems:detail.unassigned"),
+          inactive: t("workItems:detail.inactiveAssignee"),
+          notOnProject: t("workItems:list.assigneeNotOnProject"),
+        });
   const trigger = (
     <Button
       variant="ghost"
@@ -551,7 +640,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       {name ? (
         <Avatar className="h-[16px] w-[16px]">
           <AvatarFallback className="text-[8px]">
-            {getInitials(name)}
+            {getInitials(item.assigneeName ?? name)}
           </AvatarFallback>
         </Avatar>
       ) : null}
@@ -565,7 +654,6 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       </span>
     </Button>
   );
-  if (!canUpdateTasks() && !canAssignTasks()) return trigger;
   const list = people.data ?? [];
   // An update-only roster contains only the caller; never offer clearing another holder.
   const canUnassign =
@@ -574,6 +662,63 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       (canUpdateTasks() &&
         list.some((person) => person.personId === item.assigneeId)));
   const confirmPerson = list.find((person) => person.personId === confirmFor);
+  const dispatching = useRef(false);
+  const canEdit = canUpdateTasks() || canAssignTasks();
+  const dispatchAssignment = (
+    person: { personId: string; name: string | null } | null,
+  ) => {
+    if (
+      !canEdit ||
+      assign.isPending ||
+      dispatching.current ||
+      (person === null && !canUnassign)
+    )
+      return;
+    dispatching.current = true;
+    assign.mutate(
+      { person, holder: item.assigneeId },
+      {
+        onSettled: () => {
+          dispatching.current = false;
+        },
+      },
+    );
+  };
+  const choosePerson = (person: (typeof list)[number] | null) => {
+    if (
+      !canEdit ||
+      assign.isPending ||
+      dispatching.current ||
+      person?.personId === item.assigneeId ||
+      (person === null && !canUnassign)
+    )
+      return;
+    setError("");
+    if (person && item.assigneeId && item.assigneeId !== person.personId) {
+      setConfirmFor(person.personId);
+      return;
+    }
+    dispatchAssignment(
+      person ? { personId: person.personId, name: person.name ?? null } : null,
+    );
+  };
+  useNumberedShortcuts(
+    open &&
+      !confirmFor &&
+      canEdit &&
+      !assign.isPending &&
+      !people.isLoading &&
+      !people.isError,
+    [
+      { onSelect: () => choosePerson(null), disabled: !canUnassign },
+      ...list.slice(0, 8).map((person) => ({
+        onSelect: () => choosePerson(person),
+        disabled: item.assigneeId === person.personId,
+      })),
+    ],
+  );
+  if (!canEdit) return trigger;
+
   return (
     <Popover
       open={open}
@@ -601,12 +746,9 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                 size="sm"
                 disabled={assign.isPending}
                 onClick={() =>
-                  assign.mutate({
-                    person: {
-                      personId: confirmPerson.personId,
-                      name: confirmPerson.name ?? null,
-                    },
-                    holder: item.assigneeId,
+                  dispatchAssignment({
+                    personId: confirmPerson.personId,
+                    name: confirmPerson.name ?? null,
                   })
                 }
               >
@@ -628,14 +770,14 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
               size="sm"
               className="h-8 w-full justify-start gap-2 rounded-none px-2 text-muted-foreground"
               disabled={assign.isPending || !canUnassign}
-              onClick={() =>
-                assign.mutate({ person: null, holder: item.assigneeId })
-              }
+              onClick={() => choosePerson(null)}
             >
               {t("workItems:detail.unassigned")}
               {item.assigneeId === null ? (
                 <Check className="ml-auto h-4 w-4" />
-              ) : null}
+              ) : (
+                <ShortcutNumber number={1} />
+              )}
             </Button>
             {people.isLoading ? (
               <p className="p-3 text-muted-foreground text-sm" role="status">
@@ -646,7 +788,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                 {t("workItems:journey.peopleError")}
               </p>
             ) : (
-              list.map((person) => (
+              list.map((person, index) => (
                 <Button
                   key={person.personId}
                   variant="ghost"
@@ -655,23 +797,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                   disabled={
                     assign.isPending || item.assigneeId === person.personId
                   }
-                  onClick={() => {
-                    setError("");
-                    if (
-                      item.assigneeId &&
-                      item.assigneeId !== person.personId
-                    ) {
-                      setConfirmFor(person.personId);
-                      return;
-                    }
-                    assign.mutate({
-                      person: {
-                        personId: person.personId,
-                        name: person.name ?? null,
-                      },
-                      holder: item.assigneeId,
-                    });
-                  }}
+                  onClick={() => choosePerson(person)}
                 >
                   <Avatar className="h-[16px] w-[16px]">
                     <AvatarFallback className="text-[8px]">
@@ -683,6 +809,8 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                   </span>
                   {item.assigneeId === person.personId ? (
                     <Check className="ml-auto h-4 w-4" />
+                  ) : index < 8 ? (
+                    <ShortcutNumber number={index + 2} />
                   ) : null}
                 </Button>
               ))
@@ -811,7 +939,6 @@ function ConflictNotice({ item }: { item: WorkItemDetailRow }) {
 
 function LabelsControl({
   item,
-  compact,
   onAccessLost,
 }: {
   item: WorkItemDetailRow;
@@ -848,18 +975,26 @@ function LabelsControl({
           <Button
             variant="ghost"
             size="sm"
-            className={rowClass(compact)}
+            className="h-auto min-h-5 flex-wrap justify-start gap-1.5 px-0 py-0 font-normal"
             aria-label={title}
             disabled={!canUpdateTasks() || unavailable}
           />
         }
       >
-        <Tag className="size-4" />
-        <span className="truncate">
-          {selected.length
-            ? selected.map((label) => label.name).join(", ")
-            : title}
-        </span>
+        {selected.map((label) => (
+          <Badge
+            key={label.id}
+            variant="outline"
+            className="flex items-center gap-1 px-1.5 py-0.5 text-[10px]"
+          >
+            <span
+              className="size-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: resolveLabelColor(label.color) }}
+            />
+            <span className="max-w-[60px] truncate">{label.name}</span>
+          </Badge>
+        ))}
+        <Plus className="size-3" />
       </PopoverTrigger>
       <PopoverContent className="w-64 p-1" align="start">
         <Input
@@ -937,6 +1072,7 @@ function LabelsControl({
 type WorkItemPropertiesProps = {
   item: WorkItemDetailRow;
   compact?: boolean;
+  readOnly?: boolean;
   onAccessLost: () => void;
   /** v2 panels (SLA, approvals, metadata) under the property rows. */
   children?: ReactNode;
@@ -965,6 +1101,7 @@ export default function WorkItemProperties(props: WorkItemPropertiesProps) {
 function WorkItemPropertiesPanel({
   item,
   compact = false,
+  readOnly = false,
   onAccessLost,
   children,
 }: WorkItemPropertiesProps) {
@@ -981,47 +1118,93 @@ function WorkItemPropertiesPanel({
   };
   return (
     <div
-      className={cn(
-        "flex w-full flex-col gap-2",
-        !compact && "h-full lg:w-72 xl:w-80",
-      )}
+      className={cn("flex w-full flex-col gap-2", !compact && "min-h-full")}
       data-testid="work-item-properties"
+      data-read-only={readOnly || undefined}
     >
-      {!compact ? (
-        <div className="hidden items-center justify-between px-3 py-2 lg:flex">
-          <p className="flex-1 font-medium text-foreground text-sm">
-            {t("workItems:properties.title")}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-foreground"
-            aria-label={t("workItems:properties.copyLink")}
-            onClick={copyLink}
+      <TaskPropertiesPresentation>
+        {!compact ? (
+          <div className="hidden items-center justify-between px-3 py-2 lg:flex">
+            <p className="flex-1 font-medium text-foreground text-sm">
+              {t("workItems:properties.title")}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-foreground"
+              aria-label={t("workItems:properties.copyLink")}
+              onClick={copyLink}
+            >
+              <Copy className="size-4" />
+            </Button>
+          </div>
+        ) : null}
+        <ConflictNotice item={item} />
+        <div
+          className={cn(
+            "flex w-full flex-row-reverse gap-2 border-b border-border",
+            !compact && "lg:flex-col lg:gap-0 lg:border-b-0",
+          )}
+        >
+          <div className={cn("flex px-3 py-2", !compact && "lg:hidden")}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-foreground"
+              aria-label={t("workItems:properties.copyLink")}
+              onClick={copyLink}
+            >
+              <Copy className="size-4" />
+            </Button>
+          </div>
+          <Fieldset
+            disabled={readOnly}
+            data-testid="work-item-property-controls"
+            className={cn(
+              "flex w-full max-w-none flex-row flex-wrap items-center gap-1 p-2",
+              !compact &&
+                "lg:flex-col lg:items-stretch lg:gap-2 lg:px-3 lg:py-3",
+            )}
           >
-            <Copy className="size-4" />
-          </Button>
+            <StateControl
+              key={`StateControl:${item.workspaceId}:${item.projectId}:${item.key}`}
+              {...controlProps}
+            />
+            <PriorityControl
+              key={`PriorityControl:${item.workspaceId}:${item.projectId}:${item.key}`}
+              {...controlProps}
+            />
+            <AssigneeControl
+              key={`AssigneeControl:${item.workspaceId}:${item.projectId}:${item.key}`}
+              {...controlProps}
+            />
+            <DateControl {...controlProps} field="startDate" />
+            <DateControl {...controlProps} field="dueDate" />
+            <WorkItemAgileRows item={item} compact={compact} />
+          </Fieldset>
         </div>
-      ) : null}
-      <ConflictNotice item={item} />
-      <div
-        className={cn(
-          "flex w-full flex-row flex-wrap items-center gap-1 p-2",
-          !compact && "lg:flex-col lg:items-stretch lg:gap-2 lg:px-3 lg:py-3",
-        )}
-      >
-        <StateControl {...controlProps} />
-        <PriorityControl {...controlProps} />
-        <AssigneeControl {...controlProps} />
-        <LabelsControl {...controlProps} />
-        <DateControl {...controlProps} field="startDate" />
-        <DateControl {...controlProps} field="dueDate" />
-      </div>
-      {children ? (
-        <div className="flex flex-col gap-4 border-border/80 border-t px-3 py-3">
-          {children}
-        </div>
-      ) : null}
+        <Fieldset
+          disabled={readOnly}
+          className="flex max-w-none flex-col gap-3 p-2 px-3"
+          data-testid="work-item-labels-group"
+        >
+          <div className="flex flex-col gap-1">
+            <span className="px-2 text-xs font-medium text-foreground">
+              {t("tasks:properties.labels")}
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5 px-2">
+              <LabelsControl {...controlProps} />
+            </div>
+          </div>
+        </Fieldset>
+        <Fieldset disabled={readOnly} className="max-w-none gap-0 px-3">
+          <WorkItemParentControl {...controlProps} />
+        </Fieldset>
+        <WorkItemImportOrigin item={item} />
+        {children ? (
+          <div className="flex flex-col gap-1 px-3 py-2">{children}</div>
+        ) : null}
+      </TaskPropertiesPresentation>
     </div>
   );
 }

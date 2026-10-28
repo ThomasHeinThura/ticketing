@@ -9,9 +9,15 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectRole,
-  grantWorkItemProjectAccess,
   requireRow,
+  WORK_ITEM_PROJECT_CAPABILITIES,
 } from "./helpers/fixtures";
+import {
+  approvePendingDeletion,
+  deleteThroughApproval,
+  ensureAgentSession,
+  requestDeletion,
+} from "./helpers/pending-deletion";
 import { PROJECT_LABEL_ROUTE_KEYS } from "./helpers/project-reach-route-keys";
 import { makeApiKey } from "./helpers/reach-world";
 
@@ -20,7 +26,11 @@ async function fixture(roleName = "owner") {
   const { project } = await createProjectFixture({
     workspaceId: actor.workspace.id,
   });
-  const role = await grantWorkItemProjectAccess(actor.user.id, project.id);
+  // Project-label deletion is evaluated against the project role's own `label:manage`.
+  const role = await grantProjectRole(actor.user.id, project.id, [
+    ...WORK_ITEM_PROJECT_CAPABILITIES,
+    "label:manage",
+  ]);
   const type = requireRow(
     await db
       .insert(schema.workItemTypeTable)
@@ -83,6 +93,8 @@ async function fixture(roleName = "owner") {
     "label",
   );
   mockAuthenticatedSession(actor.user);
+  // Catalogue deletions are pending actions; their approval needs the live session row.
+  await ensureAgentSession(actor.user.id);
   return { ...actor, role, project, item, label, ...createApp() };
 }
 function patch(
@@ -116,6 +128,15 @@ describe("canonical work-item labels", () => {
         assigned: true,
       },
     ]);
+    const schedulePage = await app.request(
+      `/api/projects/${item.projectId}/work-items`,
+    );
+    expect(schedulePage.status).toBe(200);
+    expect(
+      (await schedulePage.json()).data.find(
+        (row: { key: string }) => row.key === item.key,
+      ).labels,
+    ).toEqual([{ id: label.id, name: label.name, color: label.color }]);
     const activity = await db
       .select()
       .from(schema.activityTable)
@@ -233,14 +254,19 @@ describe("canonical work-item labels", () => {
   });
 
   it("catalogue deletion advances item versions and records removal rather than silently cascading", async () => {
-    const { app, item, label } = await fixture();
+    const { app, item, label, user } = await fixture();
     expect((await patch(app, item.key, item.version, [label.id])).status).toBe(
       200,
     );
-    const deleted = await app.request(`/api/label/${label.id}`, {
-      method: "DELETE",
+    // DELETE requests (202) and leaves the assignment in place; approval removes it and
+    // journals the removal.
+    await deleteThroughApproval(app, user, `/api/label/${label.id}`, {
+      afterRequest: async () => {
+        expect(await db.select().from(schema.workItemLabelTable)).toHaveLength(
+          1,
+        );
+      },
     });
-    expect(deleted.status).toBe(200);
     expect(await db.select().from(schema.workItemLabelTable)).toHaveLength(0);
     const [current] = await db
       .select()
@@ -264,13 +290,16 @@ describe("canonical work-item labels", () => {
   });
 
   it("a concurrent catalogue delete cannot leave an unlogged assignment or orphan", async () => {
-    const { app, item, label } = await fixture();
+    const { app, item, label, user } = await fixture();
+    // The request only records the pending deletion; its approval is the step that races
+    // the assignment.
+    const pending = await requestDeletion(app, `/api/label/${label.id}`);
     const [write, deleted] = await Promise.all([
       patch(app, item.key, item.version, [label.id]),
-      app.request(`/api/label/${label.id}`, { method: "DELETE" }),
+      approvePendingDeletion(app, user.id, pending),
     ]);
     expect([200, 422]).toContain(write.status);
-    expect(deleted.status).toBe(200);
+    expect(deleted.status, await deleted.clone().text()).toBe(200);
     expect(await db.select().from(schema.workItemLabelTable)).toHaveLength(0);
     const [current] = await db
       .select()
@@ -303,7 +332,7 @@ describe("project label catalogues", () => {
   beforeEach(resetTestDatabase);
 
   it("keeps equal workspace/project names distinct and supports idempotent project CRUD", async () => {
-    const { app, project, label: workspaceLabel } = await fixture();
+    const { app, project, label: workspaceLabel, user } = await fixture();
     const capabilities = await app.request(
       `/api/capabilities?workspaceId=${project.workspaceId}&projectId=${project.id}`,
     );
@@ -347,9 +376,12 @@ describe("project label catalogues", () => {
       name: "Project-specific",
       color: "blue",
     });
-    expect(
-      (await app.request(`${url}/${label.id}`, { method: "DELETE" })).status,
-    ).toBe(200);
+    // Project-catalogue DELETE requests (202); the entry is listed until approval removes it.
+    await deleteThroughApproval(app, user, `${url}/${label.id}`, {
+      afterRequest: async () => {
+        expect(await (await app.request(url)).json()).toHaveLength(1);
+      },
+    });
     expect(await (await app.request(url)).json()).toEqual([]);
     expect(
       (
@@ -414,7 +446,7 @@ describe("project label catalogues", () => {
   });
 
   it("project deletion journals removed assignments and preserves workspace assignments", async () => {
-    const { app, item, project, label } = await fixture();
+    const { app, item, project, label, user } = await fixture();
     const own = requireRow(
       await db
         .insert(schema.labelTable)
@@ -430,11 +462,11 @@ describe("project label catalogues", () => {
     expect(
       (await patch(app, item.key, item.version, [label.id, own.id])).status,
     ).toBe(200);
-    const deleted = await app.request(
+    await deleteThroughApproval(
+      app,
+      user,
       `/api/label/project/${project.id}/catalogue/${own.id}`,
-      { method: "DELETE" },
     );
-    expect(deleted.status).toBe(200);
     expect(await db.select().from(schema.workItemLabelTable)).toEqual([
       expect.objectContaining({ labelId: label.id, workItemId: item.id }),
     ]);
@@ -594,7 +626,7 @@ describe("project label catalogues", () => {
   });
 
   it("serializes project catalogue deletion against a concurrent assignment", async () => {
-    const { app, item, project } = await fixture();
+    const { app, item, project, user } = await fixture();
     const label = requireRow(
       await db
         .insert(schema.labelTable)
@@ -607,14 +639,16 @@ describe("project label catalogues", () => {
         .returning(),
       "project label",
     );
+    const pending = await requestDeletion(
+      app,
+      `/api/label/project/${project.id}/catalogue/${label.id}`,
+    );
     const [write, deleted] = await Promise.all([
       patch(app, item.key, item.version, [label.id]),
-      app.request(`/api/label/project/${project.id}/catalogue/${label.id}`, {
-        method: "DELETE",
-      }),
+      approvePendingDeletion(app, user.id, pending),
     ]);
     expect([200, 422]).toContain(write.status);
-    expect(deleted.status).toBe(200);
+    expect(deleted.status, await deleted.clone().text()).toBe(200);
     expect(await db.select().from(schema.workItemLabelTable)).toHaveLength(0);
     const [current] = await db
       .select()

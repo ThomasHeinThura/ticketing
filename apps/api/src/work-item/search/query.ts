@@ -1,5 +1,9 @@
 import { STATE_GROUPS } from "@taskdesk/domain";
 import { HTTPException } from "hono/http-exception";
+import {
+  CUSTOM_FIELD_FILTER_KEY,
+  customFieldLeafShapeProblem,
+} from "./custom-field-filter";
 
 export type SearchFilter =
   | { op: "and" | "or"; clauses: SearchFilter[] }
@@ -9,14 +13,64 @@ export type WorkItemSearchQuery = {
   entity: "work_item";
   filter?: SearchFilter;
   sort?: {
-    field: "key" | "title" | "priority" | "dueDate";
+    field: WorkItemSearchSortField;
     order: "asc" | "desc";
   }[];
-  columns?: ("key" | "title" | "state" | "assignee" | "priority" | "dueDate")[];
+  columns?: WorkItemSearchColumn[];
 };
 
+export type WorkItemSearchColumn =
+  | "key"
+  | "title"
+  | "state"
+  | "assignee"
+  | "priority"
+  | "dueDate"
+  | `cf.${string}`;
+
+export type WorkItemSearchSortField =
+  | "key"
+  | "position"
+  | "title"
+  | "state"
+  | "assignee"
+  | "priority"
+  | "dueDate"
+  | `cf.${string}`;
+
+const WORK_ITEM_SEARCH_NATIVE_COLUMNS = [
+  "key",
+  "title",
+  "state",
+  "assignee",
+  "priority",
+  "dueDate",
+] as const;
+const CUSTOM_FIELD_COLUMN = /^cf\.[a-z][a-z0-9_]{0,63}$/u;
+
+function isWorkItemSearchColumn(value: unknown): value is WorkItemSearchColumn {
+  return (
+    typeof value === "string" &&
+    ((WORK_ITEM_SEARCH_NATIVE_COLUMNS as readonly string[]).includes(value) ||
+      CUSTOM_FIELD_COLUMN.test(value))
+  );
+}
+
+export function hasWorkItemLifecycleFilter(
+  filter: SearchFilter | undefined,
+): boolean {
+  if (!filter) return false;
+  if ("clauses" in filter)
+    return filter.clauses.some(hasWorkItemLifecycleFilter);
+  return filter.field === "lifecycle";
+}
+
 const priorities = ["low", "medium", "high", "urgent"] as const;
-const unavailable = /^(?:sla\.(?:state|due_at)|cf\.[a-zA-Z0-9_.-]+|label)$/u;
+// VW-31: recognised-but-unbacked fields return 422 naming the field. `organisation` resolves
+// through project.organisation_id but has no whitelisted operator/value contract in the P1
+// table, so it stays unavailable (never an empty or unfiltered result).
+const unavailable =
+  /^(?:sla\.(?:state|due_at)|label|cycle|module|epic|organisation)$/u;
 const knownUnavailable = (field: string) => unavailable.test(field);
 
 function bad(message: string): never {
@@ -90,6 +144,15 @@ export function validateWorkItemSearchQuery(
       vals.length > 0 &&
       vals.length <= 20 &&
       vals.every((v) => typeof v === "string" && accepted.includes(v));
+    // CF-10: `cf.<key>`. The key pattern, operator and value shape are checked here; the
+    // field's existence and format need the workspace and are checked when the search runs.
+    if (field.startsWith("cf.")) {
+      if (!CUSTOM_FIELD_FILTER_KEY.test(field))
+        return bad(`Unknown filter field: ${field}`);
+      const problem = customFieldLeafShapeProblem(op, value);
+      if (problem) return bad(`${field}: ${problem}`);
+      return { field, op, value };
+    }
     switch (field) {
       case "state.group":
         if (
@@ -116,8 +179,9 @@ export function validateWorkItemSearchQuery(
           break;
         return bad("priority has an invalid operator or value");
       case "assignee":
+      case "requester":
         if (op === "eq" && value === "@me") break;
-        return bad("assignee supports eq @me only");
+        return bad(`${field} supports eq @me only`);
       case "watcher":
         if (op === "contains" && value === "@me") break;
         return bad("watcher supports contains @me only");
@@ -145,6 +209,14 @@ export function validateWorkItemSearchQuery(
       case "type":
         if (op === "eq" && string(value, 100)) break;
         return bad("type supports eq with a type key");
+      case "lifecycle":
+        if (
+          op === "eq" &&
+          string(value, 20) &&
+          ["active", "archived", "deleted"].includes(value)
+        )
+          break;
+        return bad("lifecycle supports eq active, archived, or deleted");
       default:
         return bad(`Unknown filter field: ${field}`);
     }
@@ -154,37 +226,40 @@ export function validateWorkItemSearchQuery(
   if (q.filter !== undefined) filter = check(q.filter, 1);
   let sort: WorkItemSearchQuery["sort"];
   if (q.sort !== undefined) {
-    if (!Array.isArray(q.sort) || q.sort.length > 1)
-      return bad("sort must contain at most one item");
+    if (!Array.isArray(q.sort) || q.sort.length > 5)
+      return bad("sort must contain at most five items");
+    const seenSortFields = new Set<string>();
     sort = q.sort.map((entry) => {
       if (!entry || typeof entry !== "object" || Array.isArray(entry))
         return bad("invalid sort item");
       const item = entry as Record<string, unknown>;
       if (
         Object.keys(item).some((k) => !["field", "order"].includes(k)) ||
-        !["key", "title", "priority", "dueDate"].includes(String(item.field)) ||
+        !isWorkItemSearchSortField(item.field) ||
         !["asc", "desc"].includes(String(item.order))
       )
         return bad("invalid sort field or order");
+      if (seenSortFields.has(item.field))
+        return bad("sort fields must be unique");
+      seenSortFields.add(item.field);
       return {
-        field: item.field as "key" | "title" | "priority" | "dueDate",
+        field: item.field,
         order: item.order as "asc" | "desc",
       };
     });
   }
   let columns: WorkItemSearchQuery["columns"];
   if (q.columns !== undefined) {
-    const valid = ["key", "title", "state", "assignee", "priority", "dueDate"];
     if (
       !Array.isArray(q.columns) ||
-      q.columns.length > valid.length ||
-      q.columns.some((c) => typeof c !== "string" || !valid.includes(c)) ||
+      q.columns.length > 100 ||
+      q.columns.some((column) => !isWorkItemSearchColumn(column)) ||
       new Set(q.columns).size !== q.columns.length
     )
       return bad(
-        "columns must be a unique subset of supported work-item columns",
+        "columns must be a unique subset of registered work-item columns",
       );
-    columns = q.columns as WorkItemSearchQuery["columns"];
+    columns = q.columns;
   }
   return {
     entity: "work_item",
@@ -192,6 +267,24 @@ export function validateWorkItemSearchQuery(
     ...(sort ? { sort } : {}),
     ...(columns ? { columns } : {}),
   };
+}
+
+function isWorkItemSearchSortField(
+  value: unknown,
+): value is WorkItemSearchSortField {
+  return (
+    typeof value === "string" &&
+    ([
+      "key",
+      "position",
+      "title",
+      "state",
+      "assignee",
+      "priority",
+      "dueDate",
+    ].includes(value) ||
+      /^cf\.[a-z][a-z0-9_]{0,63}$/u.test(value))
+  );
 }
 
 function isCalendarDate(value: string): boolean {
@@ -290,13 +383,16 @@ export function parseFilterText(text: string): SearchFilter {
     let rest = t.value.slice(colon + 1);
     let op = "eq";
     let value: unknown;
-    const comparison = /^(<=|>=|<|>)(.*)$/u.exec(rest);
+    const comparison = /^(<=|>=|!=|<|>)(.*)$/u.exec(rest);
     if (comparison) {
       op = (
-        { "<": "lt", "<=": "lte", ">": "gt", ">=": "gte" } as Record<
-          string,
-          string
-        >
+        {
+          "<": "lt",
+          "<=": "lte",
+          ">": "gt",
+          ">=": "gte",
+          "!=": "neq",
+        } as Record<string, string>
       )[comparison[1]!]!;
       rest = comparison[2]!;
     }
@@ -324,6 +420,14 @@ export function parseFilterText(text: string): SearchFilter {
     ) {
       const next = take()!;
       value = next.value;
+    } else if (
+      field.startsWith("cf.") &&
+      !t.quoted &&
+      (rest === "is_set" || rest === "not_set")
+    ) {
+      // CF-10: `cf.<key>:is_set` / `cf.<key>:not_set`.
+      op = "is_set";
+      value = rest === "is_set";
     } else value = t.quoted ? t.value : rest;
     return { field, op, value };
   };
@@ -348,7 +452,9 @@ export function parseFilterText(text: string): SearchFilter {
 }
 
 function printValue(value: string): string {
-  return /[\s(),:<>"\\]/u.test(value) ? JSON.stringify(value) : value;
+  return /[\s(),:<>"\\]|^[!=]|^(?:is_set|not_set)$/u.test(value)
+    ? JSON.stringify(value)
+    : value;
 }
 export function printFilterText(filter: SearchFilter): string {
   if ("clauses" in filter)
@@ -367,8 +473,11 @@ export function printFilterText(filter: SearchFilter): string {
     return `${f}:in(${(filter.value as string[]).map(printValue).join(",")})`;
   if (filter.op === "contains")
     return `${f}:contains(${printValue(String(filter.value))})`;
+  if (filter.op === "is_set")
+    return `${f}:${filter.value === false ? "not_set" : "is_set"}`;
   const symbols: Record<string, string> = {
     eq: "",
+    neq: "!=",
     lt: "<",
     lte: "<=",
     gt: ">",

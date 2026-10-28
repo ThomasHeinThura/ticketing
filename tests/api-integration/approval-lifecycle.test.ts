@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { scanApprovalReminders } from "../../apps/api/src/approval/reminder-scan";
 import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
+import { apiKeyExtensionTable } from "../../apps/api/src/database/schema";
 import { createApp } from "../../apps/api/src/index";
 import { isCurrentInstanceAdmin } from "../../apps/api/src/instance/observability/audit-failure-notifier";
 import {
@@ -32,21 +33,34 @@ function hashApiKeyForTest(key: string): string {
 async function createApprovalApiKey(
   userId: string,
   permissions: Record<string, string[]> | null,
+  options: { mcpPersonId?: string } = {},
 ): Promise<string> {
-  const rawKey = `taskdesk_test_${randomUUID()}`;
+  // Issued keys are `tdk_` + random, so the 12 character lookup selector is unique per key.
+  const rawKey = `tdk_${randomUUID()}`;
   const now = new Date();
-  await db.insert(schema.apikeyTable).values({
-    referenceId: userId,
-    userId,
-    key: hashApiKeyForTest(rawKey),
-    name: "approval scope test key",
-    start: rawKey.slice(0, 12),
-    prefix: "taskdesk",
-    permissions: permissions === null ? null : JSON.stringify(permissions),
-    enabled: true,
-    createdAt: now,
-    updatedAt: now,
-  });
+  const [keyRow] = await db
+    .insert(schema.apikeyTable)
+    .values({
+      referenceId: userId,
+      userId,
+      key: hashApiKeyForTest(rawKey),
+      name: "approval scope test key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: permissions === null ? null : JSON.stringify(permissions),
+      enabled: true,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning({ id: schema.apikeyTable.id });
+  if (options.mcpPersonId) {
+    if (!keyRow) throw new Error("approval scope test key row");
+    await db.insert(apiKeyExtensionTable).values({
+      apikeyId: keyRow.id,
+      personId: options.mcpPersonId,
+      isMcp: true,
+    });
+  }
   return rawKey;
 }
 
@@ -364,6 +378,23 @@ describe("API integration: approval lifecycle", () => {
       .where(eq(schema.auditLogTable.action, "approval.requested"));
     expect(requestAudit).toHaveLength(1);
 
+    const approvalSessionId = `session-${approver.user.id}`;
+    const approvalSessionExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await db
+      .insert(schema.sessionTable)
+      .values({
+        id: approvalSessionId,
+        token: `token-${approver.user.id}`,
+        userId: approver.user.id,
+        portal: "agent",
+        expiresAt: approvalSessionExpiresAt,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: schema.sessionTable.id,
+        set: { expiresAt: approvalSessionExpiresAt },
+      });
     mockAuthenticatedSession(approver.user);
     const approverView = await app.request(requestUrl);
     expect(approverView.status, await approverView.clone().text()).toBe(200);
@@ -573,7 +604,12 @@ describe("API integration: approval lifecycle", () => {
     const correctDecisionScopeKey = await createApprovalApiKey(
       approver.user.id,
       { approval: ["decide", "decide_cab"] },
+      { mcpPersonId: approverPerson.id },
     );
+    await db.insert(schema.instanceFeatureFlagTable).values({
+      featureKey: "feature.mcp",
+      enabled: true,
+    });
     const scopedDecision = await app.request(
       `/api/approvals/${scopedDecisionApproval.id}/decide`,
       {
@@ -585,10 +621,50 @@ describe("API integration: approval lifecycle", () => {
         body: JSON.stringify({ action: "approve" }),
       },
     );
+    // PA-14: an eligible MCP key can request the decision, but only the owner's current
+    // browser session can execute the resulting pending action.
     expect(scopedDecision.status, await scopedDecision.clone().text()).toBe(
-      200,
+      202,
     );
-    expect((await scopedDecision.json()).state).toBe("approved");
+    const { pendingActionId } = (await scopedDecision.json()) as {
+      pendingActionId: string;
+    };
+    const [pendingBeforeHumanApproval] = await db
+      .select({ state: schema.pendingActionTable.state })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, pendingActionId));
+    expect(pendingBeforeHumanApproval?.state).toBe("pending");
+    const decisionEffectsBeforeHumanApproval =
+      await approvalEffectCounts("approval.decided");
+    const [stillPendingAfterKeyRequest] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, scopedDecisionApproval.id));
+    expect(stillPendingAfterKeyRequest?.state).toBe("pending");
+    expect(await approvalEffectCounts("approval.decided")).toEqual(
+      decisionEffectsBeforeHumanApproval,
+    );
+
+    mockAuthenticatedSession(approver.user);
+    const humanApproval = await app.request(
+      `/api/me/pending-actions/${pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+    );
+    expect(humanApproval.status, await humanApproval.clone().text()).toBe(200);
+    const [executedPendingAction] = await db
+      .select({ state: schema.pendingActionTable.state })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, pendingActionId));
+    expect(executedPendingAction?.state).toBe("executed");
+    const [approvedByMcpPendingAction] = await db
+      .select({ state: schema.approvalTable.state })
+      .from(schema.approvalTable)
+      .where(eq(schema.approvalTable.id, scopedDecisionApproval.id));
+    expect(approvedByMcpPendingAction?.state).toBe("approved");
 
     const scopedWithdrawalApproval =
       await createAdditionalApprovalAsRequester();

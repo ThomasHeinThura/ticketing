@@ -238,9 +238,8 @@ test("a complete link to a view the viewer cannot open runs its query as the vie
   );
   await expect(page.getByTestId("saved-view-fallback")).toBeVisible();
   await expect(page.getByText("Shared link result")).toBeVisible();
-  await expect(
-    page.getByText("1 matching work item", { exact: true }),
-  ).toBeVisible();
+  // The count names the work item through the runtime terminology ("Work item").
+  await expect(page.getByText(/^1 matching work item$/iu)).toBeVisible();
   expect(calls.run).toBe(0);
   expect(calls.count).toBe(0);
   expect(calls.search.at(-1)).toMatchObject({

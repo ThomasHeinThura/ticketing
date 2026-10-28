@@ -1,6 +1,48 @@
 import type { PolicyMap } from "@taskdesk/permissions";
 
 export const intakePolicies = {
+  "GET /api/intake/queues": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "POST /api/intake/queues": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "GET /api/intake/queues/{id}": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "PATCH /api/intake/queues/{id}": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "GET /api/intake/queues/{id}/run": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "GET /api/request-type-groups/order": {
+    capability: "request_type:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+  "PUT /api/request-type-groups/order": {
+    capability: "request_type:manage",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
   "GET /api/request-types": {
     capability: "request_type:read",
     scope: "workspace",
@@ -37,7 +79,22 @@ export const intakePolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  // `P2R1-18`: a click-level pending action (PA-1), refused while published or used.
+  "DELETE /api/request-types/{id}": {
+    capability: "request_type:manage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
   "GET /api/portal/catalogue": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
+  "GET /api/portal/requests/backlog": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
+  "POST /api/portal/requests/rank": {
     portal: "customer",
     predicate: "own_organisation",
   },
@@ -110,6 +167,20 @@ export const intakePolicies = {
     predicate: "own_submission",
   },
   "POST /api/portal/submissions/{ref}/withdraw": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
+  // CP-7 / CP-8 / CP-9. The contract table lists these as `own_request` on /requests/{ref}/...;
+  // they are served on the submission's durable URL (CP-10), so the submission predicate applies.
+  "POST /api/portal/submissions/{ref}/escalate-priority": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
+  "POST /api/portal/submissions/{ref}/reopen": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
+  "POST /api/portal/submissions/{ref}/satisfaction": {
     portal: "customer",
     predicate: "own_submission",
   },

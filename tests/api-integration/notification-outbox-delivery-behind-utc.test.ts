@@ -1,6 +1,15 @@
 import { sql } from "drizzle-orm";
-import { describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import db from "../../apps/api/src/database";
+import { setTestDatabaseTimezone } from "./helpers/database-timezone";
 import { defineNotificationOutboxSuite } from "./helpers/notification-outbox-suite";
 
 /**
@@ -8,11 +17,24 @@ import { defineNotificationOutboxSuite } from "./helpers/notification-outbox-sui
  * America/New_York (behind UTC). Lease expiries and back-offs are `timestamp without time zone`
  * columns holding a UTC wall clock; a bare `Date` bound into them is serialised in the
  * process zone, so this run fails if any outbox write regresses to that. Mirrors
- * `session-cleanup-server-behind-utc.test.ts`. The process zone must be set before any
- * `Date` use and the session zone before the pool opens its first connection.
+ * The process zone is set before test execution and a session-local PostgreSQL timezone
+ * is applied after the production pool pins new connections to UTC.
  */
+const previousProcessTimezone = process.env.TZ;
 process.env.TZ = "America/New_York";
-process.env.PGOPTIONS = "-c timezone=America/New_York";
+let restoreDatabaseTimezone: (() => Promise<void>) | undefined;
+
+beforeEach(async () => {
+  restoreDatabaseTimezone = await setTestDatabaseTimezone("America/New_York");
+});
+afterEach(async () => {
+  await restoreDatabaseTimezone?.();
+  restoreDatabaseTimezone = undefined;
+});
+afterAll(() => {
+  if (previousProcessTimezone === undefined) delete process.env.TZ;
+  else process.env.TZ = previousProcessTimezone;
+});
 
 vi.mock(
   "../../apps/api/src/database/repositories/notification-delivery.repository",

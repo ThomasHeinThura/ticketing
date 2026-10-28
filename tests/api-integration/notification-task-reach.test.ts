@@ -28,15 +28,44 @@ vi.mock("@taskdesk/email", () => emailProvider);
 const destinationCheck = vi.hoisted(() => ({
   assertPublicWebhookDestination: vi.fn(async () => undefined),
 }));
+const outbound = vi.hoisted(() => ({
+  sendWebhookRequest: vi.fn(async () => ({
+    statusCode: 204,
+    durationMs: 0,
+    responseBody: "",
+    error: null,
+    success: true,
+  })),
+}));
 vi.mock(
   "../../apps/api/src/utils/assert-public-destination",
-  () => destinationCheck,
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("../../apps/api/src/utils/assert-public-destination")
+    >()),
+    assertPublicWebhookDestination:
+      destinationCheck.assertPublicWebhookDestination,
+  }),
 );
+vi.mock("../../apps/api/src/webhook/safe-http", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../apps/api/src/webhook/safe-http")
+  >()),
+  sendWebhookRequest: outbound.sendWebhookRequest,
+}));
 
 beforeEach(async () => {
   emailProvider.sendNotificationEmail.mockClear();
   destinationCheck.assertPublicWebhookDestination.mockReset();
   destinationCheck.assertPublicWebhookDestination.mockResolvedValue(undefined);
+  outbound.sendWebhookRequest.mockReset();
+  outbound.sendWebhookRequest.mockResolvedValue({
+    statusCode: 204,
+    durationMs: 0,
+    responseBody: "",
+    error: null,
+    success: true,
+  });
   await resetTestDatabase();
 });
 
@@ -1023,10 +1052,6 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
 
   it("rechecks independently after every async network-provider preflight", async () => {
     const { user, workspace, project, task } = await fixture();
-    const fetchProvider = vi.fn(
-      async () => new Response("ok", { status: 200 }),
-    );
-    vi.stubGlobal("fetch", fetchProvider);
     await db.insert(schema.userNotificationPreferenceTable).values({
       userId: user.id,
       ntfyEnabled: true,
@@ -1058,6 +1083,6 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
     expect(
       destinationCheck.assertPublicWebhookDestination,
     ).toHaveBeenCalledTimes(2);
-    expect(fetchProvider).not.toHaveBeenCalled();
+    expect(outbound.sendWebhookRequest).not.toHaveBeenCalled();
   });
 });

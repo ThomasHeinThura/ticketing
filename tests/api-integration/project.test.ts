@@ -31,7 +31,7 @@ describe("API integration: project creation", () => {
         workspaceId: "workspace-missing",
         name: "Unauthorized Project",
         icon: "Folder",
-        slug: "unauthorized-project",
+        slug: "UNAUTH",
       }),
     });
 
@@ -53,7 +53,7 @@ describe("API integration: project creation", () => {
         workspaceId: member.workspace.id,
         name: "Roadmap",
         icon: "FolderKanban",
-        slug: "roadmap",
+        slug: "ROADMAP",
       }),
     });
 
@@ -65,7 +65,7 @@ describe("API integration: project creation", () => {
       workspaceId: member.workspace.id,
       name: "Roadmap",
       icon: "FolderKanban",
-      slug: "roadmap",
+      slug: "ROADMAP",
     });
 
     const persistedProject = await db.query.projectTable.findFirst({
@@ -76,7 +76,7 @@ describe("API integration: project creation", () => {
       id: payload.id,
       workspaceId: member.workspace.id,
       name: "Roadmap",
-      slug: "roadmap",
+      slug: "ROADMAP",
     });
 
     const columns = await db.query.columnTable.findMany({
@@ -129,7 +129,7 @@ describe("API integration: project creation", () => {
         workspaceId: member.workspace.id,
         name: "Forbidden Project",
         icon: "Folder",
-        slug: "forbidden-project",
+        slug: "FORBID",
       }),
     });
 

@@ -2,6 +2,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   Button,
+  Fieldset,
+  FieldsetLegend,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -15,8 +17,8 @@ import {
   GitMerge,
   GitPullRequest,
 } from "lucide-react";
-import type { CSSProperties } from "react";
-import { memo, useMemo } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { memo, useId, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { cn } from "@/lib/cn";
@@ -25,7 +27,11 @@ import { getInitials } from "@/lib/get-initials";
 import { getPriorityIcon } from "@/lib/priority";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
-import type { TaskCardWorkspaceUser } from "../kanban-board/task-card";
+import {
+  deferKeyboardSensorKey,
+  isDeferredKeyboardSensorEvent,
+  type TaskCardWorkspaceUser,
+} from "../kanban-board/task-card";
 import { TaskLabels } from "../kanban-board/task-labels";
 
 type TaskRowProps = {
@@ -42,6 +48,19 @@ type TaskRowProps = {
   };
   onOpenTask: (taskId: string) => void;
   t: TFunction;
+  taskHref?: string;
+  /** Route-owned sheet opening while modifier clicks retain the real href. */
+  openTaskOnLinkClick?: boolean;
+  disableDragDrop?: boolean;
+  selectionEnabled?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: () => void;
+  /** Extra row badges (`VW-16`'s SLA badge), shown beside the labels. */
+  badges?: ReactNode;
+  /** Canonical work-item inline controls. Legacy TaskRow callers keep their original display. */
+  stateControl?: ReactNode;
+  priorityControl?: ReactNode;
+  assigneeControl?: ReactNode;
 };
 
 function TaskRow({
@@ -51,6 +70,16 @@ function TaskRow({
   assignee,
   displayPreferences,
   onOpenTask,
+  taskHref,
+  openTaskOnLinkClick = false,
+  disableDragDrop = false,
+  selectionEnabled = true,
+  isSelected,
+  onToggleSelection,
+  badges,
+  stateControl,
+  priorityControl,
+  assigneeControl,
   t,
 }: TaskRowProps) {
   const {
@@ -60,15 +89,37 @@ function TaskRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id });
+  } = useSortable({ id: task.id, disabled: disableDragDrop });
+  const {
+    role: _sortableRole,
+    "aria-pressed": _sortablePressed,
+    "aria-describedby": sortableDescription,
+    ...sortableAttributes
+  } = attributes;
+  const rowAttributes = disableDragDrop ? { tabIndex: 0 } : sortableAttributes;
+  const { onKeyDown: onSortableKeyDown, ...sortableListeners } = disableDragDrop
+    ? {}
+    : (listeners ?? {});
+  const keyboardHintId = useId();
+  const describedBy = [
+    disableDragDrop ? undefined : sortableDescription,
+    keyboardHintId,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-  const { toggleSelection, selected, focused } = useBulkSelectionStore(
+  const {
+    toggleSelection,
+    selected: storeSelected,
+    focused,
+  } = useBulkSelectionStore(
     useShallow((state) => ({
       toggleSelection: state.toggleSelection,
       selected: state.selectedTaskIds.has(task.id),
       focused: state.focusedTaskId === task.id,
     })),
   );
+  const selected = isSelected ?? storeSelected;
   const {
     showAssignees,
     showPriority,
@@ -119,10 +170,14 @@ function TaskRow({
   const handleClick = (e: React.MouseEvent) => {
     if (!task) return;
     if (e.defaultPrevented) return;
+    if (isOutsideRowControlTarget(e)) return;
 
     if (e.metaKey || e.ctrlKey) {
       e.preventDefault();
-      toggleSelection(task.id);
+      if (selectionEnabled) {
+        if (onToggleSelection) onToggleSelection();
+        else toggleSelection(task.id);
+      }
       return;
     }
 
@@ -132,10 +187,36 @@ function TaskRow({
     onOpenTask(currentTaskId === task.id ? "" : task.id);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    // Native anchors and controls own their keyboard activation.
+    if (e.target !== e.currentTarget) return;
+    if (isDeferredKeyboardSensorEvent(e.nativeEvent)) return;
+    if (e.key === "Enter" && !isDragging) {
       handleClick(e as unknown as React.MouseEvent);
+    } else if (disableDragDrop && e.key === " ") {
+      handleClick(e as unknown as React.MouseEvent);
+      e.preventDefault();
+    } else if (
+      isDragging &&
+      [
+        "Space",
+        "Enter",
+        "Escape",
+        "ArrowUp",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowRight",
+      ].includes(e.code)
+    ) {
+      deferKeyboardSensorKey(e.currentTarget, e.nativeEvent);
     }
+  };
+
+  const handleRowKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.target !== e.currentTarget) return;
+    if (isDeferredKeyboardSensorEvent(e.nativeEvent)) return;
+    onSortableKeyDown?.(e);
+    handleKeyDown(e);
   };
 
   return (
@@ -150,22 +231,52 @@ function TaskRow({
         focused && "ring-2 ring-inset ring-ring/50",
       )}
     >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: false positive for onClick and onKeyDown */}
-      <div
+      <Fieldset
         onClick={handleClick}
-        onKeyDown={handleKeyDown}
         className={cn(
-          "group relative flex items-center gap-3 px-4 py-1.5 transition-colors cursor-pointer",
+          "group relative m-0 flex w-full min-w-0 max-w-none flex-row items-center gap-3 border-0 p-0 px-4 py-1.5 transition-colors cursor-pointer",
           selected ? "bg-accent/45" : "hover:bg-accent/60",
         )}
-        {...attributes}
-        {...listeners}
+        {...rowAttributes}
+        {...sortableListeners}
+        onMouseDown={(event) => {
+          if (!isOutsideRowControlTarget(event))
+            sortableListeners.onMouseDown?.(event);
+        }}
+        onTouchStart={(event) => {
+          if (!isOutsideRowControlTarget(event))
+            sortableListeners.onTouchStart?.(event);
+        }}
+        onPointerDown={(event) => {
+          if (!isOutsideRowControlTarget(event))
+            sortableListeners.onPointerDown?.(event);
+        }}
+        tabIndex={0}
+        aria-describedby={describedBy}
+        data-task-dragging={isDragging ? "true" : undefined}
+        onKeyDown={handleRowKeyDown}
       >
-        {showPriority && (
-          <div className="flex-shrink-0 first:[&_svg]:h-4 first:[&_svg]:w-4">
-            {getPriorityIcon(task.priority ?? "")}
-          </div>
-        )}
+        <FieldsetLegend className="sr-only">
+          {t("common:a11y.taskContainerLabel", {
+            key: `${projectSlug}-${task.number}`,
+            title: task.title,
+          })}
+        </FieldsetLegend>
+        <span id={keyboardHintId} className="sr-only">
+          {t(
+            disableDragDrop
+              ? "common:a11y.taskOpenHint"
+              : "common:a11y.taskOpenAndDragHint",
+          )}
+        </span>
+        {showPriority &&
+          (priorityControl ? (
+            <InlineControlSlot>{priorityControl}</InlineControlSlot>
+          ) : (
+            <div className="flex-shrink-0 first:[&_svg]:h-4 first:[&_svg]:w-4">
+              {getPriorityIcon(task.priority ?? "")}
+            </div>
+          ))}
         {showTaskNumbers && (
           <div className="text-xs font-mono text-muted-foreground flex-shrink-0">
             {projectSlug}-{task.number}
@@ -173,12 +284,50 @@ function TaskRow({
         )}
 
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <div className="flex items-center gap-2 justify-between w-full">
-            <span className="text-sm text-foreground truncate">
-              {task.title}
+          {/* Narrow rows (375 px phones) wrap the chips under the title instead of letting them
+              paint over the due-date chip and squeeze the title to one letter. */}
+          <div
+            data-task-row-main="true"
+            className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1"
+          >
+            {stateControl ? (
+              <InlineControlSlot>{stateControl}</InlineControlSlot>
+            ) : null}
+            <span
+              data-task-row-title="true"
+              className="min-w-24 flex-1 basis-24 truncate text-left text-sm text-foreground"
+            >
+              {taskHref ? (
+                <a
+                  href={taskHref}
+                  aria-label={`${projectSlug}-${task.number} ${task.title}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (
+                      openTaskOnLinkClick &&
+                      event.button === 0 &&
+                      !event.metaKey &&
+                      !event.ctrlKey &&
+                      !event.shiftKey &&
+                      !event.altKey
+                    ) {
+                      event.preventDefault();
+                      onOpenTask(task.id);
+                    }
+                  }}
+                >
+                  {task.title}
+                </a>
+              ) : (
+                task.title
+              )}
             </span>
-            <div className="flex items-center gap-1">
+            <div
+              data-task-row-chips="true"
+              className="flex min-w-0 max-w-full flex-wrap items-center gap-1"
+            >
               {showLabels && <TaskLabels labels={task.labels ?? []} />}
+              {badges}
 
               {pullRequests.length === 1 && (
                 <HoverCard openDelay={200} closeDelay={100}>
@@ -311,32 +460,65 @@ function TaskRow({
           </div>
         )}
 
-        {showAssignees && (
-          <div className="flex-shrink-0">
-            {task.userId ? (
-              <Avatar className="h-6 w-6">
-                <AvatarImage
-                  src={assignee?.user?.image ?? ""}
-                  alt={assignee?.user?.name || ""}
-                />
-                <AvatarFallback className="text-xs font-medium border border-border/30">
-                  {getInitials(assignee?.user?.name)}
-                </AvatarFallback>
-              </Avatar>
-            ) : (
-              <div
-                className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
-                title={t("tasks:assignee.unassigned")}
-              >
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  ?
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+        {showAssignees &&
+          (assigneeControl ? (
+            <InlineControlSlot>{assigneeControl}</InlineControlSlot>
+          ) : (
+            <div className="flex-shrink-0">
+              {task.userId || task.assigneeId ? (
+                <Avatar className="h-6 w-6">
+                  <AvatarImage
+                    src={assignee?.user?.image ?? ""}
+                    alt={assignee?.user?.name ?? task.assigneeName ?? ""}
+                  />
+                  <AvatarFallback className="text-xs font-medium border border-border/30">
+                    {getInitials(assignee?.user?.name ?? task.assigneeName)}
+                  </AvatarFallback>
+                </Avatar>
+              ) : (
+                <div
+                  className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
+                  title={t("tasks:assignee.unassigned")}
+                >
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    ?
+                  </span>
+                </div>
+              )}
+            </div>
+          ))}
+      </Fieldset>
     </div>
+  );
+}
+
+function InlineControlSlot({ children }: { children: ReactNode }) {
+  return <div data-task-row-inline-control="true">{children}</div>;
+}
+
+function isInlineControlTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("[data-task-row-inline-control]"))
+  );
+}
+
+/**
+ * True for an event the row must ignore: one from an inline control slot, or one React bubbled
+ * up from portalled content (an inline picker's popover options live outside the row's DOM but
+ * still bubble through the React tree), so choosing an option never opens the item or starts a
+ * drag.
+ */
+function isOutsideRowControlTarget(event: {
+  target: EventTarget | null;
+  currentTarget: EventTarget | null;
+}) {
+  if (isInlineControlTarget(event.target)) return true;
+  const { target, currentTarget } = event;
+  return (
+    target instanceof Node &&
+    currentTarget instanceof Node &&
+    !currentTarget.contains(target)
   );
 }
 

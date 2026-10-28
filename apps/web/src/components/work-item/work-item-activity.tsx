@@ -2,61 +2,68 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
+  Badge,
   Button,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Skeleton,
+  Timeline,
+  TimelineContent,
+  TimelineItem,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@taskdesk/ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Calendar,
+  ChevronDown,
+  CircleAlert,
+  History,
+  Pencil,
+  TriangleAlert,
+  UserRound,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  ActivityActorPresentation,
+  ActivityAvatarPresentation,
+  ActivityEventPresentation,
+  CommentCardPresentation,
+} from "@/components/activity/comment-card-presentation";
 import CommentEditor, {
   type CommentContentSnapshot,
 } from "@/components/activity/comment-editor";
 import CommentVersionHistory from "@/components/activity/comment-version-history";
-import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
-import listCannedResponses from "@/fetchers/canned-response/list-canned-responses";
+import { PickerPopover } from "@/components/common/picker-popover";
+import { listWorkItemAttachments } from "@/fetchers/attachment/work-item-attachments";
+import { enqueueWorkItemUploads } from "@/fetchers/attachment/work-item-upload-queue";
 import getCommentMentionCandidates from "@/fetchers/work-item/get-comment-mention-candidates";
 import type { WorkItemActivityRow } from "@/fetchers/work-item/get-work-item-activity";
-import preflightCommentMentions from "@/fetchers/work-item/preflight-comment-mentions";
-import useCreateWorkItemComment from "@/hooks/mutations/work-item/use-create-work-item-comment";
 import useUpdateWorkItemComment from "@/hooks/mutations/work-item/use-update-work-item-comment";
 import useGetWorkItemActivity from "@/hooks/queries/work-item/use-get-work-item-activity";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
+import {
+  useWorkItemFileIntake,
+  WorkItemFileDropOverlay,
+} from "./work-item-attachments-intake";
+import WorkItemAttachmentLightbox from "./work-item-attachments-lightbox";
+import { isInlineImage, isPdfPreview } from "./work-item-attachments-tile";
+import {
+  useAttachmentsPanelMounted,
+  useWorkItemUploads,
+  WorkItemUploadList,
+} from "./work-item-attachments-uploads";
+import WorkItemCommentAttachments from "./work-item-comment-attachments";
+import WorkItemCommentComposer from "./work-item-comment-composer";
+import { WorkItemCommentDelete } from "./work-item-comment-delete";
+import { ImportedMarker } from "./work-item-import-origin";
 
 export type ActivityFilter = "everything" | "comments" | "public";
-const EMPTY_COMMENT_DOCUMENT = {
-  type: "doc",
-  content: [{ type: "paragraph" }],
-};
-
-function collectMentionPersonIds(document: unknown): string[] {
-  const ids = new Set<string>();
-  const visit = (value: unknown): void => {
-    if (Array.isArray(value)) {
-      for (const item of value) visit(item);
-      return;
-    }
-    if (!value || typeof value !== "object") return;
-    const node = value as Record<string, unknown>;
-    if (
-      node.type === "taskdeskMention" &&
-      node.attrs &&
-      typeof node.attrs === "object"
-    ) {
-      const id = (node.attrs as Record<string, unknown>).id;
-      if (typeof id === "string" && id) ids.add(id);
-    }
-    visit(node.content);
-  };
-  visit(document);
-  return [...ids].sort();
-}
-
 function effectiveVisibility(row: WorkItemActivityRow): "public" | "internal" {
   return row.visibility === "public" ? "public" : "internal";
 }
@@ -116,6 +123,101 @@ function jsonText(value: unknown) {
   }
 }
 
+/** `WF-21`: a customer reply or upload on a resolved request the workflow could not reopen. */
+export const REOPEN_REQUESTED_VERB = "reopen_requested";
+
+/** A bare activity verb as a sentence; keys with no catalogue label read as plain words. */
+export function activityVerbLabel(
+  verb: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const words = verb.replace(/[._]+/g, " ").trim();
+  return t(`activity:timeline.verbs.${verb.replace(/\./g, "_")}`, {
+    defaultValue: words.charAt(0).toUpperCase() + words.slice(1),
+  });
+}
+
+/** A custom-field edit is one `custom_field` row whose payload names the field. */
+function customFieldLabel(row: { field?: string | null; payload?: unknown }) {
+  if (row.field !== "custom_field") return undefined;
+  const name = (row.payload as { name?: unknown } | null | undefined)?.name;
+  return typeof name === "string" && name.trim() ? name.trim() : undefined;
+}
+
+/** Relation activity carries type/direction only; never render arbitrary endpoint data. */
+export function activityChangeDescription(
+  row: Pick<WorkItemActivityRow, "field" | "verb" | "oldValue" | "newValue"> & {
+    payload?: unknown;
+  },
+  t: (key: string) => string,
+  includeVerb = false,
+): string {
+  if (row.field === "description")
+    return t("activity:timeline.descriptionUpdated");
+  if (row.field === "label") return t("activity:timeline.labelsUpdated");
+  if (
+    !row.field &&
+    (row.verb === "attachment.added" || row.verb === "attachment.deleted")
+  )
+    return t(
+      row.verb === "attachment.added"
+        ? "activity:timeline.attachmentAdded"
+        : "activity:timeline.attachmentDeleted",
+    );
+  if (row.field !== "relation") {
+    const label =
+      customFieldLabel(row) ??
+      row.field ??
+      (includeVerb ? activityVerbLabel(row.verb, t) : undefined);
+    return `${label ? `${label}: ` : ""}${jsonText(row.oldValue)} → ${jsonText(row.newValue)}`;
+  }
+  const relationLabel = (value: unknown): string => {
+    if (value === null || value === undefined) return "—";
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      return t("workItems:detail.unavailable");
+    const record = value as Record<string, unknown>;
+    if (record.direction !== "outgoing" && record.direction !== "incoming")
+      return t("workItems:detail.unavailable");
+    const inverse = {
+      relates: "relates",
+      blocks: "blocked_by",
+      duplicates: "duplicated_by",
+      precedes: "follows",
+      requires: "required_by",
+    } as const;
+    if (typeof record.type !== "string" || !Object.hasOwn(inverse, record.type))
+      return t("workItems:detail.unavailable");
+    const type = record.type as keyof typeof inverse;
+    return t(
+      `workItems:relations.types.${record.direction === "incoming" ? inverse[type] : type}`,
+    );
+  };
+  return `${t("tasks:relations.title")}: ${relationLabel(row.oldValue)} → ${relationLabel(row.newValue)}`;
+}
+
+/**
+ * CA-9: system actions are attributed to what made them, never to a person. The activity row
+ * carries the actor's kind; a job or automation that names itself in the row payload is
+ * shown by that name.
+ */
+export function nonPersonActorLabel(
+  actorType: string,
+  t: (key: string) => string,
+  payload?: unknown,
+): string {
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const record = payload as Record<string, unknown>;
+    for (const key of ["automationName", "jobName"] as const) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+  }
+  if (actorType === "automation")
+    return t("activity:timeline.actors.automation");
+  if (actorType === "api_key") return t("activity:timeline.actors.apiKey");
+  return t("activity:timeline.actors.system");
+}
+
 function isComment(row: WorkItemActivityRow) {
   return row.kind === "comment";
 }
@@ -134,117 +236,126 @@ function WorkItemActivity({
   workspaceId,
   defaultVisibility,
   filter,
+  focusedComment,
   onFilterChange,
+  readOnly = false,
 }: {
   workItemKey: string;
   workspaceId: string;
   defaultVisibility: "public" | "internal";
   filter: ActivityFilter;
+  focusedComment?: string;
   onFilterChange: (filter: ActivityFilter) => void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const permissions = useWorkspacePermission(workspaceId);
   const {
     canCreatePublicComments,
     canCreateInternalComments,
     isCheckingPermissions,
-  } = useWorkspacePermission(workspaceId);
+  } = permissions;
   const { data: people } = useGetActiveWorkspaceUsers(workspaceId);
-  const activity = useGetWorkItemActivity({ key: workItemKey });
-  const cannedResponses = useQuery({
-    queryKey: ["canned-responses", workItemKey],
-    queryFn: () => listCannedResponses(workItemKey),
-    enabled: Boolean(workItemKey),
+  const activity = useGetWorkItemActivity({
+    key: workItemKey,
+    comment: focusedComment,
   });
   const queryClient = useQueryClient();
-  const createComment = useCreateWorkItemComment();
   const updateComment = useUpdateWorkItemComment();
-  const [draft, setDraft] = useState<CommentContentSnapshot>({
-    text: "",
-    document: EMPTY_COMMENT_DOCUMENT,
-  });
-  const draftText = draft.text;
-  const draftDocument = draft.document;
-  const [visibility, setVisibility] = useState<"public" | "internal">(
-    defaultVisibility,
-  );
-  const allowedCommentVisibilities = [
-    ...(canCreateInternalComments() ? (["internal"] as const) : []),
-    ...(canCreatePublicComments() ? (["public"] as const) : []),
-  ];
-  const selectedCommentVisibility = allowedCommentVisibilities.includes(
-    visibility,
-  )
-    ? visibility
-    : (allowedCommentVisibilities[0] ?? defaultVisibility);
+  const canReadPeople =
+    canCreateInternalComments() || canCreatePublicComments();
   const [editing, setEditing] = useState<string | null>(null);
   // Edit mode unmounts the row's Edit button. When it closes, focus returns to
   // that button instead of dropping to <body>.
   const [restoreFocusId, setRestoreFocusId] = useState<string | null>(null);
   const editTriggers = useRef(new Map<string, HTMLButtonElement | null>());
-  const [submitInProgress, setSubmitInProgress] = useState(false);
-  const submitInProgressRef = useRef(false);
-  const [insertingSnippet, setInsertingSnippet] = useState(false);
-  const [snippetInsertFailed, setSnippetInsertFailed] = useState(false);
-  const snippetInsertPending = useRef(false);
-  const currentItemKey = useRef(workItemKey);
-  currentItemKey.current = workItemKey;
-  const composerBusy = submitInProgress || insertingSnippet;
   const [editDraft, setEditDraft] = useState<CommentContentSnapshot>({
     text: "",
     document: undefined,
   });
   const editText = editDraft.text;
   const editDocument = editDraft.document;
+  // Names for actors and uploaders: the reach-filtered people the composer mentions from.
   const mentionCandidates = useQuery({
     queryKey: [
       "work-items",
       "comment-mention-candidates",
       workItemKey,
-      selectedCommentVisibility,
+      canCreateInternalComments() ? "internal" : "public",
     ],
     queryFn: () =>
       getCommentMentionCandidates({
         key: workItemKey,
-        visibility: selectedCommentVisibility,
+        visibility: canCreateInternalComments() ? "internal" : "public",
       }),
-    enabled:
-      Boolean(workItemKey) &&
-      !isCheckingPermissions &&
-      allowedCommentVisibilities.length > 0,
+    enabled: Boolean(workItemKey) && !isCheckingPermissions && canReadPeople,
   });
-  const mentionPersonIds = useMemo(
-    () => collectMentionPersonIds(draftDocument),
-    [draftDocument],
+  // AT-1: files attached to comments render on their comment's card.
+  const attachmentList = useQuery({
+    queryKey: ["work-items", "attachments", workItemKey],
+    queryFn: () => listWorkItemAttachments(workItemKey),
+    enabled: Boolean(workItemKey),
+  });
+  const readyAttachments = (
+    Array.isArray(attachmentList.data) ? attachmentList.data : []
+  ).filter((attachment) => attachment.state === "ready");
+  const commentAttachments = (commentId: string) =>
+    readyAttachments.filter((attachment) => attachment.commentId === commentId);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const previewImages = readyAttachments.filter((attachment) =>
+    isInlineImage(attachment.mimeType),
   );
-  const mentionPreflight = useQuery({
-    queryKey: [
-      "work-items",
-      "comment-mention-preflight",
-      workItemKey,
-      selectedCommentVisibility,
-      mentionPersonIds,
-    ],
-    queryFn: () =>
-      preflightCommentMentions({
-        key: workItemKey,
-        personIds: mentionPersonIds,
-        visibility: selectedCommentVisibility,
+  const uploaderName = (personId: string | null) =>
+    personId
+      ? mentionCandidates.data?.find((entry) => entry.personId === personId)
+          ?.name
+      : undefined;
+  // AT-10/AT-11: files dropped or pasted anywhere on the detail attach to the work item.
+  const canAttachToItem =
+    !readOnly && !isCheckingPermissions && permissions.canCreateAttachments();
+  const sectionRef = useRef<HTMLElement>(null);
+  const { dragging, bounds: dropBounds } = useWorkItemFileIntake({
+    anchorRef: sectionRef,
+    enabled: canAttachToItem,
+    onFiles: (files) =>
+      enqueueWorkItemUploads({
+        itemKey: workItemKey,
+        files,
+        onDone: () => {
+          void queryClient.invalidateQueries({
+            queryKey: ["work-items", "attachments", workItemKey],
+          });
+          void queryClient.invalidateQueries({
+            queryKey: ["work-items", "activity", workItemKey],
+          });
+        },
       }),
-    enabled:
-      Boolean(workItemKey) &&
-      !isCheckingPermissions &&
-      allowedCommentVisibilities.length > 0 &&
-      mentionPersonIds.length > 0,
   });
+  const panelMounted = useAttachmentsPanelMounted();
+  const itemUploads = useWorkItemUploads(workItemKey);
+  const focusedCommentRef = useRef<HTMLDivElement>(null);
   const rows = activity.data?.pages.flatMap((page) => page.data) ?? [];
   // The API returns newest first; grouping reverses once so the rendered list
   // reads chronologically with the newest entry at the bottom.
   const visibleRows = filterActivityRows(rows, filter);
+  const hasFocusedComment = Boolean(
+    focusedComment &&
+      visibleRows.some((row) => isComment(row) && row.id === focusedComment),
+  );
+  useEffect(() => {
+    if (!hasFocusedComment || !focusedComment) return;
+    const target = focusedCommentRef.current;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView?.({ block: "center" });
+  }, [focusedComment, hasFocusedComment]);
   const users = people?.members ?? [];
-  function displayName(id: string | null, actorType: string) {
+  function displayName(
+    id: string | null,
+    actorType: string,
+    payload?: unknown,
+  ) {
     if (actorType !== "person")
-      return actorType === "system" ? "Automation" : actorType;
+      return nonPersonActorLabel(actorType, t, payload);
     return displayPersonName(id);
   }
   function displayPersonName(personId: string | null) {
@@ -261,115 +372,34 @@ function WorkItemActivity({
       member?.user?.name ?? member?.user?.email ?? t("common:people.unknown")
     );
   }
+  function actorProfile(
+    id: string | null,
+    actorType: string,
+    payload?: unknown,
+  ) {
+    const candidate =
+      actorType === "person"
+        ? mentionCandidates.data?.find(
+            (entry) => entry.personId === id && entry.reachable,
+          )
+        : undefined;
+    const member =
+      actorType === "person"
+        ? users.find((entry) => entry.userId === id)
+        : undefined;
+    return {
+      name: displayName(id, actorType, payload),
+      image: candidate?.image ?? member?.user?.image,
+      email: member?.user?.email,
+    };
+  }
   const activityKey = ["work-items", "activity", workItemKey] as const;
-  const draftStorageKey = `taskdesk:comment-draft:${user?.id ?? ""}:${workItemKey}`;
-  const [loadedDraftKey, setLoadedDraftKey] = useState<string | null>(null);
-  const persistedDraftRef = useRef(draft);
-  const visibilityRef = useRef(visibility);
-  visibilityRef.current = visibility;
-
-  const persistDraft = (
-    snapshot: CommentContentSnapshot,
-    nextVisibility = visibilityRef.current,
-  ) => {
-    if (loadedDraftKey !== draftStorageKey) return;
-    persistedDraftRef.current = snapshot;
-    try {
-      window.localStorage.setItem(
-        draftStorageKey,
-        JSON.stringify({ ...snapshot, visibility: nextVisibility }),
-      );
-    } catch {
-      // A full or disabled localStorage must not block comment composition.
-    }
-  };
-
-  const updateVisibility = (nextVisibility: "public" | "internal") => {
-    visibilityRef.current = nextVisibility;
-    setVisibility(nextVisibility);
-    persistDraft(persistedDraftRef.current, nextVisibility);
-  };
-
-  useEffect(() => {
-    const emptyDraft = { text: "", document: EMPTY_COMMENT_DOCUMENT };
-    persistedDraftRef.current = emptyDraft;
-    setDraft(emptyDraft);
-    visibilityRef.current = defaultVisibility;
-    setVisibility(defaultVisibility);
-    try {
-      const saved = window.localStorage.getItem(draftStorageKey);
-      if (!saved) return;
-      const parsed: unknown = JSON.parse(saved);
-      if (!parsed || typeof parsed !== "object") return;
-      const record = parsed as Record<string, unknown>;
-      const savedDraft = {
-        text: typeof record.text === "string" ? record.text : "",
-        document:
-          record.document && typeof record.document === "object"
-            ? record.document
-            : EMPTY_COMMENT_DOCUMENT,
-      };
-      persistedDraftRef.current = savedDraft;
-      setDraft(savedDraft);
-      if (record.visibility === "public" || record.visibility === "internal") {
-        visibilityRef.current = record.visibility;
-        setVisibility(record.visibility);
-      }
-    } catch {
-      try {
-        window.localStorage.removeItem(draftStorageKey);
-      } catch {
-        // Storage can be disabled; the in-memory draft still works.
-      }
-    } finally {
-      setLoadedDraftKey(draftStorageKey);
-    }
-  }, [defaultVisibility, draftStorageKey]);
 
   useEffect(() => {
     if (editing !== null || restoreFocusId === null) return;
     editTriggers.current.get(restoreFocusId)?.focus();
     setRestoreFocusId(null);
   }, [editing, restoreFocusId]);
-
-  const submit = async () => {
-    if (
-      submitInProgressRef.current ||
-      snippetInsertPending.current ||
-      !draftText.trim() ||
-      !draftDocument
-    )
-      return;
-    submitInProgressRef.current = true;
-    setSubmitInProgress(true);
-    try {
-      if (mentionPersonIds.length > 0) {
-        await mentionPreflight.refetch();
-      }
-      await createComment.mutateAsync({
-        key: workItemKey,
-        body: draftDocument,
-        visibility: selectedCommentVisibility,
-      });
-      const emptyDraft = { text: "", document: EMPTY_COMMENT_DOCUMENT };
-      persistedDraftRef.current = emptyDraft;
-      setDraft(emptyDraft);
-      await queryClient.invalidateQueries({
-        queryKey: ["work-items", "comment-mention-candidates", workItemKey],
-      });
-      try {
-        window.localStorage.removeItem(draftStorageKey);
-      } catch {
-        // A successful post is not undone when storage is disabled.
-      }
-      await queryClient.invalidateQueries({ queryKey: activityKey });
-    } catch {
-      // Server capability checks are authoritative; the composer remains intact on 403/422.
-    } finally {
-      submitInProgressRef.current = false;
-      setSubmitInProgress(false);
-    }
-  };
 
   const saveEdit = async () => {
     if (!editing || !editText.trim() || !editDocument) return;
@@ -388,42 +418,48 @@ function WorkItemActivity({
 
   return (
     <section
+      ref={sectionRef}
       className="flex flex-col gap-4"
       aria-labelledby="work-item-activity-heading"
       data-testid="work-item-activity"
     >
+      <WorkItemFileDropOverlay active={dragging} bounds={dropBounds} />
+      <WorkItemAttachmentLightbox
+        images={previewImages}
+        pdfs={readyAttachments.filter((attachment) =>
+          isPdfPreview(attachment.mimeType),
+        )}
+        openId={previewId}
+        onOpenChange={(open) => {
+          if (!open) setPreviewId(null);
+        }}
+        onNavigate={setPreviewId}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="work-item-activity-heading" className="font-medium text-lg">
           {t("activity:timeline.heading")}
         </h2>
-        <Select
-          items={[
+        <PickerPopover
+          ariaLabel={t("activity:timeline.filterLabel")}
+          className="w-44"
+          options={[
             { value: "everything", label: t("activity:timeline.everything") },
             { value: "comments", label: t("activity:timeline.comments") },
             { value: "public", label: t("activity:timeline.publicOnly") },
           ]}
           value={filter}
-          onValueChange={(value) => onFilterChange(value as ActivityFilter)}
-        >
-          <SelectTrigger
-            aria-label={t("activity:timeline.filterLabel")}
-            className="w-44"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="everything">
-              {t("activity:timeline.everything")}
-            </SelectItem>
-            <SelectItem value="comments">
-              {t("activity:timeline.comments")}
-            </SelectItem>
-            <SelectItem value="public">
-              {t("activity:timeline.publicOnly")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+          onChange={(value) => onFilterChange(value as ActivityFilter)}
+        />
       </div>
+
+      {!readOnly ? (
+        <WorkItemCommentComposer
+          workItemKey={workItemKey}
+          workspaceId={workspaceId}
+          defaultVisibility={defaultVisibility}
+        />
+      ) : null}
+      {!panelMounted ? <WorkItemUploadList uploads={itemUploads} /> : null}
 
       {activity.isError && (
         <Alert variant="error" role="alert">
@@ -440,8 +476,7 @@ function WorkItemActivity({
         </Alert>
       )}
       {activity.isLoading && (
-        // Row-shaped placeholders so the arriving timeline does not push the
-        // composer down (G13); the status text stays available to assistive tech.
+        // Timeline placeholders remain below the composer; status stays accessible.
         <div
           role="status"
           aria-busy="true"
@@ -467,175 +502,300 @@ function WorkItemActivity({
           {t("activity:timeline.empty")}
         </p>
       )}
-      <ol
-        className="flex flex-col gap-3"
-        aria-label={t("activity:timeline.heading")}
-      >
-        {groupConsecutiveActivity(visibleRows).map((group) => {
+      <Timeline role="list" aria-label={t("activity:timeline.heading")}>
+        {groupConsecutiveActivity(visibleRows).map((group, index, groups) => {
           const row = group[0];
-          const actor = displayName(row.actorId, row.actorType);
+          const profile =
+            isComment(row) && Object.hasOwn(row, "actorPersonId")
+              ? {
+                  name:
+                    row.actorPersonId && row.actorDisplayName
+                      ? row.actorDisplayName
+                      : t("common:people.unknown"),
+                  image: undefined,
+                  email: undefined,
+                }
+              : actorProfile(row.actorId, row.actorType, row.payload);
+          const timestamp = (
+            <time
+              className="whitespace-nowrap text-xs text-muted-foreground"
+              dateTime={row.createdAt}
+              title={formatDateTime(row.createdAt)}
+            >
+              {formatRelativeTime(row.createdAt)}
+            </time>
+          );
           if (isComment(row)) {
             const isDeleted = Boolean(row.deletedAt);
             const body = row.body;
+            const isEditing = !readOnly && editing === row.id;
             return (
-              <li
+              <TimelineItem
                 key={row.id}
-                className="rounded-lg border bg-card p-3"
-                data-visibility={effectiveVisibility(row)}
+                step={index + 1}
+                role="listitem"
+                className="m-0! flex-row items-start py-2!"
               >
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <strong>{actor}</strong>
-                  <time
-                    dateTime={row.createdAt}
-                    title={formatDateTime(row.createdAt)}
+                <TimelineContent className="min-w-0 flex-1">
+                  <CommentCardPresentation
+                    id={`comment-${row.id}`}
+                    ref={
+                      row.id === focusedComment ? focusedCommentRef : undefined
+                    }
+                    tabIndex={-1}
+                    data-focused-comment={
+                      row.id === focusedComment ? "true" : undefined
+                    }
+                    className={
+                      row.id === focusedComment ? "ring-2 ring-ring" : undefined
+                    }
+                    data-visibility={effectiveVisibility(row)}
+                    header={
+                      <>
+                        <ActivityActorPresentation {...profile} />
+                        {timestamp}
+                        <span className="text-xs text-muted-foreground">
+                          {effectiveVisibility(row) === "public"
+                            ? t("activity:timeline.public")
+                            : t("activity:timeline.internal")}
+                        </span>
+                        {row.origin === "imported" ? (
+                          <ImportedMarker importedAt={row.importedAt} />
+                        ) : null}
+                        {row.editedAt && !isDeleted ? (
+                          <CommentVersionHistory
+                            workItemKey={workItemKey}
+                            commentId={row.id}
+                            label={t("activity:timeline.edited")}
+                            editorName={displayPersonName}
+                          />
+                        ) : null}
+                      </>
+                    }
+                    actions={
+                      !isDeleted &&
+                      !readOnly &&
+                      !isEditing &&
+                      (row.canEdit === true || row.canDelete === true) ? (
+                        <>
+                          {row.canEdit === true && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 rounded-md p-0 text-muted-foreground hover:text-foreground"
+                                    aria-label={t("activity:timeline.edit")}
+                                    ref={(node: HTMLButtonElement | null) => {
+                                      editTriggers.current.set(row.id, node);
+                                    }}
+                                    onClick={() => {
+                                      setEditing(row.id);
+                                      setEditDraft({
+                                        text:
+                                          typeof body === "string" ? body : "",
+                                        document: isTiptapDocument(body)
+                                          ? body
+                                          : undefined,
+                                      });
+                                    }}
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {t("activity:timeline.edit")}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          <WorkItemCommentDelete
+                            workItemKey={workItemKey}
+                            commentId={row.id}
+                            canDelete={!readOnly && row.canDelete === true}
+                          />
+                        </>
+                      ) : undefined
+                    }
+                    footer={
+                      !isDeleted && isEditing ? (
+                        <div className="flex items-center justify-end gap-2 border-border/70 border-t bg-card/60 px-3 py-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 px-2.5 text-xs"
+                            onClick={() => {
+                              setRestoreFocusId(row.id);
+                              setEditing(null);
+                            }}
+                          >
+                            {t("activity:timeline.cancel")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-7 px-2.5 text-xs"
+                            disabled={
+                              !editText.trim() || updateComment.isPending
+                            }
+                            onClick={() => void saveEdit()}
+                          >
+                            {t("activity:timeline.save")}
+                          </Button>
+                          {updateComment.isError ? (
+                            <p
+                              role="alert"
+                              className="text-sm text-destructive"
+                            >
+                              {t("activity:timeline.mutationFailed")}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : undefined
+                    }
                   >
-                    {formatRelativeTime(row.createdAt)}
-                  </time>
-                  <span className="text-muted-foreground">
-                    {effectiveVisibility(row) === "public"
-                      ? t("activity:timeline.public")
-                      : t("activity:timeline.internal")}
-                  </span>
-                  {row.editedAt && !row.deletedAt ? (
-                    <CommentVersionHistory
-                      workItemKey={workItemKey}
-                      commentId={row.id}
-                      label={t("activity:timeline.edited")}
-                      editorName={displayPersonName}
-                    />
-                  ) : null}
-                  {!isDeleted && editing !== row.id && (
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      ref={(node: HTMLButtonElement | null) => {
-                        editTriggers.current.set(row.id, node);
-                      }}
-                      onClick={() => {
-                        setEditing(row.id);
-                        setEditDraft({
-                          text: typeof body === "string" ? body : "",
-                          document: isTiptapDocument(body) ? body : undefined,
-                        });
-                      }}
-                    >
-                      {t("activity:timeline.edit")}
-                    </Button>
-                  )}
-                </div>
-                {isDeleted ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {t("activity:timeline.deleted", {
-                      actor: row.deletedBy
-                        ? displayName(row.deletedBy, "person")
-                        : t("common:people.unknown"),
-                      date: formatDateTime(row.deletedAt ?? row.createdAt),
-                    })}
-                  </p>
-                ) : editing === row.id ? (
-                  <div className="mt-3 flex flex-col gap-2">
-                    {/* Native comments do not yet have mention notification or attachment-linkage endpoints. */}
-                    <CommentEditor
-                      value={editText}
-                      documentValue={editDocument}
-                      onContentChange={setEditDraft}
-                      uploadSurface="comment"
-                      showQuickAttachButton={false}
-                      enableMentions={false}
-                      autoFocus="end"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setRestoreFocusId(row.id);
-                          setEditing(null);
-                        }}
-                      >
-                        {t("activity:timeline.cancel")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={!editText.trim() || updateComment.isPending}
-                        onClick={() => void saveEdit()}
-                      >
-                        {t("activity:timeline.save")}
-                      </Button>
-                    </div>
-                    {updateComment.isError && (
-                      <p role="alert" className="text-sm text-destructive">
-                        {t("activity:timeline.mutationFailed")}
+                    {isDeleted ? (
+                      <p className="px-3 py-3 text-sm text-muted-foreground">
+                        {t("activity:timeline.deleted", {
+                          actor: row.deletedBy
+                            ? displayName(row.deletedBy, "person")
+                            : t("common:people.unknown"),
+                          date: formatDateTime(row.deletedAt ?? row.createdAt),
+                        })}
                       </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-2">
-                    {isTiptapDocument(body) ? (
+                    ) : isEditing ? (
                       <CommentEditor
-                        value=""
-                        documentValue={body}
-                        readOnly
-                        showBubbleMenu={false}
+                        value={editText}
+                        documentValue={editDocument}
+                        onContentChange={setEditDraft}
+                        uploadSurface="comment"
+                        showQuickAttachButton={false}
+                        enableMentions={false}
+                        autoFocus="end"
+                        className="[&_.taskdesk-comment-editor-content_.ProseMirror]:min-h-[3rem] [&_.taskdesk-comment-editor-content_.ProseMirror]:max-h-none [&_.taskdesk-comment-editor-content_.ProseMirror]:overflow-visible [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-2.5 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-2"
                       />
-                    ) : typeof body === "string" ? (
+                    ) : isTiptapDocument(body) || typeof body === "string" ? (
                       <CommentEditor
-                        value={body}
+                        value={typeof body === "string" ? body : ""}
+                        documentValue={
+                          isTiptapDocument(body) ? body : undefined
+                        }
                         readOnly
                         showBubbleMenu={false}
+                        showQuickAttachButton={false}
+                        className="taskdesk-comment-viewer [&_.taskdesk-comment-editor-content_.ProseMirror]:px-3 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-2 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-3"
                       />
                     ) : (
-                      <p className="whitespace-pre-wrap text-sm">
+                      <p className="whitespace-pre-wrap px-3 py-3 text-sm">
                         {jsonText(body)}
                       </p>
                     )}
-                  </div>
-                )}
-              </li>
+                    {isDeleted ? null : (
+                      <WorkItemCommentAttachments
+                        workItemKey={workItemKey}
+                        commentId={row.id}
+                        attachments={commentAttachments(row.id)}
+                        uploaderName={uploaderName}
+                        onPreview={(file) => setPreviewId(file.id)}
+                      />
+                    )}
+                  </CommentCardPresentation>
+                </TimelineContent>
+              </TimelineItem>
             );
           }
-          const description = `${row.field ? `${row.field}: ` : ""}${jsonText(row.oldValue)} → ${jsonText(row.newValue)}`;
+          const description = activityChangeDescription(row, t);
+          const icon =
+            row.verb === REOPEN_REQUESTED_VERB ? (
+              <TriangleAlert className="size-4" />
+            ) : row.field === "priority" ? (
+              <CircleAlert className="size-4" />
+            ) : row.field === "assignee" ? (
+              <UserRound className="size-4" />
+            ) : row.field === "dueDate" ? (
+              <Calendar className="size-4" />
+            ) : (
+              <History className="size-4" />
+            );
           return (
-            <li
+            <ActivityEventPresentation
               key={row.id}
-              className="rounded-lg border px-3 py-2 text-sm"
-              data-visibility={effectiveVisibility(row)}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <strong>{actor}</strong>
-                <span>{row.verb}</span>
-                <time
-                  className="text-muted-foreground"
-                  dateTime={row.createdAt}
-                  title={formatDateTime(row.createdAt)}
-                >
-                  {formatRelativeTime(row.createdAt)}
-                </time>
-              </div>
-              {row.field && (
-                <p className="mt-1 text-muted-foreground">{description}</p>
+              step={index + 1}
+              icon={icon}
+              avatar={
+                <ActivityAvatarPresentation
+                  name={profile.name}
+                  image={profile.image}
+                />
+              }
+              actor={
+                <ActivityActorPresentation {...profile} showAvatar={false} />
+              }
+              timestamp={timestamp}
+              showConnector={Boolean(
+                groups[index + 1] && !isComment(groups[index + 1][0]),
               )}
-              {group.length > 1 && (
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-muted-foreground">
+            >
+              {row.verb === REOPEN_REQUESTED_VERB ? (
+                <span
+                  className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+                  data-testid="work-item-reopen-requested"
+                >
+                  <Badge variant="warning">
+                    <TriangleAlert className="size-3" aria-hidden="true" />
+                    {t("activity:timeline.reopenRequested.badge")}
+                  </Badge>
+                  {t("activity:timeline.reopenRequested.description")}
+                </span>
+              ) : row.field ? (
+                <span className="text-sm text-muted-foreground">
+                  {description}
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  {row.verb === "attachment.added" ||
+                  row.verb === "attachment.deleted"
+                    ? activityChangeDescription(row, t)
+                    : activityVerbLabel(row.verb, t)}
+                </span>
+              )}
+              {row.origin === "imported" ? (
+                <span className="ml-2 inline-flex align-middle">
+                  <ImportedMarker importedAt={row.importedAt} />
+                </span>
+              ) : null}
+              {group.length > 1 ? (
+                <Collapsible className="mt-2">
+                  <CollapsibleTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto justify-start gap-1 px-0 py-0 text-xs text-muted-foreground"
+                      />
+                    }
+                  >
+                    <ChevronDown className="size-3" />
                     {t("activity:timeline.groupedChanges", {
                       count: group.length,
                     })}
-                  </summary>
-                  <ul className="mt-2 list-inside list-disc">
-                    {group.map((entry) => (
-                      <li key={entry.id}>
-                        {entry.field ?? entry.verb}: {jsonText(entry.oldValue)}{" "}
-                        → {jsonText(entry.newValue)}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </li>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <ul className="mt-2 list-inside list-disc text-xs">
+                      {group.map((entry) => (
+                        <li key={entry.id}>
+                          {activityChangeDescription(entry, t, true)}
+                        </li>
+                      ))}
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : null}
+            </ActivityEventPresentation>
           );
         })}
-      </ol>
+      </Timeline>
+
       {activity.hasNextPage && (
         <Button
           variant="outline"
@@ -648,184 +808,6 @@ function WorkItemActivity({
             : t("activity:timeline.loadMore")}
         </Button>
       )}
-
-      <div
-        hidden={
-          isCheckingPermissions || allowedCommentVisibilities.length === 0
-        }
-        className={
-          selectedCommentVisibility === "internal"
-            ? "rounded-xl border border-warning/50 bg-warning/5 p-3"
-            : "rounded-xl border bg-card p-3"
-        }
-      >
-        <label
-          className="mb-2 block text-sm font-medium"
-          htmlFor="comment-visibility"
-        >
-          {t("activity:timeline.visibilityLabel")}
-        </label>
-        <Select
-          items={allowedCommentVisibilities.map((value) => ({
-            value,
-            label: t(`activity:timeline.${value}`),
-          }))}
-          value={selectedCommentVisibility}
-          disabled={composerBusy}
-          onValueChange={(value) => {
-            const next = value as "public" | "internal";
-            updateVisibility(next);
-          }}
-        >
-          <SelectTrigger
-            id="comment-visibility"
-            aria-label={t("activity:timeline.visibilityLabel")}
-          >
-            <SelectValue>
-              {t(`activity:timeline.${selectedCommentVisibility}`)}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {allowedCommentVisibilities.map((value) => (
-              <SelectItem key={value} value={value}>
-                {t(`activity:timeline.${value}`)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="my-2 text-xs text-muted-foreground">
-          {selectedCommentVisibility === "internal"
-            ? t("activity:timeline.internalNotice")
-            : t("activity:timeline.publicNotice")}
-        </p>
-        {mentionPreflight.data?.unreachablePersonIds.length ? (
-          <Alert variant="warning" role="status" className="mb-2">
-            <AlertDescription>
-              {t("activity:timeline.mentionWarning", {
-                people: mentionPreflight.data.unreachablePersonIds
-                  .map(
-                    (personId) =>
-                      mentionCandidates.data?.find(
-                        (candidate) => candidate.personId === personId,
-                      )?.name ?? t("activity:timeline.mentionUnavailable"),
-                  )
-                  .join(", "),
-              })}
-            </AlertDescription>
-          </Alert>
-        ) : mentionPreflight.isError ? (
-          <p className="mb-2 text-sm text-warning-foreground" role="status">
-            {t("activity:timeline.mentionCheckFailed")}
-          </p>
-        ) : null}
-        {cannedResponses.data && cannedResponses.data.length > 0 && (
-          <Select
-            value=""
-            disabled={composerBusy}
-            onValueChange={(id) => {
-              if (
-                !id ||
-                snippetInsertPending.current ||
-                submitInProgressRef.current
-              )
-                return;
-              const key = workItemKey;
-              snippetInsertPending.current = true;
-              setInsertingSnippet(true);
-              setSnippetInsertFailed(false);
-              // Cached rows populate the menu only. Resolve current context and
-              // revalidate item reach at the moment the agent chooses a template.
-              void listCannedResponses(key)
-                .then((responses) => {
-                  if (currentItemKey.current !== key) return;
-                  const response = responses.find((entry) => entry.id === id);
-                  if (!response || !isTiptapDocument(response.body)) {
-                    setSnippetInsertFailed(true);
-                    return;
-                  }
-                  setDraft((current) => ({
-                    ...current,
-                    document: response.body,
-                  }));
-                  if (
-                    (response.visibilityDefault === "public" ||
-                      response.visibilityDefault === "internal") &&
-                    allowedCommentVisibilities.includes(
-                      response.visibilityDefault,
-                    )
-                  )
-                    updateVisibility(response.visibilityDefault);
-                })
-                .catch(() => {
-                  if (currentItemKey.current === key)
-                    setSnippetInsertFailed(true);
-                })
-                .finally(() => {
-                  snippetInsertPending.current = false;
-                  setInsertingSnippet(false);
-                });
-            }}
-          >
-            <SelectTrigger
-              aria-label={t("activity:timeline.cannedResponses")}
-              className="mb-2"
-            >
-              <SelectValue
-                placeholder={t("activity:timeline.insertCannedResponse")}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {cannedResponses.data.map((response) => (
-                <SelectItem key={response.id} value={response.id}>
-                  {response.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {snippetInsertFailed ? (
-          <Alert variant="error" role="alert">
-            <AlertDescription>
-              {t("activity:timeline.cannedResponseInsertFailed")}
-            </AlertDescription>
-          </Alert>
-        ) : null}
-        <CommentEditor
-          value={draftText}
-          documentValue={draftDocument}
-          onContentChange={(snapshot) => {
-            setDraft(snapshot);
-            persistDraft(snapshot);
-          }}
-          uploadSurface="comment"
-          showQuickAttachButton={false}
-          enableMentions
-          disabled={composerBusy}
-          mentionMembers={(mentionCandidates.data ?? []).map((candidate) => ({
-            id: candidate.personId,
-            label: candidate.name,
-            image: candidate.image,
-          }))}
-          placeholder={t("activity:comment.leavePlaceholder")}
-        />
-        <div className="mt-2 flex justify-end">
-          <Button
-            disabled={
-              !draftText.trim() || createComment.isPending || composerBusy
-            }
-            onClick={() => void submit()}
-          >
-            {createComment.isPending
-              ? t("activity:timeline.sending")
-              : t("activity:timeline.send")}
-          </Button>
-        </div>
-        {(createComment.isError || updateComment.isError) && (
-          <p role="alert" className="mt-2 text-sm text-destructive">
-            {t("activity:timeline.mutationFailed")}
-          </p>
-        )}
-      </div>
     </section>
   );
 }

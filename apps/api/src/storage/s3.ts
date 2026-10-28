@@ -10,6 +10,9 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "dotenv-mono";
+import { buildContentDisposition } from "./content-disposition";
+import { browserStorageOrigins } from "./csp-origins";
+import { StorageProbeCollisionError } from "./probe-error";
 import {
   type AssetObject,
   applyKeyPrefix,
@@ -139,6 +142,12 @@ function getStorageConfig(): StorageConfig {
   };
 }
 
+/** Public browser destinations derived without exposing the signing configuration. */
+export function getBrowserStorageOrigins(): string[] {
+  const { endpoint, bucket, forcePathStyle } = getStorageConfig();
+  return browserStorageOrigins({ endpoint, bucket, forcePathStyle });
+}
+
 function getMaxImageUploadBytes() {
   return parsePositiveInt(
     process.env.S3_MAX_IMAGE_UPLOAD_BYTES,
@@ -260,21 +269,46 @@ export async function getPrivateObject(key: string): Promise<AssetObject> {
   };
 }
 
+/** Lifetime of an attachment upload credential (the presigned PUT). */
+export function getAttachmentUploadTtlSeconds(): number {
+  return parsePositiveInt(
+    process.env.S3_PRESIGN_TTL_SECONDS,
+    DEFAULT_PRESIGN_TTL_SECONDS,
+  );
+}
+
+/**
+ * The one place an attachment's S3 object key is built. Every attachment key the application
+ * stores (row `object_key`, GC queue, import writer) is this prefixed key, so upload,
+ * complete (copy), download, size check and delete all address the same object and never apply
+ * the prefix themselves. Probe keys keep their own prefixing (they never touch attachment rows).
+ */
+export function buildAttachmentStorageKey(rawKey: string): string {
+  return applyKeyPrefix(env("S3_KEY_PREFIX"), rawKey);
+}
+
 /**
  * Issue #28 (attachments) -- the S3 equivalent of `filesystem.ts`'s
- * `createAttachmentUploadUrl`: a presigned PUT for a caller-supplied `key` rather than
- * one built from a `TaskImageUploadContext`. `maxBytes` is accepted for signature parity
- * with the filesystem driver's token-bound ceiling, but is NOT enforced by S3 itself on
- * a plain presigned PUT (that would need a presigned POST with a
- * `content-length-range` policy condition, not built here -- flagged in the PR body);
- * the attachment module enforces the ceiling at the application layer instead, both
- * before minting this URL and again on `complete` by checking the object's actual
- * stored size.
+ * `createAttachmentUploadUrl`: a presigned PUT for a caller-supplied (already prefixed, see
+ * `buildAttachmentStorageKey`) `key`.
+ *
+ * AT-2 asks for a size-bounded credential. The Content-Length header is part of the signature
+ * and equals the size the caller declared at presign (itself validated against the configured
+ * maximum), so the credential can only ever write exactly that many bytes to exactly this key;
+ * S3 rejects any other body with a signature error. `complete` still re-reads the stored size
+ * (a stricter bound than the signature alone) and deletes oversize objects. `finalize` copies
+ * to a never-presigned key and removes this one, so a replay of the URL after `complete` can at
+ * most re-create one orphan of the declared size at this pending key.
+ *
+ * P1R3-2 (AT-2 "and the declared content type"): Content-Type is signed too, so the object can
+ * only be stored with the type the presign route validated against the file extension. The
+ * caller must send exactly the returned `headers`.
  */
 export async function createAttachmentUploadUrl(
   key: string,
   contentType: string,
-  _maxBytes: number,
+  maxBytes: number,
+  declaredSize?: number,
 ): Promise<{
   key: string;
   uploadUrl: string;
@@ -282,20 +316,31 @@ export async function createAttachmentUploadUrl(
 }> {
   const config = getStorageConfig();
   const client = getClient(config);
-  const prefixedKey = applyKeyPrefix(config.keyPrefix, key);
+  // Never sign an unbounded credential: the presign routes always declare a positive size
+  // already checked against the configured maximum.
+  if (
+    declaredSize === undefined ||
+    !Number.isInteger(declaredSize) ||
+    declaredSize < 0 ||
+    declaredSize > maxBytes
+  )
+    throw new Error("A size-bound upload credential needs a declared size.");
+  const exactSize = declaredSize;
 
   const command = new PutObjectCommand({
     Bucket: config.bucket,
-    Key: prefixedKey,
+    Key: key,
     ContentType: contentType,
+    ContentLength: exactSize,
   });
 
   const uploadUrl = await getSignedUrl(client, command, {
     expiresIn: config.presignTtlSeconds,
+    signableHeaders: new Set(["content-length", "content-type"]),
   });
 
   return {
-    key: prefixedKey,
+    key,
     uploadUrl,
     headers: { "Content-Type": contentType },
   };
@@ -315,7 +360,7 @@ export async function createAttachmentDownloadUrl(
   const command = new GetObjectCommand({
     Bucket: config.bucket,
     Key: key,
-    ResponseContentDisposition: `attachment; filename="${filename.replaceAll('"', "")}"`,
+    ResponseContentDisposition: buildContentDisposition(filename, false),
   });
 
   return getSignedUrl(client, command, {
@@ -410,6 +455,25 @@ export async function finalizeAttachmentObject(
   );
 }
 
+/** Server-side put of a complete attachment object (P6 import writer); `key` is a `buildAttachmentStorageKey` key. */
+export async function putAttachmentObject(params: {
+  key: string;
+  bytes: Uint8Array;
+  contentType: string;
+}): Promise<void> {
+  const config = getStorageConfig();
+  const client = getClient(config);
+  await client.send(
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: params.key,
+      Body: Buffer.from(params.bytes),
+      ContentLength: params.bytes.byteLength,
+      ContentType: params.contentType,
+    }),
+  );
+}
+
 export async function deleteS3Object(key: string): Promise<void> {
   const config = getStorageConfig();
   const client = getClient(config);
@@ -419,4 +483,115 @@ export async function deleteS3Object(key: string): Promise<void> {
       Key: key,
     }),
   );
+}
+
+const STORAGE_PROBE_KEY = /^taskdesk-storage-probe-[0-9a-f-]{36}$/u;
+
+function assertStorageProbeKey(key: string) {
+  if (!STORAGE_PROBE_KEY.test(key))
+    throw new Error("Invalid storage probe key.");
+}
+
+/** Put only the generated reserved probe key, passing cancellation to the S3 SDK request. */
+export async function writeStorageProbeObject(
+  key: string,
+  bytes: Uint8Array,
+  signal: AbortSignal,
+): Promise<void> {
+  assertStorageProbeKey(key);
+  if (signal.aborted) throw signal.reason;
+  const config = getStorageConfig();
+  const client = getClient(config);
+  const objectKey = applyKeyPrefix(config.keyPrefix, key);
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: config.bucket,
+        Key: objectKey,
+        Body: Buffer.from(bytes),
+        ContentLength: bytes.byteLength,
+        ContentType: "application/octet-stream",
+        IfNoneMatch: "*",
+      }),
+      { abortSignal: signal },
+    );
+  } catch (error) {
+    const candidate = error as {
+      name?: string;
+      $metadata?: { httpStatusCode?: number };
+    };
+    if (
+      candidate.name === "PreconditionFailed" ||
+      candidate.$metadata?.httpStatusCode === 412
+    )
+      throw new StorageProbeCollisionError();
+    throw error;
+  }
+  if (signal.aborted) throw signal.reason;
+}
+
+/** Read only a bounded probe object; the S3 response stream is capped even if Range is ignored. */
+export async function readStorageProbeObject(
+  key: string,
+  maxBytes: number,
+  signal: AbortSignal,
+): Promise<Buffer> {
+  assertStorageProbeKey(key);
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || signal.aborted)
+    throw signal.reason ?? new Error("Invalid storage probe read.");
+  const config = getStorageConfig();
+  const client = getClient(config);
+  const objectKey = applyKeyPrefix(config.keyPrefix, key);
+  const head = await client.send(
+    new HeadObjectCommand({ Bucket: config.bucket, Key: objectKey }),
+    { abortSignal: signal },
+  );
+  if (head.ContentLength === undefined || head.ContentLength > maxBytes)
+    throw new Error("Storage probe object size is invalid.");
+  if (head.ContentLength === 0) return Buffer.alloc(0);
+  const response = await client.send(
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: objectKey,
+      Range: `bytes=0-${head.ContentLength - 1}`,
+    }),
+    { abortSignal: signal },
+  );
+  if (!response.Body) throw new Error("Storage probe object is unavailable.");
+
+  const chunks: Buffer[] = [];
+  let length = 0;
+  for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
+    if (signal.aborted) throw signal.reason;
+    const part = Buffer.from(chunk);
+    length += part.byteLength;
+    if (length > maxBytes) {
+      if (
+        "destroy" in response.Body &&
+        typeof response.Body.destroy === "function"
+      )
+        response.Body.destroy();
+      throw new Error("Storage probe response exceeded its bound.");
+    }
+    chunks.push(part);
+  }
+  if (signal.aborted) throw signal.reason;
+  return Buffer.concat(chunks, length);
+}
+
+/** Delete only the generated reserved probe key, passing cancellation to the S3 SDK request. */
+export async function deleteStorageProbeObject(
+  key: string,
+  signal: AbortSignal,
+): Promise<void> {
+  assertStorageProbeKey(key);
+  if (signal.aborted) throw signal.reason;
+  const config = getStorageConfig();
+  const client = getClient(config);
+  const objectKey = applyKeyPrefix(config.keyPrefix, key);
+  await client.send(
+    new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey }),
+    { abortSignal: signal },
+  );
+  if (signal.aborted) throw signal.reason;
 }

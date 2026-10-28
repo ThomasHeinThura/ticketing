@@ -16,6 +16,7 @@ import type { Executor } from "../executor";
 import {
   membershipTable,
   personTable,
+  projectTable,
   roleTable,
   userTable,
   workspaceRoleTable,
@@ -109,6 +110,49 @@ export function currentProjectReachPredicate(
         ),
       ),
   );
+  // PR-2 / reach step 4: membership of an ANCESTOR project, read at query time (no
+  // materialised inherited rows). The chain is walked inside the project's own workspace only
+  // (tenant boundary), stops at a soft-deleted ancestor, and is bounded by the depth cap
+  // (`MAX_PROJECT_DEPTH` = 4 levels = at most 3 ancestors), so a stored cycle terminates.
+  // Mirrors `reachAncestorIds` (project/hierarchy.ts). Customer callers returned above.
+  const ancestorProjectMembership = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(membershipTable)
+      .innerJoin(roleTable, eq(roleTable.id, membershipTable.roleId))
+      .where(
+        and(
+          eq(membershipTable.personId, identity.personId),
+          eq(membershipTable.scope, "project"),
+          sql`${membershipTable.scopeId} IN (
+            WITH RECURSIVE reach_chain(id, parent_id, depth) AS (
+              SELECT chain_start.id, chain_start.parent_id, 1
+              FROM ${projectTable} AS chain_start
+              WHERE chain_start.id = ${projectId}
+                AND chain_start.workspace_id = ${projectWorkspaceId}
+              UNION ALL
+              SELECT chain_next.id, chain_next.parent_id, reach_chain.depth + 1
+              FROM ${projectTable} AS chain_next
+              INNER JOIN reach_chain ON chain_next.id = reach_chain.parent_id
+              WHERE chain_next.workspace_id = ${projectWorkspaceId}
+                AND chain_next.deleted_at IS NULL
+                AND reach_chain.depth < 4
+            )
+            SELECT reach_chain.id FROM reach_chain WHERE reach_chain.depth > 1
+          )`,
+          canonicalScopedRoleMembership(
+            membershipTable.scope,
+            roleTable.id,
+            roleTable.scope,
+            roleTable.workspaceId,
+            roleTable.key,
+            roleTable.rank,
+            roleTable.capabilities,
+            projectWorkspaceId,
+          ),
+        ),
+      ),
+  );
   const workspaceSeesAll = exists(
     executor
       .select({ one: sql`1` })
@@ -134,10 +178,32 @@ export function currentProjectReachPredicate(
       ),
   );
 
+  // TM-4 / reach step 5: the caller is an active member of the team that owns the project.
+  // `identity.teamIds` is already limited to teams of workspaces the person currently belongs
+  // to; the same-workspace check below keeps a stale team id from reaching across tenants.
+  const ownerProject = alias(projectTable, "reach_owner_project");
+  const ownerTeamReach =
+    Array.isArray(identity.teamIds) && identity.teamIds.length > 0
+      ? exists(
+          executor
+            .select({ one: sql`1` })
+            .from(ownerProject)
+            .where(
+              and(
+                eq(ownerProject.id, projectId),
+                eq(ownerProject.workspaceId, projectWorkspaceId),
+                inArray(ownerProject.ownerTeamId, [...identity.teamIds]),
+              ),
+            ),
+        )
+      : sql`false`;
+
   return or(
     currentInstanceAdminPredicate(identity, executor),
     directProjectMembership,
+    ancestorProjectMembership,
     workspaceSeesAll,
+    ownerTeamReach,
   );
 }
 

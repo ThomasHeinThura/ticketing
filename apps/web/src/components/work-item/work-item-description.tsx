@@ -2,6 +2,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
+import {
+  TASK_DESCRIPTION_EDITOR_CLASS,
+  TaskDescriptionPresentation,
+} from "@/components/task/task-detail-presentation";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import {
   isWorkItemAccessLost,
@@ -17,10 +21,6 @@ import {
 } from "./work-item-save";
 
 export const DESCRIPTION_SAVE_DELAY_MS = 1000;
-
-/** Kaneo's description editor classes (`task-description-editor.tsx`). */
-const EDITOR_CLASS =
-  "[&_.taskdesk-comment-editor-content_.ProseMirror]:min-h-[11rem] [&_.taskdesk-comment-editor-content_.ProseMirror]:max-h-none [&_.taskdesk-comment-editor-content_.ProseMirror]:overflow-visible [&_.taskdesk-comment-editor-content_.ProseMirror]:px-0 [&_.taskdesk-comment-editor-content_.ProseMirror]:pt-1 [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-2";
 
 const NOTHING_SAVED = Symbol("nothing-saved");
 
@@ -40,9 +40,11 @@ const NOTHING_SAVED = Symbol("nothing-saved");
 export default function WorkItemDescription({
   item,
   onAccessLost,
+  readOnly = false,
 }: {
   item: WorkItemDetailRow;
   onAccessLost: () => void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -159,8 +161,7 @@ export default function WorkItemDescription({
 
   const isDocument = typeof shown === "object" && shown !== null;
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: focus tracking for the editor inside, not an interaction of its own
-    <div
+    <TaskDescriptionPresentation
       className="flex flex-col gap-1"
       onFocus={() => {
         markInteracted();
@@ -192,15 +193,15 @@ export default function WorkItemDescription({
             if (unsaved.current !== NOTHING_SAVED) save(unsaved.current);
           }, DESCRIPTION_SAVE_DELAY_MS);
         }}
-        readOnly={!canUpdateTasks()}
+        readOnly={readOnly || !canUpdateTasks()}
         placeholder={t("tasks:detail.addDescription")}
-        className={EDITOR_CLASS}
+        className={TASK_DESCRIPTION_EDITOR_CLASS}
       />
       {failed ? (
         <p className="text-muted-foreground text-xs" role="alert">
           {t("workItems:properties.unsaved")}
         </p>
       ) : null}
-    </div>
+    </TaskDescriptionPresentation>
   );
 }

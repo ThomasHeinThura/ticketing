@@ -29,6 +29,11 @@ import {
   createWorkspaceMember,
   grantProjectManageAccess,
 } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
+import { ensureCreationWorkflow } from "./helpers/workflow";
 
 function createProjectRequest(
   app: ReturnType<typeof createApp>["app"],
@@ -63,7 +68,12 @@ async function waitForBlockedProjectUpdate() {
       WHERE datname = current_database()
         AND state = 'active'
         AND wait_event_type = 'Lock'
-        AND query ILIKE '%update "project"%'
+        AND (
+          query ILIKE '%update "project"%'
+          -- The rename now locks the project row (SELECT ... FOR UPDATE) before its
+          -- slug pre-checks, so it may block there rather than on the UPDATE itself.
+          OR (query ILIKE '%from "project"%' AND query ILIKE '%for update%')
+        )
       LIMIT 1
     `);
 
@@ -74,13 +84,6 @@ async function waitForBlockedProjectUpdate() {
   throw new Error(
     "Timed out waiting for the project rename to reach its row lock",
   );
-}
-
-function deleteWorkspaceRequest(
-  app: ReturnType<typeof createApp>["app"],
-  workspaceId: string,
-) {
-  return app.request(`/api/workspace/${workspaceId}`, { method: "DELETE" });
 }
 
 function createWorkItemRequest(
@@ -171,6 +174,11 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
 
     const type = await makeWorkItemType(attacker.workspace.id);
     await makeDefaultState(attacker.workspace.id, attackerProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: attacker.workspace.id,
+      projectId: attackerProject.id,
+      typeId: type.id,
+    });
     const attackerWorkItem = await createWorkItemRequest(
       attackerApp,
       attackerProject.id,
@@ -185,7 +193,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const rename = await updateProjectRequest(attackerApp, attackerProject.id, {
       name: "Attacker's project",
       icon: "Folder",
-      slug: "ACME-RETIRED",
+      slug: "ACMEOLD",
       description: "",
     });
     expect(rename.status).toBe(200);
@@ -229,6 +237,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     // `require-workspace-role-authority.ts`).
     const attacker = await createWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(attacker.user);
+    await ensureAgentSession(attacker.user.id);
     const { app: attackerApp } = createApp();
 
     const attackerCreate = await createProjectRequest(attackerApp, {
@@ -246,6 +255,11 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
 
     const type = await makeWorkItemType(attacker.workspace.id);
     await makeDefaultState(attacker.workspace.id, attackerProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: attacker.workspace.id,
+      projectId: attackerProject.id,
+      typeId: type.id,
+    });
     for (let i = 0; i < 3; i++) {
       const created = await createWorkItemRequest(
         attackerApp,
@@ -265,11 +279,13 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     // Attacker hard-deletes their own workspace. This cascades away the workspace,
     // its project and every work item -- but `work_item_key_claim` has no FK to any of
     // it (deliberately), so the claims survive.
-    const deletion = await deleteWorkspaceRequest(
+    // The DELETE only requests (202); the owner's typed-name + step-up approval executes it.
+    await deleteThroughApproval(
       attackerApp,
-      attacker.workspace.id,
+      attacker.user,
+      `/api/workspace/${attacker.workspace.id}`,
+      { typedName: attacker.workspace.name },
     );
-    expect(deletion.status).toBe(200);
 
     // Confirm the cascade really did remove everything an operator would think to look
     // at -- this is D1's "no trace left" property.
@@ -350,6 +366,11 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
 
     const type = await makeWorkItemType(attacker.workspace.id);
     await makeDefaultState(attacker.workspace.id, attackerProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: attacker.workspace.id,
+      projectId: attackerProject.id,
+      typeId: type.id,
+    });
     const burn = await createWorkItemRequest(attackerApp, attackerProject.id, {
       typeId: type.id,
       title: "Burn OPS-5 specifically",
@@ -360,7 +381,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const rename = await updateProjectRequest(attackerApp, attackerProject.id, {
       name: "Attacker's project",
       icon: "Folder",
-      slug: "OPS-OLD",
+      slug: "OPSOLD",
       description: "",
     });
     expect(rename.status).toBe(200);
@@ -421,6 +442,11 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
 
     const type = await makeWorkItemType(holder.workspace.id);
     await makeDefaultState(holder.workspace.id, project.id);
+    await ensureCreationWorkflow({
+      workspaceId: holder.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
+    });
 
     const attempt = await createWorkItemRequest(app, project.id, {
       typeId: type.id,
@@ -457,7 +483,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
       workspaceId: owner.workspace.id,
       name: "Round trip",
       icon: "Folder",
-      slug: "ROUNDTRIP",
+      slug: "ROUNDTRP",
     });
     expect(created.status).toBe(200);
     const project = (await created.json()) as { id: string };
@@ -466,7 +492,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const renamedAway = await updateProjectRequest(app, project.id, {
       name: "Round trip",
       icon: "Folder",
-      slug: "ROUNDTRIP-2",
+      slug: "ROUNDTWO",
       description: "",
     });
     expect(renamedAway.status).toBe(200);
@@ -474,7 +500,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const renamedBack = await updateProjectRequest(app, project.id, {
       name: "Round trip",
       icon: "Folder",
-      slug: "ROUNDTRIP",
+      slug: "ROUNDTRP",
       description: "",
     });
     expect(renamedBack.status).toBe(200);
@@ -482,17 +508,14 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const row = await db.query.projectTable.findFirst({
       where: eq(schema.projectTable.id, project.id),
     });
-    expect(row?.slug).toBe("ROUNDTRIP");
+    expect(row?.slug).toBe("ROUNDTRP");
 
     // Both slugs this project has ever held remain claimed by it, and only it.
     const claims = await db
       .select()
       .from(schema.projectSlugClaimTable)
       .where(eq(schema.projectSlugClaimTable.projectId, project.id));
-    expect(claims.map((c) => c.slug).sort()).toEqual([
-      "ROUNDTRIP",
-      "ROUNDTRIP-2",
-    ]);
+    expect(claims.map((c) => c.slug).sort()).toEqual(["ROUNDTRP", "ROUNDTWO"]);
   });
 
   it("rejects a rename when another project permanently claims the slug during preflight", async () => {
@@ -504,7 +527,7 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
       workspaceId: owner.workspace.id,
       name: "First project",
       icon: "Folder",
-      slug: "RACE-FIRST",
+      slug: "RACEONE",
     });
     expect(firstCreate.status).toBe(200);
     const firstProject = (await firstCreate.json()) as { id: string };
@@ -535,33 +558,33 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const pendingRename = updateProjectRequest(app, firstProject.id, {
       name: "First project",
       icon: "Folder",
-      slug: "RACE-SLUG",
+      slug: "RACESLUG",
       description: "",
     });
 
     let secondProject: { id: string } | undefined;
     try {
-      // The update has completed its live-project and claim pre-checks, then blocks on
-      // the row lock held above. A second project can now claim the target slug.
+      // The update blocks on the row lock held above (it takes that lock before its
+      // live-project and claim pre-checks). A second project can now claim the target slug.
       await waitForBlockedProjectUpdate();
 
       const secondCreate = await createProjectRequest(app, {
         workspaceId: owner.workspace.id,
         name: "Second project",
         icon: "Folder",
-        slug: "RACE-SLUG",
+        slug: "RACESLUG",
       });
       expect(secondCreate.status).toBe(200);
       secondProject = (await secondCreate.json()) as { id: string };
       await grantProjectManageAccess(owner.user.id, secondProject.id);
 
       // Move the live row away while preserving its permanent claim. The blocked
-      // transaction can then update the first project to RACE-SLUG unless it validates
+      // transaction can then update the first project to RACESLUG unless it validates
       // the claim-table conflict after its insert.
       const moveSecond = await updateProjectRequest(app, secondProject.id, {
         name: "Second project",
         icon: "Folder",
-        slug: "RACE-OTHER",
+        slug: "RACEOTHR",
         description: "",
       });
       expect(moveSecond.status).toBe(200);
@@ -576,10 +599,10 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     const firstAfterRace = await db.query.projectTable.findFirst({
       where: eq(schema.projectTable.id, firstProject.id),
     });
-    expect(firstAfterRace?.slug).toBe("RACE-FIRST");
+    expect(firstAfterRace?.slug).toBe("RACEONE");
 
     const claim = await db.query.projectSlugClaimTable.findFirst({
-      where: eq(schema.projectSlugClaimTable.slug, "RACE-SLUG"),
+      where: eq(schema.projectSlugClaimTable.slug, "RACESLUG"),
     });
     expect(claim?.projectId).toBe(secondProject?.id);
   });

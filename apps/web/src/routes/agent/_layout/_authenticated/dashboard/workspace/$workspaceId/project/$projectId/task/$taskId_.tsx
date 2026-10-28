@@ -1,20 +1,12 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import TaskLayout from "@/components/common/task-layout";
 import PageTitle from "@/components/page-title";
-import TaskDeleteButton from "@/components/task/task-delete-button";
-import TaskDetailsContent, {
-  selectTaskDetailsSummary,
-} from "@/components/task/task-details-content";
-import {
-  TaskDetailsSkeleton,
-  TaskPropertiesSidebarSkeleton,
-} from "@/components/task/task-page-skeleton";
-import TaskPropertiesSidebar from "@/components/task/task-properties-sidebar";
-import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
+import { TaskDetailsSkeleton } from "@/components/task/task-page-skeleton";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetTask from "@/hooks/queries/task/use-get-task";
+import { routes } from "@/lib/routes";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_",
@@ -22,32 +14,35 @@ export const Route = createFileRoute(
   component: RouteComponent,
 });
 
+/**
+ * Old `/dashboard/.../task/{taskId}` links keep working: the legacy task id resolves to its
+ * project key and number, which is the canonical work item key (`/agent/work-items/{key}`).
+ * The legacy detail view and its delete control are gone (deletion is a pending action on the
+ * work item since P0).
+ */
 function RouteComponent() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { projectId, workspaceId, taskId } = Route.useParams();
-  const {
-    data: task,
-    isLoading: isTaskLoading,
-    isError: isTaskError,
-  } = useGetTask(taskId, selectTaskDetailsSummary);
+  const { data: task, isLoading: isTaskLoading } = useGetTask(taskId);
   const { data: project, isLoading: isProjectLoading } = useGetProject({
     id: projectId,
     workspaceId,
   });
-  const { isLoading: isActivitiesLoading } = useGetActivitiesByTaskId(
-    taskId,
-    () => null,
-  );
-  const isLoading = isTaskLoading || isProjectLoading || isActivitiesLoading;
+  const isLoading = isTaskLoading || isProjectLoading;
 
-  const handleDeleted = () => {
-    navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
-      params: { workspaceId, projectId },
-      replace: true,
-    });
-  };
+  if (!isLoading && task && project?.slug && task.number) {
+    return (
+      <Navigate
+        to={
+          routes.workItemDetail.build({
+            key: `${project.slug}-${task.number}`,
+          }) as never
+        }
+        replace
+      />
+    );
+  }
 
   return (
     <TaskLayout
@@ -57,38 +52,18 @@ function RouteComponent() {
       projectName={project?.name}
       projectSlug={project?.slug}
       taskNumber={task?.number}
-      headerActions={
-        !isLoading && task ? (
-          <TaskDeleteButton taskId={taskId} onDeleted={handleDeleted} />
-        ) : null
-      }
-      rightSidebar={
-        isLoading ? (
-          <TaskPropertiesSidebarSkeleton className="h-full w-full lg:w-72 xl:w-80 flex flex-col gap-2" />
-        ) : isTaskError || !task ? null : (
-          <TaskPropertiesSidebar
-            taskId={taskId}
-            projectId={projectId}
-            workspaceId={workspaceId}
-            project={project}
-            className="h-full w-full lg:w-72 xl:w-80 flex flex-col gap-2"
-          />
-        )
-      }
     >
       <PageTitle
         title={
           isLoading
             ? t("tasks:common.loadingTask")
-            : isTaskError || !task
-              ? t("tasks:common.taskNotFound")
-              : `${project?.slug}-${task?.number} · ${task?.title}`
+            : t("tasks:common.taskNotFound")
         }
         hideAppName
       />
       {isLoading ? (
         <TaskDetailsSkeleton />
-      ) : isTaskError || !task ? (
+      ) : (
         <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <h1 className="text-2xl font-bold">
             {t("tasks:common.taskNotFound")}
@@ -113,16 +88,6 @@ function RouteComponent() {
             })}
           </Button>
         </div>
-      ) : (
-        <TaskDetailsContent
-          taskId={taskId}
-          projectId={projectId}
-          workspaceId={workspaceId}
-          task={task}
-          project={project}
-          className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col gap-2 px-3 pb-16 pt-3 sm:px-4 xl:pb-20 xl:pt-8"
-          dataTestId="g13-legacy-task-content"
-        />
       )}
     </TaskLayout>
   );

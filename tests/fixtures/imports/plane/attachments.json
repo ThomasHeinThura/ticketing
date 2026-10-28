@@ -1,0 +1,152 @@
+{
+	"22000002-aaaa-4bbb-8ccc-000000001954": [
+		{
+			"id": "b0000020-aaaa-4bbb-8ccc-000000019540",
+			"attributes": {
+				"name": "screenshot.png",
+				"size": 20200,
+				"type": "image/png"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000001-aaaa-4bbb-8ccc-000000000977/issues/22000002-aaaa-4bbb-8ccc-000000001954/b0000020-aaaa-4bbb-8ccc-000000019540",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-09-04T10:33:00.000Z",
+			"issue": "22000002-aaaa-4bbb-8ccc-000000001954"
+		}
+	],
+	"22000004-aaaa-4bbb-8ccc-000000003908": [
+		{
+			"id": "b0000040-aaaa-4bbb-8ccc-000000039080",
+			"attributes": {
+				"name": "screenshot.png",
+				"size": 20400,
+				"type": "image/png"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000001-aaaa-4bbb-8ccc-000000000977/issues/22000004-aaaa-4bbb-8ccc-000000003908/b0000040-aaaa-4bbb-8ccc-000000039080",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-06T12:55:00.000Z",
+			"issue": "22000004-aaaa-4bbb-8ccc-000000003908"
+		},
+		{
+			"id": "b0000041-aaaa-4bbb-8ccc-000000040057",
+			"attributes": {
+				"name": "trace.har",
+				"size": 20401,
+				"type": "application/json"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000001-aaaa-4bbb-8ccc-000000000977/issues/22000004-aaaa-4bbb-8ccc-000000003908/b0000041-aaaa-4bbb-8ccc-000000040057",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-06T12:55:00.000Z",
+			"issue": "22000004-aaaa-4bbb-8ccc-000000003908"
+		}
+	],
+	"22000007-aaaa-4bbb-8ccc-000000006839": [
+		{
+			"id": "b0000070-aaaa-4bbb-8ccc-000000068390",
+			"attributes": {
+				"name": "screenshot.png",
+				"size": 20700,
+				"type": "image/png"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000001-aaaa-4bbb-8ccc-000000000977/issues/22000007-aaaa-4bbb-8ccc-000000006839/b0000070-aaaa-4bbb-8ccc-000000068390",
+			"created_by": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-09-09T15:28:00.000Z",
+			"issue": "22000007-aaaa-4bbb-8ccc-000000006839"
+		}
+	],
+	"22000012-aaaa-4bbb-8ccc-000000011724": [
+		{
+			"id": "b0000120-aaaa-4bbb-8ccc-000000117240",
+			"attributes": {
+				"name": "screenshot.png",
+				"size": 21200,
+				"type": "image/png"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000001-aaaa-4bbb-8ccc-000000000977/issues/22000012-aaaa-4bbb-8ccc-000000011724/b0000120-aaaa-4bbb-8ccc-000000117240",
+			"created_by": "11000001-aaaa-4bbb-8ccc-000000000977",
+			"created_at": "2025-09-14T10:23:00.000Z",
+			"issue": "22000012-aaaa-4bbb-8ccc-000000011724"
+		}
+	],
+	"22000017-aaaa-4bbb-8ccc-000000016609": [
+		{
+			"id": "b0000170-aaaa-4bbb-8ccc-000000166090",
+			"attributes": {
+				"name": "screenshot.png",
+				"size": 21700,
+				"type": "image/png"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000001-aaaa-4bbb-8ccc-000000000977/issues/22000017-aaaa-4bbb-8ccc-000000016609/b0000170-aaaa-4bbb-8ccc-000000166090",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-09-19T15:18:00.000Z",
+			"issue": "22000017-aaaa-4bbb-8ccc-000000016609"
+		}
+	],
+	"22000022-aaaa-4bbb-8ccc-000000021494": [
+		{
+			"id": "b0000220-aaaa-4bbb-8ccc-000000214940",
+			"attributes": {
+				"name": "screenshot.png",
+				"size": 22200,
+				"type": "image/png"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000002-aaaa-4bbb-8ccc-000000001954/issues/22000022-aaaa-4bbb-8ccc-000000021494/b0000220-aaaa-4bbb-8ccc-000000214940",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-09-24T10:13:00.000Z",
+			"issue": "22000022-aaaa-4bbb-8ccc-000000021494"
+		}
+	],
+	"22000029-aaaa-4bbb-8ccc-000000028333": [
+		{
+			"id": "b0000290-aaaa-4bbb-8ccc-000000283330",
+			"attributes": {
+				"name": "screenshot.png",
+				"size": 22900,
+				"type": "image/png"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000003-aaaa-4bbb-8ccc-000000002931/issues/22000029-aaaa-4bbb-8ccc-000000028333/b0000290-aaaa-4bbb-8ccc-000000283330",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-10-01T07:30:00.000Z",
+			"issue": "22000029-aaaa-4bbb-8ccc-000000028333"
+		}
+	],
+	"22000030-aaaa-4bbb-8ccc-000000029310": [
+		{
+			"id": "b0000300-aaaa-4bbb-8ccc-000000293100",
+			"attributes": {
+				"name": "screenshot.png",
+				"size": 23000,
+				"type": "image/png"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000003-aaaa-4bbb-8ccc-000000002931/issues/22000030-aaaa-4bbb-8ccc-000000029310/b0000300-aaaa-4bbb-8ccc-000000293100",
+			"created_by": "11000003-aaaa-4bbb-8ccc-000000002931",
+			"created_at": "2025-10-02T08:41:00.000Z",
+			"issue": "22000030-aaaa-4bbb-8ccc-000000029310"
+		},
+		{
+			"id": "b0000301-aaaa-4bbb-8ccc-000000294077",
+			"attributes": {
+				"name": "trace.har",
+				"size": 23001,
+				"type": "application/json"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000003-aaaa-4bbb-8ccc-000000002931/issues/22000030-aaaa-4bbb-8ccc-000000029310/b0000301-aaaa-4bbb-8ccc-000000294077",
+			"created_by": "11000004-aaaa-4bbb-8ccc-000000003908",
+			"created_at": "2025-10-02T08:41:00.000Z",
+			"issue": "22000030-aaaa-4bbb-8ccc-000000029310"
+		}
+	],
+	"22000033-aaaa-4bbb-8ccc-000000032241": [
+		{
+			"id": "b0000330-aaaa-4bbb-8ccc-000000322410",
+			"attributes": {
+				"name": "screenshot.png",
+				"size": 23300,
+				"type": "image/png"
+			},
+			"asset": "/api/assets/v2/workspaces/acme/projects/33000003-aaaa-4bbb-8ccc-000000002931/issues/22000033-aaaa-4bbb-8ccc-000000032241/b0000330-aaaa-4bbb-8ccc-000000322410",
+			"created_by": "11000002-aaaa-4bbb-8ccc-000000001954",
+			"created_at": "2025-10-05T11:14:00.000Z",
+			"issue": "22000033-aaaa-4bbb-8ccc-000000032241"
+		}
+	]
+}

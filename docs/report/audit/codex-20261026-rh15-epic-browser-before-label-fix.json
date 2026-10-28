@@ -1,0 +1,150 @@
+{
+	"status": "passed",
+	"tlsVerification": "strict",
+	"fixture": "CCY-5",
+	"createdItems": [
+		{
+			"key": "CCY-7",
+			"stateCategory": "completed",
+			"parent": "CCY-5"
+		},
+		{
+			"key": "CCY-6",
+			"stateCategory": "unstarted",
+			"parent": "CCY-5"
+		}
+	],
+	"savedViewCreated": false,
+	"savedViewReused": true,
+	"savedViewPrivate": true,
+	"reportFlagStatus": 200,
+	"reportScope": "all",
+	"canExport": true,
+	"parentEpicVerified": true,
+	"noPreexistingChildren": false,
+	"controlledFixturesReused": true,
+	"lastStage": "verify fixture preservation and write evidence",
+	"matchingCountUnfiltered": 3,
+	"matchingCountFiltered": 1,
+	"progressCompleted": 1,
+	"progressTotal": 2,
+	"progressPercent": 50,
+	"epicDrillHandleVerified": true,
+	"drillHandles": ["epic:g79wqn9u2ptie7idh9oytp8o"],
+	"drillRequestMetadata": [
+		{
+			"method": "POST",
+			"pathname": "/api/reports/custom/items",
+			"contentType": "application/json",
+			"bodyAvailable": true,
+			"handle": "epic:g79wqn9u2ptie7idh9oytp8o",
+			"playwrightBodyAvailable": false
+		}
+	],
+	"playwrightRequestBodyAvailable": false,
+	"reloadedSavedViewVerified": true,
+	"csvHeadersHumanReadable": true,
+	"noneBucketPresent": true,
+	"unavailableBucketPresent": false,
+	"featureAndReach": {
+		"reportFeatureEnabled": true,
+		"projectReachVerified": true,
+		"workspaceScope": "all"
+	},
+	"originalEpicFieldsUnchanged": true,
+	"existingCommentsUnchanged": true,
+	"commentActions": "none",
+	"priorHarnessAttempts": [
+		{
+			"attempt": 1,
+			"outcome": "harness_timeout",
+			"cause": "Save locator expected Save; the live Kaneo label is Save report.",
+			"productOutcome": "No saved view was created in this attempt."
+		},
+		{
+			"attempt": 2,
+			"outcome": "harness_timeout",
+			"cause": "Drill locator expected Open; the live Kaneo label is View items.",
+			"productOutcome": "The ordinary save flow returned HTTP 200 and persisted the one private view; rollup table displayed 3 matching items and 1/2 (50%) subtree progress."
+		}
+	],
+	"captures": [
+		"codex-20261026-rh15-epic-light-375.png",
+		"codex-20261026-rh15-epic-light-768.png",
+		"codex-20261026-rh15-epic-light-1440.png",
+		"codex-20261026-rh15-epic-dark-375.png",
+		"codex-20261026-rh15-epic-dark-768.png",
+		"codex-20261026-rh15-epic-dark-1440.png"
+	],
+	"errors": [],
+	"mobileTableInspection": {
+		"readOnly": true,
+		"reusedPrivateViewId": "cw0xkskpcwgb8dmrybedity7",
+		"createdRecords": 0,
+		"scope": "Table row vertically scrolled into view; horizontal viewport positioned to show full Progress (all descendants) heading and the epic 50% cell.",
+		"pageHorizontalOverflow": false,
+		"tableHeaders": [
+			"Group",
+			"Matching work items",
+			"Completed descendants",
+			"All descendants",
+			"Progress (all descendants)",
+			"Items"
+		],
+		"interaction": "The table uses an overflow-x:auto wrapper; horizontal scroll exposes the full column set without expanding document width.",
+		"captures": [
+			{
+				"theme": "light",
+				"width": 375,
+				"file": "codex-20261026-rh15-epic-table-light-375.png",
+				"tableWidth": 1020,
+				"scrollViewportWidth": 275,
+				"maxScrollLeft": 745,
+				"scrollLeft": 697,
+				"progressHeaderVisible": true,
+				"epicPercentVisible": true,
+				"pageWidth": 375,
+				"pageScrollWidth": 375
+			},
+			{
+				"theme": "light",
+				"width": 768,
+				"file": "codex-20261026-rh15-epic-table-light-768.png",
+				"tableWidth": 1010,
+				"scrollViewportWidth": 436,
+				"maxScrollLeft": 574,
+				"scrollLeft": 574,
+				"progressHeaderVisible": true,
+				"epicPercentVisible": true,
+				"pageWidth": 768,
+				"pageScrollWidth": 768
+			},
+			{
+				"theme": "dark",
+				"width": 375,
+				"file": "codex-20261026-rh15-epic-table-dark-375.png",
+				"tableWidth": 1020,
+				"scrollViewportWidth": 275,
+				"maxScrollLeft": 745,
+				"scrollLeft": 697,
+				"progressHeaderVisible": true,
+				"epicPercentVisible": true,
+				"pageWidth": 375,
+				"pageScrollWidth": 375
+			},
+			{
+				"theme": "dark",
+				"width": 768,
+				"file": "codex-20261026-rh15-epic-table-dark-768.png",
+				"tableWidth": 1010,
+				"scrollViewportWidth": 436,
+				"maxScrollLeft": 574,
+				"scrollLeft": 574,
+				"progressHeaderVisible": true,
+				"epicPercentVisible": true,
+				"pageWidth": 768,
+				"pageScrollWidth": 768
+			}
+		]
+	}
+}
