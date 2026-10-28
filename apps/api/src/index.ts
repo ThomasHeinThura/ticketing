@@ -204,6 +204,7 @@ import serviceCalendar from "./service-calendar";
 import serviceManagement from "./service-management";
 import { portalReleaseRouter } from "./service-management/release-portal";
 import slaPolicy from "./sla-policy";
+import { servePrecompressedAsset } from "./static/precompressed-assets";
 import {
   getPrivateObject,
   getStorageBrowserOrigins,
@@ -754,6 +755,24 @@ function registerStaticServing(
       return c.req.method === "HEAD"
         ? c.body(null, 503, { "content-type": "application/json" })
         : c.json({ message: "Service Unavailable" }, 503);
+    }
+
+    const compressed = await servePrecompressedAsset(c.req.raw, staticRoot);
+    if (compressed) {
+      // Preserve upstream CORS variance alongside encoding negotiation.
+      const upstreamVary = c.res.headers.get("Vary");
+      if (upstreamVary) {
+        const values = new Set(
+          [
+            ...upstreamVary.split(","),
+            ...(compressed.headers.get("Vary")?.split(",") ?? []),
+          ]
+            .map((value) => value.trim())
+            .filter(Boolean),
+        );
+        compressed.headers.set("Vary", [...values].join(", "));
+      }
+      return compressed;
     }
 
     const serveAsset = serveStatic({ root: staticRoot });

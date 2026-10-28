@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { cp } from "node:fs/promises";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
@@ -8,9 +10,83 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import packageJson from "../../package.json";
 import {
+  precompressGeneratedAssets,
+  servePrecompressedAsset,
+} from "../api/src/static/precompressed-assets";
+import {
   findDeferredNamespaceUsers,
   i18nNamespaceGroups,
 } from "./vite/i18n-namespace-groups";
+
+function precompressedAssets(outDir: string): Plugin {
+  return {
+    name: "taskdesk:precompressed-assets",
+    async writeBundle() {
+      await precompressGeneratedAssets(outDir);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const controller = new AbortController();
+        res.once("close", () => controller.abort());
+        const headers = new Headers();
+        for (const [name, value] of Object.entries(req.headers)) {
+          if (Array.isArray(value))
+            for (const entry of value) headers.append(name, entry);
+          else if (value !== undefined) headers.set(name, value);
+        }
+        const request = new Request(
+          new URL(req.url ?? "/", "http://localhost"),
+          {
+            method: req.method ?? "GET",
+            headers,
+            signal: controller.signal,
+          },
+        );
+        void servePrecompressedAsset(request, outDir)
+          .then(async (response) => {
+            if (!response) {
+              next();
+              return;
+            }
+            const vary = [
+              res.getHeader("Vary")?.toString(),
+              response.headers.get("Vary"),
+            ]
+              .flatMap((value) => value?.split(",") ?? [])
+              .map((value) => value.trim())
+              .filter(Boolean);
+            if (vary.length) {
+              response.headers.set(
+                "Vary",
+                vary.includes("*")
+                  ? "*"
+                  : [
+                      ...new Map(
+                        vary.map((value) => [value.toLowerCase(), value]),
+                      ).values(),
+                    ].join(", "),
+              );
+            }
+            res.statusCode = response.status;
+            response.headers.forEach((value, name) => {
+              res.setHeader(name, value);
+            });
+            if (!response.body) {
+              res.end();
+              return;
+            }
+            await pipeline(
+              Readable.fromWeb(
+                response.body as import("node:stream/web").ReadableStream,
+              ),
+              res,
+            );
+          })
+          .catch(next);
+      });
+    },
+  };
+}
 
 function preloadWorkRouteForDirectVisits(): Plugin {
   return {
@@ -557,6 +633,7 @@ export default defineConfig(({ mode }) => {
           tailwindcss(),
           react(),
           babel({ presets: [reactCompilerPreset()] }),
+          precompressedAssets(outDir),
         ],
     server: {
       host: true,
