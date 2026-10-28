@@ -15,21 +15,22 @@ const STATES = [
   ["partial", "Partial / open", "c3"],
   ["missing", "Missing", "c4"],
   ["external_blocked", "Externally blocked", "c5"],
-  ["unaudited", "Not audited", "c6"],
+  ["unaudited", "Unverified / conditional scope", "c6"],
 ];
 const count = (p, k) => p.states[k] ?? p[k] ?? 0;
 
 function bar(p, w = 640) {
   const h = 26;
   let x = 0;
-  let svg = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(p.id)} requirement states" class="bar">`;
+  const breakdown = STATES.map(([k, label]) => `${label}: ${count(p, k)}`).join(
+    ", ",
+  );
+  let svg = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(p.id)} requirement states, ${esc(breakdown)}" class="bar">`;
   for (const [k, label, cls] of STATES) {
     const n = count(p, k);
     if (!n) continue;
     const bw = (n / p.total) * w;
     svg += `<rect x="${x + 1}" y="0" width="${Math.max(bw - 2, 1)}" height="${h}" rx="3" class="${cls}"><title>${esc(label)}: ${n}</title></rect>`;
-    if (bw > 28)
-      svg += `<text x="${x + bw / 2}" y="17" text-anchor="middle" class="bl">${n}</text>`;
     x += bw;
   }
   return `${svg}</svg>`;
@@ -44,7 +45,8 @@ const all = {
   ),
 };
 const legend = STATES.map(
-  ([, l, c]) => `<span class="lg"><i class="${c}"></i>${l}</span>`,
+  ([k, l, c]) =>
+    `<span class="lg"><i class="${c}"></i>${esc(l)}: ${count(all, k)}</span>`,
 ).join("");
 
 const verdictClass = (v) =>
@@ -108,23 +110,43 @@ const sharedGaps = data.crosscutting_gaps?.length
   ? `<section class="card"><h2>Shared checks</h2><ul>${data.crosscutting_gaps.map((gap) => `<li><strong>${esc(gap.requirement)}:</strong> ${esc(gap.finding)}</li>`).join("")}</ul></section>`
   : "";
 
+// Reports only link to explicitly provided HTTP(S) destinations.
+function externalLink(url, label) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:")
+      return esc(label);
+    return `<a href="${esc(parsed.href)}">${esc(label)}</a>`;
+  } catch {
+    return esc(label);
+  }
+}
+const roadmap = data.roadmap
+  ? `<section class="card"><h2>L-05 · Performance</h2><p>${esc(data.roadmap.goal)}</p><p class="meta">${esc(data.roadmap.measurement)} Tested commit <code>${esc(data.roadmap.testedCommit)}</code>. This is a generated snapshot, not live GitHub data.</p><p class="note">${esc(data.roadmap.note)}</p><p>${externalLink(data.roadmap.pr, "Draft PR 919")} · ${externalLink(data.roadmap.ci, "Hosted CI run and job")}</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="First hosted candidate metrics table"><table><caption>First hosted candidate metrics</caption><thead><tr><th scope="col">Metric</th><th scope="col">Measured</th><th scope="col">Budget</th><th scope="col">15% headroom</th><th scope="col">Result</th></tr></thead><tbody>${data.roadmap.metrics.map((m) => `<tr><th scope="row">${esc(m.name)}</th><td>${esc(m.measured)}</td><td>${esc(m.budget)}</td><td>${esc(m.target)}</td><td class="${m.result === "Fail" ? "metric-fail" : ""}">${esc(m.result)}</td></tr>`).join("")}</tbody></table></div><p class="meta">${esc(data.roadmap.validation)}</p><p class="meta">${esc(data.roadmap.localVerification)}</p></section>
+<section class="card"><h2>Roadmap</h2>
+<p class="meta">Updated ${esc(data.roadmap.updated.slice(0, 16).replace("T", " "))} UTC · retained backlog order</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Ordered backlog table"><table><caption>Ordered backlog</caption><thead><tr><th scope="col">Item</th><th scope="col">Status</th><th scope="col">Done when</th></tr></thead><tbody>${data.roadmap.items.map((item) => `<tr><th scope="row">${item.link ? externalLink(item.link, item.id) : esc(item.id)} · ${esc(item.name)}</th><td>${esc(item.status)}</td><td>${esc(item.done)}</td></tr>`).join("")}</tbody></table></div></section>`
+  : "";
+
 const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TaskDesk Phase Report</title>
+<title>TaskDesk roadmap and audit report</title>
 <style>
 :root{color-scheme:light;--bg:#fcfcfb;--card:#fff;--ink:#0b0b0b;--ink2:#52514e;--line:#e4e3df;
---c1:#2a78d6;--c2:#1baf7a;--c3:#eda100;--c4:#e34948;--c5:#6250d6;--c6:#b9b8b2;--c7:#8454d0;--ok:#008300;--bad:#e34948}
+--c1:#2a78d6;--c2:#1baf7a;--c3:#eda100;--c4:#e34948;--c5:#6250d6;--c6:#b9b8b2;--c7:#8454d0;--ok:#008300;--bad:#a52b2a}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#1a1a19;--card:#222221;--ink:#f0efec;--ink2:#c3c2b7;--line:#3a3a38;
 --c1:#3987e5;--c2:#199e70;--c3:#c98500;--c4:#e66767;--c5:#9085e9;--c6:#6b6a66;--c7:#ab85ed;--ok:#3fae3f;--bad:#e66767}}
 :root[data-theme="dark"]{color-scheme:dark;--bg:#1a1a19;--card:#222221;--ink:#f0efec;--ink2:#c3c2b7;--line:#3a3a38;
 --c1:#3987e5;--c2:#199e70;--c3:#c98500;--c4:#e66767;--c5:#9085e9;--c6:#6b6a66;--c7:#ab85ed;--ok:#3fae3f;--bad:#e66767}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
-main{max-width:900px;margin:0 auto;padding:24px 16px}
+main{max-width:900px;margin:0 auto;padding:24px 16px;min-width:0;overflow-wrap:anywhere}
 h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:0}h3{font-size:14px;margin:14px 0 4px;color:var(--ink2)}
 .sub{color:var(--ink2);margin:0 0 16px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 14px}
 .card header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.bar{width:100%;height:auto;display:block;margin-bottom:8px}.bl{font-size:11px;fill:#fff;font-weight:600}
+.bar{width:100%;height:auto;display:block;margin-bottom:8px}
+.table-wrap{max-width:100%;overflow-x:auto;overflow-wrap:normal}.table-wrap:focus-visible{outline:2px solid var(--ink);outline-offset:2px}caption{text-align:left;font-weight:600;margin:8px 0}table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;vertical-align:top;padding:8px;border-bottom:1px solid var(--line)}thead th{color:var(--ink2)}a{color:inherit;text-decoration:underline;text-underline-offset:2px}.metric-fail{color:var(--bad);font-weight:600}
 .c1{fill:var(--c1);background:var(--c1)}.c2{fill:var(--c2);background:var(--c2)}.c3{fill:var(--c3);background:var(--c3)}
 .c4{fill:var(--c4);background:var(--c4)}.c5{fill:var(--c5);background:var(--c5)}.c6{fill:var(--c6);background:var(--c6)}.c7{fill:var(--c7);background:var(--c7)}
 .lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
@@ -135,11 +157,12 @@ h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:0}h3{font-size:14px;ma
 details{margin-top:8px}summary{cursor:pointer;font-weight:600}
 .note{border-left:3px solid var(--c3);padding:4px 12px;color:var(--ink2);font-size:13px;margin-bottom:14px}
 </style></head><body><main>
-<h1>TaskDesk phase report</h1>
-<p class="sub">Updated ${esc(data.generated.slice(0, 16).replace("T", " "))} UTC · ${total} requirements in ${esc(data.phases[0].id)}–${esc(data.phases.at(-1).id)}</p>
-${data.status ? `<p class="note">${esc(data.status)}</p>` : ""}
+<h1>TaskDesk roadmap and audit report</h1>
+<p class="sub">Audit snapshot ${esc(data.generated.slice(0, 16).replace("T", " "))} UTC · ${total} requirements in ${esc(data.phases[0].id)}–${esc(data.phases.at(-1).id)}</p>
+${data.status ? `<p class="note"><strong>Audit snapshot:</strong> ${esc(data.status)}</p>` : ""}
 <p class="meta">Source implementation, tested behavior, browser verification and Thomas acceptance are separate. Counts below require complete requirement evidence; scoped passes are listed in validation details.</p>
-<p class="meta">Review once at phase end; fix and retry up to three rounds. A fourth round needs Thomas’s approval.</p>
+${roadmap}
+<h2>Historical audit and phase evidence</h2>
 <section class="card"><h2>Overall</h2>${bar(all)}<div class="legend">${legend}</div></section>
 ${rows}
 ${sharedGaps}

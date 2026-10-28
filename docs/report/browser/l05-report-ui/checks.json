@@ -1,0 +1,48 @@
+{
+	"scope": "Generated report UI only; file URL, Chromium; not persisted application acceptance",
+	"browserChecks": [
+		{
+			"theme": "light",
+			"width": 1440,
+			"overflow": false,
+			"violations": [],
+			"rows": "Ordered backlog"
+		},
+		{
+			"theme": "light",
+			"width": 768,
+			"overflow": false,
+			"violations": [],
+			"rows": "Ordered backlog"
+		},
+		{
+			"theme": "light",
+			"width": 375,
+			"overflow": false,
+			"violations": [],
+			"rows": "Ordered backlog"
+		},
+		{
+			"theme": "dark",
+			"width": 1440,
+			"overflow": false,
+			"violations": [],
+			"rows": "Ordered backlog"
+		},
+		{
+			"theme": "dark",
+			"width": 768,
+			"overflow": false,
+			"violations": [],
+			"rows": "Ordered backlog"
+		},
+		{
+			"theme": "dark",
+			"width": 375,
+			"overflow": false,
+			"violations": [],
+			"rows": "Ordered backlog"
+		}
+	],
+	"visualInspection": ["mobile-light.png", "desktop-dark.png"]
+}

@@ -598,7 +598,7 @@
 		"Decided 28 Oct (Thomas): phases end after P6; former P7 and all open gaps become one linear backlog (L-01…L-11, T-1) worked by Codex; GitHub CI is a required gate again; Terra/Sonnet implement, Sol/Opus plan, audit and review; official @tiptap/* extensions pre-approved for the Pages editor.",
 		"Decided 28 Oct (Thomas): merge PR #891 past the failing G11 check; misses recorded under backlog L-05; budgets unchanged."
 	],
-	"next": "Review the L-01 documentation/evidence PR and its required CI; no implementation is started in this audit. L-05 remains the next retained backlog item. Proposed #916 → #910 → #917 → #915 before L-02 requires Thomas's decision; merge/deploy require Thomas's approval.",
+	"next": "L-05 performance work is in progress in draft PR 919. The latest correction is unverified; L-02 follows in the retained backlog. L-01 evidence is delivered in unmerged PR 918.",
 	"status": "28 Oct L-01 audit evidence on main 2553612ee: 19 tested, 630 source-only, 15 partial, 6 external and 3 conditional/out-of-scope unverified of 673. Isolated integration 5789/5789 and automated G4 pass; unit/e2e/G8 retain linked failures and G11/G13 product budgets were not measured because calibration failed closed. Browser crawl recorded 2322 required-role case records plus 564 supplementary instance-admin/owner case records; 564 workspace-admin cases remain fixture-blocked (#914). Portal catalogue descriptions/cards overlap or clip at tablet/mobile (#917); Search close-focus fails (#915); source-connection audit event is absent (#916). This is evidence for review, not full browser acceptance or an all-green baseline.",
 	"validation_runs": [
 		{
@@ -934,5 +934,135 @@
 			"status": "open",
 			"finding": "Settled catalogue descriptions overlap adjacent cards at 820 px and cards/content clip at 390 px in both themes (#917). Source catalogue.tsx:547–566 composes library Button cards; the specific sizing/wrapping cause is not isolated. No application code was changed. This is a shared UI/UX responsive defect, not proof that a numbered visibility/submission clause fails."
 		}
-	]
+	],
+	"roadmap": {
+		"updated": "2026-10-28T16:31:55.659099+00:00",
+		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
+		"note": "First hosted candidate run only; the latest local correction has not been verified. Zero qualifying CI runs.",
+		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
+		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40714505114/job/122908390393",
+		"metrics": [
+			{
+				"name": "Work-list LCP",
+				"measured": "2769.5 ms",
+				"budget": "< 2500 ms",
+				"target": "≤ 2125 ms",
+				"result": "Fail"
+			},
+			{
+				"name": "List to detail",
+				"measured": "518 ms",
+				"budget": "< 300 ms",
+				"target": "≤ 255 ms",
+				"result": "Fail"
+			},
+			{
+				"name": "Board drag p95",
+				"measured": "16.8 ms",
+				"budget": "< 20 ms",
+				"target": "≤ 17 ms",
+				"result": "Pass"
+			},
+			{
+				"name": "Board render",
+				"measured": "412.7 ms",
+				"budget": "< 500 ms",
+				"target": "≤ 425 ms",
+				"result": "Pass"
+			},
+			{
+				"name": "Assignment click",
+				"measured": "165.2 ms",
+				"budget": "< 200 ms",
+				"target": "≤ 170 ms",
+				"result": "Pass"
+			}
+		],
+		"validation": "Hosted E2E: 164 passed, 1 failed (create-control regression). Correction is pending verification. Candidate has no persisted SIT acceptance.",
+		"items": [
+			{
+				"id": "L-01",
+				"name": "Baseline full audit",
+				"status": "Evidence delivered; PR unmerged",
+				"done": "Review, required CI and Thomas approval; blocked evidence remains explicit.",
+				"link": "https://github.com/ThomasHeinThura/ticketing/pull/918"
+			},
+			{
+				"id": "L-05",
+				"name": "Work-list performance headroom",
+				"status": "In progress; draft PR",
+				"done": "G11 green with at least 15% headroom for three CI runs.",
+				"link": "https://github.com/ThomasHeinThura/ticketing/pull/919"
+			},
+			{
+				"id": "L-02",
+				"name": "Test-suite reliability",
+				"status": "Queued",
+				"done": "Three consecutive green CI runs without retries; typical PR run ≤ 15 minutes."
+			},
+			{
+				"id": "L-03a",
+				"name": "Release regression suite",
+				"status": "Queued",
+				"done": "Persisted journeys cover every area and role on local SIT."
+			},
+			{
+				"id": "L-03",
+				"name": "Settings split by scope",
+				"status": "Queued",
+				"done": "Account, project, workspace and God Mode entry points; redirects and role/browser checks."
+			},
+			{
+				"id": "L-04",
+				"name": "Pages editor",
+				"status": "Queued",
+				"done": "Keyboard-first block editor with persistence, conflict handling and browser verification."
+			},
+			{
+				"id": "L-06",
+				"name": "Open review lows",
+				"status": "Queued",
+				"done": "Fix each low or record an accepted decision."
+			},
+			{
+				"id": "L-07",
+				"name": "Requirement gaps",
+				"status": "Queued",
+				"done": "Close each confirmed gap with evidence or obtain an explicit descope."
+			},
+			{
+				"id": "L-08",
+				"name": "Browser coverage",
+				"status": "Queued",
+				"done": "Record outstanding role, screen, import, export and timing evidence."
+			},
+			{
+				"id": "L-09",
+				"name": "Security and data hardening",
+				"status": "Queued",
+				"done": "Fix issues with tests or close them with recorded decisions."
+			},
+			{
+				"id": "L-10",
+				"name": "Customer readiness",
+				"status": "Queued",
+				"done": "Install, configure, upgrade and restore the signed image with matching documentation."
+			},
+			{
+				"id": "L-11",
+				"name": "CI tooling issues",
+				"status": "Queued",
+				"done": "Fix or close obsolete issues with evidence."
+			},
+			{
+				"id": "T-1",
+				"name": "Thomas-only external evidence",
+				"status": "External",
+				"done": "Thomas records Entra validation, penetration test and other external decisions."
+			}
+		],
+		"testedCommit": "48dec6ed2dc5daf6c73a771a652a8fb4d58feac8",
+		"measurement": "Hosted Chromium G11 judged values: CPU-bound metrics normalized; board-drag p95 raw. Worker calibration readings were 1.096–1.178; unthrottled readings were 1.166–1.183, within the existing validity envelope.",
+		"localVerification": "Latest local correction: six targeted E2E tests pass, covering create shell while panel or form is delayed, cancellation on navigation or unmount, retry and parent preload. Hosted verification remains pending."
+	}
 }
