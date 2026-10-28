@@ -1,68 +1,47 @@
-# Test on the laptop
+# Testing the whole product
 
-Use laptop SIT first; cloud SIT at Technexus follows verified local journeys and the consolidated review. GitHub CI is not used as a gate. Thomas requires one active local deployment using only `deploy/compose.testing.yml`; superseded native and parallel test deployments stay stopped, with data preserved.
+Testing is whole-product, not per phase (Thomas, 28 Oct 2026). Three levels; each change goes through code → feature → design → browser testing ([AGENTS.md](../AGENTS.md)).
+
+## Level 1 — every pull request
+
+GitHub CI is a required gate. All required checks must pass; a failing gate is fixed, never exempted or retried until lucky.
+
+| Area | CI job / local command |
+| --- | --- |
+| Code | `pnpm lint:ci`, `pnpm typecheck`, `pnpm test` (unit + component), integration on PostgreSQL 18 (4 shards, `vitest.integration.config.ts`), `pnpm test:permissions`, `pnpm check:route-policy`, domain coverage 90% |
+| Contracts and registers | `pnpm test:contract` (OpenAPI drift; breaking changes need Thomas's approval in `scripts/ci/openapi-approved-breaks.json`), env/vocabulary/events/reviews/skips/overrides registers, gate checkers + red probes, CI matches `ci-cd.md` |
+| Features | `pnpm test:e2e` (mock-backed and Testcontainers journeys, `apps/web/e2e/`) |
+| Design | `pnpm check:ui:raw-elements`, `pnpm check:tokens` (contrast), visual regression G8 (`pnpm test:visual` in the pinned `mcr.microsoft.com/playwright:v1.63.0-noble` container; regenerate baselines only for intended changes), accessibility G4 (axe) |
+| Performance | G11/G13 budgets (`apps/web/e2e/performance.bench.ts`), bundle budgets; thresholds never change without Thomas |
+| Security | Gitleaks secret scan, dependency audit, CodeQL, Trivy (release image) |
+
+Locally before opening the PR: run the affected targeted tests first, then the gates above that the change touches, then open every affected screen on local SIT (below). Integration tests use a fresh dedicated `_test` database — never the live `taskdesk_browser_journey_1022_test` (62870).
+
+## Level 2 — every release (merge to `main`), before deploying
+
+1. **Release regression suite on local SIT** (to be built, backlog L-03a): persisted Playwright journeys against `https://ticketing.localhost` / `https://portal.localhost` with real API and database, covering every area per role. Seed specs live in `apps/web/e2e-sit/`.
+
+| Area | Journeys |
+| --- | --- |
+| Core work | create/assign/schedule/rank/relate/comment/attach/delete (pending action) across board, list, detail, Calendar, Gantt; reload and a second session; hierarchy and concurrency denials |
+| Service desk | portal submit → triage → work item → SLA clock/pause/breach → approval/CAB → resolution; request types, calendars, workflows, audit |
+| Portal and identity | customer raise/track/approve/rate/reopen; no internal data or other organisation visible; invitations, OTP/magic link, SSO with a test IdP, MFA, sessions, deprovisioning; agent cookie never authorises portal |
+| Governance | roles/teams/custom fields/flags; notifications, digests, quiet hours; automations dry-run; webhooks retry/SSRF; API keys, MCP approval; impersonation audit; God Mode |
+| Planning, time, cost | cycle plan/complete and burndown; timer/manual/weekly timesheet; rates, budgets, capacity |
+| Reports, KB, change | 20 fixed reports with drill-down and export; dashboards; KB publish/visibility/deflection; change freeze/CAB/rollback; release notes |
+| Import | CSV and each adapter dry-run → mapping → run → interrupt/resume/rerun → reconciliation |
+
+2. **Image:** CI builds, scans (Trivy), signs and publishes; deploy only that signed digest.
+3. **Technexus smoke** after deploy: health, HTTPS on both hosts, separate sessions, sign-in, one journey per area.
+
+## Level 3 — scheduled (weekly and before 1.0)
+
+Load test (k6, realistic data), backup → isolated restore rehearsal, upgrade from the previous release, full accessibility pass (keyboard and screen reader), full role × light/dark × desktop/tablet/mobile browser matrix, Trivy/dependency re-scan, Kaneo `42bb8011` parity review. Real Entra (25 cases), external penetration test and marketplace/provider registration are Thomas's external evidence; local fakes never satisfy them.
 
 ## Setup
 
-Use the pinned pnpm version and Node 24+ for checks. Local SIT serves `https://ticketing.localhost` and `https://portal.localhost` on443 from one locally built image. Start it with `docker compose --env-file "$SIT_COMPOSE_ENV" -f deploy/compose.testing.yml up -d --wait`; the private environment file selects the built image and private configuration directory. Restore a verified testing copy before the first migration. Never rerun the existing SIT account seeder or reset a customer database.
+Use the pinned pnpm and Node 24+. Local SIT: one deployment, `docker compose --env-file "$SIT_COMPOSE_ENV" -f deploy/compose.testing.yml up -d --wait`, image built with `VITE_API_URL=''`. Never rerun the SIT account seeder or reset customer data. Integration databases: scratch PostgreSQL 62871 or Testcontainers, one new `_test` database per run, dropped afterwards. Generators (`openapi:write`, matrix regen, `generate:route-metadata`, web builds) run one at a time; `pnpm check:tokens` rebuilds `dist`, so never run it during a bench.
 
-API integration tests resolve `TASKDESK_DATABASE_URL`, then `.env`, then the per-worktree default. Use a separate disposable database whose name ends `_test`; never reset the deployed SIT database. Local integration does not automatically start the CI PostgreSQL Testcontainer. The optional test-only `TASKDESK_TEST_VALKEY_URL` lets isolated Linux runners use an authenticated Valkey service at the dedicated `taskdesk-test-valkey:6379` test-network alias; fixtures validate that boundary and do not stop or flush it. Without it, they create their own Testcontainers service. Keep synthetic databases and generated credentials separate from customer data. Do not start another persistent application deployment for these checks.
+## Honest evidence
 
-## During implementation
-
-Run targeted unit tests after logic changes, PostgreSQL integration tests after persistence/API changes, permission tests after routes/auth changes, and affected browser journeys after UI changes. Fix failures and repeat the affected checks. Fixture browser tests help diagnose UI; they do not prove persisted integration.
-
-```sh
-pnpm --filter @taskdesk/api exec vitest run --config vitest.integration.config.ts <affected-test-files>
-pnpm test:permissions
-pnpm --filter @taskdesk/web build
-pnpm --filter @taskdesk/web exec playwright test --config playwright.config.ts <affected-specs>
-```
-
-Build the image with `VITE_API_URL=''` so each host uses its own `/api`; both entries are served through the API with separate configured origins. A development-default build cannot establish portal same-origin evidence. Use a separate `_test` database for integration resets.
-
-The Playwright config starts preview on port 4178. Portal and full persisted-runtime journeys need their own configured origins and backend. Read the selected spec; do not assume a mocked response is the real API.
-
-## At the phase boundary
-
-```sh
-pnpm lint:ci
-pnpm typecheck
-pnpm test
-pnpm check:route-policy
-pnpm test:permissions
-pnpm check:tokens
-```
-
-Run Trivy filesystem/dependency and image scans, plus Gitleaks, locally. Keep runtime secrets out of reports and build contexts. Record scanner failures and assessed findings explicitly; a reviewed fixture finding is different from a clean scan.
-
-Also run affected integration suites, persisted end-to-end journeys, design/parity and accessibility checks, and image build/boot when the shipping image changes. `pnpm lint` writes files; prefer read-only `lint:ci` for verification. Do not rerun unrelated expensive suites after every small edit.
-
-Open every affected screen in a real browser. Check both agent and portal journeys against persisted data, reload, denial cases, and Kaneo reference images. Cover desktop/tablet/mobile and light/dark for parity; inspect every captured pair before calling it reviewed. Record URLs, screenshots, source and test results in the phase report.
-
-## Integration databases and known baseline failures
-
-- **Fresh scratch database per run.** P4/P5 migrations were edited in place before their first real apply, so the integration suite needs a freshly created `_test` database. A reused database keeps old foreign-key rules and gives false failures. Use scratch Postgres 62871 (never the native 62870 that holds the live database), create a new database per agent or run, and drop it at the end.
-- **Full integration on the final tree** is required before a phase review (P4: 314 files / 4241 tests). Lane suites are not a substitute.
-- **25 October repair evidence:** the contrast analyzer/manifest and CI-script defects have been repaired; scoped gate results are in the report. Re-run on the final tree. Port-bound MFA fixtures still require pausing only the task-owned stack; do not kill other processes. Never treat a historical baseline failure as a waiver.
-- **Generators are coordinator-only:** `openapi:write`, matrix `REGEN_MATRIX`, `generate:route-metadata`, and any `vite build` (regenerates route trees). Lanes do not run them.
-
-## Review and honest evidence
-
-One fresh independent AI phase review includes functional integration, original Kaneo composition and security. The reviewer did not implement the phase; provide a neutral requirements/diff/evidence packet rather than a fork of the implementation conversation. Give it the actual diff, test output and browser evidence. Repair findings and verify those fixes within the same review. Thomas gets one consolidated report and selected walkthrough, then makes the acceptance decision.
-
-Never report a test name, route, component, screenshot count or CI status as proof of a journey that was not executed. Record unavailable databases, browser/container tooling and real Entra credentials as blockers. Keep performance thresholds; diagnose failures rather than retrying until a lucky pass.
-
-## Whole-product journey coverage
-
-| Area | Local evidence needed as it is implemented |
-| --- | --- |
-| Core/service desk | Same persisted records across board/list/detail/scheduling; hierarchy/deletion/concurrency denials; submit/triage/SLA/workflow/approval journey |
-| Portal/identity/governance | Public-only customer data, organisation/host/session isolation, deprovision/revoke; configuration/notification/retry/automation/key/MCP journeys |
-| Planning/time/cost | Cycle scope/completion and honest burndown; keyboard timesheet/timer/reload/midnight; snapshotted costs, budgets and restricted rates |
-| Reports/knowledge/change | Known-answer aggregates, all three report tiers, scoped export/drill-down and customer denials; publish/visibility/deflection; change freeze/CAB/rollback/release notes |
-| Import/cutover | Dry-run mapping, provenance/history/files, interruption/resume/rerun, reconciled counts/losses and rollback against copies |
-| Customer readiness | Fresh install/upgrade, supported browser/device/accessibility matrix, realistic load, translations/docs and isolated full restore |
-| Selected extensions | Real provider/delivery/sync/revocation and failure handling; for advanced candidates define expected behavior before writing acceptance assertions |
-
-Real Entra/provider credentials, marketplace registration and external penetration testing remain distinct external evidence. A local fake provider is useful for regression testing and cannot satisfy a real-provider acceptance claim.
+Never report a test name, screenshot count or CI status as proof of a journey that did not run. Distinguish mocked from persisted evidence. Record unavailable tooling and external credentials as blockers. Keep performance thresholds; diagnose failures.

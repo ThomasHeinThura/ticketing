@@ -1,21 +1,22 @@
 # TaskDesk: current direction
 
-**Reset: 22 October 2026.** Document and deliver the whole product using the original Kaneo interface: P0–P7, with later candidates visible in proposed P8/P9 groups. Integrate the code already present. Show working journeys on the laptop before asking Thomas to review.
+**28 October 2026:** P0–P6 are delivered, accepted by Thomas and merged to `main`. Phases have ended; work continues as one linear backlog of fixes, bugs and features in the [roadmap](roadmap.md), on the original Kaneo interface with real persisted data. Start with [AGENTS.md](../AGENTS.md), then [handover](handover.md).
 
 | Read | Purpose |
 | --- | --- |
 | [Feature catalogue](features.md) | Whole-product features, subfeatures and Kaneo placement |
-| [Full roadmap](roadmap.md) | P0–P7 delivery and proposed P8/P9 extension groups |
+| [Handover](handover.md) | Current state, environments and first steps for the next agent |
+| [Roadmap](roadmap.md) | Ordered backlog (L-01…), delivered phases and proposed P8/P9 groups |
 | [Original alignment](alignment.md) | Source mapping, preserved decisions and scope questions |
 | [Agent coordination](agent-work.md) | Bounded assignments, file/runtime ownership and handoffs |
 | [Requirements](requirements.md) | Preserved scope and exact original requirement references |
 | [Audit](audit.md) | Source findings, gaps and limits of the evidence |
-| [Testing](testing.md) | Laptop setup, tests, browser checks and phase review |
+| [Testing](testing.md) | Per-PR, per-release and scheduled whole-product testing |
 | [Integration contracts](contracts.md) | Distilled semantics for current code integration |
 | [Screen coverage](screens.md) | Maintained route coverage; no acceptance inferred |
 | [Status](status.md) | What changed, what was verified and what remains blocked |
 
-The workflow is in [AGENTS.md](../AGENTS.md). No separate lifecycle or review ceremony.
+The workflow is in [AGENTS.md](../AGENTS.md). No separate lifecycle document.
 
 ## Maintained contracts and archive
 
@@ -23,6 +24,6 @@ Active checker inputs now live in [technical](technical/ci-gates.md): [configura
 
 Thomas chose to keep `archive/` ignored on 22 October. The original files remain unchanged on this laptop as historical provenance; a fresh checkout must not need them to run checks or understand retained requirements. All numbered rules and their feature, safety, event and import clauses now link to maintained references in [requirements](requirements.md). All 72 indexed source contracts now have maintained destinations. Linked design, migration, licensing and owner-decision clauses also resolve to maintained references. Combined link and reader checks run without the archive; source names and lines remain provenance, not active instructions. Semantic curation is not an implementation or acceptance claim.
 
-Historical guidance and acceptance claims are inactive. Git-history comparisons may still read prior committed contracts to detect protection shrinkage; that is not a filesystem dependency on the ignored archive. Existing remote branch protection remains in place. PR descriptions now require an outcome and actual checks. Only an explicit phase-completion submission requires the single consolidated, source-bound independent review; Thomas acceptance remains separate. Explicit releases validate that evidence before building.
+Historical guidance and acceptance claims are inactive. Git-history comparisons may still read prior committed contracts to detect protection shrinkage; that is not a filesystem dependency on the ignored archive. Existing remote branch protection remains in place. PR descriptions require an outcome and actual checks. Thomas's acceptance remains separate from AI review.
 
 Legal notices, release history and product help retain operational copies where required. They are not agent instructions.

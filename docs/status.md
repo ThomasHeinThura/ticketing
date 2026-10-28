@@ -1,17 +1,17 @@
-# Current status — 27 October 2026
+# Current status — 28 October 2026
 
-P0–P6 are committed and pushed through `fb4448db8` (plus the follow-up status commit) on `feat/batch1-hierarchy-and-parent-editing`. **All seven phases passed AI review and Thomas accepted them on 27 Oct with the open lows.**
+P0–P6 are delivered, AI-reviewed, accepted by Thomas (27 Oct, with open lows) and **merged to `main`** (PR 891, squash `692775bf7`, 28 Oct). Phases have ended; work continues as the linear backlog in the [roadmap](roadmap.md), handed over to Codex ([handover](handover.md)).
 
 | Work | Current status |
 | --- | --- |
-| AI review (Claude Opus standing in for Sol, model substitution recorded) | P0 round 2 pass; P1 round 4 pass (extra round approved by Thomas); P2 round 2 pass; P3 round 2 pass; P4 round 3 pass; P5 round 4 pass (extra round approved by Thomas); P6 round 3 pass. Only lows remain; review JSONs in the session scratchpad, summarised in the [report](report/report.html). |
-| Local gates at `fb4448db8` | All-package typecheck 0 errors; contrast, tokens, raw-elements (0), i18n, policy, events, inventory, env, OpenAPI (652 ops), bundle budgets (portal 199.3/200 KB), permissions 118, API unit, web unit 3252, MCP 74 pass. Fresh-DB full integration 5789/5789 (one migration-test hook timed out under load and passes alone). |
-| Local SIT | One Compose deployment (`deploy/compose.testing.yml`) runs `fb4448db8` (image `source212-fb4448d-20261027`) on both HTTPS hosts; migrations through 0211; all table counts preserved; Trivy 0 critical / 42 high (none fixable, unchanged); Gitleaks only variable references. Rollback env and dumps kept. Protected live database untouched. |
-| Upgrade path | A first deploy (`d3c884c3c`) was rolled back: migration 0206 left the newly enforced flags off on real installs. Migration 0209 fixes it; verified on the real upgraded copy (SLA, portal, Calendar, Gantt on). |
-| Browser (local SIT) | Pass: list-row pickers, board column +, search rows, mobile 375 px rows, Kaneo popover pickers on working screens, imports picker, report-export page and preference, God Mode pages, customer portal sign-in by Thomas and all portal pages. Evidence: [browser/claude-20261027-recheck.json](report/browser/claude-20261027-recheck.json). |
-| Not yet covered | Full import run in the browser (CSV upload), role matrix as lead/member/viewer, light theme, 500k-row export run, palette end-to-end SV-5/SV-10 timing at 10k items with comments. |
-| Open lows | Recorded per phase in the report; none blocks under the review rule. |
-| Acceptance | Thomas accepted P0–P6 on 27 Oct with the open lows. P7 is deferred; real Entra validation is Thomas's. |
-| Next | Get all 18 required checks on PR #891 green, then Thomas approves the merge; the release workflow builds, scans and signs the image; then Thomas approves the Technexus deploy plan. |
+| Merge | PR 891 merged 28 Oct with every required check green except G11 performance budgets. Thomas approved merging past G11 through a repository-admin bypass he added to the `protect-main` ruleset. G11 misses are backlog L-05. |
+| CI at merge head | Green: build, typecheck, lint, unit, 4 integration shards, contract, permissions, gate checkers, e2e, visual G8, accessibility G4, bundle budgets (portal 189.1/200 KB), secret scan, CodeQL. Failing: G11 — work-list LCP 2921 ms (< 2500), list → detail 347 ms (< 300), board-drag p95 33.3 ms (< 20) on a runner calibrated 1.46× slower. |
+| Release image | `release.yml` on `692775bf7` passed: multi-arch build, Trivy, SBOMs, cosign signature and GitHub attestation. GHCR `sha-692775bf…` / `edge`, index digest `sha256:3028f7ad…`. Signature and attestation verified locally against the main-branch release workflow identity. |
+| Local SIT | One Compose deployment (`deploy/compose.testing.yml`) runs the `e00ec245c` tree (same source as the merge) on `https://ticketing.localhost` and `https://portal.localhost`. Agent board/table/list render persisted data; portal session, sign-in redirect and wrong-password handling verified. Not verified: a successful password sign-in and sign-out in the browser. |
+| Technexus public SIT | Upgraded 28 Oct to the signed digest above (previous `sha256:8ba4fdc7…`). Backup taken first (database dump, data volume, env). Migrations 127 → 212 with exit 0; row counts unchanged (4 work items, 4 users, 1 project); container healthy; HTTPS valid on both hosts; agent and portal sign-in screens render without console errors. Not verified: a signed-in journey (needs Thomas's sign-in). Rollback needs the database restore because migrations advanced. |
+| Operator action | better-auth 1.7 moved the OIDC callback to `/api/auth/callback/custom`; update the redirect URI at each identity provider (Entra app registration included). |
+| Not yet covered | Full role matrix (lead/member/viewer), light theme, tablet/mobile matrix, full CSV import run in the browser, 500k-row export, palette timing at 10k items — backlog L-08. |
+| Acceptance | P0–P6 accepted by Thomas 27 Oct. Real Entra validation and the external penetration test are Thomas's (T-1). |
+| Next | Codex starts with backlog L-01 (baseline full audit), then L-02 onward. Thomas decides whether the `protect-main` admin bypass stays. |
 
 Detailed evidence: [report](report/report.html), [audit](report/audit/), [browser evidence](report/browser/).

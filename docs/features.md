@@ -150,4 +150,4 @@ P8/P9 grouping is new planning, not a claim that these phases existed or that ev
 
 ## Required interface correction
 
-Task opening, sheet/full-page composition, animation, activity and editing must match original Kaneo in use, including normal navigation and return behavior. The explicit additional UI-01–UI-09 tasks are in [roadmap.md](roadmap.md#added-priority-exact-kaneo-work-item-experience). They are part of the existing core work scope, and do not replace the documented P0–P9 features.
+Task opening, sheet/full-page composition, animation, activity and editing must match original Kaneo in use, including normal navigation and return behavior. The UI-01–UI-16 parity tasks were delivered in P1 ([roadmap](roadmap.md#delivered-phases-history)). They are part of the existing core work scope, and do not replace the documented P0–P9 features.

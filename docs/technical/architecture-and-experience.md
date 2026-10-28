@@ -1569,13 +1569,13 @@ Every screen has an address. Filters, layout, tab and selection are URL state.
 /agent/projects/{key}/settings/states
 /agent/god-mode/authentication
 
-/portal
-/portal/requests?status=open
-/portal/requests/{ref}
-/portal/new?type={requestTypeKey}
-/portal/approvals
-/portal/projects/{key}
-/portal/kb/{articleId}
+# portal host, host-root (2026-10-20 decision; never /portal/*)
+/
+/requests?status=open
+/submissions/{ref}
+/catalogue
+/approvals
+/kb/{articleId}
 ```
 
 `lib/routes.ts` is the single declaration of these, with a round-trip test asserting that

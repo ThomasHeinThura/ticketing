@@ -1,63 +1,80 @@
 # Working on TaskDesk
 
-This file is the only rulebook (CLAUDE.md was removed). Rules live here, not in memory or cache. Read this and [docs/README.md](docs/README.md) first; read a feature's requirements only when working on it. Thomas's current instructions take precedence. `archive/` is read-only history, not policy.
+This file is the only rulebook for every coding agent (Codex first). Read it, then [docs/handover.md](docs/handover.md) for the current state and [docs/roadmap.md](docs/roadmap.md) for the ordered backlog. Thomas's current instructions take precedence. `archive/` is read-only history, not policy.
+
+## Working model (Thomas, 28 Oct 2026)
+
+Phases ended after P6. All P0–P6 features are implemented, independently AI-reviewed and accepted by Thomas. From now on work is **one linear backlog** of fixes, bugs and features in [roadmap](docs/roadmap.md), done in order, one pull request per coherent change, each released on merge.
+
+1. **Pick** the top unblocked backlog item. Read its requirement rows, the related contracts in `docs/technical/`, the open GitHub issue and the current code before changing anything.
+2. **Audit first.** Confirm the problem in code and in the running app. Decide what is right and wrong yourself (see "Your authority"); record the reason in the PR.
+3. **Build** a complete, visible, integrated slice: API + UI + persistence + permissions + i18n + tests. No half-wired UI, no mock data in the app.
+4. **Test in the order below** (code → feature → design → browser). Fix and repeat until all pass.
+5. **Open a PR** from a feature branch (`feat/…`, `fix/…`) with the template filled in, real check output and browser evidence. GitHub CI is a required gate again: all required checks must be green; never weaken, skip or exempt a gate.
+6. **Review.** Low-risk changes: self-review against this file plus one Terra review. High-risk changes (auth, permissions, tenant isolation, migrations, money/time data, security headers, import, deletion, MCP/API keys, performance budgets): one independent **Sol high-effort** review that did not write the code, given a neutral packet (requirement, diff, test output, browser evidence). Fix high/medium findings and re-review; after three failing rounds stop and ask Thomas.
+7. **Merge only with Thomas's approval**, then the release workflow builds, scans, signs and publishes the image. Update [status](docs/status.md), the backlog row and the report, close the issue with evidence.
+
+Never call an item done without tests, browser evidence and green CI. Blocked items are reported as blocked, never marked done.
+
+## Your authority
+
+Codex fixes bugs, adjusts implementation, corrects stale docs and chooses designs on its own judgment, guided by the product rules below, the contracts in `docs/technical/` and recorded decisions in [design-and-decisions](docs/technical/design-and-decisions.md). When a recorded decision or contract looks wrong, explain why in the PR and fix the code if the contract allows it; if the fix needs the contract itself to change, ask.
+
+**Ask Thomas first** (and wait) before:
+- adding any dependency — except official `@tiptap/*` extensions for the Pages/markdown editor, which are pre-approved and must be logged in `THIRD-PARTY-NOTICES.md`;
+- changing performance budgets, thresholds, calibration, the security model, permission semantics, tenant isolation, or a retained contract;
+- merging to `main`, deploying to Technexus, or any production action;
+- deleting or rewriting customer data, or anything irreversible.
+
+## Models and roles (Thomas, 28 Oct)
+
+| Tier | Models | Use for |
+| --- | --- | --- |
+| Middle | Terra (`gpt-6-terra`), Claude Sonnet | Implementation, tests, routine checks, low-risk reviews, search |
+| High | Sol (`gpt-6-sol`, `reasoning_effort: "high"`), Claude Opus | Planning, audits, architecture, risky changes, independent review |
+
+A reviewer never reviews its own work. Subagents edit only explicitly disjoint paths, one owner per file ([agent-work](docs/agent-work.md)); they never commit, push, merge, deploy, add dependencies or delete data. A subagent's "passed" is evidence to inspect, not acceptance.
+
+## Testing order — all must pass before a PR is ready
+
+1. **Code tests:** `pnpm lint:ci`, `pnpm typecheck`, `pnpm test`, targeted integration tests on a fresh `_test` database, `pnpm test:permissions`, `pnpm check:route-policy`, `pnpm test:contract`, and every gate listed in [testing](docs/testing.md) that the change touches.
+2. **Feature tests:** the behaviour works end to end against the real API and persistence (integration + e2e journeys), including denial, concurrency, reload, feature-flag-off and failure/retry paths.
+3. **Design tests:** `pnpm check:ui:raw-elements`, `pnpm check:tokens` (contrast), visual regression (G8, regenerate baselines only for intended changes, in the pinned Playwright container), accessibility (G4), and comparison with original Kaneo `42bb8011`: same components, spacing, typography, motion.
+4. **Browser tests:** open every affected screen in a real browser on local SIT with persisted data: desktop/tablet/mobile, light/dark, each role (owner/admin/lead/member/viewer/customer), keyboard and focus. Record URLs and screenshots in the PR.
+
+Performance budgets (G11/G13) and bundle budgets are gates; diagnose misses in the app, never change thresholds.
 
 ## Product rules
 
 - **Original Kaneo is the interface.** Keep its shell, sidebar, headers, settings, board, list, cards, task detail, typography and spacing. Extend and modify those surfaces; never build a parallel TaskDesk interface. Pinned baseline: upstream `42bb8011`.
-- **Library UI only. No native interactive HTML.** Build every control, card, editor, table, dialog, sheet, menu, drag-and-drop and animation from Kaneo components and `packages/ui` (tokens for colour, spacing, type). Semantic HTML for structure inside those components is fine; native `<button>/<input>/<select>/<textarea>`, hand-built screens, text-button workarounds and matching colours alone are not. Enforced by `pnpm check:ui:raw-elements` (`scripts/ci/check-ui.mjs`) and `pnpm check:tokens`; a new gate failure is fixed, never exempted. New dependency needs a concrete reason and Thomas's approval.
-- Preserve working Kaneo interactions (drag/drop, inline edit, keyboard, focus, motion) while wiring real APIs. Never drop a feature to get a cleaner screenshot.
+- **Library UI only. No native interactive HTML.** Build every control, card, editor, table, dialog, sheet, menu, drag-and-drop and animation from Kaneo components and `packages/ui` (tokens for colour, spacing, type). Semantic HTML inside those components is fine; native `<button>/<input>/<select>/<textarea>`, hand-built screens, text-button workarounds and matching colours alone are not. Enforced by `pnpm check:ui:raw-elements` and `pnpm check:tokens`; a new gate failure is fixed, never exempted. Working screens use Kaneo popovers, not native dropdowns.
+- **UI/UX is the top quality bar.** Version 1 failed on ugly UI. Before touching a screen, find the original Kaneo component and reuse it; compose new needs from Kaneo/`packages/ui`. If a Kaneo component cannot do it, stop and report. Ugliness or broken UX is a failed change.
+- Preserve working interactions (drag/drop, inline edit, keyboard, focus, motion) while wiring real APIs. Never drop a feature for a cleaner screenshot.
 - Every reachable feature uses real persisted APIs. No mock data in the app; demo data is a repeatable, realistic seed.
 - Keep permission checks, tenant isolation, agent/portal separation, pending-action deletion, audit history and concurrency protection. Every API route declares a policy; URL state is registered in `apps/web/src/lib/routes.ts`. IdP data never grants instance admin or unrestricted reach. MCP uses existing capabilities only.
 - Customer configuration lives in runtime administration; one shipping image, no customer-specific source edits.
-- Preserve URL state and old links. Keep Kaneo's MIT attribution and TaskDesk's AGPL licence; take application source only from Kaneo or TaskDesk v1; log third-party code in `THIRD-PARTY-NOTICES.md`. Do not restore removed integration routers.
+- Preserve URL state and old links (redirect when moving a screen). Portal URLs are host-root on the portal host, never `/portal/*`.
+- Keep Kaneo's MIT attribution and TaskDesk's AGPL licence; take application source only from Kaneo or TaskDesk v1; log third-party code in `THIRD-PARTY-NOTICES.md`. Do not restore removed integration routers.
 
-## Phase loop (P0 → P4 first, then P5–P7)
+## Environments and releases
 
-Implementation and design come first; review happens **once, at the end of each phase**. No per-change review, no tiny-PR rules, no waiting on GitHub CI.
+- **Local SIT:** one Docker Compose deployment using only `deploy/compose.testing.yml`. Agent `https://ticketing.localhost`, portal `https://portal.localhost`, both on 443. Build with `VITE_API_URL=''`; never run two web builds at once. Keep superseded deployments stopped and their data preserved.
+- **Release:** merging to `main` runs `release.yml`: multi-arch image, Trivy (blocks fixable HIGH/CRITICAL), SBOM, cosign signature, GHCR publish. Deploy only signed images by digest.
+- **Technexus public SIT** (`tickting.technexus.info`, `portal.technexus.info`) through the SSH proxy, only with Thomas's approval: back up database and files, record the running digest and counts, `scripts/deploy.sh upgrade` (verifies cosign), verify health/HTTPS/separate sessions/browser smoke on both hosts, keep `scripts/deploy.sh rollback <digest>` ready. Hosts, keys and credentials are never written to docs, logs or PRs.
 
-1. Build visible, integrated slices (API + UI + persistence) with subagents where bounded and disjoint.
-2. Verify locally after each slice: targeted tests, then the affected screens in a real browser on persisted data.
-3. At phase end run the full local gates in [testing.md](docs/testing.md), fix failures, and regenerate the phase report data.
-4. **Phase review:** spawn one fresh **Sol high-effort** subagent (`gpt-6-sol`, `reasoning_effort: "high"`, `fork_turns: "none"`; Thomas's 25 Oct model mapping) given a neutral packet: requirements, actual diff, test output, browser evidence. It covers design, integration and security. Fix its findings once and re-verify.
-5. **Pass →** commit, push the feature branch, regenerate `docs/report/report.html`, start the next phase. **Fail or unresolved findings →** write `report.html` only, stop, wait for Thomas's decision.
-   Thomas approved (22 Oct) up to **three review rounds per phase**: review → fix all high+medium → 2nd review → fix → 3rd review → then `report.html` and wait if still failing. Target: P0–P4 done by 24 Oct.
-6. Never call a phase done without the review. No excuses: blocked items are reported as blocked, not marked done.
+## Git
 
-"Git update" means commit and push the current feature branch. Never push to main, never force-push, never `git add -A` blindly: stage by path, confirm `.env`, `backups/`, `archive*`, `.qodo/` stay ignored, run Gitleaks on what is staged, obey commitlint/husky. Commit trailers per the session attribution.
+Never push to `main`, never force-push, never `git add -A`: stage by path, confirm `.env`, `backups/`, `archive*`, `.qodo/`, `privatebrowser-*` stay out, run `gitleaks protect --staged`, obey commitlint (lowercase subject) and husky/biome pre-commit. Do not edit workflows or branch protection without Thomas.
 
-## Models and effort
+## Safety
 
-- **Implementation (Thomas, 25 Oct):** Luna (`gpt-6-luna`) replaces Sonnet for coding subagents. Do not use the independent reviewer as an implementer.
-- **Advisor (Thomas, 25 Oct):** Sol (`gpt-6-sol`), medium effort.
-- **Phase reviewer / audits (Thomas, 25 Oct):** fresh independent Sol (`gpt-6-sol`), high effort, without an implementation-context fork. Up to three new review rounds per phase; stop and request Thomas's decision if still failing.
-
-## Phase report (`docs/report/report.html`)
-
-Self-contained HTML (inline SVG, no external assets), generated by script from `docs/report/data.json`, never hand-edited. Always shows: per-phase bar charts of requirement states (implemented / tested / browser-verified / open / externally blocked), gate pass/fail, review verdict and findings, overall status and next action. Counts come from `docs/requirements-index.json` plus audit evidence; never invent percentages. Updated at every phase end and whenever status changes materially.
-
-## Environments
-
-- **Local SIT first:** one active Docker Compose deployment using only `deploy/compose.testing.yml` (Thomas, 26 Oct). Agent `https://ticketing.localhost`, portal `https://portal.localhost`, both on port 443. Keep superseded native, performance, SSO and image-probe deployments stopped; preserve their data and volumes. Build the latest workspace code with `VITE_API_URL=''` for both entries; do not run two web builds at once.
-- **Public SIT after local passes:** Technexus (`tickting.technexus.info`, `portal.technexus.info`) reached through the SSH proxy. Hosts, keys and credentials are never written to docs or logs.
-- GitHub Actions is **not** a gate and is not used in the loop. Do not edit workflows or branch protection. **Image path (decided 22 Oct):** only after local SIT passes, push the branch, open the PR, let CI scan and build the image, and deploy that image to Technexus.
-- Portal URLs are host-root (portal host), never `/portal/*` (2026-10-20 decision); fix stale `/portal/*` listings in `docs/screens.md` rather than adding such routes.
-
-## UI/UX is the top quality bar
-
-Version 1 was stopped because its UI was ugly and broke Kaneo's UX. Every screen must look and behave like original Kaneo (`42bb8011`), only extended or modified. Before touching a screen, find the original Kaneo component and reuse it; if the work item/portal needs something new, compose it from existing Kaneo/`packages/ui` pieces. Never replace Kaneo components with native HTML, hand-built layouts or a different design language. If a Kaneo component can't do it, stop and report instead of improvising. Compare each touched screen against the Kaneo original in a browser; ugliness or broken UX is a failed phase.
-
-## Safety (copied here because handover.md is overwritten)
-
-- `taskdesk_browser_journey_1022_test` is the **live** browser database with Thomas's work despite its `_test` suffix. `env-wrapper.py app|owner|migrate` targets it: never run resetting fixtures through it. Use a separate dedicated `_test` database for integration resets.
-- Never rerun the SIT account seeder; it changes fixed accounts and sessions. Never overwrite Thomas's moved/created records (e.g. HELP-12).
-- Docker: remove only your own containers by exact id. No prune, no wildcard removal.
-- One coordinator, one shared worktree. Preserve all uncommitted work: no reset, clean, stash, second checkout. Subagents edit only explicitly disjoint paths with one owner per file ([agent-work.md](docs/agent-work.md)); they never commit, push, deploy, add dependencies or delete data.
+- `taskdesk_browser_journey_1022_test` (native PostgreSQL 62870) is the **live** database with Thomas's work despite its `_test` suffix. Never reset, seed or run fixtures against it. Integration resets use a fresh dedicated `_test` database (scratch PostgreSQL 62871 or Testcontainers), one owner at a time.
+- Never rerun the SIT account seeder; never overwrite Thomas's records.
+- Docker: remove only containers you started, by exact id. No prune, no wildcard removal.
 - Never print credentials, cookies, database URLs or signed URLs.
-- Run Trivy, Gitleaks and dependency scans locally; triage findings, never hide them. Do not disable tests; keep performance budgets and report misses rather than changing thresholds.
-- Diagnose a repeated failure across the whole path before another patch. No `pal-mcp`, `pal-reviewer`, `clink` or 9Router.
-- "Implemented", "locally verified", "AI reviewed" and "Thomas accepted" are different states. A subagent's "passed" is evidence to inspect, not acceptance; the implementer never reviews its own phase.
-- Retained contracts and owner decisions define intended behavior; code may contain defects. Do not invent identifier names. Bootstrap env names stay registered.
-- Keep docs short: update the relevant row in status/roadmap/requirements; no new process documents.
+- Run Trivy, Gitleaks and dependency audits; triage findings, never hide them. Do not disable tests.
+- Diagnose a repeated failure across the whole path before another patch.
+- Retained contracts and owner decisions define intended behaviour; code may contain defects. Do not invent identifier names. Bootstrap env names stay registered.
+- Keep docs short and current: update the relevant row in status/roadmap/requirements; no new process documents.
 
-Code: `apps/api`, `apps/web`, `packages/ui`, `packages/domain`, `packages/permissions`, `tests`. Technical contracts: [docs/technical](docs/technical).
+Code: `apps/api`, `apps/web`, `packages/ui`, `packages/domain`, `packages/permissions`, `packages/mcp`, `tests`. Technical contracts: [docs/technical](docs/technical).

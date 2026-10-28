@@ -11,8 +11,8 @@ The original goal remains: **one place for every request, ticket, project and co
 | One real system, no fake portal | Agent and portal use persisted APIs with explicit tenancy, permissions, visibility and separate sessions/bundles |
 | One image, customer-controlled behavior | Branding, identity, storage, notifications, flags, workflows and policies are configured through God Mode/settings |
 | Honest reporting and history | Three reporting tiers, all 20 fixed reports, reach-aware exports and traceable idempotent imports are retained |
-| Complete visible outcomes | Laptop implementation/test/repair loop, integrated browser journeys, one independent phase review and one consolidated owner report |
-| Full product ambition | P0–P7 are now all planned. Original later candidates are catalogued in proposed P8/P9 groups rather than dropped |
+| Complete visible outcomes | Laptop implementation/test/repair loop, integrated browser journeys, an independent review for high-risk changes and Thomas's merge approval (phases ended 28 Oct; see [roadmap](roadmap.md)) |
+| Full product ambition | P0–P6 delivered; former P7 and remaining gaps are the linear backlog. Original later candidates are catalogued in proposed P8/P9 groups rather than dropped |
 
 ## Sources searched
 
@@ -46,7 +46,7 @@ A read-only comparison covered the archived root instructions/provider note/work
 | Kaneo design, real APIs, runtime configuration | Preserved; token use, route policy and registered URL/bootstrap state are explicit again |
 | Security, deletion and licensing | Preserved with concrete identity/MCP/tenant restrictions, pending actions, source provenance and removed-router protection |
 | Completion evidence | Preserved: source presence, local tests, actual browser journeys, independent review and Thomas acceptance remain distinct |
-| Reviews and publishing | One fresh independent phase review with a neutral evidence packet; no review round per small edit. Protected publishing remains intact |
+| Reviews and publishing | One fresh independent high-tier review with a neutral evidence packet for high-risk changes; no review round per small edit. Protected publishing remains intact |
 | Agent collaboration | Clarified: one coordinated worktree/team, bounded assignments, disjoint files, agreed shared contracts and a coordinator responsible for integration |
 | Failure and ownership | Preserve dirty files, stop on unexpected edits to an owned file, diagnose repeated failures and preserve budgets; never falsify results |
 | Original delivery scope | Expanded from the first reset's P0–P4 to the original full P0–P7; proposed P8/P9 retain future candidates without inventing acceptance |
@@ -61,9 +61,9 @@ A read-only comparison covered the archived root instructions/provider note/work
 | Implementation versus intent | Code/schema can disagree with owner decisions or retained feature rules | Record the mismatch and repair the defect or identify the exact unresolved behavior; source presence is not product authority |
 | Source/version split and concurrent edits | Existing checkout, supplied PR screenshots and uncommitted work are different evidence sets | Coordinator records selected revision and writable owners before implementation; no overwriting or transferred acceptance claims |
 | Shared-contract collisions | Disjoint UI files can still depend on incompatible API/schema/seed assumptions | Agree DTO/permission/migration contracts first; shared files have one explicit owner; serialize dependent work |
-| Verification gaps | P5–P7 code discovery, all persisted browser journeys, real Entra, current SIT provenance/recovery and existing lint/visual-scope failures remain unresolved | Keep these in the phase report with actual evidence. The documentation comparison closes none of them |
+| Verification gaps | Full role/theme/width browser matrix, real Entra, recovery rehearsal and customer-readiness evidence remain open (backlog L-01, L-08, L-10, T-1) | Keep these in the report with actual evidence. The documentation comparison closes none of them |
 
-The agent team is prepared by [agent-work.md](agent-work.md). Example work packages there are unassigned preparation, not active jobs. This comparison is a documentation/authority check, not a product security clearance or a completed phase review.
+The agent team is prepared by [agent-work.md](agent-work.md). This comparison is a documentation/authority check, not a product security clearance or a completed phase review.
 
 ## 22 October: work-item interaction correction
 
