@@ -35,6 +35,15 @@ test("direct work-list visit downloads its parent outlet before the session reso
     header,
     "Kaneo project frame must be represented in the manifest",
   ).toBeDefined();
+  const terminology = Object.entries(manifest).find(
+    ([key, chunk]) =>
+      chunk.name === "agent-translation" ||
+      key.endsWith("src/lib/i18n/agent-translation.ts"),
+  )?.[1];
+  expect(
+    terminology,
+    "agent terminology must be represented in the manifest",
+  ).toBeDefined();
   await installPerformanceApiFixture(page);
   let releaseSession: () => void = () => {};
   const heldSession = new Promise<void>((resolve) => {
@@ -58,11 +67,15 @@ test("direct work-list visit downloads its parent outlet before the session reso
   const headerDownloaded = page.waitForResponse(
     (response) => response.url().endsWith(`/${header?.file}`) && response.ok(),
   );
+  const terminologyDownloaded = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/${terminology?.file}`) && response.ok(),
+  );
   try {
     // HTML must start the entire frame closure without executing the application.
     // A lazy import during entry evaluation is too late on a cold network.
     await page.goto(WORK_LIST_PATH, { waitUntil: "commit" });
-    await Promise.all([downloaded, headerDownloaded]);
+    await Promise.all([downloaded, headerDownloaded, terminologyDownloaded]);
     await expect(
       page.locator(`link[rel="modulepreload"][href="/${header?.file}"]`),
     ).toHaveCount(1);
@@ -77,4 +90,51 @@ test("direct work-list visit downloads its parent outlet before the session reso
     releaseSession();
   }
   await expect(page.getByTestId("work-item-list-populated")).toBeVisible();
+});
+
+test("opening a row paints its pane while the detail body is still downloading", async ({
+  page,
+}) => {
+  await installPerformanceApiFixture(page);
+  let releaseBody: () => void = () => {};
+  const heldBody = new Promise<void>((resolve) => {
+    releaseBody = resolve;
+  });
+  let detailReads = 0;
+  page.on("request", (request) => {
+    if (
+      request.method() === "GET" &&
+      new URL(request.url()).pathname === "/api/work-items/WLP-1"
+    )
+      detailReads += 1;
+  });
+  await page.route(
+    (url) =>
+      url.pathname.includes("work-item-side-pane-body-") &&
+      url.pathname.endsWith(".js"),
+    async (route) => {
+      await heldBody;
+      await route.continue();
+    },
+  );
+  try {
+    await page.goto(WORK_LIST_PATH);
+    const list = page.locator("div[data-testid=work-item-list-populated]");
+    await expect(
+      list
+        .locator("[data-virtual-item-id]")
+        .first()
+        .getByTestId("work-item-inline-assignee"),
+    ).toBeVisible();
+    expect(detailReads).toBe(0);
+    await list.locator('a[href="/agent/work-items/WLP-1"]').click();
+    await expect(page.getByTestId("work-item-detail-loading")).toBeVisible();
+    await expect(page.getByTestId("work-item-detail")).toHaveCount(0);
+    expect(detailReads).toBe(0);
+    releaseBody();
+    await expect(page.getByTestId("work-item-detail")).toBeVisible();
+    expect(detailReads).toBeGreaterThan(0);
+  } finally {
+    releaseBody();
+  }
 });

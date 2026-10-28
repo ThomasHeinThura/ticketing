@@ -115,6 +115,22 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve the authenticated shell chunk.",
           );
         addChunkAndImports(authenticatedShellChunk.fileName);
+        // Agent terminology is installed before a scoped locale is published. Its tiny
+        // module otherwise starts after entry evaluation and adds a cold round trip.
+        const agentTerminologyChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith("/lib/i18n/agent-translation.ts"),
+            ),
+        );
+        if (agentTerminologyChunk?.type !== "chunk")
+          throw new Error(
+            "Work-route preload could not resolve agent terminology.",
+          );
+        addChunkAndImports(agentTerminologyChunk.fileName);
         // The panel supplies the route's first content and heading readiness
         // boundary, but is dynamically imported by beforeLoad only after the
         // route code executes. Fetch its static closure alongside the route so
@@ -644,10 +660,19 @@ export default defineConfig(({ mode }) => {
                             maxSize: 1_000_000,
                           },
                           {
+                            // Toolbar permissions, dialog primitives and the detail shell must
+                            // not wait for the list panel. Warm the shell with the row controls;
+                            // its data-heavy body remains a separate lazy module.
+                            name: "work-item-shared-controls",
+                            test: /\/src\/(?:hooks\/use-workspace-permission\.ts|components\/work-item\/(?:work-item-create-dialog-shell|work-item-side-pane)\.tsx|components\/kanban-board\/task-card-keyboard-sensor\.ts)$/u,
+                            priority: 1,
+                          },
+                          {
                             // Fetch the grouped list and its drag window together instead of queuing
                             // dozens of small preload links before its interactive rows can mount.
                             name: "work-item-list-interactions",
                             test: /\/src\/components\/work-item\/(?:work-item-kaneo-list|virtualization\/virtualized-sortable-list)\.tsx$/u,
+                            includeDependenciesRecursively: false,
                             priority: 1,
                           },
                         ]

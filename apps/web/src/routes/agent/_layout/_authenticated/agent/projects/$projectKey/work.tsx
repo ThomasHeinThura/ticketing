@@ -43,6 +43,7 @@ import {
   useProjectViewPreference,
 } from "@/hooks/use-project-view-preference";
 import { afterPrimaryContent } from "@/lib/after-primary-content";
+import { afterWorkListPreview } from "@/lib/after-work-list-preview";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { normalizeCanonicalWorkItemSelection } from "@/lib/normalize-canonical-work-item-selection";
 import { prefetchWorkListData } from "@/lib/work-list-prefetch";
@@ -346,9 +347,19 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   }, []);
   useEffect(() => {
     const abort = new AbortController();
+    let disposePreview = () => {};
     // Once loaded, the loader returns a bare synchronous thenable (no `catch`).
-    const preloadSidePane = () =>
-      void Promise.resolve(loadWorkItemSidePane()).catch(() => undefined);
+    const preloadSidePane = () => {
+      disposePreview();
+      if (!abort.signal.aborted)
+        void Promise.resolve(loadWorkItemSidePane()).catch(() => undefined);
+    };
+    if (routeContentRef.current)
+      disposePreview = afterWorkListPreview(
+        routeContentRef.current,
+        abort.signal,
+        preloadSidePane,
+      );
     // Downloaded from the moment the rows are on screen, so a row opened right away does not
     // wait for the pane's module before anything paints (G11 list-to-detail paint).
     afterPrimaryContent({

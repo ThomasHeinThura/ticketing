@@ -69,6 +69,14 @@ test("G11: direct work-list budget includes preloaded frames and its actual firs
         css: ["assets/frame.css"],
       },
       "chunks/frame-dependency.js": { file: "assets/frame-dependency.js" },
+      "_agent-translation-hash.js": {
+        file: "assets/agent-translation.js",
+        name: "agent-translation",
+        imports: ["chunks/terminology-dependency.js", "chunks/shared.js"],
+      },
+      "chunks/terminology-dependency.js": {
+        file: "assets/terminology-dependency.js",
+      },
       "chunks/later.js": { file: "assets/later.js" },
       "src/components/work-item/create-work-item-dialog-form.tsx": {
         file: "assets/create-work-item-dialog-form.js",
@@ -95,6 +103,8 @@ test("G11: direct work-list budget includes preloaded frames and its actual firs
         "assets/frame.js",
         "assets/frame-dependency.js",
         "assets/frame.css",
+        "assets/agent-translation.js",
+        "assets/terminology-dependency.js",
         "assets/later.js",
         "assets/en-US.js",
         "assets/el-GR.js",
@@ -129,6 +139,8 @@ test("G11: direct work-list budget includes preloaded frames and its actual firs
       "assets/frame.js",
       "assets/frame.css",
       "assets/frame-dependency.js",
+      "assets/agent-translation.js",
+      "assets/terminology-dependency.js",
       "assets/slim-el-GR.js",
       "assets/slim-en-US.js",
     ]);

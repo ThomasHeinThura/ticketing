@@ -2,6 +2,8 @@
 
 **Direction (Thomas, 28 Oct 2026):** phases ended after P6. P0–P6 are implemented, independently AI-reviewed and accepted by Thomas (27 Oct, with open lows) and merged to `main` (28 Oct). All further work is one ordered backlog of fixes, bugs and features, worked top to bottom under [AGENTS.md](../AGENTS.md). Original Kaneo (`42bb8011`) stays the interface; real persisted data only; status counts come from the requirement index and evidence, never invented percentages. Progress is shown in the [report](report/report.html) and [status](status.md).
 
+Thomas authorized continuing the ordered backlog and all required testing on 28 Oct. Finish L-05 before L-02–L-04; prepare reviewable PRs and keep the generated report current. Approval-only actions in AGENTS.md remain approval steps.
+
 ## Linear backlog
 
 Phases ended after P6. Work top to bottom; one PR per row (or per coherent sub-slice), each through the full test order in [AGENTS.md](../AGENTS.md) and released on merge. Mark a row done only with green CI, browser evidence and Thomas's merge. Thomas-only rows stay open until he provides the evidence. Linked issues are closed with evidence when the row lands.
