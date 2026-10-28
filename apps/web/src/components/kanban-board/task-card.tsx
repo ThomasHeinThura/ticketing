@@ -134,9 +134,39 @@ export function deferKeyboardSensorEndKey(
   deferKeyboardSensorKey(card, event);
 }
 
-function TaskCard({
+function TaskCard(props: TaskCardProps) {
+  const sortable = useSortable({
+    id: props.sortableId ?? props.task.id,
+    disabled: props.disableDragDrop ?? false,
+  });
+  return (
+    <TaskCardPresentation
+      {...props}
+      attributes={sortable.attributes}
+      listeners={sortable.listeners}
+      setNodeRef={sortable.setNodeRef}
+      transition={sortable.transition}
+      isDragging={sortable.isDragging}
+      transformX={sortable.transform?.x}
+      transformY={sortable.transform?.y}
+      transformScaleX={sortable.transform?.scaleX}
+      transformScaleY={sortable.transform?.scaleY}
+    />
+  );
+}
+
+type SortablePresentationProps = Pick<
+  ReturnType<typeof useSortable>,
+  "attributes" | "listeners" | "setNodeRef" | "transition" | "isDragging"
+> & {
+  transformX?: number;
+  transformY?: number;
+  transformScaleX?: number;
+  transformScaleY?: number;
+};
+
+const TaskCardPresentation = memo(function TaskCardPresentation({
   task,
-  sortableId,
   disableDragDrop = false,
   workspaceId,
   assignee,
@@ -153,15 +183,28 @@ function TaskCard({
   onToggleSelection,
   badges,
   t,
-}: TaskCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: sortableId ?? task.id, disabled: disableDragDrop });
+  attributes,
+  listeners,
+  setNodeRef,
+  transition,
+  isDragging,
+  transformX,
+  transformY,
+  transformScaleX,
+  transformScaleY,
+}: TaskCardProps & SortablePresentationProps) {
+  const transform =
+    transformX === undefined ||
+    transformY === undefined ||
+    transformScaleX === undefined ||
+    transformScaleY === undefined
+      ? null
+      : {
+          x: transformX,
+          y: transformY,
+          scaleX: transformScaleX,
+          scaleY: transformScaleY,
+        };
   // Sortable's disabled attributes describe a disabled drag activator, not a disabled task.
   const dragListeners = disableDragDrop ? undefined : listeners;
   const {
@@ -568,6 +611,6 @@ function TaskCard({
       )}
     </Fieldset>
   );
-}
+});
 
 export default memo(TaskCard);

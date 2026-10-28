@@ -1,25 +1,13 @@
-import { parseProjectViewSearch } from "./project-board-search";
+import { parseLegacyProjectViewSearch } from "./parse-legacy-project-view-search";
+
+export { parseLegacyProjectViewSearch } from "./parse-legacy-project-view-search";
+
 import { routes } from "./routes";
 import { parseWorkItemFilterText } from "./work-item-filter";
 import {
   isValidWorkItemKeyParam,
   parseWorkItemListSearch,
-  parseWorkItemQueryState,
 } from "./work-item-list-search";
-
-export function parseLegacyProjectViewSearch(raw: unknown) {
-  const candidate =
-    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-  const normalized =
-    !isValidWorkItemKeyParam(candidate.item) &&
-    isValidWorkItemKeyParam(candidate.taskId)
-      ? { ...candidate, item: candidate.taskId }
-      : candidate;
-  return {
-    ...parseProjectViewSearch(raw),
-    ...parseWorkItemQueryState(normalized),
-  };
-}
 
 /** Translate only equivalent controls; callers must acknowledge every unsupported one. */
 export function translateLegacyProjectView(

@@ -8656,9 +8656,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -8693,9 +8693,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -8731,9 +8731,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -8768,9 +8768,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -15908,7 +15908,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/FieldsetLegend[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -15941,7 +15941,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/FieldsetLegend[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -16871,7 +16871,7 @@
 			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/gantt/gantt-task-bar.tsx::GanttTaskBar::div[0]/div[0]::text-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
@@ -17280,10 +17280,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -18532,7 +18532,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/FieldsetLegend[0]"
 				],
 				"id": "packages/ui/src/components/fieldset.tsx::FieldsetLegend::FieldsetPrimitive.Legend[0]::text-foreground#0",
@@ -19497,7 +19497,7 @@
 			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/gantt/gantt-task-bar.tsx::GanttTaskBar::div[0]/div[0]::text-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
@@ -19906,10 +19906,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -21158,7 +21158,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/FieldsetLegend[0]"
 				],
 				"id": "packages/ui/src/components/fieldset.tsx::FieldsetLegend::FieldsetPrimitive.Legend[0]::text-foreground#0",
@@ -22103,17 +22103,17 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -22133,17 +22133,17 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -23455,17 +23455,17 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -23485,17 +23485,17 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -27405,7 +27405,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -27413,13 +27413,13 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -27447,9 +27447,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -27474,7 +27474,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -27485,14 +27485,14 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -27526,9 +27526,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -27557,7 +27557,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -27565,13 +27565,13 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -27599,9 +27599,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -27626,7 +27626,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -27637,14 +27637,14 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -27678,9 +27678,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -27709,7 +27709,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::GitMerge[0]::text-info-foreground#0"
 		],
 		"occurrences": [
@@ -27718,11 +27718,11 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
 					"component-slot:packages/ui/src/components/preview-card.tsx:PreviewCardPopup.children"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -27823,7 +27823,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::GitMerge[0]::text-info-foreground#0"
 		],
 		"occurrences": [
@@ -27832,11 +27832,11 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
 					"component-slot:packages/ui/src/components/preview-card.tsx:PreviewCardPopup.children"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitMerge[0]::text-info-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitMerge[0]::text-info-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -31315,11 +31315,11 @@
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookSecurityPosturePanel::div[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]::text-muted-foreground#0",
 			"apps/web/src/components/intake/queue-panel.tsx::IntakeQueuePanel::div[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/intake/submission-queue-table.tsx::SubmissionQueueTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[7]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/kb/agent/kb-article-editor.tsx::Editor::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/agent/kb-article-editor.tsx::Editor::div[0]/div[1]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/agent/kb-article-view.tsx::FeedbackTab::div[0]/p[0]::text-muted-foreground#0",
@@ -33792,10 +33792,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -33803,10 +33803,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -33814,10 +33814,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -33825,10 +33825,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -33836,10 +33836,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -42211,11 +42211,11 @@
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookSecurityPosturePanel::div[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]::text-muted-foreground#0",
 			"apps/web/src/components/intake/queue-panel.tsx::IntakeQueuePanel::div[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/intake/submission-queue-table.tsx::SubmissionQueueTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[7]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/kb/agent/kb-article-editor.tsx::Editor::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/agent/kb-article-editor.tsx::Editor::div[0]/div[1]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/agent/kb-article-view.tsx::FeedbackTab::div[0]/p[0]::text-muted-foreground#0",
@@ -44688,10 +44688,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -44699,10 +44699,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -44710,10 +44710,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -44721,10 +44721,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -44732,10 +44732,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]>bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -53086,21 +53086,21 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -53108,10 +53108,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -53119,10 +53119,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -53130,10 +53130,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -53141,10 +53141,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -53164,21 +53164,21 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -53186,10 +53186,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -53197,10 +53197,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -53208,10 +53208,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -53219,10 +53219,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]>hover:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -63476,21 +63476,21 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -63498,10 +63498,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -63509,10 +63509,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -63520,10 +63520,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -63531,10 +63531,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -63554,21 +63554,21 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -63576,10 +63576,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -63587,10 +63587,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -63598,10 +63598,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -63609,10 +63609,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]>data-[task-dragging=true]:bg-card"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -76109,7 +76109,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1"
 		],
@@ -76119,13 +76119,13 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -76133,9 +76133,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -76147,9 +76147,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -76174,7 +76174,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1"
 		],
@@ -76187,14 +76187,14 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -76205,9 +76205,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -76223,9 +76223,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -76254,7 +76254,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1"
 		],
@@ -76264,13 +76264,13 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -76278,9 +76278,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -76292,9 +76292,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -76319,7 +76319,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1"
 		],
@@ -76332,14 +76332,14 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -76350,9 +76350,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -76368,9 +76368,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -76925,7 +76925,7 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#1",
@@ -76941,10 +76941,10 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/div[0]/span[0]>bg-muted"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -77639,17 +77639,17 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["data-[task-dragging=true]:bg-card"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/div[0]/span[0]>bg-muted"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -77732,17 +77732,17 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["hover:bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/div[0]/span[0]>bg-muted"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -77907,7 +77907,7 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#1",
@@ -77923,10 +77923,10 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/div[0]/span[0]>bg-muted"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -78621,17 +78621,17 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["data-[task-dragging=true]:bg-card"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/div[0]/span[0]>bg-muted"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -78714,17 +78714,17 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["hover:bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/div[0]/span[0]>bg-muted"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -78745,18 +78745,18 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -78764,10 +78764,10 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -78788,8 +78788,8 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
 		],
@@ -78798,10 +78798,10 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -78809,10 +78809,10 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -78855,18 +78855,18 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["data-[task-dragging=true]:bg-card"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -78874,10 +78874,10 @@
 				"backdropLayers": ["data-[task-dragging=true]:bg-card"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -78898,18 +78898,18 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["hover:bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -78917,10 +78917,10 @@
 				"backdropLayers": ["hover:bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -78941,18 +78941,18 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -78960,10 +78960,10 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -78984,8 +78984,8 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
 		],
@@ -78994,10 +78994,10 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -79005,10 +79005,10 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -79051,18 +79051,18 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["data-[task-dragging=true]:bg-card"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -79070,10 +79070,10 @@
 				"backdropLayers": ["data-[task-dragging=true]:bg-card"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -79094,18 +79094,18 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": ["hover:bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -79113,10 +79113,10 @@
 				"backdropLayers": ["hover:bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]>hover:bg-muted/50"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -79192,11 +79192,11 @@
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#1",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuItem[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 			"apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/h3[0]::text-muted-foreground#0",
 			"apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[1]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
@@ -80298,11 +80298,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]",
 					"HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -80310,11 +80310,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]",
 					"HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -80322,11 +80322,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
 					"HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -80334,11 +80334,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]",
 					"HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -80347,11 +80347,11 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
 					"component-slot:packages/ui/src/components/preview-card.tsx:PreviewCardPopup.children"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -84077,11 +84077,11 @@
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#1",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuItem[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 			"apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/h3[0]::text-muted-foreground#0",
 			"apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[1]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
@@ -85183,11 +85183,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]",
 					"HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -85195,11 +85195,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]",
 					"HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -85207,11 +85207,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
 					"HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -85219,11 +85219,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]",
 					"HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -85232,11 +85232,11 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
 					"component-slot:packages/ui/src/components/preview-card.tsx:PreviewCardPopup.children"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-muted-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -99517,7 +99517,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -99525,13 +99525,13 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -99552,7 +99552,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -99563,14 +99563,14 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -99594,7 +99594,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -99602,13 +99602,13 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -99629,7 +99629,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0"
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -99640,14 +99640,14 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			}
@@ -99671,7 +99671,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-success-foreground#0",
 			"apps/web/src/components/settings/api-key-created-modal.tsx::ApiKeyCreatedModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/Button[0]/Check[0]::text-success-foreground#0",
 			"apps/web/src/components/team/invitation-link-field.tsx::InvitationLinkField::div[0]/Button[0]/CheckIcon[0]::text-success-foreground#0"
@@ -99682,11 +99682,11 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
 					"component-slot:packages/ui/src/components/preview-card.tsx:PreviewCardPopup.children"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -99743,7 +99743,7 @@
 		},
 		"surfaceContext": "function-return-property",
 		"occurrenceIds": [
-			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0",
+			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-success-foreground#0",
 			"apps/web/src/components/settings/api-key-created-modal.tsx::ApiKeyCreatedModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/Button[0]/Check[0]::text-success-foreground#0",
 			"apps/web/src/components/team/invitation-link-field.tsx::InvitationLinkField::div[0]/Button[0]/CheckIcon[0]::text-success-foreground#0"
@@ -99754,11 +99754,11 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
 					"component-slot:packages/ui/src/components/preview-card.tsx:PreviewCardPopup.children"
 				],
-				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::GitPullRequest[0]::text-success-foreground#0",
+				"id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCardPresentation::GitPullRequest[0]::text-success-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/kanban-board/task-card.tsx"
 			},
@@ -101924,9 +101924,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -101958,9 +101958,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -101995,9 +101995,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -102036,9 +102036,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -102074,9 +102074,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -102108,9 +102108,9 @@
 				"backdropLayers": ["bg-background"],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -102145,9 +102145,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"
@@ -102186,9 +102186,9 @@
 				],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
-					"apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
+					"apps/web/src/components/kanban-board/task-card.tsx:TaskCardPresentation",
 					"jsx:Fieldset[0]/div[0]/span[0]",
 					"state-backdrop:data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50",
 					"opaque-backdrop:bg-background"

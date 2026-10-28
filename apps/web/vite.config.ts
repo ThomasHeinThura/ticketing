@@ -643,6 +643,13 @@ export default defineConfig(({ mode }) => {
                             priority: 1,
                             maxSize: 1_000_000,
                           },
+                          {
+                            // Fetch the grouped list and its drag window together instead of queuing
+                            // dozens of small preload links before its interactive rows can mount.
+                            name: "work-item-list-interactions",
+                            test: /\/src\/components\/work-item\/(?:work-item-kaneo-list|virtualization\/virtualized-sortable-list)\.tsx$/u,
+                            priority: 1,
+                          },
                         ]
                       : []),
                   ],
