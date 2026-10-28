@@ -7829,6 +7829,13 @@
 					"source": "apps/web/src/components/portal/portal-orientation.tsx",
 					"test": null,
 					"priorAudit": "docs/report/audit/audit-P3.json"
+				},
+				{
+					"kind": "L-05 scoped browser observation",
+					"source": "docs/report/audit/l05-01c47cb65-sit.json",
+					"test": null,
+					"note": "The persisted customer home shows the orientation at desktop/tablet/mobile in both themes. Dismissal was not exercised, so full-clause testing/browser verification is not claimed and the state remains implemented_untested. Mobile title/body placement is a separate confirmed design gap (#921); affected UI source is unchanged from audited main 2553612ee.",
+					"issue": "https://github.com/ThomasHeinThura/ticketing/issues/921"
 				}
 			],
 			"originalSource": "archive/2026-10-22/docs/03-features/customer-portal.md",
