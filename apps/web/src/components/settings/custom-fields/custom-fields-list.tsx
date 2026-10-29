@@ -410,15 +410,17 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
               const activeRows = fieldsIn(section.id, false);
               return (
                 <Card key={section.id}>
-                  <CardHeader>
-                    <CardTitle>{section.name}</CardTitle>
+                  <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
+                    <CardTitle className="min-w-0 break-words">
+                      {section.name}
+                    </CardTitle>
                     <CardDescription>
                       {t("customFields:list.sectionCount", {
                         count: activeRows.length,
                       })}
                     </CardDescription>
                     {canManage ? (
-                      <CardAction className="flex items-center gap-1">
+                      <CardAction className="col-start-1 row-span-1 row-start-3 flex items-center justify-self-start gap-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end">
                         <Button
                           variant="ghost"
                           size="icon"

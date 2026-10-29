@@ -89296,8 +89296,8 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"packages/ui/src/components/sheet.tsx::SheetDescription::SheetPrimitive.Description[0]::text-muted-foreground#0",
@@ -90144,9 +90144,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx:RouteComponent",
-					"jsx:div[0]/div[0]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
+					"jsx:div[0]/div[0]/div[1]/div[0]/div[0]/p[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx"
 			},
@@ -90157,7 +90157,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx:RouteComponent",
 					"jsx:div[0]/div[0]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx"
 			},
@@ -90519,8 +90519,8 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"packages/ui/src/components/sheet.tsx::SheetDescription::SheetPrimitive.Description[0]::text-muted-foreground#0",
@@ -91367,9 +91367,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx:RouteComponent",
-					"jsx:div[0]/div[0]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
+					"jsx:div[0]/div[0]/div[1]/div[0]/div[0]/p[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx"
 			},
@@ -91380,7 +91380,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx:RouteComponent",
 					"jsx:div[0]/div[0]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx"
 			},

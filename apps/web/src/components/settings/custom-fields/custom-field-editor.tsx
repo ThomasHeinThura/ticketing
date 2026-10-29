@@ -435,7 +435,9 @@ function EditorForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("customFields:editor.defaultTitle")}</CardTitle>
+          <CardTitle render={<Label htmlFor="cf-default" />}>
+            {t("customFields:editor.defaultTitle")}
+          </CardTitle>
           <CardDescription>
             {t("customFields:editor.defaultDescription")}
           </CardDescription>
@@ -444,7 +446,7 @@ function EditorForm({
           <CustomFieldValueInput
             id="cf-default"
             field={{
-              name: draft.name,
+              name: t("customFields:editor.defaultTitle"),
               format: draft.format,
               options: effectiveOptions,
             }}
