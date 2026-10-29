@@ -151,6 +151,9 @@ test("hierarchy preserves the current branch beyond the loaded page, pagination 
   ).toBeVisible({ timeout: 15000 });
   await page.reload();
   await expect(
+    page.locator("[data-testid=work-item-detail-loading]"),
+  ).toHaveCount(0, { timeout: 30000 });
+  await expect(
     section.getByRole("link", {
       name: "WLP-200 · Hierarchy task 200",
       exact: true,
@@ -173,6 +176,9 @@ test("hierarchy preserves the current branch beyond the loaded page, pagination 
     .getByRole("button", { name: SECTION_TITLE, exact: true })
     .click();
   await page.reload();
+  await expect(
+    page.locator("[data-testid=work-item-detail-loading]"),
+  ).toHaveCount(0, { timeout: 30000 });
   await expect(section.getByRole("link")).toHaveCount(0);
   await section
     .getByRole("button", { name: SECTION_TITLE, exact: true })
@@ -245,6 +251,12 @@ test("side-pane hierarchy keeps its item and disclosure state after reload", asy
 }) => {
   await fixture(page);
   await page.goto("/agent/projects/WLP/work?layout=list&item=WLP-1");
+  await expect(
+    page.locator("[data-testid=work-item-list-loading]"),
+  ).toHaveCount(0, { timeout: 30000 });
+  await expect(
+    page.locator("[data-testid=work-item-detail-loading]"),
+  ).toHaveCount(0, { timeout: 30000 });
   const section = page.getByTestId("work-item-hierarchy");
   await section
     .getByRole("button", { name: "Expand WLP-100", exact: true })
@@ -256,6 +268,12 @@ test("side-pane hierarchy keeps its item and disclosure state after reload", asy
     }),
   ).toBeVisible({ timeout: 15000 });
   await page.reload();
+  await expect(
+    page.locator("[data-testid=work-item-list-loading]"),
+  ).toHaveCount(0, { timeout: 30000 });
+  await expect(
+    page.locator("[data-testid=work-item-detail-loading]"),
+  ).toHaveCount(0, { timeout: 30000 });
   await expect(
     section.getByRole("link", {
       name: subtaskLink(200),
