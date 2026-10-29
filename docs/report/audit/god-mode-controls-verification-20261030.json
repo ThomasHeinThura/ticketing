@@ -1,0 +1,3759 @@
+{
+	"generated": "2026-10-29T21:59:30.012Z",
+	"scope": "Stage2 God Mode two-issue UI fixes #944/#945. Observational real persisted SIT; no whole-product acceptance claim.",
+	"source": {
+		"candidate": "7bc74bc7849553861a658d749c7a7d90c948370d",
+		"runtime": "7028977f7004240730034f96b200ebab6f208f2e",
+		"changedFilesVerifiedByteIdentical": [
+			"apps/web/src/components/god-mode/instance-deliveries-panel.tsx",
+			"apps/web/src/components/god-mode/instance-jobs-panel.tsx",
+			"apps/web/src/components/god-mode/storage-usage-panel.tsx",
+			"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx",
+			"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.test.tsx",
+			"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx",
+			"packages/ui/src/components/table.test.tsx",
+			"packages/ui/src/components/table.tsx"
+		],
+		"runtimeComposition": "Runtime702 includes God Mode7bc and Reports dd718 source, now merged by PR956. Comparing apps/packages/i18n/package/lock/Dockerfile with integrated God candidate shows only the two intended Reports G8 baseline PNG changes; production source bytes match.",
+		"integratedWithMain": "bda5d3a074a1d5518715326f177cfe5ef31ab231"
+	},
+	"before": {
+		"summary": {
+			"scope": "read-only God Mode browser audit",
+			"fixture": "existing instance admin session; GET session user.role=admin",
+			"routes": [
+				"/agent/god-mode",
+				"/agent/god-mode/general",
+				"/agent/god-mode/users",
+				"/agent/god-mode/authentication",
+				"/agent/god-mode/organisations",
+				"/agent/god-mode/jobs",
+				"/agent/god-mode/plugins",
+				"/agent/god-mode/notifications",
+				"/agent/god-mode/deliveries",
+				"/agent/god-mode/storage",
+				"/agent/god-mode/features",
+				"/agent/god-mode/audit"
+			],
+			"matrix": {
+				"widths": [1440, 820, 390],
+				"visualThemes": ["light", "dark"],
+				"screenshots": 72,
+				"axeScheduledScans": 24,
+				"documentOverflowCases": 0,
+				"http429Cases": 0,
+				"accessDeniedCases": 0,
+				"defaultVisibleNativeDateTimeInputs": 0,
+				"healthInitialReadinessWait": "timed out; final screenshot and metrics show settled content, no remaining skeleton",
+				"themeLimitation": "themes were switched by root CSS class after render; app preference store remained dark, so light captures are visual-only and should not be used to assert color contrast or persisted theme behavior"
+			},
+			"confirmedFindings": [
+				{
+					"kind": "serious keyboard accessibility",
+					"rule": "axe scrollable-region-focusable",
+					"routesAndVariants": [
+						{
+							"route": "/agent/god-mode/jobs",
+							"width": 390,
+							"theme": "dark",
+							"nodeCount": 25,
+							"observedSelector": "div[data-slot=table-container] (first three targets retained; exact distribution of remaining targets requires inspection)"
+						},
+						{
+							"route": "/agent/god-mode/deliveries",
+							"width": 390,
+							"theme": "dark",
+							"nodeCount": 1,
+							"observedSelector": "div[data-slot=table-container]"
+						},
+						{
+							"route": "/agent/god-mode/storage",
+							"width": 390,
+							"theme": "dark",
+							"nodeCount": 1,
+							"observedSelector": "div[data-slot=table-container]"
+						},
+						{
+							"route": "/agent/god-mode/audit",
+							"width": 1440,
+							"theme": "light",
+							"nodeCount": 1,
+							"observedSelector": ".overflow-x-auto.rounded-md.border-border"
+						},
+						{
+							"route": "/agent/god-mode/audit",
+							"width": 390,
+							"theme": "dark",
+							"nodeCount": 2,
+							"observedSelector": ".overflow-x-auto.rounded-md.border-border and div[data-slot=table-container]"
+						}
+					],
+					"sourcePointers": [
+						"packages/ui/src/components/table.tsx:5",
+						"apps/web/src/components/god-mode/instance-jobs-panel.tsx:229",
+						"apps/web/src/components/god-mode/instance-deliveries-panel.tsx:159",
+						"apps/web/src/components/god-mode/storage-usage-panel.tsx:176",
+						"apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:178"
+					],
+					"replacementDirection": "Make the actual horizontal scroll region keyboard focusable and accessibly named; inspect nested wrappers before changing the shared Table component."
+				},
+				{
+					"kind": "native interactive date-time control",
+					"route": "/agent/god-mode/users",
+					"role": "instance admin",
+					"width": 390,
+					"theme": "dark",
+					"state": "Suspend account dialog open, no action submitted",
+					"dom": "INPUT#suspension-expiry type=datetime-local with associated Expiry (optional) label",
+					"sourcePointer": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:859",
+					"replacementDirection": "Use the existing Kaneo/TaskDesk date-time picker while preserving the optional expiry's local-time semantics.",
+					"screenshot": "admin-users-suspend-dialog-390.png",
+					"escapeClosed": true
+				}
+			],
+			"limitations": [
+				"No save, create, delete, reveal, send, job-run, upload or import action was submitted.",
+				"Only list/overview routes were covered; provider and organisation detail screens were not audited.",
+				"Light visual captures used CSS class switching, so color-contrast conclusions are excluded.",
+				"No full God Mode acceptance claim."
+			],
+			"containersStarted": []
+		},
+		"suspension": {
+			"listContrast": {
+				"linkColor": "oklch(0.97 0 none)",
+				"nameColor": "oklch(0.97 0 none)",
+				"tableBackground": "color(srgb 0.0962455 0.0962609 0.0962624)"
+			},
+			"suspendButtonVisible": true,
+			"expiry": {
+				"tag": "INPUT",
+				"type": "datetime-local",
+				"dataSlot": "input",
+				"label": "Expiry (optional)"
+			},
+			"dialogButtons": ["Cancel", "Suspend account"],
+			"escapeClosed": true,
+			"dialogClosed": true,
+			"focusAfterEscape": {
+				"tag": "BUTTON",
+				"role": null
+			}
+		},
+		"screenshots": [
+			"docs/report/screens/20261030-god-mode-controls-before-admin-jobs-390-dark.png",
+			"docs/report/screens/20261030-god-mode-controls-before-admin-deliveries-390-dark.png",
+			"docs/report/screens/20261030-god-mode-controls-before-admin-storage-390-dark.png",
+			"docs/report/screens/20261030-god-mode-controls-before-admin-audit-390-dark.png",
+			"docs/report/screens/20261030-god-mode-controls-before-admin-users-suspend-dialog-390.png"
+		],
+		"limits": "Only actual-dark matching before captures are published. Earlier CSS-only light captures cannot establish actual light-theme contrast. Exact before runtime SHA was not retained in this packet."
+	},
+	"after": {
+		"summary": {
+			"runtime": "7028977f7004240730034f96b200ebab6f208f2e",
+			"instanceAdminVerified": true,
+			"initialFourMobile": {
+				"rows": 4,
+				"allSettled": true,
+				"jobsTables": 25
+			},
+			"fourRouteMatrix": {
+				"planned": 24,
+				"completed": 24,
+				"allHttp200": true,
+				"allSettled": true,
+				"allActualThemes": true,
+				"documentOverflowRows": 0,
+				"nativeDateRows": 0,
+				"pageErrorRows": 0,
+				"seriousCriticalAxeRows": 0,
+				"tableInstances": 168,
+				"tableUnnamed": 0,
+				"tableMultipleViewport": 0,
+				"horizontalOverflowInstances": 110,
+				"horizontalOverflowNotFocusable": 0,
+				"horizontalOverflowMultipleOwner": 0
+			},
+			"keyboardOnlyJobs": {
+				"arrowEvents": 40,
+				"initialLeft": 0,
+				"max": 462,
+				"finalLeft": 462,
+				"lastColumnFullyVisible": true,
+				"focusRetained": true,
+				"domScrollToUsed": false
+			},
+			"suspendPicker": {
+				"cases": 6,
+				"allActualThemes": true,
+				"allPopupInside": true,
+				"allLibraryDateTimeControls": true,
+				"nativeDateCases": 0,
+				"seriousCriticalAxeCases": 0,
+				"allDraftSaveDisplayed": true,
+				"allClear": true,
+				"allEscapeFocusReturned": true,
+				"staleUserUrlClosesPopupAndDialog": true,
+				"nonGetApiRequests": []
+			},
+			"negativeRoles": {
+				"planned": 20,
+				"completed": 20,
+				"actualWorkspaceRoles": ["owner", "admin", "member", "viewer"],
+				"allInstanceRoleUser": true,
+				"allDirectJobsGet403": true,
+				"allDirectUsersGet403": true,
+				"allUiDenial": true,
+				"allSettled": true,
+				"rateEvents": []
+			},
+			"rateEvents": [],
+			"sourcePointers": {
+				"libraryTable": "packages/ui/src/components/table.tsx:6-40",
+				"libraryScrollArea": "packages/ui/src/components/scroll-area.tsx:7-31",
+				"jobsTable": "apps/web/src/components/god-mode/instance-jobs-panel.tsx:229-264",
+				"deliveriesTable": "apps/web/src/components/god-mode/instance-deliveries-panel.tsx:160",
+				"storageTable": "apps/web/src/components/god-mode/storage-usage-panel.tsx:177",
+				"auditTable": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/audit.tsx:179",
+				"suspendPicker": "apps/web/src/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx:859-868",
+				"dateTimePicker": "apps/web/src/components/common/date-time-picker.tsx:35-220",
+				"instanceAdminSignal": "apps/web/src/hooks/use-instance-admin-signal.ts:7-12"
+			},
+			"writes": "No persisted UI/API writes. Suspend action/step-up, job run/requeue/config and user role changes were never submitted.",
+			"containersStarted": "none",
+			"acceptance": "Bounded God Mode browser verification; no full application acceptance claim."
+		},
+		"fourRouteMatrix": [
+			{
+				"name": "jobs",
+				"path": "/agent/god-mode/jobs",
+				"width": 1440,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-jobs-1440-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/jobs",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "jobs",
+				"path": "/agent/god-mode/jobs",
+				"width": 820,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-jobs-820-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/jobs",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "jobs",
+				"path": "/agent/god-mode/jobs",
+				"width": 390,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-jobs-390-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/jobs",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "deliveries",
+				"path": "/agent/god-mode/deliveries",
+				"width": 1440,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-deliveries-1440-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/deliveries",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1022,
+						"clientWidth": 1022,
+						"scrollOwners": 0
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "deliveries",
+				"path": "/agent/god-mode/deliveries",
+				"width": 820,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-deliveries-820-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/deliveries",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 840,
+						"clientWidth": 426,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "deliveries",
+				"path": "/agent/god-mode/deliveries",
+				"width": 390,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-deliveries-390-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/deliveries",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 849,
+						"clientWidth": 300,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "storage",
+				"path": "/agent/god-mode/storage",
+				"width": 1440,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-storage-1440-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/storage",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "storage",
+				"path": "/agent/god-mode/storage",
+				"width": 820,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-storage-820-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/storage",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 384,
+						"clientWidth": 384,
+						"scrollOwners": 0
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "storage",
+				"path": "/agent/god-mode/storage",
+				"width": 390,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-storage-390-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/storage",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 330,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "audit",
+				"path": "/agent/god-mode/audit",
+				"width": 1440,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-audit-1440-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/audit",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1044,
+						"clientWidth": 1044,
+						"scrollOwners": 0
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "audit",
+				"path": "/agent/god-mode/audit",
+				"width": 820,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-audit-820-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/audit",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 943,
+						"clientWidth": 424,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "audit",
+				"path": "/agent/god-mode/audit",
+				"width": 390,
+				"theme": "light",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-audit-390-light.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/audit",
+				"actualTheme": "light",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 977,
+						"clientWidth": 298,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "jobs",
+				"path": "/agent/god-mode/jobs",
+				"width": 1440,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-jobs-1440-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/jobs",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "jobs",
+				"path": "/agent/god-mode/jobs",
+				"width": 820,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-jobs-820-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/jobs",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 384,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "jobs",
+				"path": "/agent/god-mode/jobs",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-jobs-390-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/jobs",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					},
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 720,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "deliveries",
+				"path": "/agent/god-mode/deliveries",
+				"width": 1440,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-deliveries-1440-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/deliveries",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1022,
+						"clientWidth": 1022,
+						"scrollOwners": 0
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "deliveries",
+				"path": "/agent/god-mode/deliveries",
+				"width": 820,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-deliveries-820-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/deliveries",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 840,
+						"clientWidth": 426,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "deliveries",
+				"path": "/agent/god-mode/deliveries",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-deliveries-390-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/deliveries",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 849,
+						"clientWidth": 300,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "storage",
+				"path": "/agent/god-mode/storage",
+				"width": 1440,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-storage-1440-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/storage",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1004,
+						"clientWidth": 1004,
+						"scrollOwners": 0
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "storage",
+				"path": "/agent/god-mode/storage",
+				"width": 820,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-storage-820-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/storage",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 384,
+						"clientWidth": 384,
+						"scrollOwners": 0
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "storage",
+				"path": "/agent/god-mode/storage",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-storage-390-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/storage",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 330,
+						"clientWidth": 258,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "audit",
+				"path": "/agent/god-mode/audit",
+				"width": 1440,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-audit-1440-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/audit",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "-1",
+						"scrollWidth": 1044,
+						"clientWidth": 1044,
+						"scrollOwners": 0
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "audit",
+				"path": "/agent/god-mode/audit",
+				"width": 820,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-audit-820-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/audit",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 943,
+						"clientWidth": 424,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			},
+			{
+				"name": "audit",
+				"path": "/agent/god-mode/audit",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-matrix-audit-390-dark.png",
+				"pageErrors": 0,
+				"actualPath": "/agent/god-mode/audit",
+				"actualTheme": "dark",
+				"headingVisible": true,
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateInputs": 0,
+				"tables": [
+					{
+						"role": "region",
+						"named": true,
+						"viewportCount": 1,
+						"tabIndex": "0",
+						"scrollWidth": 977,
+						"clientWidth": 298,
+						"scrollOwners": 1
+					}
+				],
+				"violations": []
+			}
+		],
+		"suspensionPicker": {
+			"runtime": "7028977f7004240730034f96b200ebab6f208f2e",
+			"rows": [
+				{
+					"width": 390,
+					"theme": "dark",
+					"actualPath": "/agent/god-mode/users",
+					"steps": {
+						"trigger": {
+							"tag": "BUTTON",
+							"type": "button",
+							"ariaNamed": true
+						},
+						"open": {
+							"actualTheme": "dark",
+							"popupBounds": {
+								"x": 29.125,
+								"y": 251.484375,
+								"width": 350,
+								"height": 452,
+								"right": 379.125,
+								"bottom": 703.484375
+							},
+							"popupInside": true,
+							"calendarCount": 1,
+							"hourTriggerCount": 1,
+							"minuteTriggerCount": 1,
+							"nativeDateInputs": 0,
+							"dialogVisible": true
+						},
+						"axeOpen": [],
+						"selected": {
+							"day": "2026-10-31",
+							"hour": "18",
+							"minute": "42",
+							"hourVisibleValue": "18",
+							"minuteVisibleValue": "42"
+						},
+						"draftDisplay": "10/31/2026, 6:42:00 PM",
+						"outerDialogStillVisible": true,
+						"clearedDisplay": "Not set",
+						"escapeClosed": true,
+						"focusReturned": true,
+						"cancelClosed": true
+					},
+					"openScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-open-390-dark.png",
+					"draftScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-draft-390-dark.png",
+					"actualTheme": "dark"
+				},
+				{
+					"width": 820,
+					"theme": "dark",
+					"actualPath": "/agent/god-mode/users",
+					"steps": {
+						"trigger": {
+							"tag": "BUTTON",
+							"type": "button",
+							"ariaNamed": true
+						},
+						"open": {
+							"actualTheme": "dark",
+							"popupBounds": {
+								"x": 185.921875,
+								"y": 394.828125,
+								"width": 342,
+								"height": 414,
+								"right": 527.921875,
+								"bottom": 808.828125
+							},
+							"popupInside": true,
+							"calendarCount": 1,
+							"hourTriggerCount": 1,
+							"minuteTriggerCount": 1,
+							"nativeDateInputs": 0,
+							"dialogVisible": true
+						},
+						"axeOpen": [],
+						"selected": {
+							"day": "2026-10-31",
+							"hour": "18",
+							"minute": "42",
+							"hourVisibleValue": "18",
+							"minuteVisibleValue": "42"
+						},
+						"draftDisplay": "10/31/2026, 6:42:00 PM",
+						"outerDialogStillVisible": true,
+						"clearedDisplay": "Not set",
+						"escapeClosed": true,
+						"focusReturned": true,
+						"cancelClosed": true
+					},
+					"openScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-open-820-dark.png",
+					"draftScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-draft-820-dark.png",
+					"actualTheme": "dark"
+				},
+				{
+					"width": 1440,
+					"theme": "dark",
+					"actualPath": "/agent/god-mode/users",
+					"steps": {
+						"trigger": {
+							"tag": "BUTTON",
+							"type": "button",
+							"ariaNamed": true
+						},
+						"open": {
+							"actualTheme": "dark",
+							"popupBounds": {
+								"x": 495.921875,
+								"y": 394.828125,
+								"width": 342,
+								"height": 414,
+								"right": 837.921875,
+								"bottom": 808.828125
+							},
+							"popupInside": true,
+							"calendarCount": 1,
+							"hourTriggerCount": 1,
+							"minuteTriggerCount": 1,
+							"nativeDateInputs": 0,
+							"dialogVisible": true
+						},
+						"axeOpen": [],
+						"selected": {
+							"day": "2026-10-31",
+							"hour": "18",
+							"minute": "42",
+							"hourVisibleValue": "18",
+							"minuteVisibleValue": "42"
+						},
+						"draftDisplay": "10/31/2026, 6:42:00 PM",
+						"outerDialogStillVisible": true,
+						"clearedDisplay": "Not set",
+						"escapeClosed": true,
+						"focusReturned": true,
+						"cancelClosed": true
+					},
+					"openScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-open-1440-dark.png",
+					"draftScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-draft-1440-dark.png",
+					"actualTheme": "dark"
+				},
+				{
+					"width": 390,
+					"theme": "light",
+					"actualPath": "/agent/god-mode/users",
+					"steps": {
+						"trigger": {
+							"tag": "BUTTON",
+							"type": "button",
+							"ariaNamed": true
+						},
+						"open": {
+							"actualTheme": "light",
+							"popupBounds": {
+								"x": 29.125,
+								"y": 251.484375,
+								"width": 342,
+								"height": 452,
+								"right": 371.125,
+								"bottom": 703.484375
+							},
+							"popupInside": true,
+							"calendarCount": 1,
+							"hourTriggerCount": 1,
+							"minuteTriggerCount": 1,
+							"nativeDateInputs": 0,
+							"dialogVisible": true
+						},
+						"axeOpen": [],
+						"selected": {
+							"day": "2026-10-31",
+							"hour": "18",
+							"minute": "42",
+							"hourVisibleValue": "18",
+							"minuteVisibleValue": "42"
+						},
+						"draftDisplay": "10/31/2026, 6:42:00 PM",
+						"outerDialogStillVisible": true,
+						"clearedDisplay": "Not set",
+						"escapeClosed": true,
+						"focusReturned": true,
+						"cancelClosed": true
+					},
+					"openScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-open-390-light.png",
+					"draftScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-draft-390-light.png",
+					"actualTheme": "light"
+				},
+				{
+					"width": 820,
+					"theme": "light",
+					"actualPath": "/agent/god-mode/users",
+					"steps": {
+						"trigger": {
+							"tag": "BUTTON",
+							"type": "button",
+							"ariaNamed": true
+						},
+						"open": {
+							"actualTheme": "light",
+							"popupBounds": {
+								"x": 185.921875,
+								"y": 394.828125,
+								"width": 342,
+								"height": 414,
+								"right": 527.921875,
+								"bottom": 808.828125
+							},
+							"popupInside": true,
+							"calendarCount": 1,
+							"hourTriggerCount": 1,
+							"minuteTriggerCount": 1,
+							"nativeDateInputs": 0,
+							"dialogVisible": true
+						},
+						"axeOpen": [],
+						"selected": {
+							"day": "2026-10-31",
+							"hour": "18",
+							"minute": "42",
+							"hourVisibleValue": "18",
+							"minuteVisibleValue": "42"
+						},
+						"draftDisplay": "10/31/2026, 6:42:00 PM",
+						"outerDialogStillVisible": true,
+						"clearedDisplay": "Not set",
+						"escapeClosed": true,
+						"focusReturned": true,
+						"cancelClosed": true
+					},
+					"openScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-open-820-light.png",
+					"draftScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-draft-820-light.png",
+					"actualTheme": "light"
+				},
+				{
+					"width": 1440,
+					"theme": "light",
+					"actualPath": "/agent/god-mode/users",
+					"steps": {
+						"trigger": {
+							"tag": "BUTTON",
+							"type": "button",
+							"ariaNamed": true
+						},
+						"open": {
+							"actualTheme": "light",
+							"popupBounds": {
+								"x": 495.921875,
+								"y": 394.828125,
+								"width": 342,
+								"height": 414,
+								"right": 837.921875,
+								"bottom": 808.828125
+							},
+							"popupInside": true,
+							"calendarCount": 1,
+							"hourTriggerCount": 1,
+							"minuteTriggerCount": 1,
+							"nativeDateInputs": 0,
+							"dialogVisible": true
+						},
+						"axeOpen": [],
+						"selected": {
+							"day": "2026-10-31",
+							"hour": "18",
+							"minute": "42",
+							"hourVisibleValue": "18",
+							"minuteVisibleValue": "42"
+						},
+						"draftDisplay": "10/31/2026, 6:42:00 PM",
+						"outerDialogStillVisible": true,
+						"clearedDisplay": "Not set",
+						"escapeClosed": true,
+						"focusReturned": true,
+						"staleUserTransition": {
+							"userChanged": true,
+							"popupClosed": true,
+							"dialogClosed": true
+						}
+					},
+					"openScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-open-1440-light.png",
+					"draftScreenshot": "docs/report/screens/20261030-god-mode-controls-after-users-suspend-draft-1440-light.png",
+					"actualTheme": "light"
+				}
+			],
+			"rateEvents": [],
+			"nonGetApiRequests": [],
+			"stoppedOn429": false,
+			"writes": "DateTimePicker Save/Clear changed only local draft; outer Suspend/step-up never submitted.",
+			"containersStarted": "none",
+			"acceptance": "Bounded read-only dialog interaction observation."
+		},
+		"keyboardLastColumn": {
+			"runtime": "7028977f7004240730034f96b200ebab6f208f2e",
+			"role": "instance admin",
+			"width": 390,
+			"theme": "dark",
+			"rateEvents": [],
+			"writes": "Keyboard focus and ArrowRight only; no persisted writes.",
+			"containersStarted": "none",
+			"navigationStatus": 200,
+			"initial": {
+				"left": 0,
+				"max": 462,
+				"focused": true,
+				"focusVisible": true,
+				"lastColumnFullyVisible": false,
+				"lastColumnIntersection": 0,
+				"lastColumnWidth": 175.359375
+			},
+			"progress": [
+				{
+					"arrowCount": 10,
+					"left": 10,
+					"max": 462,
+					"focused": true,
+					"focusVisible": true,
+					"lastColumnFullyVisible": false,
+					"lastColumnIntersection": 0,
+					"lastColumnWidth": 175.359375
+				},
+				{
+					"arrowCount": 20,
+					"left": 83,
+					"max": 462,
+					"focused": true,
+					"focusVisible": true,
+					"lastColumnFullyVisible": false,
+					"lastColumnIntersection": 0,
+					"lastColumnWidth": 175.359375
+				},
+				{
+					"arrowCount": 30,
+					"left": 201,
+					"max": 462,
+					"focused": true,
+					"focusVisible": true,
+					"lastColumnFullyVisible": false,
+					"lastColumnIntersection": 0,
+					"lastColumnWidth": 175.359375
+				},
+				{
+					"arrowCount": 40,
+					"left": 336,
+					"max": 462,
+					"focused": true,
+					"focusVisible": true,
+					"lastColumnFullyVisible": false,
+					"lastColumnIntersection": 49.359375,
+					"lastColumnWidth": 175.359375
+				}
+			],
+			"final": {
+				"left": 462,
+				"max": 462,
+				"focused": true,
+				"focusVisible": true,
+				"lastColumnFullyVisible": true,
+				"lastColumnIntersection": 175.359375,
+				"lastColumnWidth": 175.359375
+			},
+			"screenshot": "docs/report/screens/20261030-god-mode-controls-after-jobs-keyboard-last-column-390-dark.png"
+		},
+		"initialMobile": {
+			"runtime": "7028977f7004240730034f96b200ebab6f208f2e",
+			"sessionStatus": 200,
+			"instanceAdmin": true,
+			"rows": [
+				{
+					"name": "jobs",
+					"path": "/agent/god-mode/jobs",
+					"screenshot": "docs/report/screens/20261030-god-mode-controls-after-initial-jobs-390-dark.png",
+					"status": 200,
+					"readinessError": null,
+					"pageErrors": 0,
+					"actualPath": "/agent/god-mode/jobs",
+					"actualTheme": "dark",
+					"h1Visible": true,
+					"skeletons": 0,
+					"documentOverflow": false,
+					"nativeDateInputs": 0,
+					"tableContainers": [
+						{
+							"index": 0,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 1,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 2,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 3,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 4,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 5,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 6,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 7,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 8,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 9,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 10,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 11,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 12,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 13,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 14,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 15,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 16,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 17,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 18,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 19,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 20,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 21,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 22,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 23,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						},
+						{
+							"index": 24,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 720,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 720,
+							"lastColumnInitiallyVisible": false
+						}
+					],
+					"violations": [],
+					"horizontalProbe": {
+						"original": {
+							"left": 0,
+							"max": 462,
+							"focused": true,
+							"focusVisible": true
+						},
+						"afterArrow": 1,
+						"afterEnd": 1,
+						"final": {
+							"left": 462,
+							"max": 462,
+							"focused": true,
+							"focusVisible": true,
+							"lastColumnVisible": true
+						},
+						"arrowError": null,
+						"scrollToUsed": true
+					},
+					"scrolledScreenshot": "docs/report/screens/20261030-god-mode-controls-after-initial-jobs-last-column-390-dark.png"
+				},
+				{
+					"name": "deliveries",
+					"path": "/agent/god-mode/deliveries",
+					"screenshot": "docs/report/screens/20261030-god-mode-controls-after-initial-deliveries-390-dark.png",
+					"status": 200,
+					"readinessError": null,
+					"pageErrors": 0,
+					"actualPath": "/agent/god-mode/deliveries",
+					"actualTheme": "dark",
+					"h1Visible": true,
+					"skeletons": 0,
+					"documentOverflow": false,
+					"nativeDateInputs": 0,
+					"tableContainers": [
+						{
+							"index": 0,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 300,
+							"viewportScrollWidth": 849,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 849.328125,
+							"lastColumnInitiallyVisible": false
+						}
+					],
+					"violations": []
+				},
+				{
+					"name": "storage",
+					"path": "/agent/god-mode/storage",
+					"screenshot": "docs/report/screens/20261030-god-mode-controls-after-initial-storage-390-dark.png",
+					"status": 200,
+					"readinessError": null,
+					"pageErrors": 0,
+					"actualPath": "/agent/god-mode/storage",
+					"actualTheme": "dark",
+					"h1Visible": true,
+					"skeletons": 0,
+					"documentOverflow": false,
+					"nativeDateInputs": 0,
+					"tableContainers": [
+						{
+							"index": 0,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 258,
+							"viewportScrollWidth": 330,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 329.71875,
+							"lastColumnInitiallyVisible": true
+						}
+					],
+					"violations": []
+				},
+				{
+					"name": "audit",
+					"path": "/agent/god-mode/audit",
+					"screenshot": "docs/report/screens/20261030-god-mode-controls-after-initial-audit-390-dark.png",
+					"status": 200,
+					"readinessError": null,
+					"pageErrors": 0,
+					"actualPath": "/agent/god-mode/audit",
+					"actualTheme": "dark",
+					"h1Visible": true,
+					"skeletons": 0,
+					"documentOverflow": false,
+					"nativeDateInputs": 0,
+					"tableContainers": [
+						{
+							"index": 0,
+							"rootRole": "region",
+							"rootNamed": true,
+							"viewportCount": 1,
+							"viewportTabIndex": "0",
+							"viewportClientWidth": 298,
+							"viewportScrollWidth": 977,
+							"viewportScrollLeft": 0,
+							"viewportOverflowX": "scroll",
+							"rootOverflowX": "visible",
+							"scrollOwners": [
+								{
+									"slot": "scroll-area-viewport",
+									"tag": "DIV"
+								}
+							],
+							"tableWidth": 977.015625,
+							"lastColumnInitiallyVisible": false
+						}
+					],
+					"violations": []
+				}
+			],
+			"rateEvents": [],
+			"writes": "GET and local keyboard/scroll only; no API/UI mutation.",
+			"containersStarted": "none",
+			"stoppedOn429": false
+		},
+		"negativeIdentities": [
+			{
+				"label": "owner",
+				"sessionStatus": 200,
+				"userRole": "user",
+				"activeWorkspacePresent": true,
+				"workspaceStatus": 200,
+				"activeWorkspaceInList": true,
+				"membersStatus": 200,
+				"membershipRole": "owner",
+				"instanceJobsGetStatus": 403,
+				"instanceUsersGetStatus": 403
+			},
+			{
+				"label": "admin",
+				"sessionStatus": 200,
+				"userRole": "user",
+				"activeWorkspacePresent": true,
+				"workspaceStatus": 200,
+				"activeWorkspaceInList": true,
+				"membersStatus": 200,
+				"membershipRole": "admin",
+				"instanceJobsGetStatus": 403,
+				"instanceUsersGetStatus": 403
+			},
+			{
+				"label": "member",
+				"sessionStatus": 200,
+				"userRole": "user",
+				"activeWorkspacePresent": true,
+				"workspaceStatus": 200,
+				"activeWorkspaceInList": true,
+				"membersStatus": 200,
+				"membershipRole": "member",
+				"instanceJobsGetStatus": 403,
+				"instanceUsersGetStatus": 403
+			},
+			{
+				"label": "viewer",
+				"sessionStatus": 200,
+				"userRole": "user",
+				"activeWorkspacePresent": true,
+				"workspaceStatus": 200,
+				"activeWorkspaceInList": true,
+				"membersStatus": 200,
+				"membershipRole": "viewer",
+				"instanceJobsGetStatus": 403,
+				"instanceUsersGetStatus": 403
+			}
+		],
+		"negativeRoles": [
+			{
+				"label": "owner",
+				"actualWorkspaceRole": "owner",
+				"instanceUserRole": "user",
+				"name": "jobs",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-owner-jobs-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/jobs",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "owner",
+				"actualWorkspaceRole": "owner",
+				"instanceUserRole": "user",
+				"name": "deliveries",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-owner-deliveries-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/deliveries",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "owner",
+				"actualWorkspaceRole": "owner",
+				"instanceUserRole": "user",
+				"name": "storage",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-owner-storage-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/storage",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "owner",
+				"actualWorkspaceRole": "owner",
+				"instanceUserRole": "user",
+				"name": "audit",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-owner-audit-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/audit",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "owner",
+				"actualWorkspaceRole": "owner",
+				"instanceUserRole": "user",
+				"name": "users",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-owner-users-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/users",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "admin",
+				"actualWorkspaceRole": "admin",
+				"instanceUserRole": "user",
+				"name": "jobs",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-admin-jobs-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/jobs",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "admin",
+				"actualWorkspaceRole": "admin",
+				"instanceUserRole": "user",
+				"name": "deliveries",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-admin-deliveries-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/deliveries",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "admin",
+				"actualWorkspaceRole": "admin",
+				"instanceUserRole": "user",
+				"name": "storage",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-admin-storage-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/storage",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "admin",
+				"actualWorkspaceRole": "admin",
+				"instanceUserRole": "user",
+				"name": "audit",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-admin-audit-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/audit",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "admin",
+				"actualWorkspaceRole": "admin",
+				"instanceUserRole": "user",
+				"name": "users",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-admin-users-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/users",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "member",
+				"actualWorkspaceRole": "member",
+				"instanceUserRole": "user",
+				"name": "jobs",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-member-jobs-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/jobs",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "member",
+				"actualWorkspaceRole": "member",
+				"instanceUserRole": "user",
+				"name": "deliveries",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-member-deliveries-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/deliveries",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "member",
+				"actualWorkspaceRole": "member",
+				"instanceUserRole": "user",
+				"name": "storage",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-member-storage-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/storage",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "member",
+				"actualWorkspaceRole": "member",
+				"instanceUserRole": "user",
+				"name": "audit",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-member-audit-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/audit",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "member",
+				"actualWorkspaceRole": "member",
+				"instanceUserRole": "user",
+				"name": "users",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-member-users-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/users",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "viewer",
+				"actualWorkspaceRole": "viewer",
+				"instanceUserRole": "user",
+				"name": "jobs",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-viewer-jobs-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/jobs",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "viewer",
+				"actualWorkspaceRole": "viewer",
+				"instanceUserRole": "user",
+				"name": "deliveries",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-viewer-deliveries-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/deliveries",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "viewer",
+				"actualWorkspaceRole": "viewer",
+				"instanceUserRole": "user",
+				"name": "storage",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-viewer-storage-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/storage",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "viewer",
+				"actualWorkspaceRole": "viewer",
+				"instanceUserRole": "user",
+				"name": "audit",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-viewer-audit-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/audit",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			},
+			{
+				"label": "viewer",
+				"actualWorkspaceRole": "viewer",
+				"instanceUserRole": "user",
+				"name": "users",
+				"width": 390,
+				"theme": "dark",
+				"status": 200,
+				"readinessError": null,
+				"screenshot": "docs/report/screens/20261030-god-mode-controls-after-negative-viewer-users-390-dark.png",
+				"pageErrors": 0,
+				"usersApiStatus": null,
+				"actualPath": "/agent/god-mode/users",
+				"actualTheme": "dark",
+				"skeletons": 0,
+				"alertCount": 1,
+				"deniedTextPresent": true,
+				"tableCount": 0,
+				"usersDataRowCount": 0,
+				"documentOverflow": false
+			}
+		]
+	},
+	"verified": {
+		"fullUnitTests": 7241,
+		"focusedTests": 35,
+		"typecheckTasks": 9,
+		"permissionTests": 118,
+		"contrastPairs": 401,
+		"contrastCriteriaChanged": false,
+		"commands": [
+			"pnpm test",
+			"pnpm typecheck",
+			"pnpm lint:ci",
+			"pnpm test:permissions",
+			"pnpm check:route-policy",
+			"pnpm test:contract",
+			"pnpm check:ui:raw-elements",
+			"pnpm check:tokens"
+		],
+		"bundleKB": {
+			"initial": 267.4,
+			"workGraph": 333.2,
+			"portal": 189.2
+		},
+		"dependencyAudit": {
+			"low": 1,
+			"high": 0,
+			"critical": 0,
+			"note": "Existing unfixed deepmerge low."
+		},
+		"imageScan": {
+			"high": 42,
+			"critical": 0,
+			"fixableHighCritical": 0
+		},
+		"fullUnitScope": "Integrated bda5d3a074 with origin/main fd7c37c5e, exact pnpm test12tasks/8packages; previous isolated7bc candidate7232 retained in history."
+	},
+	"review": {
+		"tier": "Independent Sol high",
+		"authorWasReviewer": false,
+		"result": "No substantiated high or medium findings in #944/#945 source and supplied browser evidence.",
+		"low": "25 Jobs ScrollArea instances have unbenchmarked rendering cost; no observed visual/input failure."
+	},
+	"g8": {
+		"status": "passed",
+		"selectedTests": 5,
+		"passed": 5,
+		"durationSeconds": 23.3,
+		"pinnedImage": "mcr.microsoft.com/playwright:v1.63.0-noble",
+		"platform": "linux/amd64",
+		"baselinesChanged": [],
+		"coverage": "Users directory, Audit, Storage, Deliveries, Jobs. Users baseline does not open suspension dialog; real SIT six draft picker cases cover that UI."
+	},
+	"limitations": [
+		"No suspension, step-up, job run/requeue/config, deletion or other persisted mutation was submitted. Picker Save changes only its local draft; API payload conversion and indefinite expiry are covered by regression tests.",
+		"Negative browser role cases are all390px actual dark, five routes by owner/admin/member/viewer. Direct Jobs/Users GET403 was measured separately; no inference from missing route listener response.",
+		"No true lead or authenticated agent-host customer fixture is claimed.",
+		"24 table-route observations plus six picker cases are bounded UI verification, not every God Mode route/state.",
+		"Initial End key did not move horizontally. Later keyboard-only ArrowRight reached exact maximum462 and last column fully visible; raw earlier observation retained.",
+		"Full hosted G8/G4 and all other required non-G11 checks must pass before merging. G11 still runs and is reported; no performance completion or budget/harness change."
+	],
+	"containers": {
+		"activeOwnedApp": "3fd56a437015380992ac3483498358ff5817cbf4db2d03cb7da53d4f440fb562",
+		"browserAgentStarted": [],
+		"originalRollback": "6c0d8bd2e4ff stopped/preserved",
+		"preExistingServices": "PostgreSQL, Valkey, proxy, Mailpit, BuildKit reused.",
+		"removedOwnedPinnedCheck": "9a2cc03e4a3a11a4755e9b22614bc3d01e2d3b0b3c2e0b65e07a035cb8854518",
+		"supersededOwnedAppRemoved": "4ab82da084abaf1337f4e625db47d368bcb775bc92233a224eef71eb9fda5dde",
+		"note": "God Mode browser evidence was captured on702. Current984 runtime retains the same God Mode source and is diagnosing separate service-desk picker controls."
+	}
+}
