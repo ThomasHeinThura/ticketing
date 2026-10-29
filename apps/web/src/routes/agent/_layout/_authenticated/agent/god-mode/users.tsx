@@ -32,6 +32,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DateTimePicker } from "@/components/common/date-time-picker";
 import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
 import {
@@ -858,11 +859,12 @@ function UserActionDialog({
                 <Label htmlFor="suspension-expiry">
                   {t("instanceUsers:copy.728bac665663")}
                 </Label>
-                <Input
+                <DateTimePicker
+                  key={user.id}
                   id="suspension-expiry"
-                  type="datetime-local"
-                  value={expiresAt}
-                  onChange={(event) => onExpiresAt(event.target.value)}
+                  label={t("instanceUsers:copy.728bac665663")}
+                  value={expiresAt || null}
+                  onChange={(value) => onExpiresAt(value ?? "")}
                 />
                 <p className="text-xs text-muted-foreground">
                   {t("instanceUsers:copy.5f1d7b5a1d87")}

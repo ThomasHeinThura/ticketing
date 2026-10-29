@@ -226,8 +226,8 @@ function JobCard({
             {t("elevatedOperationOnly")}
           </p>
         )}
-        <Frame className="min-w-0 max-w-full overflow-x-auto">
-          <Table className="min-w-[720px]">
+        <Frame className="min-w-0 max-w-full">
+          <Table className="min-w-[720px]" scrollLabel={job.name}>
             <TableHeader>
               <TableRow>
                 <TableHead>{t("nextScheduledRun")}</TableHead>

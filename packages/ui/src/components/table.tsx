@@ -1,21 +1,41 @@
 import type * as React from "react";
 
 import { cn } from "../lib/cn";
+import { ScrollArea } from "./scroll-area";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+function Table({
+  className,
+  scrollLabel,
+  ...props
+}: React.ComponentProps<"table"> & { scrollLabel?: string }) {
+  const table = (
+    <table
+      className={cn(
+        "w-full caption-bottom in-data-[slot=frame]:border-separate in-data-[slot=frame]:border-spacing-0 text-sm",
+        className,
+      )}
+      data-slot="table"
+      {...props}
+    />
+  );
+  if (scrollLabel) {
+    return (
+      <ScrollArea
+        className="relative h-auto w-full"
+        data-slot="table-container"
+        role="region"
+        aria-label={scrollLabel}
+      >
+        {table}
+      </ScrollArea>
+    );
+  }
   return (
     <div
       className="relative w-full overflow-x-auto"
       data-slot="table-container"
     >
-      <table
-        className={cn(
-          "w-full caption-bottom in-data-[slot=frame]:border-separate in-data-[slot=frame]:border-spacing-0 text-sm",
-          className,
-        )}
-        data-slot="table"
-        {...props}
-      />
+      {table}
     </div>
   );
 }
