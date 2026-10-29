@@ -28,7 +28,18 @@ import { getTaskItemStats } from "@/lib/get-task-item-stats";
 import { getPriorityIcon } from "@/lib/priority";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
+import {
+  deferKeyboardSensorEndKey,
+  deferKeyboardSensorKey,
+  isDeferredKeyboardSensorEvent,
+} from "./task-card-keyboard-sensor";
 import { TaskLabels } from "./task-labels";
+
+export {
+  deferKeyboardSensorEndKey,
+  deferKeyboardSensorKey,
+  isDeferredKeyboardSensorEvent,
+} from "./task-card-keyboard-sensor";
 
 export type TaskCardWorkspaceUser = NonNullable<
   NonNullable<ReturnType<typeof useGetActiveWorkspaceUsers>["data"]>["members"]
@@ -72,71 +83,39 @@ const EMPTY_PULL_REQUESTS: NonNullable<Task["externalLinks"]> = [];
 const DEFAULT_DRAG_TRANSITION =
   "transform 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94)";
 
-const deferredKeyboardSensorEvents = new WeakSet<KeyboardEvent>();
-
-export function isDeferredKeyboardSensorEvent(event: KeyboardEvent): boolean {
-  return deferredKeyboardSensorEvents.has(event);
-}
-
-/**
- * dnd-kit attaches KeyboardSensor's document listener on the task after Space
- * activates it. Replay an unhandled movement/end/cancel key only while this
- * same card remains connected and marked active; handled, stale, and replayed
- * events are ignored.
- */
-export function deferKeyboardSensorKey(
-  card: HTMLElement,
-  event: KeyboardEvent,
-): void {
-  if (
-    isDeferredKeyboardSensorEvent(event) ||
-    ![
-      "Space",
-      "Enter",
-      "Escape",
-      "ArrowUp",
-      "ArrowDown",
-      "ArrowLeft",
-      "ArrowRight",
-    ].includes(event.code)
-  )
-    return;
-
-  window.setTimeout(() => {
-    if (
-      event.defaultPrevented ||
-      !card.isConnected ||
-      card.dataset.taskDragging !== "true"
-    )
-      return;
-
-    const deferredEvent = new KeyboardEvent("keydown", {
-      key: event.key,
-      code: event.code,
-      bubbles: true,
-      cancelable: true,
-      altKey: event.altKey,
-      ctrlKey: event.ctrlKey,
-      metaKey: event.metaKey,
-      shiftKey: event.shiftKey,
-      repeat: event.repeat,
-    });
-    deferredKeyboardSensorEvents.add(deferredEvent);
-    card.dispatchEvent(deferredEvent);
+function TaskCard(props: TaskCardProps) {
+  const sortable = useSortable({
+    id: props.sortableId ?? props.task.id,
+    disabled: props.disableDragDrop ?? false,
   });
+  return (
+    <TaskCardPresentation
+      {...props}
+      attributes={sortable.attributes}
+      listeners={sortable.listeners}
+      setNodeRef={sortable.setNodeRef}
+      transition={sortable.transition}
+      isDragging={sortable.isDragging}
+      transformX={sortable.transform?.x}
+      transformY={sortable.transform?.y}
+      transformScaleX={sortable.transform?.scaleX}
+      transformScaleY={sortable.transform?.scaleY}
+    />
+  );
 }
 
-/** @deprecated Use deferKeyboardSensorKey; retained for existing callers/tests. */
-export function deferKeyboardSensorEndKey(
-  card: HTMLElement,
-  event: KeyboardEvent,
-): void {
-  deferKeyboardSensorKey(card, event);
-}
+type SortablePresentationProps = Pick<
+  ReturnType<typeof useSortable>,
+  "attributes" | "listeners" | "setNodeRef" | "transition" | "isDragging"
+> & {
+  transformX?: number;
+  transformY?: number;
+  transformScaleX?: number;
+  transformScaleY?: number;
+};
 
-function TaskCard({
+const TaskCardPresentation = memo(function TaskCardPresentation({
   task,
-  sortableId,
   disableDragDrop = false,
   workspaceId,
   assignee,
@@ -153,15 +132,28 @@ function TaskCard({
   onToggleSelection,
   badges,
   t,
-}: TaskCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: sortableId ?? task.id, disabled: disableDragDrop });
+  attributes,
+  listeners,
+  setNodeRef,
+  transition,
+  isDragging,
+  transformX,
+  transformY,
+  transformScaleX,
+  transformScaleY,
+}: TaskCardProps & SortablePresentationProps) {
+  const transform =
+    transformX === undefined ||
+    transformY === undefined ||
+    transformScaleX === undefined ||
+    transformScaleY === undefined
+      ? null
+      : {
+          x: transformX,
+          y: transformY,
+          scaleX: transformScaleX,
+          scaleY: transformScaleY,
+        };
   // Sortable's disabled attributes describe a disabled drag activator, not a disabled task.
   const dragListeners = disableDragDrop ? undefined : listeners;
   const {
@@ -568,6 +560,6 @@ function TaskCard({
       )}
     </Fieldset>
   );
-}
+});
 
 export default memo(TaskCard);

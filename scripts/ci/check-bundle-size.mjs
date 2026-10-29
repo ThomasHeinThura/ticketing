@@ -232,9 +232,11 @@ export async function checkBundleSizes({
           if (
             entry.name === "project-layout" ||
             entry.name === "work-items-panel" ||
+            entry.name === "agent-translation" ||
             preloadKey.endsWith("/components/common/project-layout.tsx") ||
             preloadKey.endsWith("/components/work-item/work-items-panel.tsx") ||
             preloadKey.endsWith("/lib/i18n/group-loaders-slim.ts") ||
+            preloadKey.endsWith("/lib/i18n/agent-translation.ts") ||
             preloadKey.endsWith(
               "/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx?tsr-split=component",
             )

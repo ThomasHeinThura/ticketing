@@ -7,10 +7,24 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import packageJson from "../../package.json";
+import { precompressGeneratedAssets } from "../api/src/static/precompressed-assets";
+import { createPrecompressedAssetsMiddleware } from "../api/src/static/precompressed-middleware";
 import {
   findDeferredNamespaceUsers,
   i18nNamespaceGroups,
 } from "./vite/i18n-namespace-groups";
+
+export function precompressedAssets(outDir: string): Plugin {
+  return {
+    name: "taskdesk:precompressed-assets",
+    async writeBundle() {
+      await precompressGeneratedAssets(outDir);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(createPrecompressedAssetsMiddleware(outDir));
+    },
+  };
+}
 
 function preloadWorkRouteForDirectVisits(): Plugin {
   return {
@@ -115,6 +129,22 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve the authenticated shell chunk.",
           );
         addChunkAndImports(authenticatedShellChunk.fileName);
+        // Agent terminology is installed before a scoped locale is published. Its tiny
+        // module otherwise starts after entry evaluation and adds a cold round trip.
+        const agentTerminologyChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              moduleId
+                .replaceAll("\\", "/")
+                .endsWith("/lib/i18n/agent-translation.ts"),
+            ),
+        );
+        if (agentTerminologyChunk?.type !== "chunk")
+          throw new Error(
+            "Work-route preload could not resolve agent terminology.",
+          );
+        addChunkAndImports(agentTerminologyChunk.fileName);
         // The panel supplies the route's first content and heading readiness
         // boundary, but is dynamically imported by beforeLoad only after the
         // route code executes. Fetch its static closure alongside the route so
@@ -541,6 +571,7 @@ export default defineConfig(({ mode }) => {
           tailwindcss(),
           react(),
           babel({ presets: [reactCompilerPreset()] }),
+          precompressedAssets(outDir),
         ],
     server: {
       host: true,
@@ -605,7 +636,11 @@ export default defineConfig(({ mode }) => {
                       // Keep shared bootstrap modules in the initial graph before the frame
                       // group captures its remaining static dependencies below.
                       priority: 2,
-                      maxSize: 1_000_000,
+                      // Agent bootstrap otherwise splits into multiple cold
+                      // requests. This source-size partition preserves the lazy graph;
+                      // emitted gzip budgets remain independently enforced. The larger
+                      // group trades cross-release vendor cache reuse for fewer requests.
+                      maxSize: isPortal ? 1_000_000 : 4_000_000,
                     },
                     ...(!isPortal
                       ? [
@@ -642,6 +677,22 @@ export default defineConfig(({ mode }) => {
                             debugName: "work-route",
                             priority: 1,
                             maxSize: 1_000_000,
+                          },
+                          {
+                            // Toolbar permissions, dialog primitives and the detail shell must
+                            // not wait for the list panel. Warm the shell with the row controls;
+                            // its data-heavy body remains a separate lazy module.
+                            name: "work-item-shared-controls",
+                            test: /\/src\/(?:hooks\/use-workspace-permission\.ts|components\/work-item\/(?:work-item-create-dialog-shell|work-item-side-pane)\.tsx|components\/kanban-board\/task-card-keyboard-sensor\.ts)$/u,
+                            priority: 1,
+                          },
+                          {
+                            // Fetch the grouped list and its drag window together instead of queuing
+                            // dozens of small preload links before its interactive rows can mount.
+                            name: "work-item-list-interactions",
+                            test: /\/src\/components\/work-item\/(?:work-item-kaneo-list|virtualization\/virtualized-sortable-list)\.tsx$/u,
+                            includeDependenciesRecursively: false,
+                            priority: 1,
                           },
                         ]
                       : []),

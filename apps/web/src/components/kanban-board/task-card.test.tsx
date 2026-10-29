@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { TFunction } from "i18next";
+import { createContext, useContext, useMemo } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
@@ -9,12 +10,16 @@ import TaskCard, {
   isDeferredKeyboardSensorEvent,
 } from "./task-card";
 
+const SortableUpdate = createContext(0);
+
 const mocks = vi.hoisted(() => ({
   openContextMenu: vi.fn(),
   openTask: vi.fn(),
   dragStart: vi.fn(),
   dragKeyDown: vi.fn(),
   isDragging: false,
+  transformX: 0,
+  ref: vi.fn(),
 }));
 
 afterEach(() => {
@@ -22,6 +27,7 @@ afterEach(() => {
   vi.clearAllMocks();
   vi.restoreAllMocks();
   mocks.isDragging = false;
+  mocks.transformX = 0;
   useBulkSelectionStore.setState({
     selectedTaskIds: new Set(),
     focusedTaskId: null,
@@ -29,21 +35,33 @@ afterEach(() => {
 });
 
 vi.mock("@dnd-kit/sortable", () => ({
-  useSortable: ({ disabled }: { disabled: boolean }) => ({
-    attributes: {
-      role: "button",
-      tabIndex: 0,
-      "aria-disabled": disabled,
-      "aria-pressed": false,
-      "aria-roledescription": "sortable",
-      "aria-describedby": "dnd-instructions",
-    },
-    listeners: { onPointerDown: mocks.dragStart, onKeyDown: mocks.dragKeyDown },
-    setNodeRef: vi.fn(),
-    transform: null,
-    transition: undefined,
-    isDragging: mocks.isDragging,
-  }),
+  useSortable: ({ disabled }: { disabled: boolean }) => {
+    useContext(SortableUpdate);
+    return {
+      attributes: useMemo(
+        () => ({
+          role: "button",
+          tabIndex: 0,
+          "aria-disabled": disabled,
+          "aria-pressed": false,
+          "aria-roledescription": "sortable",
+          "aria-describedby": "dnd-instructions",
+        }),
+        [disabled],
+      ),
+      listeners: useMemo(
+        () => ({
+          onPointerDown: mocks.dragStart,
+          onKeyDown: mocks.dragKeyDown,
+        }),
+        [],
+      ),
+      setNodeRef: mocks.ref,
+      transform: { x: mocks.transformX, y: 0, scaleX: 1, scaleY: 1 },
+      transition: undefined,
+      isDragging: mocks.isDragging,
+    };
+  },
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -453,6 +471,51 @@ describe("TaskCard keyboard context menu", () => {
     const updatedCard = screen.getByText("Keyboard task").closest("fieldset");
     expect(updatedCard).toHaveAttribute("data-task-selected", "true");
     expect(updatedCard).toHaveClass("ring-2");
+  });
+
+  it("skips unchanged sortable transforms but renders changed coordinates and task data", () => {
+    const translate = vi.fn(mockT);
+    const props = {
+      task,
+      projectSlug: "PRJ",
+      taskIsCompleted: false,
+      displayPreferences,
+      isSelected: false,
+      isFocused: false,
+      onOpenTask: mocks.openTask,
+      onContextMenuTask: mocks.openContextMenu,
+      t: translate,
+    };
+    const view = render(
+      <SortableUpdate.Provider value={1}>
+        <TaskCard {...props} />
+      </SortableUpdate.Provider>,
+    );
+    const card = screen.getByText("Keyboard task").closest("fieldset");
+    translate.mockClear();
+    view.rerender(
+      <SortableUpdate.Provider value={2}>
+        <TaskCard {...props} />
+      </SortableUpdate.Provider>,
+    );
+    expect(translate).not.toHaveBeenCalled();
+    mocks.transformX = 12;
+    view.rerender(
+      <SortableUpdate.Provider value={3}>
+        <TaskCard {...props} />
+      </SortableUpdate.Provider>,
+    );
+    expect(translate).toHaveBeenCalled();
+    expect(screen.getByText("Keyboard task").closest("fieldset")).toHaveStyle({
+      transform: "translate3d(12px, 0px, 0) scaleX(1) scaleY(1)",
+    });
+    view.rerender(
+      <SortableUpdate.Provider value={4}>
+        <TaskCard {...props} task={{ ...task, title: "Updated task" }} />
+      </SortableUpdate.Provider>,
+    );
+    expect(screen.getByText("Updated task")).toBeInTheDocument();
+    expect(screen.getByText("Updated task").closest("fieldset")).toBe(card);
   });
 
   it("keeps the label spacing without an empty wrapper when labels are absent", () => {

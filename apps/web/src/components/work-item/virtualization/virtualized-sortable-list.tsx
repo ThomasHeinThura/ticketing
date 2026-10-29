@@ -101,12 +101,19 @@ export default function VirtualizedSortableList<Item>({
     [activeIndex, focusedIndex, items.length, overIndex, retainedIndex],
   );
 
+  const getScrollElement = useCallback(
+    () => findVerticalScrollParent(listRef.current),
+    [],
+  );
+  const estimateItemSize = useCallback(() => estimateSize, [estimateSize]);
+  const getItemKey = useCallback((index: number) => ids[index] ?? index, [ids]);
+
   const virtualizer = useVirtualizer({
     count: items.length,
-    getScrollElement: () => findVerticalScrollParent(listRef.current),
+    getScrollElement,
     initialRect: { width: 960, height: 640 },
-    estimateSize: () => estimateSize,
-    getItemKey: (index) => ids[index] ?? index,
+    estimateSize: estimateItemSize,
+    getItemKey,
     gap,
     overscan: 3,
     rangeExtractor,

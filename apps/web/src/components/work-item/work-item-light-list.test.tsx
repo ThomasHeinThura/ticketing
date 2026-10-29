@@ -1,5 +1,6 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { WorkItemRow } from "@/types/work-item";
 import WorkItemLightList, {
   canPreviewWorkItemList,
@@ -91,6 +92,29 @@ describe("WorkItemLightList", () => {
     expect(within(preview).queryByText("Title 200")).not.toBeInTheDocument();
     expect(within(preview).getByText("Waiting")).toBeInTheDocument();
     expect(within(preview).getByText("tasks:listView.noTasks")).toBeVisible();
+  });
+
+  it("formats a real due date and respects the hidden-date preference", () => {
+    const showDueDates = useUserPreferencesStore.getState().showDueDates;
+    const datedItem = {
+      ...item(1, "open"),
+      dueDate: new Date(2026, 0, 12, 12).toISOString(),
+    };
+    try {
+      act(() => useUserPreferencesStore.setState({ showDueDates: true }));
+      render(
+        <WorkItemLightList
+          projectId="project-1"
+          workItems={[datedItem]}
+          states={states}
+        />,
+      );
+      expect(screen.getByText("Jan 12")).toBeVisible();
+      act(() => useUserPreferencesStore.setState({ showDueDates: false }));
+      expect(screen.queryByText("Jan 12")).not.toBeInTheDocument();
+    } finally {
+      act(() => useUserPreferencesStore.setState({ showDueDates }));
+    }
   });
 
   it("carries none of the hydrated list's markers or controls", () => {

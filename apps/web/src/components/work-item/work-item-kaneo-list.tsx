@@ -2,7 +2,14 @@ import { closestCorners, DndContext, DragOverlay } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription, Button } from "@taskdesk/ui";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { ListColumnSection } from "@/components/list-view/list-column-section";
@@ -67,6 +74,10 @@ function useRowModulesSettled() {
   }, [settled]);
   return settled;
 }
+
+const getTaskId = (
+  task: ProjectWithTasks["columns"][number]["tasks"][number],
+) => task.id;
 
 /** Kaneo presentation over canonical rows; all writes stay with canonical actions. */
 export default function WorkItemKaneoList({
@@ -145,7 +156,7 @@ export default function WorkItemKaneoList({
   const hasUngroupedRows = props.workItems?.some(
     (item) => !states.data?.some((state) => state.id === item.stateId),
   );
-  if (
+  const canRenderGrouped = !(
     props.isError ||
     props.isLoading ||
     !props.workItems?.length ||
@@ -155,7 +166,29 @@ export default function WorkItemKaneoList({
     states.isError ||
     states.isLoading ||
     !rowModulesSettled
-  ) {
+  );
+  const columns = useMemo(() => {
+    if (!canRenderGrouped) return [];
+    return (states.data ?? []).map(
+      (state) =>
+        ({
+          id: state.id,
+          slug: state.id,
+          name: state.name,
+          isFinal: state.group === "completed" || state.group === "cancelled",
+          icon: null,
+          tasks: drag.itemsByState.get(state.id)?.map(workItemKaneoView) ?? [],
+        }) satisfies ProjectWithTasks["columns"][number],
+    );
+  }, [canRenderGrouped, states.data, drag.itemsByState]);
+  const rowsById = useMemo(
+    () =>
+      new Map(
+        canRenderGrouped ? props.workItems?.map((item) => [item.id, item]) : [],
+      ),
+    [canRenderGrouped, props.workItems],
+  );
+  if (!canRenderGrouped) {
     // While only the row modules are still downloading, keep the grouped list's first viewport
     // (the preview the panel painted) instead of swapping in the full table (G11 work-list LCP).
     if (
@@ -182,19 +215,7 @@ export default function WorkItemKaneoList({
     return <WorkItemList {...props} />;
   }
 
-  const workItems = props.workItems;
-  const columns = (states.data ?? []).map(
-    (state) =>
-      ({
-        id: state.id,
-        slug: state.id,
-        name: state.name,
-        isFinal: state.group === "completed" || state.group === "cancelled",
-        icon: null,
-        tasks: drag.itemsByState.get(state.id)?.map(workItemKaneoView) ?? [],
-      }) satisfies ProjectWithTasks["columns"][number],
-  );
-  const rowsById = new Map(workItems.map((item) => [item.id, item]));
+  const workItems = props.workItems ?? [];
   const renderTaskRow = (
     task: ProjectWithTasks["columns"][number]["tasks"][number],
     column: ProjectWithTasks["columns"][number],
@@ -292,7 +313,7 @@ export default function WorkItemKaneoList({
             <AlertDescription>{drag.notice.text}</AlertDescription>
           </Alert>
         ) : null}
-        <WorkItemContextMenu items={props.workItems}>
+        <WorkItemContextMenu items={workItems}>
           <div className="divide-y divide-border/50">
             {columns.map((column) => (
               <ListColumnSection
@@ -322,7 +343,7 @@ export default function WorkItemKaneoList({
                   >
                     <VirtualizedSortableList
                       items={column.tasks}
-                      getItemId={(task) => task.id}
+                      getItemId={getTaskId}
                       as="div"
                       className="relative"
                       estimateSize={46}

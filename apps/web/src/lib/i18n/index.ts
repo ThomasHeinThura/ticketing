@@ -10,6 +10,7 @@ import i18n from "i18next";
 import resourcesToBackend from "i18next-resources-to-backend";
 import { initReactI18next } from "react-i18next";
 import { afterFirstPaint } from "./after-first-paint";
+import { installBatchedResourceUpdates } from "./batched-resource-updates";
 import slimGroupLoaders from "./group-loaders-slim";
 import {
   WORK_LIST_PATH_PATTERN,
@@ -228,12 +229,19 @@ export async function createScopedI18n(
       ns: initialNamespaces,
       resources: seedResources,
       partialBundledLanguages: Boolean(seedResources),
-      react: { bindI18nStore: "added" },
+      react: useNamespaceGroups
+        ? {
+            bindI18n: "languageChanged batchedResourcesChanged",
+            bindI18nStore: "",
+          }
+        : { bindI18nStore: "added" },
       interpolation: {
         escapeValue: false,
         skipOnVariables: true,
       },
     });
+
+  if (useNamespaceGroups) installBatchedResourceUpdates(scopedI18n);
 
   if (useNamespaceGroups && !initialNamespacesOverride) {
     const instances = scopedGroupInstances.get(locale) ?? new Set();
@@ -275,7 +283,10 @@ void i18n
           ns: [...WORK_ROUTE_I18N_NAMESPACES],
           // A namespace that arrives after first paint re-renders the components that
           // already asked for it instead of leaving their keys on screen.
-          react: { bindI18nStore: "added" },
+          react: {
+            bindI18n: "languageChanged batchedResourcesChanged",
+            bindI18nStore: "",
+          },
         }
       : {}),
     interpolation: {
@@ -283,6 +294,9 @@ void i18n
       skipOnVariables: true,
     },
   })
-  .then(() => preloadNamespaces(initialLocale));
+  .then(() => {
+    if (useNamespaceGroups) installBatchedResourceUpdates(i18n);
+    return preloadNamespaces(initialLocale);
+  });
 
 export { i18n };

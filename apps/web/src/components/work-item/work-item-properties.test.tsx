@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
@@ -793,6 +799,140 @@ describe("WorkItemProperties", () => {
         expectedCurrentAssigneeId: null,
       }),
     );
+  });
+
+  it.each(["paint", "hidden"] as const)(
+    "refreshes the confirmed assignment after %s while holding the mutation scope",
+    async (finishBy) => {
+      mocks.assign.mockResolvedValue({ key: "HELP-7", version: 5 });
+      mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+      const original = item();
+      const { client } = renderProps(
+        <WorkItemProperties item={original} onAccessLost={vi.fn()} />,
+        original,
+      );
+      fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+      const choice = await screen.findByRole("button", { name: /Casey Ray/ });
+      const frames: FrameRequestCallback[] = [];
+      const raf = vi
+        .spyOn(window, "requestAnimationFrame")
+        .mockImplementation((cb) => {
+          frames.push(cb);
+          return frames.length;
+        });
+      const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+      const invalidate = vi.spyOn(client, "invalidateQueries");
+      try {
+        fireEvent.click(choice);
+        await waitFor(() => expect(frames).toHaveLength(1));
+        expect(
+          client.getQueryData(["work-items", "detail", original.key]),
+        ).toMatchObject({
+          assigneeId: "person-2",
+          version: 5,
+        });
+        expect(invalidate).not.toHaveBeenCalled();
+        await waitFor(() =>
+          expect(client.getMutationCache().getAll().at(-1)?.state.status).toBe(
+            "pending",
+          ),
+        );
+        if (finishBy === "paint") {
+          const firstFrame = frames.splice(0);
+          act(() => {
+            for (const callback of firstFrame) callback(0);
+          });
+          expect(invalidate).not.toHaveBeenCalled();
+          const secondFrame = frames.splice(0);
+          act(() => {
+            for (const callback of secondFrame) callback(0);
+          });
+        } else {
+          hidden.mockReturnValue(true);
+          fireEvent(document, new Event("visibilitychange"));
+        }
+        await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(6));
+        await waitFor(() =>
+          expect(client.getMutationCache().getAll().at(-1)?.state.status).toBe(
+            "success",
+          ),
+        );
+      } finally {
+        raf.mockRestore();
+        hidden.mockRestore();
+        invalidate.mockRestore();
+      }
+    },
+  );
+
+  it("serializes assignments until the preceding detail refresh settles", async () => {
+    mocks.assign
+      .mockResolvedValueOnce({ key: "HELP-7", version: 5 })
+      .mockResolvedValueOnce({ key: "HELP-7", version: 6 });
+    mocks.people = [
+      { personId: "person-2", name: "Casey Ray" },
+      { personId: "person-3", name: "Morgan Lee" },
+    ];
+    const original = item();
+    const { client } = renderProps(
+      <>
+        <WorkItemProperties item={original} onAccessLost={vi.fn()} />
+        <WorkItemProperties item={original} onAccessLost={vi.fn()} />
+      </>,
+      original,
+    );
+    const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    let releaseRefresh: () => void = () => {};
+    const detailRefresh = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    let held = false;
+    const invalidate = vi
+      .spyOn(client, "invalidateQueries")
+      .mockImplementation((filters) => {
+        if (
+          !held &&
+          filters?.queryKey?.join("/") === "work-items/detail/HELP-7"
+        ) {
+          held = true;
+          return detailRefresh;
+        }
+        return Promise.resolve();
+      });
+    try {
+      const controls = screen.getAllByTestId("work-item-assignee-control");
+      fireEvent.click(controls[0]);
+      fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+      await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(6));
+      fireEvent.click(controls[1]);
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Morgan Lee/ }),
+      );
+      await waitFor(() =>
+        expect(client.getMutationCache().getAll()).toHaveLength(2),
+      );
+      expect(mocks.assign).toHaveBeenCalledTimes(1);
+      expect(
+        client.getQueryData(["work-items", "detail", original.key]),
+      ).toMatchObject({
+        assigneeId: "person-2",
+        version: 5,
+      });
+      releaseRefresh();
+      await waitFor(() => expect(mocks.assign).toHaveBeenCalledTimes(2));
+      await waitFor(() =>
+        expect(
+          client.getQueryData(["work-items", "detail", original.key]),
+        ).toMatchObject({
+          assigneeId: "person-3",
+          version: 6,
+        }),
+      );
+    } finally {
+      releaseRefresh();
+      hidden.mockRestore();
+      invalidate.mockRestore();
+    }
   });
 
   it("cancels a take-over without assigning", async () => {

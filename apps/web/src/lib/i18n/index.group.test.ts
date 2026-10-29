@@ -96,6 +96,32 @@ describe("i18n group mode on the work list", () => {
     expect(after.hasLoadedNamespace("settings")).toBe(true);
   });
 
+  it("coalesces deferred additions independently for base and scoped stores", async () => {
+    const { i18n, createScopedI18n, whenAllNamespacesLoaded } =
+      await importInGroupMode();
+    const scoped = await createScopedI18n("en-US");
+    const baseAdded = vi.fn();
+    const scopedAdded = vi.fn();
+    const baseNotice = vi.fn();
+    const scopedNotice = vi.fn();
+    i18n.store.on("added", baseAdded);
+    scoped.store.on("added", scopedAdded);
+    i18n.on("batchedResourcesChanged", baseNotice);
+    scoped.on("batchedResourcesChanged", scopedNotice);
+    await whenAllNamespacesLoaded();
+    await vi.waitFor(() => {
+      expect(baseNotice).toHaveBeenCalledTimes(1);
+      expect(scopedNotice).toHaveBeenCalledTimes(1);
+    });
+    expect(baseAdded.mock.calls.length).toBeGreaterThan(0);
+    expect(scopedAdded.mock.calls.length).toBeGreaterThan(0);
+    const baseNamespaces = Object.keys(i18n.getDataByLanguage("en-US") ?? {});
+    const scopedNamespaces = Object.keys(
+      scoped.getDataByLanguage("en-US") ?? {},
+    );
+    expect(scopedNamespaces.sort()).toEqual(baseNamespaces.sort());
+  });
+
   it("retries once, then falls back to the full catalog, never leaving keys unresolved", async () => {
     const { i18n, whenAllNamespacesLoaded } = await importInGroupMode();
     rest.fail = 1;

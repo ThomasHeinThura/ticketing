@@ -27,11 +27,11 @@ import { getInitials } from "@/lib/get-initials";
 import { getPriorityIcon } from "@/lib/priority";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import type Task from "@/types/task";
+import type { TaskCardWorkspaceUser } from "../kanban-board/task-card";
 import {
   deferKeyboardSensorKey,
   isDeferredKeyboardSensorEvent,
-  type TaskCardWorkspaceUser,
-} from "../kanban-board/task-card";
+} from "../kanban-board/task-card-keyboard-sensor";
 import { TaskLabels } from "../kanban-board/task-labels";
 
 type TaskRowProps = {

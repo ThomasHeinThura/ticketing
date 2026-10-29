@@ -95,7 +95,7 @@ describe("work item list selection (bulk assign, VW-3)", () => {
     mount({ canBulkAssign: true });
     await screen.findByRole("checkbox", { name: "Select WLP-1" });
     expect(
-      screen.getByRole("checkbox", {
+      await screen.findByRole("checkbox", {
         name: translate("workItems:bulk.selectAll"),
       }),
     ).toBeInTheDocument();
@@ -103,7 +103,7 @@ describe("work item list selection (bulk assign, VW-3)", () => {
       screen.getByRole("checkbox", { name: "Select WLP-1" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: "Select WLP-2" }),
+      await screen.findByRole("checkbox", { name: "Select WLP-2" }),
     ).toBeInTheDocument();
   });
 
@@ -123,7 +123,7 @@ describe("work item list selection (bulk assign, VW-3)", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Select WLP-2" }));
     expect(onSelectionChange).toHaveBeenCalledWith("WLP-2", true);
     fireEvent.click(
-      screen.getByRole("checkbox", {
+      await screen.findByRole("checkbox", {
         name: translate("workItems:bulk.selectAll"),
       }),
     );
@@ -134,7 +134,7 @@ describe("work item list selection (bulk assign, VW-3)", () => {
     mount({ canBulkAssign: true, selectedKeys: ["WLP-1", "WLP-2"] });
     await screen.findByRole("checkbox", { name: "Select WLP-1" });
     expect(
-      screen.getByRole("checkbox", {
+      await screen.findByRole("checkbox", {
         name: translate("workItems:bulk.selectAll"),
       }),
     ).toBeChecked();
@@ -142,7 +142,7 @@ describe("work item list selection (bulk assign, VW-3)", () => {
     mount({ canBulkAssign: true, selectedKeys: ["WLP-1"] });
     await screen.findByRole("checkbox", { name: "Select WLP-1" });
     expect(
-      screen.getByRole("checkbox", {
+      await screen.findByRole("checkbox", {
         name: translate("workItems:bulk.selectAll"),
       }),
     ).not.toBeChecked();

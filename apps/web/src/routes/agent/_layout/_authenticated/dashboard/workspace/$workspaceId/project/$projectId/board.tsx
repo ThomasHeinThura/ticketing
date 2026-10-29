@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import LegacyProjectView from "@/components/common/legacy-project-view";
-import { parseLegacyProjectViewSearch } from "@/lib/legacy-project-view";
+import { parseLegacyProjectViewSearch } from "@/lib/parse-legacy-project-view-search";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board",

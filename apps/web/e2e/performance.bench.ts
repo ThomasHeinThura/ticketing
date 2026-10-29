@@ -139,10 +139,16 @@ test.beforeAll(async ({ browser }) => {
   );
   for (const state of ["unthrottled", "throttled"] as const) {
     const batches: number[][] = [];
-    for (let index = 0; index < CALIBRATION_BATCHES; index += 1)
-      batches.push(
-        await measureCalibrationRuns(browser, state === "throttled"),
+    for (let index = 0; index < CALIBRATION_BATCHES; index += 1) {
+      const runs = await measureCalibrationRuns(browser, state === "throttled");
+      batches.push(runs);
+      // Keep diagnostic evidence even when validation rejects an unstable batch.
+      console.log(
+        `G11 calibration raw batch ${index + 1} [${state}]: runs (${runs
+          .map((value) => value.toFixed(2))
+          .join(", ")})`,
       );
+    }
     const calibration = resolveJobCalibration({ batches, state });
     jobCalibrations[state] = calibration;
     calibration.batches.forEach((batch, index) => {
@@ -666,11 +672,6 @@ async function collectTaskComment(page: Page) {
 async function collectRouteTransition(page: Page) {
   await openWorkList(page);
   await workItemLink(page, WORK_ITEM_KEY).click();
-  await expect(
-    page.locator(
-      '[data-testid="work-item-detail-loading"], [data-testid="work-item-detail"]',
-    ),
-  ).toBeVisible({ timeout: 15_000 });
   try {
     await page.waitForFunction(
       () => (window as G11Window).__g11Metrics.routePaint > 0,
@@ -680,7 +681,6 @@ async function collectRouteTransition(page: Page) {
   } catch (error) {
     const diagnostic = await page.evaluate(() => ({
       metrics: (window as G11Window).__g11Metrics,
-      url: location.href,
       loading: !!document.querySelector(
         '[data-testid="work-item-detail-loading"]',
       ),
@@ -696,6 +696,13 @@ async function collectRouteTransition(page: Page) {
   );
   if (clickToPaint <= 0)
     throw new Error("The detail route emitted no loading/content paint.");
+  // A pending visibility assertion serializes Playwright's failure ARIA snapshot.
+  // Keep that diagnostic work outside the independently recorded paint interval.
+  await expect(
+    page.locator(
+      '[data-testid="work-item-detail-loading"], [data-testid="work-item-detail"]',
+    ),
+  ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("work-item-detail")).toBeVisible({
     timeout: 15_000,
   });

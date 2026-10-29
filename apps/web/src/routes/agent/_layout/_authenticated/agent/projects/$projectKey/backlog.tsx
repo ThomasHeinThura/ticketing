@@ -38,7 +38,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
-import { normalizeCanonicalWorkItemSelection } from "@/lib/project-layout-navigation";
+import { normalizeCanonicalWorkItemSelection } from "@/lib/normalize-canonical-work-item-selection";
 import {
   parseWorkItemListSearch,
   routes,
