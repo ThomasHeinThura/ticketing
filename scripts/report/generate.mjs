@@ -99,7 +99,7 @@ const next = data.next
   ? `<section class="card"><h2>Next</h2><p>${esc(data.next)}</p></section>`
   : "";
 const validation = data.validation_runs?.length
-  ? `<section class="card"><details><summary>Current validation evidence</summary><ul>${data.validation_runs.map((run) => `<li><strong>${esc(run.check)}:</strong> ${esc(run.result)}</li>`).join("")}</ul></details></section>`
+  ? `<section class="card"><details><summary>Validation evidence (dated receipts)</summary><ul>${data.validation_runs.map((run) => `<li><strong>${esc(run.check)}:</strong> ${esc(run.result)}</li>`).join("")}</ul></details></section>`
   : "";
 const goal = data.p6_goal
   ? `<section class="card"><h2>P6 goal</h2><p>${esc(data.p6_goal.status)}. ${esc(data.p6_goal.target)}</p><ul>${data.p6_goal.goals.map((item) => `<li>${esc(item)}</li>`).join("")}</ul><p>${esc(data.p6_goal.next)}</p></section>`
@@ -119,7 +119,7 @@ const html = `<!doctype html>
 :root[data-theme="dark"]{color-scheme:dark;--bg:#1a1a19;--card:#222221;--ink:#f0efec;--ink2:#c3c2b7;--line:#3a3a38;
 --c1:#3987e5;--c2:#199e70;--c3:#c98500;--c4:#e66767;--c5:#9085e9;--c6:#6b6a66;--c7:#ab85ed;--ok:#3fae3f;--bad:#e66767}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
-main{max-width:900px;margin:0 auto;padding:24px 16px}
+main{overflow-wrap:anywhere;max-width:900px;margin:0 auto;padding:24px 16px}
 h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:0}h3{font-size:14px;margin:14px 0 4px;color:var(--ink2)}
 .sub{color:var(--ink2);margin:0 0 16px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 14px}
@@ -139,7 +139,7 @@ details{margin-top:8px}summary{cursor:pointer;font-weight:600}
 <p class="sub">Updated ${esc(data.generated.slice(0, 16).replace("T", " "))} UTC · ${total} requirements in ${esc(data.phases[0].id)}–${esc(data.phases.at(-1).id)}</p>
 ${data.status ? `<p class="note">${esc(data.status)}</p>` : ""}
 <p class="meta">Source implementation, tested behavior, browser verification and Thomas acceptance are separate. Counts below require complete requirement evidence; scoped passes are listed in validation details.</p>
-<p class="meta">Review once at phase end; fix and retry up to three rounds. A fourth round needs Thomas’s approval.</p>
+<p class="meta">Each backlog PR receives independent review at its required risk tier. After three failed review rounds, stop and ask Thomas.</p>
 <section class="card"><h2>Overall</h2>${bar(all)}<div class="legend">${legend}</div></section>
 ${rows}
 ${sharedGaps}

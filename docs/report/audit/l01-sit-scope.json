@@ -1,0 +1,1477 @@
+{
+	"audit": "L-01 saved-view fixture scope and positive-owner follow-up",
+	"dateUtc": "2026-10-28",
+	"scopeProbe": [
+		{
+			"role": "admin",
+			"http": 200,
+			"listHttp": 200,
+			"visibility": "private",
+			"availableCount": 1,
+			"fixtureOrigin": "admin-linked existing saved view"
+		},
+		{
+			"role": "owner",
+			"http": 404,
+			"listHttp": 200,
+			"visibility": null,
+			"availableCount": 2,
+			"fixtureOrigin": "admin-linked existing saved view"
+		},
+		{
+			"role": "lead",
+			"http": 404,
+			"listHttp": 200,
+			"visibility": null,
+			"availableCount": 0,
+			"fixtureOrigin": "admin-linked existing saved view"
+		},
+		{
+			"role": "member",
+			"http": 404,
+			"listHttp": 200,
+			"visibility": null,
+			"availableCount": 0,
+			"fixtureOrigin": "admin-linked existing saved view"
+		},
+		{
+			"role": "viewer",
+			"http": 404,
+			"listHttp": 200,
+			"visibility": null,
+			"availableCount": 0,
+			"fixtureOrigin": "admin-linked existing saved view"
+		}
+	],
+	"source": "apps/api/src/view/controllers/get-view.ts: private non-creator returns 404; creator uses person ID, not user ID",
+	"interpretation": "The original admin-linked private view is an expected cross-identity scope denial. Other identities private/detail 404s do not establish a product defect or a positive own-scope workflow. Owner has two existing own-reachable views; lead/member/viewer have none, so their own-scope detail remains fixture-limited.",
+	"ownerFollowup": [
+		{
+			"role": "owner",
+			"template": "/agent/views/{id}",
+			"resolvedUrl": "https://ticketing.localhost/agent/views/geocrt66mms5prdpvveyzkcg",
+			"theme": "light",
+			"width": "desktop",
+			"fixture": "existing record returned by this identity own-reachable list",
+			"skeletonNodes": 0,
+			"mainChars": 976,
+			"headingCount": 1,
+			"apiErrorCodes": [],
+			"status": "settled_content",
+			"themeApplied": true
+		},
+		{
+			"role": "owner",
+			"template": "/agent/views/{id}",
+			"resolvedUrl": "https://ticketing.localhost/agent/views/geocrt66mms5prdpvveyzkcg",
+			"theme": "light",
+			"width": "tablet",
+			"fixture": "existing record returned by this identity own-reachable list",
+			"skeletonNodes": 0,
+			"mainChars": 976,
+			"headingCount": 1,
+			"apiErrorCodes": [],
+			"status": "settled_content",
+			"themeApplied": true
+		},
+		{
+			"role": "owner",
+			"template": "/agent/views/{id}",
+			"resolvedUrl": "https://ticketing.localhost/agent/views/geocrt66mms5prdpvveyzkcg",
+			"theme": "light",
+			"width": "mobile",
+			"fixture": "existing record returned by this identity own-reachable list",
+			"skeletonNodes": 0,
+			"mainChars": 976,
+			"headingCount": 1,
+			"apiErrorCodes": [],
+			"status": "settled_content",
+			"themeApplied": true
+		},
+		{
+			"role": "owner",
+			"template": "/agent/views/{id}",
+			"resolvedUrl": "https://ticketing.localhost/agent/views/geocrt66mms5prdpvveyzkcg",
+			"theme": "dark",
+			"width": "desktop",
+			"fixture": "existing record returned by this identity own-reachable list",
+			"skeletonNodes": 0,
+			"mainChars": 976,
+			"headingCount": 1,
+			"apiErrorCodes": [],
+			"status": "settled_content",
+			"themeApplied": true
+		},
+		{
+			"role": "owner",
+			"template": "/agent/views/{id}",
+			"resolvedUrl": "https://ticketing.localhost/agent/views/geocrt66mms5prdpvveyzkcg",
+			"theme": "dark",
+			"width": "tablet",
+			"fixture": "existing record returned by this identity own-reachable list",
+			"skeletonNodes": 0,
+			"mainChars": 976,
+			"headingCount": 1,
+			"apiErrorCodes": [],
+			"status": "settled_content",
+			"themeApplied": true
+		},
+		{
+			"role": "owner",
+			"template": "/agent/views/{id}",
+			"resolvedUrl": "https://ticketing.localhost/agent/views/geocrt66mms5prdpvveyzkcg",
+			"theme": "dark",
+			"width": "mobile",
+			"fixture": "existing record returned by this identity own-reachable list",
+			"skeletonNodes": 0,
+			"mainChars": 976,
+			"headingCount": 1,
+			"apiErrorCodes": [],
+			"status": "settled_content",
+			"themeApplied": true
+		}
+	],
+	"limits": "Original observations are preserved in the route matrix. This is a read-only detail-load check, not a saved-view create/edit/run/permission acceptance journey. No identities, email addresses, cookies or credentials included.",
+	"publicAuth": {
+		"method": "Fresh anonymous browser contexts; no email, password or OTP entered and no sign-in/issuance button submitted. One route load per host/theme, then responsive resize. Empty sign-in screens reviewed before publishing captures.",
+		"cases": [
+			{
+				"host": "agent",
+				"theme": "light",
+				"width": "desktop",
+				"requestedUrl": "https://ticketing.localhost/auth/sign-in",
+				"finalPath": "/auth/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered",
+				"screenshot": {
+					"path": "docs/report/screens/l01-public-agent-desktop-light-sign-in.png",
+					"sha256": "e4e0168fd9a665b1ad38839f393dacbfc4b330384712bdd44ebeda4e07e2c26d",
+					"bytes": 24955,
+					"visuallyReviewedForReadinessAndSecrets": true
+				}
+			},
+			{
+				"host": "agent",
+				"theme": "light",
+				"width": "tablet",
+				"requestedUrl": "https://ticketing.localhost/auth/sign-in",
+				"finalPath": "/auth/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered"
+			},
+			{
+				"host": "agent",
+				"theme": "light",
+				"width": "mobile",
+				"requestedUrl": "https://ticketing.localhost/auth/sign-in",
+				"finalPath": "/auth/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered"
+			},
+			{
+				"host": "agent",
+				"theme": "dark",
+				"width": "desktop",
+				"requestedUrl": "https://ticketing.localhost/auth/sign-in",
+				"finalPath": "/auth/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered"
+			},
+			{
+				"host": "agent",
+				"theme": "dark",
+				"width": "tablet",
+				"requestedUrl": "https://ticketing.localhost/auth/sign-in",
+				"finalPath": "/auth/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered"
+			},
+			{
+				"host": "agent",
+				"theme": "dark",
+				"width": "mobile",
+				"requestedUrl": "https://ticketing.localhost/auth/sign-in",
+				"finalPath": "/auth/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered",
+				"screenshot": {
+					"path": "docs/report/screens/l01-public-agent-mobile-dark-sign-in.png",
+					"sha256": "744905e7da4447f3738872722c259a3a5dd207e5eddafb719f5225a7010e4ef7",
+					"bytes": 20444,
+					"visuallyReviewedForReadinessAndSecrets": true
+				}
+			},
+			{
+				"host": "portal",
+				"theme": "light",
+				"width": "desktop",
+				"requestedUrl": "https://portal.localhost/sign-in",
+				"finalPath": "/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered",
+				"screenshot": {
+					"path": "docs/report/screens/l01-public-portal-desktop-light-sign-in.png",
+					"sha256": "0aae5b85de2ddf7a029f2a649422bc86a6ca5002b041a75b04247263b4445723",
+					"bytes": 12906,
+					"visuallyReviewedForReadinessAndSecrets": true
+				}
+			},
+			{
+				"host": "portal",
+				"theme": "light",
+				"width": "tablet",
+				"requestedUrl": "https://portal.localhost/sign-in",
+				"finalPath": "/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered"
+			},
+			{
+				"host": "portal",
+				"theme": "light",
+				"width": "mobile",
+				"requestedUrl": "https://portal.localhost/sign-in",
+				"finalPath": "/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered"
+			},
+			{
+				"host": "portal",
+				"theme": "dark",
+				"width": "desktop",
+				"requestedUrl": "https://portal.localhost/sign-in",
+				"finalPath": "/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered"
+			},
+			{
+				"host": "portal",
+				"theme": "dark",
+				"width": "tablet",
+				"requestedUrl": "https://portal.localhost/sign-in",
+				"finalPath": "/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered"
+			},
+			{
+				"host": "portal",
+				"theme": "dark",
+				"width": "mobile",
+				"requestedUrl": "https://portal.localhost/sign-in",
+				"finalPath": "/sign-in",
+				"authenticated": false,
+				"headingCount": 0,
+				"textboxCount": 1,
+				"emptyInputValues": true,
+				"skeletonNodes": 0,
+				"status": "anonymous_sign_in_rendered",
+				"screenshot": {
+					"path": "docs/report/screens/l01-public-portal-mobile-dark-sign-in.png",
+					"sha256": "34756f12f44ce040693f3882994be51527da7b51d873f3bca23206edba912250",
+					"bytes": 9153,
+					"visuallyReviewedForReadinessAndSecrets": true
+				}
+			}
+		],
+		"ownerMfaProof": "Earlier in this audit an existing owner completed password API sign-in followed by a visible browser TOTP challenge; subsequent protected-route and owner membership checks passed. This is separate from anonymous sign-in rendering.",
+		"limits": "Already-authenticated route redirects in the main matrix do not prove a public authentication screen. Password-reset, magic-link, invitation-token and external-provider callback flows were not exercised; no credentials, challenge digits or token-bearing links retained."
+	},
+	"oppositeHostIsolation": {
+		"method": "Each existing authenticated identity opened GET /api/auth/get-session and a protected UI route on the opposite host in a fresh context carrying only its existing cookie state.",
+		"cases": [
+			{
+				"credentialFixture": "owner",
+				"targetHost": "https://portal.localhost",
+				"sessionHttp": 200,
+				"oppositeHostHasAuthenticatedSession": false,
+				"finalPath": "/sign-in",
+				"protectedRouteDeniedBySignInRedirect": true
+			},
+			{
+				"credentialFixture": "instance-admin/workspace-owner",
+				"targetHost": "https://portal.localhost",
+				"sessionHttp": 200,
+				"oppositeHostHasAuthenticatedSession": false,
+				"finalPath": "/sign-in",
+				"protectedRouteDeniedBySignInRedirect": true
+			},
+			{
+				"credentialFixture": "lead",
+				"targetHost": "https://portal.localhost",
+				"sessionHttp": 200,
+				"oppositeHostHasAuthenticatedSession": false,
+				"finalPath": "/sign-in",
+				"protectedRouteDeniedBySignInRedirect": true
+			},
+			{
+				"credentialFixture": "member",
+				"targetHost": "https://portal.localhost",
+				"sessionHttp": 200,
+				"oppositeHostHasAuthenticatedSession": false,
+				"finalPath": "/sign-in",
+				"protectedRouteDeniedBySignInRedirect": true
+			},
+			{
+				"credentialFixture": "viewer",
+				"targetHost": "https://portal.localhost",
+				"sessionHttp": 200,
+				"oppositeHostHasAuthenticatedSession": false,
+				"finalPath": "/sign-in",
+				"protectedRouteDeniedBySignInRedirect": true
+			},
+			{
+				"credentialFixture": "customer",
+				"targetHost": "https://ticketing.localhost",
+				"sessionHttp": 200,
+				"oppositeHostHasAuthenticatedSession": false,
+				"finalPath": "/auth/sign-in",
+				"protectedRouteDeniedBySignInRedirect": true
+			}
+		],
+		"limits": "Basic cookie-host/session separation only; not an exhaustive auth, tenant or browser-provider attack assessment."
+	},
+	"quietRechecks": [
+		{
+			"role": "instance_admin_owner",
+			"theme": "dark",
+			"template": "/agent/god-mode/general",
+			"url": "https://ticketing.localhost/agent/god-mode/general",
+			"originalStatus": "navigation_error",
+			"checkedAt": "2026-10-28T07:17:03.947Z",
+			"variants": [
+				{
+					"width": "desktop",
+					"finalPath": "/agent/god-mode/general",
+					"skeletonNodes": 0,
+					"mainTextChars": 3209,
+					"apiErrorCodes": [],
+					"status": "settled_content"
+				},
+				{
+					"width": "tablet",
+					"finalPath": "/agent/god-mode/general",
+					"skeletonNodes": 0,
+					"mainTextChars": 3209,
+					"apiErrorCodes": [],
+					"status": "settled_content"
+				},
+				{
+					"width": "mobile",
+					"finalPath": "/agent/god-mode/general",
+					"skeletonNodes": 0,
+					"mainTextChars": 2995,
+					"apiErrorCodes": [],
+					"status": "settled_content"
+				}
+			]
+		},
+		{
+			"role": "owner",
+			"theme": "light",
+			"template": "/agent/god-mode/deliveries",
+			"url": "https://ticketing.localhost/agent/god-mode/deliveries",
+			"originalStatus": "navigation_error",
+			"checkedAt": "2026-10-28T07:17:08.439Z",
+			"variants": [
+				{
+					"width": "desktop",
+					"finalPath": "/agent/god-mode/deliveries",
+					"skeletonNodes": 0,
+					"mainTextChars": 101,
+					"apiErrorCodes": [],
+					"status": "denied"
+				},
+				{
+					"width": "tablet",
+					"finalPath": "/agent/god-mode/deliveries",
+					"skeletonNodes": 0,
+					"mainTextChars": 101,
+					"apiErrorCodes": [],
+					"status": "denied"
+				},
+				{
+					"width": "mobile",
+					"finalPath": "/agent/god-mode/deliveries",
+					"skeletonNodes": 0,
+					"mainTextChars": 101,
+					"apiErrorCodes": [],
+					"status": "denied"
+				}
+			]
+		}
+	],
+	"sessionTeardown": {
+		"leadSessionPreference": {
+			"normalUi": true,
+			"restoredOriginalWorkspace": true,
+			"observedRoleAfterRestore": "owner",
+			"roleDuringAudit": "lead",
+			"businessMembershipsUnchanged": true
+		},
+		"ownerAuditSessionSignOut": {
+			"normalUi": true,
+			"signOutHttp": 200,
+			"currentSessionNull": true,
+			"oldSavedStateSessionNull": true,
+			"protectedNavigationRedirected": true,
+			"scope": "Only the fresh owner session created during this audit. Used current-session sign-out; no logout-all command or other saved session state used for revocation."
+		}
+	},
+	"portalReadinessCorrection": {
+		"originalObservation": "Six catalogue captures visibly contained plain Loading text despite the skeleton-only probe labelling content settled. They are preserved privately and excluded from published captures; the main manifest corrects their state to loading_observed_unverified.",
+		"results": [
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/sign-in",
+				"url": "https://portal.localhost/sign-in",
+				"width": "desktop",
+				"status": "public_sign_in_screen",
+				"finalPath": "/sign-in",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 30,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/sign-in",
+				"url": "https://portal.localhost/sign-in",
+				"width": "tablet",
+				"status": "public_sign_in_screen",
+				"finalPath": "/sign-in",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 30,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/sign-in",
+				"url": "https://portal.localhost/sign-in",
+				"width": "mobile",
+				"status": "public_sign_in_screen",
+				"finalPath": "/sign-in",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 30,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "desktop",
+				"template": "/invite/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "tablet",
+				"template": "/invite/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "mobile",
+				"template": "/invite/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/catalogue?q=no-match&key=access",
+				"url": "https://portal.localhost/catalogue?q=no-match&key=access",
+				"width": "desktop",
+				"status": "error_state",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 162,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/catalogue?q=no-match&key=access",
+				"url": "https://portal.localhost/catalogue?q=no-match&key=access",
+				"width": "tablet",
+				"status": "error_state",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 162,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/catalogue?q=no-match&key=access",
+				"url": "https://portal.localhost/catalogue?q=no-match&key=access",
+				"width": "mobile",
+				"status": "error_state",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 162,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/submissions/{ref}",
+				"url": "https://portal.localhost/submissions/SUB-8",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/submissions/SUB-8",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 239,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/submissions/{ref}",
+				"url": "https://portal.localhost/submissions/SUB-8",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/submissions/SUB-8",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 239,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/submissions/{ref}",
+				"url": "https://portal.localhost/submissions/SUB-8",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/submissions/SUB-8",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 239,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/kb",
+				"url": "https://portal.localhost/kb",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/kb",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 244,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/kb",
+				"url": "https://portal.localhost/kb",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/kb",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 244,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/kb",
+				"url": "https://portal.localhost/kb",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/kb",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 244,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "desktop",
+				"template": "/kb/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "tablet",
+				"template": "/kb/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "mobile",
+				"template": "/kb/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/notifications?filter=unread",
+				"url": "https://portal.localhost/notifications?filter=unread",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/notifications",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 136,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/notifications?filter=unread",
+				"url": "https://portal.localhost/notifications?filter=unread",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/notifications",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 136,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/notifications?filter=unread",
+				"url": "https://portal.localhost/notifications?filter=unread",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/notifications",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 136,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/account",
+				"url": "https://portal.localhost/account",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/account",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 618,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/account",
+				"url": "https://portal.localhost/account",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/account",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 618,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/account",
+				"url": "https://portal.localhost/account",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/account",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 618,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/",
+				"url": "https://portal.localhost/",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 556,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/",
+				"url": "https://portal.localhost/",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 556,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/",
+				"url": "https://portal.localhost/",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 556,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/requests",
+				"url": "https://portal.localhost/requests",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/requests",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 732,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/requests",
+				"url": "https://portal.localhost/requests",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/requests",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 732,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/requests",
+				"url": "https://portal.localhost/requests",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/requests",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 732,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "desktop",
+				"template": "/approvals?approval={id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "tablet",
+				"template": "/approvals?approval={id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "mobile",
+				"template": "/approvals?approval={id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/sign-in",
+				"url": "https://portal.localhost/sign-in",
+				"width": "desktop",
+				"status": "public_sign_in_screen",
+				"finalPath": "/sign-in",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 30,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/sign-in",
+				"url": "https://portal.localhost/sign-in",
+				"width": "tablet",
+				"status": "public_sign_in_screen",
+				"finalPath": "/sign-in",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 30,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/sign-in",
+				"url": "https://portal.localhost/sign-in",
+				"width": "mobile",
+				"status": "public_sign_in_screen",
+				"finalPath": "/sign-in",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 30,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "desktop",
+				"template": "/invite/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "tablet",
+				"template": "/invite/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "mobile",
+				"template": "/invite/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/catalogue?q=no-match&key=access",
+				"url": "https://portal.localhost/catalogue?q=no-match&key=access",
+				"width": "desktop",
+				"status": "error_state",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 162,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/catalogue?q=no-match&key=access",
+				"url": "https://portal.localhost/catalogue?q=no-match&key=access",
+				"width": "tablet",
+				"status": "error_state",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 162,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/catalogue?q=no-match&key=access",
+				"url": "https://portal.localhost/catalogue?q=no-match&key=access",
+				"width": "mobile",
+				"status": "error_state",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 162,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/submissions/{ref}",
+				"url": "https://portal.localhost/submissions/SUB-8",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/submissions/SUB-8",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 239,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/submissions/{ref}",
+				"url": "https://portal.localhost/submissions/SUB-8",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/submissions/SUB-8",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 239,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/submissions/{ref}",
+				"url": "https://portal.localhost/submissions/SUB-8",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/submissions/SUB-8",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 239,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/kb",
+				"url": "https://portal.localhost/kb",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/kb",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 244,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/kb",
+				"url": "https://portal.localhost/kb",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/kb",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 244,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/kb",
+				"url": "https://portal.localhost/kb",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/kb",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 244,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "desktop",
+				"template": "/kb/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "tablet",
+				"template": "/kb/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "mobile",
+				"template": "/kb/{id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/notifications?filter=unread",
+				"url": "https://portal.localhost/notifications?filter=unread",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/notifications",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 136,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/notifications?filter=unread",
+				"url": "https://portal.localhost/notifications?filter=unread",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/notifications",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 136,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/notifications?filter=unread",
+				"url": "https://portal.localhost/notifications?filter=unread",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/notifications",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 136,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/account",
+				"url": "https://portal.localhost/account",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/account",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 618,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/account",
+				"url": "https://portal.localhost/account",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/account",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 618,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/account",
+				"url": "https://portal.localhost/account",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/account",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 618,
+				"apiErrorCodes": [404]
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/",
+				"url": "https://portal.localhost/",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 556,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/",
+				"url": "https://portal.localhost/",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 556,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/",
+				"url": "https://portal.localhost/",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 556,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/requests",
+				"url": "https://portal.localhost/requests",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/requests",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 732,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/requests",
+				"url": "https://portal.localhost/requests",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/requests",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 732,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/requests",
+				"url": "https://portal.localhost/requests",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/requests",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 732,
+				"apiErrorCodes": []
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "desktop",
+				"template": "/approvals?approval={id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "tablet",
+				"template": "/approvals?approval={id}",
+				"status": "fixture_missing"
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "mobile",
+				"template": "/approvals?approval={id}",
+				"status": "fixture_missing"
+			}
+		],
+		"representatives": [
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/catalogue (existing base catalogue follow-up)",
+				"url": "https://portal.localhost/catalogue",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 370,
+				"apiErrorCodes": [],
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-desktop-light-catalogue.png",
+					"sha256": "663a6fdf325b32d6888806cd6f357f72153c52c9f8c774c36b2cd7baf3dde4b0",
+					"bytes": 55864,
+					"visuallyReviewedForReadinessAndSecrets": true
+				},
+				"visualReview": "Settled and safe to publish; tablet description overlap and mobile clipping are product findings, not a visual pass."
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/catalogue (existing base catalogue follow-up)",
+				"url": "https://portal.localhost/catalogue",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 370,
+				"apiErrorCodes": [],
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-tablet-light-catalogue.png",
+					"sha256": "d5648227b7ab54bd7f84814fae93af6910d04903a4326d683684876529f90f54",
+					"bytes": 49996,
+					"visuallyReviewedForReadinessAndSecrets": true
+				},
+				"visualReview": "Settled and safe to publish; tablet description overlap and mobile clipping are product findings, not a visual pass."
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"template": "/catalogue (existing base catalogue follow-up)",
+				"url": "https://portal.localhost/catalogue",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 370,
+				"apiErrorCodes": [],
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-mobile-light-catalogue.png",
+					"sha256": "ceef466690551f3c94d7c9f3bd8a03805a08fcff124666fc3271905435f16047",
+					"bytes": 40037,
+					"visuallyReviewedForReadinessAndSecrets": true
+				},
+				"visualReview": "Settled and safe to publish; tablet description overlap and mobile clipping are product findings, not a visual pass."
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/catalogue (existing base catalogue follow-up)",
+				"url": "https://portal.localhost/catalogue",
+				"width": "desktop",
+				"status": "settled_content",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 370,
+				"apiErrorCodes": [],
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-desktop-dark-catalogue.png",
+					"sha256": "c0b75f13842ad3ab4a136fd95c726d7fffbdedc1e22babce587910a3dc0a9641",
+					"bytes": 55674,
+					"visuallyReviewedForReadinessAndSecrets": true
+				},
+				"visualReview": "Settled and safe to publish; tablet description overlap and mobile clipping are product findings, not a visual pass."
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/catalogue (existing base catalogue follow-up)",
+				"url": "https://portal.localhost/catalogue",
+				"width": "tablet",
+				"status": "settled_content",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 370,
+				"apiErrorCodes": [],
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-tablet-dark-catalogue.png",
+					"sha256": "c6582d1269355a4ec3e683a4a3b65c83005b857d210974f3ec64fa17f2650bc1",
+					"bytes": 50026,
+					"visuallyReviewedForReadinessAndSecrets": true
+				},
+				"visualReview": "Settled and safe to publish; tablet description overlap and mobile clipping are product findings, not a visual pass."
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"template": "/catalogue (existing base catalogue follow-up)",
+				"url": "https://portal.localhost/catalogue",
+				"width": "mobile",
+				"status": "settled_content",
+				"finalPath": "/catalogue",
+				"plainLoadingMarker": false,
+				"skeletonNodes": 0,
+				"mainTextChars": 370,
+				"apiErrorCodes": [],
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-mobile-dark-catalogue.png",
+					"sha256": "aed0bbeaeed9570d86324e3850d7be2ea29b8a568a34d5ee6df85d3c9e269cbe",
+					"bytes": 39760,
+					"visuallyReviewedForReadinessAndSecrets": true
+				},
+				"visualReview": "Settled and safe to publish; tablet description overlap and mobile clipping are product findings, not a visual pass."
+			}
+		],
+		"method": "Follow-up after screenshots exposed plain Loading text missed by skeleton-only readiness. Original attempts retained; wait until both skeleton and plain Loading markers clear, then fonts and concrete page state. Static key=access is not replaced silently; its 404/error is distinct from a settled base-catalogue follow-up.",
+		"limits": "Corrected follow-up outcomes are separate from original attempts; no pass inferred from zero skeleton nodes. The static inventory key=access returns404 under this customer scope and reaches a concrete error state. The base catalogue is a separate reachable-record follow-up; its visual clipping/overlap remains an open finding.",
+		"visualIssue": "https://github.com/ThomasHeinThura/ticketing/issues/917",
+		"sourceCauseLimit": "Button card sizing/wrapping composition is a candidate; no isolated runtime cause or code fix was established."
+	},
+	"existingSelectedRequestForm": {
+		"method": "Fresh contexts retain only the existing customer cookies; stored browser drafts are not imported, altered or overwritten. Actual request type selected by its existing UI card. No text/answer field entered and no submission made.",
+		"results": [
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "desktop",
+				"url": "https://portal.localhost/catalogue?key={requestTypeKey}",
+				"requestedScreen": "selected request-type form using existing Access request card",
+				"navigation": "Normal UI click from the existing base catalogue; no guessed key",
+				"formHeadingVisible": true,
+				"inputCount": 3,
+				"allVisibleTextInputsEmpty": true,
+				"apiErrorCodes": [],
+				"status": "selected_form_ready",
+				"fieldsEntered": false,
+				"submitted": false,
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-desktop-light-access-request-form.png",
+					"sha256": "b7cbaca9d6bf2cc45cabca402f9460c96961b4d75413c154f8c857b4c6a72d48",
+					"bytes": 63877,
+					"visuallyReviewedForReadinessAndSecrets": true
+				}
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "tablet",
+				"url": "https://portal.localhost/catalogue?key={requestTypeKey}",
+				"requestedScreen": "selected request-type form using existing Access request card",
+				"navigation": "Normal UI click from the existing base catalogue; no guessed key",
+				"formHeadingVisible": true,
+				"inputCount": 3,
+				"allVisibleTextInputsEmpty": true,
+				"apiErrorCodes": [],
+				"status": "selected_form_ready",
+				"fieldsEntered": false,
+				"submitted": false,
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-tablet-light-access-request-form.png",
+					"sha256": "fd279620fcef6ceae46c491e7afcbb1b9fdba589c42817fdf3689546e9c7c5bf",
+					"bytes": 57862,
+					"visuallyReviewedForReadinessAndSecrets": true
+				}
+			},
+			{
+				"role": "customer",
+				"theme": "light",
+				"width": "mobile",
+				"url": "https://portal.localhost/catalogue?key={requestTypeKey}",
+				"requestedScreen": "selected request-type form using existing Access request card",
+				"navigation": "Normal UI click from the existing base catalogue; no guessed key",
+				"formHeadingVisible": true,
+				"inputCount": 3,
+				"allVisibleTextInputsEmpty": true,
+				"apiErrorCodes": [],
+				"status": "selected_form_ready",
+				"fieldsEntered": false,
+				"submitted": false,
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-mobile-light-access-request-form.png",
+					"sha256": "ede98798d7342b422fdec921e1e61bae03b961cf2267aacf35c86e0b360c54aa",
+					"bytes": 43243,
+					"visuallyReviewedForReadinessAndSecrets": true
+				}
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "desktop",
+				"url": "https://portal.localhost/catalogue?key={requestTypeKey}",
+				"requestedScreen": "selected request-type form using existing Access request card",
+				"navigation": "Normal UI click from the existing base catalogue; no guessed key",
+				"formHeadingVisible": true,
+				"inputCount": 3,
+				"allVisibleTextInputsEmpty": true,
+				"apiErrorCodes": [],
+				"status": "selected_form_ready",
+				"fieldsEntered": false,
+				"submitted": false,
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-desktop-dark-access-request-form.png",
+					"sha256": "e526984cfd3f872931fedb64b3ff0d87e7778ffe662f06c2701ea14cb734c865",
+					"bytes": 63602,
+					"visuallyReviewedForReadinessAndSecrets": true
+				}
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "tablet",
+				"url": "https://portal.localhost/catalogue?key={requestTypeKey}",
+				"requestedScreen": "selected request-type form using existing Access request card",
+				"navigation": "Normal UI click from the existing base catalogue; no guessed key",
+				"formHeadingVisible": true,
+				"inputCount": 3,
+				"allVisibleTextInputsEmpty": true,
+				"apiErrorCodes": [],
+				"status": "selected_form_ready",
+				"fieldsEntered": false,
+				"submitted": false,
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-tablet-dark-access-request-form.png",
+					"sha256": "dfd1a46094f500cd4c9952b821f600be95ac7e7730d8ad61e945ad05598e950c",
+					"bytes": 57565,
+					"visuallyReviewedForReadinessAndSecrets": true
+				}
+			},
+			{
+				"role": "customer",
+				"theme": "dark",
+				"width": "mobile",
+				"url": "https://portal.localhost/catalogue?key={requestTypeKey}",
+				"requestedScreen": "selected request-type form using existing Access request card",
+				"navigation": "Normal UI click from the existing base catalogue; no guessed key",
+				"formHeadingVisible": true,
+				"inputCount": 3,
+				"allVisibleTextInputsEmpty": true,
+				"apiErrorCodes": [],
+				"status": "selected_form_ready",
+				"fieldsEntered": false,
+				"submitted": false,
+				"screenshot": {
+					"path": "docs/report/screens/l01-portal-customer-mobile-dark-access-request-form.png",
+					"sha256": "0db296d30b83473cbedf1f0cf38bb654500ddaf35cced77a75968ec5d443fd92",
+					"bytes": 42817,
+					"visuallyReviewedForReadinessAndSecrets": true
+				}
+			}
+		],
+		"limits": "This proves the existing selected form renders read-only using a real reachable key. No fields entered, no submission, validation failure, persistence or complete RT/CP clause acceptance. The static inventory key=access error does not imply all request-form fixtures are unavailable.",
+		"publicIdentifierHandling": "The persisted request-type query key is normalized as {requestTypeKey} in public URLs. The private browser proof used the actual existing key; screenshots and HTTP/render results are unchanged. The initial staged Gitleaks scan flagged six copies of this record identifier as generic-api-key; no credential was identified, and no scanner exemption was added."
+	}
+}

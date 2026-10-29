@@ -1,0 +1,159 @@
+{
+	"workspaceAdminCoverage": "Unavailable: the existing admin-labelled identity has workspace-owner memberships plus an instance-admin grant; no existing workspace-admin fixture was found. Its route cases are supplementary instance-admin/owner evidence only.",
+	"leadSessionSelection": "Selected its existing lead workspace through the normal UI; no membership/role or business record changed.",
+	"audit": "L-01 existing SIT role identity assertions",
+	"dateUtc": "2026-10-28T06:10:33.891Z",
+	"method": "Read-only authenticated GET /api/auth/get-session, GET /api/workspace and GET /api/instance/settings; customer GET /api/portal/submissions?limit=1. Values are reduced to role/host assertions; no emails, user or workspace identifiers, cookie values, tokens or session bodies retained.",
+	"distinctAuthenticatedIdentities": true,
+	"results": [
+		{
+			"role": "owner",
+			"host": "https://ticketing.localhost",
+			"sessionHttp": 200,
+			"authenticated": true,
+			"portalMatchesHost": true,
+			"instanceAdminSignal": false,
+			"availableWorkspaceRoles": ["owner"],
+			"membershipHttp": 200,
+			"expectedWorkspacePresent": true,
+			"observedWorkspaceRole": "owner",
+			"roleMatchesLabel": true,
+			"activeWorkspaceMatchesTarget": true,
+			"instanceSettingsHttp": 403,
+			"instanceAdminGrantConfirmedByApi": false
+		},
+		{
+			"role": "admin",
+			"host": "https://ticketing.localhost",
+			"sessionHttp": 200,
+			"authenticated": true,
+			"portalMatchesHost": true,
+			"instanceAdminSignal": true,
+			"availableWorkspaceRoles": ["owner", "owner", "owner"],
+			"membershipHttp": 200,
+			"expectedWorkspacePresent": true,
+			"observedWorkspaceRole": "owner",
+			"roleMatchesLabel": false,
+			"activeWorkspaceMatchesTarget": true,
+			"instanceSettingsHttp": 200,
+			"instanceAdminGrantConfirmedByApi": true
+		},
+		{
+			"role": "lead",
+			"host": "https://ticketing.localhost",
+			"sessionHttp": 200,
+			"authenticated": true,
+			"portalMatchesHost": true,
+			"instanceAdminSignal": false,
+			"availableWorkspaceRoles": ["lead", "owner"],
+			"membershipHttp": 200,
+			"expectedWorkspacePresent": true,
+			"observedWorkspaceRole": "lead",
+			"roleMatchesLabel": true,
+			"activeWorkspaceMatchesTarget": true,
+			"instanceSettingsHttp": 403,
+			"instanceAdminGrantConfirmedByApi": false
+		},
+		{
+			"role": "member",
+			"host": "https://ticketing.localhost",
+			"sessionHttp": 200,
+			"authenticated": true,
+			"portalMatchesHost": true,
+			"instanceAdminSignal": false,
+			"availableWorkspaceRoles": ["member", "member"],
+			"membershipHttp": 200,
+			"expectedWorkspacePresent": true,
+			"observedWorkspaceRole": "member",
+			"roleMatchesLabel": true,
+			"activeWorkspaceMatchesTarget": true,
+			"instanceSettingsHttp": 403,
+			"instanceAdminGrantConfirmedByApi": false
+		},
+		{
+			"role": "viewer",
+			"host": "https://ticketing.localhost",
+			"sessionHttp": 200,
+			"authenticated": true,
+			"portalMatchesHost": true,
+			"instanceAdminSignal": false,
+			"availableWorkspaceRoles": ["viewer"],
+			"membershipHttp": 200,
+			"expectedWorkspacePresent": true,
+			"observedWorkspaceRole": "viewer",
+			"roleMatchesLabel": true,
+			"activeWorkspaceMatchesTarget": true,
+			"instanceSettingsHttp": 403,
+			"instanceAdminGrantConfirmedByApi": false
+		},
+		{
+			"role": "customer",
+			"host": "https://portal.localhost",
+			"sessionHttp": 200,
+			"authenticated": true,
+			"portalMatchesHost": true,
+			"instanceAdminSignal": false,
+			"portalReadHttp": 200,
+			"customerPortalReadAdmitted": true,
+			"roleMatchesLabel": true
+		}
+	],
+	"batchAssertions": [
+		{
+			"role": "instance_admin_owner",
+			"assertedAt": "2026-10-28T06:23:18.414Z",
+			"host": "https://ticketing.localhost",
+			"authenticated": true,
+			"activeWorkspaceRole": "owner",
+			"instanceAdminSignal": true,
+			"validForDeclaredFixture": true,
+			"requestedWorkspaceAdminCovered": false
+		},
+		{
+			"role": "owner",
+			"assertedAt": "2026-10-28T06:23:18.709Z",
+			"host": "https://ticketing.localhost",
+			"authenticated": true,
+			"activeWorkspaceRole": "owner",
+			"instanceAdminSignal": false,
+			"validForDeclaredFixture": true
+		},
+		{
+			"role": "lead",
+			"assertedAt": "2026-10-28T06:23:19.001Z",
+			"host": "https://ticketing.localhost",
+			"authenticated": true,
+			"activeWorkspaceRole": "lead",
+			"instanceAdminSignal": false,
+			"validForDeclaredFixture": true
+		},
+		{
+			"role": "member",
+			"assertedAt": "2026-10-28T06:40:17.497Z",
+			"host": "https://ticketing.localhost",
+			"authenticated": true,
+			"activeWorkspaceRole": "member",
+			"instanceAdminSignal": false,
+			"validForDeclaredFixture": true
+		},
+		{
+			"role": "viewer",
+			"assertedAt": "2026-10-28T06:57:42.671Z",
+			"host": "https://ticketing.localhost",
+			"authenticated": true,
+			"activeWorkspaceRole": "viewer",
+			"instanceAdminSignal": false,
+			"validForDeclaredFixture": true
+		},
+		{
+			"role": "customer",
+			"assertedAt": "2026-10-28T07:14:52.382Z",
+			"host": "https://portal.localhost",
+			"authenticated": true,
+			"activeWorkspaceRole": null,
+			"instanceAdminSignal": false,
+			"validForDeclaredFixture": true
+		}
+	],
+	"assertionTiming": "Assertions describe the authenticated identity/active workspace at its crawl batch. Subsequent owner audit-session sign-out and restoration of the lead original workspace preference are recorded in l01-sit-scope.json."
+}
