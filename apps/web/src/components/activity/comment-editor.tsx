@@ -55,6 +55,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import type { Highlighter } from "shiki";
+import { EditorLinkDialog } from "@/components/common/editor-link-dialog";
 import { AttachmentCard } from "@/components/task/extensions/attachment-card";
 import { EmbedBlock } from "@/components/task/extensions/embed-block";
 import type { MentionMember } from "@/components/task/extensions/mention-list";
@@ -301,6 +302,7 @@ export default function CommentEditor({
   const codeCopyResetTimeoutRef = useRef<number | null>(null);
   const [isCodeLanguageMenuOpen, setIsCodeLanguageMenuOpen] = useState(false);
   const [isCodeCopied, setIsCodeCopied] = useState(false);
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [embedComposer, setEmbedComposer] = useState<EmbedComposerState | null>(
     null,
   );
@@ -1245,17 +1247,8 @@ export default function CommentEditor({
   const setLink = useCallback(() => {
     if (readOnly || disabled || !isLiveEditor(editor)) return;
     const previousUrl = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt(
-      t("activity:comment.editor.enterUrl"),
-      previousUrl || "",
-    );
-    if (url === null) return;
-    if (!url.trim()) {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-  }, [disabled, editor, readOnly, t]);
+    setLinkUrl(previousUrl || "");
+  }, [disabled, editor, readOnly]);
 
   const resolveCodeBlockNodeData = useCallback(
     (pos: number) => {
@@ -1821,6 +1814,7 @@ export default function CommentEditor({
               "taskdesk-comment-editor-bubble-btn",
               editor.isActive("link") && "bg-accent text-accent-foreground",
             )}
+            aria-label={t("activity:comment.editor.enterUrl")}
             onClick={setLink}
           >
             <Link2 className="size-3.5" />
@@ -2131,6 +2125,16 @@ export default function CommentEditor({
         <div className="taskdesk-editor-drop-indicator">
           <span>{t("activity:comment.editor.dropImageToUpload")}</span>
         </div>
+      )}
+      {linkUrl !== null && isLiveEditor(editor) && (
+        <EditorLinkDialog
+          editor={editor}
+          scopeKey={taskId}
+          editable={!readOnly && !disabled}
+          initialUrl={linkUrl}
+          label={t("activity:comment.editor.enterUrl")}
+          onClose={() => setLinkUrl(null)}
+        />
       )}
       <Dialog
         open={Boolean(previewImage)}

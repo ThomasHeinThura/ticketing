@@ -63,6 +63,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import type { Highlighter } from "shiki";
+import { EditorLinkDialog } from "@/components/common/editor-link-dialog";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
 import { selectTaskDescription } from "@/hooks/queries/task/select-task-description";
 import useGetTask from "@/hooks/queries/task/use-get-task";
@@ -339,6 +340,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
   const [isCodeLanguageMenuOpen, setIsCodeLanguageMenuOpen] = useState(false);
   const codeCopyResetTimeoutRef = useRef<number | null>(null);
   const [isCodeCopied, setIsCodeCopied] = useState(false);
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const shikiHighlighterRef = useRef<Highlighter | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const [embedComposer, setEmbedComposer] = useState<EmbedComposerState | null>(
@@ -903,23 +905,9 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
       const previousUrl = editor.getAttributes("link").href as
         | string
         | undefined;
-      const url = window.prompt(
-        t("tasks:detail.editor.enterUrl"),
-        prefilledUrl || previousUrl || "",
-      );
-      if (url === null) return;
-      if (url.trim() === "") {
-        editor.chain().focus().extendMarkRange("link").unsetLink().run();
-        return;
-      }
-      editor
-        .chain()
-        .focus()
-        .extendMarkRange("link")
-        .setLink({ href: url })
-        .run();
+      setLinkUrl(prefilledUrl || previousUrl || "");
     },
-    [editor, t],
+    [editor],
   );
 
   const filteredSlashCommands = useMemo(() => {
@@ -1684,6 +1672,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               "taskdesk-tiptap-bubble-btn",
               editor.isActive("link") && "bg-accent text-accent-foreground",
             )}
+            aria-label={t("tasks:detail.editor.enterUrl")}
             onClick={() => setLink()}
           >
             <Link2 className="size-3.5" />
@@ -1968,6 +1957,16 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
         <div className="taskdesk-editor-drop-indicator">
           <span>{t("tasks:detail.editor.dropToUpload")}</span>
         </div>
+      )}
+      {linkUrl !== null && editor && !editor.isDestroyed && (
+        <EditorLinkDialog
+          editor={editor}
+          scopeKey={taskId}
+          editable={canEdit}
+          initialUrl={linkUrl}
+          label={t("tasks:detail.editor.enterUrl")}
+          onClose={() => setLinkUrl(null)}
+        />
       )}
       <Dialog
         open={Boolean(previewImage)}
