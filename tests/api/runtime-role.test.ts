@@ -172,8 +172,12 @@ describe("runtime role ownership", () => {
       socket.once("error", reject);
     });
 
+    const clientClosed = new Promise<void>((resolve) => {
+      socket.once("close", () => resolve());
+    });
     const startedAt = Date.now();
     await stop();
+    await clientClosed;
     expect(Date.now() - startedAt).toBeLessThan(500);
     expect(socket.destroyed).toBe(true);
   });

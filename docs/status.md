@@ -1,10 +1,11 @@
-# Current status — 28 October 2026
+# Current status — 29 October 2026
 
 P0–P6 are delivered, AI-reviewed, accepted by Thomas (27 Oct, with open lows) and **merged to `main`** (PR 891, squash `692775bf7`, 28 Oct). Phases have ended; work continues as the linear backlog in the [roadmap](roadmap.md), handed over to Codex ([handover](handover.md)).
 
 | Work | Current status |
 | --- | --- |
-| 29 Oct SMTP reliability candidate (L-02) | A Nodemailer phase timer could reject just before the outer deadline and be misclassified as a generic failure. Known typed phase timeouts now report a deadline while preserving send ambiguity and bounded diagnostics; ordinary socket, auth and TLS classifications remain unchanged. Package build and 59 tests pass, including the unchanged real 150 ms greeting-timeout case; independent Sol high review has no high/medium findings. No timeout or retry changed. Hosted CI and merge approval remain pending. |
+| 29 Oct root-unit reliability candidate (L-02) | Package tests now run serially under Turbo; individual assertions, deadlines, retries, prerequisites and test-cache settings are unchanged. The idle-client shutdown test observes the client close event before checking the existing 500 ms bound. Stacked on the separate SMTP timeout fix: exact `pnpm test` passes 7,197 tests across eight packages (12 tasks, 2m27s); focused runtime tests pass 9/9. Independent Terra review has no high/medium findings. This does not establish L-02's required three green main CI runs or resolve performance gates; hosted CI and merge approval remain pending. |
+| 29 Oct SMTP reliability merged (L-02) | [#933](https://github.com/ThomasHeinThura/ticketing/pull/933) merged as 153e92ddc under Thomas's standing overnight authority. Known typed phase timeouts now report deadlines while preserving send ambiguity, bounded diagnostics and ordinary socket/auth/TLS classifications. All 59 email tests pass; independent Sol high review has no high/medium findings. No timeout or retry changed. |
 | Merge | PR 891 merged 28 Oct with every required check green except G11 performance budgets. Thomas approved merging past G11 through a repository-admin bypass he added to the `protect-main` ruleset. G11 misses are backlog L-05. |
 | CI at merge head | Green: build, typecheck, lint, unit, 4 integration shards, contract, permissions, gate checkers, e2e, visual G8, accessibility G4, bundle budgets (portal 189.1/200 KB), secret scan, CodeQL. Failing: G11 — work-list LCP 2921 ms (< 2500), list → detail 347 ms (< 300), board-drag p95 33.3 ms (< 20) on a runner calibrated 1.46× slower. |
 | Release image | `release.yml` on `692775bf7` passed: multi-arch build, Trivy, SBOMs, cosign signature and GitHub attestation. GHCR `sha-692775bf…` / `edge`, index digest `sha256:3028f7ad…`. Signature and attestation verified locally against the main-branch release workflow identity. |
@@ -16,3 +17,9 @@ P0–P6 are delivered, AI-reviewed, accepted by Thomas (27 Oct, with open lows) 
 | Next | Codex starts with backlog L-01 (baseline full audit), then L-02 onward. Thomas decides whether the `protect-main` admin bypass stays. |
 
 Detailed evidence: [report](report/report.html), [audit](report/audit/), [browser evidence](report/browser/).
+
+## Overnight execution — Thomas's standing authority, 29 October
+
+One coding agent; independent reviewers remain separate. Squash merges use the exact checked head after integrating main, with every required non-G11 check green. G11 runs report-only until L-05 lands; only G11 may use the existing admin bypass. Workflow speed-ups may retain and accelerate all checks. Ruleset, budgets/calibration/harness, customer-data deletion/rewrite, protected database access, SIT seeder, non-approved dependencies and Technexus remain forbidden.
+
+- **Done:** #933 merged 29 Oct, 22:18 Yangon, commit 153e92ddc. **Verified:** pnpm email tests 59/59; all 17 required non-G11 checks and other reported non-G11 checks green on 930841f54 ([CI](https://github.com/ThomasHeinThura/ticketing/actions/runs/40902433825)). **UI:** no UI changed; sweep has one browser-confirmed native editor prompt, zero fixes accepted. **Failing:** completed same-head G11 run reports LCP 2995.4 ms, detail 343.7 ms, assignment 212.1 ms and drag p95 33.3 ms ([run](https://github.com/ThomasHeinThura/ticketing/actions/runs/40886281219)); newer G11 is still running. **Blocked:** none for SMTP; no owner approval pending. **Containers:** e0cc560d9c00 runs full integration, f64643fc7ca4 remains approved SIT; completed PostgreSQL 0e2080cf0b51, b00eba8e2f79, 59b9f7f690fa, 5b5ab339258c, 7ffbd5736697, 2acaa661c5eb, 20047fc46af2 and superseded app 71817f7beeef were removed. **Next:** #934 → #931 → #932; continue independent UI checks while CI runs.
