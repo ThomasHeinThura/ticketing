@@ -5798,7 +5798,10 @@
 			"notSet": "Not set",
 			"optional": "optional",
 			"requiredHint": "Required before this item can start or finish",
-			"yes": "Yes"
+			"yes": "Yes",
+			"hour": "Hour",
+			"minute": "Minute",
+			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
 		}
 	},
 	"teams": {

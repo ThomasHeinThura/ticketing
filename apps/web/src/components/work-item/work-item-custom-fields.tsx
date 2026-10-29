@@ -32,6 +32,8 @@ const COMMIT_ON_CHANGE = new Set([
   "user",
   "multi_user",
   "date",
+  // The datetime popover emits only a complete Save/Clear, never intermediate drafts.
+  "datetime",
 ]);
 
 function FieldRow({
