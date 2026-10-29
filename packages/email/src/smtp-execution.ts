@@ -282,6 +282,19 @@ export async function executeSmtp(
   } catch (error) {
     if (controller.signal.aborted) throw new SmtpAttemptError(reason, sending);
     if (error instanceof SmtpAttemptError) throw error;
+    // Nodemailer phase timers can expire before the outer deadline timer.
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ETIMEDOUT" &&
+      "timeoutType" in error &&
+      (error.timeoutType === "CONNECT_TIMEOUT" ||
+        error.timeoutType === "GREETING_TIMEOUT" ||
+        error.timeoutType === "UPGRADE_TIMEOUT" ||
+        error.timeoutType === "SOCKET_TIMEOUT")
+    )
+      throw new SmtpAttemptError("deadline", sending);
     // Provider errors may embed credentials, addresses or full server replies. Never propagate those.
     throw new SmtpAttemptError("failed", sending, smtpDiagnostic(error));
   } finally {
