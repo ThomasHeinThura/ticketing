@@ -26,6 +26,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import type getProjects from "@/fetchers/project/get-projects";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -192,17 +193,17 @@ export function NavProjects() {
     <>
       <Collapsible defaultOpen className="group/collapsible">
         <SidebarGroup className="group-data-[collapsible=icon]:hidden gap-1 p-2 pt-1">
-          <CollapsibleTrigger
-            className="data-panel-open:[&_svg]:rotate-90"
-            render={
-              <SidebarGroupLabel className="h-7 cursor-pointer justify-between px-0 text-sidebar-accent-foreground" />
-            }
-          >
-            <span title={getDefaultAgentTerm(i18n, "project", 2)}>
-              {t("navigation:sidebar.projects")}
-            </span>
-            <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground transition-transform duration-200" />
-          </CollapsibleTrigger>
+          <ActionTooltip label={getDefaultAgentTerm(i18n, "project", 2)}>
+            <CollapsibleTrigger
+              className="data-panel-open:[&_svg]:rotate-90"
+              render={
+                <SidebarGroupLabel className="h-7 cursor-pointer justify-between px-0 text-sidebar-accent-foreground" />
+              }
+            >
+              <span>{t("navigation:sidebar.projects")}</span>
+              <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground transition-transform duration-200" />
+            </CollapsibleTrigger>
+          </ActionTooltip>
           <CollapsiblePanel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">

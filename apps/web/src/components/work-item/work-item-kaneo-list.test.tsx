@@ -237,8 +237,11 @@ describe("canonical Kaneo grouped list", () => {
     render(
       <WorkItemKaneoList {...baseProps()} onCreateInState={onCreateInState} />,
     );
-    const buttons = screen.getAllByTitle("tasks:listView.addTask");
+    const buttons = screen.getAllByRole("button", {
+      name: /^tasks:listView.addTask: /,
+    });
     expect(buttons).toHaveLength(3);
+    for (const button of buttons) expect(button).not.toHaveAttribute("title");
     fireEvent.click(buttons[2] as HTMLElement);
     expect(onCreateInState).toHaveBeenCalledExactlyOnceWith(
       { id: "empty", name: "Waiting" },
