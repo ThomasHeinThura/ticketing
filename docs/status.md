@@ -4,6 +4,7 @@ P0–P6 are delivered, AI-reviewed, accepted by Thomas (27 Oct, with open lows) 
 
 | Work | Current status |
 | --- | --- |
+| 29 Oct SMTP reliability candidate (L-02) | A Nodemailer phase timer could reject just before the outer deadline and be misclassified as a generic failure. Known typed phase timeouts now report a deadline while preserving send ambiguity and bounded diagnostics; ordinary socket, auth and TLS classifications remain unchanged. Package build and 59 tests pass, including the unchanged real 150 ms greeting-timeout case; independent Sol high review has no high/medium findings. No timeout or retry changed. Hosted CI and merge approval remain pending. |
 | Merge | PR 891 merged 28 Oct with every required check green except G11 performance budgets. Thomas approved merging past G11 through a repository-admin bypass he added to the `protect-main` ruleset. G11 misses are backlog L-05. |
 | CI at merge head | Green: build, typecheck, lint, unit, 4 integration shards, contract, permissions, gate checkers, e2e, visual G8, accessibility G4, bundle budgets (portal 189.1/200 KB), secret scan, CodeQL. Failing: G11 — work-list LCP 2921 ms (< 2500), list → detail 347 ms (< 300), board-drag p95 33.3 ms (< 20) on a runner calibrated 1.46× slower. |
 | Release image | `release.yml` on `692775bf7` passed: multi-arch build, Trivy, SBOMs, cosign signature and GitHub attestation. GHCR `sha-692775bf…` / `edge`, index digest `sha256:3028f7ad…`. Signature and attestation verified locally against the main-branch release workflow identity. |
