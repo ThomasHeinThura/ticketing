@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-29T15:12:22.947Z",
+	"generated": "2026-10-29T15:17:38.363Z",
 	"source": "673 clauses; PR #918 per-ID evidence retained: 19 tested, 630 source-only, 15 partial, 6 external-blocked and 3 unverified. The 29 October repository audit adds issue/source/check status without promoting whole-clause acceptance. All 73 indexed contracts remain unverified.",
 	"phases": [
 		{
@@ -600,7 +600,7 @@
 		"Decided 29 Oct (Thomas): execute the audited plan with subagents as needed; align legacy time-entry mutations with canonical own/any/create capabilities and project/workspace tracking flags (#927). Performance thresholds, calibration and fixture/sample/retry rules remain unchanged. Main merge and public deployment still need approval."
 	],
 	"next": "Working checkpoint: 30 October 2026, 22:00 Yangon. Finish scoped verification and CI for #931–#934; identify and reduce the measured LCP mount cost in #919 without changing budgets or calibration. L-01/L-05 stay open; finish L-02, then L-03a release journeys (#929), scoped settings (#930), and shared Pages/KB editor (#56). Thomas approves main merges and public deployment. Close issues only after accepted, merged evidence.",
-	"status": "Status at 21:42 Yangon, 29 October: four fix PRs are published and independently reviewed. Targeted security integration passes 175 tests; corrected root candidate passes 7,197; SMTP passes 59; report regression and CI-script checks pass locally. Local SIT is healthy on both HTTPS hosts after verified backups. G11 remains the release blocker: assignment passes 191.4/200 ms on #919, but LCP fails at 2577.8/2500 and headroom is unmet. #932 CI and the fresh full integration run remain in progress. All fixes are draft and unmerged; the 117 issues and 673 clause classifications are not bulk-promoted or closed.",
+	"status": "29 October status: four tested fix PRs are published and independently reviewed. The corrected root candidate passes 7,197 tests; targeted security integration passes 175; SMTP unit tests pass 59. The new full local integration run passed 5,794 tests and failed four SMTP-provider integration cases; diagnosis is in progress. Local SIT is healthy on both HTTPS hosts. G11 remains red: #919 assignment passes 191.4/200 ms, while LCP fails at 2577.8/2500 and headroom is unmet. All fixes remain draft and unmerged. No blanket issue closure or clause promotion.",
 	"validation_runs": [
 		{
 			"check": "29 October fresh typecheck and lint",
@@ -693,6 +693,10 @@
 		{
 			"check": "29 October, 21:42 Yangon: current CI snapshot",
 			"result": "29 Oct, 21:42 Yangon: audit #918, performance #919, security #931, SMTP #933 and reliability #934 have G11 as the only failed reported check. Report #932 has 15 passing and seven pending checks in this snapshot. All remain draft and unmerged. The fresh full local integration run is still running. Source heads: #918 965353c53; #919 ff7cf8e92; #931 ed3063594; #932 c7a04c2b5; #933 930841f54; #934 ab7a92207."
+		},
+		{
+			"check": "29 October: full local integration completed",
+			"result": "Security candidate ed3063594, fresh disposable PostgreSQL18:479 files;5794 tests passed,4 failed in notification-provider.test.ts (runtime disable authority and bounded connection/TLS/deadline categories). Failures are retained and under diagnosis; focused175 passes and hosted integration successes do not clear this local failure. Container2acaa661c5eb stopped and removed. Runtime and fixture email modules resolve to separate worktree paths; that setup hypothesis still requires a corrected rerun."
 		}
 	],
 	"validation_history": [
