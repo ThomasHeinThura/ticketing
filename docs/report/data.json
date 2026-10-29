@@ -598,7 +598,7 @@
 		"Decided 28 Oct (Thomas): phases end after P6; former P7 and all open gaps become one linear backlog (L-01…L-11, T-1) worked by Codex; GitHub CI is a required gate again; Terra/Sonnet implement, Sol/Opus plan, audit and review; official @tiptap/* extensions pre-approved for the Pages editor.",
 		"Decided 28 Oct (Thomas): merge PR #891 past the failing G11 check; misses recorded under backlog L-05; budgets unchanged."
 	],
-	"next": "Review the L-01 documentation/evidence PR and its required CI; no implementation is started in this audit. L-05 remains the next retained backlog item. Proposed #916 → #910 → #917 → #915 before L-02 requires Thomas's decision; merge/deploy require Thomas's approval.",
+	"next": "L-05 performance work is in progress in draft PR 919. The latest correction is unverified; L-02 follows in the retained backlog. L-01 evidence is delivered in unmerged PR 918.",
 	"status": "28 Oct L-01 audit evidence on main 2553612ee: 19 tested, 630 source-only, 15 partial, 6 external and 3 conditional/out-of-scope unverified of 673. Isolated integration 5789/5789 and automated G4 pass; unit/e2e/G8 retain linked failures and G11/G13 product budgets were not measured because calibration failed closed. Browser crawl recorded 2322 required-role case records plus 564 supplementary instance-admin/owner case records; 564 workspace-admin cases remain fixture-blocked (#914). Portal catalogue descriptions/cards overlap or clip at tablet/mobile (#917); Search close-focus fails (#915); source-connection audit event is absent (#916). This is evidence for review, not full browser acceptance or an all-green baseline.",
 	"validation_runs": [
 		{
@@ -934,5 +934,511 @@
 			"status": "open",
 			"finding": "Settled catalogue descriptions overlap adjacent cards at 820 px and cards/content clip at 390 px in both themes (#917). Source catalogue.tsx:547–566 composes library Button cards; the specific sizing/wrapping cause is not isolated. No application code was changed. This is a shared UI/UX responsive defect, not proof that a numbered visibility/submission clause fails."
 		}
-	]
+	],
+	"roadmap": {
+		"updated": "2026-10-29T02:40:05.402540+00:00",
+		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
+		"note": "The new candidate is published and hosted G11 results are pending. Zero of three qualifying headroom runs; the previous hosted candidate failed its LCP budget.",
+		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
+		"ci": "https://github.com/ThomasHeinThura/ticketing/pull/919/checks",
+		"metrics": [
+			{
+				"name": "Work-list LCP",
+				"measured": "Pending",
+				"budget": "< 2500 ms",
+				"target": "≤ 2125 ms",
+				"result": "Pending",
+				"headroom": "Unproven"
+			},
+			{
+				"name": "List to detail",
+				"measured": "Pending",
+				"budget": "< 300 ms",
+				"target": "≤ 255 ms",
+				"result": "Pending",
+				"headroom": "Unproven"
+			},
+			{
+				"name": "Board drag p95",
+				"measured": "Pending",
+				"budget": "< 20 ms",
+				"target": "≤ 17 ms",
+				"result": "Pending",
+				"headroom": "Unproven"
+			},
+			{
+				"name": "Board render",
+				"measured": "Pending",
+				"budget": "< 500 ms",
+				"target": "≤ 425 ms",
+				"result": "Pending",
+				"headroom": "Unproven"
+			},
+			{
+				"name": "Assignment click",
+				"measured": "Pending",
+				"budget": "< 200 ms",
+				"target": "≤ 170 ms",
+				"result": "Pending",
+				"headroom": "Unproven"
+			},
+			{
+				"name": "State click",
+				"measured": "Pending",
+				"budget": "< 200 ms",
+				"target": "≤ 170 ms",
+				"result": "Pending",
+				"headroom": "Unproven"
+			}
+		],
+		"validation": "Hosted checks are pending; see the PR checks for their current state. The completed d174 hosted results are retained below.",
+		"items": [
+			{
+				"id": "L-01",
+				"name": "Baseline full audit",
+				"status": "Evidence delivered; PR unmerged",
+				"done": "Review, required CI and Thomas approval; blocked evidence remains explicit.",
+				"link": "https://github.com/ThomasHeinThura/ticketing/pull/918"
+			},
+			{
+				"id": "L-05",
+				"name": "Work-list performance headroom",
+				"status": "In progress; draft PR",
+				"done": "G11 green with at least 15% headroom for three CI runs.",
+				"link": "https://github.com/ThomasHeinThura/ticketing/pull/919"
+			},
+			{
+				"id": "L-02",
+				"name": "Test-suite reliability",
+				"status": "Queued",
+				"done": "Three consecutive green CI runs without retries; typical PR run ≤ 15 minutes."
+			},
+			{
+				"id": "L-03a",
+				"name": "Release regression suite",
+				"status": "Queued",
+				"done": "Persisted journeys cover every area and role on local SIT."
+			},
+			{
+				"id": "L-03",
+				"name": "Settings split by scope",
+				"status": "Queued",
+				"done": "Account, project, workspace and God Mode entry points; redirects and role/browser checks."
+			},
+			{
+				"id": "L-04",
+				"name": "Pages editor",
+				"status": "Queued",
+				"done": "Keyboard-first block editor with persistence, conflict handling and browser verification."
+			},
+			{
+				"id": "L-06",
+				"name": "Open review lows",
+				"status": "Queued",
+				"done": "Fix each low or record an accepted decision."
+			},
+			{
+				"id": "L-07",
+				"name": "Requirement gaps",
+				"status": "Queued",
+				"done": "Close each confirmed gap with evidence or obtain an explicit descope."
+			},
+			{
+				"id": "L-08",
+				"name": "Browser coverage",
+				"status": "Queued",
+				"done": "Record outstanding role, screen, import, export and timing evidence."
+			},
+			{
+				"id": "L-09",
+				"name": "Security and data hardening",
+				"status": "Queued",
+				"done": "Fix issues with tests or close them with recorded decisions."
+			},
+			{
+				"id": "L-10",
+				"name": "Customer readiness",
+				"status": "Queued",
+				"done": "Install, configure, upgrade and restore the signed image with matching documentation. Include the mobile portal orientation layout gap (#921)."
+			},
+			{
+				"id": "L-11",
+				"name": "CI tooling issues",
+				"status": "Queued",
+				"done": "Fix or close obsolete issues with evidence."
+			},
+			{
+				"id": "T-1",
+				"name": "Thomas-only external evidence",
+				"status": "External",
+				"done": "Thomas records Entra validation, penetration test and other external decisions."
+			}
+		],
+		"testedCommit": "2c677c1551f50aa9475a54768f15facb17cb6ce3",
+		"measurement": "Hosted CI for this published candidate is pending; no valid G11 timings are available for this commit.",
+		"localVerification": "Candidate 2c677c155 passed build, clean lint, nine typecheck tasks, 7212 unit tests, bundle checks and 12 readiness tests. Its 947 agent assets are byte-identical to d174. The latest local full E2E run passed 166 of 169 tests; three failures remain under investigation. A bounded diagnostic passed 3/3 and does not clear those failures or establish their cause. The previous d174 hosted E2E passed 168/168 on the updated lockfile. Local SIT remains on 01c47cb65: 126 scoped role/portal cases passed, with six settled-detail follow-ups and 32 representative settled captures inspected; whole-product acceptance is not established. The linked candidate local-check evidence describes d174/e17, not this new head. The earlier audit and evidence limits remain below.",
+		"previousRuns": [
+			{
+				"testedCommit": "d174057ee73b06f1f3b296880adfb166450985d2",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40792945815/job/123182354592",
+				"measurement": "Complete hosted Chromium G11 run with valid calibration. Harness-reported values are CPU-normalized where applicable; board-drag p95 is raw. LCP and assignment use the second judged set.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "2692.4 ms",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "List to detail",
+						"measured": "261.1 ms",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "16.8 ms",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Pass",
+						"headroom": "Pass"
+					},
+					{
+						"name": "Board render",
+						"measured": "394.7 ms",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Pass",
+						"headroom": "Pass"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "187.6 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					},
+					{
+						"name": "State click",
+						"measured": "167.7 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass",
+						"headroom": "Pass"
+					}
+				],
+				"validation": "Hosted G11: 21 passed, one failed in 9.0 minutes; LCP 2692.4 ms exceeded the unchanged 2500 ms budget. All 25 other checks passed, including static, dependency audit, unit, integration, G4, G8 and E2E. Two non-gating diagnostics passed in 54 seconds; all five source-bound windows completed. Previous hosted results are retained below.",
+				"localVerification": "Combined candidate d174057ee passed 7212 unit tests, nine typecheck tasks, frozen install, full build, bundle/purity and dependency audit (zero HIGH/MODERATE; one existing LOW). The earlier e17afe535 with seroval 1.6.4 passed 168 E2E tests after correcting two failures (#922/#923); no local full E2E rerun is claimed on the updated lockfile; hosted d174 E2E passed 168/168. The 947 combined agent JavaScript/CSS assets match the preceding E2E-tested agent build; both were compared with the frozen private 4M build. Private uncalibrated three-round medians improved LCP (3792 → 3608 ms) but worsened route timing (268.3 → 291 ms); these do not establish performance acceptance. Local SIT remains on 01c47cb65: 126 scoped role/portal cases passed, with six additional settled-detail follow-ups and 32 representative settled captures inspected. This does not establish whole-product acceptance. Earlier failures, audit limitations and detailed 01c47 verification are retained below; #914 and mobile orientation #921 remain open."
+			},
+			{
+				"testedCommit": "01c47cb65396ca4058bfcad07b60dbbab1a95ab0",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40773655912/job/123117182688",
+				"measurement": "Complete hosted Chromium G11 run with valid calibration. Harness-reported judged values are CPU-normalized where applicable; board-drag p95 is raw. LCP/detail use the second judged set after the harness retry.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "2650.6 ms",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "List to detail",
+						"measured": "364.3 ms",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "33.3 ms",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Board render",
+						"measured": "441.5 ms",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "185.8 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					},
+					{
+						"name": "State click",
+						"measured": "181.7 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					}
+				],
+				"validation": "Hosted G11: 19 passed, three failed in 9.9 minutes. LCP 2650.6 ms exceeds 2500; detail 364.3 ms exceeds 300; drag p95 33.3 ms exceeds 20. All 25 other hosted checks pass, including static, unit/component, all integration shards and aggregate, G4, G8 and E2E. The non-gating multi-phase diagnostic timed out after capturing initial work-list navigation; its command-palette diagnostic passed. No budgets, thresholds, calibration or workflows changed.",
+				"localVerification": "At 01c47cb65: 7212 unit tests, 166 full Chromium E2E tests and nine typecheck tasks pass. Dependency boundaries, clean tracked-source lint, raw UI and bundle budgets pass. Fresh Testcontainers integration passed 5789/5789 for the preceding correction; the preceding hosted b548 head passed full integration, E2E, G4 and G8. Local pinned G8 retains #908 (104/105, actual/diff byte-identical to L-01); local pinned G4 retains two board-readiness failures (19/21). Local SIT now runs source-labelled 01c47cb65: healthy container and strict HTTPS 200 on both hosts after a decoded database backup; 126 unique scoped work-item/portal cases passed across owner, admin, lead, member, viewer and customer at three widths in both themes; six settled detail follow-ups passed without adding cases. Thirty-two settled representative captures were visually inspected. Two initial lead loading captures and the admin readiness/429 failures remain recorded. This does not establish whole-product, full-route, feature or keyboard acceptance. Image scan: 42 unfixed HIGH, 57 MEDIUM, 60 LOW, zero CRITICAL or fixable HIGH/CRITICAL; no new CVE/package/version/severity/fix tuples versus the preserved runtime parent. Lazy date formatting removes 81.9 ms sampled unused initialization, but controlled local LCP medians were 3876 → 3976 ms; no net performance gain is claimed. Candidate SIT ordinary-owner matrix passed 24/24 with no instance-admin authority. First isolated-admin run passed 23/24; a targeted follow-up confirmed session-endpoint HTTP 429 and a session-error screen. Installed Better Auth resets its counter after ten seconds inactivity. A paced follow-up passed all 24 affected admin cases with no HTTP 429 responses; the original failures remain recorded. The broader 94-route admin crawl remains partial: 54 settled content, 84 expected denials, 132 missing fixtures and 294 unconfirmed; #914 remains open. Customer portal home/session-isolation checks passed 6/6; two captures inspected. Mobile orientation title/body placement is a confirmed design gap (#921, L-10); functional checks do not imply design acceptance."
+			},
+			{
+				"testedCommit": "b548effe67e4c4f49412a22ab6da15e18518547e",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40756787932/job/123057737761",
+				"measurement": "No valid application timings from this hosted run: G11 failed its calibration-stability guard before measuring the application. Previous judged values remain below.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "Unavailable",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "List to detail",
+						"measured": "Unavailable",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "Unavailable",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "Board render",
+						"measured": "Unavailable",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "Unavailable",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "State click",
+						"measured": "Unavailable",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					}
+				],
+				"validation": "Hosted b548effe6: E2E, G4, G8 and integration passed. G11 failed closed because throttled calibration batch spread 0.582 exceeded the unchanged 0.55 guard (one failure; 21 tests did not run). Static checks rejected the web-source test importing API code. The Node transport/test extraction now passes eight focused tests, API/web typechecks and the original dependency-boundary checker locally; hosted verification of that correction is pending."
+			},
+			{
+				"testedCommit": "0262b94557101528eaa770310d3d306a15a6c593",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40751405333/job/123038763633",
+				"measurement": "Partial hosted Chromium G11 run. The first two judged metrics were reported before the preview server crashed; the remaining run cannot establish acceptance.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "2637.7 ms",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "List to detail",
+						"measured": "361.6 ms",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "Unavailable",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "Board render",
+						"measured": "Unavailable",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "Unavailable",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					},
+					{
+						"name": "State click",
+						"measured": "Unavailable",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Unverified",
+						"headroom": "Unverified"
+					}
+				],
+				"validation": "Hosted G11: 10 passed, 12 failed. LCP and detail exceeded budgets before a preview-server streaming-abort crash caused connection-refused failures. Full E2E also failed after that crash. No current-candidate board or assignment acceptance is claimed. The previous complete run is retained below."
+			},
+			{
+				"testedCommit": "ec06957233d7b8e9122e8efcc024986108c41e6f",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40731412562/job/122968440838",
+				"measurement": "Hosted Chromium G11 harness-reported judged values; calibration was valid per linked job. Board drag p95 is raw.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "2853.6 ms",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "List to detail",
+						"measured": "1103.5 ms",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "16.8 ms",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Pass",
+						"headroom": "Pass"
+					},
+					{
+						"name": "Board render",
+						"measured": "467.1 ms",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "184.6 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					},
+					{
+						"name": "State click",
+						"measured": "190.0 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					}
+				],
+				"validation": "Hosted CI: 25 other checks green including full integration, G8, G4 and E2E; G11 alone failed (20 passed, 2 failed). Detail value 1103.5 ms is the second judged set; the first set measured 1063.9 ms."
+			},
+			{
+				"testedCommit": "48dec6ed2dc5daf6c73a771a652a8fb4d58feac8",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40714505114/job/122908390393",
+				"measurement": "Hosted Chromium G11 judged values: CPU-bound metrics normalized; board-drag p95 raw. Worker calibration readings were 1.096–1.178; unthrottled readings were 1.166–1.183, within the existing validity envelope.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "2769.5 ms",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Fail"
+					},
+					{
+						"name": "List to detail",
+						"measured": "518 ms",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Fail"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "16.8 ms",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Pass"
+					},
+					{
+						"name": "Board render",
+						"measured": "412.7 ms",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Pass"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "165.2 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass"
+					}
+				],
+				"validation": "Hosted E2E 164 passed, 1 failed (create-control regression)."
+			}
+		],
+		"adminFollowUp": {
+			"summary": "Candidate 01c47cb65: 126 unique scoped work-item/portal cases passed across five workspace roles and customer; six settled detail follow-ups add no cases. Thirty-two settled representative captures were visually inspected; two initial lead loading captures and admin readiness/429 failures are retained. The earlier broader 94-route admin crawl recorded 564 cases: 54 settled content, 84 expected denials, 132 missing fixtures and 294 unconfirmed. This is partial evidence, not whole-product or whole-matrix acceptance; issue #914 remains open. Existing memberships/customer records were preserved and the SIT account seeder was not rerun.",
+			"ledger": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/audit/l05-workspace-admin-followup.json",
+			"screenshots": [
+				{
+					"label": "Desktop light list",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-light-1440-list.png"
+				},
+				{
+					"label": "Desktop dark board",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-dark-1440-board.png"
+				},
+				{
+					"label": "Tablet light table",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-light-768-table.png"
+				},
+				{
+					"label": "Tablet dark detail",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-dark-768-detail.png"
+				},
+				{
+					"label": "Mobile light detail",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-light-375-detail.png"
+				},
+				{
+					"label": "Mobile dark list",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/936868c9ba8c45607f3522c8eceee2f2af88d071/docs/report/browser/l05-workspace-admin/admin-dark-375-list.png"
+				},
+				{
+					"label": "Candidate 01c47: scoped role matrix and retained failures (126 cases; 32 settled captures inspected)",
+					"url": "https://github.com/ThomasHeinThura/ticketing/blob/91518bf2c5af4424589aa89a0040943818d37a43/docs/report/audit/l05-01c47cb65-sit.json"
+				}
+			]
+		},
+		"evidenceURL": "https://github.com/ThomasHeinThura/ticketing/blob/9487681587ed9c9c683050d6f19d1f3f0cb2ea3b/docs/report/audit/l05-startup-group.json",
+		"activeWork": "The published LCP test correction awaits hosted validation. Three failures from the local 166/169 full E2E run remain under investigation; a 3/3 bounded diagnostic does not resolve them. No new hosted G11 result is available."
+	}
 }
