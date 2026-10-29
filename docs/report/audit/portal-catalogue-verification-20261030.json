@@ -1,0 +1,1204 @@
+{
+	"schemaVersion": 1,
+	"recordedAt": "2026-10-29T19:08:56.559Z",
+	"issue": 917,
+	"source": "038151a447657f6011aad5cdef8824392ddd3c5b",
+	"runtimeSource": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+	"runtimeComposition": "Local integration includes the exact same portal catalogue blob plus the separate shared datetime candidate; no portal auth/API changes.",
+	"scope": "Existing persisted customer request catalogue cards; keyboard selection, forms and query/back/reload preservation.",
+	"summary": {
+		"beforeCases": 6,
+		"afterCases": 6,
+		"passed": 6,
+		"persistedFormJourneys": 18,
+		"seriousCriticalAxeViolations": 0,
+		"temporaryDomLongWordProbes": 3
+	},
+	"checks": {
+		"focusedTests": 14,
+		"rootTypecheck": "9 tasks pass in 15.329s",
+		"rootUnits": {
+			"passed": 7207,
+			"packages": 8,
+			"tasks": 12,
+			"duration": "2m42.665s",
+			"source": "038151a447657f6011aad5cdef8824392ddd3c5b"
+		},
+		"rawElements": 0,
+		"contrastPairs": 401,
+		"portalBundleKb": 189.1,
+		"portalBundleBudgetKb": 200,
+		"bundlePurity": "pass",
+		"lint": "pass; existing warnings",
+		"independentReview": "Terra final source and scoped browser/evidence review: no high/medium findings",
+		"imageTrivy": {
+			"high": 42,
+			"critical": 0,
+			"fixableHighCritical": 0
+		},
+		"visualBaselinesChanged": [],
+		"hostedCI": "not started",
+		"permissions": 118,
+		"routePolicy": "pass",
+		"contract": "pass; existing main warnings"
+	},
+	"dataSafety": {
+		"customerRecordsChanged": false,
+		"apiWrites": 0,
+		"seederRun": false,
+		"protectedDatabaseTouched": false
+	},
+	"limits": [
+		"Scoped catalogue card fix, not full portal or product visual acceptance.",
+		"List screenshots and axe cover real persisted data. Form journeys open/cancel menus and preserve navigation without submission; form axe is not claimed.",
+		"An additional synthetic DOM-only long-word probe measures glyph rectangles, then restores original text; it does not change persisted data or supply acceptance screenshots.",
+		"The initial private driver failed a case-sensitive terminology expectation; later auth-session probes lacked HTTP status. The concurrent settings audit confirmed HTTP429 under audit load. A corrected anchored case-insensitive expectation and one reused browser context pass all cases, with no production, sleep, retry or timeout changes.",
+		"Existing portal no-match/loading state styling remains outside the card-only slice.",
+		"Hosted G4/G8 and all required non-G11 checks remain required before merge.",
+		"Public form URLs use a request-type placeholder and display label; exact persisted identifiers remain in the private source-bound browser receipt. Gitleaks initially classified these noncredential request-type keys as generic API keys; no scanner rule or exception was added."
+	],
+	"before": [
+		{
+			"role": "customer",
+			"width": 1440,
+			"theme": "light",
+			"source": "726fb779f8a8f4d6293081b03f1e87ff73e6fee0",
+			"url": "/catalogue",
+			"bounds": [
+				{
+					"card": {
+						"left": 476,
+						"right": 830,
+						"top": 278,
+						"bottom": 312,
+						"width": 354,
+						"height": 34
+					},
+					"text": {
+						"left": 493,
+						"right": 784.90625,
+						"top": 275,
+						"bottom": 313
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				},
+				{
+					"card": {
+						"left": 476,
+						"right": 830,
+						"top": 377,
+						"bottom": 411,
+						"width": 354,
+						"height": 34
+					},
+					"text": {
+						"left": 493,
+						"right": 776.46875,
+						"top": 374,
+						"bottom": 412
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				},
+				{
+					"card": {
+						"left": 842,
+						"right": 1196,
+						"top": 377,
+						"bottom": 411,
+						"width": 354,
+						"height": 34
+					},
+					"text": {
+						"left": 859,
+						"right": 1113.765625,
+						"top": 374,
+						"bottom": 412
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-before-customer-1440-light.png",
+			"persistedMutation": false,
+			"status": "observed"
+		},
+		{
+			"role": "customer",
+			"width": 1440,
+			"theme": "dark",
+			"source": "726fb779f8a8f4d6293081b03f1e87ff73e6fee0",
+			"url": "/catalogue",
+			"bounds": [
+				{
+					"card": {
+						"left": 476,
+						"right": 830,
+						"top": 278,
+						"bottom": 312,
+						"width": 354,
+						"height": 34
+					},
+					"text": {
+						"left": 493,
+						"right": 784.90625,
+						"top": 275,
+						"bottom": 313
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				},
+				{
+					"card": {
+						"left": 476,
+						"right": 830,
+						"top": 377,
+						"bottom": 411,
+						"width": 354,
+						"height": 34
+					},
+					"text": {
+						"left": 493,
+						"right": 776.46875,
+						"top": 374,
+						"bottom": 412
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				},
+				{
+					"card": {
+						"left": 842,
+						"right": 1196,
+						"top": 377,
+						"bottom": 411,
+						"width": 354,
+						"height": 34
+					},
+					"text": {
+						"left": 859,
+						"right": 1113.765625,
+						"top": 374,
+						"bottom": 412
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-before-customer-1440-dark.png",
+			"persistedMutation": false,
+			"status": "observed"
+		},
+		{
+			"role": "customer",
+			"width": 820,
+			"theme": "light",
+			"source": "726fb779f8a8f4d6293081b03f1e87ff73e6fee0",
+			"url": "/catalogue",
+			"bounds": [
+				{
+					"card": {
+						"left": 265,
+						"right": 520,
+						"top": 278,
+						"bottom": 312,
+						"width": 255,
+						"height": 34
+					},
+					"text": {
+						"left": 282,
+						"right": 573.90625,
+						"top": 275,
+						"bottom": 313
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				},
+				{
+					"card": {
+						"left": 265,
+						"right": 520,
+						"top": 377,
+						"bottom": 411,
+						"width": 255,
+						"height": 34
+					},
+					"text": {
+						"left": 282,
+						"right": 565.46875,
+						"top": 374,
+						"bottom": 412
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				},
+				{
+					"card": {
+						"left": 532,
+						"right": 787,
+						"top": 377,
+						"bottom": 411,
+						"width": 255,
+						"height": 34
+					},
+					"text": {
+						"left": 549,
+						"right": 803.765625,
+						"top": 374,
+						"bottom": 412
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-before-customer-820-light.png",
+			"persistedMutation": false,
+			"status": "observed"
+		},
+		{
+			"role": "customer",
+			"width": 820,
+			"theme": "dark",
+			"source": "726fb779f8a8f4d6293081b03f1e87ff73e6fee0",
+			"url": "/catalogue",
+			"bounds": [
+				{
+					"card": {
+						"left": 265,
+						"right": 520,
+						"top": 278,
+						"bottom": 312,
+						"width": 255,
+						"height": 34
+					},
+					"text": {
+						"left": 282,
+						"right": 573.90625,
+						"top": 275,
+						"bottom": 313
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				},
+				{
+					"card": {
+						"left": 265,
+						"right": 520,
+						"top": 377,
+						"bottom": 411,
+						"width": 255,
+						"height": 34
+					},
+					"text": {
+						"left": 282,
+						"right": 565.46875,
+						"top": 374,
+						"bottom": 412
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				},
+				{
+					"card": {
+						"left": 532,
+						"right": 787,
+						"top": 377,
+						"bottom": 411,
+						"width": 255,
+						"height": 34
+					},
+					"text": {
+						"left": 549,
+						"right": 803.765625,
+						"top": 374,
+						"bottom": 412
+					},
+					"textOutsideCard": true,
+					"cardOutsideViewport": false
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-before-customer-820-dark.png",
+			"persistedMutation": false,
+			"status": "observed"
+		},
+		{
+			"role": "customer",
+			"width": 390,
+			"theme": "light",
+			"source": "726fb779f8a8f4d6293081b03f1e87ff73e6fee0",
+			"url": "/catalogue",
+			"bounds": [
+				{
+					"card": {
+						"left": 33,
+						"right": 400.609375,
+						"top": 301,
+						"bottom": 383,
+						"width": 367.609375,
+						"height": 82
+					},
+					"text": {
+						"left": 50,
+						"right": 383.609375,
+						"top": 318,
+						"bottom": 363
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": true
+				},
+				{
+					"card": {
+						"left": 33,
+						"right": 390.953125,
+						"top": 443,
+						"bottom": 525,
+						"width": 357.953125,
+						"height": 82
+					},
+					"text": {
+						"left": 50,
+						"right": 373.953125,
+						"top": 460,
+						"bottom": 505
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": true
+				},
+				{
+					"card": {
+						"left": 33,
+						"right": 390.953125,
+						"top": 537,
+						"bottom": 619,
+						"width": 357.953125,
+						"height": 82
+					},
+					"text": {
+						"left": 50,
+						"right": 341.15625,
+						"top": 554,
+						"bottom": 599
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": true
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-before-customer-390-light.png",
+			"persistedMutation": false,
+			"status": "observed"
+		},
+		{
+			"role": "customer",
+			"width": 390,
+			"theme": "dark",
+			"source": "726fb779f8a8f4d6293081b03f1e87ff73e6fee0",
+			"url": "/catalogue",
+			"bounds": [
+				{
+					"card": {
+						"left": 33,
+						"right": 400.609375,
+						"top": 301,
+						"bottom": 383,
+						"width": 367.609375,
+						"height": 82
+					},
+					"text": {
+						"left": 50,
+						"right": 383.609375,
+						"top": 318,
+						"bottom": 363
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": true
+				},
+				{
+					"card": {
+						"left": 33,
+						"right": 390.953125,
+						"top": 443,
+						"bottom": 525,
+						"width": 357.953125,
+						"height": 82
+					},
+					"text": {
+						"left": 50,
+						"right": 373.953125,
+						"top": 460,
+						"bottom": 505
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": true
+				},
+				{
+					"card": {
+						"left": 33,
+						"right": 390.953125,
+						"top": 537,
+						"bottom": 619,
+						"width": 357.953125,
+						"height": 82
+					},
+					"text": {
+						"left": 50,
+						"right": 341.15625,
+						"top": 554,
+						"bottom": 599
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": true
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-before-customer-390-dark.png",
+			"persistedMutation": false,
+			"status": "observed"
+		}
+	],
+	"after": [
+		{
+			"role": "customer",
+			"width": 1440,
+			"theme": "light",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"url": "/catalogue",
+			"writes": [],
+			"forms": [
+				{
+					"name": "Access request",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-1440-light-form-oao1flmdbp1ajo5om4hs066a.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Access request",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-1440-light-form-z5gbihbwx1icilgk0nemic4c.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "AT9 PDF Preview Fixture",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "Report a problem",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 2,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-1440-light-form-qugqvikd0jmvj0zpfa2e6pia.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Report a problem",
+					"selectionMatchesPersistedRequestType": true
+				}
+			],
+			"status": "passed",
+			"sessionStatus": 200,
+			"persistedEntries": 3,
+			"bounds": [
+				{
+					"name": "Access request",
+					"card": {
+						"left": 476,
+						"right": 830,
+						"top": 273,
+						"bottom": 371,
+						"width": 354,
+						"height": 98
+					},
+					"text": {
+						"left": 493,
+						"right": 813,
+						"top": 290,
+						"bottom": 354
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"card": {
+						"left": 476,
+						"right": 830,
+						"top": 431,
+						"bottom": 529,
+						"width": 354,
+						"height": 98
+					},
+					"text": {
+						"left": 493,
+						"right": 813,
+						"top": 448,
+						"bottom": 512
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "Report a problem",
+					"card": {
+						"left": 842,
+						"right": 1196,
+						"top": 431,
+						"bottom": 529,
+						"width": 354,
+						"height": 98
+					},
+					"text": {
+						"left": 859,
+						"right": 1179,
+						"top": 448,
+						"bottom": 492
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				}
+			],
+			"documentOverflow": false,
+			"axe": [],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-1440-light.png",
+			"searchSelectionBackPreserved": true,
+			"emptyScreenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-1440-light-empty.png",
+			"emptyStateObserved": true
+		},
+		{
+			"role": "customer",
+			"width": 1440,
+			"theme": "dark",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"url": "/catalogue",
+			"writes": [],
+			"forms": [
+				{
+					"name": "Access request",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-1440-dark-form-oao1flmdbp1ajo5om4hs066a.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Access request",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-1440-dark-form-z5gbihbwx1icilgk0nemic4c.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "AT9 PDF Preview Fixture",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "Report a problem",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 2,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-1440-dark-form-qugqvikd0jmvj0zpfa2e6pia.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Report a problem",
+					"selectionMatchesPersistedRequestType": true
+				}
+			],
+			"status": "passed",
+			"persistedEntries": 3,
+			"bounds": [
+				{
+					"name": "Access request",
+					"card": {
+						"left": 476,
+						"right": 830,
+						"top": 273,
+						"bottom": 371,
+						"width": 354,
+						"height": 98
+					},
+					"text": {
+						"left": 493,
+						"right": 813,
+						"top": 290,
+						"bottom": 354
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"card": {
+						"left": 476,
+						"right": 830,
+						"top": 431,
+						"bottom": 529,
+						"width": 354,
+						"height": 98
+					},
+					"text": {
+						"left": 493,
+						"right": 813,
+						"top": 448,
+						"bottom": 512
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "Report a problem",
+					"card": {
+						"left": 842,
+						"right": 1196,
+						"top": 431,
+						"bottom": 529,
+						"width": 354,
+						"height": 98
+					},
+					"text": {
+						"left": 859,
+						"right": 1179,
+						"top": 448,
+						"bottom": 492
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				}
+			],
+			"documentOverflow": false,
+			"axe": [],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-1440-dark.png",
+			"searchSelectionBackPreserved": true,
+			"emptyScreenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-1440-dark-empty.png",
+			"emptyStateObserved": true
+		},
+		{
+			"role": "customer",
+			"width": 820,
+			"theme": "light",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"url": "/catalogue",
+			"writes": [],
+			"forms": [
+				{
+					"name": "Access request",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-820-light-form-oao1flmdbp1ajo5om4hs066a.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Access request",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-820-light-form-z5gbihbwx1icilgk0nemic4c.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "AT9 PDF Preview Fixture",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "Report a problem",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 2,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-820-light-form-qugqvikd0jmvj0zpfa2e6pia.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Report a problem",
+					"selectionMatchesPersistedRequestType": true
+				}
+			],
+			"status": "passed",
+			"persistedEntries": 3,
+			"bounds": [
+				{
+					"name": "Access request",
+					"card": {
+						"left": 265,
+						"right": 520,
+						"top": 273,
+						"bottom": 371,
+						"width": 255,
+						"height": 98
+					},
+					"text": {
+						"left": 282,
+						"right": 503,
+						"top": 290,
+						"bottom": 354
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"card": {
+						"left": 265,
+						"right": 520,
+						"top": 431,
+						"bottom": 529,
+						"width": 255,
+						"height": 98
+					},
+					"text": {
+						"left": 282,
+						"right": 503,
+						"top": 448,
+						"bottom": 512
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "Report a problem",
+					"card": {
+						"left": 532,
+						"right": 787,
+						"top": 431,
+						"bottom": 529,
+						"width": 255,
+						"height": 98
+					},
+					"text": {
+						"left": 549,
+						"right": 770,
+						"top": 448,
+						"bottom": 512
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				}
+			],
+			"documentOverflow": false,
+			"axe": [],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-820-light.png",
+			"searchSelectionBackPreserved": true,
+			"emptyScreenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-820-light-empty.png",
+			"emptyStateObserved": true
+		},
+		{
+			"role": "customer",
+			"width": 820,
+			"theme": "dark",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"url": "/catalogue",
+			"writes": [],
+			"forms": [
+				{
+					"name": "Access request",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-820-dark-form-oao1flmdbp1ajo5om4hs066a.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Access request",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-820-dark-form-z5gbihbwx1icilgk0nemic4c.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "AT9 PDF Preview Fixture",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "Report a problem",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 2,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-820-dark-form-qugqvikd0jmvj0zpfa2e6pia.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Report a problem",
+					"selectionMatchesPersistedRequestType": true
+				}
+			],
+			"status": "passed",
+			"persistedEntries": 3,
+			"bounds": [
+				{
+					"name": "Access request",
+					"card": {
+						"left": 265,
+						"right": 520,
+						"top": 273,
+						"bottom": 371,
+						"width": 255,
+						"height": 98
+					},
+					"text": {
+						"left": 282,
+						"right": 503,
+						"top": 290,
+						"bottom": 354
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"card": {
+						"left": 265,
+						"right": 520,
+						"top": 431,
+						"bottom": 529,
+						"width": 255,
+						"height": 98
+					},
+					"text": {
+						"left": 282,
+						"right": 503,
+						"top": 448,
+						"bottom": 512
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "Report a problem",
+					"card": {
+						"left": 532,
+						"right": 787,
+						"top": 431,
+						"bottom": 529,
+						"width": 255,
+						"height": 98
+					},
+					"text": {
+						"left": 549,
+						"right": 770,
+						"top": 448,
+						"bottom": 512
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				}
+			],
+			"documentOverflow": false,
+			"axe": [],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-820-dark.png",
+			"searchSelectionBackPreserved": true,
+			"emptyScreenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-820-dark-empty.png",
+			"emptyStateObserved": true
+		},
+		{
+			"role": "customer",
+			"width": 390,
+			"theme": "light",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"url": "/catalogue",
+			"writes": [],
+			"forms": [
+				{
+					"name": "Access request",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-390-light-form-oao1flmdbp1ajo5om4hs066a.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Access request",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-390-light-form-z5gbihbwx1icilgk0nemic4c.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "AT9 PDF Preview Fixture",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "Report a problem",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 2,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-390-light-form-qugqvikd0jmvj0zpfa2e6pia.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Report a problem",
+					"selectionMatchesPersistedRequestType": true
+				}
+			],
+			"status": "passed",
+			"persistedEntries": 3,
+			"bounds": [
+				{
+					"name": "Access request",
+					"card": {
+						"left": 33,
+						"right": 357,
+						"top": 301,
+						"bottom": 399,
+						"width": 324,
+						"height": 98
+					},
+					"text": {
+						"left": 50,
+						"right": 340,
+						"top": 318,
+						"bottom": 382
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"card": {
+						"left": 33,
+						"right": 357,
+						"top": 459,
+						"bottom": 557,
+						"width": 324,
+						"height": 98
+					},
+					"text": {
+						"left": 50,
+						"right": 340,
+						"top": 476,
+						"bottom": 540
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "Report a problem",
+					"card": {
+						"left": 33,
+						"right": 357,
+						"top": 569,
+						"bottom": 667,
+						"width": 324,
+						"height": 98
+					},
+					"text": {
+						"left": 50,
+						"right": 340,
+						"top": 586,
+						"bottom": 650
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				}
+			],
+			"documentOverflow": false,
+			"axe": [],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-390-light.png",
+			"searchSelectionBackPreserved": true,
+			"emptyScreenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-390-light-empty.png",
+			"emptyStateObserved": true
+		},
+		{
+			"role": "customer",
+			"width": 390,
+			"theme": "dark",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"url": "/catalogue",
+			"writes": [],
+			"forms": [
+				{
+					"name": "Access request",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-390-dark-form-oao1flmdbp1ajo5om4hs066a.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Access request",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 1,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-390-dark-form-z5gbihbwx1icilgk0nemic4c.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "AT9 PDF Preview Fixture",
+					"selectionMatchesPersistedRequestType": true
+				},
+				{
+					"name": "Report a problem",
+					"keyboardOpen": true,
+					"headingFocused": true,
+					"url": "/catalogue?key={request-type}",
+					"nativeControls": [],
+					"popovers": 2,
+					"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-390-dark-form-qugqvikd0jmvj0zpfa2e6pia.png",
+					"selectionSurvivesReload": true,
+					"backFocus": true,
+					"requestType": "Report a problem",
+					"selectionMatchesPersistedRequestType": true
+				}
+			],
+			"status": "passed",
+			"persistedEntries": 3,
+			"bounds": [
+				{
+					"name": "Access request",
+					"card": {
+						"left": 33,
+						"right": 357,
+						"top": 301,
+						"bottom": 399,
+						"width": 324,
+						"height": 98
+					},
+					"text": {
+						"left": 50,
+						"right": 340,
+						"top": 318,
+						"bottom": 382
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "AT9 PDF Preview Fixture",
+					"card": {
+						"left": 33,
+						"right": 357,
+						"top": 459,
+						"bottom": 557,
+						"width": 324,
+						"height": 98
+					},
+					"text": {
+						"left": 50,
+						"right": 340,
+						"top": 476,
+						"bottom": 540
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				},
+				{
+					"name": "Report a problem",
+					"card": {
+						"left": 33,
+						"right": 357,
+						"top": 569,
+						"bottom": 667,
+						"width": 324,
+						"height": 98
+					},
+					"text": {
+						"left": 50,
+						"right": 340,
+						"top": 586,
+						"bottom": 650
+					},
+					"textOutsideCard": false,
+					"cardOutsideViewport": false,
+					"overflowWrap": "break-word"
+				}
+			],
+			"documentOverflow": false,
+			"axe": [],
+			"screenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-390-dark.png",
+			"searchSelectionBackPreserved": true,
+			"emptyScreenshot": "docs/report/screens/20261030-portal-catalogue-after-customer-390-dark-empty.png",
+			"emptyStateObserved": true
+		}
+	],
+	"temporaryDomLongWordProbe": [
+		{
+			"width": 1440,
+			"mode": "temporary DOM text stress only; persisted data and application source unchanged",
+			"titleCharacters": 264,
+			"descriptionCharacters": 336,
+			"glyphRectsContained": true,
+			"documentOverflow": false,
+			"violations": []
+		},
+		{
+			"width": 820,
+			"mode": "temporary DOM text stress only; persisted data and application source unchanged",
+			"titleCharacters": 264,
+			"descriptionCharacters": 336,
+			"glyphRectsContained": true,
+			"documentOverflow": false,
+			"violations": []
+		},
+		{
+			"width": 390,
+			"mode": "temporary DOM text stress only; persisted data and application source unchanged",
+			"titleCharacters": 264,
+			"descriptionCharacters": 336,
+			"glyphRectsContained": true,
+			"documentOverflow": false,
+			"violations": []
+		}
+	]
+}
