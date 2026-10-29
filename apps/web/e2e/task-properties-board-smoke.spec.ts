@@ -320,7 +320,7 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
       });
 
       await page.keyboard.press("?");
-      const help = page.getByRole("dialog");
+      const help = page.getByRole("dialog", { name: "Keyboard Shortcuts" });
       await expect(help).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(help).toBeHidden();
