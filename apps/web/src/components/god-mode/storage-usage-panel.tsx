@@ -173,8 +173,8 @@ export function StorageUsagePanel() {
               </dd>
             </div>
           </dl>
-          <Frame className="min-w-0 overflow-x-auto">
-            <Table>
+          <Frame className="min-w-0">
+            <Table scrollLabel={t("usageTitle")}>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("columns.state")}</TableHead>
