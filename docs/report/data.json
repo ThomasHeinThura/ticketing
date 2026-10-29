@@ -936,7 +936,7 @@
 		}
 	],
 	"roadmap": {
-		"updated": "2026-10-29T00:37:30.666115+00:00",
+		"updated": "2026-10-29T02:27:42.418490+00:00",
 		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
 		"note": "G11 fails the LCP budget; detail and board drag now pass their budgets. LCP, detail and assignment miss 15% headroom, so this run does not qualify. Zero of three qualifying runs; no causal improvement is claimed.",
 		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
@@ -1381,6 +1381,7 @@
 				}
 			]
 		},
-		"evidenceURL": "https://github.com/ThomasHeinThura/ticketing/blob/9487681587ed9c9c683050d6f19d1f3f0cb2ea3b/docs/report/audit/l05-startup-group.json"
+		"evidenceURL": "https://github.com/ThomasHeinThura/ticketing/blob/9487681587ed9c9c683050d6f19d1f3f0cb2ea3b/docs/report/audit/l05-startup-group.json",
+		"activeWork": "A local LCP test correction is under validation. The latest local full run passed 166 of 169 tests; three failures are under investigation, with no application regression established. There is no new hosted candidate result."
 	}
 }
