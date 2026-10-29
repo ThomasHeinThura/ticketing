@@ -81,6 +81,7 @@ function ListChoice({
 /** A popover list of choices for `multi_select` / `multi_user`; selection toggles. */
 function MultiChoice({
   id,
+  label,
   choices,
   selected,
   disabled,
@@ -88,6 +89,7 @@ function MultiChoice({
   onChange,
 }: {
   id: string;
+  label: string;
   choices: { key: string; label: string }[];
   selected: string[];
   disabled?: boolean;
@@ -111,6 +113,7 @@ function MultiChoice({
         </Button>
       </PopoverTrigger>
       <PopoverContent
+        aria-label={label}
         className={
           choices.length > PICKER_SEARCH_THRESHOLD ? "w-64 p-0" : "w-56 p-1"
         }
@@ -291,7 +294,7 @@ export function CustomFieldValueInput({
               </span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="p-0" align="start">
+          <PopoverContent className="p-0" align="start" aria-label={field.name}>
             <Calendar
               mode="single"
               selected={day}
@@ -395,6 +398,7 @@ export function CustomFieldValueInput({
       return (
         <MultiChoice
           id={id}
+          label={field.name}
           choices={field.options}
           selected={Array.isArray(value) ? (value as string[]) : []}
           disabled={disabled}
@@ -472,6 +476,7 @@ export function CustomFieldValueInput({
       return (
         <MultiChoice
           id={id}
+          label={field.name}
           choices={choices}
           selected={selected}
           disabled={disabled}
