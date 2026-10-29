@@ -26,6 +26,7 @@ import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import { DateField } from "@/components/time-tracking/date-field";
 import {
   RELEASE_STATUSES,
   type ReleaseDetail,
@@ -113,12 +114,14 @@ function DetailsCard({
               <Label htmlFor="release-edit-date">
                 {t("releases.fields.plannedDate")}
               </Label>
-              <Input
+              <DateField
                 id="release-edit-date"
-                type="date"
+                label={t("releases.fields.plannedDate")}
+                placeholder={t("customFields:value.notSet")}
+                clearLabel={t("customFields:value.clear")}
                 value={plannedDate}
                 disabled={!canManage}
-                onChange={(event) => setPlannedDate(event.target.value)}
+                onChange={setPlannedDate}
               />
             </div>
             <div className="space-y-2">
