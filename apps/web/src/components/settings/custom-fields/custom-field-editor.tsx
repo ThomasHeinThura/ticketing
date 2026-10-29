@@ -435,7 +435,14 @@ function EditorForm({
 
       <Card>
         <CardHeader>
-          <CardTitle render={<Label htmlFor="cf-default" />}>
+          <CardTitle
+            render={
+              <Label
+                htmlFor="cf-default"
+                className="text-lg leading-none sm:text-lg sm:leading-none"
+              />
+            }
+          >
             {t("customFields:editor.defaultTitle")}
           </CardTitle>
           <CardDescription>
