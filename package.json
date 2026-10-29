@@ -50,7 +50,7 @@
     "lint:ci": "biome ci .",
     "openapi:write": "node ./scripts/ci/check-openapi.mjs --write",
     "test:all": "node ./scripts/ci/test-all.mjs",
-    "test:ci-scripts": "node --test 'scripts/ci/**/*.test.mjs'",
+    "test:ci-scripts": "node --test 'scripts/ci/**/*.test.mjs' 'scripts/report/*.test.mjs'",
     "check:kaneo-parity": "node scripts/kaneo-parity/check.mjs"
   },
   "devDependencies": {
