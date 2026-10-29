@@ -84,18 +84,18 @@ export function DashboardWidgetCard({
         </CardHeader>
       ) : null}
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="truncate text-base">
+        <CardTitle className="min-w-0 text-base">
           {widget.reportKey ? (
             <Link
               to={routes.reportDetail.path}
               params={{ key: widget.reportKey }}
               search={parseReportSearch(widget.filters)}
-              className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-h-6 max-w-full items-center rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {title}
+              <span className="truncate">{title}</span>
             </Link>
           ) : (
-            title
+            <span className="block truncate">{title}</span>
           )}
         </CardTitle>
         <div className="flex shrink-0 items-center gap-1">
