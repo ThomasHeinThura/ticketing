@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-29T12:04:56.689Z",
+	"generated": "2026-10-29T13:26:28.590Z",
 	"source": "673 clauses; PR #918 per-ID evidence retained: 19 tested, 630 source-only, 15 partial, 6 external-blocked and 3 unverified. The 29 October repository audit adds issue/source/check status without promoting whole-clause acceptance. All 73 indexed contracts remain unverified.",
 	"phases": [
 		{
@@ -596,10 +596,11 @@
 		"Decided 28 Oct (Thomas): the 500-row table metric counts the virtualized table's first painted viewport with 500 rows loaded (new recorder); budget < 500 ms unchanged.",
 		"28 Oct security upgrade: better-auth 1.6.26 -> 1.7.10 (critical GHSA: OAuth state usable as a magic link; high: OAuth proxy sign-in as another user; high: device-login approval) and qs 6.16.1. Adapted: pending-action credential invalidation inside better-auth transactions (PA-9), custom OIDC sign-in via signIn.social, TOTP enrollment result shape. Operator action: the agent custom OIDC redirect URI changes from /api/auth/oauth2/callback/custom to /api/auth/callback/custom at the identity provider. Full integration 5,789/5,789 and auth suites pass.",
 		"Decided 28 Oct (Thomas): phases end after P6; former P7 and all open gaps become one linear backlog (L-01…L-11, T-1) worked by Codex; GitHub CI is a required gate again; Terra/Sonnet implement, Sol/Opus plan, audit and review; official @tiptap/* extensions pre-approved for the Pages editor.",
-		"Decided 28 Oct (Thomas): merge PR #891 past the failing G11 check; misses recorded under backlog L-05; budgets unchanged."
+		"Decided 28 Oct (Thomas): merge PR #891 past the failing G11 check; misses recorded under backlog L-05; budgets unchanged.",
+		"Decided 29 Oct (Thomas): execute the audited plan with subagents as needed; align legacy time-entry mutations with canonical own/any/create capabilities and project/workspace tracking flags (#927). Performance thresholds, calibration and fixture/sample/retry rules remain unchanged. Main merge and public deployment still need approval."
 	],
-	"next": "Working checkpoint: 30 October 2026, 22:00 Yangon. Finish audit PR #918 review/CI; recover the existing SIT; obtain the legacy-contract decision (#927) while independently diagnosing L-05; then L-02 reliability → L-03a persisted release suite (#929) → L-03 scoped settings (#930) → L-04 shared Pages/KB editor (#56), then the remaining roadmap. Close only verified accepted/merged work with the required evidence. Thomas approves merges, deployment, workflow and retained-contract/security changes; external Entra, penetration and retirement evidence remains open.",
-	"status": "29 October audit: P0–P6 historical acceptance retained; 117 open issues (113 original issues individually source-assessed plus four focused trackers). Main d968f7f4 release passed, but G11 remains red and local SIT returns HTTP 502. Fresh typecheck, clean tracked lint, 13 gates and isolated integration (478 files / 5,789 tests) pass; root unit tests fail. The legacy contract review (#927) and report rebuild loss (#928) are tracked. Detailed evidence and limits are in docs/audit.md and the current audit ledger.",
+	"next": "Working checkpoint: 30 October 2026, 22:00 Yangon. Complete and publish reviewable #927/#928 slices; measure #919 assignment and LCP fixes against unchanged budgets; then L-02 reliability, L-03a persisted release suite (#929), L-03 scoped settings (#930), L-04 Pages/KB editor (#56), and the remaining roadmap. Close only verified accepted/merged fixes with exact evidence. Thomas still approves main merges and public deployment.",
+	"status": "29 October execution: Thomas approved the plan and #927 canonical legacy time-entry alignment. Existing local SIT is healthy again; both HTTPS hosts return 200 after verified backups, with no seeder run. The #927 candidate passes 123 targeted integration and 118 permission tests plus typecheck; additional negative/concurrency cases, review, browser and CI remain. The #928 rebuild candidate passes six tests, independent Terra round 2 and six copied-data browser variants. Performance, full-unit reliability and all required CI remain open. Historical P0-P6 acceptance and all 673 clause classifications are unchanged.",
 	"validation_runs": [
 		{
 			"check": "29 October fresh typecheck and lint",
@@ -680,6 +681,10 @@
 		{
 			"check": "28 October baseline: Settled portal catalogue visual review",
 			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Six base-catalogue variants settle with zero API errors; retained820/390 captures expose overlap/clipping (#917). Static key=access yields404/concrete error, while the actual existing Access request card opens its selected form6/6 across widths/themes with empty visible text fields and zero API errors. No field entry/submission or whole-clause acceptance claimed."
+		},
+		{
+			"check": "29 October execution: scoped candidates and SIT recovery",
+			"result": "Unmerged #927 working-tree candidate: 7 integration files / 123 tests on fresh PostgreSQL18 Testcontainer, removed after check; typecheck9tasks and permissions118 pass. More negative/concurrency tests and review/browser/CI pending. Unmerged #928 candidate: 6 Node tests, Terra review round2 PASS0high/medium, copied-data rebuild deterministic with all7phases/673clauses and acceptance/metadata retained; browser1440/768/375 light/dark with no overflow/page errors. Both SIT HTTPS hosts now200 after verified backups and restart of existing01c47cb65 app; this is the old image, not these candidate fixes. No test receipt promotes full requirement counts."
 		}
 	],
 	"validation_history": [
@@ -1003,7 +1008,7 @@
 		{
 			"requirement": "Design parity and browser completeness",
 			"status": "pending",
-			"finding": "Pinned Kaneo42bb8011 source/components and historical references were inspected; fresh matched-seed parity and whole-product acceptance remain open. Historical wider audit has564 workspace-admin cases pending replay (#914); a later126-case scoped matrix uses an approved isolated admin but does not establish broader route acceptance. Current local SIT returns502. Route attempts and scoped passes do not establish full clauses."
+			"finding": "Pinned Kaneo42bb8011 source/components and historical references were inspected; fresh matched-seed parity and whole-product acceptance remain open. Historical wider audit has564 workspace-admin cases pending replay (#914); a later126-case scoped matrix uses an approved isolated admin but does not establish broader route acceptance. Local SIT was recovered on 29 Oct: both hosts return200; whole-product replay remains open. Route attempts and scoped passes do not establish full clauses."
 		},
 		{
 			"requirement": "Shared dialog focus contract",
