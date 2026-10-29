@@ -55,6 +55,9 @@ describe("CustomFieldValueInput user value labels", () => {
     expect(screen.getByText("(not on this project)")).toBeInTheDocument();
     expect(screen.queryByText("private-person-id")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Reviewers" }));
+    expect(
+      screen.getByRole("dialog", { name: "Reviewers" }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Alex" }));
     expect(onChange).toHaveBeenCalledWith(["private-person-id", "person-new"]);
     rerender(
@@ -147,5 +150,25 @@ describe("CustomFieldValueInput inline pickers", () => {
     expect(screen.queryByText("Choice 2")).toBeNull();
     fireEvent.click(screen.getByText("Choice 7"));
     expect(onChange).toHaveBeenCalledWith(["k1", "k7"]);
+  });
+});
+
+describe("CustomFieldValueInput date popup", () => {
+  it("names the calendar popup from the field label", () => {
+    render(
+      <>
+        <Label htmlFor="review-date">Review date</Label>
+        <CustomFieldValueInput
+          id="review-date"
+          field={{ name: "Review date", format: "date", options: [] }}
+          value="2026-10-30"
+          onChange={vi.fn()}
+        />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review date" }));
+    expect(
+      screen.getByRole("dialog", { name: "Review date" }),
+    ).toBeInTheDocument();
   });
 });
