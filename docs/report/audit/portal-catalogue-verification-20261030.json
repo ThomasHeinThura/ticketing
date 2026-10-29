@@ -40,7 +40,19 @@
 		"hostedCI": "not started",
 		"permissions": 118,
 		"routePolicy": "pass",
-		"contract": "pass; existing main warnings"
+		"contract": "pass; existing main warnings",
+		"afterMainMerge": {
+			"main": "6c781eaec04b7a7d6e2528e7241c37341c952ad1",
+			"source": "5346154692438c53263a6c3ea6b5827d8a311c68",
+			"productionTreeEqualsVerifiedRuntime": true,
+			"rootUnits": 7222,
+			"packages": 8,
+			"tasks": 12,
+			"duration": "2m43.191s",
+			"rootTypecheck": "9 tasks,18.715s",
+			"contrastPairs": 401,
+			"hostedCI": "new head pending"
+		}
 	},
 	"dataSafety": {
 		"customerRecordsChanged": false,
