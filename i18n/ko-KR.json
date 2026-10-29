@@ -8033,7 +8033,8 @@
 			"taller": "Make {{title}} taller",
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
-			"wider": "Make {{title}} wider"
+			"wider": "Make {{title}} wider",
+			"widgetActions": "Actions for {{title}}"
 		},
 		"empty": {
 			"excluded_other": "{{count}} items were left out: {{reason}}.",
@@ -8098,7 +8099,9 @@
 			"team": "Team",
 			"to": "To",
 			"type": "Type",
-			"window": "Window"
+			"window": "Window",
+			"datePlaceholder": "Not set",
+			"clearDate": "Clear date"
 		},
 		"index": {
 			"categories": "Report categories",
