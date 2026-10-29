@@ -10,6 +10,7 @@ import {
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+const PHASES = ["P0", "P1", "P2", "P3", "P4", "P5", "P6"];
 const STATES = [
   "implemented_tested",
   "browser_verified",
@@ -35,9 +36,9 @@ export function buildData(index, previous) {
   if (
     !isRecord(previous) ||
     !Array.isArray(previous.phases) ||
-    !previous.phases.length
+    previous.phases.length !== PHASES.length
   ) {
-    throw new Error("Existing report must contain a nonempty phases array");
+    throw new Error("Existing report must contain all seven phases P0–P6");
   }
   if (
     typeof previous.generated !== "string" ||
@@ -66,7 +67,7 @@ export function buildData(index, previous) {
     if (
       !isRecord(phase) ||
       typeof phase.id !== "string" ||
-      !/^P\d+$/.test(phase.id) ||
+      !PHASES.includes(phase.id) ||
       phases.has(phase.id)
     ) {
       throw new Error("Invalid or duplicate report phase");
@@ -74,6 +75,11 @@ export function buildData(index, previous) {
     if (!isRecord(phase.states)) {
       throw new Error(`Invalid states for ${phase.id}`);
     }
+    if (
+      phase.states_locked !== undefined &&
+      typeof phase.states_locked !== "boolean"
+    )
+      throw new Error(`Invalid states_locked for ${phase.id}`);
     if (
       typeof phase.name !== "string" ||
       !phase.name ||

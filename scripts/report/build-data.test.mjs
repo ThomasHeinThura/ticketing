@@ -189,6 +189,39 @@ test("reject malformed renderer-required metadata", () => {
     assert.throws(() => buildData(index, report));
 });
 
+test("reject a missing phase even when both inputs omit it", () => {
+  for (const phase of index.requirements.map((row) => row.phase)) {
+    const incompleteIndex = {
+      requirements: index.requirements.filter((row) => row.phase !== phase),
+    };
+    const incompleteReport = {
+      ...previous,
+      phases: previous.phases.filter((row) => row.id !== phase),
+    };
+    assert.throws(
+      () => buildData(incompleteIndex, incompleteReport),
+      /all seven phases/,
+    );
+  }
+  const unknownIndex = structuredClone(index);
+  const unknownReport = structuredClone(previous);
+  unknownIndex.requirements[6].phase = "P7";
+  unknownReport.phases[6].id = "P7";
+  assert.throws(
+    () => buildData(unknownIndex, unknownReport),
+    /Invalid or duplicate report phase/,
+  );
+});
+
+test("reject malformed lock flags instead of overwriting their contradictory counts", () => {
+  for (const flag of ["true", "false", 0, 1, null, {}, []]) {
+    const report = structuredClone(previous);
+    report.phases[0].states_locked = flag;
+    report.phases[0].states.implemented_tested = 999;
+    assert.throws(() => buildData(index, report), /Invalid states_locked/);
+  }
+});
+
 test("CLI writes deterministically and leaves the report intact on invalid input", () => {
   const dir = mkdtempSync(join(tmpdir(), "taskdesk-report-"));
   try {
