@@ -1,0 +1,128 @@
+{
+	"scope": "Private A/B builds based on 01c47cb65 plus an isolated agent partition override; their 947 compiled agent JavaScript/CSS assets match the later e17afe535 E2E-tested candidate build. Uncalibrated, three rounds per variant, not hosted G11 acceptance. Tests used installed seroval 1.6.4.",
+	"measurementsMs": [
+		{
+			"round": 0,
+			"variant": "control",
+			"kind": "lcp",
+			"value": 3792
+		},
+		{
+			"round": 0,
+			"variant": "control",
+			"kind": "route",
+			"value": 349.5
+		},
+		{
+			"round": 0,
+			"variant": "merged",
+			"kind": "lcp",
+			"value": 3608
+		},
+		{
+			"round": 0,
+			"variant": "merged",
+			"kind": "route",
+			"value": 291
+		},
+		{
+			"round": 1,
+			"variant": "merged",
+			"kind": "lcp",
+			"value": 3696
+		},
+		{
+			"round": 1,
+			"variant": "merged",
+			"kind": "route",
+			"value": 319.9000000357628
+		},
+		{
+			"round": 1,
+			"variant": "control",
+			"kind": "lcp",
+			"value": 3700
+		},
+		{
+			"round": 1,
+			"variant": "control",
+			"kind": "route",
+			"value": 236.60000002384186
+		},
+		{
+			"round": 2,
+			"variant": "control",
+			"kind": "lcp",
+			"value": 3892
+		},
+		{
+			"round": 2,
+			"variant": "control",
+			"kind": "route",
+			"value": 268.2999999523163
+		},
+		{
+			"round": 2,
+			"variant": "merged",
+			"kind": "lcp",
+			"value": 3552
+		},
+		{
+			"round": 2,
+			"variant": "merged",
+			"kind": "route",
+			"value": 285.89999997615814
+		}
+	],
+	"medianMs": {
+		"control": {
+			"lcp": 3792,
+			"route": 268.3
+		},
+		"merged": {
+			"lcp": 3608,
+			"route": 291
+		}
+	},
+	"startupAssets": {
+		"control": {
+			"staticAssets": 9,
+			"brotliBytes": 219697
+		},
+		"merged": {
+			"staticAssets": 4,
+			"brotliBytes": 213757
+		},
+		"tradeoff": "Grouping may reduce independent caching; route median worsened in this small sample."
+	},
+	"buildMatch": "All 947 private JavaScript/CSS assets matched the preceding E2E-tested full agent build and the combined candidate full agent build; the full build also includes the PDF viewer.",
+	"desktopMockFunctional": {
+		"control": "pass",
+		"merged": "pass",
+		"coverage": "list, create shell, detail, pane and history back/forward; scroll before/open/close 40",
+		"httpFailures": 0,
+		"pageErrors": 0
+	},
+	"limitations": [
+		"Private mock diagnostics only; no role-matrix or product acceptance. Earlier failed private attempts are retained separately and were not counted as passes.",
+		"The separate seroval 1.6.11 security update requires its own verification; these results do not test that updated lockfile."
+	],
+	"combinedCandidate": {
+		"commit": "d174057ee73b06f1f3b296880adfb166450985d2",
+		"frozenInstall": "pass",
+		"build": "full agent/portal/PDF pass",
+		"agentAssetComparison": {
+			"compared": 947,
+			"identical": true,
+			"extraFullBuildAsset": "PDF viewer",
+			"missing": 0,
+			"changed": 0
+		},
+		"unitTestsPassed": 7212,
+		"unitTasksPassed": 12,
+		"typecheckTasksPassed": 9,
+		"bundleAndPurity": "pass",
+		"audit": "zero HIGH/MODERATE; one existing LOW",
+		"e2eProvenance": "168 E2E passed on preceding e17afe535 with seroval 1.6.4. No full E2E run is claimed on the updated lockfile."
+	}
+}
