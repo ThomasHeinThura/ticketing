@@ -31426,8 +31426,6 @@
 			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/Link[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/ArrowLeftRight[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/ArrowUpDown[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::EditorBody::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -34712,34 +34710,6 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/dashboard_.edit.tsx:/_layout/_authenticated/agent/dashboard_/edit",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/ArrowLeftRight[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/dashboard_.edit.tsx:/_layout/_authenticated/agent/dashboard_/edit",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/ArrowUpDown[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
 			},
@@ -42324,8 +42294,6 @@
 			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/Link[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/ArrowLeftRight[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/ArrowUpDown[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::EditorBody::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -45610,34 +45578,6 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/dashboard_.edit.tsx:/_layout/_authenticated/agent/dashboard_/edit",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/ArrowLeftRight[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/dashboard_.edit.tsx:/_layout/_authenticated/agent/dashboard_/edit",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/ArrowUpDown[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
 			},
@@ -79355,6 +79295,8 @@
 			"apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverTrigger[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverTrigger[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowLeftRight[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowUpDown[0]::text-muted-foreground#0",
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandEmpty[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandEmpty[0]/div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/div[0]/div[0]::text-muted-foreground#0",
@@ -81000,6 +80942,30 @@
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverTrigger[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project/project-planning-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/reports/dashboard-editor.tsx:DraggableWidget",
+					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowLeftRight[0]",
+					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowLeftRight[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/reports/dashboard-editor.tsx:DraggableWidget",
+					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowUpDown[0]",
+					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowUpDown[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -84253,6 +84219,8 @@
 			"apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverTrigger[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverTrigger[0]/Button[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowLeftRight[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowUpDown[0]::text-muted-foreground#0",
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandEmpty[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandEmpty[0]/div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/div[0]/div[0]::text-muted-foreground#0",
@@ -85898,6 +85866,30 @@
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverTrigger[0]/Button[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project/project-planning-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/reports/dashboard-editor.tsx:DraggableWidget",
+					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowLeftRight[0]",
+					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowLeftRight[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/reports/dashboard-editor.tsx:DraggableWidget",
+					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowUpDown[0]",
+					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DraggableWidget::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/ArrowUpDown[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
 			},
 			{
 				"backdropLayers": [],
