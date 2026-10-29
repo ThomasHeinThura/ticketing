@@ -64,13 +64,17 @@ describe("kanban column create dialog lifecycle", () => {
       </>,
     );
 
-    fireEvent.click(screen.getAllByTitle("tasks:kanban.addTask")[1]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "tasks:kanban.addTask: in-progress" }),
+    );
     expect(createTask).toHaveBeenCalledExactlyOnceWith(
       "in-progress",
       expect.any(HTMLButtonElement),
     );
 
-    fireEvent.click(screen.getAllByTitle("tasks:kanban.addTask")[0]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "tasks:kanban.addTask: backlog" }),
+    );
     expect(createTask).toHaveBeenNthCalledWith(
       2,
       "backlog",
