@@ -230,7 +230,16 @@ test("CLI writes deterministically and leaves the report intact on invalid input
   }
 });
 
-test("current index totals match the recorded per-ID classification", () => {
+test("retained partial local evidence stays partial without becoming tested", () => {
+  const retainedIndex = structuredClone(index);
+  retainedIndex.requirements[0].verification = "partial_local_evidence";
+  const rebuilt = buildData(retainedIndex, previous);
+  assert.equal(rebuilt.phases[0].states.partial, 1);
+  assert.equal(rebuilt.phases[0].states.implemented_tested, 0);
+  assert.deepEqual(rebuilt.phases[0].review, previous.phases[0].review);
+});
+
+test("current index totals match explicit per-ID classifications without assuming a future audit", () => {
   const currentIndex = JSON.parse(
     readFileSync("docs/requirements-index.json", "utf8"),
   );
@@ -238,26 +247,36 @@ test("current index totals match the recorded per-ID classification", () => {
     readFileSync("docs/report/data.json", "utf8"),
   );
   const rebuilt = buildData(currentIndex, currentReport);
-  const sums = rebuilt.phases.reduce(
-    (acc, p) => {
-      acc.total += p.total;
-      acc.unaudited += p.unaudited;
-      for (const key of verification.slice(0, 5)) acc[key] += p.states[key];
-      return acc;
-    },
-    {
-      total: 0,
-      unaudited: 0,
-      ...Object.fromEntries(verification.slice(0, 5).map((key) => [key, 0])),
-    },
-  );
-  assert.deepEqual(sums, {
-    total: 673,
-    unaudited: 3,
-    implemented_tested: 19,
-    implemented_untested: 630,
-    partial: 15,
-    missing: 0,
-    external_blocked: 6,
-  });
+  assert.equal(currentIndex.requirements.length, 673);
+  assert.equal(rebuilt.phases.length, 7);
+  for (const phase of rebuilt.phases) {
+    const rows = currentIndex.requirements.filter(
+      (requirement) => requirement.phase === phase.id,
+    );
+    assert.equal(phase.total, rows.length);
+    for (const [state, count] of Object.entries(phase.states)) {
+      const sourceValues =
+        state === "unaudited"
+          ? ["unverified"]
+          : state === "partial"
+            ? ["partial", "partial_local_evidence"]
+            : [state];
+      assert.equal(
+        count,
+        rows.filter((requirement) =>
+          sourceValues.includes(requirement.verification),
+        ).length,
+        `${phase.id}: ${state}`,
+      );
+    }
+    const { states, unaudited, total, browser, ...metadata } = phase;
+    const {
+      states: _states,
+      unaudited: _unaudited,
+      total: _total,
+      browser: _browser,
+      ...originalMetadata
+    } = currentReport.phases.find((item) => item.id === phase.id);
+    assert.deepEqual(metadata, originalMetadata);
+  }
 });

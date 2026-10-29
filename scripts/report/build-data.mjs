@@ -127,9 +127,12 @@ export function buildData(index, previous) {
     const counts = phases.get(requirement.phase);
     if (!counts) throw new Error(`Missing report phase for ${requirement.id}`);
     counts.total++;
-    if (requirement.verification === "unverified") counts.unaudited++;
-    else if (STATES.includes(requirement.verification))
-      counts.states[requirement.verification]++;
+    const verification =
+      requirement.verification === "partial_local_evidence"
+        ? "partial"
+        : requirement.verification;
+    if (verification === "unverified") counts.unaudited++;
+    else if (STATES.includes(verification)) counts.states[verification]++;
     else throw new Error(`Unknown verification for ${requirement.id}`);
   }
 

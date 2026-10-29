@@ -1,14 +1,14 @@
 {
-	"generated": "2026-10-29T14:15:00.690Z",
-	"source": "673 clauses; PR #918 per-ID evidence retained: 19 tested, 630 source-only, 15 partial, 6 external-blocked and 3 unverified. The 29 October repository audit adds issue/source/check status without promoting whole-clause acceptance. All 73 indexed contracts remain unverified.",
+	"generated": "2026-10-28T02:06:23.000Z",
+	"source": "673 indexed clauses: 661 in P0–P5 and 12 in P6. P0–P5 bars use the per-ID audits; P6 uses a per-ID test mapping (27 Oct). Scoped test and browser passes do not count as whole-clause browser acceptance.",
 	"phases": [
 		{
 			"id": "P0",
 			"name": "Foundation",
 			"total": 22,
 			"states": {
-				"implemented_tested": 1,
-				"implemented_untested": 21,
+				"implemented_tested": 0,
+				"implemented_untested": 22,
 				"partial": 0,
 				"missing": 0,
 				"external_blocked": 0,
@@ -22,9 +22,84 @@
 				"findings": 2,
 				"roundsConsumed": 2,
 				"maxTotalRounds": 3,
-				"note": "Historical accepted phase review (27 Oct); L-01 review is separate. Round 2 passed at d3c884c3c (0 high, 0 medium, 2 low); both lows fixed in fba7558f9 (atomic step-up proof budget incl. IPv6 /64, audited inline-asset purge). Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 2 low); both lows fixed in fba7558f9 (atomic step-up proof budget incl. IPv6 /64, audited inline-asset purge). Reviewer model: Claude Opus standing in for Sol."
 			},
-			"gates": null,
+			"gates": {
+				"pass": 11,
+				"fail": 0,
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
+				"checks": [
+					{
+						"check": "lint and format",
+						"status": "pass",
+						"note": "Biome check on the whole tree; pre-commit on staged files."
+					},
+					{
+						"check": "typecheck",
+						"status": "pass",
+						"note": "All packages including test tsconfigs: 0 errors."
+					},
+					{
+						"check": "unit",
+						"status": "pass",
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
+					},
+					{
+						"check": "full integration (fresh DB)",
+						"status": "pass",
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
+					},
+					{
+						"check": "route policy, events, env, inventory, i18n",
+						"status": "pass"
+					},
+					{
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
+					},
+					{
+						"check": "tokens, contrast, raw elements",
+						"status": "pass",
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
+					}
+				]
+			},
 			"states_locked": false,
 			"carry": [],
 			"historical_summary": {
@@ -48,22 +123,16 @@
 					"note": "pass: integration 3836, unit (api 1140, web 1949, mcp 52, perms 267, domain 676, ui 325), typecheck 9/9, lint 0 errors, events, raw-elements, route-policy, gitleaks staged. fail: contrast G3 (pre-existing). not run: browser journeys, bundle budget, Trivy"
 				}
 			},
-			"audit_status": "Current per-ID source/evidence assessment at main 2553612ee. The complete integration run is shared gate evidence; only rows with inspected exact assertions count as implemented_tested. Browser route attempts do not change full-clause acceptance.",
-			"audit_sources": [
-				"docs/report/audit/audit-P0.json",
-				"docs/report/audit/l01-gates.json",
-				"docs/report/audit/l01-sit-matrix.json",
-				"docs/report/audit/l01-sit-identity.json",
-				"docs/report/audit/l01-keyboard.json",
-				"docs/report/audit/l01-sit-scope.json"
-			],
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": ["docs/report/audit/audit-P0.json"],
 			"browser": {
 				"verified": 0,
-				"status": "L-01 persisted route crawl recorded 2322 required-role case records plus 564 supplementary instance-admin/owner case records. True workspace-admin fixture is absent (#914); per-route fixture/denial/timeout limits and feature journeys remain separate. No numbered clause is fully browser-verified."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [],
 			"remaining_summary": [
-				"Full behavior/keyboard acceptance remains incomplete; workspace-admin fixture #914 and explicit per-route limits remain."
+				"No findings above low remain.",
+				"Not yet browser-checked as lead/member/viewer or in the light theme."
 			],
 			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
@@ -72,17 +141,25 @@
 			"name": "Core work",
 			"total": 181,
 			"states": {
-				"implemented_tested": 2,
-				"implemented_untested": 176,
-				"partial": 2,
+				"implemented_tested": 0,
+				"implemented_untested": 180,
+				"partial": 1,
 				"missing": 0,
 				"external_blocked": 0,
 				"browser_verified": 0
 			},
-			"unaudited": 1,
+			"unaudited": 0,
 			"gaps": [
-				"WI-5: template custom fields are stored but omitted on create (https://github.com/ThomasHeinThura/ticketing/issues/910)",
-				"AT-2: retained presigned POST contract vs implemented direct PUT; owner decision (https://github.com/ThomasHeinThura/ticketing/issues/906)"
+				"WI-13: No customer-owned organisation backlog rank path; item rank is staff-only and customer principals fail closed.",
+				"VW-13: Assignee and priority grouping with field-setting drops exist; label and custom-field grouping are absent.",
+				"VW-19: Column choice is URL-addressable, but custom fields are absent from the column type and a per-project per-user persisted choice is unproven.",
+				"VW-20: Only key/title/priority/dueDate sort; state and assignee excluded and modifier-click multi-column sort absent.",
+				"VW-22: State, priority and assignee editors pass persisted reload and responsive checks in both themes; coordinator inspected six hydrated captures. Title, due date and custom-field inline editors remain absent; viewer browser matrix remains pending.",
+				"VW-27: Assignee and module grouping are wired; epic grouping is absent.",
+				"PR-5: Parent-descendant aggregate reporting and combined board are not wired.",
+				"AT-9: PDF is a download card; no sandboxed viewer/iframe or CSP-scoped preview found.",
+				"RH-15: Epic/initiative reporting roll-up not located in current report source; P5 report integration remains to verify.",
+				"SV-10: Current PostgreSQL path passes the unchanged10k-item benchmark at97.4ms p95, so no enablement trigger is present. The optional search.meilisearch plugin itself is not implemented; retain that source gap without claiming PostgreSQL insufficiency."
 			],
 			"actions": ["Open lows only; follow up after merge."],
 			"review": {
@@ -90,13 +167,87 @@
 				"findings": 5,
 				"roundsConsumed": 4,
 				"maxTotalRounds": 3,
-				"note": "Historical accepted phase review (27 Oct); L-01 review is separate. Round 4 (approved extra round) passed at fba7558f9: 0 high, 0 medium, 1 new low (report evidence wording) + 4 known lows. Reviewer reproduced the committed SV-5 bench (p95 8.4-20.3 ms DB path) and matched search results against a reference query. Browser at fba7558f9: list-row state picker saves without opening the detail pane; board column + opens create with the column state; search rows show priority/key/project/status. Open: palette end-to-end SV-5/SV-10 timing still to re-run. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 4 (approved extra round) passed at fba7558f9: 0 high, 0 medium, 1 new low (report evidence wording) + 4 known lows. Reviewer reproduced the committed SV-5 bench (p95 8.4-20.3 ms DB path) and matched search results against a reference query. Browser at fba7558f9: list-row state picker saves without opening the detail pane; board column + opens create with the column state; search rows show priority/key/project/status. Open: palette end-to-end SV-5/SV-10 timing still to re-run. Reviewer model: Claude Opus standing in for Sol."
 			},
-			"gates": null,
+			"gates": {
+				"pass": 11,
+				"fail": 0,
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
+				"checks": [
+					{
+						"check": "lint and format",
+						"status": "pass",
+						"note": "Biome check on the whole tree; pre-commit on staged files."
+					},
+					{
+						"check": "typecheck",
+						"status": "pass",
+						"note": "All packages including test tsconfigs: 0 errors."
+					},
+					{
+						"check": "unit",
+						"status": "pass",
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
+					},
+					{
+						"check": "full integration (fresh DB)",
+						"status": "pass",
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
+					},
+					{
+						"check": "route policy, events, env, inventory, i18n",
+						"status": "pass"
+					},
+					{
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
+					},
+					{
+						"check": "tokens, contrast, raw elements",
+						"status": "pass",
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
+					}
+				]
+			},
 			"states_locked": false,
 			"carry": [
-				"WI-5: template custom fields are stored but omitted on create (https://github.com/ThomasHeinThura/ticketing/issues/910)",
-				"AT-2: retained presigned POST contract vs implemented direct PUT; owner decision (https://github.com/ThomasHeinThura/ticketing/issues/906)"
+				"SV-10: Current PostgreSQL path passes the unchanged10k-item benchmark at97.4ms p95, so no enablement trigger is present. The optional search.meilisearch plugin itself is not implemented; retain that source gap without claiming PostgreSQL insufficiency."
 			],
 			"historical_summary": {
 				"states": {
@@ -119,29 +270,28 @@
 					"note": "pass: integration 3963 (all green after fixes), unit (api 1308, web 2203, mcp 52, perms 277, domain 676, ui 325), typecheck 9/9, lint 0 errors, events, raw-elements, route-policy. fail: contrast G3 (pre-existing, P1 delta zero). browser: board, grouping, sheet, calendar, members, templates, states editor, approval dialog checked; not run: bundle budget, Trivy"
 				}
 			},
-			"audit_status": "Current per-ID source/evidence assessment at main 2553612ee. The complete integration run is shared gate evidence; only rows with inspected exact assertions count as implemented_tested. Browser route attempts do not change full-clause acceptance.",
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
 			"audit_sources": [
 				"docs/report/audit/audit-P1a.json",
-				"docs/report/audit/audit-P1b.json",
-				"docs/report/audit/l01-gates.json",
-				"docs/report/audit/l01-sit-matrix.json",
-				"docs/report/audit/l01-sit-identity.json",
-				"docs/report/audit/l01-keyboard.json",
-				"docs/report/audit/l01-sit-scope.json"
+				"docs/report/audit/audit-P1b.json"
 			],
 			"browser": {
 				"verified": 0,
-				"status": "L-01 persisted route crawl recorded 2322 required-role case records plus 564 supplementary instance-admin/owner case records. True workspace-admin fixture is absent (#914); per-route fixture/denial/timeout limits and feature journeys remain separate. No numbered clause is fully browser-verified."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [
-				"WI-5: template custom fields are stored but omitted on create (https://github.com/ThomasHeinThura/ticketing/issues/910)",
-				"AT-2: retained presigned POST contract vs implemented direct PUT; owner decision (https://github.com/ThomasHeinThura/ticketing/issues/906)"
+				{
+					"id": "SV-10",
+					"implementation": "partial",
+					"gaps": [
+						"Current PostgreSQL path passes the unchanged10k-item benchmark at97.4ms p95, so no enablement trigger is present. The optional search.meilisearch plugin itself is not implemented; retain that source gap without claiming PostgreSQL insufficiency."
+					]
+				}
 			],
 			"remaining_summary": [
-				"1 numbered rows still require current clause review or conditional applicability evidence.",
-				"Full behavior/keyboard acceptance remains incomplete; workspace-admin fixture #914 and explicit per-route limits remain.",
-				"WI-5: template custom fields are stored but omitted on create (https://github.com/ThomasHeinThura/ticketing/issues/910)",
-				"AT-2: retained presigned POST contract vs implemented direct PUT; owner decision (https://github.com/ThomasHeinThura/ticketing/issues/906)"
+				"Low: report evidence wording; 4 known lows.",
+				"Palette end-to-end SV-5/SV-10 timing at 10k items with comments not browser-measured (database path passes).",
+				"Optional Meilisearch plugin not built; PostgreSQL meets the budget."
 			],
 			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
@@ -150,18 +300,21 @@
 			"name": "Service desk",
 			"total": 137,
 			"states": {
-				"implemented_tested": 1,
-				"implemented_untested": 133,
-				"partial": 3,
+				"implemented_tested": 0,
+				"implemented_untested": 136,
+				"partial": 1,
 				"missing": 0,
 				"external_blocked": 0,
 				"browser_verified": 0
 			},
 			"unaudited": 0,
 			"gaps": [
-				"SLA-9: reopened resolution metrics remain expressly held (https://github.com/ThomasHeinThura/ticketing/issues/32)",
-				"CAL-17: lone surrogate validation edge remains (https://github.com/ThomasHeinThura/ticketing/issues/704)",
-				"AU-9: project point-in-time reconstruction route/replay absent (https://github.com/ThomasHeinThura/ticketing/issues/912)"
+				"SLA-9: Contract explicitly holds resolved-pause continuity and disclaims correct reopened resolution metrics for this release; keep incomplete, but do not treat as an unapproved regression.",
+				"RT-9: Type position is editable and group sort is derived from the minimum member position; groups lack an independent manually editable group order.",
+				"IQ-5: Queue now has age column; suggested duplicates still appear in selected detail rather than each queue row.",
+				"IQ-19: Saved-view run path accepts only work_item entity; no pair of submission/work-item saved views presented as a team-owned queue.",
+				"IQ-20: Saved views support team/private visibility, but no composed queue object over the required two entities is exposed in triage.",
+				"IQ-21: Fixed triage URL now carries multiple filters, but no URL-addressable saved queue exists because IQ-19/20 pair is absent."
 			],
 			"actions": ["Open lows only; follow up after merge."],
 			"review": {
@@ -169,14 +322,87 @@
 				"findings": 6,
 				"roundsConsumed": 2,
 				"maxTotalRounds": 3,
-				"note": "Historical accepted phase review (27 Oct); L-01 review is separate. Round 2 passed at d3c884c3c (0 high, 0 medium, 6 low); lows fixed in fba7558f9 (audit-failure notices, last-handler reply routing, customer approval email kinds, bulk transition audit context, decision rows). Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 6 low); lows fixed in fba7558f9 (audit-failure notices, last-handler reply routing, customer approval email kinds, bulk transition audit context, decision rows). Reviewer model: Claude Opus standing in for Sol."
 			},
-			"gates": null,
+			"gates": {
+				"pass": 11,
+				"fail": 0,
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
+				"checks": [
+					{
+						"check": "lint and format",
+						"status": "pass",
+						"note": "Biome check on the whole tree; pre-commit on staged files."
+					},
+					{
+						"check": "typecheck",
+						"status": "pass",
+						"note": "All packages including test tsconfigs: 0 errors."
+					},
+					{
+						"check": "unit",
+						"status": "pass",
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
+					},
+					{
+						"check": "full integration (fresh DB)",
+						"status": "pass",
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
+					},
+					{
+						"check": "route policy, events, env, inventory, i18n",
+						"status": "pass"
+					},
+					{
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
+					},
+					{
+						"check": "tokens, contrast, raw elements",
+						"status": "pass",
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
+					}
+				]
+			},
 			"states_locked": false,
 			"carry": [
-				"SLA-9: reopened resolution metrics remain expressly held (https://github.com/ThomasHeinThura/ticketing/issues/32)",
-				"CAL-17: lone surrogate validation edge remains (https://github.com/ThomasHeinThura/ticketing/issues/704)",
-				"AU-9: project point-in-time reconstruction route/replay absent (https://github.com/ThomasHeinThura/ticketing/issues/912)"
+				"SLA-9: Contract explicitly holds resolved-pause continuity and disclaims correct reopened resolution metrics for this release; keep incomplete, but do not treat as an unapproved regression."
 			],
 			"historical_summary": {
 				"states": {
@@ -198,29 +424,24 @@
 					"note": "contrast G3 pre-existing; bundle budget and Trivy not run"
 				}
 			},
-			"audit_status": "Current per-ID source/evidence assessment at main 2553612ee. The complete integration run is shared gate evidence; only rows with inspected exact assertions count as implemented_tested. Browser route attempts do not change full-clause acceptance.",
-			"audit_sources": [
-				"docs/report/audit/audit-P2.json",
-				"docs/report/audit/l01-gates.json",
-				"docs/report/audit/l01-sit-matrix.json",
-				"docs/report/audit/l01-sit-identity.json",
-				"docs/report/audit/l01-keyboard.json",
-				"docs/report/audit/l01-sit-scope.json"
-			],
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": ["docs/report/audit/audit-P2.json"],
 			"browser": {
 				"verified": 0,
-				"status": "L-01 persisted route crawl recorded 2322 required-role case records plus 564 supplementary instance-admin/owner case records. True workspace-admin fixture is absent (#914); per-route fixture/denial/timeout limits and feature journeys remain separate. No numbered clause is fully browser-verified."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [
-				"SLA-9: reopened resolution metrics remain expressly held (https://github.com/ThomasHeinThura/ticketing/issues/32)",
-				"CAL-17: lone surrogate validation edge remains (https://github.com/ThomasHeinThura/ticketing/issues/704)",
-				"AU-9: project point-in-time reconstruction route/replay absent (https://github.com/ThomasHeinThura/ticketing/issues/912)"
+				{
+					"id": "SLA-9",
+					"implementation": "partial",
+					"gaps": [
+						"Contract explicitly holds resolved-pause continuity and disclaims correct reopened resolution metrics for this release; keep incomplete, but do not treat as an unapproved regression."
+					]
+				}
 			],
 			"remaining_summary": [
-				"Full behavior/keyboard acceptance remains incomplete; workspace-admin fixture #914 and explicit per-route limits remain.",
-				"SLA-9: reopened resolution metrics remain expressly held (https://github.com/ThomasHeinThura/ticketing/issues/32)",
-				"CAL-17: lone surrogate validation edge remains (https://github.com/ThomasHeinThura/ticketing/issues/704)",
-				"AU-9: project point-in-time reconstruction route/replay absent (https://github.com/ThomasHeinThura/ticketing/issues/912)"
+				"SLA-9 reopened-resolution metrics held by contract for this release.",
+				"Remaining intake, SLA and approval role/flag browser cases."
 			],
 			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
@@ -229,16 +450,29 @@
 			"name": "Portal & identity",
 			"total": 64,
 			"states": {
-				"implemented_tested": 8,
-				"implemented_untested": 50,
-				"partial": 0,
+				"implemented_tested": 0,
+				"implemented_untested": 56,
+				"partial": 3,
 				"missing": 0,
 				"external_blocked": 5,
 				"browser_verified": 0
 			},
-			"unaudited": 1,
+			"unaudited": 0,
 			"gaps": [
-				"IP-13/27/28/31/32: live Entra interoperability requires Thomas's tenant; local source and mocks are present"
+				"CP-5: Default customer wording is rendered, but the required customer-scope terminology overlay is absent from portal code; an instance override from request to case cannot change the portal vocabulary.",
+				"CP-12: New invitee signup is wired only for password; email OTP, magic link and scoped SSO signup/accept are not integrated.",
+				"IP-9: Typed-domain selection, fixed portal handoff and persisted organisation snapshot binding are implemented. Fresh end-to-end mock-issuer journey and real Entra owner validation remain pending; do not claim those browser checks from scoped ledger tests.",
+				"IP-27: Local Entra admission source and mocks inspected; live Entra app-role/removal behavior remains external acceptance.",
+				"IP-13: Local source and mock tests present; real Microsoft Entra provisioning interoperability remains external acceptance.",
+				"IP-31: Local tolerance source inspected; real Entra deviation acceptance remains external.",
+				"IP-32: Local duplicate behavior source inspected; live Entra duplicate retry interoperability remains external.",
+				"IP-18: Explicit authenticated A-session, user-confirmed, audited cross-connection link flow is absent.",
+				"IP-30: No positive TaskDesk-verified address or administrator-confirmed claim flow found for an import placeholder; SSO negative rule is present.",
+				"IP-28: Local group rederivation source present; live Entra group/app-role behavior remains external acceptance.",
+				"CP-24: Portal root invitation and transactional acceptance exist, but new signup via email OTP, magic link or SSO is absent (CP-12).",
+				"CP-26: Exact invitation limit values are hard-coded in CUSTOMER_INVITATION_LIMITS, not instance configuration.",
+				"CP-29: Generic localized failure return and selected-connection/instance-level bounded failure ledger are implemented;35 scoped identity-ledger tests passed. Full portal SSO browser journey against a mock issuer and real Entra owner validation remain pending.",
+				"IP-35: Generic localized failure return and selected-connection/instance-level bounded failure ledger are implemented;35 scoped identity-ledger tests passed. Full portal SSO browser journey against a mock issuer and real Entra owner validation remain pending."
 			],
 			"actions": ["Open lows only; follow up after merge."],
 			"review": {
@@ -246,11 +480,94 @@
 				"findings": 4,
 				"roundsConsumed": 2,
 				"maxTotalRounds": 3,
-				"note": "Historical accepted phase review (27 Oct); L-01 review is separate. Round 2 passed at d3c884c3c (0 high, 0 medium, 4 low); lows fixed in fba7558f9 (IPv6 /64 invitation limiter, azp check, Kaneo-built portal feature-off page). portal sign-in pending; Entra externally blocked. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 2 passed at d3c884c3c (0 high, 0 medium, 4 low); lows fixed in fba7558f9 (IPv6 /64 invitation limiter, azp check, Kaneo-built portal feature-off page). portal sign-in pending; Entra externally blocked. Reviewer model: Claude Opus standing in for Sol."
 			},
-			"gates": null,
+			"gates": {
+				"pass": 11,
+				"fail": 0,
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
+				"checks": [
+					{
+						"check": "lint and format",
+						"status": "pass",
+						"note": "Biome check on the whole tree; pre-commit on staged files."
+					},
+					{
+						"check": "typecheck",
+						"status": "pass",
+						"note": "All packages including test tsconfigs: 0 errors."
+					},
+					{
+						"check": "unit",
+						"status": "pass",
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
+					},
+					{
+						"check": "full integration (fresh DB)",
+						"status": "pass",
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
+					},
+					{
+						"check": "route policy, events, env, inventory, i18n",
+						"status": "pass"
+					},
+					{
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
+					},
+					{
+						"check": "tokens, contrast, raw elements",
+						"status": "pass",
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
+					}
+				]
+			},
 			"carry": [
-				"IP-13/27/28/31/32: live Entra interoperability requires Thomas's tenant; local source and mocks are present"
+				"CP-5: Default portal wording uses request language, but portal routes/components do not consume the instance customer-scope terminology overlay; renaming request to case cannot change portal vocabulary.",
+				"CP-12: Invitation-gated password signup and customer-only acceptance exist; the invite page still offers no new-user email OTP, magic-link or scoped SSO signup/accept path. Local OTP/magic sign-in endpoint support does not supply that signup flow.",
+				"IP-27: Local Entra admission source and mocks inspected; live Entra app-role/removal behavior remains external acceptance.",
+				"IP-13: Local source and mock tests present; real Microsoft Entra provisioning interoperability remains external acceptance.",
+				"IP-31: Local tolerance source inspected; real Entra deviation acceptance remains external.",
+				"IP-32: Local duplicate behavior source inspected; live Entra duplicate retry interoperability remains external.",
+				"IP-18: Cross-connection subject/email auto-link refusal is present, but no authenticated A-session, explicit user confirmation and audited cross-connection link flow was found.",
+				"IP-28: Local group rederivation source present; live Entra group/app-role behavior remains external acceptance.",
+				"CP-24: Portal-root invitation acceptance, invited password signup and a fresh customer portal login were exercised on one owned initial-contact journey. CP-12 provider parity remains open: new-user email OTP, magic link and scoped SSO signup/accept are absent. The browser journey does not prove mismatch, wrong-host or concurrent-accept cases."
 			],
 			"states_locked": false,
 			"historical_summary": {
@@ -273,26 +590,73 @@
 					"note": "contrast G3 pre-existing; bundle budget and Trivy not run"
 				}
 			},
-			"audit_status": "Current per-ID source/evidence assessment at main 2553612ee. The complete integration run is shared gate evidence; only rows with inspected exact assertions count as implemented_tested. Browser route attempts do not change full-clause acceptance.",
-			"audit_sources": [
-				"docs/report/audit/audit-P3.json",
-				"docs/report/audit/l01-gates.json",
-				"docs/report/audit/l01-sit-matrix.json",
-				"docs/report/audit/l01-sit-identity.json",
-				"docs/report/audit/l01-keyboard.json",
-				"docs/report/audit/l01-sit-scope.json"
-			],
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": ["docs/report/audit/audit-P3.json"],
 			"browser": {
 				"verified": 0,
-				"status": "L-01 persisted route crawl recorded 2322 required-role case records plus 564 supplementary instance-admin/owner case records. True workspace-admin fixture is absent (#914); per-route fixture/denial/timeout limits and feature journeys remain separate. No numbered clause is fully browser-verified."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [
-				"IP-13/27/28/31/32: live Entra interoperability requires Thomas's tenant; local source and mocks are present"
+				{
+					"id": "CP-5",
+					"implementation": "partial",
+					"gaps": [
+						"Default portal wording uses request language, but portal routes/components do not consume the instance customer-scope terminology overlay; renaming request to case cannot change portal vocabulary."
+					]
+				},
+				{
+					"id": "CP-12",
+					"implementation": "partial",
+					"gaps": [
+						"Invitation-gated password signup and customer-only acceptance exist; the invite page still offers no new-user email OTP, magic-link or scoped SSO signup/accept path. Local OTP/magic sign-in endpoint support does not supply that signup flow."
+					]
+				},
+				{
+					"id": "IP-27",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Local Entra admission source and mocks inspected; live Entra app-role/removal behavior remains external acceptance."
+					]
+				},
+				{
+					"id": "IP-13",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Local source and mock tests present; real Microsoft Entra provisioning interoperability remains external acceptance."
+					]
+				},
+				{
+					"id": "IP-31",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Local tolerance source inspected; real Entra deviation acceptance remains external."
+					]
+				},
+				{
+					"id": "IP-32",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Local duplicate behavior source inspected; live Entra duplicate retry interoperability remains external."
+					]
+				},
+				{
+					"id": "IP-28",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Local group rederivation source present; live Entra group/app-role behavior remains external acceptance."
+					]
+				},
+				{
+					"id": "CP-24",
+					"implementation": "partial",
+					"gaps": [
+						"Portal-root invitation acceptance, invited password signup and a fresh customer portal login were exercised on one owned initial-contact journey. CP-12 provider parity remains open: new-user email OTP, magic link and scoped SSO signup/accept are absent. The browser journey does not prove mismatch, wrong-host or concurrent-accept cases."
+					]
+				}
 			],
 			"remaining_summary": [
-				"1 numbered rows still require current clause review or conditional applicability evidence.",
-				"Full behavior/keyboard acceptance remains incomplete; workspace-admin fixture #914 and explicit per-route limits remain.",
-				"IP-13/27/28/31/32: live Entra interoperability requires Thomas's tenant; local source and mocks are present"
+				"Real Entra sign-in: Thomas validates.",
+				"Open requirement gaps (CP-5 portal terminology overlay, CP-12 invite sign-in methods) listed below."
 			],
 			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
@@ -301,24 +665,46 @@
 			"name": "Governance",
 			"total": 158,
 			"states": {
-				"implemented_tested": 1,
-				"implemented_untested": 146,
-				"partial": 9,
-				"missing": 0,
+				"implemented_tested": 0,
+				"implemented_untested": 139,
+				"partial": 17,
+				"missing": 1,
 				"external_blocked": 1,
 				"browser_verified": 0
 			},
-			"unaudited": 1,
+			"unaudited": 0,
 			"gaps": [
-				"GM-5 generic plugin form/save composition is incomplete (https://github.com/ThomasHeinThura/ticketing/issues/913)",
-				"ST-5 settings who/when (https://github.com/ThomasHeinThura/ticketing/issues/899)",
-				"ST-6 settings History (https://github.com/ThomasHeinThura/ticketing/issues/900)",
-				"ST-8 team delete typed-name contract conflict (https://github.com/ThomasHeinThura/ticketing/issues/901)",
-				"ST-10 cross-workspace project move not wired (https://github.com/ThomasHeinThura/ticketing/issues/902)",
-				"NO-21 portal notification preference scope (https://github.com/ThomasHeinThura/ticketing/issues/903)",
-				"AK-12 capability rename/alias migration process (https://github.com/ThomasHeinThura/ticketing/issues/904)",
-				"MC-18 persisted MCP injection journey missing (https://github.com/ThomasHeinThura/ticketing/issues/905)",
-				"GM-1 import source-connection creation has no semantic audit append (https://github.com/ThomasHeinThura/ticketing/issues/916); encrypted credential storage/redaction is present"
+				"RL-9: Historical audit gap requiring current-source reconciliation: Takes effect immediately (tested), but the IP-22 closure for roles referenced by identity provisioning is not implemented: such edits are refused with 409 role_in_identity_use instead of revalidating/retiring external grants",
+				"TM-9: Historical audit gap requiring current-source reconciliation: No notify action and no team-targeted notification; needs a catalogued event kind",
+				"CF-10: Historical audit gap requiring current-source reconciliation: Not sortable, not available as table columns, no groupBy, not on GET /api/projects/{id}/work-items; neq also matches unset",
+				"GM-1: Jobs configuration persists with CAS/audit and focused database coverage; responsive controls now pass six browser states. Delivery metadata and real email Plugin catalog are integrated. Generic Plugins/schema forms, Storage, MCP usage, organisation directory and branding still need closure; Delivery requeue/delete are absent.",
+				"GM-2: Policy elevated:true is classification; individual protected handlers spend PA-15 proof, but no generic middleware enforces every elevated route.",
+				"GM-4: Native SMTP meaningful tests now distinguish wrong credentials, unreachable host, TLS verification and deadline through bounded secret-free codes;12 email,18 API integration and5 web mapping tests pass. Broader native plugin catalogue/test administration remains incomplete; do not restore retired integrations. Persisted SMTP browser checks remain pending.",
+				"GM-5: Historical audit gap requiring current-source reconciliation: No Zod-schema-generated plugin settings forms",
+				"GM-6: Historical audit gap requiring current-source reconciliation: Organisation and auth-plugin deletions are not typed-name + step-up pending actions in God Mode",
+				"GM-13: The rotate trigger is on Health; the required God Mode Plugins placement is absent.",
+				"ST-11: Historical audit gap requiring current-source reconciliation: Disable behaviour stated/tested for approvals, intake and automations only",
+				"ST-3: Historical audit gap requiring current-source reconciliation: Inheritance set (SLA policy, service calendar, enabled states) and God Mode project-defaults copy not verified; unchanged in P4",
+				"ST-4: Historical audit gap requiring current-source reconciliation: Only feature flags show an inherited/override indicator; SLA policy, calendar and state-set settings do not",
+				"ST-5: Historical audit gap requiring current-source reconciliation: Most settings screens show no last-changed who/when; God Mode General shows when, not who",
+				"ST-6: Historical audit gap requiring current-source reconciliation: History affordance only on roles (and work items); no History on workspace/project/workflow/team/custom-field/feature screens",
+				"ST-7: Historical audit gap requiring current-source reconciliation: No ?dryRun=true on role PATCH or workflow publish returning {affected:{people,workItems,projects}}",
+				"ST-8: Historical audit gap requiring current-source reconciliation: Typed-name danger zone not uniform across new P4 settings screens (teams, custom fields, automations, roles)",
+				"ST-10: Historical audit gap requiring current-source reconciliation: Cross-workspace project move/remap by key absent",
+				"NO-5: Portal global email comment preference and customer digest delivery now exist; the old prerequisite claim is stale. Coverage that every applicable legacy producer assigns a candidate once in its event transaction remains unresolved under EV-1/NO-8; the new customer integration suites were not executed by this audit.",
+				"NO-8: Current source still has legacy producer paths; a complete single-event transactional coverage map is not established.",
+				"NO-18: Customer inbox reach is implemented; customer external destination coverage remains incomplete. Test file locator(s) copied from historical evidence; decisive assertion was not independently traced in current source.",
+				"NO-20: Historical audit gap requiring current-source reconciliation: No customer-facing templates or test asserting absence of staff names/internal terms",
+				"NO-21: The portal /account controls and API exist for global notify.email work_item.mentioned and work_item.commented only. Other customer-applicable event controls and relevant scope/channel parity with staff preferences remain unimplemented or unproven; the new portal tests were not executed by this audit.",
+				"WH-13: Per-webhook 24-hour rotation exists; the God Mode rotate-all incident action is absent.",
+				"WH-15: Webhook step-up is present; God Mode security-posture panel and sees_all listing are absent.",
+				"AK-7: Workspace service-key creation/list/revoke/deletion UI exists; historical no-UI claim is stale. Re-attestation and complete God Mode service-key administration still need source/test reconciliation.",
+				"AK-12: Historical audit gap requiring current-source reconciliation: No two-phase rename/alias mechanism, data migration or CI check for stored capability strings",
+				"MC-7a: Field-changing MCP tools exist, but log_time and agent-originated audit marking remain absent.",
+				"MC-10: The bulk class is coded but no bulk_create_work_items tool exercises it. Assertion label is a suite heading; inspect individual expect clauses before treating it as behavior coverage.",
+				"MC-17: The direct destructive path uses pending actions; the bulk-operation half has no tool to govern.",
+				"MC-18: The injection scenario is a scripted-fetch test rather than a persisted API/database journey.",
+				"MC-11: Historical audit gap requiring current-source reconciliation: npm publication with provenance/2FA and scope reservation are external"
 			],
 			"actions": ["Open lows only; follow up after merge."],
 			"review": {
@@ -326,18 +712,104 @@
 				"findings": 2,
 				"roundsConsumed": 3,
 				"maxTotalRounds": 3,
-				"note": "Historical accepted phase review (27 Oct); L-01 review is separate. Round 3 (last) passed at fba7558f9: 0 high, 0 medium, 2 low (project SLA on inside an SLA-off workspace runs on hidden policies - documented in features.md, needs owner decision row; pre-issued portal attachment links stay valid until expiry). Migration 0209 verified on the real upgraded SIT copy: all four flags on, portal serves sign-in. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 3 (last) passed at fba7558f9: 0 high, 0 medium, 2 low (project SLA on inside an SLA-off workspace runs on hidden policies - documented in features.md, needs owner decision row; pre-issued portal attachment links stay valid until expiry). Migration 0209 verified on the real upgraded SIT copy: all four flags on, portal serves sign-in. Reviewer model: Claude Opus standing in for Sol."
 			},
-			"gates": null,
+			"gates": {
+				"pass": 11,
+				"fail": 0,
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
+				"checks": [
+					{
+						"check": "lint and format",
+						"status": "pass",
+						"note": "Biome check on the whole tree; pre-commit on staged files."
+					},
+					{
+						"check": "typecheck",
+						"status": "pass",
+						"note": "All packages including test tsconfigs: 0 errors."
+					},
+					{
+						"check": "unit",
+						"status": "pass",
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
+					},
+					{
+						"check": "full integration (fresh DB)",
+						"status": "pass",
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
+					},
+					{
+						"check": "route policy, events, env, inventory, i18n",
+						"status": "pass"
+					},
+					{
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
+					},
+					{
+						"check": "tokens, contrast, raw elements",
+						"status": "pass",
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
+					}
+				]
+			},
 			"carry": [
-				"GM-5 generic plugin form/save composition is incomplete (https://github.com/ThomasHeinThura/ticketing/issues/913)",
-				"ST-5 settings who/when (https://github.com/ThomasHeinThura/ticketing/issues/899)",
-				"ST-6 settings History (https://github.com/ThomasHeinThura/ticketing/issues/900)",
-				"ST-8 team delete typed-name contract conflict (https://github.com/ThomasHeinThura/ticketing/issues/901)",
-				"ST-10 cross-workspace project move not wired (https://github.com/ThomasHeinThura/ticketing/issues/902)",
-				"NO-21 portal notification preference scope (https://github.com/ThomasHeinThura/ticketing/issues/903)",
-				"AK-12 capability rename/alias migration process (https://github.com/ThomasHeinThura/ticketing/issues/904)",
-				"MC-18 persisted MCP injection journey missing (https://github.com/ThomasHeinThura/ticketing/issues/905)"
+				"GM-1: Jobs and Plugins catalog have scoped browser evidence. Storage diagnostics, MCP usage/statistics and safe Delivery retries pass focused tests; their combined-build browser checks remain pending. Generic plugin forms, backend configuration/pinning, organisation directory, branding and Delivery discard remain open.",
+				"GM-4: Native SMTP meaningful tests now distinguish wrong credentials, unreachable host, TLS verification and deadline through bounded secret-free codes;12 email,18 API integration and5 web mapping tests pass. Broader native plugin catalogue/test administration remains incomplete; do not restore retired integrations. Persisted SMTP browser checks remain pending.",
+				"GM-6: Historical audit gap requiring current-source reconciliation: Organisation and auth-plugin deletions are not typed-name + step-up pending actions in God Mode",
+				"ST-11: Historical audit gap requiring current-source reconciliation: Disable behaviour stated/tested for approvals, intake and automations only",
+				"ST-3: Organisation project defaults are now configured in God Mode and copied onto a new project. Exact live workspace inheritance of project SLA policy, service calendar and enabled state set is not established: project creation copies concrete calendar/SLA ids and state rows, while work-item SLA has a workspace fallback.",
+				"ST-4: Historical audit gap requiring current-source reconciliation: Only feature flags show an inherited/override indicator; SLA policy, calendar and state-set settings do not",
+				"ST-5: Historical audit gap requiring current-source reconciliation: Most settings screens show no last-changed who/when; God Mode General shows when, not who",
+				"ST-6: Historical audit gap requiring current-source reconciliation: History affordance only on roles (and work items); no History on workspace/project/workflow/team/custom-field/feature screens",
+				"ST-8: Historical audit gap requiring current-source reconciliation: Typed-name danger zone not uniform across new P4 settings screens (teams, custom fields, automations, roles)",
+				"ST-10: Historical audit gap requiring current-source reconciliation: Cross-workspace project move/remap by key absent",
+				"NO-5: The old claim that preferences allow only digest off is stale: hourly/daily staff and portal preferences, digest-window assignment and customer digest delivery are present. Complete event-time assignment for every applicable reachable producer remains unresolved under NO-8; scoped customer suites were not executed in this reconciliation.",
+				"NO-8: Native fanout writes transactional parent/inbox/delivery rows, but reachable legacy comment, time-entry, relation and task controllers still publish through legacy event paths; universal single-envelope/candidate transactional coverage is not established.",
+				"NO-18: The old inbox-only claim is stale: customer external email and digest paths exist. A complete own-request-only customer recipient matrix, including watcher/approval cases and every applicable event, is not established by the cited focused tests; newer integration suites were not executed in this reconciliation.",
+				"NO-20: The concrete customer work-item terminology leak is repaired. Complete customer event/channel privacy execution and browser evidence remain pending; scoped projection tests do not establish the full clause.",
+				"NO-21: Portal /account global notify.email mention/comment controls persist and have one scoped browser save/reload/restore artifact. Other customer-applicable event, channel and workspace/project-scope controls are not supplied by the portal preference API.",
+				"MC-11: Historical audit gap requiring current-source reconciliation: npm publication with provenance/2FA and scope reservation are external",
+				"GM-T3: Authoritative targetWorkspaceId is now read from current reachable target scope in a PostgreSQL READ ONLY transaction, including registered deletion targets/private views/calendars; stable dialog provider preserves draft/focus. Read integration9/9 and dialog25/25 pass. Target-workspace/typed-name browser journey still pending.",
+				"GM-T5: Default-title helpers and representative major controls are wired without overriding aria-label. Full renamed-control/secondary-screen tooltip and browser accessibility coverage is not established.",
+				"GM-T6: Host-scoped public ETag/304 and save invalidation exist; native SystemCopy read/send-time resolution is tested. Complete legacy/external-channel send-time noun coverage and full browser/admin-save flow remain pending."
 			],
 			"historical_summary": {
 				"states": {
@@ -372,42 +844,151 @@
 				]
 			},
 			"states_locked": false,
-			"audit_status": "Current per-ID source/evidence assessment at main 2553612ee. The complete integration run is shared gate evidence; only rows with inspected exact assertions count as implemented_tested. Browser route attempts do not change full-clause acceptance.",
-			"audit_sources": [
-				"docs/report/audit/audit-P4c.json",
-				"docs/report/audit/l01-gates.json",
-				"docs/report/audit/l01-sit-matrix.json",
-				"docs/report/audit/l01-sit-identity.json",
-				"docs/report/audit/l01-keyboard.json",
-				"docs/report/audit/l01-sit-scope.json"
-			],
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": ["docs/report/audit/audit-P4c.json"],
 			"browser": {
 				"verified": 0,
-				"status": "L-01 persisted route crawl recorded 2322 required-role case records plus 564 supplementary instance-admin/owner case records. True workspace-admin fixture is absent (#914); per-route fixture/denial/timeout limits and feature journeys remain separate. No numbered clause is fully browser-verified."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
 			"current_source_gaps": [
-				"GM-5 generic plugin form/save composition is incomplete (https://github.com/ThomasHeinThura/ticketing/issues/913)",
-				"ST-5 settings who/when (https://github.com/ThomasHeinThura/ticketing/issues/899)",
-				"ST-6 settings History (https://github.com/ThomasHeinThura/ticketing/issues/900)",
-				"ST-8 team delete typed-name contract conflict (https://github.com/ThomasHeinThura/ticketing/issues/901)",
-				"ST-10 cross-workspace project move not wired (https://github.com/ThomasHeinThura/ticketing/issues/902)",
-				"NO-21 portal notification preference scope (https://github.com/ThomasHeinThura/ticketing/issues/903)",
-				"AK-12 capability rename/alias migration process (https://github.com/ThomasHeinThura/ticketing/issues/904)",
-				"MC-18 persisted MCP injection journey missing (https://github.com/ThomasHeinThura/ticketing/issues/905)",
-				"GM-1 import source-connection creation has no semantic audit append (https://github.com/ThomasHeinThura/ticketing/issues/916); encrypted credential storage/redaction is present"
+				{
+					"id": "GM-1",
+					"implementation": "partial",
+					"gaps": [
+						"Jobs and Plugins catalog have scoped browser evidence. Storage diagnostics, MCP usage/statistics and safe Delivery retries pass focused tests; their combined-build browser checks remain pending. Generic plugin forms, backend configuration/pinning, organisation directory, branding and Delivery discard remain open."
+					]
+				},
+				{
+					"id": "GM-4",
+					"implementation": "partial",
+					"gaps": [
+						"Native SMTP meaningful tests now distinguish wrong credentials, unreachable host, TLS verification and deadline through bounded secret-free codes;12 email,18 API integration and5 web mapping tests pass. Broader native plugin catalogue/test administration remains incomplete; do not restore retired integrations. Persisted SMTP browser checks remain pending."
+					]
+				},
+				{
+					"id": "GM-6",
+					"implementation": "partial",
+					"gaps": [
+						"Organisation typed-name/step-up deletion, restore and purge are implemented with scoped API/browser evidence. Identity-connection deletion remains absent; auth-provider deletion coverage still needs completion."
+					]
+				},
+				{
+					"id": "ST-11",
+					"implementation": "partial",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: Disable behaviour stated/tested for approvals, intake and automations only"
+					]
+				},
+				{
+					"id": "ST-3",
+					"implementation": "partial",
+					"gaps": [
+						"Organisation project defaults are now configured in God Mode and copied onto a new project. Exact live workspace inheritance of project SLA policy, service calendar and enabled state set is not established: project creation copies concrete calendar/SLA ids and state rows, while work-item SLA has a workspace fallback."
+					]
+				},
+				{
+					"id": "ST-4",
+					"implementation": "partial",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: Only feature flags show an inherited/override indicator; SLA policy, calendar and state-set settings do not"
+					]
+				},
+				{
+					"id": "ST-5",
+					"implementation": "partial",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: Most settings screens show no last-changed who/when; God Mode General shows when, not who"
+					]
+				},
+				{
+					"id": "ST-6",
+					"implementation": "partial",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: History affordance only on roles (and work items); no History on workspace/project/workflow/team/custom-field/feature screens"
+					]
+				},
+				{
+					"id": "ST-8",
+					"implementation": "partial",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: Typed-name danger zone not uniform across new P4 settings screens (teams, custom fields, automations, roles)"
+					]
+				},
+				{
+					"id": "ST-10",
+					"implementation": "missing",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: Cross-workspace project move/remap by key absent"
+					]
+				},
+				{
+					"id": "NO-5",
+					"implementation": "partial",
+					"gaps": [
+						"The old claim that preferences allow only digest off is stale: hourly/daily staff and portal preferences, digest-window assignment and customer digest delivery are present. Complete event-time assignment for every applicable reachable producer remains unresolved under NO-8; scoped customer suites were not executed in this reconciliation."
+					]
+				},
+				{
+					"id": "NO-8",
+					"implementation": "partial",
+					"gaps": [
+						"Legacy producers now persist their compatibility outbox parent transactionally. Legacy external children still bypass canonical digest-window candidate membership; digest-enabled recipients and full producer/no-op/replay branch evidence remain open."
+					]
+				},
+				{
+					"id": "NO-18",
+					"implementation": "partial",
+					"gaps": [
+						"The old inbox-only claim is stale: customer external email and digest paths exist. A complete own-request-only customer recipient matrix, including watcher/approval cases and every applicable event, is not established by the cited focused tests; newer integration suites were not executed in this reconciliation."
+					]
+				},
+				{
+					"id": "NO-20",
+					"implementation": "partial",
+					"gaps": [
+						"The concrete customer work-item terminology leak is repaired. Complete customer event/channel privacy execution and browser evidence remain pending; scoped projection tests do not establish the full clause."
+					]
+				},
+				{
+					"id": "NO-21",
+					"implementation": "partial",
+					"gaps": [
+						"Portal /account global notify.email mention/comment controls persist and have one scoped browser save/reload/restore artifact. Other customer-applicable event, channel and workspace/project-scope controls are not supplied by the portal preference API."
+					]
+				},
+				{
+					"id": "MC-11",
+					"implementation": "external_blocked",
+					"gaps": [
+						"Historical audit gap requiring current-source reconciliation: npm publication with provenance/2FA and scope reservation are external"
+					]
+				},
+				{
+					"id": "GM-T3",
+					"implementation": "partial",
+					"gaps": [
+						"Authoritative targetWorkspaceId is now read from current reachable target scope in a PostgreSQL READ ONLY transaction, including registered deletion targets/private views/calendars; stable dialog provider preserves draft/focus. Read integration9/9 and dialog25/25 pass. Target-workspace/typed-name browser journey still pending."
+					]
+				},
+				{
+					"id": "GM-T5",
+					"implementation": "partial",
+					"gaps": [
+						"Default-title helpers and representative major controls are wired without overriding aria-label. Full renamed-control/secondary-screen tooltip and browser accessibility coverage is not established."
+					]
+				},
+				{
+					"id": "GM-T6",
+					"implementation": "partial",
+					"gaps": [
+						"Host-scoped public ETag/304 and save invalidation exist; native SystemCopy read/send-time resolution is tested. Complete legacy/external-channel send-time noun coverage and full browser/admin-save flow remain pending."
+					]
+				}
 			],
 			"remaining_summary": [
-				"1 numbered row still require current clause review or conditional applicability evidence.",
-				"Full behavior/keyboard acceptance remains incomplete; workspace-admin fixture #914 and explicit per-route limits remain.",
-				"GM-5 generic plugin form/save composition is incomplete (https://github.com/ThomasHeinThura/ticketing/issues/913)",
-				"ST-5 settings who/when (https://github.com/ThomasHeinThura/ticketing/issues/899)",
-				"ST-6 settings History (https://github.com/ThomasHeinThura/ticketing/issues/900)",
-				"ST-8 team delete typed-name contract conflict (https://github.com/ThomasHeinThura/ticketing/issues/901)",
-				"ST-10 cross-workspace project move not wired (https://github.com/ThomasHeinThura/ticketing/issues/902)",
-				"NO-21 portal notification preference scope (https://github.com/ThomasHeinThura/ticketing/issues/903)",
-				"AK-12 capability rename/alias migration process (https://github.com/ThomasHeinThura/ticketing/issues/904)",
-				"MC-18 persisted MCP injection journey missing (https://github.com/ThomasHeinThura/ticketing/issues/905)",
-				"GM-1 import source-connection creation has no semantic audit append (https://github.com/ThomasHeinThura/ticketing/issues/916); encrypted credential storage/redaction is present"
+				"Low: project SLA inside an SLA-off workspace runs on hidden policies (needs an owner decision row).",
+				"Low: pre-issued portal attachment links stay valid until expiry.",
+				"1 missing and 17 partial requirements per the audit, listed below."
 			],
 			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
@@ -416,29 +997,100 @@
 			"name": "Planning & knowledge",
 			"total": 99,
 			"states": {
-				"implemented_tested": 6,
-				"implemented_untested": 93,
+				"implemented_tested": 0,
+				"implemented_untested": 99,
 				"partial": 0,
 				"missing": 0,
 				"external_blocked": 0,
 				"browser_verified": 0
 			},
 			"unaudited": 0,
-			"gaps": [
-				"RP-10 browser export buffers Blob (https://github.com/ThomasHeinThura/ticketing/issues/894)"
-			],
+			"gaps": [],
 			"actions": ["Open lows only; follow up after merge."],
 			"review": {
 				"verdict": "pass",
 				"findings": 2,
 				"roundsConsumed": 4,
 				"maxTotalRounds": 3,
-				"note": "Historical accepted phase review (27 Oct); L-01 review is separate. Round 4 (extra round approved by Thomas) passed at fb4448db8: 0 high, 0 medium, 2 low (email delivery is at-least-once - wording corrected; export page buffers the file in browser memory). Browser: export page and Report exports preference render in Kaneo components. Open: 500k-row export not run; P5-R3-03 rates rule awaits Thomas ratification. Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 4 (extra round approved by Thomas) passed at fb4448db8: 0 high, 0 medium, 2 low (email delivery is at-least-once - wording corrected; export page buffers the file in browser memory). Browser: export page and Report exports preference render in Kaneo components. Open: 500k-row export not run; P5-R3-03 rates rule awaits Thomas ratification. Reviewer model: Claude Opus standing in for Sol."
 			},
-			"gates": null,
-			"carry": [
-				"RP-10 browser export buffers Blob (https://github.com/ThomasHeinThura/ticketing/issues/894)"
-			],
+			"gates": {
+				"pass": 11,
+				"fail": 0,
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
+				"checks": [
+					{
+						"check": "lint and format",
+						"status": "pass",
+						"note": "Biome check on the whole tree; pre-commit on staged files."
+					},
+					{
+						"check": "typecheck",
+						"status": "pass",
+						"note": "All packages including test tsconfigs: 0 errors."
+					},
+					{
+						"check": "unit",
+						"status": "pass",
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
+					},
+					{
+						"check": "full integration (fresh DB)",
+						"status": "pass",
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
+					},
+					{
+						"check": "route policy, events, env, inventory, i18n",
+						"status": "pass"
+					},
+					{
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
+					},
+					{
+						"check": "tokens, contrast, raw elements",
+						"status": "pass",
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
+					}
+				]
+			},
+			"carry": [],
 			"historical_summary": {
 				"states": {
 					"implemented_tested": 62,
@@ -470,25 +1122,17 @@
 				]
 			},
 			"states_locked": false,
-			"audit_status": "Current per-ID source/evidence assessment at main 2553612ee. The complete integration run is shared gate evidence; only rows with inspected exact assertions count as implemented_tested. Browser route attempts do not change full-clause acceptance.",
-			"audit_sources": [
-				"docs/report/audit/audit-P5.json",
-				"docs/report/audit/l01-gates.json",
-				"docs/report/audit/l01-sit-matrix.json",
-				"docs/report/audit/l01-sit-identity.json",
-				"docs/report/audit/l01-keyboard.json",
-				"docs/report/audit/l01-sit-scope.json"
-			],
+			"audit_status": "Current per-ID source assessment reconciled with latest repairs; scoped test results remain separate. Source coverage, committed history and automated unit passes do not establish whole-phase browser acceptance.",
+			"audit_sources": ["docs/report/audit/audit-P5.json"],
 			"browser": {
 				"verified": 0,
-				"status": "L-01 persisted route crawl recorded 2322 required-role case records plus 564 supplementary instance-admin/owner case records. True workspace-admin fixture is absent (#914); per-route fixture/denial/timeout limits and feature journeys remain separate. No numbered clause is fully browser-verified."
+				"status": "Scoped browser checks pass on local SIT at fb4448db8 (claude-20261027-recheck.json); the full role/theme matrix is not run, so 0 requirements count as fully browser-verified."
 			},
-			"current_source_gaps": [
-				"RP-10 browser export buffers Blob (https://github.com/ThomasHeinThura/ticketing/issues/894)"
-			],
+			"current_source_gaps": [],
 			"remaining_summary": [
-				"Full behavior/keyboard acceptance remains incomplete; workspace-admin fixture #914 and explicit per-route limits remain.",
-				"RP-10 browser export buffers Blob (https://github.com/ThomasHeinThura/ticketing/issues/894)"
+				"Low: export page buffers the file in browser memory.",
+				"500k-row export not run in the browser.",
+				"P5-R3-03 rates rule awaits Thomas's ratification."
 			],
 			"accepted": "Thomas accepted 27 Oct 2026 with the open lows."
 		},
@@ -497,19 +1141,15 @@
 			"name": "Import & cutover",
 			"total": 12,
 			"states": {
-				"implemented_tested": 0,
-				"implemented_untested": 11,
-				"partial": 1,
+				"implemented_tested": 12,
+				"implemented_untested": 0,
+				"partial": 0,
 				"missing": 0,
 				"external_blocked": 0,
 				"browser_verified": 0
 			},
 			"unaudited": 0,
-			"gaps": [
-				"IM-3 transient chunk errors pause import (https://github.com/ThomasHeinThura/ticketing/issues/895)",
-				"IM-4 transient attachment errors become terminal losses (https://github.com/ThomasHeinThura/ticketing/issues/896)",
-				"IM-7 active placeholder implementation conflicts with inactive retained contract (https://github.com/ThomasHeinThura/ticketing/issues/907)"
-			],
+			"gaps": [],
 			"states_locked": false,
 			"actions": ["Open lows only; follow up after merge."],
 			"review": {
@@ -517,45 +1157,104 @@
 				"findings": 2,
 				"roundsConsumed": 3,
 				"maxTotalRounds": 3,
-				"note": "Historical accepted phase review (27 Oct); L-01 review is separate. Round 3 (last) passed at fba7558f9: 0 high, 0 medium, 2 low (an agent creating an item mid-chunk pauses the run as chunk_failed instead of retrying; some transient write errors could be logged as losses). Reviewer model: Claude Opus standing in for Sol."
+				"note": "Round 3 (last) passed at fba7558f9: 0 high, 0 medium, 2 low (an agent creating an item mid-chunk pauses the run as chunk_failed instead of retrying; some transient write errors could be logged as losses). Reviewer model: Claude Opus standing in for Sol."
 			},
 			"accepted": "Thomas accepted 27 Oct 2026 with the open lows.",
-			"gates": null,
+			"gates": {
+				"pass": 11,
+				"fail": 0,
+				"not_run": 3,
+				"note": "Local gates at fb4448db8 (27 Oct). PR #891 GitHub checks are tracked separately in the status line.",
+				"checks": [
+					{
+						"check": "lint and format",
+						"status": "pass",
+						"note": "Biome check on the whole tree; pre-commit on staged files."
+					},
+					{
+						"check": "typecheck",
+						"status": "pass",
+						"note": "All packages including test tsconfigs: 0 errors."
+					},
+					{
+						"check": "unit",
+						"status": "pass",
+						"note": "API unit, web unit 3,252, permissions 118, MCP 74."
+					},
+					{
+						"check": "full integration (fresh DB)",
+						"status": "pass",
+						"note": "5,789 / 5,789 tests; one migration-test hook timed out under load and passes when run alone."
+					},
+					{
+						"check": "route policy, events, env, inventory, i18n",
+						"status": "pass"
+					},
+					{
+						"check": "OpenAPI contract",
+						"status": "pass",
+						"note": "652 operations; 57 breaking changes approved by Thomas 27 Oct, 0 unapproved."
+					},
+					{
+						"check": "tokens, contrast, raw elements",
+						"status": "pass",
+						"note": "Raw-element gate 0 findings; no threshold changes."
+					},
+					{
+						"check": "bundle budgets",
+						"status": "pass",
+						"note": "Portal 199.3 / 200 KB after lazy-loading the portal root states."
+					},
+					{
+						"check": "search performance (SV-5)",
+						"status": "pass",
+						"note": "10k items / 40k comments: p95 at most 20.9 ms on the committed tree."
+					},
+					{
+						"check": "image build and scan",
+						"status": "pass",
+						"note": "Local SIT image source212-fb4448d: Trivy 0 critical, 42 high (none fixable); Gitleaks only variable references."
+					},
+					{
+						"check": "local SIT deploy",
+						"status": "pass",
+						"note": "Migrations through 0211; all table counts preserved; protected live database untouched."
+					},
+					{
+						"check": "browser role/theme matrix",
+						"status": "not run",
+						"note": "Lead/member/viewer and light theme not yet run."
+					},
+					{
+						"check": "visual regression (G8) and e2e on CI",
+						"status": "in progress",
+						"note": "New Linux baselines and e2e fixes being made for PR #891."
+					},
+					{
+						"check": "performance budgets (G11) on CI",
+						"status": "in progress"
+					}
+				]
+			},
 			"browser": {
 				"verified": 0,
-				"status": "L-01 persisted route crawl recorded 2322 required-role case records plus 564 supplementary instance-admin/owner case records. True workspace-admin fixture is absent (#914); per-route fixture/denial/timeout limits and feature journeys remain separate. No numbered clause is fully browser-verified. No full CSV import wizard or cutover-copy rehearsal was run."
+				"status": "Import picker and wizard source step render on local SIT; a full wizard run with a CSV upload is not yet browser-tested."
 			},
-			"carry": [
-				"IM-3 transient chunk errors pause import (https://github.com/ThomasHeinThura/ticketing/issues/895)",
-				"IM-4 transient attachment errors become terminal losses (https://github.com/ThomasHeinThura/ticketing/issues/896)",
-				"IM-7 active placeholder implementation conflicts with inactive retained contract (https://github.com/ThomasHeinThura/ticketing/issues/907)"
-			],
-			"current_source_gaps": [
-				"IM-3 transient chunk errors pause import (https://github.com/ThomasHeinThura/ticketing/issues/895)",
-				"IM-4 transient attachment errors become terminal losses (https://github.com/ThomasHeinThura/ticketing/issues/896)",
-				"IM-7 active placeholder implementation conflicts with inactive retained contract (https://github.com/ThomasHeinThura/ticketing/issues/907)"
-			],
-			"audit_status": "Current per-ID source/evidence assessment at main 2553612ee. The complete integration run is shared gate evidence; only rows with inspected exact assertions count as implemented_tested. Browser route attempts do not change full-clause acceptance.",
-			"audit_sources": [
-				"docs/technical/import-and-cutover.md",
-				"docs/report/audit/l01-gates.json",
-				"docs/report/audit/l01-sit-matrix.json",
-				"docs/report/audit/l01-sit-identity.json",
-				"docs/report/audit/l01-keyboard.json",
-				"docs/report/audit/l01-sit-scope.json"
-			],
+			"carry": [],
+			"current_source_gaps": [],
+			"audit_status": "Per-ID test mapping done 27 Oct against tests passing in the fb4448db8 full integration and MCP runs.",
+			"audit_sources": ["docs/technical/import-and-cutover.md"],
 			"remaining_summary": [
-				"Full behavior/keyboard acceptance remains incomplete; workspace-admin fixture #914 and explicit per-route limits remain.",
-				"IM-3 transient chunk errors pause import (https://github.com/ThomasHeinThura/ticketing/issues/895)",
-				"IM-4 transient attachment errors become terminal losses (https://github.com/ThomasHeinThura/ticketing/issues/896)",
-				"IM-7 active placeholder implementation conflicts with inactive retained contract (https://github.com/ThomasHeinThura/ticketing/issues/907)"
+				"Low: agent item created mid-chunk pauses the run (chunk_failed) instead of retrying.",
+				"Low: some transient write errors could be logged as losses.",
+				"Full CSV import run in the browser not yet done."
 			]
 		}
 	],
 	"decisions": [
 		"Approved 25 Oct: additive audit users and scripted browser login on an isolated copy; HTTPS ticketing.localhost and portal.localhost on port 443; Sol audits/reviews, Luna implementation; up to three new review rounds per phase; commit, PR and merge after passing gates/review.",
 		"Real Entra acceptance will be performed by Thomas. Typed-domain SSO implementation gaps remain local work and are not excused by missing Entra credentials.",
-		"Historical 25 Oct copy setup preserved the live database and existing SIT accounts. Audit database taskdesk_codex_sit_20261025 is an isolated restored copy. Earlier browser captures used a TLS exception; Thomas approved trust and fresh curl/Chromium checks now verify both hosts without exceptions.",
+		"Live database and existing SIT accounts remain unchanged. Audit database taskdesk_codex_sit_20261025 is an isolated restored copy. Earlier browser captures used a TLS exception; Thomas approved trust and fresh curl/Chromium checks now verify both hosts without exceptions.",
 		"Approved by Thomas 25 Oct: @tanstack/react-virtual v3 dependency for original Kaneo board/list/table virtualization.",
 		"Approved by Thomas 25 Oct: strict transactional legacy-task compatibility outbox bridge using real legacy identifiers and published keys; native webhook/automation consumers unchanged.",
 		"Approved by Thomas 25 Oct: committed-cost forecast uses open leaf estimated minutes minus logged minutes, current applicable rates, due-date budget period; unscheduled/non-time/unassigned/unrated work shown unknown.",
@@ -596,99 +1295,70 @@
 		"Decided 28 Oct (Thomas): the 500-row table metric counts the virtualized table's first painted viewport with 500 rows loaded (new recorder); budget < 500 ms unchanged.",
 		"28 Oct security upgrade: better-auth 1.6.26 -> 1.7.10 (critical GHSA: OAuth state usable as a magic link; high: OAuth proxy sign-in as another user; high: device-login approval) and qs 6.16.1. Adapted: pending-action credential invalidation inside better-auth transactions (PA-9), custom OIDC sign-in via signIn.social, TOTP enrollment result shape. Operator action: the agent custom OIDC redirect URI changes from /api/auth/oauth2/callback/custom to /api/auth/callback/custom at the identity provider. Full integration 5,789/5,789 and auth suites pass.",
 		"Decided 28 Oct (Thomas): phases end after P6; former P7 and all open gaps become one linear backlog (L-01…L-11, T-1) worked by Codex; GitHub CI is a required gate again; Terra/Sonnet implement, Sol/Opus plan, audit and review; official @tiptap/* extensions pre-approved for the Pages editor.",
-		"Decided 28 Oct (Thomas): merge PR #891 past the failing G11 check; misses recorded under backlog L-05; budgets unchanged.",
-		"Decided 29 Oct (Thomas): execute the audited plan with subagents as needed; align legacy time-entry mutations with canonical own/any/create capabilities and project/workspace tracking flags (#927). Performance thresholds, calibration and fixture/sample/retry rules remain unchanged. Main merge and public deployment still need approval."
+		"Decided 28 Oct (Thomas): merge PR #891 past the failing G11 check; misses recorded under backlog L-05; budgets unchanged."
 	],
-	"next": "Working checkpoint: 30 October 2026, 22:00 Yangon. Finish scoped verification and CI for #931–#934; identify and reduce the measured LCP mount cost in #919 without changing budgets or calibration. L-01/L-05 stay open; finish L-02, then L-03a release journeys (#929), scoped settings (#930), and shared Pages/KB editor (#56). Thomas approves main merges and public deployment. Close issues only after accepted, merged evidence.",
-	"status": "29 October execution: approved legacy boundary #931 passes 175 targeted integration tests. Report rebuild #932 retains P0–P6 and evidence; its six regressions now join required CI-script checks (1,380 passed, 20 existing skips). SMTP #933 passes 59 tests; corrected root candidate #934 passes 7,197. Local SIT 9ed58d9bf is healthy on both HTTPS hosts after verified backups, with six canonical time-screen variants passing. Hosted #919 assignment passes at 191.4/200 ms, while LCP fails at 2577.8/2500 and headroom remains unmet. These are unmerged candidates. All 673 clause classifications and historical acceptance remain unchanged.",
+	"next": "Codex: backlog L-01 baseline full audit (code, feature, design and browser tests against the requirement index and open issues), then L-02 test reliability and CI speed, L-03 settings split, L-04 Pages editor, L-05 G11 headroom. Thomas: decide whether the protect-main bypass stays; update OIDC redirect URIs to /api/auth/callback/custom; sign in on Technexus for a signed-in smoke.",
+	"status": "28 Oct: P0–P6 accepted and merged to main (PR #891, squash 692775bf7). All required checks green except G11 (work-list LCP 2921 ms vs 2500, list→detail 347 ms vs 300, board-drag p95 33.3 ms vs 20); Thomas approved merging past G11 via an admin bypass. Signed release image (digest sha256:3028f7ad…) deployed to Technexus: migrations 127→212, counts preserved, both hosts healthy over HTTPS. Phases ended; work continues as the linear backlog handed over to Codex.",
 	"validation_runs": [
 		{
-			"check": "29 October fresh typecheck and lint",
-			"result": "Source 925587dc6: 9/9 uncached root typecheck tasks; clean tracked lint passes 4,831 files. Dirty original lint has 10 ignored-backup formatting errors; those files were preserved."
+			"check": "GitHub issue triage (27 Oct)",
+			"result": "126 open issues checked against the current tree. Closed 40 with evidence comments (33 finished, 7 obsolete). Still open: partial #8, #24, #25, #32, #38, #39, #40, #42, #43, #44, #45, #47, #48, #51, #54, #56, #93, #133, #166, #167, #173, #189, #198, #221, #229, #258, #314, #359, #372, #402, #428, #436, #445, #446, #448, #560, #564, #580, #593, #626, #633, #675, #702, #703, #753, #770, #777; open #55, #87, #94, #98, #102, #106, #126, #139, #181, #182, #226, #230, #231, #232, #241, #257, #264, #266, #267, #337, #348, #398, #634, #637, #678, #680, #681, #704, #709, #711, #737, #746, #762, #776, #876; obsolete but kept open (PR-template check is a required CI check) #477, #478; waiting on Thomas #403, #582."
 		},
 		{
-			"check": "29 October code gates",
-			"result": "Thirteen pass, including 118 permission tests, separate route policy, contract and CI scripts (1,374 passed / 20 skipped / zero failed). Root units fail: API 3 and web 5 observed before abort. Focused 18 API + 12 web passes do not clear the full failure."
+			"check": "P6 per-ID test mapping (27 Oct)",
+			"result": "IM-1/IM-2/IM-4: import-persistence, engine-mapping (dry run writes nothing, reports losses), csv-e2e loss report. IM-3: engine-p6-recovery and csv-e2e resume from the last committed chunk. IM-5/IM-6: engine-run and engine-v2 keep provenance links, authorship and source timestamps. IM-7: placeholder-auth and placeholder-claim (email match, inactive placeholders). IM-8/IM-9/IM-11: import-api and engine-approval idempotency keys; api-key capability and role-clamp tests; agent-origin audit. IM-10/IM-12: MCP register tests cap bulk_create_work_items; IM-12 is served by create_import_link (maintained contract name, reconciled in import-and-cutover.md)."
 		},
 		{
-			"check": "29 October fresh integration",
-			"result": "Source 925587dc6: 478 files / 5,789 tests pass on a fresh owned PostgreSQL 18 database; 26m35s Vitest. Container c18d904f59a1 stopped/removed; diagnostic databases dropped. No customer database used."
+			"check": "Deployment",
+			"result": "One Compose file/project, five healthy/running services and completed migration job; source196-properties-scroll image. All 1,667 deployed artifacts hash-verified; six strict-TLS endpoints pass. Business counts preserved; protected database untouched. Unused wget removed; refreshed scan confirms wget absent: 0 critical, 42 high. Disposition remains open."
 		},
 		{
-			"check": "29 October current hosted performance",
-			"result": "PR #919 at 925587dc6: 25 other checks pass; G11 fails LCP 2640.2 / 2500 ms and assignment 228 / 200 ms; zero of three qualifying headroom trials."
+			"check": "Properties and separate settings",
+			"result": "Deployed: 39 browser assertions pass at 375/768/1440 in light/dark, desktop independent scrolling, pointer/keyboard resizing, Escape rollback and inner-content width. Separate Account/Workspace/Project/God Mode headings and no combined scope tabs verified. Focused settings/resize 42 tests and frame/properties regression 57 tests pass; combined build, web types and raw-UI gate pass. Full phase review pending."
 		},
 		{
-			"check": "29 October runtime and browser",
-			"result": "Both local hosts return HTTP 502; app stopped. No new whole-product browser acceptance. Prior PR #918 and scoped PR #919 receipts retain their source/fixture limits."
+			"check": "Catalogue follow-up",
+			"result": "Calendar, label and SLA catalogue journey completes: resumed pass 100 checks, 24 new captures. Stable-key validation, persistence, rename and read-only editing checked across three widths and both themes. Earlier partial pass retained; one intermittent session-check error remains unexplained and open. No full phase acceptance."
 		},
 		{
-			"check": "29 October security",
-			"result": "High-severity dependency gate passes; one deepmerge low remains. All 22 Gitleaks history hits classified, with zero confirmed exposures among those hits and no suppression. The older local image scan has 42 unfixed HIGH findings; it is not the latest-release scan."
+			"check": "Passing checkpoints",
+			"result": "Source 196: 42 lifecycle/digest PostgreSQL checks, 226 project-reach cases, 118 permissions, 33 focused UI tests and 212 approval-contract assertions pass. An additional nine-case deletion retry suite passes after tightening transaction-only retries. API/web application and API-test types pass. These do not replace final full suites."
 		},
 		{
-			"check": "29 October standalone audit report browser check",
-			"result": "Four Chromium cases pass at 1440/375 px in light/dark themes; all four captures visually inspected. Dated historical evidence remains accessible; long reference URLs wrap without clipping. This is report validation, not product browser acceptance."
+			"check": "Wave194",
+			"result": "Historical checkpoint: signed-provider account linking passed23 browser flow checks plus20 saved-screen checks; admin key creation/scope picker/non-admin denial passed37. Parallel194 runtimes are now stopped. Catalogue controls and51-link approval browser work remain pending."
 		},
 		{
-			"check": "28 October baseline: Current source and per-ID index",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. 673 indexed; 19 implemented + current-test evidence, 630 current-source-inspected / untested, 15 partial, 6 external, 3 conditional/out-of-scope unverified; no per-clause browser acceptance claimed."
+			"check": "Latest browser evidence",
+			"result": "Source 196: identity-deletion journey 58 checks across 375/768/1440px in light/dark; five cancellations, one password-confirmed execution, non-admin denial, SCIM/session revocation and history/person preservation. Danger-action layout 20 checks, all 19 captures inspected. Login/agent/settings/portal smoke 10 checks pass. This is scoped evidence, not full phase acceptance."
 		},
 		{
-			"check": "28 October baseline: Fresh integration database",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. PASS 478/478 files and 5789/5789 tests, PostgreSQL 18.6 Testcontainers taskdesk_test; exact owned containers cleaned. Live 62870 excluded from integration/reset/seed/fixtures; ordinary SIT auth/session and own workspace-preference operations only."
+			"check": "Queue browser follow-up",
+			"result": "Deployed192 read-only queue checks at375/1440dark pass with no raw labels, page overflow or JS errors. Mobile summary width repair is visible and inspected. Earlier26-check functional journey remains scoped evidence."
 		},
 		{
-			"check": "28 October baseline: Typecheck / permissions / route policy / contract",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. PASS 9/9 typecheck tasks; 118/118 permissions; route policy and oasdiff 0 unapproved changes."
+			"check": "Settings impact and identity",
+			"result": "Role/workflow impact previews pass six width/theme states without applying changes. Account linking preserves the original session and grants, creates one linked identity/account, audits without subject/email and rejects replay. Imported-placeholder email-claim browser work remains pending."
 		},
 		{
-			"check": "28 October baseline: Unit and persisted/mock e2e",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. FAIL scoped web unit timeout (#776); e2e 164 passed, 1 dialog-locator failure (https://github.com/ThomasHeinThura/ticketing/issues/911)."
+			"check": "Import prerequisite",
+			"result": "Deployed192:51-record owner approval passes all six width/theme states. Wrong count/missing proof blocked; fresh password approval creates51 distinct targets/links. Retry preserves totals and mappings. Temporary key revoked and original MCP flag restored. Run-management/non-admin checks also pass. No full P6 sign-off."
 		},
 		{
-			"check": "28 October baseline: Raw elements / tokens / G4",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. PASS 0 raw controls; 401 light/dark contrast pairs; 155 UI a11y and 21 Playwright axe cases."
+			"check": "Open gates",
+			"result": "Project-move executor and historical SLA-origin schema/readers remain unbuilt. Owner approved finish/pause and explicit rebind. Local Mailpit capability is built and deployed; actual delivery remains unverified. Catalogue/bulk-link/placeholder journeys, full integration/browser coverage, security disposition and independent reviews remain open. Current image scan after wget removal: 0 critical/42 high (seven unique high CVEs, no fixed versions reported); 18 secret-scan findings classified with zero confirmed credential exposures, raw scan still fails and independent disposition pending. God Mode Health currently flags one expired invitation delivery envelope awaiting cleanup; investigate worker cleanup and recheck."
 		},
 		{
-			"check": "28 October baseline: Pinned G8",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. 104/105 screen snapshots passed; one stable 46-pixel module-detail diff (https://github.com/ThomasHeinThura/ticketing/issues/908). Separate Storybook suite 1/1 passed. No baseline changes."
+			"check": "Reviews and shipping",
+			"result": "Reviews 0/3 per phase. No new commit/push/PR/merge; HEAD aea5d5702. Verified 2,487-file predeployment source checkpoint, decoded database/attachment backups and immutable image snapshots preserve rollback. Real Entra remains Thomas-owned."
 		},
 		{
-			"check": "28 October baseline: Performance and bundle",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. G11/G13 local product budgets not measured (including six G13 skeleton-to-content CLS cases): calibration factor 0.527 outside [0.75,1.75] (https://github.com/ThomasHeinThura/ticketing/issues/876). G11 bundle budgets pass: agent 267.1/350 KB, work-list 332.8/350, portal 189.1/200; G12 purity pass."
+			"check": "P6 goals",
+			"result": "Plan approved: durable/resumable imports; CSV, Jira/JSM, Azure DevOps, Plane, Planner and Power Apps adapters; Kaneo wizard; reconciliation, cutover and rollback rehearsal. Only the shared P4 import prerequisite has started."
 		},
 		{
-			"check": "28 October baseline: Lint and security scanners",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Clean main export exact pnpm lint:ci PASS: 4817 files, 0 errors, 265 warnings, 15 infos. Original dirty-workspace lint FAIL: 11 errors only in ignored local backup/test-results artifacts; ignore-aware diagnostic 4820 files/0 errors. Trivy 0 fixable HIGH/CRITICAL; Gitleaks 22 synthetic/false-positive historical matches triaged, scanner exit 1; pnpm audit one LOW advisory (https://github.com/ThomasHeinThura/ticketing/issues/909). Initial staged scan flagged six copies of a request-type URL identifier; public query keys normalized without an exemption, staged rescan passed with zero findings."
-		},
-		{
-			"check": "28 October baseline: Kaneo 42bb8011 comparison",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Source components/tokens compared; parity manifest tests 10/10 pass. Full same-seed 120+120 capture comparison unavailable; no pixel-parity acceptance claim."
-		},
-		{
-			"check": "28 October baseline: Local SIT matrix",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Crawl finished: 2322 required-role case records (owner/lead/member/viewer 564 each, customer 66) plus 564 supplementary instance-admin/owner case records; 564 actual workspace-admin cases blocked (#914), no duplicate cases. All 105 active route templates inventoried at 1440/820/390, light/dark. Records include138 required missing-record fixtures with no navigation. Resolved-route variants explicitly record settled content, denial, fixture absence and errors; counts are not passes. Six original portal Loading captures were rejected; separate strict-readiness customer follow-up records all66 cases, and base-catalogue screenshots retain the observed clipping/overlap finding. Same-page Chromium resizing is viewport coverage, not physical touch-device or full feature-journey acceptance. Exact manifest: docs/report/audit/l01-sit-matrix.json."
-		},
-		{
-			"check": "28 October baseline: Representative keyboard/focus",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. 36 shell-control cases executed: 30 required-role plus 6 supplementary instance-admin/owner; true workspace-admin fixture unavailable (#914). Interactive Tab targets visible, portal popup and mobile sidebar Escape/focus checks pass. Sidebar Search close-focus fails in 16 required-role + 4 supplementary desktop/tablet cases (#915); exact retained overlay contract is architecture-and-experience.md:1666. No full-screen keyboard acceptance claimed."
-		},
-		{
-			"check": "28 October baseline: Public auth and record scope",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Anonymous sign-in 12 viewport/theme cases across both hosts; six opposite-host sessions absent and protected routes redirect to sign-in. Shared saved-view 404s are expected private-record scope denials; owner-own-reachable view follow-up 6/6 settled. Exact proof/limits: docs/report/audit/l01-sit-scope.json. No reset/magic-link/provider or full invitation-token flow exercised."
-		},
-		{
-			"check": "28 October baseline: Settled portal catalogue visual review",
-			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Six base-catalogue variants settle with zero API errors; retained820/390 captures expose overlap/clipping (#917). Static key=access yields404/concrete error, while the actual existing Access request card opens its selected form6/6 across widths/themes with empty visible text fields and zero API errors. No field entry/submission or whole-clause acceptance claimed."
-		},
-		{
-			"check": "29 October execution: scoped candidates and SIT recovery",
-			"result": "Unmerged #927 working-tree candidate: 7 integration files / 123 tests on fresh PostgreSQL18 Testcontainer, removed after check; typecheck9tasks and permissions118 pass. More negative/concurrency tests and review/browser/CI pending. Unmerged #928 candidate: 6 Node tests, Terra review round2 PASS0high/medium, copied-data rebuild deterministic with all7phases/673clauses and acceptance/metadata retained; browser1440/768/375 light/dark with no overflow/page errors. Both SIT HTTPS hosts now200 after verified backups and restart of existing01c47cb65 app; this is the old image, not these candidate fixes. No test receipt promotes full requirement counts."
-		},
-		{
-			"check": "29 October execution: published fix candidates and current SIT",
-			"result": "#931 at 9ed58d9bf: nine fresh PostgreSQL 18 integration files / 175 tests, 118 permission tests, route policy, API contract and independent Sol reviews pass; CI type-helper/archive-admission findings and the positive soft-delete fixture were corrected. A fresh full integration run is in progress. Current SIT is healthy, both HTTPS hosts return 200, verified backups and startup entity counts are preserved. Six admin width/theme keyboard/reload checks pass. Native Time create (201), edit (200) and reload succeeded in the approved isolated fixture at f275; that record persists after the update. No existing record was overwritten. #932 adds six report regressions to required CI scripts: 1,380 passed, 20 existing skips, zero failed. #933 passes 59 email tests; #934 passes 7,197 root tests across eight packages in 2m27s. Independent reviews pass. Hosted G11 at ff7: LCP 2577.8 fails; assignment 191.4 passes. These scoped receipts do not establish all required CI or full role acceptance, and do not promote clause counts."
+			"check": "User decisions",
+			"result": "Pending: move projects only after running imports/intake finish and subscriptions pause/rebind, or support running moves; and approve fixed local Mailpit capture, or use public SMTP. Production SMTP private-address protection remains enforced. Fourth failed phase reviews still require approval."
 		}
 	],
 	"validation_history": [
@@ -933,112 +1603,23 @@
 			"recordedAt": "2026-10-26T07:23:59.078006+00:00",
 			"check": "Superseded runtime194 checkpoint",
 			"result": "All three owned copies migrated192→194 after fully decoded rollback dumps; checked business/report counts preserved. API hashes match and all six strict-TLS readiness checks pass. Protected live database never targeted. Historical only: these deployments are now down."
-		},
-		{
-			"recorded_at": "2026-10-29",
-			"source": "PR918 audit snapshot retained",
-			"checks": [
-				{
-					"check": "Current source and per-ID index",
-					"result": "673 indexed; 19 implemented + current-test evidence, 630 current-source-inspected / untested, 15 partial, 6 external, 3 conditional/out-of-scope unverified; no per-clause browser acceptance claimed."
-				},
-				{
-					"check": "Fresh integration database",
-					"result": "PASS 478/478 files and 5789/5789 tests, PostgreSQL 18.6 Testcontainers taskdesk_test; exact owned containers cleaned. Live 62870 excluded from integration/reset/seed/fixtures; ordinary SIT auth/session and own workspace-preference operations only."
-				},
-				{
-					"check": "Typecheck / permissions / route policy / contract",
-					"result": "PASS 9/9 typecheck tasks; 118/118 permissions; route policy and oasdiff 0 unapproved changes."
-				},
-				{
-					"check": "Unit and persisted/mock e2e",
-					"result": "FAIL scoped web unit timeout (#776); e2e 164 passed, 1 dialog-locator failure (https://github.com/ThomasHeinThura/ticketing/issues/911)."
-				},
-				{
-					"check": "Raw elements / tokens / G4",
-					"result": "PASS 0 raw controls; 401 light/dark contrast pairs; 155 UI a11y and 21 Playwright axe cases."
-				},
-				{
-					"check": "Pinned G8",
-					"result": "104/105 screen snapshots passed; one stable 46-pixel module-detail diff (https://github.com/ThomasHeinThura/ticketing/issues/908). Separate Storybook suite 1/1 passed. No baseline changes."
-				},
-				{
-					"check": "Performance and bundle",
-					"result": "G11/G13 local product budgets not measured (including six G13 skeleton-to-content CLS cases): calibration factor 0.527 outside [0.75,1.75] (https://github.com/ThomasHeinThura/ticketing/issues/876). G11 bundle budgets pass: agent 267.1/350 KB, work-list 332.8/350, portal 189.1/200; G12 purity pass."
-				},
-				{
-					"check": "Lint and security scanners",
-					"result": "Clean main export exact pnpm lint:ci PASS: 4817 files, 0 errors, 265 warnings, 15 infos. Original dirty-workspace lint FAIL: 11 errors only in ignored local backup/test-results artifacts; ignore-aware diagnostic 4820 files/0 errors. Trivy 0 fixable HIGH/CRITICAL; Gitleaks 22 synthetic/false-positive historical matches triaged, scanner exit 1; pnpm audit one LOW advisory (https://github.com/ThomasHeinThura/ticketing/issues/909). Initial staged scan flagged six copies of a request-type URL identifier; public query keys normalized without an exemption, staged rescan passed with zero findings."
-				},
-				{
-					"check": "Kaneo 42bb8011 comparison",
-					"result": "Source components/tokens compared; parity manifest tests 10/10 pass. Full same-seed 120+120 capture comparison unavailable; no pixel-parity acceptance claim."
-				},
-				{
-					"check": "Local SIT matrix",
-					"result": "Crawl finished: 2322 required-role case records (owner/lead/member/viewer 564 each, customer 66) plus 564 supplementary instance-admin/owner case records; 564 actual workspace-admin cases blocked (#914), no duplicate cases. All 105 active route templates inventoried at 1440/820/390, light/dark. Records include138 required missing-record fixtures with no navigation. Resolved-route variants explicitly record settled content, denial, fixture absence and errors; counts are not passes. Six original portal Loading captures were rejected; separate strict-readiness customer follow-up records all66 cases, and base-catalogue screenshots retain the observed clipping/overlap finding. Same-page Chromium resizing is viewport coverage, not physical touch-device or full feature-journey acceptance. Exact manifest: docs/report/audit/l01-sit-matrix.json."
-				},
-				{
-					"check": "Representative keyboard/focus",
-					"result": "36 shell-control cases executed: 30 required-role plus 6 supplementary instance-admin/owner; true workspace-admin fixture unavailable (#914). Interactive Tab targets visible, portal popup and mobile sidebar Escape/focus checks pass. Sidebar Search close-focus fails in 16 required-role + 4 supplementary desktop/tablet cases (#915); exact retained overlay contract is architecture-and-experience.md:1666. No full-screen keyboard acceptance claimed."
-				},
-				{
-					"check": "Public auth and record scope",
-					"result": "Anonymous sign-in 12 viewport/theme cases across both hosts; six opposite-host sessions absent and protected routes redirect to sign-in. Shared saved-view 404s are expected private-record scope denials; owner-own-reachable view follow-up 6/6 settled. Exact proof/limits: docs/report/audit/l01-sit-scope.json. No reset/magic-link/provider or full invitation-token flow exercised."
-				},
-				{
-					"check": "Settled portal catalogue visual review",
-					"result": "Six base-catalogue variants settle with zero API errors; retained820/390 captures expose overlap/clipping (#917). Static key=access yields404/concrete error, while the actual existing Access request card opens its selected form6/6 across widths/themes with empty visible text fields and zero API errors. No field entry/submission or whole-clause acceptance claimed."
-				}
-			]
 		}
 	],
 	"crosscutting_gaps": [
 		{
-			"requirement": "Gate reliability",
-			"status": "open",
-			"finding": "Candidate #934 passes 7,197 tests in the exact root run after the separate SMTP fix (#933) and real socket-close synchronization. Original failed runs remain evidence. Hosted CI, repeated main runs, e2e #911 and G8 #908 criteria stay open."
+			"requirement": "Security model: Transport and headers",
+			"status": "verified_scoped",
+			"finding": "Both HTTPS hosts serve complete nonced HTML and enforced sandboxed PDF documents. Mounted static tests pass5/5; runtime responses and anonymous renderer CORS pass. Parent CSP remains report-only as required for its first release."
 		},
 		{
-			"requirement": "G11 headroom",
-			"status": "open",
-			"finding": "Hosted #919 at ff7cf8e92: assignment 191.4/200, route 234.3/300, board 398.8/500 and drag 16.8/20 ms pass; LCP 2577.8/2500 fails and 15% headroom is unmet. Local Mac calibration factor 0.571 is outside the retained range, so no local gate pass. Thresholds, calibration source/options, samples and retries are unchanged."
+			"requirement": "Runtime web/jobs roles",
+			"status": "verified_scoped",
+			"finding": "Real isolated web/jobs/all processes pass listener, liveness and shutdown checks. Jobs exposes no HTTP or metrics listener. Final shipping-image and cadence verification remain pending."
 		},
 		{
-			"requirement": "Security dependency",
-			"status": "open",
-			"finding": "Fresh configured high-severity dependency gate passes; one deepmerge low remains (#909). The older local image scan reports 42 HIGH with no fixed versions; this is not the latest signed release scan. All 22 raw Gitleaks history hits were classified as digests, public identifiers, fixtures, historical prose or an invalid example; zero confirmed credential exposures among those hits, no suppression changed."
-		},
-		{
-			"requirement": "Design parity and browser completeness",
-			"status": "pending",
-			"finding": "Pinned Kaneo42bb8011 source/components and historical references were inspected; fresh matched-seed parity and whole-product acceptance remain open. Historical wider audit has564 workspace-admin cases pending replay (#914); a later126-case scoped matrix uses an approved isolated admin but does not establish broader route acceptance. Local SIT was recovered on 29 Oct: both hosts return200; whole-product replay remains open. Route attempts and scoped passes do not establish full clauses."
-		},
-		{
-			"requirement": "Shared dialog focus contract",
-			"status": "open",
-			"finding": "Sidebar Search dialog returns focus to BODY after Escape from its focused connected launcher: 16 required-role and 4 supplementary instance-admin/owner cases after a 1.1s wait (https://github.com/ThomasHeinThura/ticketing/issues/915; docs/report/audit/l01-keyboard.json). Portal notification menus and mobile sidebar focus restoration passed scoped checks. Automated G4 remains a separate passing result."
-		},
-		{
-			"requirement": "GM-1 semantic audit coverage",
-			"status": "open",
-			"finding": "Source-connection creation persists config/encrypted credentials without a semantic audit append (#916). No runtime write was performed; this is an audit-event gap, not credential exposure. Other sampled God Mode mutations audit correctly."
-		},
-		{
-			"requirement": "Portal responsive catalogue layout",
-			"status": "open",
-			"finding": "Settled catalogue descriptions overlap adjacent cards at 820 px and cards/content clip at 390 px in both themes (#917). Source catalogue.tsx:547–566 composes library Button cards; the specific sizing/wrapping cause is not isolated. No application code was changed. This is a shared UI/UX responsive defect, not proof that a numbered visibility/submission clause fails."
+			"requirement": "Same-origin web build",
+			"status": "fixed_scoped",
+			"finding": "Build scripts now force same-origin APIs. Real Chromium requests use the HTTPS host; workspace network failures show the existing error panel and Retry recovers, with no false onboarding."
 		}
-	],
-	"delivery_goal": {
-		"target": "2026-10-30T22:00:00+06:30",
-		"kind": "working checkpoint",
-		"status": "audit/planning review; release and full completion not established",
-		"roadmap": "../roadmap.md",
-		"issue_count": 117,
-		"source_issue_assessments": 113,
-		"new_tracking_issues": [927, 928, 929, 930],
-		"project": "https://github.com/users/ThomasHeinThura/projects/1",
-		"project_items": 148
-	}
+	]
 }
