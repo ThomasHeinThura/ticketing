@@ -1,6 +1,6 @@
 # Working on TaskDesk
 
-This file is the only rulebook for every coding agent (Codex first). Read it, then [docs/handover.md](docs/handover.md) for the current state and [docs/roadmap.md](docs/roadmap.md) for the ordered backlog. Thomas's current instructions take precedence. `archive/` is read-only history, not policy.
+This file is the only rulebook for every coding agent (Codex, Gemini, Claude). Read it, then [docs/handover.md](docs/handover.md) for the current state and [docs/roadmap.md](docs/roadmap.md) for the ordered backlog. Thomas's current instructions take precedence. `archive/` is read-only history, not policy.
 
 ## Working model (Thomas, 28 Oct 2026)
 
@@ -26,12 +26,14 @@ Codex fixes bugs, adjusts implementation, corrects stale docs and chooses design
 - merging to `main`, deploying to Technexus, or any production action;
 - deleting or rewriting customer data, or anything irreversible.
 
-## Models and roles (Thomas, 28 Oct)
+## Models and roles (Thomas, 28 Oct; Gemini added 29 Oct)
 
 | Tier | Models | Use for |
 | --- | --- | --- |
-| Middle | Terra (`gpt-6-terra`), Claude Sonnet | Implementation, tests, routine checks, low-risk reviews, search |
-| High | Sol (`gpt-6-sol`, `reasoning_effort: "high"`), Claude Opus | Planning, audits, architecture, risky changes, independent review |
+| Middle | Terra (`gpt-6-terra`), Claude Sonnet, Gemini 3.8 Flash | Implementation, tests, routine checks, low-risk reviews, search |
+| High | Sol (`gpt-6-sol`, `reasoning_effort: "high"`), Claude Opus, Gemini Argon | Planning, audits, architecture, risky changes, independent review |
+
+Use the tier, not a vendor: any high-tier model may review work written by any other model, never its own.
 
 A reviewer never reviews its own work. Subagents edit only explicitly disjoint paths, one owner per file ([agent-work](docs/agent-work.md)); they never commit, push, merge, deploy, add dependencies or delete data. A subagent's "passed" is evidence to inspect, not acceptance.
 
@@ -71,6 +73,7 @@ Never push to `main`, never force-push, never `git add -A`: stage by path, confi
 - `taskdesk_browser_journey_1022_test` (native PostgreSQL 62870) is the **live** database with Thomas's work despite its `_test` suffix. Never reset, seed or run fixtures against it. Integration resets use a fresh dedicated `_test` database (scratch PostgreSQL 62871 or Testcontainers), one owner at a time.
 - Never rerun the SIT account seeder; never overwrite Thomas's records.
 - Docker: remove only containers you started, by exact id. No prune, no wildcard removal.
+- **Containers on purpose (Thomas, 29 Oct).** Start a container only when a check you are about to run needs it, reuse the running local SIT and test services instead of starting parallel copies, and stop and remove each container you started (by exact id) as soon as its check finishes. No idle or "just in case" containers; before handing back, list every container you started and confirm it is gone or say why it must stay.
 - Never print credentials, cookies, database URLs or signed URLs.
 - Run Trivy, Gitleaks and dependency audits; triage findings, never hide them. Do not disable tests.
 - Diagnose a repeated failure across the whole path before another patch.
