@@ -12,9 +12,11 @@ import {
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
+import { setTimeFlags } from "./helpers/p5-time";
 
 async function seedTaskFor(workspaceId: string) {
   const { project, columns } = await createProjectFixture({ workspaceId });
+  await setTimeFlags(workspaceId);
   // Time entries act on a task, so the caller needs reach to its project (#720): give the
   // workspace's existing members the project authority their workspace role implies.
   await grantProjectAccessToWorkspaceMembers(workspaceId, project.id);

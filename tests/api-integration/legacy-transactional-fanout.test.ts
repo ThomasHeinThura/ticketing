@@ -35,6 +35,7 @@ import {
   grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
+import { setTimeFlags } from "./helpers/p5-time";
 
 async function fixture() {
   const member = await createWorkspaceMember();
@@ -449,6 +450,7 @@ describe("legacy transactional event fanout", () => {
 
   it("commits time-entry and relation parents with their actual source ids", async () => {
     const { identity, member, project, task } = await fixture();
+    await setTimeFlags(member.workspace.id);
     const target = requireRow(
       await db
         .insert(schema.taskTable)
@@ -464,7 +466,7 @@ describe("legacy transactional event fanout", () => {
     const entry = await createTimeEntry({
       taskId: task.id,
       identity,
-      userId: member.user.id,
+      credential: { kind: "session" },
       startTime: new Date("2026-10-25T08:00:00.000Z"),
       endTime: new Date("2026-10-25T08:30:00.000Z"),
     });

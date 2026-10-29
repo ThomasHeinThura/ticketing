@@ -1,3 +1,6 @@
+import type { ResolvedIdentity } from "@taskdesk/permissions";
+import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import type { BaseVariables } from "../openapi";
 import {
   apiRouter,
@@ -6,9 +9,18 @@ import {
   jsonResponse,
 } from "../openapi";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
-import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
-import { requireWorkspacePermission } from "../utils/require-workspace-permission";
+import {
+  capabilityCredential,
+  requireWorkspaceCapability,
+} from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import {
+  legacyEntryOwner,
+  mutationIdentity,
+  requireLegacyEntryCapability,
+  requireLegacyTimeTracking,
+  requireMutationIdentity,
+} from "./authorization";
 import createTimeEntry from "./controllers/create-time-entry";
 import getTimeEntriesByTaskId from "./controllers/get-time-entries";
 import getTimeEntry from "./controllers/get-time-entry";
@@ -96,7 +108,9 @@ const createTimeEntryRoute = createRoute({
       deferCapability: true,
       requireLiveProjectForTask: true,
     }),
-    requireWorkspacePermission({ work_item: ["update"] }),
+    requireMutationIdentity,
+    requireWorkspaceCapability("time_entry:create"),
+    requireLegacyTimeTracking,
   ] as const,
   request: {
     body: {
@@ -109,8 +123,9 @@ const createTimeEntryRoute = createRoute({
     // #290: an unknown/out-of-reach task 404s via `workspaceAccess.fromTaskId()`
     // (below), before this route's own body validation runs.
     400: errorResponse("Invalid timestamps"),
-    403: errorResponse("Missing work_item:update permission"),
+    403: errorResponse("Missing time_entry:create permission"),
     404: errorResponse("Task not found"),
+    409: errorResponse("feature.time_tracking is off"),
   },
 });
 
@@ -127,7 +142,10 @@ const updateTimeEntryRoute = createRoute({
       requireProjectReach: true,
       deferCapability: true,
     }),
-    requireWorkspacePermission({ work_item: ["update"] }),
+    requireMutationIdentity,
+    legacyEntryOwner,
+    requireLegacyEntryCapability,
+    requireLegacyTimeTracking,
   ] as const,
   request: {
     params: timeEntryParam,
@@ -139,8 +157,11 @@ const updateTimeEntryRoute = createRoute({
   responses: {
     200: jsonResponse("The updated time entry", timeEntrySchema),
     400: errorResponse("Invalid timestamps"),
-    403: errorResponse("Missing work_item:update permission"),
+    403: errorResponse(
+      "Missing time_entry:update_own or update_any permission",
+    ),
     404: errorResponse("Time entry not found"),
+    409: errorResponse("feature.time_tracking is off"),
   },
 });
 
@@ -165,8 +186,8 @@ const timeEntry = apiRouter()
     return c.json(
       await createTimeEntry({
         taskId,
-        identity: await requestIdentity(c),
-        userId: c.get("userId"),
+        identity: await mutationIdentity(c),
+        credential: capabilityCredential(c.get("apiKey")),
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : undefined,
         description,
@@ -180,7 +201,8 @@ const timeEntry = apiRouter()
     const { startTime, endTime, description } = c.req.valid("json");
     return c.json(
       await updateTimeEntry({
-        identity: await requestIdentity(c),
+        identity: await mutationIdentity(c),
+        credential: capabilityCredential(c.get("apiKey")),
         timeEntryId: id,
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : undefined,
@@ -191,7 +213,3 @@ const timeEntry = apiRouter()
   });
 
 export default timeEntry;
-
-import type { ResolvedIdentity } from "@taskdesk/permissions";
-import type { Context } from "hono";
-import { HTTPException } from "hono/http-exception";
