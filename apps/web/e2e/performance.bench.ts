@@ -35,6 +35,10 @@ import {
 } from "./helpers/g11-performance-fixture";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
+import {
+  assertWorkListReadiness,
+  waitForWorkListReadiness,
+} from "./helpers/work-list-readiness";
 
 type BudgetMetric = {
   name: string;
@@ -328,13 +332,17 @@ async function collectNavigationMetric(
   name: "lcp" | "cls",
   report?: { domContentLoaded?: number },
 ) {
-  await openWorkList(page);
+  if (name === "lcp") {
+    await page.goto(WORK_LIST_PATH);
+    await waitForWorkListReadiness(page);
+  } else await openWorkList(page);
   await waitForTwoFrames(page);
   const value = await page.evaluate(
     (requested) => (window as G11Window).__g11Metrics[requested],
     name,
   );
   if (name === "lcp") {
+    await assertWorkListReadiness(page);
     const diagnostic = await page.evaluate(() => ({
       metrics: {
         lcp: (window as G11Window).__g11Metrics.lcp,
