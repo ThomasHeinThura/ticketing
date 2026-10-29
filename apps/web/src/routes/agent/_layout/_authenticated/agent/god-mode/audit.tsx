@@ -175,8 +175,12 @@ function GodModeAuditRoute() {
             </CardContent>
           </Card>
         ) : (
-          <div className="overflow-x-auto rounded-md border border-border">
-            <Table>
+          <div className="min-w-0 rounded-md border border-border">
+            <Table
+              scrollLabel={t("common:navigation.auditLog", {
+                defaultValue: "Audit log",
+              })}
+            >
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("common:audit.columns.timestamp")}</TableHead>
