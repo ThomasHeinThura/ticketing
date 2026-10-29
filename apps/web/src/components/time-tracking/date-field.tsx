@@ -34,6 +34,8 @@ export function DateField({
   max,
   disabled,
   label,
+  placeholder,
+  clearLabel,
 }: {
   id?: string;
   value: string;
@@ -43,6 +45,9 @@ export function DateField({
   max?: string;
   disabled?: boolean;
   label?: string;
+  placeholder?: string;
+  /** Optional clear action; required-date callers retain their existing behavior. */
+  clearLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = toDay(value);
@@ -60,10 +65,12 @@ export function DateField({
           className="w-full justify-start gap-2 font-normal tabular-nums"
         >
           <CalendarDays aria-hidden="true" />
-          {selected ? formatDate(selected, { dateStyle: "medium" }) : value}
+          {selected
+            ? formatDate(selected, { dateStyle: "medium" })
+            : (placeholder ?? value)}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0" align="start">
+      <PopoverContent className="p-0" align="start" aria-label={label}>
         <Calendar
           mode="single"
           selected={selected}
@@ -79,6 +86,23 @@ export function DateField({
           ]}
           className="w-full bg-popover"
         />
+        {clearLabel ? (
+          <div className="border-t p-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              disabled={disabled || !value}
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              {clearLabel}
+            </Button>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

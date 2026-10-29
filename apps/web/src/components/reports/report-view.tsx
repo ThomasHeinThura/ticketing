@@ -174,23 +174,25 @@ export function ReportMetrics({
   const { t } = useTranslation();
   if (metrics.length === 0) return null;
   return (
-    <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {metrics.map((metric) => (
         <Card key={metric.key}>
           <CardContent className="space-y-1 p-4">
-            <dt className="text-muted-foreground text-sm">
-              {t(`reports:metrics.${metric.key}`, {
-                defaultValue: metric.label,
-              })}
-            </dt>
-            <dd className="font-semibold text-2xl tabular-nums">
-              {empty && metric.value === 0 ? "—" : metricText(metric, t)}
-            </dd>
+            <dl className="space-y-1">
+              <dt className="text-muted-foreground text-sm">
+                {t(`reports:metrics.${metric.key}`, {
+                  defaultValue: metric.label,
+                })}
+              </dt>
+              <dd className="font-semibold text-2xl tabular-nums">
+                {empty && metric.value === 0 ? "—" : metricText(metric, t)}
+              </dd>
+            </dl>
             <TrendLine metric={metric} />
           </CardContent>
         </Card>
       ))}
-    </dl>
+    </div>
   );
 }
 

@@ -10,6 +10,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  ScrollArea,
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
@@ -38,6 +39,7 @@ export function DashboardWidgetCard({
   onDrill,
   headerAction,
   footer,
+  editorActions,
 }: {
   workspaceId: string;
   dashboardId: string;
@@ -49,6 +51,8 @@ export function DashboardWidgetCard({
   headerAction?: ((title: string) => ReactNode) | undefined;
   /** The status of an export queued from this widget. */
   footer?: ReactNode;
+  /** Editing controls occupy their own card row so they cannot cover the report controls. */
+  editorActions?: ReactNode;
 }) {
   const { t } = useTranslation();
   const data = useWidgetData(workspaceId, dashboardId, widget.id, version);
@@ -74,19 +78,24 @@ export function DashboardWidgetCard({
       className="flex h-full flex-col overflow-hidden"
       data-testid="dashboard-widget"
     >
+      {editorActions ? (
+        <CardHeader className="flex flex-row justify-end px-2 py-1">
+          {editorActions}
+        </CardHeader>
+      ) : null}
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="truncate text-base">
+        <CardTitle className="min-w-0 text-base">
           {widget.reportKey ? (
             <Link
               to={routes.reportDetail.path}
               params={{ key: widget.reportKey }}
               search={parseReportSearch(widget.filters)}
-              className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-h-6 max-w-full items-center rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {title}
+              <span className="truncate">{title}</span>
             </Link>
           ) : (
-            title
+            <span className="block truncate">{title}</span>
           )}
         </CardTitle>
         <div className="flex shrink-0 items-center gap-1">
@@ -113,58 +122,64 @@ export function DashboardWidgetCard({
           {headerAction?.(title)}
         </div>
       </CardHeader>
-      <CardContent className="min-h-0 flex-1 space-y-2 overflow-auto pt-0">
-        {footer}
-        {data.isLoading ? (
-          <Skeleton className="h-full min-h-16 w-full" />
-        ) : data.isError || !report ? (
-          <ReportError error={data.error} />
-        ) : report.empty ? (
-          <ReportEmpty report={report} />
-        ) : widget.chartType === "number" ? (
-          first ? (
-            <div className="space-y-1">
-              <p className="text-muted-foreground text-sm">
-                {t(`reports:metrics.${first.key}`, {
-                  defaultValue: first.label,
-                })}
-              </p>
-              <p className="font-semibold text-3xl tabular-nums">
-                {metricText(first, t)}
-              </p>
-            </div>
-          ) : (
-            <Alert variant="info">
-              <AlertDescription>
-                {t("reports:dashboard.noMetric")}
-              </AlertDescription>
-            </Alert>
-          )
-        ) : noPlottableData ? (
-          <Empty data-testid="dashboard-widget-empty">
-            <EmptyHeader>
-              <EmptyTitle>—</EmptyTitle>
-              <EmptyDescription>{t("reports:empty.noData")}</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : showTable ? (
-          <ReportTable
-            columns={report.columns}
-            rows={report.rows}
-            label={t("reports:tableLabel", { title })}
-            onDrill={report.drill ? onDrill : undefined}
-          />
-        ) : report.chart ? (
-          <ReportChart
-            chart={report.chart}
-            label={t("reports:chartLabel", { title })}
-          />
-        ) : null}
-        {report ? (
-          <div className="text-xs">
-            <ReportContextLine report={report} />
+      <CardContent className="min-h-0 flex-1 overflow-hidden pt-0">
+        <ScrollArea role="region" aria-label={title}>
+          <div className="space-y-2">
+            {footer}
+            {data.isLoading ? (
+              <Skeleton className="h-full min-h-16 w-full" />
+            ) : data.isError || !report ? (
+              <ReportError error={data.error} />
+            ) : report.empty ? (
+              <ReportEmpty report={report} />
+            ) : widget.chartType === "number" ? (
+              first ? (
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-sm">
+                    {t(`reports:metrics.${first.key}`, {
+                      defaultValue: first.label,
+                    })}
+                  </p>
+                  <p className="font-semibold text-3xl tabular-nums">
+                    {metricText(first, t)}
+                  </p>
+                </div>
+              ) : (
+                <Alert variant="info">
+                  <AlertDescription>
+                    {t("reports:dashboard.noMetric")}
+                  </AlertDescription>
+                </Alert>
+              )
+            ) : noPlottableData ? (
+              <Empty data-testid="dashboard-widget-empty">
+                <EmptyHeader>
+                  <EmptyTitle>—</EmptyTitle>
+                  <EmptyDescription>
+                    {t("reports:empty.noData")}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : showTable ? (
+              <ReportTable
+                columns={report.columns}
+                rows={report.rows}
+                label={t("reports:tableLabel", { title })}
+                onDrill={report.drill ? onDrill : undefined}
+              />
+            ) : report.chart ? (
+              <ReportChart
+                chart={report.chart}
+                label={t("reports:chartLabel", { title })}
+              />
+            ) : null}
+            {report ? (
+              <div className="text-xs">
+                <ReportContextLine report={report} />
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </ScrollArea>
       </CardContent>
     </Card>
   );

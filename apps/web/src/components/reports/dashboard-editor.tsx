@@ -17,6 +17,8 @@ import {
   Badge,
   Button,
   Card,
+  CardContent,
+  CardHeader,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -124,7 +126,7 @@ function DraggableWidget({
   title: string;
   wide: boolean;
   canResize: boolean;
-  children: React.ReactNode;
+  children: (controls: React.ReactNode) => React.ReactNode;
   onResize: (dw: number, dh: number) => void;
   onRemove: () => void;
 }) {
@@ -142,72 +144,73 @@ function DraggableWidget({
       }}
       className={`relative min-w-0 ${isDragging ? "opacity-80 shadow-lg" : ""}`}
     >
-      <div className="absolute top-1 right-1 z-10 flex items-center gap-0.5 rounded-lg border bg-background p-0.5 shadow-xs">
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          aria-label={t("reports:editor.move", { title })}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical aria-hidden="true" />
-        </Button>
-        {canResize ? (
-          <>
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              aria-label={t("reports:editor.narrower", { title })}
-              onClick={() => onResize(-1, 0)}
-            >
-              <Minus aria-hidden="true" />
-            </Button>
-            <ArrowLeftRight
-              aria-hidden="true"
-              className="size-3 text-muted-foreground"
-            />
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              aria-label={t("reports:editor.wider", { title })}
-              onClick={() => onResize(1, 0)}
-            >
-              <Plus aria-hidden="true" />
-            </Button>
-            <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-border" />
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              aria-label={t("reports:editor.shorter", { title })}
-              onClick={() => onResize(0, -1)}
-            >
-              <Minus aria-hidden="true" />
-            </Button>
-            <ArrowUpDown
-              aria-hidden="true"
-              className="size-3 text-muted-foreground"
-            />
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              aria-label={t("reports:editor.taller", { title })}
-              onClick={() => onResize(0, 1)}
-            >
-              <Plus aria-hidden="true" />
-            </Button>
-            <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-border" />
-          </>
-        ) : null}
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          aria-label={t("reports:editor.remove", { title })}
-          onClick={onRemove}
-        >
-          <X aria-hidden="true" />
-        </Button>
-      </div>
-      {children}
+      {children(
+        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-0.5">
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            aria-label={t("reports:editor.move", { title })}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical aria-hidden="true" />
+          </Button>
+          {canResize ? (
+            <>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label={t("reports:editor.narrower", { title })}
+                onClick={() => onResize(-1, 0)}
+              >
+                <Minus aria-hidden="true" />
+              </Button>
+              <ArrowLeftRight
+                aria-hidden="true"
+                className="size-3 text-muted-foreground"
+              />
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label={t("reports:editor.wider", { title })}
+                onClick={() => onResize(1, 0)}
+              >
+                <Plus aria-hidden="true" />
+              </Button>
+              <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-border" />
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label={t("reports:editor.shorter", { title })}
+                onClick={() => onResize(0, -1)}
+              >
+                <Minus aria-hidden="true" />
+              </Button>
+              <ArrowUpDown
+                aria-hidden="true"
+                className="size-3 text-muted-foreground"
+              />
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label={t("reports:editor.taller", { title })}
+                onClick={() => onResize(0, 1)}
+              >
+                <Plus aria-hidden="true" />
+              </Button>
+              <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-border" />
+            </>
+          ) : null}
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            aria-label={t("reports:editor.remove", { title })}
+            onClick={onRemove}
+          >
+            <X aria-hidden="true" />
+          </Button>
+        </div>,
+      )}
       <span className="sr-only">
         {t("reports:editor.position", {
           x: widget.x + 1,
@@ -775,13 +778,26 @@ function EditorBody({
                       )
                     }
                   >
-                    {isNew(widget.id) ? (
-                      <Card className="flex h-full items-center justify-center p-4 text-muted-foreground text-sm">
-                        {title} · {t("reports:editor.unsaved")}
-                      </Card>
-                    ) : (
-                      card
-                    )}
+                    {(editorActions) =>
+                      isNew(widget.id) ? (
+                        <Card className="flex h-full flex-col">
+                          <CardHeader className="flex flex-row justify-end px-2 py-1">
+                            {editorActions}
+                          </CardHeader>
+                          <CardContent className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground text-sm">
+                            {title} · {t("reports:editor.unsaved")}
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <DashboardWidgetCard
+                          workspaceId={workspaceId}
+                          dashboardId={dashboard.id}
+                          version={dashboard.version}
+                          widget={widget}
+                          editorActions={editorActions}
+                        />
+                      )
+                    }
                   </DraggableWidget>
                 );
               })}

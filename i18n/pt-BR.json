@@ -8219,7 +8219,9 @@
 			"team": "Team",
 			"to": "To",
 			"type": "Type",
-			"window": "Window"
+			"window": "Window",
+			"datePlaceholder": "Not set",
+			"clearDate": "Clear date"
 		},
 		"index": {
 			"categories": "Report categories",
