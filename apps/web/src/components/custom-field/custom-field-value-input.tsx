@@ -16,6 +16,7 @@ import {
 import { CalendarDays, Check, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DateTimePicker } from "@/components/common/date-time-picker";
 import {
   PICKER_SEARCH_THRESHOLD,
   PickerPopover,
@@ -325,30 +326,13 @@ export function CustomFieldValueInput({
       );
     }
     case "datetime": {
-      const local =
-        typeof value === "string" && !Number.isNaN(Date.parse(value))
-          ? new Date(
-              new Date(value).getTime() -
-                new Date(value).getTimezoneOffset() * 60000,
-            )
-              .toISOString()
-              .slice(0, 16)
-          : "";
       return (
-        <Input
+        <DateTimePicker
           id={id}
-          className="w-full min-w-0 max-w-full"
-          type="datetime-local"
-          value={local}
+          label={field.name}
+          value={typeof value === "string" ? value : null}
           disabled={disabled}
-          onChange={(event) =>
-            onChange(
-              event.target.value
-                ? new Date(event.target.value).toISOString()
-                : null,
-            )
-          }
-          onBlur={onBlur}
+          onChange={onChange}
         />
       );
     }
