@@ -8313,7 +8313,8 @@
 			"refused": {
 				"outside": "That would leave the grid.",
 				"overlap": "That would overlap another widget."
-			}
+			},
+			"widgetActions": "Actions for {{title}}"
 		},
 		"series": {
 			"opened": "Opened",

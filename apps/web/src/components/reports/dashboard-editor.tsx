@@ -27,6 +27,9 @@ import {
   DialogTitle,
   Input,
   Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -40,6 +43,7 @@ import {
   ArrowLeftRight,
   ArrowUpDown,
   ChevronLeft,
+  Ellipsis,
   GripVertical,
   Minus,
   Plus,
@@ -145,7 +149,7 @@ function DraggableWidget({
       className={`relative min-w-0 ${isDragging ? "opacity-80 shadow-lg" : ""}`}
     >
       {children(
-        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-0.5">
+        <div className="flex min-w-0 max-w-full items-center justify-end gap-0.5">
           <Button
             size="icon-sm"
             variant="ghost"
@@ -155,60 +159,85 @@ function DraggableWidget({
           >
             <GripVertical aria-hidden="true" />
           </Button>
-          {canResize ? (
-            <>
+          <Popover>
+            <PopoverTrigger asChild>
               <Button
                 size="icon-sm"
                 variant="ghost"
-                aria-label={t("reports:editor.narrower", { title })}
-                onClick={() => onResize(-1, 0)}
+                aria-label={t("reports:editor.widgetActions", { title })}
               >
-                <Minus aria-hidden="true" />
+                <Ellipsis aria-hidden="true" />
               </Button>
-              <ArrowLeftRight
-                aria-hidden="true"
-                className="size-3 text-muted-foreground"
-              />
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                aria-label={t("reports:editor.wider", { title })}
-                onClick={() => onResize(1, 0)}
-              >
-                <Plus aria-hidden="true" />
-              </Button>
-              <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-border" />
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                aria-label={t("reports:editor.shorter", { title })}
-                onClick={() => onResize(0, -1)}
-              >
-                <Minus aria-hidden="true" />
-              </Button>
-              <ArrowUpDown
-                aria-hidden="true"
-                className="size-3 text-muted-foreground"
-              />
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                aria-label={t("reports:editor.taller", { title })}
-                onClick={() => onResize(0, 1)}
-              >
-                <Plus aria-hidden="true" />
-              </Button>
-              <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-border" />
-            </>
-          ) : null}
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            aria-label={t("reports:editor.remove", { title })}
-            onClick={onRemove}
-          >
-            <X aria-hidden="true" />
-          </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-auto p-2"
+              aria-label={t("reports:editor.widgetActions", { title })}
+            >
+              <div className="flex items-center gap-0.5">
+                {canResize ? (
+                  <>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={t("reports:editor.narrower", { title })}
+                      onClick={() => onResize(-1, 0)}
+                    >
+                      <Minus aria-hidden="true" />
+                    </Button>
+                    <ArrowLeftRight
+                      aria-hidden="true"
+                      className="size-3 text-muted-foreground"
+                    />
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={t("reports:editor.wider", { title })}
+                      onClick={() => onResize(1, 0)}
+                    >
+                      <Plus aria-hidden="true" />
+                    </Button>
+                    <span
+                      aria-hidden="true"
+                      className="mx-0.5 h-4 w-px bg-border"
+                    />
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={t("reports:editor.shorter", { title })}
+                      onClick={() => onResize(0, -1)}
+                    >
+                      <Minus aria-hidden="true" />
+                    </Button>
+                    <ArrowUpDown
+                      aria-hidden="true"
+                      className="size-3 text-muted-foreground"
+                    />
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={t("reports:editor.taller", { title })}
+                      onClick={() => onResize(0, 1)}
+                    >
+                      <Plus aria-hidden="true" />
+                    </Button>
+                    <span
+                      aria-hidden="true"
+                      className="mx-0.5 h-4 w-px bg-border"
+                    />
+                  </>
+                ) : null}
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={t("reports:editor.remove", { title })}
+                  onClick={onRemove}
+                >
+                  <X aria-hidden="true" />
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>,
       )}
       <span className="sr-only">

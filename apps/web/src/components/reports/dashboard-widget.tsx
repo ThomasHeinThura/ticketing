@@ -78,7 +78,13 @@ export function DashboardWidgetCard({
       className="flex h-full flex-col overflow-hidden"
       data-testid="dashboard-widget"
     >
-      <CardHeader className="flex flex-col gap-2 space-y-0 pb-2">
+      <CardHeader
+        className={
+          editorActions
+            ? "flex flex-col gap-2 space-y-0 p-3"
+            : "flex flex-col gap-2 space-y-0 pb-2"
+        }
+      >
         {editorActions ? (
           <div className="flex w-full justify-end">{editorActions}</div>
         ) : null}
