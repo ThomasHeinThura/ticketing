@@ -936,62 +936,62 @@
 		}
 	],
 	"roadmap": {
-		"updated": "2026-10-29T00:19:24.434679+00:00",
+		"updated": "2026-10-29T00:37:30.666115+00:00",
 		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
-		"note": "The combined candidate is published; hosted checks and G11 measurements are in progress. Zero qualifying headroom runs. The previous hosted candidate failed three G11 budgets.",
+		"note": "G11 fails the LCP budget; detail and board drag now pass their budgets. LCP, detail and assignment miss 15% headroom, so this run does not qualify. Zero of three qualifying runs; no causal improvement is claimed.",
 		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
 		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40792945815/job/123182354592",
 		"metrics": [
 			{
 				"name": "Work-list LCP",
-				"measured": "Pending",
+				"measured": "2692.4 ms",
 				"budget": "< 2500 ms",
 				"target": "≤ 2125 ms",
-				"result": "Pending",
-				"headroom": "Unproven"
+				"result": "Fail",
+				"headroom": "Fail"
 			},
 			{
 				"name": "List to detail",
-				"measured": "Pending",
+				"measured": "261.1 ms",
 				"budget": "< 300 ms",
 				"target": "≤ 255 ms",
-				"result": "Pending",
-				"headroom": "Unproven"
+				"result": "Pass",
+				"headroom": "Fail"
 			},
 			{
 				"name": "Board drag p95",
-				"measured": "Pending",
+				"measured": "16.8 ms",
 				"budget": "< 20 ms",
 				"target": "≤ 17 ms",
-				"result": "Pending",
-				"headroom": "Unproven"
+				"result": "Pass",
+				"headroom": "Pass"
 			},
 			{
 				"name": "Board render",
-				"measured": "Pending",
+				"measured": "394.7 ms",
 				"budget": "< 500 ms",
 				"target": "≤ 425 ms",
-				"result": "Pending",
-				"headroom": "Unproven"
+				"result": "Pass",
+				"headroom": "Pass"
 			},
 			{
 				"name": "Assignment click",
-				"measured": "Pending",
+				"measured": "187.6 ms",
 				"budget": "< 200 ms",
 				"target": "≤ 170 ms",
-				"result": "Pending",
-				"headroom": "Unproven"
+				"result": "Pass",
+				"headroom": "Fail"
 			},
 			{
 				"name": "State click",
-				"measured": "Pending",
+				"measured": "167.7 ms",
 				"budget": "< 200 ms",
 				"target": "≤ 170 ms",
-				"result": "Pending",
-				"headroom": "Unproven"
+				"result": "Pass",
+				"headroom": "Pass"
 			}
 		],
-		"validation": "Hosted verification is in progress; results are pending and zero of three qualifying headroom runs are established. Prior completed hosted results are retained below.",
+		"validation": "Hosted G11: 21 passed, one failed in 9.0 minutes; LCP 2692.4 ms exceeded the unchanged 2500 ms budget. All 25 other checks passed, including static, dependency audit, unit, integration, G4, G8 and E2E. Two non-gating diagnostics passed in 54 seconds; all five source-bound windows completed. Previous hosted results are retained below.",
 		"items": [
 			{
 				"id": "L-01",
@@ -1075,7 +1075,7 @@
 			}
 		],
 		"testedCommit": "d174057ee73b06f1f3b296880adfb166450985d2",
-		"measurement": "Hosted G11 is in progress for the combined candidate; no valid application timings are available for this commit.",
+		"measurement": "Complete hosted Chromium G11 run with valid calibration. Harness-reported values are CPU-normalized where applicable; board-drag p95 is raw. LCP and assignment use the second judged set.",
 		"localVerification": "Combined candidate d174057ee passed 7212 unit tests, nine typecheck tasks, frozen install, full build, bundle/purity and dependency audit (zero HIGH/MODERATE; one existing LOW). The earlier e17afe535 with seroval 1.6.4 passed 168 E2E tests after correcting two failures (#922/#923); no full E2E is claimed on the updated lockfile. The 947 combined agent JavaScript/CSS assets match the preceding E2E-tested agent build; both were compared with the frozen private 4M build. Private uncalibrated three-round medians improved LCP (3792 → 3608 ms) but worsened route timing (268.3 → 291 ms); these do not establish performance acceptance. Local SIT remains on 01c47cb65: 126 scoped role/portal cases passed, with six additional settled-detail follow-ups and 32 representative settled captures inspected. This does not establish whole-product acceptance. Earlier failures, audit limitations and detailed 01c47 verification are retained below; #914 and mobile orientation #921 remain open.",
 		"previousRuns": [
 			{
