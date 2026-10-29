@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChangeView } from "@/fetchers/service-management";
+import { translate } from "@/test/en-translation";
 
 const mocks = vi.hoisted(() => ({
   status: {
@@ -26,7 +27,11 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, values?: Record<string, unknown>) =>
-      values ? `${key} ${JSON.stringify(values)}` : key,
+      key.includes(":")
+        ? translate(key, values)
+        : values
+          ? `${key} ${JSON.stringify(values)}`
+          : key,
   }),
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
@@ -118,6 +123,7 @@ beforeEach(() => {
   mocks.setWorkItemService.mockResolvedValue({ ok: true });
 });
 afterEach(() => {
+  vi.unstubAllEnvs();
   cleanup();
   vi.clearAllMocks();
 });
@@ -247,19 +253,69 @@ describe("WorkItemChangeSection", () => {
     );
   });
 
-  it("blocks saving an inverted window", () => {
-    setup(change());
-    fireEvent.change(screen.getByLabelText("change.windowStart"), {
-      target: { value: "2031-01-02T10:00" },
-    });
-    fireEvent.change(screen.getByLabelText("change.windowEnd"), {
-      target: { value: "2031-01-02T09:00" },
-    });
+  it("blocks saving an inverted window selected in the library picker", async () => {
+    vi.stubEnv("TZ", "Asia/Yangon");
+    const view = change();
+    if (!view.detail) throw new Error("The change fixture requires its detail");
+    view.detail.windowStart = "2031-01-02T03:30:00.000Z";
+    view.detail.windowEnd = "2031-01-02T04:30:00.000Z";
+    setup(view);
+    expect(document.querySelector('input[type="datetime-local"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "change.windowEnd" }));
+    const hour = screen.getByRole("combobox", { name: "Hour" });
+    hour.focus();
+    fireEvent.click(hour);
+    await waitFor(() =>
+      expect(document.activeElement).toHaveAttribute("role", "option"),
+    );
+    const option = screen.getByRole("option", { name: "09" });
+    fireEvent.pointerDown(option, { pointerType: "mouse", button: 0 });
+    fireEvent.click(option);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByText("change.windowInvalid")).toBeTruthy();
     expect(
       (screen.getByRole("button", { name: "common.save" }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
+    expect(mocks.patchChange).not.toHaveBeenCalled();
+  });
+
+  it("requires both window bounds or neither and retains the version when both are cleared", async () => {
+    const view = change();
+    if (!view.detail) throw new Error("The change fixture requires its detail");
+    view.detail.windowStart = "2031-01-02T03:30:00.000Z";
+    view.detail.windowEnd = "2031-01-02T04:30:00.000Z";
+    setup(view);
+    for (const name of ["change.windowStart", "change.windowEnd"]) {
+      fireEvent.click(screen.getByRole("button", { name }));
+      fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+      await waitFor(() => expect(screen.queryByRole("grid")).toBeNull());
+      if (name === "change.windowStart")
+        expect(
+          screen.getByRole("button", { name: "common.save" }),
+        ).toBeDisabled();
+    }
+    fireEvent.click(screen.getByRole("button", { name: "common.save" }));
+    await waitFor(() =>
+      expect(mocks.patchChange).toHaveBeenCalledWith(
+        "OPS-1",
+        expect.objectContaining({
+          windowStart: null,
+          windowEnd: null,
+          version: 3,
+        }),
+      ),
+    );
+  });
+
+  it("keeps service choices inside a named library scroll region", () => {
+    setup(change());
+    const region = screen.getByRole("region", { name: "change.affected" });
+    expect(
+      region.querySelectorAll('[data-slot="scroll-area-viewport"]'),
+    ).toHaveLength(1);
+    expect(screen.getByRole("checkbox", { name: "Payments" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Search" })).not.toBeChecked();
   });
 
   it("is read-only for someone who cannot manage changes", () => {
@@ -269,5 +325,11 @@ describe("WorkItemChangeSection", () => {
       (screen.getByLabelText("change.rollback") as HTMLTextAreaElement)
         .disabled,
     ).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "change.windowStart" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "change.windowEnd" }),
+    ).toBeDisabled();
   });
 });

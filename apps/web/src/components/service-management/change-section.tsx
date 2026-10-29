@@ -7,8 +7,8 @@ import {
   Badge,
   Button,
   Checkbox,
-  Input,
   Label,
+  ScrollArea,
   Select,
   SelectContent,
   SelectItem,
@@ -19,6 +19,7 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DateTimePicker } from "@/components/common/date-time-picker";
 import { PickerPopover } from "@/components/common/picker-popover";
 import {
   CHANGE_RISKS,
@@ -275,22 +276,22 @@ function ChangeForm({
             <Label htmlFor="change-window-start">
               {t("change.windowStart")}
             </Label>
-            <Input
+            <DateTimePicker
               id="change-window-start"
-              type="datetime-local"
-              value={start}
+              label={t("change.windowStart")}
+              value={startIso}
               disabled={!canManage}
-              onChange={(event) => setStart(event.target.value)}
+              onChange={(value) => setStart(toDateTimeLocal(value))}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="change-window-end">{t("change.windowEnd")}</Label>
-            <Input
+            <DateTimePicker
               id="change-window-end"
-              type="datetime-local"
-              value={end}
+              label={t("change.windowEnd")}
+              value={endIso}
               disabled={!canManage}
-              onChange={(event) => setEnd(event.target.value)}
+              onChange={(value) => setEnd(toDateTimeLocal(value))}
             />
           </div>
         </div>
@@ -318,28 +319,34 @@ function ChangeForm({
               {t("change.noServicesDefined")}
             </p>
           ) : (
-            <div className="max-h-40 space-y-2 overflow-y-auto">
-              {(services.data ?? []).map((service) => (
-                <div key={service.id} className="flex items-center gap-2">
-                  <Checkbox
-                    id={`change-service-${service.id}`}
-                    checked={serviceIds.has(service.id)}
-                    disabled={!canManage}
-                    onCheckedChange={(checked) =>
-                      setServiceIds((previous) => {
-                        const next = new Set(previous);
-                        if (checked) next.add(service.id);
-                        else next.delete(service.id);
-                        return next;
-                      })
-                    }
-                  />
-                  <Label htmlFor={`change-service-${service.id}`}>
-                    {service.name}
-                  </Label>
-                </div>
-              ))}
-            </div>
+            <ScrollArea
+              className="h-auto max-h-40 [&>[data-slot=scroll-area-viewport]]:max-h-40"
+              role="region"
+              aria-label={t("change.affected")}
+            >
+              <div className="space-y-2">
+                {(services.data ?? []).map((service) => (
+                  <div key={service.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`change-service-${service.id}`}
+                      checked={serviceIds.has(service.id)}
+                      disabled={!canManage}
+                      onCheckedChange={(checked) =>
+                        setServiceIds((previous) => {
+                          const next = new Set(previous);
+                          if (checked) next.add(service.id);
+                          else next.delete(service.id);
+                          return next;
+                        })
+                      }
+                    />
+                    <Label htmlFor={`change-service-${service.id}`}>
+                      {service.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           )}
         </fieldset>
         {canManage ? (
