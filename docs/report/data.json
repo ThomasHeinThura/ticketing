@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-29T13:26:28.590Z",
+	"generated": "2026-10-29T14:15:00.690Z",
 	"source": "673 clauses; PR #918 per-ID evidence retained: 19 tested, 630 source-only, 15 partial, 6 external-blocked and 3 unverified. The 29 October repository audit adds issue/source/check status without promoting whole-clause acceptance. All 73 indexed contracts remain unverified.",
 	"phases": [
 		{
@@ -599,8 +599,8 @@
 		"Decided 28 Oct (Thomas): merge PR #891 past the failing G11 check; misses recorded under backlog L-05; budgets unchanged.",
 		"Decided 29 Oct (Thomas): execute the audited plan with subagents as needed; align legacy time-entry mutations with canonical own/any/create capabilities and project/workspace tracking flags (#927). Performance thresholds, calibration and fixture/sample/retry rules remain unchanged. Main merge and public deployment still need approval."
 	],
-	"next": "Working checkpoint: 30 October 2026, 22:00 Yangon. Complete and publish reviewable #927/#928 slices; measure #919 assignment and LCP fixes against unchanged budgets; then L-02 reliability, L-03a persisted release suite (#929), L-03 scoped settings (#930), L-04 Pages/KB editor (#56), and the remaining roadmap. Close only verified accepted/merged fixes with exact evidence. Thomas still approves main merges and public deployment.",
-	"status": "29 October execution: Thomas approved the plan and #927 canonical legacy time-entry alignment. Existing local SIT is healthy again; both HTTPS hosts return 200 after verified backups, with no seeder run. The #927 candidate passes 123 targeted integration and 118 permission tests plus typecheck; additional negative/concurrency cases, review, browser and CI remain. The #928 rebuild candidate passes six tests, independent Terra round 2 and six copied-data browser variants. Performance, full-unit reliability and all required CI remain open. Historical P0-P6 acceptance and all 673 clause classifications are unchanged.",
+	"next": "Working checkpoint: 30 October 2026, 22:00 Yangon. Finish scoped verification and CI for #931–#934; identify and reduce the measured LCP mount cost in #919 without changing budgets or calibration. L-01/L-05 stay open; finish L-02, then L-03a release journeys (#929), scoped settings (#930), and shared Pages/KB editor (#56). Thomas approves main merges and public deployment. Close issues only after accepted, merged evidence.",
+	"status": "29 October execution: approved legacy boundary #931 passes 175 targeted integration tests. Report rebuild #932 retains P0–P6 and evidence; its six regressions now join required CI-script checks (1,380 passed, 20 existing skips). SMTP #933 passes 59 tests; corrected root candidate #934 passes 7,197. Local SIT 9ed58d9bf is healthy on both HTTPS hosts after verified backups, with six canonical time-screen variants passing. Hosted #919 assignment passes at 191.4/200 ms, while LCP fails at 2577.8/2500 and headroom remains unmet. These are unmerged candidates. All 673 clause classifications and historical acceptance remain unchanged.",
 	"validation_runs": [
 		{
 			"check": "29 October fresh typecheck and lint",
@@ -685,6 +685,10 @@
 		{
 			"check": "29 October execution: scoped candidates and SIT recovery",
 			"result": "Unmerged #927 working-tree candidate: 7 integration files / 123 tests on fresh PostgreSQL18 Testcontainer, removed after check; typecheck9tasks and permissions118 pass. More negative/concurrency tests and review/browser/CI pending. Unmerged #928 candidate: 6 Node tests, Terra review round2 PASS0high/medium, copied-data rebuild deterministic with all7phases/673clauses and acceptance/metadata retained; browser1440/768/375 light/dark with no overflow/page errors. Both SIT HTTPS hosts now200 after verified backups and restart of existing01c47cb65 app; this is the old image, not these candidate fixes. No test receipt promotes full requirement counts."
+		},
+		{
+			"check": "29 October execution: published fix candidates and current SIT",
+			"result": "#931 at 9ed58d9bf: nine fresh PostgreSQL 18 integration files / 175 tests, 118 permission tests, route policy, API contract and independent Sol reviews pass; CI type-helper/archive-admission findings and the positive soft-delete fixture were corrected. A fresh full integration run is in progress. Current SIT is healthy, both HTTPS hosts return 200, verified backups and startup entity counts are preserved. Six admin width/theme keyboard/reload checks pass. Native Time create (201), edit (200) and reload succeeded in the approved isolated fixture at f275; that record persists after the update. No existing record was overwritten. #932 adds six report regressions to required CI scripts: 1,380 passed, 20 existing skips, zero failed. #933 passes 59 email tests; #934 passes 7,197 root tests across eight packages in 2m27s. Independent reviews pass. Hosted G11 at ff7: LCP 2577.8 fails; assignment 191.4 passes. These scoped receipts do not establish all required CI or full role acceptance, and do not promote clause counts."
 		}
 	],
 	"validation_history": [
@@ -993,12 +997,12 @@
 		{
 			"requirement": "Gate reliability",
 			"status": "open",
-			"finding": "Web unit #776, e2e dialog #911 and G8 module detail #908 require follow-up; no gate weakened or baseline regenerated."
+			"finding": "Candidate #934 passes 7,197 tests in the exact root run after the separate SMTP fix (#933) and real socket-close synchronization. Original failed runs remain evidence. Hosted CI, repeated main runs, e2e #911 and G8 #908 criteria stay open."
 		},
 		{
 			"requirement": "G11 headroom",
 			"status": "open",
-			"finding": "Latest hosted PR #919 at925587dc6 has valid product measurements but fails LCP2640.2/2500ms and assignment228/200ms;0/3 qualifying 15%-headroom trials. Older local calibration failure #876 remains a distinct source-bound receipt; no thresholds/calibration changed."
+			"finding": "Hosted #919 at ff7cf8e92: assignment 191.4/200, route 234.3/300, board 398.8/500 and drag 16.8/20 ms pass; LCP 2577.8/2500 fails and 15% headroom is unmet. Local Mac calibration factor 0.571 is outside the retained range, so no local gate pass. Thresholds, calibration source/options, samples and retries are unchanged."
 		},
 		{
 			"requirement": "Security dependency",
