@@ -289,9 +289,10 @@ describe("WorkItemBoard layout (VW-8)", () => {
         "work-item-board-column-create",
       );
       expect(button).toHaveAttribute(
-        "title",
-        translate("tasks:kanban.addTask"),
+        "aria-label",
+        `${translate("tasks:kanban.addTask")}: ${name}`,
       );
+      expect(button).not.toHaveAttribute("title");
     }
     fireEvent.click(
       within(column("Parked")).getByTestId("work-item-board-column-create"),

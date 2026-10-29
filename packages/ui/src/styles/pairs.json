@@ -16236,8 +16236,8 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#0",
-			"apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#1"
+			"apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#0",
+			"apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#1"
 		],
 		"occurrences": [
 			{
@@ -16250,11 +16250,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
@@ -16264,7 +16264,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#0",
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
 			},
@@ -16278,11 +16278,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
@@ -16292,7 +16292,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#0",
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
 			},
@@ -16306,11 +16306,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
@@ -16320,7 +16320,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#1",
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
 			},
@@ -16334,11 +16334,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
@@ -16348,7 +16348,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#1",
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
 			}
@@ -16600,8 +16600,8 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#0",
-			"apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#1"
+			"apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#0",
+			"apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#1"
 		],
 		"occurrences": [
 			{
@@ -16614,11 +16614,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
@@ -16628,7 +16628,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#0",
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
 			},
@@ -16642,11 +16642,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
@@ -16656,7 +16656,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#0",
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
 			},
@@ -16670,11 +16670,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
@@ -16684,7 +16684,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#1",
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
 			},
@@ -16698,11 +16698,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
-					"jsx:div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
@@ -16712,7 +16712,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/Button[0]::hover:text-foreground#1",
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
 			}
@@ -31580,7 +31580,7 @@
 			"apps/web/src/components/work-item/work-item-audit-history.tsx::WorkItemAuditHistory::Collapsible[0]/CollapsibleContent[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::BoardCard::li[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/ActionTooltip[0]/Button[0]/Plus[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/SortableContext[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/CommentComposerPresentation[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/CommentComposerPresentation[0]/span[0]::text-muted-foreground#0",
@@ -37559,7 +37559,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/ActionTooltip[0]/Button[0]/Plus[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
 			},
@@ -37574,7 +37574,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/ActionTooltip[0]/Button[0]/Plus[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
 			},
@@ -37589,7 +37589,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/ActionTooltip[0]/Button[0]/Plus[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
 			},
@@ -42487,7 +42487,7 @@
 			"apps/web/src/components/work-item/work-item-audit-history.tsx::WorkItemAuditHistory::Collapsible[0]/CollapsibleContent[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::BoardCard::li[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/ActionTooltip[0]/Button[0]/Plus[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/SortableContext[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/CommentComposerPresentation[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/CommentComposerPresentation[0]/span[0]::text-muted-foreground#0",
@@ -48466,7 +48466,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/ActionTooltip[0]/Button[0]/Plus[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
 			},
@@ -48481,7 +48481,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/ActionTooltip[0]/Button[0]/Plus[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
 			},
@@ -48496,7 +48496,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/Button[0]/Plus[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-board.tsx::WorkItemBoard::DndContext[0]/WorkItemContextMenu[0]/div[0]/div[0]/div[0]/BoardColumn[0]/div[0]/div[1]/ActionTooltip[0]/Button[0]/Plus[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-board.tsx"
 			},

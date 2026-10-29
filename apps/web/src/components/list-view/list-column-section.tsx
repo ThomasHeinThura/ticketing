@@ -8,6 +8,7 @@ import { AnimatePresence } from "framer-motion";
 import type { TFunction } from "i18next";
 import { Archive, ChevronRight, Plus } from "lucide-react";
 import type { ReactNode } from "react";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { cn } from "@/lib/cn";
 import { getColumnIcon } from "@/lib/column";
 import type { ProjectWithTasks } from "@/types/project";
@@ -73,26 +74,30 @@ export function ListColumnSection({
 
         <div className="flex items-center gap-1">
           {onAddTask && (
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={(event) => onAddTask(event.currentTarget)}
-              className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
-              title={t("tasks:listView.addTask")}
-            >
-              <Plus className="w-3 h-3" />
-            </Button>
+            <ActionTooltip label={t("tasks:listView.addTask")}>
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={(event) => onAddTask(event.currentTarget)}
+                className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={`${t("tasks:listView.addTask")}: ${column.name}`}
+              >
+                <Plus className="w-3 h-3" />
+              </Button>
+            </ActionTooltip>
           )}
           {onArchive && column.isFinal && column.tasks.length > 0 && (
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={onArchive}
-              className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
-              title={t("tasks:listView.archiveAllTooltip")}
-            >
-              <Archive className="w-3 h-3" />
-            </Button>
+            <ActionTooltip label={t("tasks:listView.archiveAllTooltip")}>
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={onArchive}
+                className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={`${t("tasks:listView.archiveAllTooltip")}: ${column.name}`}
+              >
+                <Archive className="w-3 h-3" />
+              </Button>
+            </ActionTooltip>
           )}
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { Button } from "@taskdesk/ui";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import { WorkItemCreateTriggerPlaceholder } from "./work-item-toolbar-placeholders";
@@ -32,16 +33,17 @@ export default function WorkItemCreateTrigger({
   if (!canCreate) return null;
 
   return (
-    <Button
-      ref={buttonRef}
-      size="sm"
-      loading={pending}
-      aria-busy={pending || undefined}
-      onClick={onClick}
-      title={getDefaultAgentTerm(i18n, "work_item", 1)}
-      data-testid="create-work-item-trigger"
-    >
-      {t("workItems:create.trigger")}
-    </Button>
+    <ActionTooltip label={getDefaultAgentTerm(i18n, "work_item", 1)}>
+      <Button
+        ref={buttonRef}
+        size="sm"
+        loading={pending}
+        aria-busy={pending || undefined}
+        onClick={onClick}
+        data-testid="create-work-item-trigger"
+      >
+        {t("workItems:create.trigger")}
+      </Button>
+    </ActionTooltip>
   );
 }

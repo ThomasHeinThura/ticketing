@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import { produce } from "immer";
 import { Archive, Plus } from "lucide-react";
 import { useState } from "react";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getColumnIcon } from "@/lib/column";
@@ -67,26 +68,30 @@ export function ColumnHeader({ column, t, onCreateTask }: ColumnHeaderProps) {
 
       <div className="flex items-center">
         {canTask && column.isFinal && column.tasks.length > 0 && (
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => setIsArchiveModalOpen(true)}
-            className="flex items-center rounded-md px-2 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/50"
-            title={t("tasks:listView.archiveAllTooltip")}
-          >
-            <Archive className="w-4 h-4 text-muted-foreground" />
-          </Button>
+          <ActionTooltip label={t("tasks:listView.archiveAllTooltip")}>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setIsArchiveModalOpen(true)}
+              className="flex items-center rounded-md px-2 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/50"
+              aria-label={`${t("tasks:listView.archiveAllTooltip")}: ${column.name}`}
+            >
+              <Archive className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          </ActionTooltip>
         )}
         {canCreate && (
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={(event) => onCreateTask(column.id, event.currentTarget)}
-            className="flex items-center rounded-md px-2 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/50"
-            title={t("tasks:kanban.addTask")}
-          >
-            <Plus className="w-4 h-4 text-muted-foreground" />
-          </Button>
+          <ActionTooltip label={t("tasks:kanban.addTask")}>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={(event) => onCreateTask(column.id, event.currentTarget)}
+              className="flex items-center rounded-md px-2 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/50"
+              aria-label={`${t("tasks:kanban.addTask")}: ${column.name}`}
+            >
+              <Plus className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          </ActionTooltip>
         )}
       </div>
 
