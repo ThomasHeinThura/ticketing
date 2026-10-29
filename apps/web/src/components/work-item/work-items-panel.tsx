@@ -9,6 +9,9 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import loadWorkItemKaneoList, {
+  isWorkItemKaneoListLoaded,
+} from "@/components/work-item/load-work-item-kaneo-list";
 import loadWorkItemList, {
   isWorkItemListLoaded,
 } from "@/components/work-item/load-work-item-list";
@@ -33,9 +36,7 @@ import type {
 const WorkItemListRealtime = lazy(
   () => import("@/components/work-item/work-item-list-realtime"),
 );
-const WorkItemKaneoList = lazy(
-  () => import("@/components/work-item/work-item-kaneo-list"),
-);
+const WorkItemKaneoList = lazy(loadWorkItemKaneoList);
 const WorkItemList = lazy(loadWorkItemList);
 
 const loadTableModules = () =>
@@ -132,6 +133,11 @@ function WorkItemsPanel({
       sort,
       hasPartialFailure: workItemsResult?.hasPartialFailure,
     });
+  const listModuleReady = useModuleReady(
+    loadWorkItemKaneoList,
+    isWorkItemKaneoListLoaded,
+    layout === "list" && (Boolean(project) || !isLoading),
+  );
   // The table mounts with an ordinary update once its module is here, not as a Suspense retry
   // (see `useModuleReady`).
   // The virtualized table is part of that module set: mounted before it, a table of more than
@@ -297,7 +303,20 @@ function WorkItemsPanel({
         }
       >
         {layout === "list" ? (
-          <WorkItemKaneoList {...listProps} onCreateInState={onCreateInState} />
+          listModuleReady ? (
+            <WorkItemKaneoList
+              {...listProps}
+              onCreateInState={onCreateInState}
+            />
+          ) : showPreview && workItems && previewStates ? (
+            <WorkItemLightList
+              projectId={project?.id}
+              workItems={workItems}
+              states={previewStates}
+            />
+          ) : (
+            <WorkItemListLoading />
+          )
         ) : tableModuleReady ? (
           <WorkItemList
             {...listProps}
