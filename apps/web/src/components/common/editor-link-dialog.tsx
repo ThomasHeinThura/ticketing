@@ -42,6 +42,7 @@ export function EditorLinkDialog({
         className="max-w-sm"
       >
         <form
+          className="flex min-h-0 flex-col"
           onSubmit={(event) => {
             event.preventDefault();
             if (!editable || editor.isDestroyed || !editor.isEditable) return;
