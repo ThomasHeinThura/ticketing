@@ -1,0 +1,2471 @@
+{
+	"generated": "2026-10-29T20:16:56.970Z",
+	"scope": "Six settings controls/layout/focus findings #940,#941,#942,#946,#947,#953; no full-product acceptance claim",
+	"sourceCandidate": "fe1b9c2d16348c9c0557fb0d991ac6a1d6e34faa",
+	"verifiedRuntime": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+	"productionTreeIdentical": true,
+	"initialBefore": [
+		{
+			"role": "owner",
+			"label": "workspace-general",
+			"width": 390,
+			"theme": "dark",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-workspace-general-390-dark.png"
+		},
+		{
+			"role": "owner",
+			"label": "custom-field-new",
+			"width": 390,
+			"theme": "dark",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-custom-field-new-390-dark.png"
+		},
+		{
+			"role": "admin",
+			"label": "custom-fields",
+			"width": 390,
+			"theme": "dark",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-custom-fields-390-dark.png"
+		}
+	],
+	"dialogAndPopupBefore": [
+		{
+			"role": "owner",
+			"width": 1440,
+			"theme": "light",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-rename-after-escape-1440-light.png",
+					"actualTheme": "light",
+					"overflow": false
+				},
+				{
+					"label": "format-date",
+					"url": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-format-date-1440-light.png",
+					"actualTheme": "light",
+					"overflow": false,
+					"violations": [
+						{
+							"id": "aria-dialog-name",
+							"target": [["#_r_22_"]]
+						}
+					]
+				},
+				{
+					"label": "format-multi_select",
+					"url": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-format-multi_select-1440-light.png",
+					"actualTheme": "light",
+					"overflow": false,
+					"violations": [
+						{
+							"id": "aria-dialog-name",
+							"target": [["#_r_26_"]]
+						}
+					]
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "owner",
+			"width": 1440,
+			"theme": "dark",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-rename-after-escape-1440-dark.png",
+					"actualTheme": "dark",
+					"overflow": false
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "owner",
+			"width": 820,
+			"theme": "light",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-rename-after-escape-820-light.png",
+					"actualTheme": "light",
+					"overflow": false
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "owner",
+			"width": 820,
+			"theme": "dark",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-rename-after-escape-820-dark.png",
+					"actualTheme": "dark",
+					"overflow": false
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "owner",
+			"width": 390,
+			"theme": "light",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-rename-after-escape-390-light.png",
+					"actualTheme": "light",
+					"overflow": false
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "owner",
+			"width": 390,
+			"theme": "dark",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-rename-after-escape-390-dark.png",
+					"actualTheme": "dark",
+					"overflow": false
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "light",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-rename-after-escape-1440-light.png",
+					"actualTheme": "light",
+					"overflow": false
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "dark",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-rename-after-escape-1440-dark.png",
+					"actualTheme": "dark",
+					"overflow": false
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "light",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-rename-after-escape-820-light.png",
+					"actualTheme": "light",
+					"overflow": false
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "dark",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-rename-after-escape-820-dark.png",
+					"actualTheme": "dark",
+					"overflow": false
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "light",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-rename-after-escape-390-light.png",
+					"actualTheme": "light",
+					"overflow": false
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "dark",
+			"source": "66067f42efe905945b28ba83f5ea2fe6d9c273db",
+			"writes": [],
+			"screens": [
+				{
+					"label": "rename-after-escape",
+					"url": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-rename-after-escape-390-dark.png",
+					"actualTheme": "dark",
+					"overflow": false
+				},
+				{
+					"label": "format-date",
+					"url": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-format-date-390-dark.png",
+					"actualTheme": "dark",
+					"overflow": false,
+					"violations": [
+						{
+							"id": "aria-dialog-name",
+							"target": [["#_r_22_"]]
+						}
+					]
+				},
+				{
+					"label": "format-multi_select",
+					"url": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-format-multi_select-390-dark.png",
+					"actualTheme": "dark",
+					"overflow": false,
+					"violations": [
+						{
+							"id": "aria-dialog-name",
+							"target": [["#_r_26_"]]
+						}
+					]
+				}
+			],
+			"renameFocusReturned": false,
+			"afterEscapeTag": "BODY",
+			"status": "observed"
+		}
+	],
+	"clippingBefore": [
+		{
+			"role": "owner",
+			"width": 390,
+			"theme": "dark",
+			"source": "4d9e7bbf59179cf397517bb56e0915aa7a099052",
+			"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-editor-clipping-390-dark.png"
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "dark",
+			"source": "4d9e7bbf59179cf397517bb56e0915aa7a099052",
+			"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-editor-clipping-390-dark.png"
+		}
+	],
+	"after": [
+		{
+			"role": "owner",
+			"width": 1440,
+			"theme": "light",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-workspace-general-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-fields-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-dialog-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-after-escape-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-dialog-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-after-escape-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-field-new-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-boolean",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-boolean-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-currency",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-currency-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-date",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-date-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-datetime",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-datetime-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-decimal",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-decimal-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-email",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-email-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-long_text",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-long_text-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-multi_select",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-multi_select-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-multi_user",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-multi_user-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-number",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-number-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-select",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-select-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-text",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-text-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-url",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-url-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-user",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-format-user-1440-light.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [
+				{
+					"format": "boolean",
+					"label": "Yes or no",
+					"associated": true,
+					"tag": "SPAN",
+					"type": null,
+					"violations": []
+				},
+				{
+					"format": "currency",
+					"label": "Currency",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "number",
+					"violations": []
+				},
+				{
+					"format": "date",
+					"label": "Date",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"popupAccessibleName": "Default value",
+					"violations": [],
+					"escapeFocus": true
+				},
+				{
+					"format": "datetime",
+					"label": "Date and time",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"popupAccessibleName": "Default value",
+					"violations": [],
+					"escapeFocus": true
+				},
+				{
+					"format": "decimal",
+					"label": "Decimal",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "number",
+					"violations": []
+				},
+				{
+					"format": "email",
+					"label": "Email",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "email",
+					"violations": []
+				},
+				{
+					"format": "long_text",
+					"label": "Long text",
+					"associated": true,
+					"tag": "TEXTAREA",
+					"type": null,
+					"violations": []
+				},
+				{
+					"format": "multi_select",
+					"label": "Multiple choice",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"popupAccessibleName": "Default value",
+					"violations": [],
+					"escapeFocus": true
+				},
+				{
+					"format": "multi_user",
+					"label": "Several people",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"popupAccessibleName": "Default value",
+					"violations": [],
+					"escapeFocus": true
+				},
+				{
+					"format": "number",
+					"label": "Whole number",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "number",
+					"violations": []
+				},
+				{
+					"format": "select",
+					"label": "Single choice",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"violations": [],
+					"escapeFocus": true
+				},
+				{
+					"format": "text",
+					"label": "Text",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "text",
+					"violations": []
+				},
+				{
+					"format": "url",
+					"label": "Link",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "url",
+					"violations": []
+				},
+				{
+					"format": "user",
+					"label": "Person",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"violations": [],
+					"escapeFocus": true
+				}
+			],
+			"transferLabelAssociated": true,
+			"transferMenuEscape": true,
+			"sectionHeaders": [
+				{
+					"text": "Service planning",
+					"titleWidth": 850,
+					"titleFont": "18px",
+					"actionsBelowTitle": false,
+					"overlap": false,
+					"columns": "850px 140px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 355,
+					"right": 851,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 869,
+					"right": 1365,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 354,
+					"right": 852,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 868,
+					"right": 1366,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 355,
+					"right": 1365,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "owner",
+			"width": 1440,
+			"theme": "dark",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-workspace-general-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-fields-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-dialog-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-after-escape-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-dialog-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-after-escape-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-field-new-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [],
+			"transferLabelAssociated": true,
+			"transferMenuEscape": true,
+			"sectionHeaders": [
+				{
+					"text": "Service planning",
+					"titleWidth": 850,
+					"titleFont": "18px",
+					"actionsBelowTitle": false,
+					"overlap": false,
+					"columns": "850px 140px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 355,
+					"right": 851,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 869,
+					"right": 1365,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 354,
+					"right": 852,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 868,
+					"right": 1366,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 355,
+					"right": 1365,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "owner",
+			"width": 820,
+			"theme": "light",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-workspace-general-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-fields-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-dialog-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-after-escape-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-dialog-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-after-escape-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-field-new-820-light.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [],
+			"transferLabelAssociated": true,
+			"transferMenuEscape": true,
+			"sectionHeaders": [
+				{
+					"text": "Service planning",
+					"titleWidth": 230,
+					"titleFont": "18px",
+					"actionsBelowTitle": false,
+					"overlap": false,
+					"columns": "230px 140px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 355,
+					"right": 541,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 559,
+					"right": 745,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 354,
+					"right": 542,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 558,
+					"right": 746,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 355,
+					"right": 745,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "owner",
+			"width": 820,
+			"theme": "dark",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-workspace-general-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-fields-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-dialog-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-after-escape-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-dialog-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-after-escape-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-field-new-820-dark.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [],
+			"transferLabelAssociated": true,
+			"transferMenuEscape": true,
+			"sectionHeaders": [
+				{
+					"text": "Service planning",
+					"titleWidth": 230,
+					"titleFont": "18px",
+					"actionsBelowTitle": false,
+					"overlap": false,
+					"columns": "230px 140px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 355,
+					"right": 541,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 559,
+					"right": 745,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 354,
+					"right": 542,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 558,
+					"right": 746,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 355,
+					"right": 745,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "owner",
+			"width": 390,
+			"theme": "light",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-workspace-general-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-fields-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-dialog-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-after-escape-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-dialog-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-after-escape-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-field-new-390-light.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [],
+			"transferLabelAssociated": true,
+			"transferMenuEscape": true,
+			"sectionHeaders": [
+				{
+					"text": "Service planning",
+					"titleWidth": 250,
+					"titleFont": "18px",
+					"actionsBelowTitle": true,
+					"overlap": false,
+					"columns": "250px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 62,
+					"right": 328,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 62,
+					"right": 328,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "owner",
+			"width": 390,
+			"theme": "dark",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-workspace-general-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-fields-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-dialog-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-new-after-escape-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-dialog-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-section-rename-after-escape-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-owner-custom-field-new-390-dark.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [],
+			"transferLabelAssociated": true,
+			"transferMenuEscape": true,
+			"sectionHeaders": [
+				{
+					"text": "Service planning",
+					"titleWidth": 250,
+					"titleFont": "18px",
+					"actionsBelowTitle": true,
+					"overlap": false,
+					"columns": "250px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 62,
+					"right": 328,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 62,
+					"right": 328,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "light",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-workspace-general-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-fields-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-dialog-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-after-escape-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-dialog-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-after-escape-1440-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-field-new-1440-light.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [],
+			"ownerOnlyTransferHidden": true,
+			"sectionHeaders": [
+				{
+					"text": "Synthetic UI datetime verification 20261030",
+					"titleWidth": 850,
+					"titleFont": "18px",
+					"actionsBelowTitle": false,
+					"overlap": false,
+					"columns": "850px 140px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 355,
+					"right": 851,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 869,
+					"right": 1365,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 354,
+					"right": 852,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 868,
+					"right": 1366,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 355,
+					"right": 1365,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "dark",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-workspace-general-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-fields-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-dialog-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-after-escape-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-dialog-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-after-escape-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-field-new-1440-dark.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [],
+			"ownerOnlyTransferHidden": true,
+			"sectionHeaders": [
+				{
+					"text": "Synthetic UI datetime verification 20261030",
+					"titleWidth": 850,
+					"titleFont": "18px",
+					"actionsBelowTitle": false,
+					"overlap": false,
+					"columns": "850px 140px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 355,
+					"right": 851,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 869,
+					"right": 1365,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 354,
+					"right": 852,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 868,
+					"right": 1366,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 355,
+					"right": 1365,
+					"cardLeft": 337,
+					"cardRight": 1383,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "light",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-workspace-general-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-fields-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-dialog-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-after-escape-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-dialog-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-after-escape-820-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-field-new-820-light.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [],
+			"ownerOnlyTransferHidden": true,
+			"sectionHeaders": [
+				{
+					"text": "Synthetic UI datetime verification 20261030",
+					"titleWidth": 230,
+					"titleFont": "18px",
+					"actionsBelowTitle": false,
+					"overlap": false,
+					"columns": "230px 140px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 355,
+					"right": 541,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 559,
+					"right": 745,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 354,
+					"right": 542,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 558,
+					"right": 746,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 355,
+					"right": 745,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "dark",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-workspace-general-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-fields-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-dialog-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-after-escape-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-dialog-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-after-escape-820-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-field-new-820-dark.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [],
+			"ownerOnlyTransferHidden": true,
+			"sectionHeaders": [
+				{
+					"text": "Synthetic UI datetime verification 20261030",
+					"titleWidth": 230,
+					"titleFont": "18px",
+					"actionsBelowTitle": false,
+					"overlap": false,
+					"columns": "230px 140px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 355,
+					"right": 541,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 559,
+					"right": 745,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 354,
+					"right": 542,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 558,
+					"right": 746,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 355,
+					"right": 745,
+					"cardLeft": 337,
+					"cardRight": 763,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "light",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-workspace-general-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-fields-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-dialog-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-after-escape-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-dialog-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-after-escape-390-light.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-field-new-390-light.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [],
+			"ownerOnlyTransferHidden": true,
+			"sectionHeaders": [
+				{
+					"text": "Synthetic UI datetime verification 20261030",
+					"titleWidth": 250,
+					"titleFont": "18px",
+					"actionsBelowTitle": true,
+					"overlap": false,
+					"columns": "250px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 62,
+					"right": 328,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 62,
+					"right": 328,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				}
+			]
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "dark",
+			"source": "ccca5d95364af6de29ceeffd5ba658bef20ee740",
+			"status": "passed",
+			"writes": [],
+			"screens": [
+				{
+					"label": "workspace-general",
+					"path": "/dashboard/settings/workspace/general",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-workspace-general-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-fields",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-fields-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-dialog-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-new-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-new-after-escape-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-dialog",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-dialog-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "section-rename-after-escape",
+					"path": "/agent/settings/custom-fields",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-section-rename-after-escape-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "custom-field-new",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-custom-field-new-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-boolean",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-boolean-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-currency",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-currency-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-date",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-date-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-datetime",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-datetime-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-decimal",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-decimal-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-email",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-email-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-long_text",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-long_text-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-multi_select",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-multi_select-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-multi_user",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-multi_user-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-number",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-number-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-select",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-select-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-text",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-text-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-url",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-url-390-dark.png",
+					"violations": [],
+					"overflow": false
+				},
+				{
+					"label": "format-user",
+					"path": "/agent/settings/custom-fields/new",
+					"screenshot": "docs/report/screens/20261030-settings-controls-after-admin-format-user-390-dark.png",
+					"violations": [],
+					"overflow": false
+				}
+			],
+			"formats": [
+				{
+					"format": "boolean",
+					"label": "Yes or no",
+					"associated": true,
+					"tag": "SPAN",
+					"type": null,
+					"violations": []
+				},
+				{
+					"format": "currency",
+					"label": "Currency",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "number",
+					"violations": []
+				},
+				{
+					"format": "date",
+					"label": "Date",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"popupAccessibleName": "Default value",
+					"violations": [],
+					"escapeFocus": true
+				},
+				{
+					"format": "datetime",
+					"label": "Date and time",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"popupAccessibleName": "Default value",
+					"violations": [],
+					"escapeFocus": true
+				},
+				{
+					"format": "decimal",
+					"label": "Decimal",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "number",
+					"violations": []
+				},
+				{
+					"format": "email",
+					"label": "Email",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "email",
+					"violations": []
+				},
+				{
+					"format": "long_text",
+					"label": "Long text",
+					"associated": true,
+					"tag": "TEXTAREA",
+					"type": null,
+					"violations": []
+				},
+				{
+					"format": "multi_select",
+					"label": "Multiple choice",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"popupAccessibleName": "Default value",
+					"violations": [],
+					"escapeFocus": true
+				},
+				{
+					"format": "multi_user",
+					"label": "Several people",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"popupAccessibleName": "Default value",
+					"violations": [],
+					"escapeFocus": true
+				},
+				{
+					"format": "number",
+					"label": "Whole number",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "number",
+					"violations": []
+				},
+				{
+					"format": "select",
+					"label": "Single choice",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"violations": [],
+					"escapeFocus": true
+				},
+				{
+					"format": "text",
+					"label": "Text",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "text",
+					"violations": []
+				},
+				{
+					"format": "url",
+					"label": "Link",
+					"associated": true,
+					"tag": "INPUT",
+					"type": "url",
+					"violations": []
+				},
+				{
+					"format": "user",
+					"label": "Person",
+					"associated": true,
+					"tag": "BUTTON",
+					"type": "button",
+					"violations": [],
+					"escapeFocus": true
+				}
+			],
+			"ownerOnlyTransferHidden": true,
+			"sectionHeaders": [
+				{
+					"text": "Synthetic UI datetime verification 20261030",
+					"titleWidth": 250,
+					"titleFont": "18px",
+					"actionsBelowTitle": true,
+					"overlap": false,
+					"columns": "250px"
+				}
+			],
+			"dialogs": [
+				{
+					"kind": "new",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "new",
+					"close": "Cancel",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Escape",
+					"focusRestored": true
+				},
+				{
+					"kind": "rename",
+					"close": "Cancel",
+					"focusRestored": true
+				}
+			],
+			"defaultLabelAssociated": true,
+			"newFieldControls": [
+				{
+					"id": "cf-name",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-key",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-format",
+					"left": 62,
+					"right": 328,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-section",
+					"left": 62,
+					"right": 328,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				},
+				{
+					"id": "cf-help",
+					"left": 63,
+					"right": 327,
+					"cardLeft": 45,
+					"cardRight": 345,
+					"outsideCard": false
+				}
+			]
+		}
+	],
+	"counts": {
+		"cases": 12,
+		"formats": 28,
+		"dialogClosures": 48,
+		"screens": 112,
+		"apiWrites": 0,
+		"criticalSeriousAxe": 0,
+		"documentOverflow": 0,
+		"controlCardOverflow": 0
+	},
+	"local": {
+		"unitTests": 7229,
+		"typecheckTasks": 9,
+		"focusedTests": 11,
+		"permissions": 118,
+		"tokenPairs": 401,
+		"rawElements": 0,
+		"visualBaselinesChanged": [],
+		"i18n": true,
+		"routePolicy": true,
+		"contract": true,
+		"bundlePurity": true,
+		"dependencyAudit": {
+			"high": 0,
+			"critical": 0,
+			"moderate": 0,
+			"low": 1,
+			"existingFinding": "deepmerge GHSA-gcqx-w48m-w2h4"
+		},
+		"trivy": {
+			"high": 42,
+			"critical": 0,
+			"fixableHighCritical": 0
+		}
+	},
+	"limitations": [
+		"Before initial label/layout captures use actual dark mode; original CSS-only light captures are excluded.",
+		"A permission guard test timed out under concurrent web build/unit load; preserved first failure, unchanged command passes118 when run without those heavy tasks. No timeout/retry/skip changes.",
+		"Earlier private browser probes used the hidden Switch input or an intentionally retained closed Format Select. Independent Sol diagnosis corrected readiness assertions only; failed receipts are retained.",
+		"Initial source passed12 cases but screenshot review caught card clipping missed by document overflow. This final runtime adds control-to-card geometry and matched screenshot verification.",
+		"No customer data, section name, field definition, ownership or saved value was submitted by this read-only matrix. Full route/role/state coverage remains open."
+	],
+	"containers": {
+		"activeOwned": "0021a93294444aa27083750f4d5e5b66a713fedd6cf5402aefeb954d381deb07",
+		"supersededOwnedRemoved": [
+			"c4c24bfc2b7db1379af16aa6831a28d6b2f4bc94f43970ddd80068cb45d8ee71",
+			"5adf776409c8d538122e33ae28b067fd440cfb915400cdb5774fb6e51354d9c3"
+		],
+		"newTestContainers": 0
+	},
+	"independentReview": {
+		"model": "Terra",
+		"scope": "source and inspected real-browser evidence, nonauthor",
+		"openHigh": 0,
+		"openMedium": 0,
+		"reranTests": false,
+		"reranBrowser": false
+	}
+}
