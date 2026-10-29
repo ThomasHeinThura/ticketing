@@ -461,7 +461,7 @@ function RouteComponent() {
                 <div className="space-y-0.5 min-w-0">
                   <Label
                     htmlFor="workspace-new-owner"
-                    className="text-sm font-medium"
+                    className="text-sm font-medium leading-5 sm:leading-5"
                   >
                     {t(
                       "settings:workspaceGeneral.transferOwnership.pickerLabel",
