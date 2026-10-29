@@ -336,14 +336,10 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   }>();
   // Not needed to paint (G11), but create intent should open the dialog without a network wait,
   // so fetch it as soon as the route has painted.
-  const [showSecondaryControls, setShowSecondaryControls] = useState(false);
   useEffect(() => {
     let cancelled = false;
     void afterFirstPaint().then(() => {
-      if (!cancelled) {
-        setShowSecondaryControls(true);
-        preloadWorkItemCreateDialogShell();
-      }
+      if (!cancelled) preloadWorkItemCreateDialogShell();
     });
     return () => {
       cancelled = true;
@@ -965,52 +961,42 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                     ? t("workItems:filter.toggleActive")
                     : t("common:actions.filter")}
                 </Button>
-                {showSecondaryControls ? (
-                  <Suspense fallback={null}>
-                    <SortControl
-                      fields={
-                        layout === "board" && isFiltered
-                          ? ["title", "priority", "dueDate", "number"]
-                          : [
-                              "position",
-                              "title",
-                              "priority",
-                              "dueDate",
-                              "number",
-                            ]
-                      }
-                      sort={{
-                        field:
-                          (layout === "board" ? boardSort : sort) === "key"
-                            ? "number"
-                            : layout === "board"
-                              ? boardSort
-                              : sort,
-                        direction: layout === "board" ? boardDir : dir,
-                      }}
-                      onSortChange={(next) => {
-                        if (next.field === "createdAt") return;
-                        handleSortChange(
-                          next.field === "number" ? "key" : next.field,
-                          next.direction,
-                        );
-                      }}
-                    />
-                  </Suspense>
-                ) : null}
+                <Suspense fallback={null}>
+                  <SortControl
+                    fields={
+                      layout === "board" && isFiltered
+                        ? ["title", "priority", "dueDate", "number"]
+                        : ["position", "title", "priority", "dueDate", "number"]
+                    }
+                    sort={{
+                      field:
+                        (layout === "board" ? boardSort : sort) === "key"
+                          ? "number"
+                          : layout === "board"
+                            ? boardSort
+                            : sort,
+                      direction: layout === "board" ? boardDir : dir,
+                    }}
+                    onSortChange={(next) => {
+                      if (next.field === "createdAt") return;
+                      handleSortChange(
+                        next.field === "number" ? "key" : next.field,
+                        next.direction,
+                      );
+                    }}
+                  />
+                </Suspense>
                 {layout === "board" ? (
                   <>
                     {!combinedActive ? (
-                      showSecondaryControls ? (
-                        <Suspense fallback={null}>
-                          <GroupControl
-                            group={group}
-                            onGroupChange={handleGroupChange}
-                            groups={groupOptions}
-                            groupLabels={groupLabels}
-                          />
-                        </Suspense>
-                      ) : null
+                      <Suspense fallback={null}>
+                        <GroupControl
+                          group={group}
+                          onGroupChange={handleGroupChange}
+                          groups={groupOptions}
+                          groupLabels={groupLabels}
+                        />
+                      </Suspense>
                     ) : (
                       <span className="text-xs text-muted-foreground">
                         {t("workItems:board.combinedScope")}
@@ -1034,7 +1020,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                 ) : null}
               </div>
               <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 sm:w-auto">
-                {showSecondaryControls && project ? (
+                {project ? (
                   <Suspense fallback={<WorkItemSelectionTogglePlaceholder />}>
                     <WorkItemSelectionToggle
                       workspaceId={project.workspaceId}
@@ -1044,7 +1030,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                       onCapabilityChange={setCanBulkAct}
                     />
                   </Suspense>
-                ) : project || isWorkspaceLoading || isProjectsLoading ? (
+                ) : isWorkspaceLoading || isProjectsLoading ? (
                   <WorkItemSelectionTogglePlaceholder />
                 ) : null}
                 <fieldset
