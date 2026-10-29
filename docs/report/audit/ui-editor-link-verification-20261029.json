@@ -350,13 +350,75 @@
 	},
 	"limits": [
 		"Not whole-product UI acceptance.",
-		"Legacy task-description browser-after and remaining route coverage are pending; the shared comment-editor dialog passes owner/admin/member width/theme cases.",
-		"G8/G4 hosted checks must pass; no visual baseline changed."
+		"Retained task-description component has unit/code review coverage; its old full-page route redirects in source to the canonical detail and no active importer of its old sheet was found. No legacy browser fixture was available, so no retained-legacy runtime acceptance is claimed.",
+		"Hosted G8/G4 and all other required non-G11 checks must pass; no visual baseline changed."
 	],
 	"containers": {
 		"active": "8e97132c42ae",
 		"purpose": "single local SIT for remaining browser checks",
 		"removed": ["f64643fc7ca4", "96627bf914b0"],
 		"preexistingRollbackStopped": "6c0d8bd2e4ff"
-	}
+	},
+	"description_browser_cases": [
+		{
+			"source": "37406d21514d48b7902bd094d974ca13c2835a43",
+			"role": "admin",
+			"surface": "canonical-description",
+			"width": 1440,
+			"theme": "light",
+			"mutations": false,
+			"screenshot": "docs/report/screens/20261029-editor-link-description-admin-1440-light.png",
+			"status": "passed"
+		},
+		{
+			"source": "37406d21514d48b7902bd094d974ca13c2835a43",
+			"role": "admin",
+			"surface": "canonical-description",
+			"width": 1440,
+			"theme": "dark",
+			"mutations": false,
+			"screenshot": "docs/report/screens/20261029-editor-link-description-admin-1440-dark.png",
+			"status": "passed"
+		},
+		{
+			"source": "37406d21514d48b7902bd094d974ca13c2835a43",
+			"role": "admin",
+			"surface": "canonical-description",
+			"width": 820,
+			"theme": "light",
+			"mutations": false,
+			"screenshot": "docs/report/screens/20261029-editor-link-description-admin-820-light.png",
+			"status": "passed"
+		},
+		{
+			"source": "37406d21514d48b7902bd094d974ca13c2835a43",
+			"role": "admin",
+			"surface": "canonical-description",
+			"width": 820,
+			"theme": "dark",
+			"mutations": false,
+			"screenshot": "docs/report/screens/20261029-editor-link-description-admin-820-dark.png",
+			"status": "passed"
+		},
+		{
+			"source": "37406d21514d48b7902bd094d974ca13c2835a43",
+			"role": "admin",
+			"surface": "canonical-description",
+			"width": 390,
+			"theme": "light",
+			"mutations": false,
+			"screenshot": "docs/report/screens/20261029-editor-link-description-admin-390-light.png",
+			"status": "passed"
+		},
+		{
+			"source": "37406d21514d48b7902bd094d974ca13c2835a43",
+			"role": "admin",
+			"surface": "canonical-description",
+			"width": 390,
+			"theme": "dark",
+			"mutations": false,
+			"screenshot": "docs/report/screens/20261029-editor-link-description-admin-390-dark.png",
+			"status": "passed"
+		}
+	]
 }
