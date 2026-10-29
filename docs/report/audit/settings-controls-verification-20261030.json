@@ -28,6 +28,24 @@
 			"theme": "dark",
 			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
 			"screenshot": "docs/report/screens/20261030-settings-controls-before-admin-custom-fields-390-dark.png"
+		},
+		{
+			"role": "owner",
+			"label": "workspace-general",
+			"width": 1440,
+			"height": 900,
+			"theme": "dark",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-workspace-general-1440-dark.png"
+		},
+		{
+			"role": "owner",
+			"label": "custom-field-new",
+			"width": 1440,
+			"height": 900,
+			"theme": "dark",
+			"source": "77dccbaae837945f988c206d88c9ddc92bc2cecf",
+			"screenshot": "docs/report/screens/20261030-settings-controls-before-owner-custom-field-new-1440-dark.png"
 		}
 	],
 	"dialogAndPopupBefore": [
@@ -2467,5 +2485,86 @@
 		"openMedium": 0,
 		"reranTests": false,
 		"reranBrowser": false
+	},
+	"negativeRoleObservations": {
+		"scope": "Read-only negative-role settings verification on local SIT source ccca5d95364af6de29ceeffd5ba658bef20ee740",
+		"roleMetadata": {
+			"member": "Agent-host GET /api/auth/get-session returned a user; GET /api/workspace and GET /api/workspace/{active}/members identified active workspace role member.",
+			"portalSessionFixture": "Portal-host GET /api/auth/get-session returned a user. Agent-host GET /api/auth/get-session returned no user; agent GET /api/workspace was 401. No agent workspace membership or role was inferred."
+		},
+		"settledCoverage": {
+			"member": "Workspace General, Custom fields list, direct New custom field draft at 1440 light and 390 dark (6 captures).",
+			"portalSessionFixtureOnAgentHost": "The same three direct agent-host routes at 1440 light and 390 dark (6 captures), all settled at /auth/sign-in.",
+			"actualThemesMatched": 12,
+			"http429": 0,
+			"sourceFiles": [
+				"identity.json",
+				"customer-host-sessions.json",
+				"matrix.json",
+				"member-general-settled.json",
+				"customer-host-routes.json"
+			],
+			"note": "Initial Workspace General screenshots in matrix.json had transient project-default skeletons; member-general-settled.json and overwritten screenshots are the settled evidence. Initial customer matrix rows timed out waiting for an h1; customer-host-routes.json and overwritten screenshots are the settled sign-in evidence."
+		},
+		"observations": [
+			{
+				"route": "/dashboard/settings/workspace/general",
+				"role": "member",
+				"viewports": ["1440 light", "390 dark"],
+				"result": "Workspace name and description fields disabled; no Transfer ownership or Danger Zone sections; project defaults settled, zero skeletons.",
+				"source": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx:120-136,393,425,443,544",
+				"screenshots": [
+					"docs/report/screens/20261030-settings-controls-negative-member-workspace-general-1440-light.png",
+					"docs/report/screens/20261030-settings-controls-negative-member-workspace-general-390-dark.png"
+				]
+			},
+			{
+				"route": "/agent/settings/custom-fields",
+				"role": "member",
+				"viewports": ["1440 light", "390 dark"],
+				"result": "Existing fields remain readable; New field and section creation actions absent.",
+				"source": "apps/web/src/components/settings/custom-fields/custom-fields-list.tsx:280-282,348-373",
+				"screenshots": [
+					"docs/report/screens/20261030-settings-controls-negative-member-custom-fields-list-1440-light.png",
+					"docs/report/screens/20261030-settings-controls-negative-member-custom-fields-list-390-dark.png"
+				]
+			},
+			{
+				"route": "/agent/settings/custom-fields/new",
+				"role": "member",
+				"viewports": ["1440 light", "390 dark"],
+				"result": "Direct route shows Read only alert and no Create field action; editor's canManage gate disables controls.",
+				"source": "apps/web/src/components/settings/custom-fields/custom-field-editor.tsx:218,679,719-749",
+				"screenshots": [
+					"docs/report/screens/20261030-settings-controls-negative-member-custom-fields-new-1440-light.png",
+					"docs/report/screens/20261030-settings-controls-negative-member-custom-fields-new-390-dark.png"
+				]
+			},
+			{
+				"routes": [
+					"/dashboard/settings/workspace/general",
+					"/agent/settings/custom-fields",
+					"/agent/settings/custom-fields/new"
+				],
+				"role": "portal session without agent-host session",
+				"viewports": ["1440 light", "390 dark"],
+				"result": "Each direct agent-host route redirected to settled /auth/sign-in, with no settings content.",
+				"source": "apps/web/src/routes/agent/_layout/_authenticated.tsx:171-184",
+				"screenshots": [
+					"docs/report/screens/20261030-settings-controls-negative-customer-workspace-general-1440-light.png",
+					"docs/report/screens/20261030-settings-controls-negative-customer-custom-fields-list-1440-light.png",
+					"docs/report/screens/20261030-settings-controls-negative-customer-custom-fields-new-1440-light.png",
+					"docs/report/screens/20261030-settings-controls-negative-customer-workspace-general-390-dark.png",
+					"docs/report/screens/20261030-settings-controls-negative-customer-custom-fields-list-390-dark.png",
+					"docs/report/screens/20261030-settings-controls-negative-customer-custom-fields-new-390-dark.png"
+				]
+			}
+		],
+		"defects": "None confirmed in this scoped negative-role pass.",
+		"limits": "The portal fixture has no agent-host session, so this verifies cross-host separation and cannot establish how an agent-authenticated customer account would be handled.",
+		"writes": "None via API or UI. Browser localStorage theme only.",
+		"containersStarted": "none",
+		"acceptance": "Scoped negative-role observations, not full settings acceptance.",
+		"verifiedRuntime": "ccca5d95364af6de29ceeffd5ba658bef20ee740"
 	}
 }
