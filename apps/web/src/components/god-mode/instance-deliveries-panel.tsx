@@ -156,8 +156,8 @@ export function InstanceDeliveriesPanel() {
           </FramePanel>
         </Frame>
       ) : (
-        <Frame className="min-w-0 overflow-x-auto">
-          <Table>
+        <Frame className="min-w-0">
+          <Table scrollLabel={t("title")}>
             <TableHeader>
               <TableRow>
                 <TableHead>{t("columns.kind")}</TableHead>

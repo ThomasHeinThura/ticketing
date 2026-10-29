@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   search: { user: "user-a" } as Record<string, string | undefined>,
   changed: (() => {}) as () => void,
   grantAdmin: vi.fn(),
+  suspend: vi.fn(),
   createProof: vi.fn(),
   factorStatus: {
     enabled: true,
@@ -72,7 +73,7 @@ vi.mock("@/hooks/queries/god-mode/use-instance-users", () => ({
     isError: false,
   }),
   useInstanceUserActions: () => ({
-    suspend: { isPending: false, mutateAsync: vi.fn() },
+    suspend: { isPending: false, mutateAsync: mocks.suspend },
     unsuspend: { isPending: false, mutateAsync: vi.fn() },
     signOut: { isPending: false, mutateAsync: vi.fn() },
     deactivate: { isPending: false, mutateAsync: vi.fn() },
@@ -142,7 +143,83 @@ describe("God Mode Users action context", () => {
   beforeEach(() => {
     mocks.search = { user: userA.id };
     mocks.grantAdmin.mockReset();
+    mocks.suspend.mockReset();
     mocks.createProof.mockReset();
+  });
+
+  it("keeps an omitted expiry indefinite when the library picker is cancelled", async () => {
+    render(<Harness />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "instanceUsers:copy.6361cbb3f6ca" }),
+    );
+    await waitFor(() => expect(mocks.search.action).toBe("suspend"));
+    const expiry = screen.getByRole("button", {
+      name: "instanceUsers:copy.728bac665663",
+    });
+    expiry.focus();
+    fireEvent.click(expiry);
+    expect(document.querySelector('input[type="datetime-local"]')).toBeNull();
+    expect(
+      screen.getByRole("dialog", { name: "instanceUsers:copy.728bac665663" }),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("grid"), { key: "Escape" });
+    await waitFor(() => expect(expiry).toHaveFocus());
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "instanceUsers:dynamic.actions.suspend",
+      }),
+    );
+    await waitFor(() =>
+      expect(mocks.suspend).toHaveBeenCalledExactlyOnceWith({
+        id: userA.id,
+        request: {},
+      }),
+    );
+  });
+
+  it("submits a complete local date/time as the same UTC expiry used by the API", async () => {
+    vi.stubEnv("TZ", "Asia/Yangon");
+    vi.setSystemTime(new Date("2026-10-30T00:00:00.000Z"));
+    try {
+      render(<Harness />);
+      fireEvent.click(
+        screen.getByRole("button", { name: "instanceUsers:copy.6361cbb3f6ca" }),
+      );
+      await waitFor(() => expect(mocks.search.action).toBe("suspend"));
+      fireEvent.click(
+        screen.getByRole("button", { name: "instanceUsers:copy.728bac665663" }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: /October 31.*2026/ }));
+      for (const [part, value] of [
+        ["hour", "18"],
+        ["minute", "42"],
+      ]) {
+        fireEvent.click(
+          screen.getByRole("combobox", { name: `customFields:value.${part}` }),
+        );
+        const option = screen.getByRole("option", { name: value });
+        fireEvent.pointerDown(option, { pointerType: "mouse", button: 0 });
+        fireEvent.click(option);
+      }
+      expect(mocks.suspend).not.toHaveBeenCalled();
+      fireEvent.click(
+        screen.getByRole("button", { name: "common:actions.save" }),
+      );
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "instanceUsers:dynamic.actions.suspend",
+        }),
+      );
+      await waitFor(() =>
+        expect(mocks.suspend).toHaveBeenCalledExactlyOnceWith({
+          id: userA.id,
+          request: { expiresAt: "2026-10-31T12:12:00.000Z" },
+        }),
+      );
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+    }
   });
 
   it("clears action fields and refuses a proof completed after the URL target changes", async () => {
