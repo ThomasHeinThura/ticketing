@@ -547,19 +547,21 @@ function PortalCatalogueContent() {
                   {entries
                     .filter((entry) => entry.group === group)
                     .map((entry) => (
-                      <li key={entry.key}>
+                      <li key={entry.key} className="min-w-0">
                         <Button
                           variant="outline"
-                          className="h-auto w-full justify-start p-4 text-left"
+                          className="h-full w-full min-w-0 items-start justify-start whitespace-normal p-4 text-left sm:h-full"
                           onClick={() => {
                             focusTarget.current = "form";
                             void navigate({ search: { q, key: entry.key } });
                           }}
                         >
-                          <span>
-                            <strong className="block">{entry.name}</strong>
+                          <span className="flex min-w-0 flex-1 flex-col gap-1">
+                            <strong className="block break-words font-medium text-sm">
+                              {entry.name}
+                            </strong>
                             {entry.description && (
-                              <small className="text-muted-foreground">
+                              <small className="block break-words text-muted-foreground text-sm">
                                 {entry.description}
                               </small>
                             )}
