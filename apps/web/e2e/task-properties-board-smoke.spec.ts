@@ -396,7 +396,12 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
       const rankWrites: Array<{ path: string; body: unknown }> = [];
       page.on("request", (request) => {
         const path = pathOf(request.url());
-        if (request.method() !== "GET" && path.startsWith("/api/work-items/")) {
+        // Structured search uses POST for a read; retain every actual work-item mutation.
+        if (
+          request.method() !== "GET" &&
+          path.startsWith("/api/work-items/") &&
+          !(request.method() === "POST" && path === "/api/work-items/search")
+        ) {
           rankWrites.push({ path, body: request.postDataJSON() });
         }
       });

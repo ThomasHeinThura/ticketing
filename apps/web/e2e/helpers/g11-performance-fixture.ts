@@ -959,10 +959,19 @@ export async function installPerformanceApiFixture(
       // Sections of the work-item detail (page and side pane) for a seeded item
       // with no relations, files, activity, approvals or children yet.
       const detailRead = path.match(
-        /^\/api\/work-items\/(WLP-(\d+))\/([a-z-]+(?:\/[a-z-]+)?)$/,
+        /^\/api\/work-items\/((?:WLP|BRD)-(\d+))\/([a-z-]+(?:\/[a-z-]+)?)$/,
       );
       if (detailRead) {
-        const [, , number, section] = detailRead;
+        const [, key, number, section] = detailRead;
+        const boardRow =
+          boardProject &&
+          key.startsWith(`${BOARD_PROJECT_KEY}-`) &&
+          !deletedBoardKeys.has(key)
+            ? boardItems.get(key)
+            : undefined;
+        if (key.startsWith(`${BOARD_PROJECT_KEY}-`) && !boardRow)
+          return json({ message: "Not found in the G11 browser fixture" }, 404);
+        if (section === "labels" && boardRow) return json([]);
         if (section === "relations") return json({ data: [], hiddenCount: 0 });
         if (section === "attachments") return json([]);
         if (section === "activity")
@@ -983,7 +992,7 @@ export async function installPerformanceApiFixture(
           });
         if (section === "children")
           return json({
-            parent: makeWorkItem(Number(number)),
+            parent: boardRow ?? makeWorkItem(Number(number)),
             ancestors: [],
             data: [],
             page: { nextCursor: null, hasMore: false },

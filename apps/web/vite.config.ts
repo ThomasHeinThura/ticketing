@@ -636,7 +636,11 @@ export default defineConfig(({ mode }) => {
                       // Keep shared bootstrap modules in the initial graph before the frame
                       // group captures its remaining static dependencies below.
                       priority: 2,
-                      maxSize: 1_000_000,
+                      // Agent bootstrap otherwise splits into multiple cold
+                      // requests. This source-size partition preserves the lazy graph;
+                      // emitted gzip budgets remain independently enforced. The larger
+                      // group trades cross-release vendor cache reuse for fewer requests.
+                      maxSize: isPortal ? 1_000_000 : 4_000_000,
                     },
                     ...(!isPortal
                       ? [

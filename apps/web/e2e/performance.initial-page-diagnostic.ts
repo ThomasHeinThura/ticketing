@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
@@ -16,11 +16,13 @@ import {
   sanitizeCpuProfileNodes,
 } from "./helpers/aggregate-cpu-profile";
 import {
+  BOARD_ITEM_COUNT,
+  BOARD_PROJECT_KEY,
+  boardItemId,
   installPerformanceApiFixture,
   PERFORMANCE_BASE_URL,
-  PROJECT_ID,
+  WORK_ITEM_KEY,
   WORK_LIST_PATH,
-  WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
@@ -749,6 +751,7 @@ async function withDiagnosticProfile(
   throttled: boolean,
   prepare: (page: Page) => Promise<void>,
   visit: (page: Page) => Promise<DiagnosticBoundary>,
+  fixtureOptions?: Parameters<typeof installPerformanceApiFixture>[1],
 ): Promise<DiagnosticCapture> {
   const context = await browser.newContext({
     baseURL: ORIGIN,
@@ -853,7 +856,7 @@ async function withDiagnosticProfile(
       timelineEvents.push(sanitized);
     }
   });
-  await installPerformanceApiFixture(page);
+  await installPerformanceApiFixture(page, fixtureOptions);
   await page.addInitScript(() => {
     const allowedMarks = new Set([
       "document-start",
@@ -1080,27 +1083,29 @@ async function visitInitialWorkList(page: Page) {
   });
 }
 
-async function prepareTaskState(page: Page) {
-  await page.goto(
-    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/task/legacy-task-1`,
-    { waitUntil: "domcontentloaded" },
-  );
-  await page.getByRole("button", { name: "Backlog", exact: true }).waitFor({
+async function openWorkItemDetails(page: Page) {
+  await page.goto(`/agent/work-items/${WORK_ITEM_KEY}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.getByTestId("work-item-detail")).toBeVisible({
     timeout: 30_000,
   });
-  await page.getByRole("button", { name: "Backlog", exact: true }).click();
+  await expect(page.getByTestId("work-item-state-control")).toHaveText(
+    "Backlog",
+    { timeout: 30_000 },
+  );
+}
+
+async function prepareTaskState(page: Page) {
+  await openWorkItemDetails(page);
+  await page.getByTestId("work-item-state-control").click();
 }
 
 async function visitTaskState(page: Page) {
   await page
+    .locator('[data-slot="popover-popup"]')
     .getByRole("button", { name: /^In progress/ })
-    .last()
     .click();
-  await expect(
-    page.locator('[data-slot="popover-trigger"]:visible').filter({
-      hasText: "In progress",
-    }),
-  ).toBeVisible();
   await page.waitForFunction(
     () => {
       const metrics = (
@@ -1111,7 +1116,7 @@ async function visitTaskState(page: Page) {
     undefined,
     { timeout: 15_000 },
   );
-  return page.evaluate(() => {
+  const boundary = await page.evaluate(() => {
     const metrics = (
       window as Window & {
         __g11Metrics?: { stateStart: number; statePaint: number };
@@ -1127,29 +1132,24 @@ async function visitTaskState(page: Page) {
       source: "canonical stateStart and statePaint recorder fields (ms)",
     };
   });
+  await expect(page.getByTestId("work-item-state-control")).toHaveText(
+    "In progress",
+  );
+  return boundary;
 }
 
 async function prepareTaskAssignment(page: Page) {
-  await page.goto(
-    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/task/legacy-task-1`,
-    { waitUntil: "domcontentloaded" },
-  );
-  await page
-    .getByRole("button", { name: /Unassigned/ })
-    .last()
-    .click({ timeout: 30_000 });
+  await openWorkItemDetails(page);
+  const assignee = page.getByTestId("work-item-assignee-control");
+  await expect(assignee).toHaveText(/Unassigned/);
+  await assignee.click();
 }
 
 async function visitTaskAssignment(page: Page) {
   await page
+    .locator('[data-slot="popover-popup"]')
     .getByRole("button", { name: /G11 Agent/ })
-    .last()
-    .click({ timeout: 30_000 });
-  await expect(
-    page.locator('[data-slot="popover-trigger"]:visible').filter({
-      hasText: "G11 Agent",
-    }),
-  ).toBeVisible();
+    .click();
   await page.waitForFunction(
     () => {
       const metrics = (
@@ -1160,7 +1160,7 @@ async function visitTaskAssignment(page: Page) {
     undefined,
     { timeout: 15_000 },
   );
-  return page.evaluate(() => {
+  const boundary = await page.evaluate(() => {
     const metrics = (
       window as Window & {
         __g11Metrics?: { assignmentStart: number; assignmentPaint: number };
@@ -1181,22 +1181,30 @@ async function visitTaskAssignment(page: Page) {
         "canonical assignmentStart and assignmentPaint recorder fields (ms)",
     };
   });
+  await expect(page.getByTestId("work-item-assignee-control")).toHaveText(
+    /G11 Agent/,
+  );
+  return boundary;
 }
 
 async function visitBoard(page: Page) {
   await installLastItemPaintRecorder(page, {
     kind: "board",
-    expectedCount: 200,
+    expectedCount: BOARD_ITEM_COUNT,
     metric: "boardPaint",
+    canonical: {
+      selector: '[data-testid="work-item-board-card"] [data-task-id]',
+      expectedIds: Array.from({ length: BOARD_ITEM_COUNT }, (_, index) =>
+        boardItemId(index + 1),
+      ),
+    },
   });
-  await page.goto(
-    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
-    { waitUntil: "domcontentloaded" },
-  );
-  await expect(page.locator('[data-task-id^="legacy-task-"]')).toHaveCount(
-    200,
-    { timeout: 30_000 },
-  );
+  await page.goto(`/agent/projects/${BOARD_PROJECT_KEY}/work?layout=board`, {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(
+    page.locator('[data-testid="work-item-board-card"] [data-task-id]'),
+  ).toHaveCount(BOARD_ITEM_COUNT, { timeout: 30_000 });
   await page.waitForFunction(
     () =>
       (window as Window & { __g11Metrics?: { boardPaint: number } })
@@ -1224,28 +1232,38 @@ async function visitBoard(page: Page) {
   });
 }
 
-async function visitBoardTaskDetailsSheet(page: Page) {
-  await page.goto(
-    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
-    { waitUntil: "domcontentloaded" },
+async function prepareBoardTaskDetailsSheet(page: Page) {
+  await page.goto(`/agent/projects/${BOARD_PROJECT_KEY}/work?layout=board`, {
+    waitUntil: "domcontentloaded",
+  });
+  const firstTaskCard = page.locator(
+    `[data-testid="work-item-board-card"] [data-task-id="${boardItemId(1)}"]`,
   );
-  const firstTaskCard = page.locator('[data-task-id^="legacy-task-"]').first();
   await expect(firstTaskCard).toBeVisible({ timeout: 30_000 });
-  const taskId = await firstTaskCard.getAttribute("data-task-id");
-  if (!taskId) throw new Error("The first board card had no task identity.");
+}
 
+async function visitBoardTaskDetailsSheet(page: Page) {
+  const firstTaskCard = page.locator(
+    `[data-testid="work-item-board-card"] [data-task-id="${boardItemId(1)}"]`,
+  );
   await firstTaskCard.click();
-  await expect(page).toHaveURL(new RegExp(`[?&]taskId=${taskId}(?:&|$)`));
+  await expect(page).toHaveURL(
+    new RegExp(`[?&]item=${BOARD_PROJECT_KEY}-1(?:&|$)`),
+  );
   await expect(
-    page.locator('.taskdesk-tiptap-prose[contenteditable="true"]'),
+    page.locator(
+      'section[aria-label="Description"] .taskdesk-comment-editor-prose[contenteditable="true"]',
+    ),
   ).toBeVisible({
     timeout: 30_000,
   });
 
   await page.keyboard.press("Escape");
-  await expect(page).not.toHaveURL(/[?&]taskId=/);
+  await expect(page).not.toHaveURL(/[?&]item=/);
   await expect(
-    page.locator('.taskdesk-tiptap-prose[contenteditable="true"]'),
+    page.locator(
+      'section[aria-label="Description"] .taskdesk-comment-editor-prose[contenteditable="true"]',
+    ),
   ).toHaveCount(0);
   await page.keyboard.press("?");
   const helpDialog = page.getByRole("dialog");
@@ -1259,43 +1277,95 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   browser,
 }) => {
   test.setTimeout(180_000);
-  const captures = [
-    await withDiagnosticProfile(
-      browser,
-      "initial work-list navigation to LCP",
-      true,
-      async () => {},
-      visitInitialWorkList,
+  const captures: DiagnosticCapture[] = [];
+  const capture = async (...args: Parameters<typeof withDiagnosticProfile>) => {
+    captures.push(await withDiagnosticProfile(...args));
+    // Keep the last completed windows at the workflow's existing upload path if a later
+    // window times out. A checkpoint failure must not alter the diagnostic assertions.
+    try {
+      await writeInitialPageProfile(captures, false);
+    } catch (error) {
+      const errorClass = error instanceof Error ? "Error" : "UnknownError";
+      console.error(
+        "Could not write incomplete initial-page checkpoint:",
+        errorClass,
+      );
+    }
+  };
+  await capture(
+    browser,
+    "initial work-list navigation to LCP",
+    true,
+    async () => {},
+    visitInitialWorkList,
+  );
+  await capture(
+    browser,
+    "task-state option selection click-to-paint",
+    true,
+    prepareTaskState,
+    visitTaskState,
+    { workflowCapabilities: true },
+  );
+  await capture(
+    browser,
+    "task-assignment option selection click-to-paint",
+    true,
+    prepareTaskAssignment,
+    visitTaskAssignment,
+  );
+  await capture(
+    browser,
+    "board navigation to all 200 cards rendered",
+    false,
+    async () => {},
+    visitBoard,
+    { boardProject: true, workflowCapabilities: true },
+  );
+  await capture(
+    browser,
+    "board task selection opens editor and Escape closes sheet",
+    false,
+    // Cold board navigation is captured independently above. This supplementary
+    // profile covers the declared interaction after board preparation, not the
+    // canonical first-immediate-click gate or the navigation itself.
+    prepareBoardTaskDetailsSheet,
+    visitBoardTaskDetailsSheet,
+    { boardProject: true, workflowCapabilities: true },
+  );
+  const { initial, profileWindows, serialized } = await writeInitialPageProfile(
+    captures,
+    true,
+  );
+  await test.info().attach("g11-initial-page-profile.json", {
+    body: serialized,
+    contentType: "application/json",
+  });
+  expect(
+    initial.metrics.lcp,
+    "The real page LCP entry must be observed.",
+  ).not.toBeNull();
+  expect(
+    initial.metrics.heading.found,
+    "The real work-list heading must be visible.",
+  ).toBe(true);
+  expect(profileWindows).toHaveLength(5);
+  expect(
+    profileWindows.every((window) => window.topInclusiveCpuFrames.length > 0),
+    "Each hosted failure class must include sampled app JavaScript frames.",
+  ).toBe(true);
+  expect(
+    captures.every(
+      ({ network }) => !network.truncated && network.droppedCount === 0,
     ),
-    await withDiagnosticProfile(
-      browser,
-      "task-state option selection click-to-paint",
-      true,
-      prepareTaskState,
-      visitTaskState,
-    ),
-    await withDiagnosticProfile(
-      browser,
-      "task-assignment option selection click-to-paint",
-      true,
-      prepareTaskAssignment,
-      visitTaskAssignment,
-    ),
-    await withDiagnosticProfile(
-      browser,
-      "board navigation to all 200 cards rendered",
-      false,
-      async () => {},
-      visitBoard,
-    ),
-    await withDiagnosticProfile(
-      browser,
-      "board task selection opens editor and Escape closes sheet",
-      false,
-      async () => {},
-      visitBoardTaskDetailsSheet,
-    ),
-  ];
+    "The diagnostic must retain all observed requests without truncation.",
+  ).toBe(true);
+});
+
+async function writeInitialPageProfile(
+  captures: DiagnosticCapture[],
+  complete: boolean,
+) {
   const profileAssetNames = new Set(
     captures.flatMap(({ traceCpuProfiles }) => [
       ...traceCpuProfiles.flatMap((traceProfile) =>
@@ -1312,9 +1382,11 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   const build = await getBuildIdentity(profileAssetNames);
   await persistDiagnosticCapturesBestEffort(
     RAW_CAPTURE_DIR,
-    captures.map((capture, index) =>
-      createRawCaptureArtifact(capture, index + 1, build),
-    ),
+    captures
+      .slice(complete ? captures.length : captures.length - 1)
+      .map((capture, index) =>
+        createRawCaptureArtifact(capture, captures.length + index, build),
+      ),
   );
   const profileWindows = await aggregateDiagnosticCapturesWithFailureReceipt(
     RAW_CAPTURE_DIR,
@@ -1409,6 +1481,13 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   const result = {
     schemaVersion: 4,
     diagnosticOnly: true,
+    ...(!complete
+      ? {
+          status: "incomplete",
+          completedWindows: captures.length,
+          expectedWindows: 5,
+        }
+      : {}),
     fixture:
       "canonical G11 installPerformanceApiFixture (500 work items, 200 board cards)",
     sourceAndBuild: build,
@@ -1438,35 +1517,15 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   };
   await mkdir(RESULT_DIR, { recursive: true });
   const serialized = `${JSON.stringify(result, null, 2)}\n`;
-  await writeFile(
-    path.join(RESULT_DIR, "initial-page-profile.json"),
-    serialized,
-    { mode: 0o600 },
+  const output = path.join(RESULT_DIR, "initial-page-profile.json");
+  const temporaryOutput = path.join(
+    RESULT_DIR,
+    "initial-page-profile.pending.json",
   );
-  await test.info().attach("g11-initial-page-profile.json", {
-    body: serialized,
-    contentType: "application/json",
-  });
-  expect(
-    initial.metrics.lcp,
-    "The real page LCP entry must be observed.",
-  ).not.toBeNull();
-  expect(
-    initial.metrics.heading.found,
-    "The real work-list heading must be visible.",
-  ).toBe(true);
-  expect(profileWindows).toHaveLength(5);
-  expect(
-    profileWindows.every((window) => window.topInclusiveCpuFrames.length > 0),
-    "Each hosted failure class must include sampled app JavaScript frames.",
-  ).toBe(true);
-  expect(
-    captures.every(
-      ({ network }) => !network.truncated && network.droppedCount === 0,
-    ),
-    "The diagnostic must retain all observed requests without truncation.",
-  ).toBe(true);
-});
+  await writeFile(temporaryOutput, serialized, { mode: 0o600 });
+  await rename(temporaryOutput, output);
+  return { initial, profileWindows, serialized };
+}
 
 // Keep this independent of the initial-page captures: a failure in another
 // diagnostic window must not discard the profile of the failing palette path.
