@@ -307,7 +307,22 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve the Geist Latin font asset.",
           );
 
-        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${inlineScriptJson([...files].map((file) => `/${file}`))};const locales=${inlineScriptJson(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);const fontLink=document.createElement("link");fontLink.rel="preload";fontLink.as="font";fontLink.type="font/woff2";fontLink.href=${inlineScriptJson(`/${latinFontAsset.fileName}`)};fontLink.crossOrigin="anonymous";fontLink.fetchPriority="high";document.head.append(fontLink);for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}if(new URLSearchParams(location.search).get("layout")!=="board")return;for(const file of ${inlineScriptJson([...boardViewFiles].map((file) => `/${file}`))}){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
+        const monoFontAsset = Object.values(bundle).find(
+          (item) =>
+            item.type === "asset" &&
+            item.originalFileNames.some((file) =>
+              file
+                .replaceAll("\\", "/")
+                .endsWith(
+                  "/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2",
+                ),
+            ),
+        );
+
+        const monoFontSnippet = monoFontAsset
+          ? `const monoLink=document.createElement("link");monoLink.rel="preload";monoLink.as="font";monoLink.type="font/woff2";monoLink.href=${inlineScriptJson(`/${monoFontAsset.fileName}`)};monoLink.crossOrigin="anonymous";monoLink.fetchPriority="high";document.head.append(monoLink);`
+          : "";
+        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${inlineScriptJson([...files].map((file) => `/${file}`))};const locales=${inlineScriptJson(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);const fontLink=document.createElement("link");fontLink.rel="preload";fontLink.as="font";fontLink.type="font/woff2";fontLink.href=${inlineScriptJson(`/${latinFontAsset.fileName}`)};fontLink.crossOrigin="anonymous";fontLink.fetchPriority="high";document.head.append(fontLink);${monoFontSnippet}for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}if(new URLSearchParams(location.search).get("layout")!=="board")return;for(const file of ${inlineScriptJson([...boardViewFiles].map((file) => `/${file}`))}){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
         // The legacy project board is the other measured direct-visit screen (G11 board
         // render). Its route chunk is only requested after the session resolves, so start it
         // and the full locale catalog it renders with alongside the entry instead.
@@ -683,7 +698,7 @@ export default defineConfig(({ mode }) => {
                             // not wait for the list panel. Warm the shell with the row controls;
                             // its data-heavy body remains a separate lazy module.
                             name: "work-item-shared-controls",
-                            test: /\/src\/(?:hooks\/use-workspace-permission\.ts|components\/work-item\/(?:work-item-create-dialog-shell|work-item-side-pane)\.tsx|components\/kanban-board\/task-card-keyboard-sensor\.ts)$/u,
+                            test: /\/src\/(?:components\/work-item\/(?:work-item-create-dialog-shell|work-item-side-pane)\.tsx|components\/kanban-board\/task-card-keyboard-sensor\.ts)$/u,
                             priority: 1,
                           },
                           {
