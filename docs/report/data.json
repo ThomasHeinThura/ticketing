@@ -1,6 +1,6 @@
 {
-	"generated": "2026-10-28T07:51:08.269Z",
-	"source": "673 numbered clauses. Bars derive exactly from docs/requirements-index.json at main 2553612ee. Current per-ID states distinguish source inspection, scoped executed test evidence, partial gaps, external evidence and conditional/out-of-scope unverified rows. Route loading and historical phase acceptance do not establish full-clause browser acceptance.",
+	"generated": "2026-10-29T12:04:56.689Z",
+	"source": "673 clauses; PR #918 per-ID evidence retained: 19 tested, 630 source-only, 15 partial, 6 external-blocked and 3 unverified. The 29 October repository audit adds issue/source/check status without promoting whole-clause acceptance. All 73 indexed contracts remain unverified.",
 	"phases": [
 		{
 			"id": "P0",
@@ -598,60 +598,88 @@
 		"Decided 28 Oct (Thomas): phases end after P6; former P7 and all open gaps become one linear backlog (L-01…L-11, T-1) worked by Codex; GitHub CI is a required gate again; Terra/Sonnet implement, Sol/Opus plan, audit and review; official @tiptap/* extensions pre-approved for the Pages editor.",
 		"Decided 28 Oct (Thomas): merge PR #891 past the failing G11 check; misses recorded under backlog L-05; budgets unchanged."
 	],
-	"next": "Review the L-01 documentation/evidence PR and its required CI; no implementation is started in this audit. L-05 remains the next retained backlog item. Proposed #916 → #910 → #917 → #915 before L-02 requires Thomas's decision; merge/deploy require Thomas's approval.",
-	"status": "28 Oct L-01 audit evidence on main 2553612ee: 19 tested, 630 source-only, 15 partial, 6 external and 3 conditional/out-of-scope unverified of 673. Isolated integration 5789/5789 and automated G4 pass; unit/e2e/G8 retain linked failures and G11/G13 product budgets were not measured because calibration failed closed. Browser crawl recorded 2322 required-role case records plus 564 supplementary instance-admin/owner case records; 564 workspace-admin cases remain fixture-blocked (#914). Portal catalogue descriptions/cards overlap or clip at tablet/mobile (#917); Search close-focus fails (#915); source-connection audit event is absent (#916). This is evidence for review, not full browser acceptance or an all-green baseline.",
+	"next": "Working checkpoint: 30 October 2026, 22:00 Yangon. Finish audit PR #918 review/CI; recover the existing SIT; obtain the legacy-contract decision (#927) while independently diagnosing L-05; then L-02 reliability → L-03a persisted release suite (#929) → L-03 scoped settings (#930) → L-04 shared Pages/KB editor (#56), then the remaining roadmap. Close only verified accepted/merged work with the required evidence. Thomas approves merges, deployment, workflow and retained-contract/security changes; external Entra, penetration and retirement evidence remains open.",
+	"status": "29 October audit: P0–P6 historical acceptance retained; 117 open issues (113 original issues individually source-assessed plus four focused trackers). Main d968f7f4 release passed, but G11 remains red and local SIT returns HTTP 502. Fresh typecheck, clean tracked lint, 13 gates and isolated integration (478 files / 5,789 tests) pass; root unit tests fail. The legacy contract review (#927) and report rebuild loss (#928) are tracked. Detailed evidence and limits are in docs/audit.md and the current audit ledger.",
 	"validation_runs": [
 		{
-			"check": "Current source and per-ID index",
-			"result": "673 indexed; 19 implemented + current-test evidence, 630 current-source-inspected / untested, 15 partial, 6 external, 3 conditional/out-of-scope unverified; no per-clause browser acceptance claimed."
+			"check": "29 October fresh typecheck and lint",
+			"result": "Source 925587dc6: 9/9 uncached root typecheck tasks; clean tracked lint passes 4,831 files. Dirty original lint has 10 ignored-backup formatting errors; those files were preserved."
 		},
 		{
-			"check": "Fresh integration database",
-			"result": "PASS 478/478 files and 5789/5789 tests, PostgreSQL 18.6 Testcontainers taskdesk_test; exact owned containers cleaned. Live 62870 excluded from integration/reset/seed/fixtures; ordinary SIT auth/session and own workspace-preference operations only."
+			"check": "29 October code gates",
+			"result": "Thirteen pass, including 118 permission tests, separate route policy, contract and CI scripts (1,374 passed / 20 skipped / zero failed). Root units fail: API 3 and web 5 observed before abort. Focused 18 API + 12 web passes do not clear the full failure."
 		},
 		{
-			"check": "Typecheck / permissions / route policy / contract",
-			"result": "PASS 9/9 typecheck tasks; 118/118 permissions; route policy and oasdiff 0 unapproved changes."
+			"check": "29 October fresh integration",
+			"result": "Source 925587dc6: 478 files / 5,789 tests pass on a fresh owned PostgreSQL 18 database; 26m35s Vitest. Container c18d904f59a1 stopped/removed; diagnostic databases dropped. No customer database used."
 		},
 		{
-			"check": "Unit and persisted/mock e2e",
-			"result": "FAIL scoped web unit timeout (#776); e2e 164 passed, 1 dialog-locator failure (https://github.com/ThomasHeinThura/ticketing/issues/911)."
+			"check": "29 October current hosted performance",
+			"result": "PR #919 at 925587dc6: 25 other checks pass; G11 fails LCP 2640.2 / 2500 ms and assignment 228 / 200 ms; zero of three qualifying headroom trials."
 		},
 		{
-			"check": "Raw elements / tokens / G4",
-			"result": "PASS 0 raw controls; 401 light/dark contrast pairs; 155 UI a11y and 21 Playwright axe cases."
+			"check": "29 October runtime and browser",
+			"result": "Both local hosts return HTTP 502; app stopped. No new whole-product browser acceptance. Prior PR #918 and scoped PR #919 receipts retain their source/fixture limits."
 		},
 		{
-			"check": "Pinned G8",
-			"result": "104/105 screen snapshots passed; one stable 46-pixel module-detail diff (https://github.com/ThomasHeinThura/ticketing/issues/908). Separate Storybook suite 1/1 passed. No baseline changes."
+			"check": "29 October security",
+			"result": "High-severity dependency gate passes; one deepmerge low remains. All 22 Gitleaks history hits classified, with zero confirmed exposures among those hits and no suppression. The older local image scan has 42 unfixed HIGH findings; it is not the latest-release scan."
 		},
 		{
-			"check": "Performance and bundle",
-			"result": "G11/G13 local product budgets not measured (including six G13 skeleton-to-content CLS cases): calibration factor 0.527 outside [0.75,1.75] (https://github.com/ThomasHeinThura/ticketing/issues/876). G11 bundle budgets pass: agent 267.1/350 KB, work-list 332.8/350, portal 189.1/200; G12 purity pass."
+			"check": "29 October standalone audit report browser check",
+			"result": "Four Chromium cases pass at 1440/375 px in light/dark themes; all four captures visually inspected. Dated historical evidence remains accessible; long reference URLs wrap without clipping. This is report validation, not product browser acceptance."
 		},
 		{
-			"check": "Lint and security scanners",
-			"result": "Clean main export exact pnpm lint:ci PASS: 4817 files, 0 errors, 265 warnings, 15 infos. Original dirty-workspace lint FAIL: 11 errors only in ignored local backup/test-results artifacts; ignore-aware diagnostic 4820 files/0 errors. Trivy 0 fixable HIGH/CRITICAL; Gitleaks 22 synthetic/false-positive historical matches triaged, scanner exit 1; pnpm audit one LOW advisory (https://github.com/ThomasHeinThura/ticketing/issues/909). Initial staged scan flagged six copies of a request-type URL identifier; public query keys normalized without an exemption, staged rescan passed with zero findings."
+			"check": "28 October baseline: Current source and per-ID index",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. 673 indexed; 19 implemented + current-test evidence, 630 current-source-inspected / untested, 15 partial, 6 external, 3 conditional/out-of-scope unverified; no per-clause browser acceptance claimed."
 		},
 		{
-			"check": "Kaneo 42bb8011 comparison",
-			"result": "Source components/tokens compared; parity manifest tests 10/10 pass. Full same-seed 120+120 capture comparison unavailable; no pixel-parity acceptance claim."
+			"check": "28 October baseline: Fresh integration database",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. PASS 478/478 files and 5789/5789 tests, PostgreSQL 18.6 Testcontainers taskdesk_test; exact owned containers cleaned. Live 62870 excluded from integration/reset/seed/fixtures; ordinary SIT auth/session and own workspace-preference operations only."
 		},
 		{
-			"check": "Local SIT matrix",
-			"result": "Crawl finished: 2322 required-role case records (owner/lead/member/viewer 564 each, customer 66) plus 564 supplementary instance-admin/owner case records; 564 actual workspace-admin cases blocked (#914), no duplicate cases. All 105 active route templates inventoried at 1440/820/390, light/dark. Records include138 required missing-record fixtures with no navigation. Resolved-route variants explicitly record settled content, denial, fixture absence and errors; counts are not passes. Six original portal Loading captures were rejected; separate strict-readiness customer follow-up records all66 cases, and base-catalogue screenshots retain the observed clipping/overlap finding. Same-page Chromium resizing is viewport coverage, not physical touch-device or full feature-journey acceptance. Exact manifest: docs/report/audit/l01-sit-matrix.json."
+			"check": "28 October baseline: Typecheck / permissions / route policy / contract",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. PASS 9/9 typecheck tasks; 118/118 permissions; route policy and oasdiff 0 unapproved changes."
 		},
 		{
-			"check": "Representative keyboard/focus",
-			"result": "36 shell-control cases executed: 30 required-role plus 6 supplementary instance-admin/owner; true workspace-admin fixture unavailable (#914). Interactive Tab targets visible, portal popup and mobile sidebar Escape/focus checks pass. Sidebar Search close-focus fails in 16 required-role + 4 supplementary desktop/tablet cases (#915); exact retained overlay contract is architecture-and-experience.md:1666. No full-screen keyboard acceptance claimed."
+			"check": "28 October baseline: Unit and persisted/mock e2e",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. FAIL scoped web unit timeout (#776); e2e 164 passed, 1 dialog-locator failure (https://github.com/ThomasHeinThura/ticketing/issues/911)."
 		},
 		{
-			"check": "Public auth and record scope",
-			"result": "Anonymous sign-in 12 viewport/theme cases across both hosts; six opposite-host sessions absent and protected routes redirect to sign-in. Shared saved-view 404s are expected private-record scope denials; owner-own-reachable view follow-up 6/6 settled. Exact proof/limits: docs/report/audit/l01-sit-scope.json. No reset/magic-link/provider or full invitation-token flow exercised."
+			"check": "28 October baseline: Raw elements / tokens / G4",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. PASS 0 raw controls; 401 light/dark contrast pairs; 155 UI a11y and 21 Playwright axe cases."
 		},
 		{
-			"check": "Settled portal catalogue visual review",
-			"result": "Six base-catalogue variants settle with zero API errors; retained820/390 captures expose overlap/clipping (#917). Static key=access yields404/concrete error, while the actual existing Access request card opens its selected form6/6 across widths/themes with empty visible text fields and zero API errors. No field entry/submission or whole-clause acceptance claimed."
+			"check": "28 October baseline: Pinned G8",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. 104/105 screen snapshots passed; one stable 46-pixel module-detail diff (https://github.com/ThomasHeinThura/ticketing/issues/908). Separate Storybook suite 1/1 passed. No baseline changes."
+		},
+		{
+			"check": "28 October baseline: Performance and bundle",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. G11/G13 local product budgets not measured (including six G13 skeleton-to-content CLS cases): calibration factor 0.527 outside [0.75,1.75] (https://github.com/ThomasHeinThura/ticketing/issues/876). G11 bundle budgets pass: agent 267.1/350 KB, work-list 332.8/350, portal 189.1/200; G12 purity pass."
+		},
+		{
+			"check": "28 October baseline: Lint and security scanners",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Clean main export exact pnpm lint:ci PASS: 4817 files, 0 errors, 265 warnings, 15 infos. Original dirty-workspace lint FAIL: 11 errors only in ignored local backup/test-results artifacts; ignore-aware diagnostic 4820 files/0 errors. Trivy 0 fixable HIGH/CRITICAL; Gitleaks 22 synthetic/false-positive historical matches triaged, scanner exit 1; pnpm audit one LOW advisory (https://github.com/ThomasHeinThura/ticketing/issues/909). Initial staged scan flagged six copies of a request-type URL identifier; public query keys normalized without an exemption, staged rescan passed with zero findings."
+		},
+		{
+			"check": "28 October baseline: Kaneo 42bb8011 comparison",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Source components/tokens compared; parity manifest tests 10/10 pass. Full same-seed 120+120 capture comparison unavailable; no pixel-parity acceptance claim."
+		},
+		{
+			"check": "28 October baseline: Local SIT matrix",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Crawl finished: 2322 required-role case records (owner/lead/member/viewer 564 each, customer 66) plus 564 supplementary instance-admin/owner case records; 564 actual workspace-admin cases blocked (#914), no duplicate cases. All 105 active route templates inventoried at 1440/820/390, light/dark. Records include138 required missing-record fixtures with no navigation. Resolved-route variants explicitly record settled content, denial, fixture absence and errors; counts are not passes. Six original portal Loading captures were rejected; separate strict-readiness customer follow-up records all66 cases, and base-catalogue screenshots retain the observed clipping/overlap finding. Same-page Chromium resizing is viewport coverage, not physical touch-device or full feature-journey acceptance. Exact manifest: docs/report/audit/l01-sit-matrix.json."
+		},
+		{
+			"check": "28 October baseline: Representative keyboard/focus",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. 36 shell-control cases executed: 30 required-role plus 6 supplementary instance-admin/owner; true workspace-admin fixture unavailable (#914). Interactive Tab targets visible, portal popup and mobile sidebar Escape/focus checks pass. Sidebar Search close-focus fails in 16 required-role + 4 supplementary desktop/tablet cases (#915); exact retained overlay contract is architecture-and-experience.md:1666. No full-screen keyboard acceptance claimed."
+		},
+		{
+			"check": "28 October baseline: Public auth and record scope",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Anonymous sign-in 12 viewport/theme cases across both hosts; six opposite-host sessions absent and protected routes redirect to sign-in. Shared saved-view 404s are expected private-record scope denials; owner-own-reachable view follow-up 6/6 settled. Exact proof/limits: docs/report/audit/l01-sit-scope.json. No reset/magic-link/provider or full invitation-token flow exercised."
+		},
+		{
+			"check": "28 October baseline: Settled portal catalogue visual review",
+			"result": "Historical PR #918 receipt on baseline 2553612ee; not rerun by this update. Six base-catalogue variants settle with zero API errors; retained820/390 captures expose overlap/clipping (#917). Static key=access yields404/concrete error, while the actual existing Access request card opens its selected form6/6 across widths/themes with empty visible text fields and zero API errors. No field entry/submission or whole-clause acceptance claimed."
 		}
 	],
 	"validation_history": [
@@ -896,6 +924,64 @@
 			"recordedAt": "2026-10-26T07:23:59.078006+00:00",
 			"check": "Superseded runtime194 checkpoint",
 			"result": "All three owned copies migrated192→194 after fully decoded rollback dumps; checked business/report counts preserved. API hashes match and all six strict-TLS readiness checks pass. Protected live database never targeted. Historical only: these deployments are now down."
+		},
+		{
+			"recorded_at": "2026-10-29",
+			"source": "PR918 audit snapshot retained",
+			"checks": [
+				{
+					"check": "Current source and per-ID index",
+					"result": "673 indexed; 19 implemented + current-test evidence, 630 current-source-inspected / untested, 15 partial, 6 external, 3 conditional/out-of-scope unverified; no per-clause browser acceptance claimed."
+				},
+				{
+					"check": "Fresh integration database",
+					"result": "PASS 478/478 files and 5789/5789 tests, PostgreSQL 18.6 Testcontainers taskdesk_test; exact owned containers cleaned. Live 62870 excluded from integration/reset/seed/fixtures; ordinary SIT auth/session and own workspace-preference operations only."
+				},
+				{
+					"check": "Typecheck / permissions / route policy / contract",
+					"result": "PASS 9/9 typecheck tasks; 118/118 permissions; route policy and oasdiff 0 unapproved changes."
+				},
+				{
+					"check": "Unit and persisted/mock e2e",
+					"result": "FAIL scoped web unit timeout (#776); e2e 164 passed, 1 dialog-locator failure (https://github.com/ThomasHeinThura/ticketing/issues/911)."
+				},
+				{
+					"check": "Raw elements / tokens / G4",
+					"result": "PASS 0 raw controls; 401 light/dark contrast pairs; 155 UI a11y and 21 Playwright axe cases."
+				},
+				{
+					"check": "Pinned G8",
+					"result": "104/105 screen snapshots passed; one stable 46-pixel module-detail diff (https://github.com/ThomasHeinThura/ticketing/issues/908). Separate Storybook suite 1/1 passed. No baseline changes."
+				},
+				{
+					"check": "Performance and bundle",
+					"result": "G11/G13 local product budgets not measured (including six G13 skeleton-to-content CLS cases): calibration factor 0.527 outside [0.75,1.75] (https://github.com/ThomasHeinThura/ticketing/issues/876). G11 bundle budgets pass: agent 267.1/350 KB, work-list 332.8/350, portal 189.1/200; G12 purity pass."
+				},
+				{
+					"check": "Lint and security scanners",
+					"result": "Clean main export exact pnpm lint:ci PASS: 4817 files, 0 errors, 265 warnings, 15 infos. Original dirty-workspace lint FAIL: 11 errors only in ignored local backup/test-results artifacts; ignore-aware diagnostic 4820 files/0 errors. Trivy 0 fixable HIGH/CRITICAL; Gitleaks 22 synthetic/false-positive historical matches triaged, scanner exit 1; pnpm audit one LOW advisory (https://github.com/ThomasHeinThura/ticketing/issues/909). Initial staged scan flagged six copies of a request-type URL identifier; public query keys normalized without an exemption, staged rescan passed with zero findings."
+				},
+				{
+					"check": "Kaneo 42bb8011 comparison",
+					"result": "Source components/tokens compared; parity manifest tests 10/10 pass. Full same-seed 120+120 capture comparison unavailable; no pixel-parity acceptance claim."
+				},
+				{
+					"check": "Local SIT matrix",
+					"result": "Crawl finished: 2322 required-role case records (owner/lead/member/viewer 564 each, customer 66) plus 564 supplementary instance-admin/owner case records; 564 actual workspace-admin cases blocked (#914), no duplicate cases. All 105 active route templates inventoried at 1440/820/390, light/dark. Records include138 required missing-record fixtures with no navigation. Resolved-route variants explicitly record settled content, denial, fixture absence and errors; counts are not passes. Six original portal Loading captures were rejected; separate strict-readiness customer follow-up records all66 cases, and base-catalogue screenshots retain the observed clipping/overlap finding. Same-page Chromium resizing is viewport coverage, not physical touch-device or full feature-journey acceptance. Exact manifest: docs/report/audit/l01-sit-matrix.json."
+				},
+				{
+					"check": "Representative keyboard/focus",
+					"result": "36 shell-control cases executed: 30 required-role plus 6 supplementary instance-admin/owner; true workspace-admin fixture unavailable (#914). Interactive Tab targets visible, portal popup and mobile sidebar Escape/focus checks pass. Sidebar Search close-focus fails in 16 required-role + 4 supplementary desktop/tablet cases (#915); exact retained overlay contract is architecture-and-experience.md:1666. No full-screen keyboard acceptance claimed."
+				},
+				{
+					"check": "Public auth and record scope",
+					"result": "Anonymous sign-in 12 viewport/theme cases across both hosts; six opposite-host sessions absent and protected routes redirect to sign-in. Shared saved-view 404s are expected private-record scope denials; owner-own-reachable view follow-up 6/6 settled. Exact proof/limits: docs/report/audit/l01-sit-scope.json. No reset/magic-link/provider or full invitation-token flow exercised."
+				},
+				{
+					"check": "Settled portal catalogue visual review",
+					"result": "Six base-catalogue variants settle with zero API errors; retained820/390 captures expose overlap/clipping (#917). Static key=access yields404/concrete error, while the actual existing Access request card opens its selected form6/6 across widths/themes with empty visible text fields and zero API errors. No field entry/submission or whole-clause acceptance claimed."
+				}
+			]
 		}
 	],
 	"crosscutting_gaps": [
@@ -907,17 +993,17 @@
 		{
 			"requirement": "G11 headroom",
 			"status": "open",
-			"finding": "Merge CI G11 miss remains L-05. Local calibration fails closed before budget measurement (#876); L-05 follows L-01 immediately."
+			"finding": "Latest hosted PR #919 at925587dc6 has valid product measurements but fails LCP2640.2/2500ms and assignment228/200ms;0/3 qualifying 15%-headroom trials. Older local calibration failure #876 remains a distinct source-bound receipt; no thresholds/calibration changed."
 		},
 		{
 			"requirement": "Security dependency",
 			"status": "open",
-			"finding": "One LOW deepmerge advisory with no patched version in current audit metadata (#909); Trivy 42 HIGH have 0 fixable HIGH/CRITICAL, Gitleaks 22 historical matches triaged as synthetic."
+			"finding": "Fresh configured high-severity dependency gate passes; one deepmerge low remains (#909). The older local image scan reports 42 HIGH with no fixed versions; this is not the latest signed release scan. All 22 raw Gitleaks history hits were classified as digests, public identifiers, fixtures, historical prose or an invalid example; zero confirmed credential exposures among those hits, no suppression changed."
 		},
 		{
 			"requirement": "Design parity and browser completeness",
 			"status": "pending",
-			"finding": "Kaneo pinned 42bb8011 source/components and historical visual reference inspected; fresh matched-seed parity prerequisite absent, so no pixel-parity acceptance. Persisted route crawl finished for available true roles, with 564 required workspace-admin cases fixture-blocked (#914), explicit record/timeout limits, and representative keyboard focus failure #915. Route attempts do not establish full feature or clause acceptance."
+			"finding": "Pinned Kaneo42bb8011 source/components and historical references were inspected; fresh matched-seed parity and whole-product acceptance remain open. Historical wider audit has564 workspace-admin cases pending replay (#914); a later126-case scoped matrix uses an approved isolated admin but does not establish broader route acceptance. Current local SIT returns502. Route attempts and scoped passes do not establish full clauses."
 		},
 		{
 			"requirement": "Shared dialog focus contract",
@@ -934,5 +1020,16 @@
 			"status": "open",
 			"finding": "Settled catalogue descriptions overlap adjacent cards at 820 px and cards/content clip at 390 px in both themes (#917). Source catalogue.tsx:547–566 composes library Button cards; the specific sizing/wrapping cause is not isolated. No application code was changed. This is a shared UI/UX responsive defect, not proof that a numbered visibility/submission clause fails."
 		}
-	]
+	],
+	"delivery_goal": {
+		"target": "2026-10-30T22:00:00+06:30",
+		"kind": "working checkpoint",
+		"status": "audit/planning review; release and full completion not established",
+		"roadmap": "../roadmap.md",
+		"issue_count": 117,
+		"source_issue_assessments": 113,
+		"new_tracking_issues": [927, 928, 929, 930],
+		"project": "https://github.com/users/ThomasHeinThura/projects/1",
+		"project_items": 148
+	}
 }

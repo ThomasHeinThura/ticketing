@@ -1,28 +1,15 @@
-# Handover to Codex — 28 October 2026
+# Handover — 29 October 2026
 
-Read [AGENTS.md](../AGENTS.md) (the rulebook), then this file, then the backlog in the [roadmap](roadmap.md). This file records the current state; it is rewritten at each handover.
+Read [AGENTS.md](../AGENTS.md), [status](status.md), the [audit](audit.md), then the [roadmap and delivery goals](roadmap.md). P0–P6 acceptance is historical; individual residual issues remain open until their exact criteria pass.
 
-## State
-
-- **Code:** P0–P6 merged to `main` on 28 Oct (squash of PR 891, merge commit `692775bf7`). Thomas accepted P0–P6 on 27 Oct with the open lows listed in the [report](report/report.html) and backlog row L-06. Phases have ended; work is the linear backlog.
-- **CI at merge:** every required check green except G11 performance budgets. Thomas approved merging past it; the misses and their numbers are backlog row L-05. Thomas added a repository-admin bypass to the `protect-main` ruleset for that merge — ask him whether it stays before relying on it.
-- **Release:** merging to `main` runs `release.yml` (multi-arch image, Trivy, SBOMs, cosign signature, GitHub attestation, GHCR `edge` and `sha-<commit>` tags). Deploy only a signed image by digest.
-- **Local SIT:** one Docker Compose deployment (`deploy/compose.testing.yml`, project `taskdesk-codex-testing`) serving `https://ticketing.localhost` and `https://portal.localhost` on 443, running the `e00ec245c` tree (same source as the merge). Private env, sessions and backups live under `~/Library/Application Support/TaskDesk/codex-sit-20261025/`; never print their values. Pre-upgrade dump: `compose-testing195/backup-20261028-pre-e00ec24/`.
-- **Technexus public SIT:** see [status](status.md) for the deployed digest and verification. Reached through the SSH proxy; hosts, keys and credentials are never written to docs, logs or PRs. Runtime directory holds only compose files and private env; no source checkout.
-- **better-auth 1.7:** the OIDC callback path is now `/api/auth/callback/custom`. Every identity provider's registered redirect URI must use it (Thomas's Entra app registration included).
-- **Live database:** `taskdesk_browser_journey_1022_test` (native PostgreSQL 62870) holds Thomas's work despite its name. Never reset, seed or run fixtures against it.
-
-## First steps for Codex
-
-1. Read AGENTS.md, this file, [status](status.md), the [roadmap](roadmap.md) backlog and [testing](testing.md).
-2. Start the local toolchain (pinned pnpm, Node 24+), confirm `pnpm typecheck`, `pnpm lint:ci` and `pnpm test` on `main`, and open both local SIT hosts.
-3. Work **L-01 (baseline full audit)** first, with a high-tier model: full code audit, full code test run, feature tests, design tests and browser tests per [testing](testing.md), against `docs/requirements-index.json` and the open GitHub issues. Its findings may re-order the backlog.
-4. Then L-02 onward in order. Thomas's named priorities: **L-03 settings split** (account settings under the user menu, project settings in the project "…" menu, workspace settings under the workspace menu, God Mode on its own URL with its own sign-in) and **L-04 Pages markdown editor** at Plane/Notion quality (official `@tiptap/*` extensions pre-approved).
-
-## Known fragile spots
-
-- G11 work-list LCP, list → detail transition and board-drag p95 are over budget on CI (L-05); task-assignment click is within 5 ms of its budget.
-- `tsc` uses ~10 GB per package; root `typecheck` runs serially to keep CI runners alive (L-02).
-- CI takes ~30 min per push; Thomas wants it faster without dropping checks (L-02). Workflow edits need his approval.
-- Portal first paint uses a fetch-only auth client (`apps/web/src/lib/portal-auth-client.ts`) to stay under the 200 KB portal bundle budget; the full better-auth client loads lazily for factors and providers.
-- Visual baselines (G8) are generated only in the pinned `mcr.microsoft.com/playwright:v1.63.0-noble` container.
+- Main: d968f7f4, successful release after Seroval fix #925; no all-required-green claim (G11 red on that PR, no main Full CI run found).
+- Active candidates: audit/planning #918, performance #919 at 925587dc6, report UI #920 stacked on #918. This audit preserves #918's requirement-by-requirement work and the original performance checkout/user edits.
+- Scope/evidence: 6,394 tracked files inventoried, 45 Markdown files audited, 113 original issues source-assessed; four added trackers (#927–#930) make 117 open. The [current ledger](report/audit/whole-product-20261029.json) separates source, tests, runtime and unknowns. Requirement counts stay 19 tested/630 source-only/15 partial/6 external/3 unverified of 673; 73 source contracts remain unverified.
+- Local SIT: existing app stopped, both local HTTPS hosts HTTP 502; supporting services up. Recover the one approved Compose deployment with data/rollback preservation before browser acceptance. Reuse existing approved identities/isolated admin; never rerun the SIT account seeder.
+- Private state/backups remain under the existing private TaskDesk support directory. The protected native database with Thomas's work must never receive fixtures. Native scratch service was unavailable during this audit; use a fresh disposable test database and remove only owned containers by exact ID.
+- Fresh typecheck, clean tracked lint and 13 gates pass; full units fail under load, focused 18 API / 12 web pass but do not clear them. Fresh full integration passed 478 files / 5,789 tests; owned PostgreSQL container c18d904f59a1 stopped and removed. Root snapshot source is 925587dc6, not a transfer of test evidence to an untested commit.
+- Urgent #927: persisted probes exposed a legacy time-entry boundary mismatch. The 23 Oct retained legacy decision requires Thomas's specific alignment/exception decision before code changes; do independent L-05 work while pending.
+- L-05: latest hosted LCP 2640.2 / 2500 ms, assignment 228 / 200 ms, 0/3 qualifying headroom trials; thresholds/calibration stay fixed. Full suite reliability and CI speed remain L-02; workflow edits need approval.
+- #928: do not run the report data rebuild until its P6/evidence loss is fixed; update the maintained data and render only. #929 is the persisted release suite; #930 is the settings entry-point split. The installer already exists; reconcile stale issue claims before rebuilding anything.
+- Target: 30 Oct 2026, 22:00 Yangon working checkpoint. Preserve the ordered backlog and complete slices; no blanket closure/merge/deploy promise. Thomas still approves main merges, public deploys and retained-contract/security semantics changes. Real Entra, external penetration and retirement/publication remain external.
+- IdP callbacks use /api/auth/callback/custom. Signed public SIT deployment evidence remains dated 28 Oct; no new public action here.
