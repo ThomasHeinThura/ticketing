@@ -95,6 +95,30 @@ const CATEGORY_ICON: Record<string, string> = {
 
 const PRIORITIES = ["low", "medium", "high", "urgent"] as const;
 
+/** Let the confirmed assignment render before refreshing related queries. Hidden pages
+ * may not receive animation frames, so refresh immediately when visibility is lost. */
+function afterAssignmentPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    if (document.hidden || typeof requestAnimationFrame !== "function") {
+      resolve();
+      return;
+    }
+    let frame: number;
+    const finish = () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      resolve();
+    };
+    const onVisibilityChange = () => {
+      if (document.hidden) finish();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(finish);
+    });
+  });
+}
+
 /** Kaneo's small muted inline message inside a popover or under a field. */
 function InlineMessage({ children }: { children: ReactNode }) {
   return (
@@ -597,6 +621,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
               name: person.name ?? t("workItems:journey.unnamedPerson"),
             }),
       );
+      await afterAssignmentPaint();
       await refresh();
     },
     onError: async (mutationError, { person }) => {

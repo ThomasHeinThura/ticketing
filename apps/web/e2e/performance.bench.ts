@@ -139,10 +139,16 @@ test.beforeAll(async ({ browser }) => {
   );
   for (const state of ["unthrottled", "throttled"] as const) {
     const batches: number[][] = [];
-    for (let index = 0; index < CALIBRATION_BATCHES; index += 1)
-      batches.push(
-        await measureCalibrationRuns(browser, state === "throttled"),
+    for (let index = 0; index < CALIBRATION_BATCHES; index += 1) {
+      const runs = await measureCalibrationRuns(browser, state === "throttled");
+      batches.push(runs);
+      // Keep diagnostic evidence even when validation rejects an unstable batch.
+      console.log(
+        `G11 calibration raw batch ${index + 1} [${state}]: runs (${runs
+          .map((value) => value.toFixed(2))
+          .join(", ")})`,
       );
+    }
     const calibration = resolveJobCalibration({ batches, state });
     jobCalibrations[state] = calibration;
     calibration.batches.forEach((batch, index) => {
