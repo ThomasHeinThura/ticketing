@@ -16,6 +16,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
@@ -458,12 +459,15 @@ function RouteComponent() {
             <div className="space-y-4 border border-border rounded-md p-4 bg-sidebar">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="space-y-0.5 min-w-0">
-                  <p className="text-sm font-medium">
+                  <Label
+                    htmlFor="workspace-new-owner"
+                    className="text-sm font-medium leading-5 sm:leading-5"
+                  >
                     {t(
                       "settings:workspaceGeneral.transferOwnership.pickerLabel",
                       { defaultValue: "New owner" },
                     )}
-                  </p>
+                  </Label>
                   <p className="text-xs text-muted-foreground">
                     {eligibleNewOwners.length === 0
                       ? t(
@@ -492,7 +496,11 @@ function RouteComponent() {
                     }}
                     disabled={eligibleNewOwners.length === 0}
                   >
-                    <SelectTrigger size="sm" className="w-full sm:w-56">
+                    <SelectTrigger
+                      id="workspace-new-owner"
+                      size="sm"
+                      className="w-full sm:w-56"
+                    >
                       <SelectValue
                         placeholder={t(
                           "settings:workspaceGeneral.transferOwnership.pickerPlaceholder",

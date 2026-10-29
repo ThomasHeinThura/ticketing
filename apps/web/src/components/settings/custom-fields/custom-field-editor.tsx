@@ -234,7 +234,7 @@ function EditorForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="cf-name">{t("customFields:fields.name")}</Label>
               <Input
@@ -435,7 +435,16 @@ function EditorForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("customFields:editor.defaultTitle")}</CardTitle>
+          <CardTitle
+            render={
+              <Label
+                htmlFor="cf-default"
+                className="text-lg leading-none sm:text-lg sm:leading-none"
+              />
+            }
+          >
+            {t("customFields:editor.defaultTitle")}
+          </CardTitle>
           <CardDescription>
             {t("customFields:editor.defaultDescription")}
           </CardDescription>
@@ -444,7 +453,7 @@ function EditorForm({
           <CustomFieldValueInput
             id="cf-default"
             field={{
-              name: draft.name,
+              name: t("customFields:editor.defaultTitle"),
               format: draft.format,
               options: effectiveOptions,
             }}

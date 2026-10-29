@@ -37,7 +37,7 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -72,10 +72,12 @@ function SectionDialog({
   section,
   workspaceId,
   onClose,
+  finalFocus,
 }: {
   section?: CustomFieldSection;
   workspaceId: string;
   onClose: () => void;
+  finalFocus: () => HTMLElement | false;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -99,7 +101,10 @@ function SectionDialog({
         if (!open && !save.isPending) onClose();
       }}
     >
-      <DialogContent closeLabel={t("common:actions.close")}>
+      <DialogContent
+        closeLabel={t("common:actions.close")}
+        finalFocus={finalFocus}
+      >
         <DialogHeader>
           <DialogTitle>
             {section
@@ -278,6 +283,7 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
   const [sectionDialog, setSectionDialog] = useState<
     "new" | CustomFieldSection | null
   >(null);
+  const sectionDialogTrigger = useRef<HTMLButtonElement | null>(null);
 
   const refresh = async () => {
     await Promise.all([
@@ -344,7 +350,10 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
               <Button
                 variant="outline"
                 disabled={!workspace}
-                onClick={() => setSectionDialog("new")}
+                onClick={(event) => {
+                  sectionDialogTrigger.current = event.currentTarget;
+                  setSectionDialog("new");
+                }}
               >
                 <Plus aria-hidden="true" />
                 {t("customFields:sections.create")}
@@ -410,15 +419,17 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
               const activeRows = fieldsIn(section.id, false);
               return (
                 <Card key={section.id}>
-                  <CardHeader>
-                    <CardTitle>{section.name}</CardTitle>
+                  <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
+                    <CardTitle className="min-w-0 break-words">
+                      {section.name}
+                    </CardTitle>
                     <CardDescription>
                       {t("customFields:list.sectionCount", {
                         count: activeRows.length,
                       })}
                     </CardDescription>
                     {canManage ? (
-                      <CardAction className="flex items-center gap-1">
+                      <CardAction className="col-start-1 row-span-1 row-start-3 flex items-center justify-self-start gap-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -463,7 +474,10 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
                           aria-label={t("customFields:sections.renameNamed", {
                             name: section.name,
                           })}
-                          onClick={() => setSectionDialog(section)}
+                          onClick={(event) => {
+                            sectionDialogTrigger.current = event.currentTarget;
+                            setSectionDialog(section);
+                          }}
                         >
                           <Pencil />
                         </Button>
@@ -555,6 +569,10 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
           section={sectionDialog === "new" ? undefined : sectionDialog}
           workspaceId={workspace.id}
           onClose={() => setSectionDialog(null)}
+          finalFocus={() => {
+            const target = sectionDialogTrigger.current;
+            return target?.isConnected && !target.disabled ? target : false;
+          }}
         />
       ) : null}
     </>
