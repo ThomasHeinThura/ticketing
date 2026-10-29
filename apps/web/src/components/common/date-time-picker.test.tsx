@@ -40,6 +40,9 @@ describe("DateTimePicker", () => {
     const { onChange } = setup();
     fireEvent.click(screen.getByRole("button", { name: "Review at" }));
     expect(screen.getByRole("grid")).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "Review at" }),
+    ).toBeInTheDocument();
     expect(document.querySelector('input[type="datetime-local"]')).toBeNull();
     expect(document.querySelector("select")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
