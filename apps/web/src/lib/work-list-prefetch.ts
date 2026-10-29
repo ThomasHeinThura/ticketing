@@ -42,20 +42,22 @@ export function prefetchWorkListData(
   const board = search.layout === "board" ? boardRead(search) : undefined;
   if (search.layout !== "list" && search.layout !== "table" && !board) return;
   void (async () => {
-    const projectsPromise = queryClient.ensureQueryData({
-      queryKey: ["projects", workspaceId, undefined, undefined],
-      queryFn: () =>
-        getProjects({
-          workspaceId,
-          includeArchived: undefined,
-          includeDeleted: undefined,
-        }),
-    });
-    void queryClient.ensureQueryData({
-      queryKey: ["workspaces"],
-      queryFn: getWorkspaces,
-    });
-    const projects = await projectsPromise;
+    const [workspaces, projects] = await Promise.all([
+      queryClient.ensureQueryData({
+        queryKey: ["workspaces"],
+        queryFn: getWorkspaces,
+      }),
+      queryClient.ensureQueryData({
+        queryKey: ["projects", workspaceId, undefined, undefined],
+        queryFn: () =>
+          getProjects({
+            workspaceId,
+            includeArchived: undefined,
+            includeDeleted: undefined,
+          }),
+      }),
+    ]);
+    if (!workspaces?.some((workspace) => workspace.id === workspaceId)) return;
     const project = projects?.find(
       (candidate) => candidate.slug === projectKey,
     );

@@ -46,7 +46,6 @@ import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { afterWorkListPreview } from "@/lib/after-work-list-preview";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { normalizeCanonicalWorkItemSelection } from "@/lib/normalize-canonical-work-item-selection";
-import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 import { prefetchWorkListData } from "@/lib/work-list-prefetch";
 
 type CreateDialogShellComponent =
@@ -392,21 +391,18 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const [canBulkAct, setCanBulkAct] = useState(false);
   const canBulkAssign = canBulkAct && selectionMode;
 
-  const { session } = Route.useRouteContext();
-  const sessionWorkspaceId = getActiveOrganizationId(session);
   const {
     data: workspace,
     isLoading: isWorkspaceLoading,
     isError: isWorkspaceError,
   } = useActiveWorkspace();
 
-  const targetWorkspaceId = workspace?.id ?? sessionWorkspaceId ?? "";
   const {
     data: projects,
     isLoading: isProjectsLoading,
     isError: isProjectsError,
     refetch: refetchProjects,
-  } = useGetProjects({ workspaceId: targetWorkspaceId });
+  } = useGetProjects({ workspaceId: workspace?.id ?? "" });
 
   const project = projects?.find((candidate) => candidate.slug === projectKey);
   const groupingFieldsQuery = useQuery({
@@ -1075,7 +1071,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                     </Button>
                   ))}
                 </fieldset>
-                {showSecondaryControls && project ? (
+                {project ? (
                   <Suspense fallback={<WorkItemCreateTriggerPlaceholder />}>
                     <WorkItemCreateTrigger
                       workspaceId={project.workspaceId}
@@ -1085,7 +1081,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                       onClick={() => openCreateDialog()}
                     />
                   </Suspense>
-                ) : project || isWorkspaceLoading || isProjectsLoading ? (
+                ) : isWorkspaceLoading || isProjectsLoading ? (
                   <WorkItemCreateTriggerPlaceholder />
                 ) : null}
               </div>
