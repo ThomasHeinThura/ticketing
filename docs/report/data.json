@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-29T14:15:00.690Z",
+	"generated": "2026-10-29T15:12:22.947Z",
 	"source": "673 clauses; PR #918 per-ID evidence retained: 19 tested, 630 source-only, 15 partial, 6 external-blocked and 3 unverified. The 29 October repository audit adds issue/source/check status without promoting whole-clause acceptance. All 73 indexed contracts remain unverified.",
 	"phases": [
 		{
@@ -600,7 +600,7 @@
 		"Decided 29 Oct (Thomas): execute the audited plan with subagents as needed; align legacy time-entry mutations with canonical own/any/create capabilities and project/workspace tracking flags (#927). Performance thresholds, calibration and fixture/sample/retry rules remain unchanged. Main merge and public deployment still need approval."
 	],
 	"next": "Working checkpoint: 30 October 2026, 22:00 Yangon. Finish scoped verification and CI for #931–#934; identify and reduce the measured LCP mount cost in #919 without changing budgets or calibration. L-01/L-05 stay open; finish L-02, then L-03a release journeys (#929), scoped settings (#930), and shared Pages/KB editor (#56). Thomas approves main merges and public deployment. Close issues only after accepted, merged evidence.",
-	"status": "29 October execution: approved legacy boundary #931 passes 175 targeted integration tests. Report rebuild #932 retains P0–P6 and evidence; its six regressions now join required CI-script checks (1,380 passed, 20 existing skips). SMTP #933 passes 59 tests; corrected root candidate #934 passes 7,197. Local SIT 9ed58d9bf is healthy on both HTTPS hosts after verified backups, with six canonical time-screen variants passing. Hosted #919 assignment passes at 191.4/200 ms, while LCP fails at 2577.8/2500 and headroom remains unmet. These are unmerged candidates. All 673 clause classifications and historical acceptance remain unchanged.",
+	"status": "Status at 21:42 Yangon, 29 October: four fix PRs are published and independently reviewed. Targeted security integration passes 175 tests; corrected root candidate passes 7,197; SMTP passes 59; report regression and CI-script checks pass locally. Local SIT is healthy on both HTTPS hosts after verified backups. G11 remains the release blocker: assignment passes 191.4/200 ms on #919, but LCP fails at 2577.8/2500 and headroom is unmet. #932 CI and the fresh full integration run remain in progress. All fixes are draft and unmerged; the 117 issues and 673 clause classifications are not bulk-promoted or closed.",
 	"validation_runs": [
 		{
 			"check": "29 October fresh typecheck and lint",
@@ -689,6 +689,10 @@
 		{
 			"check": "29 October execution: published fix candidates and current SIT",
 			"result": "#931 at 9ed58d9bf: nine fresh PostgreSQL 18 integration files / 175 tests, 118 permission tests, route policy, API contract and independent Sol reviews pass; CI type-helper/archive-admission findings and the positive soft-delete fixture were corrected. A fresh full integration run is in progress. Current SIT is healthy, both HTTPS hosts return 200, verified backups and startup entity counts are preserved. Six admin width/theme keyboard/reload checks pass. Native Time create (201), edit (200) and reload succeeded in the approved isolated fixture at f275; that record persists after the update. No existing record was overwritten. #932 adds six report regressions to required CI scripts: 1,380 passed, 20 existing skips, zero failed. #933 passes 59 email tests; #934 passes 7,197 root tests across eight packages in 2m27s. Independent reviews pass. Hosted G11 at ff7: LCP 2577.8 fails; assignment 191.4 passes. These scoped receipts do not establish all required CI or full role acceptance, and do not promote clause counts."
+		},
+		{
+			"check": "29 October, 21:42 Yangon: current CI snapshot",
+			"result": "29 Oct, 21:42 Yangon: audit #918, performance #919, security #931, SMTP #933 and reliability #934 have G11 as the only failed reported check. Report #932 has 15 passing and seven pending checks in this snapshot. All remain draft and unmerged. The fresh full local integration run is still running. Source heads: #918 965353c53; #919 ff7cf8e92; #931 ed3063594; #932 c7a04c2b5; #933 930841f54; #934 ab7a92207."
 		}
 	],
 	"validation_history": [
