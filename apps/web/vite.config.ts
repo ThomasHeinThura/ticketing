@@ -377,7 +377,7 @@ const WORK_ROUTE_PAINT_ROOT =
  * its own small request again.
  */
 const WORK_ROUTE_PAINT_BARREL_MEMBERS =
-  /\/(?:lucide-react\/dist\/esm\/icons\/(?:archive|calendar|calendar-clock|calendar-x|circle|circle-dashed|circle-dot|funnel|panels-top-left|rows-3|table-2)\.mjs|packages\/ui\/src\/components\/alert\.tsx)$/u;
+  /\/(?:lucide-react\/dist\/esm\/icons\/(?:archive|calendar|calendar-clock|calendar-x|check-circle-2|chevron-down|chevron-right|chevron-up|chevrons-up|circle|circle-alert|circle-dashed|circle-dot|funnel|minus|panels-top-left|rows-3|table-2)\.mjs|packages\/ui\/src\/components\/(?:alert|button)\.tsx)$/u;
 
 /**
  * The `work-route` chunk: modules the work route component, the list panel or its preview
