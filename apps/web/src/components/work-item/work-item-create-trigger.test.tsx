@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -93,5 +101,28 @@ describe("WorkItemCreateTrigger", () => {
     expect(trigger).toBeDisabled();
     fireEvent.click(trigger);
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("preserves the dialog trigger ref and keyboard focus through the library tooltip", async () => {
+    mocks.permission = { canCreate: true, checking: false };
+    const buttonRef = createRef<HTMLButtonElement>();
+    render(
+      <WorkItemCreateTrigger
+        workspaceId="workspace-target"
+        projectId="project-target"
+        onClick={vi.fn()}
+        buttonRef={buttonRef}
+      />,
+    );
+    const trigger = screen.getByTestId("create-work-item-trigger");
+    expect(buttonRef.current).toBe(trigger);
+    expect(trigger).not.toHaveAttribute("title");
+    act(() => trigger.focus());
+    await screen.findByRole("tooltip");
+    fireEvent.keyDown(trigger, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
+    );
+    expect(trigger).toHaveFocus();
   });
 });
