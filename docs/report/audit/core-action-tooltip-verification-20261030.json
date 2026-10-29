@@ -1,0 +1,3519 @@
+{
+	"schemaVersion": 1,
+	"recordedAt": "2026-10-29T17:50:12.933Z",
+	"issue": 936,
+	"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+	"baseline": {
+		"main": "d3ce016e0582b9a75b4619756b9598da9723fa73",
+		"runtimeSource": "37406d21514d48b7902bd094d974ca13c2835a43",
+		"productionPathsEquivalent": true
+	},
+	"scope": "Core toolbar and list/board column action tooltips; sidebar Projects collapsible heading; retained original column actions covered by unit tests only.",
+	"summary": {
+		"beforeAdminCases": 12,
+		"afterCases": 36,
+		"passed": 36,
+		"seriousCriticalAxeViolations": 0
+	},
+	"checks": {
+		"rootUnits": {
+			"passed": 7207,
+			"packages": 8,
+			"duration": "3m54.167s"
+		},
+		"focusedTests": 89,
+		"rootTypecheck": "9 successful tasks",
+		"rawElements": 0,
+		"contrastPairs": 401,
+		"permissions": 118,
+		"libraryAccessibility": 155,
+		"routePolicy": "pass",
+		"contract": "pass, existing main lint baseline retained",
+		"bundlePurity": "pass",
+		"lint": "pass with existing warnings",
+		"dependencyAudit": {
+			"high": 0,
+			"critical": 0,
+			"moderate": 0,
+			"low": 1,
+			"existingUnfixed": "deepmerge"
+		},
+		"imageTrivy": {
+			"critical": 0,
+			"high": 42,
+			"fixableHighCritical": 0
+		},
+		"independentReview": "Terra final source, contrast-manifest delta and scoped browser evidence: no high/medium findings; hosted CI remains pending",
+		"g4Hosted": "pending",
+		"g8Hosted": "pending",
+		"visualBaselinesChanged": [],
+		"localSmoke": {
+			"test": "e2e/task-properties-board-smoke.spec.ts",
+			"passed": 1,
+			"viewports": [1280, 390],
+			"durationSeconds": 12.2,
+			"scope": "status/assignment fixture writes, help,200cards,geometry,legacy redirects,createcancel/focus,keyboarddrag/rank; API-backed fixture, not persisted SIT"
+		},
+		"hostedInitial": {
+			"head": "5cd6bc84e4192d5f6204b2f3c9e34c108fa43e29",
+			"g4": "pass",
+			"g8": "pass",
+			"e2e": "164 passed;1 failed on outdated exact button name; fixed and full smoke passed locally; fresh CI pending"
+		},
+		"g11": {
+			"head": "5cd6bc84e4192d5f6204b2f3c9e34c108fa43e29",
+			"job": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40925389071/job/123629393256",
+			"lcp": 2955.3,
+			"listToDetail": 613.1,
+			"assignment": 178.5,
+			"dragP95": 16.8,
+			"units": "ms",
+			"status": "report-only; LCP/detail/create interaction fail budgets; existing harness unchanged",
+			"createInteraction": 279.3
+		}
+	},
+	"dataSafety": {
+		"persistedApi": true,
+		"mockData": false,
+		"customerRecordsChanged": false,
+		"seederRun": false,
+		"protectedDatabaseTouched": false
+	},
+	"limits": [
+		"This is a scoped fix, not full-product visual acceptance.",
+		"Admin has twelve matched before/after cases; owner and member have twelve additional after cases each.",
+		"Mobile sidebar is hidden, so Projects collapse is checked at desktop/tablet only.",
+		"Other native titles and controls remain outside this slice.",
+		"Dialog open/cancel is verified without submissions; target-state callback and drag/drop preservation are covered by focused unit tests.",
+		"Two failed browser instrumentation probes were retained privately and diagnosed before correction; no source change, added sleep, retry or timeout increase.",
+		"Hosted checks remain required before merge; G11 is report-only under standing authority."
+	],
+	"before": [
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "light",
+			"layout": "list",
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "SPAN",
+					"title": "Projects",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-1440-light-list.png"
+		},
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "light",
+			"layout": "board",
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "SPAN",
+					"title": "Projects",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Backlog"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Approved"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: To Do"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: In Progress"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Done"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Cancelled"
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-1440-light-board.png"
+		},
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "dark",
+			"layout": "list",
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "SPAN",
+					"title": "Projects",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-1440-dark-list.png"
+		},
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "dark",
+			"layout": "board",
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "SPAN",
+					"title": "Projects",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Backlog"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Approved"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: To Do"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: In Progress"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Done"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Cancelled"
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-1440-dark-board.png"
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "light",
+			"layout": "list",
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "SPAN",
+					"title": "Projects",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-820-light-list.png"
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "light",
+			"layout": "board",
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "SPAN",
+					"title": "Projects",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Backlog"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Approved"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: To Do"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: In Progress"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Done"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Cancelled"
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-820-light-board.png"
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "dark",
+			"layout": "list",
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "SPAN",
+					"title": "Projects",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-820-dark-list.png"
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "dark",
+			"layout": "board",
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "SPAN",
+					"title": "Projects",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Backlog"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Approved"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: To Do"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: In Progress"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Done"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Cancelled"
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-820-dark-board.png"
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "light",
+			"layout": "list",
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-390-light-list.png"
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "light",
+			"layout": "board",
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Backlog"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Approved"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: To Do"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: In Progress"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Done"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Cancelled"
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-390-light-board.png"
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "dark",
+			"layout": "list",
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": null
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-390-dark-list.png"
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "dark",
+			"layout": "board",
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"native": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Work item",
+					"label": null
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Backlog"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Approved"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: To Do"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: In Progress"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Done"
+				},
+				{
+					"tag": "BUTTON",
+					"title": "Add Work item",
+					"label": "Add Work item: Cancelled"
+				}
+			],
+			"screenshot": "docs/report/screens/20261030-core-tooltip-before-admin-390-dark-board.png"
+		}
+	],
+	"after": [
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "light",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-1440-light-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "light",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-1440-light-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "dark",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-1440-dark-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 1440,
+			"theme": "dark",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-1440-dark-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "light",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-820-light-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "light",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-820-light-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "dark",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-820-dark-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 820,
+			"theme": "dark",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-820-dark-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "light",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-390-light-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "light",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-390-light-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "dark",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-390-dark-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "admin",
+			"width": 390,
+			"theme": "dark",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/LQA/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-admin-390-dark-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 1440,
+			"theme": "light",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-1440-light-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 1440,
+			"theme": "light",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-1440-light-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 1440,
+			"theme": "dark",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-1440-dark-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 1440,
+			"theme": "dark",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-1440-dark-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 820,
+			"theme": "light",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-820-light-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 820,
+			"theme": "light",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-820-light-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 820,
+			"theme": "dark",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-820-dark-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 820,
+			"theme": "dark",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-820-dark-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 390,
+			"theme": "light",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-390-light-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 390,
+			"theme": "light",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-390-light-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 390,
+			"theme": "dark",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-390-dark-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "owner",
+			"width": 390,
+			"theme": "dark",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/CCY/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-owner-390-dark-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 1440,
+			"theme": "light",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-1440-light-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 1440,
+			"theme": "light",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-1440-light-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Blocked by open Work items"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 1440,
+			"theme": "dark",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-1440-dark-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 1440,
+			"theme": "dark",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-1440-dark-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Blocked by open Work items"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 820,
+			"theme": "light",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-820-light-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 820,
+			"theme": "light",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-820-light-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Blocked by open Work items"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 820,
+			"theme": "dark",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-820-dark-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 820,
+			"theme": "dark",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "projects heading",
+					"text": "Projects",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-820-dark-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": true,
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Blocked by open Work items"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 390,
+			"theme": "light",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-390-light-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 390,
+			"theme": "light",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-390-light-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Blocked by open Work items"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 390,
+			"theme": "dark",
+			"layout": "list",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=list&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-390-dark-list.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		},
+		{
+			"role": "member",
+			"width": 390,
+			"theme": "dark",
+			"layout": "board",
+			"source": "834728581794c6e76f69f94e95dbc07b0379a76c",
+			"status": "passed",
+			"persistedMutation": false,
+			"url": "/agent/projects/HELP/work?layout=board&sort=key&dir=asc",
+			"tooltips": [
+				{
+					"name": "toolbar create",
+					"text": "Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				},
+				{
+					"name": "column create",
+					"text": "Add Work item",
+					"describedByActualTrigger": true,
+					"focusRetained": true,
+					"escapeClosed": true
+				}
+			],
+			"toolbarCreateCancelled": true,
+			"screenshot": "docs/report/screens/20261030-core-tooltip-after-member-390-dark-board.png",
+			"columnCreateOpenedAndCancelled": true,
+			"targetStateAccessibleName": "Backlog",
+			"projectCollapsePreserved": "sidebar not visible at this viewport",
+			"axe": [],
+			"overflow": false,
+			"remainingNativeTitles": [
+				{
+					"tag": "BUTTON",
+					"title": "Ascending"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Local verification label"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Change window"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Incident"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Blocked by open Work items"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Customer follow-up"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Breached"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "DIV",
+					"title": "Unassigned"
+				},
+				{
+					"tag": "SPAN",
+					"title": "Access"
+				},
+				{
+					"tag": "SPAN",
+					"title": "SLA resolution: Missed"
+				}
+			],
+			"nativeDialogs": 0
+		}
+	]
+}

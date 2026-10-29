@@ -93,6 +93,10 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ workspaceId: "workspace-1", projectId: "project-1" }),
 }));
 
+vi.mock("@/components/common/action-tooltip", () => ({
+  ActionTooltip: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 vi.mock("@taskdesk/ui", () => {
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
