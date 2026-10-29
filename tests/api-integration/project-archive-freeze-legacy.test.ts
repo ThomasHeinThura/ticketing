@@ -20,6 +20,7 @@ import {
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
+import { setTimeFlags } from "./helpers/p5-time";
 import {
   approvePendingDeletion,
   ensureAgentSession,
@@ -1281,6 +1282,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     });
     await grantProjectManageAccess(member.user.id, project.id);
     await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
+    await setTimeFlags(member.workspace.id);
     const task = await createLegacyTask(project.id, columns.todo.id, 1);
     const timeEntry = requireRow(
       await db
@@ -1320,10 +1322,13 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       .update(schema.projectTable)
       .set({ archivedAt: new Date() })
       .where(eq(schema.projectTable.id, project.id));
-    for (const send of [createInvalidInterval, updateInvalidInterval]) {
+    for (const [send, expectedMessage] of [
+      [createInvalidInterval, "Task not found"],
+      [updateInvalidInterval, "Time entry not found"],
+    ] as const) {
       const archivedResponse = await send();
       expect(archivedResponse.status).toBe(404);
-      expect(await archivedResponse.text()).toBe("Task not found");
+      expect(await archivedResponse.text()).toBe(expectedMessage);
     }
 
     await db

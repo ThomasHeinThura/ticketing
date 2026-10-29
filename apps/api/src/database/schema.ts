@@ -1438,8 +1438,9 @@ export const taskReminderSentTable = pgTable(
 // Kaneo's original legacy time-entry table, renamed `task_time_entry` (SQL name and index/constraint
 // names only -- migration 0149, the 0066 `task_activity` precedent) so the canonical work-item
 // `time_entry` (schema-p5-time.ts: integer minutes, person, activity, billable, snapshotted rate)
-// can use the name `time_entry`. Columns, data and the legacy `/api/time-entry` routes are
-// unchanged: still keyed on `task_id`/`user_id`, stored as seconds between start and end.
+// can use the name `time_entry`. Columns and data remain keyed on `task_id`/`user_id`,
+// stored as seconds between start and end. Legacy writes now use canonical time-entry
+// capabilities, persisted ownership and the project time-tracking feature gate (29 Oct 2026).
 export const taskTimeEntryTable = pgTable(
   "task_time_entry",
   {

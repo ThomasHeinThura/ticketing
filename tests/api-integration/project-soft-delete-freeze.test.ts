@@ -32,6 +32,7 @@ import {
   grantProjectManageAccess,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
+import { setTimeFlags } from "./helpers/p5-time";
 
 function jsonRequest(
   path: string,
@@ -828,6 +829,7 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
       });
       await grantProjectManageAccess(member.user.id, project.id);
       await grantWorkItemProjectAccess(member.user.id, project.id);
+      await setTimeFlags(member.workspace.id);
       mockAuthenticatedSession(member.user);
 
       const [task] = await db

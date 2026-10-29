@@ -27,6 +27,7 @@ import {
   grantProjectAccessToWorkspaceMembers,
   requireRow,
 } from "./helpers/fixtures";
+import { setTimeFlags } from "./helpers/p5-time";
 
 async function world() {
   const member = await createWorkspaceMember({ role: "owner" });
@@ -399,6 +400,7 @@ describe("API integration: time entries through the repository", () => {
 
   it("lists by start time with the author's name; update keeps the description unless given", async () => {
     const { member, seed } = await world();
+    await setTimeFlags(member.workspace.id);
     const task = await seed(1, "Tracked");
     mockAuthenticatedSession(member.user);
 

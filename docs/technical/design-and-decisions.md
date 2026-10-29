@@ -3489,6 +3489,12 @@ Recorded in chat by Thomas, or taken by the coordinator under his standing instr
 - Application source comes only from Kaneo or TaskDesk v1. Historical licensing discussions of broader legal compatibility are not permission to copy other applications. Preserve AGPL product/source obligations, Kaneo MIT notices, compatible library licenses and actual source/image provenance; new dependencies still need Thomas's approval. Marketplace listing is deferred; BYOL/contract is preferred, and `license.none` never phones home.
 - Preserved source descriptions of file presence, tests, triggers, engines or proposed implementation do not establish today's code or runtime. Current registered identifiers and retained owner choices control implementation; report unresolved mismatches honestly. This document does not accept ADR 0015 or claim any database migration, token gate, browser journey, restore or external review ran.
 
+## Legacy time-entry authorization alignment — 29 October 2026
+
+Thomas approved the execution plan and the specific canonical ownership/feature-gate alignment in [issue #927](https://github.com/ThomasHeinThura/ticketing/issues/927). Legacy time-entry mutations must enforce canonical time-entry capabilities, current project/workspace feature gates and authoritative ownership, including API-key restrictions and transactional rechecks. Members may update only their own entries unless their canonical authority grants update-any. Existing tenant/project reach, live-project checks, CSRF, audit and response compatibility remain in force. Existing records and storage are preserved; no data rewrite is approved.
+
+This updates the earlier P5 compatibility choice only for the approved authorization and feature-gate behavior; it does not authorize broader read access, new owner predicates, a new security model, threshold/calibration changes, main merges or public deployment. Those remain separate approval boundaries.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.
