@@ -33,6 +33,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
+import { DateField } from "@/components/time-tracking/date-field";
 import {
   createRelease,
   type ReleaseStatus,
@@ -187,12 +188,14 @@ function CreateReleaseDialog({
                 <Label htmlFor="release-date">
                   {t("releases.fields.plannedDate")}
                 </Label>
-                <Input
+                <DateField
                   id="release-date"
-                  type="date"
+                  label={t("releases.fields.plannedDate")}
+                  placeholder={t("customFields:value.notSet")}
+                  clearLabel={t("customFields:value.clear")}
                   value={plannedDate}
                   disabled={mutation.isPending}
-                  onChange={(event) => setPlannedDate(event.target.value)}
+                  onChange={setPlannedDate}
                 />
               </div>
             </div>

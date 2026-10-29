@@ -15,6 +15,7 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DateTimePicker } from "@/components/common/date-time-picker";
 import {
   createFreeze,
   type Freeze,
@@ -130,26 +131,24 @@ export function FreezeDialog({
                   <Label htmlFor="freeze-start">
                     {t("freezes.fields.startsAt")}
                   </Label>
-                  <Input
+                  <DateTimePicker
                     id="freeze-start"
-                    type="datetime-local"
-                    required
-                    value={startsAt}
+                    label={t("freezes.fields.startsAt")}
+                    value={start}
                     disabled={save.isPending}
-                    onChange={(event) => setStartsAt(event.target.value)}
+                    onChange={(value) => setStartsAt(toDateTimeLocal(value))}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="freeze-end">
                     {t("freezes.fields.endsAt")}
                   </Label>
-                  <Input
+                  <DateTimePicker
                     id="freeze-end"
-                    type="datetime-local"
-                    required
-                    value={endsAt}
+                    label={t("freezes.fields.endsAt")}
+                    value={end}
                     disabled={save.isPending}
-                    onChange={(event) => setEndsAt(event.target.value)}
+                    onChange={(value) => setEndsAt(toDateTimeLocal(value))}
                   />
                 </div>
               </div>
