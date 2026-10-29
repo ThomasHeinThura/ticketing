@@ -6,6 +6,7 @@ import db from "../database";
 import type { Executor } from "../database/executor";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
 import {
+  personTable,
   projectTable,
   taskTable,
   taskTimeEntryTable,
@@ -50,6 +51,7 @@ export async function lockTaskAndAssertProjectLive(
     .select({
       id: taskTable.id,
       projectId: taskTable.projectId,
+      workspaceId: projectTable.workspaceId,
       userId: taskTable.userId,
       title: taskTable.title,
     })
@@ -197,6 +199,59 @@ export async function findTimeEntryById(
       ),
     );
   return timeEntry;
+}
+
+/**
+ * The legacy row stores a better-auth user id, whereas the retained policy's owner predicate
+ * compares person ids. Resolve that link from persisted rows instead of treating user_id as a
+ * person id or accepting a caller-supplied owner. A detached user has no own branch.
+ */
+export async function findTimeEntryOwnerFacts(
+  id: string,
+  executor: Executor = db,
+) {
+  const [row] = await executor
+    .select({
+      workspaceId: projectTable.workspaceId,
+      projectId: projectTable.id,
+      ownerPersonId: personTable.id,
+    })
+    .from(taskTimeEntryTable)
+    .innerJoin(taskTable, eq(taskTable.id, taskTimeEntryTable.taskId))
+    .innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
+    .leftJoin(personTable, eq(personTable.userId, taskTimeEntryTable.userId))
+    .where(eq(taskTimeEntryTable.id, id))
+    .limit(1);
+  return row;
+}
+
+/** Lock the exact legacy entry after its task/project lock, then re-read its owner. */
+export async function lockTimeEntryForUpdate(
+  executor: Executor,
+  identity: ResolvedIdentity,
+  id: string,
+  taskId: string,
+) {
+  const [row] = await executor
+    .select({
+      id: taskTimeEntryTable.id,
+      taskId: taskTimeEntryTable.taskId,
+      userId: taskTimeEntryTable.userId,
+      endTime: taskTimeEntryTable.endTime,
+      ownerPersonId: personTable.id,
+    })
+    .from(taskTimeEntryTable)
+    .leftJoin(personTable, eq(personTable.userId, taskTimeEntryTable.userId))
+    .where(
+      and(
+        eq(taskTimeEntryTable.id, id),
+        eq(taskTimeEntryTable.taskId, taskId),
+        taskReach(identity, taskTimeEntryTable.taskId, executor, true),
+      ),
+    )
+    .for("update", { of: taskTimeEntryTable })
+    .limit(1);
+  return row;
 }
 
 /** Return only the mutation target facts before locking its task and project. */

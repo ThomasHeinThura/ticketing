@@ -506,6 +506,45 @@ async function loadAuthoritativeEvidence(
       ...evidence,
       row: { ...evidence.row, personId: timeEntry.personId },
     };
+  } else if (
+    policy.orOwner?.predicate === "row.person_id === identity.personId" &&
+    entry.source === "apps/api/src/time-entry/policy.ts"
+  ) {
+    // The legacy table owns entries by better-auth user_id. Map its persisted owner to
+    // person.id for the retained predicate, independently of the route middleware's facts.
+    const entryId = c.req.param("id");
+    if (!entryId) refuse(500);
+    const [legacyEntry] = await db
+      .select({
+        workspaceId: schema.projectTable.workspaceId,
+        projectId: schema.projectTable.id,
+        personId: schema.personTable.id,
+      })
+      .from(schema.taskTimeEntryTable)
+      .innerJoin(
+        schema.taskTable,
+        eq(schema.taskTable.id, schema.taskTimeEntryTable.taskId),
+      )
+      .innerJoin(
+        schema.projectTable,
+        eq(schema.projectTable.id, schema.taskTable.projectId),
+      )
+      .leftJoin(
+        schema.personTable,
+        eq(schema.personTable.userId, schema.taskTimeEntryTable.userId),
+      )
+      .where(eq(schema.taskTimeEntryTable.id, entryId))
+      .limit(1);
+    if (
+      !legacyEntry ||
+      legacyEntry.workspaceId !== evidence.workspaceId ||
+      legacyEntry.projectId !== evidence.projectId
+    )
+      refuse(404);
+    evidence = {
+      ...evidence,
+      row: { ...evidence.row, personId: legacyEntry.personId },
+    };
   } else if (policy.orOwner) {
     if (policy.orOwner.predicate === "row.person_id === identity.personId") {
       const commentId = c.req.param("id");

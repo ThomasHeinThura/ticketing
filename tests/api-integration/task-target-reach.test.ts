@@ -19,6 +19,7 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
+import { setTimeFlags } from "./helpers/p5-time";
 import {
   approvePendingDeletion,
   ensureAgentSession,
@@ -300,6 +301,7 @@ describe("API integration: project reach on task-targeting routes (#720)", () =>
 
   async function arrange() {
     const world = await setupProjectWorld();
+    await setTimeFlags(world.workspaceId);
     const { app } = createApp();
     const ids = await seed(world);
     // Deletion routes record pending actions bound to the caller's live session row.
