@@ -936,62 +936,62 @@
 		}
 	],
 	"roadmap": {
-		"updated": "2026-10-29T02:27:42.418490+00:00",
+		"updated": "2026-10-29T02:40:05.402540+00:00",
 		"goal": "Make the work list and detail transition meet unchanged G11 budgets with at least 15% headroom in three CI runs. Diagnose in the application; retain the full 200-card board and existing interactions.",
-		"note": "G11 fails the LCP budget; detail and board drag now pass their budgets. LCP, detail and assignment miss 15% headroom, so this run does not qualify. Zero of three qualifying runs; no causal improvement is claimed.",
+		"note": "The new candidate is published and hosted G11 results are pending. Zero of three qualifying headroom runs; the previous hosted candidate failed its LCP budget.",
 		"pr": "https://github.com/ThomasHeinThura/ticketing/pull/919",
-		"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40792945815/job/123182354592",
+		"ci": "https://github.com/ThomasHeinThura/ticketing/pull/919/checks",
 		"metrics": [
 			{
 				"name": "Work-list LCP",
-				"measured": "2692.4 ms",
+				"measured": "Pending",
 				"budget": "< 2500 ms",
 				"target": "≤ 2125 ms",
-				"result": "Fail",
-				"headroom": "Fail"
+				"result": "Pending",
+				"headroom": "Unproven"
 			},
 			{
 				"name": "List to detail",
-				"measured": "261.1 ms",
+				"measured": "Pending",
 				"budget": "< 300 ms",
 				"target": "≤ 255 ms",
-				"result": "Pass",
-				"headroom": "Fail"
+				"result": "Pending",
+				"headroom": "Unproven"
 			},
 			{
 				"name": "Board drag p95",
-				"measured": "16.8 ms",
+				"measured": "Pending",
 				"budget": "< 20 ms",
 				"target": "≤ 17 ms",
-				"result": "Pass",
-				"headroom": "Pass"
+				"result": "Pending",
+				"headroom": "Unproven"
 			},
 			{
 				"name": "Board render",
-				"measured": "394.7 ms",
+				"measured": "Pending",
 				"budget": "< 500 ms",
 				"target": "≤ 425 ms",
-				"result": "Pass",
-				"headroom": "Pass"
+				"result": "Pending",
+				"headroom": "Unproven"
 			},
 			{
 				"name": "Assignment click",
-				"measured": "187.6 ms",
+				"measured": "Pending",
 				"budget": "< 200 ms",
 				"target": "≤ 170 ms",
-				"result": "Pass",
-				"headroom": "Fail"
+				"result": "Pending",
+				"headroom": "Unproven"
 			},
 			{
 				"name": "State click",
-				"measured": "167.7 ms",
+				"measured": "Pending",
 				"budget": "< 200 ms",
 				"target": "≤ 170 ms",
-				"result": "Pass",
-				"headroom": "Pass"
+				"result": "Pending",
+				"headroom": "Unproven"
 			}
 		],
-		"validation": "Hosted G11: 21 passed, one failed in 9.0 minutes; LCP 2692.4 ms exceeded the unchanged 2500 ms budget. All 25 other checks passed, including static, dependency audit, unit, integration, G4, G8 and E2E. Two non-gating diagnostics passed in 54 seconds; all five source-bound windows completed. Previous hosted results are retained below.",
+		"validation": "Hosted checks are pending; see the PR checks for their current state. The completed d174 hosted results are retained below.",
 		"items": [
 			{
 				"id": "L-01",
@@ -1074,10 +1074,67 @@
 				"done": "Thomas records Entra validation, penetration test and other external decisions."
 			}
 		],
-		"testedCommit": "d174057ee73b06f1f3b296880adfb166450985d2",
-		"measurement": "Complete hosted Chromium G11 run with valid calibration. Harness-reported values are CPU-normalized where applicable; board-drag p95 is raw. LCP and assignment use the second judged set.",
-		"localVerification": "Combined candidate d174057ee passed 7212 unit tests, nine typecheck tasks, frozen install, full build, bundle/purity and dependency audit (zero HIGH/MODERATE; one existing LOW). The earlier e17afe535 with seroval 1.6.4 passed 168 E2E tests after correcting two failures (#922/#923); no full E2E is claimed on the updated lockfile. The 947 combined agent JavaScript/CSS assets match the preceding E2E-tested agent build; both were compared with the frozen private 4M build. Private uncalibrated three-round medians improved LCP (3792 → 3608 ms) but worsened route timing (268.3 → 291 ms); these do not establish performance acceptance. Local SIT remains on 01c47cb65: 126 scoped role/portal cases passed, with six additional settled-detail follow-ups and 32 representative settled captures inspected. This does not establish whole-product acceptance. Earlier failures, audit limitations and detailed 01c47 verification are retained below; #914 and mobile orientation #921 remain open.",
+		"testedCommit": "2c677c1551f50aa9475a54768f15facb17cb6ce3",
+		"measurement": "Hosted CI for this published candidate is pending; no valid G11 timings are available for this commit.",
+		"localVerification": "Candidate 2c677c155 passed build, clean lint, nine typecheck tasks, 7212 unit tests, bundle checks and 12 readiness tests. Its 947 agent assets are byte-identical to d174. The latest local full E2E run passed 166 of 169 tests; three failures remain under investigation. A bounded diagnostic passed 3/3 and does not clear those failures or establish their cause. The previous d174 hosted E2E passed 168/168 on the updated lockfile. Local SIT remains on 01c47cb65: 126 scoped role/portal cases passed, with six settled-detail follow-ups and 32 representative settled captures inspected; whole-product acceptance is not established. The linked candidate local-check evidence describes d174/e17, not this new head. The earlier audit and evidence limits remain below.",
 		"previousRuns": [
+			{
+				"testedCommit": "d174057ee73b06f1f3b296880adfb166450985d2",
+				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40792945815/job/123182354592",
+				"measurement": "Complete hosted Chromium G11 run with valid calibration. Harness-reported values are CPU-normalized where applicable; board-drag p95 is raw. LCP and assignment use the second judged set.",
+				"metrics": [
+					{
+						"name": "Work-list LCP",
+						"measured": "2692.4 ms",
+						"budget": "< 2500 ms",
+						"target": "≤ 2125 ms",
+						"result": "Fail",
+						"headroom": "Fail"
+					},
+					{
+						"name": "List to detail",
+						"measured": "261.1 ms",
+						"budget": "< 300 ms",
+						"target": "≤ 255 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					},
+					{
+						"name": "Board drag p95",
+						"measured": "16.8 ms",
+						"budget": "< 20 ms",
+						"target": "≤ 17 ms",
+						"result": "Pass",
+						"headroom": "Pass"
+					},
+					{
+						"name": "Board render",
+						"measured": "394.7 ms",
+						"budget": "< 500 ms",
+						"target": "≤ 425 ms",
+						"result": "Pass",
+						"headroom": "Pass"
+					},
+					{
+						"name": "Assignment click",
+						"measured": "187.6 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass",
+						"headroom": "Fail"
+					},
+					{
+						"name": "State click",
+						"measured": "167.7 ms",
+						"budget": "< 200 ms",
+						"target": "≤ 170 ms",
+						"result": "Pass",
+						"headroom": "Pass"
+					}
+				],
+				"validation": "Hosted G11: 21 passed, one failed in 9.0 minutes; LCP 2692.4 ms exceeded the unchanged 2500 ms budget. All 25 other checks passed, including static, dependency audit, unit, integration, G4, G8 and E2E. Two non-gating diagnostics passed in 54 seconds; all five source-bound windows completed. Previous hosted results are retained below.",
+				"localVerification": "Combined candidate d174057ee passed 7212 unit tests, nine typecheck tasks, frozen install, full build, bundle/purity and dependency audit (zero HIGH/MODERATE; one existing LOW). The earlier e17afe535 with seroval 1.6.4 passed 168 E2E tests after correcting two failures (#922/#923); no local full E2E rerun is claimed on the updated lockfile; hosted d174 E2E passed 168/168. The 947 combined agent JavaScript/CSS assets match the preceding E2E-tested agent build; both were compared with the frozen private 4M build. Private uncalibrated three-round medians improved LCP (3792 → 3608 ms) but worsened route timing (268.3 → 291 ms); these do not establish performance acceptance. Local SIT remains on 01c47cb65: 126 scoped role/portal cases passed, with six additional settled-detail follow-ups and 32 representative settled captures inspected. This does not establish whole-product acceptance. Earlier failures, audit limitations and detailed 01c47 verification are retained below; #914 and mobile orientation #921 remain open."
+			},
 			{
 				"testedCommit": "01c47cb65396ca4058bfcad07b60dbbab1a95ab0",
 				"ci": "https://github.com/ThomasHeinThura/ticketing/actions/runs/40773655912/job/123117182688",
@@ -1382,6 +1439,6 @@
 			]
 		},
 		"evidenceURL": "https://github.com/ThomasHeinThura/ticketing/blob/9487681587ed9c9c683050d6f19d1f3f0cb2ea3b/docs/report/audit/l05-startup-group.json",
-		"activeWork": "A local LCP test correction is under validation. The latest local full run passed 166 of 169 tests; three failures are under investigation, with no application regression established. There is no new hosted candidate result."
+		"activeWork": "The published LCP test correction awaits hosted validation. Three failures from the local 166/169 full E2E run remain under investigation; a 3/3 bounded diagnostic does not resolve them. No new hosted G11 result is available."
 	}
 }
