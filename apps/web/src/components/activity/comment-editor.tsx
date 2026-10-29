@@ -2129,6 +2129,7 @@ export default function CommentEditor({
       {linkUrl !== null && isLiveEditor(editor) && (
         <EditorLinkDialog
           editor={editor}
+          scopeKey={taskId}
           editable={!readOnly && !disabled}
           initialUrl={linkUrl}
           label={t("activity:comment.editor.enterUrl")}
