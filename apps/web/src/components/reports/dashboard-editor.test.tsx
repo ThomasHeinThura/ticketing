@@ -162,6 +162,14 @@ function renderEditor() {
   );
 }
 
+function openWidgetActions(title: string) {
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: `reports:editor.widgetActions reports:catalogue.${title}.title`,
+    }),
+  );
+}
+
 beforeEach(() => {
   mocks.dashboard = dashboard();
   mocks.updateDashboard.mockResolvedValue(mocks.dashboard);
@@ -174,6 +182,7 @@ afterEach(() => {
 describe("dashboard editor (RP-15)", () => {
   it("refuses a resize that would overlap a neighbour and says why", () => {
     renderEditor();
+    openWidgetActions("throughput");
     fireEvent.click(
       screen.getByRole("button", {
         name: "reports:editor.wider reports:catalogue.throughput.title",
@@ -191,6 +200,7 @@ describe("dashboard editor (RP-15)", () => {
 
   it("saves the whole layout in one call with the version it edited, keeping widget ids", async () => {
     renderEditor();
+    openWidgetActions("throughput");
     fireEvent.click(
       screen.getByRole("button", {
         name: "reports:editor.shorter reports:catalogue.throughput.title",
@@ -213,6 +223,7 @@ describe("dashboard editor (RP-15)", () => {
 
   it("removes a widget from the saved layout", async () => {
     renderEditor();
+    openWidgetActions("ageing");
     fireEvent.click(
       screen.getByRole("button", {
         name: "reports:editor.remove reports:catalogue.ageing.title",
@@ -230,6 +241,7 @@ describe("dashboard editor (RP-15)", () => {
 
   it("gives every control a name a keyboard user can reach", () => {
     renderEditor();
+    openWidgetActions("throughput");
     for (const verb of [
       "move",
       "narrower",
@@ -243,6 +255,25 @@ describe("dashboard editor (RP-15)", () => {
           name: `reports:editor.${verb} reports:catalogue.throughput.title`,
         }),
       ).toBeTruthy();
+  });
+
+  it("closes widget actions on Escape and returns focus without changing the draft", async () => {
+    renderEditor();
+    const trigger = screen.getByRole("button", {
+      name: "reports:editor.widgetActions reports:catalogue.throughput.title",
+    });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const popup = screen.getByRole("dialog", {
+      name: "reports:editor.widgetActions reports:catalogue.throughput.title",
+    });
+    fireEvent.keyDown(popup, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(trigger).toHaveFocus());
+    expect(
+      screen.getByRole("button", { name: "reports:editor.save" }),
+    ).toBeDisabled();
+    expect(mocks.updateDashboard).not.toHaveBeenCalled();
   });
 
   it("is read-only for someone who cannot change the dashboard, who can copy it instead", () => {

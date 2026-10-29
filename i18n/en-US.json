@@ -8096,7 +8096,9 @@
 			"allTeams": "All teams",
 			"allTypes": "All types",
 			"allPriorities": "All priorities",
-			"clear": "Clear filters"
+			"clear": "Clear filters",
+			"datePlaceholder": "Not set",
+			"clearDate": "Clear date"
 		},
 		"options": {
 			"by": {
@@ -8311,7 +8313,8 @@
 			"refused": {
 				"outside": "That would leave the grid.",
 				"overlap": "That would overlap another widget."
-			}
+			},
+			"widgetActions": "Actions for {{title}}"
 		},
 		"series": {
 			"opened": "Opened",

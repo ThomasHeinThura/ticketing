@@ -1,12 +1,7 @@
-import {
-  Button,
-  Input,
-  Label,
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@taskdesk/ui";
+import { Button, Label, ToggleGroup, ToggleGroupItem } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
+import { DateField } from "@/components/time-tracking/date-field";
 import type { ReportEnvelope } from "@/fetchers/report";
 import useCustomerOrganisations from "@/hooks/queries/project/use-customer-organisations";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -96,9 +91,10 @@ export function ReportFilters({
       className="flex flex-wrap items-end gap-4"
       data-testid="report-filters"
     >
-      <div className="space-y-1">
+      <div className="min-w-0 space-y-1">
         <Label id="report-window-label">{t("reports:filters.window")}</Label>
         <ToggleGroup
+          className="max-w-full flex-wrap"
           aria-labelledby="report-window-label"
           value={[windowValue]}
           disabled={live}
@@ -122,28 +118,28 @@ export function ReportFilters({
       </div>
       {windowValue === "custom" && !live ? (
         <>
-          <div className="space-y-1">
+          <div className="w-40 space-y-1">
             <Label htmlFor="report-from">{t("reports:filters.from")}</Label>
-            <Input
+            <DateField
               id="report-from"
-              type="date"
-              className="w-40"
+              label={t("reports:filters.from")}
+              placeholder={t("reports:filters.datePlaceholder")}
+              clearLabel={t("reports:filters.clearDate")}
               value={search.from ?? ""}
-              onChange={(event) =>
-                onChange({ ...search, from: event.target.value || undefined })
+              onChange={(from) =>
+                onChange({ ...search, from: from || undefined })
               }
             />
           </div>
-          <div className="space-y-1">
+          <div className="w-40 space-y-1">
             <Label htmlFor="report-to">{t("reports:filters.to")}</Label>
-            <Input
+            <DateField
               id="report-to"
-              type="date"
-              className="w-40"
+              label={t("reports:filters.to")}
+              placeholder={t("reports:filters.datePlaceholder")}
+              clearLabel={t("reports:filters.clearDate")}
               value={search.to ?? ""}
-              onChange={(event) =>
-                onChange({ ...search, to: event.target.value || undefined })
-              }
+              onChange={(to) => onChange({ ...search, to: to || undefined })}
             />
           </div>
         </>
