@@ -209,8 +209,17 @@ export function ServiceCalendarEditorView({
           >
             <legend className="sr-only">{t("editor.editableLegend")}</legend>
             <div className="space-y-6">
-              <CalendarDetailsCard form={form} isNew={isNew} />
+              <CalendarDetailsCard
+                form={form}
+                isNew={isNew}
+                disabled={
+                  !state.canManageCalendars || state.isCheckingPermissions
+                }
+              />
               <WeeklyCoverCard
+                disabled={
+                  !state.canManageCalendars || state.isCheckingPermissions
+                }
                 windows={state.windows}
                 windowIds={state.windowIds}
                 windowError={state.windowError}
@@ -220,6 +229,10 @@ export function ServiceCalendarEditorView({
                 onRemove={state.removeWindow}
               />
               <HolidayListCard
+                disabled={
+                  !state.canManageCalendars || state.isCheckingPermissions
+                }
+                holidayError={state.holidayError}
                 holidays={state.holidays}
                 holidayIds={state.holidayIds}
                 calendar={calendar}

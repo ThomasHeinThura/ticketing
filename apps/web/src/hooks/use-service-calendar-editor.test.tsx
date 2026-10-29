@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Holiday } from "@/fetchers/service-calendar";
 import { ServiceCalendarConflictError } from "@/fetchers/service-calendar";
 import { useServiceCalendarEditor } from "./use-service-calendar-editor";
 
@@ -100,6 +101,66 @@ function deferred<T>() {
 }
 
 describe("service calendar editor optimistic-concurrency recovery", () => {
+  it.each<Holiday>([
+    { date: "" },
+    { from: "2026-12-31", to: "2026-12-30" },
+    { recurs: "annually", month: 2, day: 30 },
+  ])(
+    "blocks invalid holiday drafts before confirmation or persistence: %j",
+    async (holiday) => {
+      const { result } = renderEditor();
+      await waitFor(() =>
+        expect(result.current.form.getValues("name")).toBe("Original"),
+      );
+      act(() => result.current.addHoliday());
+      act(() => result.current.replaceHoliday(0, holiday));
+      await act(async () => {
+        await result.current.handleSave({
+          key: "support-hours",
+          name: "Original",
+          timezone: "Europe/London",
+        });
+      });
+      expect(result.current.holidayError).toBe("holidays.invalid");
+      expect(result.current.timezoneConfirmationOpen).toBe(false);
+      expect(mocks.mutateAsync).not.toHaveBeenCalled();
+      expect(mocks.createCalendar).not.toHaveBeenCalled();
+    },
+  );
+
+  it("persists date-only holiday shapes unchanged with the current version", async () => {
+    const { result } = renderEditor();
+    await waitFor(() =>
+      expect(result.current.form.getValues("name")).toBe("Original"),
+    );
+    const holidays: Holiday[] = [
+      { date: "2028-02-29" },
+      { from: "2026-12-31", to: "2027-01-01" },
+      { recurs: "annually", month: 2, day: 29 },
+    ];
+    for (const [index, holiday] of holidays.entries()) {
+      act(() => result.current.addHoliday());
+      act(() => result.current.replaceHoliday(index, holiday));
+    }
+    mocks.mutateAsync.mockResolvedValue({
+      ...mocks.calendar,
+      holidays,
+      version: 2,
+    });
+    await act(async () => {
+      await result.current.handleSave({
+        key: "support-hours",
+        name: "Original",
+        timezone: "UTC",
+      });
+    });
+    expect(mocks.mutateAsync).toHaveBeenCalledExactlyOnceWith({
+      id: "calendar-1",
+      version: 1,
+      data: expect.objectContaining({ holidays, timezone: "UTC" }),
+    });
+    expect(result.current.holidayError).toBe("");
+  });
   beforeEach(() => {
     Object.assign(mocks.calendar, {
       name: "Original",

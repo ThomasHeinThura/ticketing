@@ -23,6 +23,8 @@ export function HolidayListCard({
   calendar,
   canImport,
   onImported,
+  disabled = false,
+  holidayError,
 }: {
   holidays: Holiday[];
   holidayIds: string[];
@@ -33,6 +35,8 @@ export function HolidayListCard({
   calendar?: ServiceCalendar;
   canImport: boolean;
   onImported: (holidays: Holiday[]) => void;
+  disabled?: boolean;
+  holidayError?: string;
 }) {
   const { t } = useTranslation("serviceCalendars");
   return (
@@ -63,6 +67,7 @@ export function HolidayListCard({
               key={holidayIds[index]}
               holiday={holiday}
               index={index}
+              disabled={disabled}
               onChange={(next) => onChange(index, next)}
               onPatch={(patch) => onPatch(index, patch)}
               onRemove={() => onRemove(index)}
@@ -71,6 +76,11 @@ export function HolidayListCard({
         ) : (
           <p className="text-sm text-muted-foreground">{t("holidays.none")}</p>
         )}
+        {holidayError ? (
+          <p className="text-sm text-destructive" role="alert">
+            {holidayError}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

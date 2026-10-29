@@ -4703,7 +4703,8 @@
 			"stableKeyLabel": "Stable key",
 			"stableKeyHelp": "Used to match this setting when moving a project between workspaces. Keep it unchanged after creation.",
 			"stableKeyReadOnlyLabel": "Stable key (read only)",
-			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number."
+			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.",
+			"timezoneSuggestions": "Timezone suggestions"
 		},
 		"editor": {
 			"allCalendars": "All calendars",
@@ -4763,7 +4764,10 @@
 			"remove": "Remove",
 			"removeHoliday": "Remove holiday {{count}}",
 			"through": "Through",
-			"title": "Holidays"
+			"title": "Holidays",
+			"invalid": "Choose a valid date for every holiday. Date ranges must end on or after they start.",
+			"dateEntry": "{{label}} (YYYY-MM-DD)",
+			"invalidDate": "Enter a valid calendar date in YYYY-MM-DD format."
 		},
 		"list": {
 			"create": "Create calendar",
