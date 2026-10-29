@@ -1961,6 +1961,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
       {linkUrl !== null && editor && !editor.isDestroyed && (
         <EditorLinkDialog
           editor={editor}
+          scopeKey={taskId}
           editable={canEdit}
           initialUrl={linkUrl}
           label={t("tasks:detail.editor.enterUrl")}

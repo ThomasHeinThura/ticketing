@@ -142,4 +142,46 @@ describe("editor link dialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
     expect(editor.getHTML()).not.toContain("<a");
   });
+
+  it("cancels a pending link when incoming content replaces the document", async () => {
+    const editor = openLinkDialog();
+    const input = await screen.findByRole("textbox", { name: "Enter URL" });
+    fireEvent.change(input, {
+      target: { value: "https://example.test/stale" },
+    });
+    await act(async () => {
+      editor.commands.setContent("<p>Incoming replacement</p>");
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(editor.getText()).toBe("Incoming replacement");
+    expect(editor.getHTML()).not.toContain("<a");
+  });
+
+  it("cancels a pending link when the target changes with identical content", async () => {
+    const editor = new Editor({
+      extensions: [StarterKit],
+      content: "<p>Same text</p>",
+    });
+    editors.push(editor);
+    const close = vi.fn();
+    const dialog = (scopeKey: string) => (
+      <I18nextProvider i18n={i18n}>
+        <EditorLinkDialog
+          editor={editor}
+          scopeKey={scopeKey}
+          editable
+          initialUrl=""
+          label="Enter URL"
+          onClose={close}
+        />
+      </I18nextProvider>
+    );
+    const view = render(dialog("first-task"));
+    await screen.findByRole("textbox", { name: "Enter URL" });
+    view.rerender(dialog("second-task"));
+    await waitFor(() => expect(close).toHaveBeenCalled());
+    expect(editor.getHTML()).not.toContain("<a");
+  });
 });

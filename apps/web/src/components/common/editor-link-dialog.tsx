@@ -10,19 +10,21 @@ import {
   Label,
 } from "@taskdesk/ui";
 import type { Editor } from "@tiptap/core";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 /** Keep the editor's mapped selection while a library dialog owns focus. */
 export function EditorLinkDialog({
   editor,
   editable,
+  scopeKey,
   initialUrl,
   label,
   onClose,
 }: {
   editor: Editor;
   editable: boolean;
+  scopeKey?: string;
   initialUrl: string;
   label: string;
   onClose: () => void;
@@ -31,6 +33,24 @@ export function EditorLinkDialog({
   const [url, setUrl] = useState(initialUrl);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const original = useRef({ editor, scopeKey, doc: editor.state.doc });
+
+  useEffect(() => {
+    const cancelChangedDocument = () => {
+      if (
+        original.current.editor !== editor ||
+        original.current.scopeKey !== scopeKey ||
+        original.current.doc !== editor.state.doc
+      ) {
+        onClose();
+      }
+    };
+    cancelChangedDocument();
+    editor.on("transaction", cancelChangedDocument);
+    return () => {
+      editor.off("transaction", cancelChangedDocument);
+    };
+  }, [editor, scopeKey, onClose]);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -46,6 +66,14 @@ export function EditorLinkDialog({
           onSubmit={(event) => {
             event.preventDefault();
             if (!editable || editor.isDestroyed || !editor.isEditable) return;
+            if (
+              original.current.editor !== editor ||
+              original.current.scopeKey !== scopeKey ||
+              original.current.doc !== editor.state.doc
+            ) {
+              onClose();
+              return;
+            }
             const chain = editor.chain().focus().extendMarkRange("link");
             if (url.trim()) chain.setLink({ href: url }).run();
             else chain.unsetLink().run();
