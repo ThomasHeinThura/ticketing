@@ -3755,5 +3755,20 @@
 		"removedOwnedPinnedCheck": "9a2cc03e4a3a11a4755e9b22614bc3d01e2d3b0b3c2e0b65e07a035cb8854518",
 		"supersededOwnedAppRemoved": "4ab82da084abaf1337f4e625db47d368bcb775bc92233a224eef71eb9fda5dde",
 		"note": "God Mode browser evidence was captured on702. Current984 runtime retains the same God Mode source and is diagnosing separate service-desk picker controls."
+	},
+	"hostedFollowup": {
+		"initialHead": "eebe34423f200d68c7330146eabaffa4d6b4098d",
+		"requiredE2EFailure": "Existing god-mode-users E2E filled the old native expiry input. App source remains unchanged; updated test operates Calendar/hour/minute/save and asserts exact request expiry plus retained proof/challenge binding.",
+		"localTargetedE2E": {
+			"passed": 1,
+			"durationSeconds": 5.3
+		},
+		"independentReview": "Sol high non-author, no high/medium findings in test-only correction.",
+		"g11": {
+			"status": "failed closed before valid medians",
+			"reason": "Throttled calibration batch spread0.601 exceeds unchanged0.55 limit; existing diagnostic timeout180000ms.",
+			"validMedians": null
+		},
+		"readiness": "Await all required non-G11 hosted checks on the corrected head; do not count original failed E2E as green."
 	}
 }
