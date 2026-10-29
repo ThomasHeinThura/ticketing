@@ -17192,7 +17192,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing work_item:update permission",
+            "description": "Missing time_entry:update_own or update_any permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -17203,6 +17203,16 @@
           },
           "404": {
             "description": "Time entry not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.time_tracking is off",
             "content": {
               "text/plain": {
                 "schema": {
@@ -17280,7 +17290,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing work_item:update permission",
+            "description": "Missing time_entry:create permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -17291,6 +17301,16 @@
           },
           "404": {
             "description": "Task not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "feature.time_tracking is off",
             "content": {
               "text/plain": {
                 "schema": {
