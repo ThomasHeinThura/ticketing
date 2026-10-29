@@ -125,7 +125,7 @@ async function waitForTaskLockWait(client: Client, blockerPid: number) {
  */
 async function afterAdmissionBeforeWrite(
   taskId: string,
-  request: () => Promise<Response>,
+  request: () => Response | Promise<Response>,
   change: (client: Client) => Promise<void>,
 ) {
   const client = new Client({
@@ -149,7 +149,7 @@ async function afterAdmissionBeforeWrite(
     if (blockerPid === undefined)
       throw new Error("Task barrier PID unavailable");
 
-    pending = request();
+    pending = Promise.resolve(request());
     await waitForTaskLockWait(client, blockerPid);
     await change(client);
     await client.query("COMMIT");

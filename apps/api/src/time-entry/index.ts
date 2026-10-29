@@ -141,6 +141,7 @@ const updateTimeEntryRoute = createRoute({
     workspaceAccess.fromTimeEntry("id", {
       requireProjectReach: true,
       deferCapability: true,
+      requireLiveProjectForTask: true,
     }),
     requireMutationIdentity,
     legacyEntryOwner,
