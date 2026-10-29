@@ -320,7 +320,10 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
       });
 
       await page.keyboard.press("?");
-      const help = page.getByRole("dialog");
+      const help = page.getByRole("dialog", {
+        name: "Keyboard Shortcuts",
+        exact: true,
+      });
       await expect(help).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(help).toBeHidden();
@@ -358,7 +361,7 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
       const addTask = page.getByTestId("work-item-board-column-create").first();
       await addTask.focus();
       await addTask.click();
-      const createTaskDialog = page.getByRole("dialog");
+      const createTaskDialog = page.getByTestId("create-work-item-dialog");
       await expect(createTaskDialog).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(createTaskDialog).toBeHidden();
@@ -366,13 +369,16 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
 
       await page.getByRole("button", { name: "List", exact: true }).click();
       await expect(page).toHaveURL(/layout=list/);
-      const listAddTask = page
-        .getByRole("button", { name: "Add Work item", exact: true })
-        .first();
+      const listAddTask = page.getByRole("button", {
+        name: "Add Work item: Backlog",
+        exact: true,
+      });
+      await expect(listAddTask).not.toHaveAttribute("title");
       await listAddTask.click();
-      await expect(page.getByRole("dialog")).toBeVisible();
+      await expect(createTaskDialog).toBeVisible();
       await page.keyboard.press("Escape");
-      await expect(page.getByRole("dialog")).toBeHidden();
+      await expect(createTaskDialog).toBeHidden();
+      await expect(listAddTask).toBeFocused();
       await page.getByRole("button", { name: "Board", exact: true }).click();
       await expect(cards).toHaveCount(BOARD_ITEM_COUNT);
 
