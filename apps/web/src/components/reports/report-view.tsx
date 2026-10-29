@@ -213,11 +213,17 @@ export function ReportNotes({ notes }: { notes: string[] }) {
 }
 
 /** `RP-5`: "—" with an explanation and the count outside the window, never a chart of nothing. */
-export function ReportEmpty({ report }: { report: ReportEnvelope }) {
+export function ReportEmpty({
+  report,
+  className,
+}: {
+  report: ReportEnvelope;
+  className?: string;
+}) {
   const { t } = useTranslation();
   if (!report.empty) return null;
   return (
-    <Empty>
+    <Empty className={className}>
       <EmptyHeader>
         <EmptyTitle>—</EmptyTitle>
         <EmptyDescription>
