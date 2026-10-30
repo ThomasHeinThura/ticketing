@@ -6468,7 +6468,9 @@
 			"edit": "Edit",
 			"delete": "Delete",
 			"loading": "Loading",
-			"close": "Close"
+			"close": "Close",
+			"dateEntry": "{{label}} (YYYY-MM-DD)",
+			"invalidDate": "Enter a valid date as YYYY-MM-DD."
 		},
 		"units": {
 			"points": "points",
