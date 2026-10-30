@@ -936,15 +936,16 @@ function WorkItemListPresentation({
                   ) : !detailHref ? (
                     <span title={item.title}>{item.title}</span>
                   ) : (
-                    <ActionTooltip label={item.title}>
-                      <a
-                        href={detailHref}
-                        data-work-item-key={item.key}
-                        className="inline-block min-h-6 min-w-6 max-w-full truncate align-middle leading-6 hover:underline"
-                      >
-                        {item.title}
-                      </a>
-                    </ActionTooltip>
+                    // No per-row tooltip: the work route paints up to 500 rows on first load
+                    // (G11), and a tooltip root per row is measurable there. The full title is
+                    // the link's own text, so its accessible name is complete.
+                    <a
+                      href={detailHref}
+                      data-work-item-key={item.key}
+                      className="inline-block min-h-6 min-w-6 max-w-full truncate align-middle leading-6 hover:underline"
+                    >
+                      {item.title}
+                    </a>
                   )}
                 </span>
                 {controls?.titleControl}

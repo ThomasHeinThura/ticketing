@@ -112,6 +112,8 @@ const NATIVE_PICKER_INPUT_TYPES = new Set([
   "datetime-local",
   "month",
   "week",
+  "color",
+  "range",
   "checkbox",
   "radio",
 ]);
@@ -122,6 +124,9 @@ const TITLED_INTERACTIVE_TAGS = new Set([
   "Button",
   "Link",
   "SidebarMenuButton",
+  "SidebarMenuSubButton",
+  "PopoverTrigger",
+  "DropdownMenuTrigger",
   "Switch",
   "Checkbox",
   "Toggle",
