@@ -166,7 +166,8 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
       // (Encoded ids are covered by src/lib/legacy-settings-redirect.test.ts.)
       [
         "/agent/settings/custom-fields?deleted=1",
-        /\/dashboard\/settings\/workspace\/custom-fields\?deleted=1$/,
+        // The page's search schema normalises the kept flag to a boolean.
+        /\/dashboard\/settings\/workspace\/custom-fields\?deleted=true$/,
       ],
       // Pending-action links already sent in notifications and emails open the account page.
       [
