@@ -793,6 +793,7 @@ test("calendar creation supports keyboard input and read-only access", async ({
   for (let i = 0; i < 10; i++) await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
   await expect(hour).toHaveText("10");
+  await expect(hour).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(
     timePicker.getByRole("combobox", { name: "Minute" }),
