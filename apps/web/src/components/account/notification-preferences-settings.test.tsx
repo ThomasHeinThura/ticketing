@@ -116,6 +116,29 @@ describe("NotificationPreferencesSettings", () => {
     canonical.saveReportExport.mockResolvedValue({});
   });
 
+  it("names channel switches, reminder units and the readonly account email without saving", () => {
+    renderSettings();
+    for (const channel of ["email", "gotify", "ntfy", "webhook"]) {
+      expect(
+        screen.getByRole("switch", {
+          name: `settings:notificationsPage.${channel}Title`,
+        }),
+      ).toHaveAttribute("aria-checked", "false");
+    }
+    expect(
+      screen.getByRole("combobox", {
+        name: "settings:notificationsPage.reminderLeadTimeUnitLabel",
+      }),
+    ).toHaveTextContent("settings:notificationsPage.reminderLeadTimeUnitDays");
+    const email = screen.getByLabelText(
+      "settings:notificationsPage.accountEmailLabel",
+    );
+    expect(email).toHaveValue(preferences.emailAddress);
+    expect(email).toBeDisabled();
+    expect(email).toHaveAttribute("readonly");
+    expect(updatePreferences).not.toHaveBeenCalled();
+  });
+
   it("saves event preferences and a configurable reminder lead time", async () => {
     renderSettings();
 

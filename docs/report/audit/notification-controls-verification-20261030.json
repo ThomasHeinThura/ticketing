@@ -1,0 +1,3196 @@
+{
+	"date": "2026-10-30",
+	"issues": [966, 973, 974, 975],
+	"route": "https://ticketing.localhost/dashboard/settings/account/notifications",
+	"source": {
+		"account": "ca35364ccef6b5a8ca5f64ec32fe665f4a2f5342",
+		"runtime": "e3564bb5237f21a730fa7041e94ec7997cfc9f60",
+		"productionSourcesMatch": true
+	},
+	"status": "locally verified; hosted CI pending",
+	"browser": {
+		"quietBeforeSummary": {
+			"completedRows": 18,
+			"verifiedRoles": ["owner", "admin", "member"],
+			"actualThemes": ["light", "dark"],
+			"widths": [1440, 820, 390],
+			"nativeTimeEveryRow": true,
+			"nativeDateEveryRow": true,
+			"documentOverflowRows": 0,
+			"timezonePopups": 3,
+			"timezonePopupFocusedOnEscape": true,
+			"pageAxeIds": ["aria-toggle-field-name", "button-name", "label"],
+			"quietControlTargetsInAxe": 0,
+			"rateEvents": 0,
+			"nonGetRequests": 0,
+			"finding": "The current SIT renders native input[type=time] for From and Until on every observed role/width/theme case; issue #966 targets their replacement. Page-level axe findings are retained as observations; none targets the three Quiet Hours control IDs.",
+			"limits": [
+				"No Save, Clear, timezone option selection, persisted change or API write was performed.",
+				"No denial/concurrency/failure-retry journey was run.",
+				"Axe results cover the whole Account notifications page, not only the Quiet Hours card."
+			],
+			"containersStarted": "none"
+		},
+		"quietAfterSummary": {
+			"beforeRuntime": "23487ab9fea57e44105c575682d5d7f6b3319aec",
+			"afterRuntime": "fd964863e9ebecbe6de3d1682f207017b0159478",
+			"matchedRows": 18,
+			"verifiedRoles": ["owner", "admin", "member"],
+			"widths": [1440, 820, 390],
+			"themes": ["light", "dark"],
+			"allActualThemesMatch": true,
+			"nativeTimePerBeforeRow": [2],
+			"nativeTimePerAfterRow": [0],
+			"allAfterFieldsVisible": true,
+			"allAfterTriggersClientWidthAtLeastScrollWidth": true,
+			"documentOverflowRows": 0,
+			"timezonePopups": 3,
+			"timePopups": 3,
+			"timePopupGeometry": [
+				{
+					"width": 390,
+					"bounded": true,
+					"hourMinuteOverlap": 0,
+					"hourFits": true,
+					"minuteFits": true,
+					"seriousCriticalAxe": 0
+				},
+				{
+					"width": 820,
+					"bounded": true,
+					"hourMinuteOverlap": 0,
+					"hourFits": true,
+					"minuteFits": true,
+					"seriousCriticalAxe": 0
+				},
+				{
+					"width": 1440,
+					"bounded": true,
+					"hourMinuteOverlap": 0,
+					"hourFits": true,
+					"minuteFits": true,
+					"seriousCriticalAxe": 0
+				}
+			],
+			"pageLevelAxeRulesBefore": [
+				"aria-toggle-field-name",
+				"button-name",
+				"label"
+			],
+			"pageLevelAxeRulesAfter": [
+				"aria-toggle-field-name",
+				"button-name",
+				"label"
+			],
+			"pageLevelAxeTargetsInsideQuietHours": 0,
+			"localDraftInteractions": "interactions.json",
+			"keyboardSelection": "keyboard-selection.json",
+			"allScopedInteractionErrors": [],
+			"rateEvents": 0,
+			"nonGetRequests": 0,
+			"persistedAccountSaveAttempted": false,
+			"containersStarted": "none",
+			"limitations": [
+				"No persisted quiet-hours Save, Clear, or delivery behavior was tested.",
+				"Time picker and timezone keyboard selections were local drafts; reload restored persisted values.",
+				"The 820 text-fit check covers the fixture timezone shown, not all 419 available zones.",
+				"Page-level axe has six existing targets outside Quiet Hours; scoped time popovers had no serious or critical findings."
+			]
+		},
+		"finalSummary": {
+			"matchedRows": 18,
+			"actualRoles": ["owner", "admin", "member"],
+			"allThemeMatches": true,
+			"allFourSwitchesNamed": true,
+			"allReminderUnitsNamed": true,
+			"allAccountEmailAssociatedReadonlyDisabled": true,
+			"beforeAxeNodesPerCase": [
+				{
+					"role": "owner",
+					"total": 6
+				},
+				{
+					"role": "admin",
+					"total": 6
+				}
+			],
+			"afterSeriousCriticalPageAxeRows": 0,
+			"afterSeriousCriticalPageAxeNodes": 0,
+			"nativeTimeBeforeAndAfterQuiet": true,
+			"timezonePopupEscapeFocus": true,
+			"publicMaskedFocusedScreenshots": 12,
+			"publicMaskedReceipt": "public-receipt.json",
+			"keyboardSanity": "keyboard-sanity.json",
+			"keyboardSanitySteps": ["reminder-unit", "quiet-start", "timezone"],
+			"rateEvents": 0,
+			"nonGetRequests": 0,
+			"containersStarted": "none",
+			"limits": [
+				"No notification preference/provider/account Save or delivery behavior was tested.",
+				"Page and popup axe observations are scoped to these visited roles/themes/widths.",
+				"The 12 public screenshots mask input values and fixture identity, so value rendering is evidenced by private DOM receipt only."
+			]
+		},
+		"rows": [
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "light",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 429,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 705.65625,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 429,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 462.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 721.65625,
+							"y": 530,
+							"width": 276.671875,
+							"height": 32,
+							"right": 998.328125,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 721.65625,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 752.0625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 1014.328125,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 1290.984375,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 1014.328125,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 1080.828125,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "owner",
+				"width": 820,
+				"theme": "light",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 330,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 466,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 330,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 363.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 482,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 618,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 482,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 512.40625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 142,
+						"scrollWidth": 142,
+						"box": {
+							"x": 634,
+							"y": 530,
+							"width": 144,
+							"height": 32,
+							"right": 778,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 634,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 700.5,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "owner",
+				"width": 390,
+				"theme": "light",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 510,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 546,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 484,
+							"width": 38.140625,
+							"height": 18,
+							"right": 76.140625,
+							"bottom": 502,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 591,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 627,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 565,
+							"width": 34.75,
+							"height": 18,
+							"right": 72.75,
+							"bottom": 583,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 672,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 708,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 646,
+							"width": 76,
+							"height": 18,
+							"right": 114,
+							"bottom": 664,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "dark",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 429,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 705.65625,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 429,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 462.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 721.65625,
+							"y": 530,
+							"width": 276.671875,
+							"height": 32,
+							"right": 998.328125,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 721.65625,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 752.0625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 1014.328125,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 1290.984375,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 1014.328125,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 1080.828125,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "owner",
+				"width": 820,
+				"theme": "dark",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 330,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 466,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 330,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 363.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 482,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 618,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 482,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 512.40625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 142,
+						"scrollWidth": 142,
+						"box": {
+							"x": 634,
+							"y": 530,
+							"width": 144,
+							"height": 32,
+							"right": 778,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 634,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 700.5,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "owner",
+				"width": 390,
+				"theme": "dark",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 510,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 546,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 484,
+							"width": 38.140625,
+							"height": 18,
+							"right": 76.140625,
+							"bottom": 502,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 591,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 627,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 565,
+							"width": 34.75,
+							"height": 18,
+							"right": 72.75,
+							"bottom": 583,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 672,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 708,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 646,
+							"width": 76,
+							"height": 18,
+							"right": 114,
+							"bottom": 664,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "light",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 429,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 705.65625,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 429,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 462.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 721.65625,
+							"y": 530,
+							"width": 276.671875,
+							"height": 32,
+							"right": 998.328125,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 721.65625,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 752.0625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 1014.328125,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 1290.984375,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 1014.328125,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 1080.828125,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"theme": "light",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 330,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 466,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 330,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 363.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 482,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 618,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 482,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 512.40625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 142,
+						"scrollWidth": 142,
+						"box": {
+							"x": 634,
+							"y": 530,
+							"width": 144,
+							"height": 32,
+							"right": 778,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 634,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 700.5,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"theme": "light",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 510,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 546,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 484,
+							"width": 38.140625,
+							"height": 18,
+							"right": 76.140625,
+							"bottom": 502,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 591,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 627,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 565,
+							"width": 34.75,
+							"height": 18,
+							"right": 72.75,
+							"bottom": 583,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 672,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 708,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 646,
+							"width": 76,
+							"height": 18,
+							"right": 114,
+							"bottom": 664,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "dark",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 429,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 705.65625,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 429,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 462.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 721.65625,
+							"y": 530,
+							"width": 276.671875,
+							"height": 32,
+							"right": 998.328125,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 721.65625,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 752.0625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 1014.328125,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 1290.984375,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 1014.328125,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 1080.828125,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"theme": "dark",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 330,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 466,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 330,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 363.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 482,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 618,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 482,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 512.40625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 142,
+						"scrollWidth": 142,
+						"box": {
+							"x": 634,
+							"y": 530,
+							"width": 144,
+							"height": 32,
+							"right": 778,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 634,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 700.5,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"theme": "dark",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 510,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 546,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 484,
+							"width": 38.140625,
+							"height": 18,
+							"right": 76.140625,
+							"bottom": 502,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 591,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 627,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 565,
+							"width": 34.75,
+							"height": 18,
+							"right": 72.75,
+							"bottom": 583,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 672,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 708,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 646,
+							"width": 76,
+							"height": 18,
+							"right": 114,
+							"bottom": 664,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "member",
+				"width": 1440,
+				"theme": "light",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 429,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 705.65625,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 429,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 462.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 721.65625,
+							"y": 530,
+							"width": 276.671875,
+							"height": 32,
+							"right": 998.328125,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 721.65625,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 752.0625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 1014.328125,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 1290.984375,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 1014.328125,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 1080.828125,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "light",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 330,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 466,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 330,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 363.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 482,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 618,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 482,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 512.40625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 142,
+						"scrollWidth": 142,
+						"box": {
+							"x": 634,
+							"y": 530,
+							"width": 144,
+							"height": 32,
+							"right": 778,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 634,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 700.5,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "member",
+				"width": 390,
+				"theme": "light",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 510,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 546,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 484,
+							"width": 38.140625,
+							"height": 18,
+							"right": 76.140625,
+							"bottom": 502,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 591,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 627,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 565,
+							"width": 34.75,
+							"height": 18,
+							"right": 72.75,
+							"bottom": 583,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 672,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 708,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 646,
+							"width": 76,
+							"height": 18,
+							"right": 114,
+							"bottom": 664,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "member",
+				"width": 1440,
+				"theme": "dark",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 429,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 705.65625,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 429,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 462.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 721.65625,
+							"y": 530,
+							"width": 276.671875,
+							"height": 32,
+							"right": 998.328125,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 721.65625,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 752.0625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 275,
+						"scrollWidth": 275,
+						"box": {
+							"x": 1014.328125,
+							"y": 530,
+							"width": 276.65625,
+							"height": 32,
+							"right": 1290.984375,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 1014.328125,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 1080.828125,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "dark",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 330,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 466,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 330,
+							"y": 506,
+							"width": 33.375,
+							"height": 16,
+							"right": 363.375,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 134,
+						"scrollWidth": 134,
+						"box": {
+							"x": 482,
+							"y": 530,
+							"width": 136,
+							"height": 32,
+							"right": 618,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 482,
+							"y": 506,
+							"width": 30.40625,
+							"height": 16,
+							"right": 512.40625,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 142,
+						"scrollWidth": 142,
+						"box": {
+							"x": 634,
+							"y": 530,
+							"width": 144,
+							"height": 32,
+							"right": 778,
+							"bottom": 562,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 634,
+							"y": 506,
+							"width": 66.5,
+							"height": 16,
+							"right": 700.5,
+							"bottom": 522,
+							"fullyInViewport": true
+						}
+					}
+				}
+			},
+			{
+				"role": "member",
+				"width": 390,
+				"theme": "dark",
+				"themeMatches": true,
+				"nativeTime": 0,
+				"nativeDate": 0,
+				"datalist": 0,
+				"overflow": false,
+				"names": {
+					"emailSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"gotifySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"ntfySwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"webhookSwitch": {
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"disabled": false
+					},
+					"reminderUnit": {
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null
+					},
+					"accountEmail": {
+						"tag": "INPUT",
+						"id": "account-notifications-email",
+						"associatedLabel": "Account email",
+						"disabled": true,
+						"readOnly": true
+					}
+				},
+				"seriousCriticalAxe": [],
+				"fields": {
+					"quiet-hours-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 510,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 546,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 484,
+							"width": 38.140625,
+							"height": 18,
+							"right": 76.140625,
+							"bottom": 502,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": null,
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 591,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 627,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 565,
+							"width": 34.75,
+							"height": 18,
+							"right": 72.75,
+							"bottom": 583,
+							"fullyInViewport": true
+						}
+					},
+					"quiet-hours-timezone": {
+						"tag": "BUTTON",
+						"type": "button",
+						"role": "combobox",
+						"disabled": false,
+						"clientWidth": 312,
+						"scrollWidth": 312,
+						"box": {
+							"x": 38,
+							"y": 672,
+							"width": 314,
+							"height": 36,
+							"right": 352,
+							"bottom": 708,
+							"fullyInViewport": true
+						},
+						"labelBox": {
+							"x": 38,
+							"y": 646,
+							"width": 76,
+							"height": 18,
+							"right": 114,
+							"bottom": 664,
+							"fullyInViewport": true
+						}
+					}
+				}
+			}
+		],
+		"keyboard": {
+			"runtime": "e3564bb5237f21a730fa7041e94ec7997cfc9f60",
+			"role": "owner verified in matrix",
+			"width": 390,
+			"theme": "dark",
+			"steps": [
+				{
+					"name": "reminder-unit",
+					"listboxName": "Reminder time unit",
+					"keyboardEnterOpened": true,
+					"escapeClosed": true,
+					"focusRestored": true
+				},
+				{
+					"name": "quiet-start",
+					"keyboardEnterOpened": true,
+					"escapeClosed": true,
+					"focusRestored": true
+				},
+				{
+					"name": "timezone",
+					"listboxName": "Time zone",
+					"keyboardEnterOpened": true,
+					"escapeClosed": true,
+					"focusRestored": true
+				}
+			],
+			"rateEvents": [],
+			"nonGetRequests": [],
+			"errors": [],
+			"containersStarted": "none"
+		},
+		"quietKeyboard": {
+			"role": "owner verified in matrix",
+			"width": 390,
+			"theme": "dark",
+			"steps": [
+				{
+					"part": "hour",
+					"old": "22",
+					"after": "23",
+					"selectedByKeyboard": true
+				},
+				{
+					"part": "minute",
+					"old": "00",
+					"after": "01",
+					"selectedByKeyboard": true
+				},
+				{
+					"part": "local-picker-save",
+					"display": "23:01"
+				},
+				{
+					"part": "timezone",
+					"changed": true,
+					"selectedByKeyboard": true,
+					"display": "Africa/Abidjan"
+				},
+				{
+					"part": "reload",
+					"startDisplay": "22:00",
+					"timezoneDisplay": "Asia/Rangoon"
+				}
+			],
+			"nonGetRequests": [],
+			"rateEvents": [],
+			"errors": [],
+			"containersStarted": "none"
+		}
+	},
+	"screenshots": {
+		"maskMethod": "Playwright screenshot mask at capture time; no image post-edit",
+		"maskScope": "All visible input elements except checkbox/radio/file; all textareas; leaf p/span text containing an email address; fixture display names, avatar initials, and visible workspace titles",
+		"maskLimit": "Masked values cannot prove value rendering. Original unmasked provider captures remain private.",
+		"before": [
+			{
+				"actualRoleFromPriorVerifiedMatrix": "owner",
+				"width": 390,
+				"actualTheme": "dark",
+				"actualUrl": "https://ticketing.localhost/dashboard/settings/account/notifications",
+				"controls": [
+					{
+						"name": "reminder-unit",
+						"issue": 974,
+						"screenshot": "../screens/20261030-notifications-before-owner-390-dark-reminder-unit.png",
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					},
+					{
+						"name": "email-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-before-owner-390-dark-email-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					},
+					{
+						"name": "account-email",
+						"issue": 975,
+						"screenshot": "../screens/20261030-notifications-before-owner-390-dark-account-email.png",
+						"tag": "INPUT",
+						"role": null,
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": false,
+						"disabled": true,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					},
+					{
+						"name": "gotify-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-before-owner-390-dark-gotify-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					},
+					{
+						"name": "ntfy-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-before-owner-390-dark-ntfy-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					},
+					{
+						"name": "webhook-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-before-owner-390-dark-webhook-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					}
+				]
+			},
+			{
+				"actualRoleFromPriorVerifiedMatrix": "admin",
+				"width": 1440,
+				"actualTheme": "light",
+				"actualUrl": "https://ticketing.localhost/dashboard/settings/account/notifications",
+				"controls": [
+					{
+						"name": "reminder-unit",
+						"issue": 974,
+						"screenshot": "../screens/20261030-notifications-before-admin-1440-light-reminder-unit.png",
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					},
+					{
+						"name": "email-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-before-admin-1440-light-email-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					},
+					{
+						"name": "account-email",
+						"issue": 975,
+						"screenshot": "../screens/20261030-notifications-before-admin-1440-light-account-email.png",
+						"tag": "INPUT",
+						"role": null,
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": false,
+						"disabled": true,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					},
+					{
+						"name": "gotify-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-before-admin-1440-light-gotify-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					},
+					{
+						"name": "ntfy-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-before-admin-1440-light-ntfy-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					},
+					{
+						"name": "webhook-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-before-admin-1440-light-webhook-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					}
+				]
+			}
+		],
+		"after": [
+			{
+				"actualRoleFromPriorVerifiedMatrix": "owner",
+				"width": 390,
+				"actualTheme": "dark",
+				"actualUrl": "https://ticketing.localhost/dashboard/settings/account/notifications",
+				"controls": [
+					{
+						"name": "reminder-unit",
+						"issue": 974,
+						"screenshot": "../screens/20261030-notifications-after-owner-390-dark-reminder-unit.png",
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					},
+					{
+						"name": "email-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-after-owner-390-dark-email-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					},
+					{
+						"name": "account-email",
+						"issue": 975,
+						"screenshot": "../screens/20261030-notifications-after-owner-390-dark-account-email.png",
+						"tag": "INPUT",
+						"role": null,
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": "Account email",
+						"focused": false,
+						"disabled": true,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					},
+					{
+						"name": "gotify-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-after-owner-390-dark-gotify-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					},
+					{
+						"name": "ntfy-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-after-owner-390-dark-ntfy-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					},
+					{
+						"name": "webhook-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-after-owner-390-dark-webhook-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 2
+					}
+				]
+			},
+			{
+				"actualRoleFromPriorVerifiedMatrix": "admin",
+				"width": 1440,
+				"actualTheme": "light",
+				"actualUrl": "https://ticketing.localhost/dashboard/settings/account/notifications",
+				"controls": [
+					{
+						"name": "reminder-unit",
+						"issue": 974,
+						"screenshot": "../screens/20261030-notifications-after-admin-1440-light-reminder-unit.png",
+						"tag": "BUTTON",
+						"role": "combobox",
+						"ariaLabel": "Reminder time unit",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					},
+					{
+						"name": "email-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-after-admin-1440-light-email-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Email",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 14,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					},
+					{
+						"name": "account-email",
+						"issue": 975,
+						"screenshot": "../screens/20261030-notifications-after-admin-1440-light-account-email.png",
+						"tag": "INPUT",
+						"role": null,
+						"ariaLabel": null,
+						"ariaLabelledby": null,
+						"associatedLabel": "Account email",
+						"focused": false,
+						"disabled": true,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					},
+					{
+						"name": "gotify-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-after-admin-1440-light-gotify-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Gotify",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					},
+					{
+						"name": "ntfy-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-after-admin-1440-light-ntfy-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "ntfy",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					},
+					{
+						"name": "webhook-switch",
+						"issue": 973,
+						"screenshot": "../screens/20261030-notifications-after-admin-1440-light-webhook-switch.png",
+						"tag": "SPAN",
+						"role": "switch",
+						"ariaLabel": "Custom webhook",
+						"ariaLabelledby": null,
+						"associatedLabel": null,
+						"focused": true,
+						"disabled": false,
+						"fullyInViewport": true,
+						"maskedInputCount": 16,
+						"maskedEmailTextCount": 1,
+						"maskedFixtureNameCount": 3
+					}
+				]
+			}
+		],
+		"quiet": [
+			"../screens/20261030-notifications-quiet-before-owner-390-dark.png",
+			"../screens/20261030-notifications-quiet-after-owner-390-dark.png",
+			"../screens/20261030-notifications-quiet-popup-owner-390-dark.png"
+		],
+		"count": 27
+	},
+	"local": {
+		"commands": [
+			"pnpm test",
+			"pnpm typecheck",
+			"pnpm lint:ci",
+			"pnpm check:ui:raw-elements",
+			"pnpm check:tokens",
+			"pnpm test:permissions",
+			"pnpm check:route-policy",
+			"pnpm test:contract",
+			"pnpm check:i18n",
+			"pnpm check:bundle-size",
+			"pnpm check:bundle-purity",
+			"pnpm check:visual-scope"
+		],
+		"unitTests": 7273,
+		"typecheckTasks": 9,
+		"focusedTests": 15,
+		"permissionTests": 118,
+		"contrastPairs": 401,
+		"bundlesGzipKB": {
+			"agent": 267.6,
+			"workList": 333.4,
+			"portal": 189.3
+		},
+		"pinnedVisuals": {
+			"quietSubset": {
+				"source": "77cb59b29b0ea4d05c4f1554faaeb7ff5996f722",
+				"passed": 3,
+				"failed": 0,
+				"baselineChanges": 0
+			},
+			"combined": {
+				"source": "e3564bb5237f21a730fa7041e94ec7997cfc9f60",
+				"passed": 6,
+				"failed": 1,
+				"failure": "Module detail: 46 pixels; unchanged e60 baseline and candidate e356 produce byte-identical actual, expected, diff and geometry in a controlled A/B. No baseline or threshold changed; full G8 unresolved."
+			}
+		}
+	},
+	"review": {
+		"independentTerra": true,
+		"independentSolHigh": true,
+		"openHigh": 0,
+		"openMedium": 0,
+		"low": [
+			"New Reminder time unit accessible name remains English fallback outside en-US.",
+			"Shared TimeField aria-invalid has a harmless redundant || undefined."
+		]
+	},
+	"failuresRetained": [
+		"Initial notification focused query was ambiguous because numeric and unit controls shared a label. Unit now has a distinct translated key; all original assertions retained and 15 focused tests pass.",
+		"Initial Quiet test TypeScript options were unsupported; removed those options without changing literal name matching or assertions.",
+		"Private visual setup first lacked compiled workspace output, then its private guard read an old log filename; original failures retained and corrected setup passed three existing cases.",
+		"Integrated Module visual has the unchanged-baseline 46-pixel failure described above."
+	],
+	"limits": [
+		"No persisted account Quiet Hours Save/Clear, provider or preference Save, delivery, denial, concurrency or failure/retry journey was attempted in SIT.",
+		"Observed actual roles are owner, admin and member; no lead/viewer/customer claim.",
+		"Time-zone fit checks cover fixture value and sampled popups, not every one of 419 option strings.",
+		"No requirement status is promoted by these read-only draft checks."
+	],
+	"containers": {
+		"activeOwnedSIT": "b4398751652a660271f2f35788c7e1d1d0b0e52582c6312103bf4477e0cb8388",
+		"supersededOwnedSITRemoved": "7fe5015f9c82eee5b35264282c15d0e9a1cea4aa4055ac3560aa7ddbeb6a72ac",
+		"temporaryRemoved": [
+			"399a689937f2adeca63270b7a1f01483ea70a2d74755c578bda5ebc2ca783804",
+			"1f5379c39c1ebd2c439f4130c0c5dfda58e42040f1439635426a071b5b6b3929",
+			"deb585d46ec6627f1b6c3ce0703e07117929add1e198adadd0a933ad9eb7b9f3",
+			"2dd0832092147b40250ad7fce3244211e177d8b8405e6541e03681ada9b9b753",
+			"a42c3f31186ac47b2492989e4b697df1ad70e87bd8bc73c2605f15eeffea3c02"
+		],
+		"originalRollbackStopped": "6c0d8bd2e4ff"
+	}
+}
