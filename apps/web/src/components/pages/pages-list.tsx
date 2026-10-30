@@ -26,7 +26,7 @@ import {
   Skeleton,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -48,16 +48,19 @@ export function CreatePageDialog({
   pages,
   initialParentId,
   onClose,
+  finalFocus,
 }: {
   projectKey: string;
   pages: readonly PageSummary[];
   initialParentId?: string | null;
   onClose: () => void;
+  finalFocus: () => HTMLElement | false;
 }) {
   const { t } = useTranslation("pages");
   const navigate = useNavigate();
   const cache = useQueryClient();
   const [title, setTitle] = useState("");
+  const createdRef = useRef(false);
   const [parentId, setParentId] = useState<string | null>(
     initialParentId ?? null,
   );
@@ -65,6 +68,7 @@ export function CreatePageDialog({
     mutationFn: () => createPage(projectKey, { title: title.trim(), parentId }),
     onSuccess: async (page) => {
       await cache.invalidateQueries({ queryKey: pageKeys.all });
+      createdRef.current = true;
       onClose();
       void navigate({
         href: routes.projectPage.build({ projectKey, pageId: page.id }),
@@ -83,7 +87,10 @@ export function CreatePageDialog({
       open
       onOpenChange={(open) => !open && !create.isPending && onClose()}
     >
-      <DialogContent closeLabel={t("common.close")}>
+      <DialogContent
+        closeLabel={t("common.close")}
+        finalFocus={() => (createdRef.current ? false : finalFocus())}
+      >
         <DialogHeader>
           <DialogTitle>{t("create.title")}</DialogTitle>
           <DialogDescription>{t("create.description")}</DialogDescription>
@@ -149,6 +156,7 @@ export function CreatePageDialog({
 export function PagesList({ projectKey }: { projectKey: string }) {
   const { t, i18n } = useTranslation("pages");
   const [creating, setCreating] = useState(false);
+  const createTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [recoveryMode, setRecoveryMode] = useState(false);
   const cache = useQueryClient();
   const query = useQuery({
@@ -232,7 +240,11 @@ export function PagesList({ projectKey }: { projectKey: string }) {
               {recoveryMode ? t("list.showActive") : t("list.showDeleted")}
             </Button>
             {!recoveryMode ? (
-              <Button size="sm" onClick={() => setCreating(true)}>
+              <Button
+                ref={createTriggerRef}
+                size="sm"
+                onClick={() => setCreating(true)}
+              >
                 <Plus aria-hidden="true" />
                 {t("list.create")}
               </Button>
@@ -346,6 +358,10 @@ export function PagesList({ projectKey }: { projectKey: string }) {
           projectKey={projectKey}
           pages={pages}
           onClose={() => setCreating(false)}
+          finalFocus={() => {
+            const target = createTriggerRef.current;
+            return target?.isConnected && !target.disabled ? target : false;
+          }}
         />
       ) : null}
     </div>
