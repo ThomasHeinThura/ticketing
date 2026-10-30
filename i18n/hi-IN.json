@@ -605,7 +605,7 @@
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
 			"reportExportTitle": "Report exports",
-			"reminderLeadTimeUnitLabel": "Reminder time unit"
+			"reminderLeadTimeUnitLabel": "रिमाइंडर की समय इकाई"
 		},
 		"preferencesPage": {
 			"title": "प्राथमिकताएँ",
@@ -4688,7 +4688,7 @@
 			"stableKeyHelp": "Used to match this setting when moving a project between workspaces. Keep it unchanged after creation.",
 			"stableKeyReadOnlyLabel": "Stable key (read only)",
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.",
-			"timezoneSuggestions": "Timezone suggestions"
+			"timezoneSuggestions": "समय क्षेत्र सुझाव"
 		},
 		"editor": {
 			"allCalendars": "All calendars",
@@ -4748,9 +4748,9 @@
 			"removeHoliday": "Remove holiday {{count}}",
 			"through": "Through",
 			"title": "Holidays",
-			"invalid": "Choose a valid date for every holiday. Date ranges must end on or after they start.",
+			"invalid": "हर अवकाश के लिए मान्य तारीख चुनें। तारीख की सीमा शुरू होने के दिन या उसके बाद खत्म होनी चाहिए।",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid calendar date in YYYY-MM-DD format."
+			"invalidDate": "YYYY-MM-DD प्रारूप में मान्य तारीख दर्ज करें।"
 		},
 		"list": {
 			"create": "Create calendar",
@@ -5808,9 +5808,9 @@
 			"optional": "optional",
 			"requiredHint": "Required before this item can start or finish",
 			"yes": "Yes",
-			"hour": "Hour",
-			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
+			"hour": "घंटा",
+			"minute": "मिनट",
+			"invalidLocalTime": "घड़ी बदलने पर यह समय छूट जाता है। कोई दूसरा समय चुनें।"
 		}
 	},
 	"teams": {
@@ -6513,7 +6513,7 @@
 			"save": "Save",
 			"close": "Close",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid date as YYYY-MM-DD."
+			"invalidDate": "YYYY-MM-DD प्रारूप में मान्य तारीख दर्ज करें।"
 		},
 		"complete": {
 			"action": "Complete {{term_cycle_one}}",
@@ -8098,7 +8098,7 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "Actions for {{title}}"
+			"widgetActions": "{{title}} के लिए कार्रवाइयाँ"
 		},
 		"empty": {
 			"excluded_one": "{{count}} item was left out: {{reason}}.",
@@ -8167,8 +8167,8 @@
 			"to": "To",
 			"type": "Type",
 			"window": "Window",
-			"datePlaceholder": "Not set",
-			"clearDate": "Clear date"
+			"datePlaceholder": "सेट नहीं है",
+			"clearDate": "तारीख हटाएँ"
 		},
 		"index": {
 			"categories": "Report categories",

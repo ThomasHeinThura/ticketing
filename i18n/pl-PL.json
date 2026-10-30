@@ -1552,7 +1552,7 @@
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
 			"reportExportTitle": "Report exports",
-			"reminderLeadTimeUnitLabel": "Reminder time unit"
+			"reminderLeadTimeUnitLabel": "Jednostka czasu przypomnienia"
 		},
 		"preferences": "Preferencje",
 		"security": "Bezpieczeństwo",
@@ -4730,7 +4730,7 @@
 			"stableKeyHelp": "Used to match this setting when moving a project between workspaces. Keep it unchanged after creation.",
 			"stableKeyReadOnlyLabel": "Stable key (read only)",
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.",
-			"timezoneSuggestions": "Timezone suggestions"
+			"timezoneSuggestions": "Sugerowane strefy czasowe"
 		},
 		"editor": {
 			"allCalendars": "All calendars",
@@ -4792,9 +4792,9 @@
 			"removeHoliday": "Remove holiday {{count}}",
 			"through": "Through",
 			"title": "Holidays",
-			"invalid": "Choose a valid date for every holiday. Date ranges must end on or after they start.",
+			"invalid": "Wybierz prawidłową datę dla każdego święta. Zakres dat musi kończyć się w dniu rozpoczęcia lub później.",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid calendar date in YYYY-MM-DD format."
+			"invalidDate": "Wpisz prawidłową datę w formacie YYYY-MM-DD."
 		},
 		"list": {
 			"create": "Create calendar",
@@ -5858,9 +5858,9 @@
 			"optional": "optional",
 			"requiredHint": "Required before this item can start or finish",
 			"yes": "Yes",
-			"hour": "Hour",
-			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
+			"hour": "Godzina",
+			"minute": "Minuta",
+			"invalidLocalTime": "Ta godzina jest pomijana przy zmianie czasu. Wybierz inną godzinę."
 		}
 	},
 	"teams": {
@@ -6589,7 +6589,7 @@
 			"save": "Save",
 			"close": "Close",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid date as YYYY-MM-DD."
+			"invalidDate": "Wpisz prawidłową datę w formacie YYYY-MM-DD."
 		},
 		"complete": {
 			"action": "Complete {{term_cycle_one}}",
@@ -8222,7 +8222,7 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "Actions for {{title}}"
+			"widgetActions": "Działania dla {{title}}"
 		},
 		"empty": {
 			"excluded_few": "{{count}} items were left out: {{reason}}.",
@@ -8297,8 +8297,8 @@
 			"to": "To",
 			"type": "Type",
 			"window": "Window",
-			"datePlaceholder": "Not set",
-			"clearDate": "Clear date"
+			"datePlaceholder": "Nie ustawiono",
+			"clearDate": "Wyczyść datę"
 		},
 		"index": {
 			"categories": "Report categories",

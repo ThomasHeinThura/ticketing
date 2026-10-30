@@ -605,7 +605,7 @@
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
 			"reportExportTitle": "Report exports",
-			"reminderLeadTimeUnitLabel": "Reminder time unit"
+			"reminderLeadTimeUnitLabel": "알림 시간 단위"
 		},
 		"preferencesPage": {
 			"title": "환경설정",
@@ -4670,7 +4670,7 @@
 			"stableKeyHelp": "Used to match this setting when moving a project between workspaces. Keep it unchanged after creation.",
 			"stableKeyReadOnlyLabel": "Stable key (read only)",
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.",
-			"timezoneSuggestions": "Timezone suggestions"
+			"timezoneSuggestions": "시간대 제안"
 		},
 		"editor": {
 			"allCalendars": "All calendars",
@@ -4729,9 +4729,9 @@
 			"removeHoliday": "Remove holiday {{count}}",
 			"through": "Through",
 			"title": "Holidays",
-			"invalid": "Choose a valid date for every holiday. Date ranges must end on or after they start.",
+			"invalid": "모든 휴일에 유효한 날짜를 선택하세요. 기간의 종료일은 시작일과 같거나 이후여야 합니다.",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid calendar date in YYYY-MM-DD format."
+			"invalidDate": "유효한 날짜를 YYYY-MM-DD 형식으로 입력하세요."
 		},
 		"list": {
 			"create": "Create calendar",
@@ -5786,9 +5786,9 @@
 			"optional": "optional",
 			"requiredHint": "Required before this item can start or finish",
 			"yes": "Yes",
-			"hour": "Hour",
-			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
+			"hour": "시",
+			"minute": "분",
+			"invalidLocalTime": "이 시간은 시간 변경으로 건너뛰어집니다. 다른 시간을 선택하세요."
 		}
 	},
 	"teams": {
@@ -6484,7 +6484,7 @@
 			"save": "Save",
 			"close": "Close",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid date as YYYY-MM-DD."
+			"invalidDate": "YYYY-MM-DD 형식으로 올바른 날짜를 입력하세요."
 		},
 		"complete": {
 			"action": "Complete {{term_cycle_one}}",
@@ -8045,7 +8045,7 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "Actions for {{title}}"
+			"widgetActions": "{{title}} 작업"
 		},
 		"empty": {
 			"excluded_other": "{{count}} items were left out: {{reason}}.",
@@ -8111,8 +8111,8 @@
 			"to": "To",
 			"type": "Type",
 			"window": "Window",
-			"datePlaceholder": "Not set",
-			"clearDate": "Clear date"
+			"datePlaceholder": "설정 안 됨",
+			"clearDate": "날짜 지우기"
 		},
 		"index": {
 			"categories": "Report categories",

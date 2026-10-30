@@ -28,6 +28,7 @@ import {
   userRowIsDisposable,
   wasUserCreatedInRequest,
 } from "./auth/portal-sign-in-refusal";
+import { AUTH_RATE_LIMIT } from "./auth/rate-limit-rules";
 import {
   completeFirstUserSetup,
   countAuthUsers,
@@ -692,12 +693,8 @@ function createAuth(
       // above. Enabling a limiter whose key a caller can choose achieves
       // nothing: it would only have handed attackers a free key-rotation
       // primitive. Identity first, then the limit.
-      enabled: true,
-      window: 10,
-      max: 100,
-      customRules: {
-        "/sign-up/email": { window: 60, max: 3 },
-      },
+      ...AUTH_RATE_LIMIT,
+      customRules: { ...AUTH_RATE_LIMIT.customRules },
     },
     databaseHooks: {
       session: {

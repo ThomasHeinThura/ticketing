@@ -605,7 +605,7 @@
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
 			"reportExportTitle": "Report exports",
-			"reminderLeadTimeUnitLabel": "Reminder time unit"
+			"reminderLeadTimeUnitLabel": "Единица времени напоминания"
 		},
 		"preferencesPage": {
 			"title": "Настройки",
@@ -4786,7 +4786,7 @@
 			"stableKeyHelp": "Used to match this setting when moving a project between workspaces. Keep it unchanged after creation.",
 			"stableKeyReadOnlyLabel": "Stable key (read only)",
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.",
-			"timezoneSuggestions": "Timezone suggestions"
+			"timezoneSuggestions": "Варианты часового пояса"
 		},
 		"editor": {
 			"allCalendars": "All calendars",
@@ -4848,9 +4848,9 @@
 			"removeHoliday": "Remove holiday {{count}}",
 			"through": "Through",
 			"title": "Holidays",
-			"invalid": "Choose a valid date for every holiday. Date ranges must end on or after they start.",
+			"invalid": "Выберите корректную дату для каждого праздника. Период должен заканчиваться в день начала или позже.",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid calendar date in YYYY-MM-DD format."
+			"invalidDate": "Введите корректную дату в формате YYYY-MM-DD."
 		},
 		"list": {
 			"create": "Create calendar",
@@ -5914,9 +5914,9 @@
 			"optional": "optional",
 			"requiredHint": "Required before this item can start or finish",
 			"yes": "Yes",
-			"hour": "Hour",
-			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
+			"hour": "Час",
+			"minute": "Минута",
+			"invalidLocalTime": "Это время пропускается при переводе часов. Выберите другое время."
 		}
 	},
 	"teams": {
@@ -6645,7 +6645,7 @@
 			"save": "Save",
 			"close": "Close",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid date as YYYY-MM-DD."
+			"invalidDate": "Введите допустимую дату в формате YYYY-MM-DD."
 		},
 		"complete": {
 			"action": "Complete {{term_cycle_one}}",
@@ -8278,7 +8278,7 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "Actions for {{title}}"
+			"widgetActions": "Действия для {{title}}"
 		},
 		"empty": {
 			"excluded_few": "{{count}} items were left out: {{reason}}.",
@@ -8353,8 +8353,8 @@
 			"to": "To",
 			"type": "Type",
 			"window": "Window",
-			"datePlaceholder": "Not set",
-			"clearDate": "Clear date"
+			"datePlaceholder": "Не задано",
+			"clearDate": "Очистить дату"
 		},
 		"index": {
 			"categories": "Report categories",

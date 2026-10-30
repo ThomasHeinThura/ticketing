@@ -49,7 +49,12 @@ import {
   type KbListSearch,
   routes,
 } from "@/lib/routes";
-import { formatKbDate, KbStateBadge, KbVisibilityBadge } from "../kb-badges";
+import {
+  formatKbDate,
+  formatKbDueDate,
+  KbStateBadge,
+  KbVisibilityBadge,
+} from "../kb-badges";
 import { KbCategories } from "./kb-categories";
 import { KbReport } from "./kb-report";
 
@@ -311,7 +316,7 @@ function ArticlesView({
                   </TableCell>
                   <TableCell>{article.ownerName ?? ""}</TableCell>
                   <TableCell>
-                    {formatKbDate(article.reviewDueAt)}
+                    {formatKbDueDate(article.reviewDueAt)}
                     {article.overdue ? (
                       <Badge className="ms-2" variant="error">
                         {t("kb:list.overdue")}

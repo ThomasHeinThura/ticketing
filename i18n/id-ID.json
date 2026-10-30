@@ -605,7 +605,7 @@
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
 			"reportExportTitle": "Report exports",
-			"reminderLeadTimeUnitLabel": "Reminder time unit"
+			"reminderLeadTimeUnitLabel": "Satuan waktu pengingat"
 		},
 		"preferencesPage": {
 			"title": "Preferensi",
@@ -4670,7 +4670,7 @@
 			"stableKeyHelp": "Used to match this setting when moving a project between workspaces. Keep it unchanged after creation.",
 			"stableKeyReadOnlyLabel": "Stable key (read only)",
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.",
-			"timezoneSuggestions": "Timezone suggestions"
+			"timezoneSuggestions": "Saran zona waktu"
 		},
 		"editor": {
 			"allCalendars": "All calendars",
@@ -4729,9 +4729,9 @@
 			"removeHoliday": "Remove holiday {{count}}",
 			"through": "Through",
 			"title": "Holidays",
-			"invalid": "Choose a valid date for every holiday. Date ranges must end on or after they start.",
+			"invalid": "Pilih tanggal yang valid untuk setiap hari libur. Rentang tanggal harus berakhir pada atau setelah tanggal mulainya.",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid calendar date in YYYY-MM-DD format."
+			"invalidDate": "Masukkan tanggal yang valid dengan format YYYY-MM-DD."
 		},
 		"list": {
 			"create": "Create calendar",
@@ -5786,9 +5786,9 @@
 			"optional": "optional",
 			"requiredHint": "Required before this item can start or finish",
 			"yes": "Yes",
-			"hour": "Hour",
-			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
+			"hour": "Jam",
+			"minute": "Menit",
+			"invalidLocalTime": "Waktu ini terlewati saat pergantian jam. Pilih waktu lain."
 		}
 	},
 	"teams": {
@@ -6484,7 +6484,7 @@
 			"save": "Save",
 			"close": "Close",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid date as YYYY-MM-DD."
+			"invalidDate": "Masukkan tanggal yang valid dalam format YYYY-MM-DD."
 		},
 		"complete": {
 			"action": "Complete {{term_cycle_one}}",
@@ -8045,7 +8045,7 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "Actions for {{title}}"
+			"widgetActions": "Tindakan untuk {{title}}"
 		},
 		"empty": {
 			"excluded_other": "{{count}} items were left out: {{reason}}.",
@@ -8111,8 +8111,8 @@
 			"to": "To",
 			"type": "Type",
 			"window": "Window",
-			"datePlaceholder": "Not set",
-			"clearDate": "Clear date"
+			"datePlaceholder": "Belum diatur",
+			"clearDate": "Hapus tanggal"
 		},
 		"index": {
 			"categories": "Report categories",

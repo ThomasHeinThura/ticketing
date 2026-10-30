@@ -605,7 +605,7 @@
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
 			"reportExportTitle": "Report exports",
-			"reminderLeadTimeUnitLabel": "Reminder time unit"
+			"reminderLeadTimeUnitLabel": "リマインダーの時間単位"
 		},
 		"preferencesPage": {
 			"title": "環境設定",
@@ -4670,7 +4670,7 @@
 			"stableKeyHelp": "Used to match this setting when moving a project between workspaces. Keep it unchanged after creation.",
 			"stableKeyReadOnlyLabel": "Stable key (read only)",
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.",
-			"timezoneSuggestions": "Timezone suggestions"
+			"timezoneSuggestions": "タイムゾーンの候補"
 		},
 		"editor": {
 			"allCalendars": "All calendars",
@@ -4729,9 +4729,9 @@
 			"removeHoliday": "Remove holiday {{count}}",
 			"through": "Through",
 			"title": "Holidays",
-			"invalid": "Choose a valid date for every holiday. Date ranges must end on or after they start.",
+			"invalid": "すべての休日に有効な日付を選択してください。期間の終了日は開始日以降にする必要があります。",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid calendar date in YYYY-MM-DD format."
+			"invalidDate": "有効な日付を YYYY-MM-DD 形式で入力してください。"
 		},
 		"list": {
 			"create": "Create calendar",
@@ -5786,9 +5786,9 @@
 			"optional": "optional",
 			"requiredHint": "Required before this item can start or finish",
 			"yes": "Yes",
-			"hour": "Hour",
-			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
+			"hour": "時",
+			"minute": "分",
+			"invalidLocalTime": "この時刻は時計の切り替えで存在しません。別の時刻を選択してください。"
 		}
 	},
 	"teams": {
@@ -6484,7 +6484,7 @@
 			"save": "Save",
 			"close": "Close",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid date as YYYY-MM-DD."
+			"invalidDate": "YYYY-MM-DD形式で有効な日付を入力してください。"
 		},
 		"complete": {
 			"action": "Complete {{term_cycle_one}}",
@@ -8045,7 +8045,7 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "Actions for {{title}}"
+			"widgetActions": "{{title}} の操作"
 		},
 		"empty": {
 			"excluded_other": "{{count}} items were left out: {{reason}}.",
@@ -8111,8 +8111,8 @@
 			"to": "To",
 			"type": "Type",
 			"window": "Window",
-			"datePlaceholder": "Not set",
-			"clearDate": "Clear date"
+			"datePlaceholder": "未設定",
+			"clearDate": "日付をクリア"
 		},
 		"index": {
 			"categories": "Report categories",
