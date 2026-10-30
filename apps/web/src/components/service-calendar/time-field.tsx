@@ -22,19 +22,22 @@ const MINUTES = Array.from({ length: 60 }, (_, index) =>
   String(index).padStart(2, "0"),
 );
 
-/** Calendar-local minutes, with no date, instant, or timezone conversion. */
+/** Local wall-clock minutes, with no date, instant, or timezone conversion. */
 export function TimeField({
   id,
   label,
   value,
   onChange,
   disabled = false,
+  placeholder,
 }: {
   id: string;
   label: string;
-  value: number;
+  value: number | null;
   onChange: (value: number) => void;
   disabled?: boolean;
+  /** Preserve an invalid stored value visibly until the person picks a replacement. */
+  placeholder?: string;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -53,8 +56,8 @@ export function TimeField({
       onOpenChange={(next) => {
         if (next && !disabled) {
           setSnapshot({ id, value });
-          setHour(HOURS[Math.floor(value / 60)] ?? "00");
-          setMinute(MINUTES[value % 60] ?? "00");
+          setHour(HOURS[Math.floor((value ?? 0) / 60)] ?? "00");
+          setMinute(MINUTES[(value ?? 0) % 60] ?? "00");
         }
         setOpen(next && !disabled);
       }}
@@ -65,11 +68,12 @@ export function TimeField({
           type="button"
           variant="outline"
           aria-label={label}
+          aria-invalid={value === null || undefined}
           disabled={disabled}
           className="w-full min-w-0 justify-start gap-2 font-normal tabular-nums"
         >
           <Clock aria-hidden="true" className="size-4 text-muted-foreground" />
-          {formatClockTime(value)}
+          {value === null ? (placeholder ?? label) : formatClockTime(value)}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" aria-label={label} className="w-64 p-0">
