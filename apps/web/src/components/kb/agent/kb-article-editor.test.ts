@@ -34,3 +34,38 @@ describe("KB article owner editing", () => {
     });
   });
 });
+
+describe("KB review calendar date persistence", () => {
+  it("sends the selected calendar day at UTC midnight, independent of local time", () => {
+    expect(
+      changesOf(
+        article,
+        { ...draft("person-a"), reviewDueAt: "2028-02-29" },
+        false,
+        false,
+      ),
+    ).toEqual({ reviewDueAt: "2028-02-29T00:00:00.000Z" });
+  });
+
+  it("clears an existing review date with null", () => {
+    expect(
+      changesOf(
+        { ...article, reviewDueAt: "2026-10-30T00:00:00.000Z" },
+        draft("person-a"),
+        false,
+        false,
+      ),
+    ).toEqual({ reviewDueAt: null });
+  });
+
+  it("does not rewrite an unchanged loaded date or its time", () => {
+    expect(
+      changesOf(
+        { ...article, reviewDueAt: "2026-10-30T18:30:00.000Z" },
+        { ...draft("person-a"), reviewDueAt: "2026-10-30" },
+        false,
+        false,
+      ),
+    ).toEqual({});
+  });
+});
