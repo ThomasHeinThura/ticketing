@@ -13,7 +13,8 @@ function hasUnsafeCharacter(value: string): boolean {
  *
  * Rejected: anything that does not start with one `/`, any `//` (protocol-relative), any
  * backslash (browsers read `/\host` as `//host`), any control or whitespace character (browsers
- * strip tabs and newlines, so `/<tab>/host` becomes `//host`) and any `.` or `..` path segment.
+ * strip tabs and newlines, so `/<tab>/host` becomes `//host`) and any `.` or `..` path segment,
+ * literal or percent-encoded (`%2e%2e` resolves to `..` when the router builds the URL).
  */
 export function getSafeRedirectPath(
   value: string | undefined | null,
@@ -22,7 +23,12 @@ export function getSafeRedirectPath(
   if (value.includes("//") || value.includes("\\")) return undefined;
   if (hasUnsafeCharacter(value)) return undefined;
   const path = value.split(/[?#]/u, 1)[0] ?? "";
-  if (path.split("/").some((segment) => segment === "." || segment === ".."))
+  if (
+    path
+      .split("/")
+      .map((segment) => segment.replace(/%2e/giu, "."))
+      .some((segment) => segment === "." || segment === "..")
+  )
     return undefined;
   return value;
 }

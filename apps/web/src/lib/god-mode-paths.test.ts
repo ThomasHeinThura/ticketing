@@ -128,3 +128,25 @@ describe("God Mode route registry (L-03)", () => {
     );
   });
 });
+
+describe("encoded dot segments", () => {
+  it("rejects percent-encoded dot segments that would resolve outside God Mode", () => {
+    for (const value of [
+      "/god-mode/%2e%2e/agent/x",
+      "/god-mode/%2E%2e/%2e%2E/",
+      "/god-mode/%2e/users",
+      "/dashboard/%2E%2E/god-mode",
+    ])
+      expect(getSafeRedirectPath(value)).toBeUndefined();
+    expect(godModeRedirectPath("/god-mode/%2e%2e/agent/x")).toBe("/god-mode");
+  });
+
+  it("keeps encoded characters that are not dot segments", () => {
+    expect(getSafeRedirectPath("/god-mode/users?q=a%2eb")).toBe(
+      "/god-mode/users?q=a%2eb",
+    );
+    expect(getSafeRedirectPath("/god-mode/imports/a%2Eb")).toBe(
+      "/god-mode/imports/a%2Eb",
+    );
+  });
+});

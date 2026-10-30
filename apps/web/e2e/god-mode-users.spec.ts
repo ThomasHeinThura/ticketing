@@ -253,9 +253,9 @@ test("God Mode users directory supports filters and audited account actions", as
   await page.getByRole("button", { name: "Operations" }).click();
   // L-03: the switcher has one God Mode item; Instance users is in the God Mode menu.
   await page.getByRole("menuitem", { name: "God Mode" }).click();
-  await expect(page).toHaveURL(/\/agent\/god-mode$/u);
+  await expect(page).toHaveURL(/\/god-mode$/u);
   await page.locator('a[href="/god-mode/users"]').click();
-  await expect(page).toHaveURL(/\/agent\/god-mode\/users$/);
+  await expect(page).toHaveURL(/\/god-mode\/users$/);
   await expect(
     page.getByRole("heading", { name: "Instance users" }),
   ).toBeVisible();

@@ -387,9 +387,7 @@ test("God Mode organisation lifecycle on persisted local SIT data", async ({
     exact: true,
   });
   await identityLink.click();
-  await expect(page).toHaveURL(
-    /\/agent\/god-mode\/organisations\/[^/]+\/identity/u,
-  );
+  await expect(page).toHaveURL(/\/god-mode\/organisations\/[^/]+\/identity/u);
   await page.goto(profileUrl, { waitUntil: "domcontentloaded" });
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     updatedName,
