@@ -333,6 +333,12 @@
 			"useAuthenticatorCode": "Use authenticator code",
 			"error": "The verification code was not accepted. Try again."
 		},
+		"godModeSignIn": {
+			"pageTitle": "God Mode sign-in",
+			"title": "Sign in to God Mode",
+			"subtitle": "Instance administrators sign in with their password and authenticator code. Single sign-on is not available here.",
+			"passwordDisabled": "Password sign-in is turned off on this instance, so God Mode cannot be opened from this page. Ask the operator to enable local sign-in."
+		},
 		"accountSecurity": {
 			"pageTitle": "Account security",
 			"description": "Manage your authenticator factor and backup codes.",

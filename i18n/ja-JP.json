@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "God Mode サインイン",
+			"title": "God Mode にサインイン",
+			"subtitle": "インスタンス管理者はパスワードと認証アプリのコードでサインインします。ここではシングルサインオンは使用できません。",
+			"passwordDisabled": "このインスタンスではパスワードによるサインインが無効になっているため、このページから God Mode を開くことはできません。ローカルサインインを有効にするよう運用担当者に依頼してください。"
 		}
 	},
 	"settings": {

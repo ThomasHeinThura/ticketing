@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "Accesso a God Mode",
+			"title": "Accedi a God Mode",
+			"subtitle": "Gli amministratori dell’istanza accedono con la password e il codice dell’app di autenticazione. Il single sign-on non è disponibile qui.",
+			"passwordDisabled": "L’accesso con password è disattivato su questa istanza, quindi God Mode non può essere aperto da questa pagina. Chiedi all’operatore di attivare l’accesso locale."
 		}
 	},
 	"settings": {

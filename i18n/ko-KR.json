@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "God Mode 로그인",
+			"title": "God Mode에 로그인",
+			"subtitle": "인스턴스 관리자는 비밀번호와 인증 앱 코드로 로그인합니다. 여기서는 SSO(Single Sign-On)를 사용할 수 없습니다.",
+			"passwordDisabled": "이 인스턴스에서는 비밀번호 로그인이 꺼져 있어 이 페이지에서 God Mode를 열 수 없습니다. 운영자에게 로컬 로그인을 켜 달라고 요청하세요."
 		}
 	},
 	"settings": {

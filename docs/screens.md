@@ -94,28 +94,29 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Project — automations | `/agent/projects/{key}/settings/automations` | route | P4 | 🟡 |
 | Project — budget | `/agent/projects/{key}/settings/budget` | route | P5 | 🟡 |
 | Project — danger zone | `/agent/projects/{key}/settings/danger` | route | P1 | 🟡 |
-| God Mode home / health | `/agent/god-mode` | route | P4 | 🟡 |
-| Webhook security posture | `/agent/god-mode/webhooks` | route | P4 | 🟡 |
-| General (incl. terminology) | `/agent/god-mode/general` | route | P4 | 🟡 |
-| Branding | `/agent/god-mode/branding` | route | P4 | ⬜ |
-| **Authentication providers** | `/agent/god-mode/authentication` | route | P3 | 🟡 |
-| **Provider editor** | `/agent/god-mode/authentication/{id}` | route | P3 | 🟡 |
-| Organisations | `/agent/god-mode/organisations` | route | P3 | ⬜ |
-| Organisation detail | `/agent/god-mode/organisations/{id}` | route | P3 | ⬜ |
-| **Organisation — Identity** (customer OIDC + SCIM connection) | `/agent/god-mode/organisations/{id}/identity` | route | P3 | 🟡 |
-| Storage | `/agent/god-mode/storage` | route | P4 | 🟡 |
-| Notification channels — SMTP configuration | `/agent/god-mode/notifications` | route | P4 | 🟡 |
-| Deliveries (outbox, dead letters) | `/agent/god-mode/deliveries` | route | P4 | 🟡 |
+| God Mode home / health | `/god-mode` | route | P4 | 🟡 |
+| God Mode sign-in (password and MFA only; signed-out God Mode visits land here; legacy `/agent/god-mode/*` redirects) | `/god-mode/sign-in` | route | P4 | 🟡 |
+| Webhook security posture | `/god-mode/webhooks` | route | P4 | 🟡 |
+| General (incl. terminology) | `/god-mode/general` | route | P4 | 🟡 |
+| Branding | `/god-mode/branding` | route | P4 | ⬜ |
+| **Authentication providers** | `/god-mode/authentication` | route | P3 | 🟡 |
+| **Provider editor** | `/god-mode/authentication/{id}` | route | P3 | 🟡 |
+| Organisations | `/god-mode/organisations` | route | P3 | ⬜ |
+| Organisation detail | `/god-mode/organisations/{id}` | route | P3 | ⬜ |
+| **Organisation — Identity** (customer OIDC + SCIM connection) | `/god-mode/organisations/{id}/identity` | route | P3 | 🟡 |
+| Storage | `/god-mode/storage` | route | P4 | 🟡 |
+| Notification channels — SMTP configuration | `/god-mode/notifications` | route | P4 | 🟡 |
+| Deliveries (outbox, dead letters) | `/god-mode/deliveries` | route | P4 | 🟡 |
 | Workspace — features | `/dashboard/settings/workspace/features` | route | P4 | 🟡 |
-| Feature flags | `/agent/god-mode/features` | route | P4 | 🟡 |
-| Jobs | `/agent/god-mode/jobs` | route | P4 | 🟡 |
-| Plugins | `/agent/god-mode/plugins` | route | P4 | 🟡 |
+| Feature flags | `/god-mode/features` | route | P4 | 🟡 |
+| Jobs | `/god-mode/jobs` | route | P4 | 🟡 |
+| Plugins | `/god-mode/plugins` | route | P4 | 🟡 |
 | Observability and instance MFA policy | `/god-mode/observability` | route | P0 | 🟡 |
-| MCP usage | `/agent/god-mode/mcp` | route | P4 | 🟡 |
-| Audit log | `/agent/god-mode/audit` | route | P2 | 🟡 |
-| Import runs (shared P4 prerequisite) | `/agent/god-mode/imports?workspaceId={workspaceId}` | route | P6 | 🟡 |
-| Import run detail | `/agent/god-mode/imports/{id}?workspaceId={workspaceId}` | route | P6 | 🟡 |
-| Users | `/agent/god-mode/users` | route | P4 | 🟡 |
+| MCP usage | `/god-mode/mcp` | route | P4 | 🟡 |
+| Audit log | `/god-mode/audit` | route | P2 | 🟡 |
+| Import runs (shared P4 prerequisite) | `/god-mode/imports?workspaceId={workspaceId}` | route | P6 | 🟡 |
+| Import run detail | `/god-mode/imports/{id}?workspaceId={workspaceId}` | route | P6 | 🟡 |
+| Users | `/god-mode/users` | route | P4 | 🟡 |
 | Sign in | `/sign-in` | route | P3 | 🟡 |
 | Accept invitation | `/invite/{id}` | route | P3 | 🟡 |
 | Home | `/` | route | P3 | ⬜ |
@@ -139,7 +140,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **147** (131 routes + 16 overlays, dialogs and sections) |
+| **Total** | **148** (132 routes + 16 overlays, dialogs and sections) |
 
 ## Overlays, dialogs and embedded sections
 

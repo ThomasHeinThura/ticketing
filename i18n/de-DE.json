@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "God Mode-Anmeldung",
+			"title": "Bei God Mode anmelden",
+			"subtitle": "Instanzadministratoren melden sich mit Passwort und Authenticator-Code an. Single Sign-On ist hier nicht verfügbar.",
+			"passwordDisabled": "Die Passwortanmeldung ist auf dieser Instanz deaktiviert, daher kann God Mode nicht über diese Seite geöffnet werden. Bitten Sie den Betreiber, die lokale Anmeldung zu aktivieren."
 		}
 	},
 	"settings": {

@@ -266,9 +266,9 @@ async function openInstanceUsers(page: Page) {
     .click();
   // L-03: the switcher has one God Mode item; Instance users is in the God Mode menu.
   await page.getByRole("menuitem", { name: "God Mode" }).click();
-  await expect(page).toHaveURL(/\/agent\/god-mode$/u);
-  await page.locator('a[href="/agent/god-mode/users"]').click();
-  await expect(page).toHaveURL(/\/agent\/god-mode\/users(?:\?|$)/u);
+  await expect(page).toHaveURL(/\/god-mode$/u);
+  await page.locator('a[href="/god-mode/users"]').click();
+  await expect(page).toHaveURL(/\/god-mode\/users(?:\?|$)/u);
   await expect(
     page.getByRole("heading", { name: "Instance users", exact: true }),
   ).toBeVisible();
@@ -289,7 +289,7 @@ async function leavePendingActionToInstanceUsers(page: Page) {
   // the workspace switcher used by openInstanceUsers() does not exist there.
   // Leave through real in-app history (same document, so the held proof
   // request stays in flight) back to the Users directory the journey came from.
-  const usersUrl = /\/agent\/god-mode\/users(?:\?|$)/u;
+  const usersUrl = /\/god-mode\/users(?:\?|$)/u;
   for (let steps = 0; steps < 8 && !usersUrl.test(page.url()); steps += 1) {
     const before = page.url();
     await page.goBack();

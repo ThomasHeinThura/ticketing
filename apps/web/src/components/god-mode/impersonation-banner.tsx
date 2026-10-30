@@ -45,7 +45,7 @@ export function ImpersonationBanner() {
   const [now, setNow] = useState(() => Date.now());
   const exit = useMutation({
     mutationFn: endImpersonation,
-    onSettled: () => window.location.assign("/agent/god-mode/users"),
+    onSettled: () => window.location.assign("/god-mode/users"),
   });
   const remaining = secondsUntil(data?.expiresAt ?? null, now);
   const expired = Boolean(data?.impersonating) && remaining === 0;

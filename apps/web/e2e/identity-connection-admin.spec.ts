@@ -10,7 +10,7 @@ import {
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
-const LIST = "/agent/god-mode/authentication";
+const LIST = "/god-mode/authentication";
 
 test("list shows staff and customer connections and customer ones are not editable here @a11y", async ({
   page,
@@ -31,7 +31,7 @@ test("list shows staff and customer connections and customer ones are not editab
   await expectNoSeriousAxeViolations(page);
 
   await page.getByRole("link", { name: "View" }).click();
-  await expect(page).toHaveURL("/agent/god-mode/organisations/org-1/identity");
+  await expect(page).toHaveURL("/god-mode/organisations/org-1/identity");
   await expect(
     page.getByRole("heading", { name: "Organisation identity", level: 1 }),
   ).toBeVisible();

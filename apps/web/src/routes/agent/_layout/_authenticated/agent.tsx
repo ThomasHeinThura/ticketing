@@ -194,7 +194,6 @@ function AgentRootRoute() {
   // Settings use kaneo's full-page settings shell, as /dashboard/settings does.
   if (
     location.pathname.startsWith("/agent/settings") ||
-    location.pathname.startsWith("/agent/god-mode") ||
     /^\/agent\/work-items\/[^/]+\/?$/u.test(location.pathname)
   ) {
     return <Outlet />;

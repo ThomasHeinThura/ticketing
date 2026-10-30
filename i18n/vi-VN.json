@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "Đăng nhập God Mode",
+			"title": "Đăng nhập God Mode",
+			"subtitle": "Quản trị viên phiên bản đăng nhập bằng mật khẩu và mã từ ứng dụng xác thực. Đăng nhập một lần (SSO) không khả dụng tại đây.",
+			"passwordDisabled": "Đăng nhập bằng mật khẩu đã bị tắt trên phiên bản này, vì vậy không thể mở God Mode từ trang này. Hãy yêu cầu người vận hành bật đăng nhập cục bộ."
 		}
 	},
 	"settings": {

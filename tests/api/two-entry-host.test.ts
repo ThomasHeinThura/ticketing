@@ -231,6 +231,34 @@ describe("P0 host and static isolation", () => {
     }
   });
 
+  it("serves God Mode only on the agent host (L-03: /god-mode at the agent host root)", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    for (const path of [
+      "/god-mode",
+      "/god-mode/",
+      "/god-mode/sign-in",
+      "/god-mode/users",
+      "/agent/god-mode",
+      "/agent/god-mode/users",
+    ]) {
+      const portal = await app.request(path, {
+        headers: { host: "portal.localhost:5174" },
+      });
+      expect(portal.status, `portal ${path}`).toBe(404);
+      expect(await portal.text(), `portal ${path}`).not.toContain("MARKER");
+      const agent = await app.request(path, {
+        headers: { host: "localhost:5173" },
+      });
+      expect(agent.status, `agent ${path}`).toBe(200);
+      expect(await agent.text(), `agent ${path}`).toContain(
+        "AGENT ROOT MARKER",
+      );
+    }
+  });
+
   it("does not serve the portal shell for non-GET/HEAD requests on registered routes", async () => {
     const { app } = createApp({
       staticRoot: agentRoot,

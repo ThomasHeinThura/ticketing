@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "God Mode 登录",
+			"title": "登录 God Mode",
+			"subtitle": "实例管理员使用密码和身份验证器应用中的代码登录。此处不提供单点登录。",
+			"passwordDisabled": "此实例已关闭密码登录，因此无法从此页面打开 God Mode。请让运维人员启用本地登录。"
 		}
 	},
 	"settings": {

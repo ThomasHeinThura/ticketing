@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "Вход в God Mode",
+			"title": "Войти в God Mode",
+			"subtitle": "Администраторы экземпляра входят с паролем и кодом из приложения-аутентификатора. Единый вход (SSO) здесь недоступен.",
+			"passwordDisabled": "Вход по паролю на этом экземпляре отключён, поэтому открыть God Mode с этой страницы нельзя. Попросите оператора включить локальный вход."
 		}
 	},
 	"settings": {

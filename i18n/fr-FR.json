@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "Connexion à God Mode",
+			"title": "Se connecter à God Mode",
+			"subtitle": "Les administrateurs de l’instance se connectent avec leur mot de passe et le code de leur application d’authentification. L’authentification unique n’est pas disponible ici.",
+			"passwordDisabled": "La connexion par mot de passe est désactivée sur cette instance : God Mode ne peut donc pas être ouvert depuis cette page. Demandez à l’opérateur d’activer la connexion locale."
 		}
 	},
 	"settings": {

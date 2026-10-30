@@ -26,11 +26,11 @@ const sources = [
     .map((file) => path.join(__dirname, file)),
   path.join(
     root,
-    "routes/agent/_layout/_authenticated/agent/god-mode/authentication.tsx",
+    "routes/agent/_layout/_authenticated/god-mode/authentication.tsx",
   ),
   path.join(
     root,
-    "routes/agent/_layout/_authenticated/agent/god-mode/authentication/$id.tsx",
+    "routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx",
   ),
 ];
 

@@ -1521,7 +1521,9 @@ Three levels, following Plane, with clear ownership at each.
 | **Profile** | `/dashboard/settings/account/*` | Account, appearance, notifications, security, sessions, API keys |
 | **Workspace** | `/dashboard/settings/workspace/*` | Members, teams, **roles**, work item types, workflows, SLA policies, service calendars, request types, custom fields, labels, estimates, integrations, webhooks, import |
 | **Project** | `/agent/projects/{key}/settings/*` | General, members, states, features, labels, automations, SLA binding, danger zone |
-| **Instance** | `/agent/god-mode/*` | Everything about the deployment |
+| **Instance** | `/god-mode/*` (agent host root; sign-in at `/god-mode/sign-in`) | Everything about the deployment |
+
+Old `/agent/settings/*` URLs (including `/agent/settings/profile/*`) and `/agent/god-mode/*` URLs redirect to these pages, keeping search and hash (L-03, Thomas 30 Oct 2026).
 
 Old `/agent/settings/*` URLs (including `/agent/settings/profile/*`) redirect to these pages, keeping search and hash (L-03, Thomas 30 Oct 2026).
 
@@ -1530,9 +1532,12 @@ Detail: [Settings hierarchy](feature-contracts-p4.md#settings-hierarchy).
 <a id="information-architecture-god-mode"></a>
 ### God Mode
 
-A route group inside the agent application, gated by `instance:admin` — not a separate
-application as it is in Plane, because a separate application means separate auth,
-separate deployment and separate design drift.
+A route group inside the agent application at the agent host root (`/god-mode/*`), gated by
+`instance:admin` — not a separate application as it is in Plane, because a separate
+application means separate auth, separate deployment and separate design drift. Its own
+sign-in page, `/god-mode/sign-in`, offers password and two-factor only (no SSO or
+identity-provider path) and creates the same session; the API stays the authority. Old
+`/agent/god-mode/*` links redirect (L-03, Thomas 30 Oct 2026, option A).
 
 ```
 General          instance name, locale, timezone, retention
@@ -1569,7 +1574,7 @@ Every screen has an address. Filters, layout, tab and selection are URL state.
 /agent/kb/{articleId}
 /dashboard/settings/workspace/roles/{roleId}
 /agent/projects/{key}/settings/states
-/agent/god-mode/authentication
+/god-mode/authentication
 
 # portal host, host-root (2026-10-20 decision; never /portal/*)
 /

@@ -6128,6 +6128,47 @@ test("sign-in screen @visual", async ({ page }) => {
   });
 });
 
+test("god-mode sign-in screen @visual", async ({ page }) => {
+  // Every SSO, social and email-code option is configured: God Mode still offers the password only.
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: path.endsWith("/api/auth/get-session")
+        ? "null"
+        : JSON.stringify({
+            disableRegistration: false,
+            disablePasswordRegistration: false,
+            disableEmailOtpSignIn: false,
+            disableWorkspaceCreation: true,
+            hasSmtp: true,
+            hasGithubSignIn: true,
+            hasGoogleSignIn: true,
+            hasDiscordSignIn: true,
+            hasCustomOAuth: true,
+            disableLoginForm: false,
+            customOAuthAutoLogin: true,
+            customOAuthLogoutUrl: null,
+          }),
+    });
+  });
+
+  await page.goto("/god-mode/sign-in");
+  await expect(
+    page.getByText("Sign in to God Mode", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("god-mode-sign-in.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
 test("work-item list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/work?layout=list");
@@ -6362,7 +6403,7 @@ test("portal sign-in email stage @visual", async ({ page }) => {
 
 test("instance users directory screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/users");
+  await page.goto("/god-mode/users");
   await expect(
     page.getByRole("heading", { name: "Instance users", exact: true }),
   ).toBeVisible();
@@ -6383,7 +6424,7 @@ test("instance users directory screen @visual", async ({ page }) => {
 
 test("authentication providers list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/authentication");
+  await page.goto("/god-mode/authentication");
   await expect(
     page.getByRole("heading", {
       name: "Authentication providers",
@@ -6404,7 +6445,7 @@ test("authentication providers list screen @visual", async ({ page }) => {
 
 test("authentication provider editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/authentication/visual-connection");
+  await page.goto("/god-mode/authentication/visual-connection");
   await expect(
     page.getByRole("heading", {
       name: "Connection configuration",
@@ -7099,7 +7140,7 @@ test("portal approval decision screen @visual", async ({ page }) => {
 });
 test("instance audit screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/audit");
+  await page.goto("/god-mode/audit");
   await expect(
     page.getByRole("heading", { name: "Audit log", exact: true }),
   ).toBeVisible();
@@ -8018,7 +8059,7 @@ test("workspace settings workflows screen @visual", async ({ page }) => {
 
 test("god mode health screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode");
+  await page.goto("/god-mode");
   await expect(
     page.getByRole("heading", { name: "Health", exact: true }),
   ).toBeVisible();
@@ -8038,7 +8079,7 @@ test("god mode health screen @visual", async ({ page }) => {
 
 test("god mode webhook security posture screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/webhooks");
+  await page.goto("/god-mode/webhooks");
   await expect(
     page.getByRole("heading", {
       name: "Webhook security posture",
@@ -8061,7 +8102,7 @@ test("god mode webhook security posture screen @visual", async ({ page }) => {
 
 test("god mode general settings screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/general");
+  await page.goto("/god-mode/general");
   await expect(
     page.getByRole("heading", { name: "General", exact: true }),
   ).toBeVisible();
@@ -8084,7 +8125,7 @@ test("god mode general settings screen @visual", async ({ page }) => {
 
 test("god mode notification delivery screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/notifications");
+  await page.goto("/god-mode/notifications");
   await expect(
     page.getByRole("heading", { name: "Notification delivery", exact: true }),
   ).toBeVisible();
@@ -8105,7 +8146,7 @@ test("god mode notification delivery screen @visual", async ({ page }) => {
 
 test("god mode feature switches screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/features");
+  await page.goto("/god-mode/features");
   await expect(
     page.getByRole("heading", { name: "Features", exact: true }),
   ).toBeVisible();
@@ -8127,7 +8168,7 @@ test("god mode feature switches screen @visual", async ({ page }) => {
 
 test("god mode import runs screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/imports?workspaceId=visual-workspace");
+  await page.goto("/god-mode/imports?workspaceId=visual-workspace");
   await expect(
     page.getByRole("heading", { name: "Import run history", exact: true }),
   ).toBeVisible();
@@ -8146,7 +8187,7 @@ test("god mode import runs screen @visual", async ({ page }) => {
 test("god mode import run detail screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto(
-    "/agent/god-mode/imports/visual-import?workspaceId=visual-workspace",
+    "/god-mode/imports/visual-import?workspaceId=visual-workspace",
   );
   await expect(
     page.getByRole("heading", { name: "Import run", exact: true }),
@@ -8168,7 +8209,7 @@ test("god mode import run detail screen @visual", async ({ page }) => {
 
 test("organisation identity screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/organisations/visual-organisation/identity");
+  await page.goto("/god-mode/organisations/visual-organisation/identity");
   await expect(
     page.getByRole("heading", { name: "Organisation identity", exact: true }),
   ).toBeVisible();
@@ -8197,7 +8238,7 @@ test("organisation identity screen @visual", async ({ page }) => {
 
 test("god mode storage screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/storage");
+  await page.goto("/god-mode/storage");
   await expect(
     page.getByRole("heading", { name: "Storage", exact: true }),
   ).toBeVisible();
@@ -8220,7 +8261,7 @@ test("god mode storage screen @visual", async ({ page }) => {
 
 test("god mode deliveries screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/deliveries");
+  await page.goto("/god-mode/deliveries");
   await expect(
     page.getByRole("heading", { name: "Deliveries", exact: true }),
   ).toBeVisible();
@@ -8243,7 +8284,7 @@ test("god mode deliveries screen @visual", async ({ page }) => {
 
 test("god mode jobs screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/jobs");
+  await page.goto("/god-mode/jobs");
   await expect(
     page.getByRole("heading", { name: "Background jobs", exact: true }),
   ).toBeVisible();
@@ -8267,7 +8308,7 @@ test("god mode jobs screen @visual", async ({ page }) => {
 
 test("god mode plugins screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/plugins");
+  await page.goto("/god-mode/plugins");
   await expect(
     page.getByRole("heading", { name: "Plugins", exact: true }),
   ).toBeVisible();
@@ -8290,7 +8331,7 @@ test("god mode plugins screen @visual", async ({ page }) => {
 
 test("god mode mcp usage screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/god-mode/mcp");
+  await page.goto("/god-mode/mcp");
   await expect(
     page.getByRole("heading", { name: "MCP usage", exact: true }),
   ).toBeVisible();

@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "God Mode साइन-इन",
+			"title": "God Mode में साइन इन करें",
+			"subtitle": "इंस्टेंस व्यवस्थापक अपने पासवर्ड और ऑथेंटिकेटर कोड से साइन इन करते हैं। यहाँ सिंगल साइन-ऑन उपलब्ध नहीं है।",
+			"passwordDisabled": "इस इंस्टेंस पर पासवर्ड साइन-इन बंद है, इसलिए इस पेज से God Mode नहीं खोला जा सकता। ऑपरेटर से लोकल साइन-इन चालू करने के लिए कहें।"
 		}
 	},
 	"settings": {

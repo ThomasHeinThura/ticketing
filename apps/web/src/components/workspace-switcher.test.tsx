@@ -112,6 +112,6 @@ describe("WorkspaceSwitcher settings entries (L-03)", () => {
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: routes.godModeHealth.path,
     });
-    expect(routes.godModeHealth.path).toBe("/agent/god-mode");
+    expect(routes.godModeHealth.path).toBe("/god-mode");
   });
 });

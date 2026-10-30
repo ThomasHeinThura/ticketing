@@ -7,7 +7,7 @@ import {
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
-const EVENTS = "/agent/god-mode/authentication/conn-staff";
+const EVENTS = "/god-mode/authentication/conn-staff";
 
 test("provisioning history pages through a URL cursor that survives a reload @a11y", async ({
   page,

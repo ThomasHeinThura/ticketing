@@ -1160,9 +1160,9 @@ hand-written protocol code; only the credential check reuses the platform.
 
 | Screen | Route | Notes |
 | --- | --- | --- |
-| God Mode → Authentication (identity connections, agent scope) | `/agent/god-mode/authentication` | Existing rows; the list becomes "identity connections" |
-| Connection editor | `/agent/god-mode/authentication/{id}` | OIDC settings, JIT policy, domain bindings, OIDC object-id group mappings (selection/open state in URL), **SCIM panel** (endpoint URL, token create/rotate/revoke, allowed resources and distinct SCIM mappings, last sync), Test OIDC, Test SCIM |
-| God Mode → Organisations → detail → **Identity** | `/agent/god-mode/organisations/{id}/identity` | The customer-organisation connection: enable/disable portal SSO; provider type (Entra first); organisation-bound OIDC settings; SCIM endpoint info; token create/rotate; Test OIDC; Test SCIM; provisioning status and last sync; errors without secrets; the closed profile-only attribute-mapping editor; group mapping (selection/open state in URL); audit history; **unmissable organisation-scope and portal-scope warnings** |
+| God Mode → Authentication (identity connections, agent scope) | `/god-mode/authentication` | Existing rows; the list becomes "identity connections" |
+| Connection editor | `/god-mode/authentication/{id}` | OIDC settings, JIT policy, domain bindings, OIDC object-id group mappings (selection/open state in URL), **SCIM panel** (endpoint URL, token create/rotate/revoke, allowed resources and distinct SCIM mappings, last sync), Test OIDC, Test SCIM |
+| God Mode → Organisations → detail → **Identity** | `/god-mode/organisations/{id}/identity` | The customer-organisation connection: enable/disable portal SSO; provider type (Entra first); organisation-bound OIDC settings; SCIM endpoint info; token create/rotate; Test OIDC; Test SCIM; provisioning status and last sync; errors without secrets; the closed profile-only attribute-mapping editor; group mapping (selection/open state in URL); audit history; **unmissable organisation-scope and portal-scope warnings** |
 
 <a id="identity-provisioning-api"></a>
 ### API

@@ -13,6 +13,7 @@ import useGetConfig from "@/hooks/queries/config/use-get-config";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { parseOptionalStringSearch } from "@/lib/optional-string-search";
+import { getSafeRedirectPath as safeRedirectPath } from "@/lib/safe-redirect";
 import { toast } from "@/lib/toast";
 import { AuthLayout } from "../../../components/auth/layout";
 import { OtpSignInForm } from "../../../components/auth/otp-sign-in-form";
@@ -50,13 +51,11 @@ function SignIn() {
   const invitationId = search.invitationId;
   const defaultEmail = search.email;
 
-  const getSafeRedirectPath = useCallback(() => {
-    const redirectPath = search.redirect;
-    if (redirectPath?.startsWith("/") && !redirectPath.includes("//")) {
-      return redirectPath;
-    }
-    return undefined;
-  }, [search.redirect]);
+  // Same-origin paths only; see `lib/safe-redirect.ts` for what is rejected.
+  const getSafeRedirectPath = useCallback(
+    () => safeRedirectPath(search.redirect),
+    [search.redirect],
+  );
 
   const getCallbackUrl = useCallback(() => {
     const redirectPath = getSafeRedirectPath();

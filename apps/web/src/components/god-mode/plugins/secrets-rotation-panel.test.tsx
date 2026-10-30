@@ -15,7 +15,7 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 vi.mock("@/lib/routes", () => ({
-  routes: { godModeJobs: { path: "/agent/god-mode/jobs" } },
+  routes: { godModeJobs: { path: "/god-mode/jobs" } },
 }));
 
 import { SecretsRotationPanel } from "./secrets-rotation-panel";
@@ -73,7 +73,7 @@ describe("Plugins secrets rotation", () => {
     ).toBeEnabled();
     expect(
       screen.getByRole("link", { name: "rotateSecrets.jobs" }),
-    ).toHaveAttribute("href", "/agent/god-mode/jobs");
+    ).toHaveAttribute("href", "/god-mode/jobs");
   });
   it("does not offer rotation without a configured key even when health succeeds", async () => {
     mocks.health.mockResolvedValue({

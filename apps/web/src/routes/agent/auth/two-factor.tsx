@@ -5,14 +5,19 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/components/auth/layout";
 import { authClient } from "@/lib/auth-client";
+import { parseOptionalStringSearch } from "@/lib/optional-string-search";
+import { getSafeRedirectPath } from "@/lib/safe-redirect";
 
 export const Route = createFileRoute("/auth/two-factor")({
   component: TwoFactorChallenge,
+  validateSearch: (search: Record<string, unknown>) =>
+    parseOptionalStringSearch(search, ["redirect"]),
 });
 
 function TwoFactorChallenge() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [code, setCode] = useState("");
   const [backupCode, setBackupCode] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +33,10 @@ function TwoFactorChallenge() {
         ? await authClient.twoFactor.verifyBackupCode({ code })
         : await authClient.twoFactor.verifyTotp({ code });
       if (result.error) throw new Error(t("auth:twoFactor.error"));
-      await navigate({ to: "/dashboard" });
+      // Only a safe same-origin path is followed; without one the default stays /dashboard.
+      const redirectPath = getSafeRedirectPath(search.redirect);
+      if (redirectPath) await navigate({ href: redirectPath });
+      else await navigate({ to: "/dashboard" });
     } catch {
       setError(t("auth:twoFactor.error"));
     } finally {

@@ -28,6 +28,13 @@
 		"screenshot": "account-security-setup.png"
 	},
 	{
+		"name": "god-mode-sign-in",
+		"inventoryRoute": "/god-mode/sign-in",
+		"applicationRoute": "/god-mode/sign-in",
+		"test": "god-mode sign-in screen @visual",
+		"screenshot": "god-mode-sign-in.png"
+	},
+	{
 		"name": "two-factor-challenge",
 		"inventoryRoute": "/auth/two-factor",
 		"applicationRoute": "/auth/two-factor",
@@ -43,22 +50,22 @@
 	},
 	{
 		"name": "instance-users-directory",
-		"inventoryRoute": "/agent/god-mode/users",
-		"applicationRoute": "/agent/god-mode/users",
+		"inventoryRoute": "/god-mode/users",
+		"applicationRoute": "/god-mode/users",
 		"test": "instance users directory screen @visual",
 		"screenshot": "instance-users-directory.png"
 	},
 	{
 		"name": "authentication-providers-list",
-		"inventoryRoute": "/agent/god-mode/authentication",
-		"applicationRoute": "/agent/god-mode/authentication",
+		"inventoryRoute": "/god-mode/authentication",
+		"applicationRoute": "/god-mode/authentication",
 		"test": "authentication providers list screen @visual",
 		"screenshot": "authentication-providers-list.png"
 	},
 	{
 		"name": "authentication-provider-editor",
-		"inventoryRoute": "/agent/god-mode/authentication/{id}",
-		"applicationRoute": "/agent/god-mode/authentication/$id",
+		"inventoryRoute": "/god-mode/authentication/{id}",
+		"applicationRoute": "/god-mode/authentication/$id",
 		"test": "authentication provider editor screen @visual",
 		"screenshot": "authentication-provider-editor.png"
 	},
@@ -329,8 +336,8 @@
 	},
 	{
 		"name": "instance-audit",
-		"inventoryRoute": "/agent/god-mode/audit",
-		"applicationRoute": "/agent/god-mode/audit",
+		"inventoryRoute": "/god-mode/audit",
+		"applicationRoute": "/god-mode/audit",
 		"test": "instance audit screen @visual",
 		"screenshot": "instance-audit.png"
 	},
@@ -602,92 +609,92 @@
 	},
 	{
 		"name": "god-home",
-		"inventoryRoute": "/agent/god-mode",
-		"applicationRoute": "/agent/god-mode",
+		"inventoryRoute": "/god-mode",
+		"applicationRoute": "/god-mode",
 		"test": "god mode health screen @visual",
 		"screenshot": "god-home.png"
 	},
 	{
 		"name": "god-webhooks",
-		"inventoryRoute": "/agent/god-mode/webhooks",
-		"applicationRoute": "/agent/god-mode/webhooks",
+		"inventoryRoute": "/god-mode/webhooks",
+		"applicationRoute": "/god-mode/webhooks",
 		"test": "god mode webhook security posture screen @visual",
 		"screenshot": "god-webhooks.png"
 	},
 	{
 		"name": "god-general",
-		"inventoryRoute": "/agent/god-mode/general",
-		"applicationRoute": "/agent/god-mode/general",
+		"inventoryRoute": "/god-mode/general",
+		"applicationRoute": "/god-mode/general",
 		"test": "god mode general settings screen @visual",
 		"screenshot": "god-general.png"
 	},
 	{
 		"name": "god-notifications",
-		"inventoryRoute": "/agent/god-mode/notifications",
-		"applicationRoute": "/agent/god-mode/notifications",
+		"inventoryRoute": "/god-mode/notifications",
+		"applicationRoute": "/god-mode/notifications",
 		"test": "god mode notification delivery screen @visual",
 		"screenshot": "god-notifications.png"
 	},
 	{
 		"name": "god-features",
-		"inventoryRoute": "/agent/god-mode/features",
-		"applicationRoute": "/agent/god-mode/features",
+		"inventoryRoute": "/god-mode/features",
+		"applicationRoute": "/god-mode/features",
 		"test": "god mode feature switches screen @visual",
 		"screenshot": "god-features.png"
 	},
 	{
 		"name": "god-imports",
-		"inventoryRoute": "/agent/god-mode/imports?workspaceId={workspaceId}",
-		"applicationRoute": "/agent/god-mode/imports",
+		"inventoryRoute": "/god-mode/imports?workspaceId={workspaceId}",
+		"applicationRoute": "/god-mode/imports",
 		"test": "god mode import runs screen @visual",
 		"screenshot": "god-imports.png"
 	},
 	{
 		"name": "god-import-detail",
-		"inventoryRoute": "/agent/god-mode/imports/{id}?workspaceId={workspaceId}",
-		"applicationRoute": "/agent/god-mode/imports/$id",
+		"inventoryRoute": "/god-mode/imports/{id}?workspaceId={workspaceId}",
+		"applicationRoute": "/god-mode/imports/$id",
 		"test": "god mode import run detail screen @visual",
 		"screenshot": "god-import-detail.png"
 	},
 	{
 		"name": "org-identity",
-		"inventoryRoute": "/agent/god-mode/organisations/{id}/identity",
-		"applicationRoute": "/agent/god-mode/organisations/$id/identity",
+		"inventoryRoute": "/god-mode/organisations/{id}/identity",
+		"applicationRoute": "/god-mode/organisations/$id/identity",
 		"test": "organisation identity screen @visual",
 		"screenshot": "org-identity.png"
 	},
 	{
 		"name": "god-storage",
-		"inventoryRoute": "/agent/god-mode/storage",
-		"applicationRoute": "/agent/god-mode/storage",
+		"inventoryRoute": "/god-mode/storage",
+		"applicationRoute": "/god-mode/storage",
 		"test": "god mode storage screen @visual",
 		"screenshot": "god-storage.png"
 	},
 	{
 		"name": "god-deliveries",
-		"inventoryRoute": "/agent/god-mode/deliveries",
-		"applicationRoute": "/agent/god-mode/deliveries",
+		"inventoryRoute": "/god-mode/deliveries",
+		"applicationRoute": "/god-mode/deliveries",
 		"test": "god mode deliveries screen @visual",
 		"screenshot": "god-deliveries.png"
 	},
 	{
 		"name": "god-jobs",
-		"inventoryRoute": "/agent/god-mode/jobs",
-		"applicationRoute": "/agent/god-mode/jobs",
+		"inventoryRoute": "/god-mode/jobs",
+		"applicationRoute": "/god-mode/jobs",
 		"test": "god mode jobs screen @visual",
 		"screenshot": "god-jobs.png"
 	},
 	{
 		"name": "god-plugins",
-		"inventoryRoute": "/agent/god-mode/plugins",
-		"applicationRoute": "/agent/god-mode/plugins",
+		"inventoryRoute": "/god-mode/plugins",
+		"applicationRoute": "/god-mode/plugins",
 		"test": "god mode plugins screen @visual",
 		"screenshot": "god-plugins.png"
 	},
 	{
 		"name": "god-mcp",
-		"inventoryRoute": "/agent/god-mode/mcp",
-		"applicationRoute": "/agent/god-mode/mcp",
+		"inventoryRoute": "/god-mode/mcp",
+		"applicationRoute": "/god-mode/mcp",
 		"test": "god mode mcp usage screen @visual",
 		"screenshot": "god-mcp.png"
 	},

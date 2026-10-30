@@ -26,6 +26,11 @@ export type SignInFormValues = {
 type SignInFormProps = {
   onSuccess?: () => void;
   defaultEmail?: string;
+  /**
+   * Where the two-factor step returns after verification. Only the God Mode sign-in passes it;
+   * without it the two-factor step keeps its default destination.
+   */
+  twoFactorRedirect?: string;
 };
 
 const signInSchema = z.object({
@@ -33,7 +38,11 @@ const signInSchema = z.object({
   password: z.string(),
 });
 
-export function SignInForm({ onSuccess, defaultEmail }: SignInFormProps) {
+export function SignInForm({
+  onSuccess,
+  defaultEmail,
+  twoFactorRedirect,
+}: SignInFormProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -64,7 +73,14 @@ export function SignInForm({ onSuccess, defaultEmail }: SignInFormProps) {
         "twoFactorRedirect" in result.data &&
         result.data.twoFactorRedirect === true
       ) {
-        await navigate({ to: "/auth/two-factor" });
+        await navigate(
+          twoFactorRedirect
+            ? {
+                to: "/auth/two-factor",
+                search: { redirect: twoFactorRedirect },
+              }
+            : { to: "/auth/two-factor" },
+        );
         return;
       }
 

@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "Inicio de sesión de God Mode",
+			"title": "Iniciar sesión en God Mode",
+			"subtitle": "Los administradores de la instancia inician sesión con su contraseña y el código de su aplicación de autenticación. El inicio de sesión único no está disponible aquí.",
+			"passwordDisabled": "El inicio de sesión con contraseña está desactivado en esta instancia, así que God Mode no se puede abrir desde esta página. Pide al operador que active el inicio de sesión local."
 		}
 	},
 	"settings": {
