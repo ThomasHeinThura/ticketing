@@ -8901,6 +8901,7 @@
 			"apps/web/src/components/work-item/create-work-item-label-picker.tsx::CreateWorkItemLabelPicker::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
+			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
 		],
 		"occurrences": [
@@ -9050,6 +9051,18 @@
 				"id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-attachments.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-inline-fields.tsx:WorkItemInlineFields",
+					"jsx:Popover[0]/PopoverContent[0]/p[0]",
+					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/p[0]::text-destructive-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/work-item/work-item-inline-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -9128,6 +9141,7 @@
 			"apps/web/src/components/work-item/create-work-item-label-picker.tsx::CreateWorkItemLabelPicker::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
+			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
 		],
 		"occurrences": [
@@ -9277,6 +9291,18 @@
 				"id": "apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-attachments.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-inline-fields.tsx:WorkItemInlineFields",
+					"jsx:Popover[0]/PopoverContent[0]/p[0]",
+					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/p[0]::text-destructive-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/work-item/work-item-inline-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
