@@ -31,6 +31,7 @@ import {
 import { Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import PageTitle from "@/components/page-title";
 import labelColors from "@/constants/label-colors";
 import {
@@ -600,20 +601,22 @@ export function LabelCatalogue({
               </Label>
               <div className="flex flex-wrap gap-2">
                 {labelColors.map((c) => (
-                  <Button
-                    variant="ghost"
-                    key={c.value}
-                    type="button"
-                    title={c.label}
-                    className={cn(
-                      "w-8 h-8 rounded-full border-2 transition-[scale,border-color]",
-                      newColor === c.value
-                        ? "border-foreground scale-110"
-                        : "border-transparent hover:scale-110",
-                    )}
-                    style={{ backgroundColor: c.color }}
-                    onClick={() => setNewColor(c.value)}
-                  />
+                  <ActionTooltip key={c.value} label={c.label}>
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      aria-label={c.label}
+                      aria-pressed={newColor === c.value}
+                      className={cn(
+                        "w-8 h-8 rounded-full border-2 transition-[scale,border-color]",
+                        newColor === c.value
+                          ? "border-foreground scale-110"
+                          : "border-transparent hover:scale-110",
+                      )}
+                      style={{ backgroundColor: c.color }}
+                      onClick={() => setNewColor(c.value)}
+                    />
+                  </ActionTooltip>
                 ))}
               </div>
             </div>
@@ -709,20 +712,22 @@ export function LabelCatalogue({
               </Label>
               <div className="flex flex-wrap gap-2">
                 {labelColors.map((c) => (
-                  <Button
-                    variant="ghost"
-                    key={c.value}
-                    type="button"
-                    title={c.label}
-                    className={cn(
-                      "w-8 h-8 rounded-full border-2 transition-[scale,border-color]",
-                      editColor === c.value
-                        ? "border-foreground scale-110"
-                        : "border-transparent hover:scale-110",
-                    )}
-                    style={{ backgroundColor: c.color }}
-                    onClick={() => setEditColor(c.value)}
-                  />
+                  <ActionTooltip key={c.value} label={c.label}>
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      aria-label={c.label}
+                      aria-pressed={editColor === c.value}
+                      className={cn(
+                        "w-8 h-8 rounded-full border-2 transition-[scale,border-color]",
+                        editColor === c.value
+                          ? "border-foreground scale-110"
+                          : "border-transparent hover:scale-110",
+                      )}
+                      style={{ backgroundColor: c.color }}
+                      onClick={() => setEditColor(c.value)}
+                    />
+                  </ActionTooltip>
                 ))}
               </div>
             </div>
