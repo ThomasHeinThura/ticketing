@@ -1,5 +1,5 @@
 {
-	"generated": "2026-10-30T00:47:05.872Z",
+	"generated": "2026-10-30T01:17:18.882Z",
 	"scope": "Stage2 five Calendar findings #961/#962/#963/#969/#970. Read-only real persisted SIT views and unsaved drafts; not full Calendar or product acceptance.",
 	"source": {
 		"feature": "e60a7749cdf9560ec439bab46954fc9d316dbdb7",
@@ -5344,7 +5344,8 @@
 		"Initial application import graph exceeded the unchanged 350KB work bundle budget; moving holiday validation out of an eagerly imported helper restored 333.3KB. No threshold/harness change.",
 		"Private E2E probes first mis-scoped portalled options or raced focus restoration. Diagnosis preceded explicit named-popup/visible-option/focus assertions. Final 11 existing journeys pass; no retries/sleeps/timeout increases.",
 		"First real recheck popup predicate incorrectly required opacity zero for an accessibility-hidden closed node. Trigger collapsed/focused, hidden listbox and completed animation replace that predicate; the actual app needed no patch.",
-		"Earlier 820px values were 30–32px wide. Corrected responsive rows provide157px; four breakpoint checks also pass."
+		"Earlier 820px values were 30–32px wide. Corrected responsive rows provide157px; four breakpoint checks also pass.",
+		"Required hosted persisted journey first failed164/1. Exact local reproduction then corrected library-combobox driver; unchanged real PostgreSQL assertions pass in combined12-test local scope. New hosted run still required."
 	],
 	"independentReview": {
 		"tier": "Sol high nonauthor",
@@ -5376,6 +5377,57 @@
 		"Lead/viewer/customer roles, concurrency, permission revocation and failure/retry were outside this bounded recheck."
 	],
 	"requirementsPromoted": 0,
-	"publishedScreenshots": 68,
-	"hostedChecks": "Not run yet; every non-G11 check remains required before merge. Latest merged #965 G11 2983.9/192.0/198.8/33.4ms, zero qualifying LCP runs."
+	"publishedScreenshots": 69,
+	"hostedChecks": "Not run yet; every non-G11 check remains required before merge. Latest merged #965 G11 2983.9/192.0/198.8/33.4ms, zero qualifying LCP runs.",
+	"persistedRegression": {
+		"sourceBase": "d375eeea45fe689013d7133eca7d9729199fc0f1",
+		"uncommittedDelta": "persisted Calendar driver targets combobox, Escape, collapsed/value assertions",
+		"startedAt": "2026-10-30T01:15:35.274Z",
+		"finishedAt": "2026-10-30T01:16:10.920Z",
+		"exitCode": 0,
+		"containers": [
+			{
+				"id": "0e75b27bf2f5a85f08b63aaf8768890e1f5afa60cbfa6c76daacb0c1509aeb86",
+				"image": "testcontainers/ryuk:0.14.0",
+				"removed": true
+			},
+			{
+				"id": "a85ebdc5d3a4fcdc56cb76d661dbb6609632e400f84efd7deb8c58aee28d9c97",
+				"image": "postgres:18-alpine",
+				"removed": true
+			}
+		],
+		"allObservedContainersRemoved": true,
+		"passed": 12,
+		"failed": 0,
+		"durationSeconds": 34.8,
+		"realPostgresTest": "e2e/service-calendar-persisted.spec.ts — CAL-17 imports holidays through the editor and reads them back from PostgreSQL",
+		"screenshot": "docs/report/screens/20261030-calendar-persisted-ics-import.png",
+		"behavior": [
+			"Create via actual API",
+			"Import ICS; GET confirms holiday date/name and version2",
+			"Reject invalid recurring event without partially importing preceding event"
+		],
+		"earlierHosted": {
+			"run": 40982115884,
+			"passed": 164,
+			"failed": 1,
+			"cause": "Persisted browser driver filled autocomplete but did not close its suggestions before querying Create calendar"
+		},
+		"diagnosis": "Exact old Create timeout reproduced locally. Driver now closes combobox with Escape and asserts collapsed state plus retainedUTC; existing persistence assertions unchanged.",
+		"preliminaryContainers": "Two preliminary isolated journeys completed; their container ids were not sampled. Before/after Docker inventory has no new remaining container. Final combined run sampled the exact Postgres/Ryuk ids below and verified both removed.",
+		"review": "Independent Sol high driver review has no high/medium findings or weakened assertion. Production code, fixture, harness, timeouts, retries and skips unchanged."
+	},
+	"currentG11": {
+		"run": 40982115884,
+		"job": 123824408577,
+		"lcpMs": 2841.5,
+		"listDetailMs": 301.2,
+		"assignmentMs": 181.3,
+		"dragP95Ms": 16.8,
+		"existingLcpAndDetailRetrySets": true,
+		"diagnosticTimeoutMs": 180000,
+		"qualifyingLcpRuns": 0,
+		"budgetsCalibrationHarnessChanged": false
+	}
 }

@@ -63,7 +63,11 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
     await page
       .getByLabel("Name", { exact: true })
       .fill("Persisted holiday calendar");
-    await page.getByLabel("IANA timezone").fill("UTC");
+    const timezone = page.getByRole("combobox", { name: "IANA timezone" });
+    await timezone.fill("UTC");
+    await timezone.press("Escape");
+    await expect(timezone).toHaveAttribute("aria-expanded", "false");
+    await expect(timezone).toHaveValue("UTC");
     await page.getByRole("button", { name: "Create calendar" }).click();
     await expect(page).toHaveURL(/\/agent\/settings\/calendars\/[a-z0-9]+/);
     await expect(
