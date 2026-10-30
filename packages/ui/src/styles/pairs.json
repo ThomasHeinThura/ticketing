@@ -17010,7 +17010,7 @@
 			"apps/web/src/components/common/group-control.tsx::GroupControl::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/header/project-layout-controls-fallback.tsx::ProjectLayoutControlsFallback::div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/project-layout.tsx::ProjectLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/div[1]/span[0]::text-foreground#0",
-			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/Button[0]::text-foreground#0",
+			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/ActionTooltip[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/gantt/gantt-task-bar.tsx::GanttTaskBar::div[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
@@ -17390,9 +17390,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/sort-control.tsx:SortControl",
-					"jsx:div[0]/Button[0]>bg-background"
+					"jsx:div[0]/ActionTooltip[0]/Button[0]>bg-background"
 				],
-				"id": "apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/Button[0]::text-foreground#0",
+				"id": "apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/ActionTooltip[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "apps/web/src/components/common/sort-control.tsx"
 			},
@@ -19658,7 +19658,7 @@
 			"apps/web/src/components/common/group-control.tsx::GroupControl::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/header/project-layout-controls-fallback.tsx::ProjectLayoutControlsFallback::div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/project-layout.tsx::ProjectLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/div[1]/span[0]::text-foreground#0",
-			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/Button[0]::text-foreground#0",
+			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/ActionTooltip[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/gantt/gantt-task-bar.tsx::GanttTaskBar::div[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
@@ -20038,9 +20038,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/sort-control.tsx:SortControl",
-					"jsx:div[0]/Button[0]>bg-background"
+					"jsx:div[0]/ActionTooltip[0]/Button[0]>bg-background"
 				],
-				"id": "apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/Button[0]::text-foreground#0",
+				"id": "apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/ActionTooltip[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "apps/web/src/components/common/sort-control.tsx"
 			},
