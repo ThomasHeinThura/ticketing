@@ -18,7 +18,7 @@ import {
 } from "@taskdesk/ui";
 import { CalendarClock, Check, Pencil, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CustomFieldValueInput } from "@/components/custom-field/custom-field-value-input";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
@@ -81,6 +81,7 @@ type Props = {
   item: WorkItemRow;
   disabled?: boolean;
   presentation?: "compact" | "table";
+  compactTitle?: boolean;
   customFieldColumns?: WorkItemCustomFieldColumn[];
   customFieldPeople?: WorkItemCustomFieldPerson[];
   children: (slots: InlineFieldSlots) => ReactNode;
@@ -122,6 +123,7 @@ export default function WorkItemInlineFields({
   item,
   disabled = false,
   presentation = "compact",
+  compactTitle = false,
   customFieldColumns = [],
   customFieldPeople = [],
   children,
@@ -187,7 +189,11 @@ export default function WorkItemInlineFields({
   const customFieldEditButtons = useRef(new Map<string, HTMLButtonElement>());
   const previousCustomFieldKey = useRef<string | null>(null);
   const [titleDraft, setTitleDraft] = useState(item.title);
-  const titleRef = useRef<HTMLDivElement>(null);
+  const titleRef = useCallback((element: HTMLDivElement | null) => {
+    const textarea = element?.querySelector("textarea");
+    textarea?.focus();
+    textarea?.select();
+  }, []);
   const titleTriggerRef = useRef<HTMLButtonElement>(null);
   const wasTitleEditing = useRef(false);
   const [noteFor, setNoteFor] = useState<string | null>(null);
@@ -401,11 +407,7 @@ export default function WorkItemInlineFields({
   }, [canEditDueDate, canEditTitle, item.title, titleEditing]);
 
   useEffect(() => {
-    if (titleEditing) {
-      const textarea = titleRef.current?.querySelector("textarea");
-      textarea?.focus();
-      textarea?.select();
-    } else if (wasTitleEditing.current) {
+    if (!titleEditing && wasTitleEditing.current) {
       titleTriggerRef.current?.focus();
     }
     wasTitleEditing.current = titleEditing;
@@ -505,26 +507,6 @@ export default function WorkItemInlineFields({
     notOnProject: t("workItems:list.assigneeNotOnProject"),
   });
 
-  const titleControl =
-    canEditTitle && !titleEditing ? (
-      <Button
-        ref={titleTriggerRef}
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 shrink-0"
-        aria-label={t("workItems:list.editTitle")}
-        data-testid="work-item-inline-title-edit"
-        disabled={mutation.isPending}
-        onClick={() => {
-          setError("");
-          setTitleDraft(item.title);
-          setTitleEditing(true);
-        }}
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </Button>
-    ) : null;
   const titleEditor = titleEditing ? (
     <div
       ref={titleRef}
@@ -544,6 +526,7 @@ export default function WorkItemInlineFields({
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.preventDefault();
+            if (compactTitle && mutation.isPending) return;
             setTitleDraft(item.title);
             setTitleEditing(false);
           }
@@ -587,6 +570,57 @@ export default function WorkItemInlineFields({
       </div>
     </div>
   ) : null;
+
+  const titleButton =
+    canEditTitle && (compactTitle || !titleEditing) ? (
+      <Button
+        ref={titleTriggerRef}
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 shrink-0"
+        aria-label={t("workItems:list.editTitle")}
+        data-testid="work-item-inline-title-edit"
+        disabled={mutation.isPending}
+        onClick={() => {
+          setError("");
+          setTitleDraft(item.title);
+          setTitleEditing(true);
+        }}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+    ) : null;
+  const titleControl =
+    compactTitle && titleButton ? (
+      <Popover
+        open={titleEditing}
+        onOpenChange={(open) => {
+          if (!canEditTitle || mutation.isPending) return;
+          if (!open) setTitleDraft(item.title);
+          setTitleEditing(open);
+        }}
+      >
+        <PopoverTrigger asChild>{titleButton}</PopoverTrigger>
+        <PopoverContent
+          className="w-80 max-w-(--available-width) p-2"
+          align="start"
+          aria-label={t("workItems:list.editTitle")}
+          finalFocus={() =>
+            titleEditing ? false : (titleTriggerRef.current ?? false)
+          }
+        >
+          {titleEditor}
+          {error ? (
+            <p role="alert" className="text-destructive-foreground text-xs">
+              {error}
+            </p>
+          ) : null}
+        </PopoverContent>
+      </Popover>
+    ) : (
+      titleButton
+    );
 
   const dueDateStartDay = item.startDate ? isoToDay(item.startDate) : undefined;
   const dueDateDisabled =
@@ -1079,7 +1113,7 @@ export default function WorkItemInlineFields({
         priorityControl,
         assigneeControl,
         titleControl,
-        titleEditor,
+        titleEditor: compactTitle ? null : titleEditor,
         dueDateControl,
         customFieldControls,
       })}

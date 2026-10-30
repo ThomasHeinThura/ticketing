@@ -111,6 +111,7 @@ function renderInline(
   disabled = false,
   presentation: "compact" | "table" = "compact",
   customFieldColumns: WorkItemCustomFieldColumn[] = [],
+  compactTitle = false,
 ) {
   const client = new QueryClient({
     defaultOptions: {
@@ -119,34 +120,38 @@ function renderInline(
     },
   });
   client.setQueryData(["work-items", "detail", row.key], row);
+  const content = (nextCompactTitle: boolean) => (
+    <QueryClientProvider client={client}>
+      <WorkItemInlineFields
+        item={row}
+        disabled={disabled}
+        presentation={presentation}
+        customFieldColumns={customFieldColumns}
+        compactTitle={nextCompactTitle}
+      >
+        {(controls) => (
+          <div>
+            {controls.stateControl}
+            {controls.priorityControl}
+            {controls.assigneeControl}
+            {controls.titleControl}
+            {controls.titleEditor}
+            {controls.dueDateControl}
+            {Object.entries(controls.customFieldControls ?? {}).map(
+              ([key, control]) => (
+                <div key={key}>{control}</div>
+              ),
+            )}
+          </div>
+        )}
+      </WorkItemInlineFields>
+    </QueryClientProvider>
+  );
+  const view = render(content(compactTitle));
   return {
     client,
-    ...render(
-      <QueryClientProvider client={client}>
-        <WorkItemInlineFields
-          item={row}
-          disabled={disabled}
-          presentation={presentation}
-          customFieldColumns={customFieldColumns}
-        >
-          {(controls) => (
-            <div>
-              {controls.stateControl}
-              {controls.priorityControl}
-              {controls.assigneeControl}
-              {controls.titleControl}
-              {controls.titleEditor}
-              {controls.dueDateControl}
-              {Object.entries(controls.customFieldControls ?? {}).map(
-                ([key, control]) => (
-                  <div key={key}>{control}</div>
-                ),
-              )}
-            </div>
-          )}
-        </WorkItemInlineFields>
-      </QueryClientProvider>,
-    ),
+    ...view,
+    setCompactTitle: (value: boolean) => view.rerender(content(value)),
   };
 }
 
@@ -276,6 +281,127 @@ describe("WorkItemInlineFields", () => {
       }),
     );
   });
+
+  it.each(["Escape", "Cancel"])(
+    "keeps the compact title trigger mounted and returns focus after %s",
+    async (action) => {
+      const view = renderInline(item(), false, "table", [], true);
+      const trigger = screen.getByTestId("work-item-inline-title-edit");
+      fireEvent.click(trigger);
+      const popup = await screen.findByRole("dialog", {
+        name: "workItems:list.editTitle",
+      });
+      expect(view.container).not.toContainElement(popup);
+      expect(trigger).toBeInTheDocument();
+      const input = screen.getByLabelText("workItems:properties.titleLabel");
+      fireEvent.change(input, { target: { value: "Unsaved compact title" } });
+      if (action === "Escape") {
+        fireEvent.keyDown(input, { key: "Escape", code: "Escape" });
+      } else {
+        fireEvent.click(screen.getByTestId("work-item-inline-title-cancel"));
+      }
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() => expect(trigger).toHaveFocus());
+      expect(mocks.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it("saves a compact title with the latest cached version", async () => {
+    const row = item();
+    const { client } = renderInline(row, false, "table", [], true);
+    client.setQueryData(["work-items", "detail", row.key], {
+      ...row,
+      version: 9,
+    });
+    const trigger = screen.getByTestId("work-item-inline-title-edit");
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByLabelText("workItems:properties.titleLabel"), {
+      target: { value: "Updated compact title" },
+    });
+    fireEvent.click(screen.getByTestId("work-item-inline-title-save"));
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        key: "HELP-7",
+        version: 9,
+        title: "Updated compact title",
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("closes a conflicted compact title editor and keeps conflict invalidation", async () => {
+    mocks.update.mockRejectedValueOnce(new WorkItemVersionConflictError(4, 5));
+    const { client } = renderInline(item(), false, "table", [], true);
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    const trigger = screen.getByTestId("work-item-inline-title-edit");
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByLabelText("workItems:properties.titleLabel"), {
+      target: { value: "Conflicting compact title" },
+    });
+    fireEvent.click(screen.getByTestId("work-item-inline-title-save"));
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ["work-items", "p1"],
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("keeps a compact title draft and error visible after a failed save", async () => {
+    mocks.update.mockRejectedValueOnce(new Error("unavailable"));
+    renderInline(item(), false, "table", [], true);
+    fireEvent.click(screen.getByTestId("work-item-inline-title-edit"));
+    fireEvent.change(screen.getByLabelText("workItems:properties.titleLabel"), {
+      target: { value: "Retryable compact title" },
+    });
+    fireEvent.click(screen.getByTestId("work-item-inline-title-save"));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "workItems:properties.saveFailed",
+    );
+    expect(
+      screen.getByLabelText("workItems:properties.titleLabel"),
+    ).toHaveValue("Retryable compact title");
+    expect(screen.getByTestId("work-item-inline-title-cancel")).toBeEnabled();
+  });
+
+  it("does not dismiss a pending compact title save with Escape", async () => {
+    let complete: ((value: unknown) => void) | undefined;
+    mocks.update.mockReturnValueOnce(
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+    );
+    renderInline(item(), false, "table", [], true);
+    fireEvent.click(screen.getByTestId("work-item-inline-title-edit"));
+    const input = screen.getByLabelText("workItems:properties.titleLabel");
+    fireEvent.change(input, { target: { value: "Pending compact title" } });
+    fireEvent.click(screen.getByTestId("work-item-inline-title-save"));
+    await waitFor(() => expect(input).toHaveAttribute("readonly"));
+    fireEvent.keyDown(input, { key: "Escape", code: "Escape" });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByTestId("work-item-inline-title-cancel")).toBeDisabled();
+    complete?.({ ...item(), title: "Pending compact title", version: 5 });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(mocks.update).toHaveBeenCalledOnce();
+  });
+
+  it.each([false, true])(
+    "preserves an editing draft and focus when compact mode changes from %s",
+    async (compact) => {
+      const view = renderInline(item(), false, "table", [], compact);
+      fireEvent.click(screen.getByTestId("work-item-inline-title-edit"));
+      const input = screen.getByLabelText("workItems:properties.titleLabel");
+      fireEvent.change(input, { target: { value: "Draft across resize" } });
+      input.focus();
+      view.setCompactTitle(!compact);
+      const moved = screen.getByLabelText("workItems:properties.titleLabel");
+      expect(moved).toHaveValue("Draft across resize");
+      await waitFor(() => expect(moved).toHaveFocus());
+      expect(mocks.update).not.toHaveBeenCalled();
+    },
+  );
 
   it("closes a conflicted title editor and invalidates the active project list", async () => {
     mocks.update.mockRejectedValueOnce(new WorkItemVersionConflictError(4, 5));
