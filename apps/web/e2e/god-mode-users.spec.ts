@@ -302,7 +302,36 @@ test("God Mode users directory supports filters and audited account actions", as
 
   await page.getByRole("button", { name: "Suspend account" }).click();
   await page.getByLabel("Reason (optional)").fill("Security review");
-  await page.getByLabel("Expiry (optional)").fill("2030-01-01T12:00");
+  const expiry = await page.evaluate(() => {
+    const now = new Date();
+    const date = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 12),
+    );
+    return {
+      iso: date.toISOString(),
+      month: date.toLocaleString("en-US", { month: "long", timeZone: "UTC" }),
+      year: date.getUTCFullYear(),
+    };
+  });
+  await page.getByRole("button", { name: "Expiry (optional)" }).click();
+  const expiryPicker = page.getByRole("dialog", { name: "Expiry (optional)" });
+  await expect(
+    expiryPicker.locator('input[type="datetime-local"]'),
+  ).toHaveCount(0);
+  await expiryPicker
+    .getByRole("button", { name: "Go to the Next Month" })
+    .click();
+  await expiryPicker
+    .getByRole("button", {
+      name: new RegExp(`${expiry.month} 1st, ${expiry.year}`),
+    })
+    .click();
+  await expiryPicker.getByRole("combobox", { name: "Hour" }).click();
+  await page.getByRole("option", { name: "12", exact: true }).click();
+  await expect(
+    expiryPicker.getByRole("combobox", { name: "Minute" }),
+  ).toHaveText("00");
+  await expiryPicker.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByLabel("Authenticator code").fill("123456");
   await page.getByRole("button", { name: "Suspend account" }).last().click();
   await expect(page.getByText("Suspended", { exact: true })).toBeVisible();
@@ -388,6 +417,10 @@ test("God Mode users directory supports filters and audited account actions", as
   );
   expect(received).toContain("POST /api/instance/users/staff-user-1/reset-mfa");
   expect(received).toContain("POST /api/instance/users/staff-user-1/suspend");
+  expect(suspensionRequest).toMatchObject({
+    reason: "Security review",
+    expiresAt: expiry.iso,
+  });
   expect(suspendChallengeBinding).toMatchObject({
     kind: "operation",
     operation: "instance_admin_suspend",

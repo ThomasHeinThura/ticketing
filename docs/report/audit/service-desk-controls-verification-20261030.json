@@ -1,0 +1,4696 @@
+{
+	"generated": "2026-10-29T23:12:04.901Z",
+	"scope": "Stage2 Service Desk four underlying defects #957–#960 across five control locations. Read-only real persisted browser observations and locally cancelled drafts; broader audit and release regression remain open.",
+	"source": {
+		"candidate": "b30e5df5f921877cc8c6347ce7edc908224cc185",
+		"runtime": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+		"changedFilesByteIdentical": [
+			"apps/web/src/components/service-management/change-section.test.tsx",
+			"apps/web/src/components/service-management/change-section.tsx",
+			"apps/web/src/components/service-management/freeze-dialog.test.tsx",
+			"apps/web/src/components/service-management/freeze-dialog.tsx",
+			"apps/web/src/components/service-management/release-detail.test.tsx",
+			"apps/web/src/components/service-management/release-detail.tsx",
+			"apps/web/src/components/service-management/releases-list.test.tsx",
+			"apps/web/src/components/service-management/releases-list.tsx"
+		],
+		"runtimeComposition": "Integration450 includes these exact Service Desk source/test bytes, merged Reports main956 and the independently reviewed God Mode source. God Mode is a separate PR; no integration branch is pushed.",
+		"integratedWithMain": "b30e5df5f921877cc8c6347ce7edc908224cc185",
+		"latestMain": "738bb127e9b8cfc5aa04992c334aa1cf2a81dd93",
+		"productionTreeComparison": "git diff runtime450 versus integrated b30 across apps/packages/i18n contains only apps/web/e2e/god-mode-users.spec.ts; no production source difference."
+	},
+	"before": {
+		"source": "Existing native-control audit before this change; exact member fixture URLs were confirmed by GET",
+		"screenshots": [
+			"docs/report/screens/20261030-service-desk-controls-before-releases-create-dialog-owner-390-dark.png",
+			"docs/report/screens/20261030-service-desk-controls-before-changes-freeze-dialog-owner-390-dark.png",
+			"docs/report/screens/20261030-service-desk-controls-before-member-existing-release-date-390-dark.png",
+			"docs/report/screens/20261030-service-desk-controls-before-member-existing-change-window-390-dark.png"
+		]
+	},
+	"after": {
+		"sourceIntegrationRevision": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+		"sourceWorktreeHeadVerified": "0f5c07dfc",
+		"runtime": "final local SIT image source reported healthy by root; browser matched changed control DOM",
+		"actualUrls": {
+			"releaseList": "https://ticketing.localhost/agent/service-management/releases",
+			"changeCalendar": "https://ticketing.localhost/agent/service-management/changes",
+			"releaseDetail": "https://ticketing.localhost/agent/service-management/releases/vendh1lx308zhyz31e2qcjwx",
+			"changeWorkItemDetail": "https://ticketing.localhost/agent/work-items/HELP-4"
+		},
+		"coverage": {
+			"planned": 72,
+			"successfulUnique": 72,
+			"missing": [],
+			"duplicateCaptures": 0,
+			"memberChangeDetailViews": 6,
+			"actualRoleVerification": [
+				{
+					"requested": "owner",
+					"session": 200,
+					"workspace": 200,
+					"membership": 200,
+					"role": "owner"
+				},
+				{
+					"requested": "admin",
+					"session": 200,
+					"workspace": 200,
+					"membership": 200,
+					"role": "admin"
+				},
+				{
+					"requested": "member",
+					"session": 200,
+					"workspace": 200,
+					"membership": 200,
+					"role": "member"
+				}
+			],
+			"actualThemeMismatches": 0,
+			"documentOverflowViews": 0,
+			"nativeDateTimeInputsAcrossViews": 0,
+			"seriousCriticalAxeViolationsAcrossViews": 0
+		},
+		"settledVisualRecheck": {
+			"role": "member",
+			"width": 390,
+			"theme": "dark",
+			"source": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+			"causeOfEarlierClippedScreenshot": "Screenshot was taken immediately after opening the CollapsiblePanel during its 200 ms height transition; the original matrix row is a DOM observation, not settled visual evidence.",
+			"readiness": "Waited until panel height equaled scrollHeight, then scrolled each target into view and verified its bounds were within the viewport and panel.",
+			"views": [
+				{
+					"name": "change-window-start",
+					"screenshot": "docs/report/screens/20261030-service-desk-controls-member-390-dark-change-window-start-settled.png",
+					"geometry": {
+						"id": "change-window-start",
+						"disabled": true,
+						"visible": true,
+						"rect": {
+							"top": 570.609375,
+							"bottom": 602.609375,
+							"height": 32
+						},
+						"withinViewport": true,
+						"withinPanel": true,
+						"panel": {
+							"height": 675,
+							"scrollHeight": 675,
+							"state": null,
+							"overflow": "hidden"
+						}
+					}
+				},
+				{
+					"name": "change-window-end",
+					"screenshot": "docs/report/screens/20261030-service-desk-controls-member-390-dark-change-window-end-settled.png",
+					"geometry": {
+						"id": "change-window-end",
+						"disabled": true,
+						"visible": true,
+						"rect": {
+							"top": 570.609375,
+							"bottom": 602.609375,
+							"height": 32
+						},
+						"withinViewport": true,
+						"withinPanel": true,
+						"panel": {
+							"height": 675,
+							"scrollHeight": 675,
+							"state": null,
+							"overflow": "hidden"
+						}
+					}
+				},
+				{
+					"name": "affected-services",
+					"screenshot": "docs/report/screens/20261030-service-desk-controls-member-390-dark-affected-services-settled.png",
+					"geometry": {
+						"rect": {
+							"top": 775.609375,
+							"bottom": 819.609375,
+							"height": 44
+						},
+						"withinViewport": true,
+						"viewportClientHeight": 44,
+						"viewportScrollHeight": 45,
+						"named": true,
+						"tabIndex": "0"
+					}
+				},
+				{
+					"name": "release-edit-date",
+					"screenshot": "docs/report/screens/20261030-service-desk-controls-member-390-dark-release-edit-date-settled.png",
+					"geometry": {
+						"id": "release-edit-date",
+						"disabled": true,
+						"visible": true,
+						"rect": {
+							"top": 452,
+							"bottom": 488,
+							"height": 36
+						},
+						"withinViewport": true,
+						"withinPanel": true,
+						"panel": null
+					}
+				}
+			],
+			"rate429": 0,
+			"nonGetRequests": 0,
+			"error": null
+		},
+		"controlBehavior": {
+			"releaseCreate": "Owner/admin DateField trigger present in all 12 role-width-theme cases; popup calendar select/clear/Escape and focus return confirmed owner 390 dark and 1440 light. Outer dialog stayed open until Cancel.",
+			"freezeCreate": "Owner/admin DateTimePicker Starts/Ends triggers present in all 12 role-width-theme cases; pointer minute 42 confirmed owner 390 dark and 1440 light; keyboard Home+42 ArrowDown+Enter confirmed owner 390 dark. Escape returned focus to Starts and left outer dialog open.",
+			"freezeRange": "Owner 390 dark local draft: 10:42 start/09:30 end displayed invalid range and disabled outer Declare; corrected 11:30 end cleared alert and enabled outer Declare; outer Cancel, no API write.",
+			"member": "Member create buttons absent; persisted release DateField and change DateTimePicker triggers disabled in all six captured member detail variants.",
+			"memberAffectedServicesScrollArea": {
+				"views": 6,
+				"named": true,
+				"singleViewport": true,
+				"focusable": true,
+				"heightPairs": ["40/41", "44/45"],
+				"genuineOverflowViews": 0,
+				"keyboardScrollCoverage": "Unavailable: persisted affected-services viewport exceeded client height by only 1px; no genuine overflow fixture."
+			}
+		},
+		"popupAxe": {
+			"stages": [
+				{
+					"name": "release-calendar-open",
+					"seriousCritical": 0,
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				},
+				{
+					"name": "freeze-calendar-open",
+					"seriousCritical": 0,
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				},
+				{
+					"name": "freeze-minute-list-open",
+					"seriousCritical": 0,
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				},
+				{
+					"name": "freeze-reversed-range",
+					"seriousCritical": 0,
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				},
+				{
+					"name": "freeze-corrected-range",
+					"seriousCritical": 0,
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				}
+			],
+			"allZero": true
+		},
+		"settledPopupVisual": {
+			"role": "owner",
+			"width": 390,
+			"theme": "dark",
+			"stages": [
+				{
+					"name": "release-calendar",
+					"screenshot": "docs/report/screens/20261030-service-desk-controls-settled-release-calendar-390-dark.png",
+					"readiness": {
+						"opacity": 1,
+						"visibility": "visible",
+						"rect": {
+							"x": 24.15625,
+							"y": 201.03125,
+							"right": 322.15625,
+							"bottom": 554.03125,
+							"width": 298,
+							"height": 353
+						},
+						"withinViewport": true,
+						"activeAnimationCount": 0,
+						"animationCount": 0,
+						"theme": "dark",
+						"nativeDateTimeInputs": 0,
+						"documentOverflow": false
+					},
+					"afterScreenshot": {
+						"opacity": 1,
+						"visibility": "visible",
+						"rect": {
+							"x": 27.5625,
+							"y": 201.390625,
+							"right": 325.5625,
+							"bottom": 554.390625,
+							"width": 298,
+							"height": 353
+						},
+						"withinViewport": true,
+						"activeAnimationCount": 0,
+						"animationCount": 0,
+						"theme": "dark",
+						"nativeDateTimeInputs": 0,
+						"documentOverflow": false
+					}
+				},
+				{
+					"name": "freeze-calendar",
+					"screenshot": "docs/report/screens/20261030-service-desk-controls-settled-freeze-calendar-390-dark.png",
+					"readiness": {
+						"opacity": 1,
+						"visibility": "visible",
+						"rect": {
+							"x": 24.0625,
+							"y": 198.21875,
+							"right": 366.0625,
+							"bottom": 650.21875,
+							"width": 342,
+							"height": 452
+						},
+						"withinViewport": true,
+						"activeAnimationCount": 0,
+						"animationCount": 0,
+						"theme": "dark",
+						"nativeDateTimeInputs": 0,
+						"documentOverflow": false
+					},
+					"afterScreenshot": {
+						"opacity": 1,
+						"visibility": "visible",
+						"rect": {
+							"x": 24.234375,
+							"y": 198.21875,
+							"right": 366.234375,
+							"bottom": 650.21875,
+							"width": 342,
+							"height": 452
+						},
+						"withinViewport": true,
+						"activeAnimationCount": 0,
+						"animationCount": 0,
+						"theme": "dark",
+						"nativeDateTimeInputs": 0,
+						"documentOverflow": false
+					}
+				},
+				{
+					"name": "nested-minute-select",
+					"screenshot": "docs/report/screens/20261030-service-desk-controls-settled-nested-minute-select-390-dark.png",
+					"readiness": {
+						"opacity": 1,
+						"visibility": "visible",
+						"rect": {
+							"x": 181.125,
+							"y": 533.484375,
+							"right": 355.125,
+							"bottom": 890,
+							"width": 174,
+							"height": 356.515625
+						},
+						"withinViewport": true,
+						"activeAnimationCount": 0,
+						"animationCount": 0,
+						"theme": "dark",
+						"nativeDateTimeInputs": 0,
+						"documentOverflow": false
+					},
+					"afterScreenshot": {
+						"opacity": 1,
+						"visibility": "visible",
+						"rect": {
+							"x": 181.125,
+							"y": 533.484375,
+							"right": 355.125,
+							"bottom": 890,
+							"width": 174,
+							"height": 356.515625
+						},
+						"withinViewport": true,
+						"activeAnimationCount": 0,
+						"animationCount": 0,
+						"theme": "dark",
+						"nativeDateTimeInputs": 0,
+						"documentOverflow": false
+					}
+				}
+			],
+			"allOpaqueInViewportWithoutActiveAnimations": true,
+			"rate429": 0,
+			"nonGetRequests": 0,
+			"outerCancelled": true,
+			"error": null,
+			"originalPopupScreenshots": "Transient/DOM-only; settled visual evidence is limited to the three images in this packet."
+		},
+		"interactionEvidence": {
+			"pointerCases": 2,
+			"pointerErrors": [null, null],
+			"keyboardMinuteText": "42",
+			"keyboardFocusAfterSelect": "freeze-start-minute",
+			"keyboardFocusAfterEscape": "freeze-start",
+			"rangeOuterCancelled": true
+		},
+		"driverHistory": [
+			{
+				"probe": "Initial popup-range attempt",
+				"completedStages": [
+					"release-calendar-open",
+					"freeze-calendar-open",
+					"freeze-minute-list-open",
+					"freeze-reversed-range"
+				],
+				"error": "Probe clicked an already selected end day again, deselecting it; picker-local Save became disabled and Playwright locator.click timed out after 30 seconds.",
+				"classification": "Driver interaction error, not a confirmed product defect. Successful corrected rerun is recorded in popup-range.json.",
+				"reconstructedFromFirstRunToolOutput": true,
+				"apiWrites": 0,
+				"rate429": 0
+			}
+		],
+		"rateLimitInterruption": {
+			"original429Responses": 5,
+			"originalPathSet": ["/api/auth/get-session"],
+			"retryAfterValues": [null],
+			"originalTimeoutRows": 1,
+			"followup429Responses": 0,
+			"note": "Original matrix stopped at the first 429; several in-flight auth requests returned 429. A later bounded member-only gap run completed the planned observations."
+		},
+		"nonGetRequests": 0,
+		"containersStarted": "none",
+		"sourceBindings": [
+			"apps/web/src/components/service-management/releases-list.tsx:192",
+			"apps/web/src/components/service-management/freeze-dialog.tsx:135",
+			"apps/web/src/components/service-management/release-detail.tsx:118",
+			"apps/web/src/components/service-management/change-section.tsx:280",
+			"apps/web/src/components/service-management/change-section.tsx:322"
+		],
+		"representativeScreenshots": [
+			"docs/report/screens/20261030-service-desk-controls-owner-390-dark-release-create-dialog.png",
+			"docs/report/screens/20261030-service-desk-controls-owner-820-light-freeze-create-dialog.png",
+			"docs/report/screens/20261030-service-desk-controls-member-390-dark-release-edit-date-settled.png",
+			"docs/report/screens/20261030-service-desk-controls-member-390-dark-change-window-start-settled.png",
+			"docs/report/screens/20261030-service-desk-controls-member-390-dark-change-window-end-settled.png",
+			"docs/report/screens/20261030-service-desk-controls-member-390-dark-affected-services-settled.png",
+			"docs/report/screens/20261030-service-desk-controls-settled-release-calendar-390-dark.png",
+			"docs/report/screens/20261030-service-desk-controls-settled-freeze-calendar-390-dark.png",
+			"docs/report/screens/20261030-service-desk-controls-settled-nested-minute-select-390-dark.png",
+			"docs/report/screens/20261030-service-desk-controls-390-dark-freeze-minute-42-selected.png",
+			"docs/report/screens/20261030-service-desk-controls-390-dark-freeze-keyboard-minute-selected.png",
+			"docs/report/screens/20261030-service-desk-controls-popup-range-freeze-reversed-range-390-dark.png",
+			"docs/report/screens/20261030-service-desk-controls-popup-range-freeze-corrected-range-390-dark.png"
+		],
+		"limits": [
+			"Browser evidence is observational and read-only; no persisted release or freeze creation, Change update, save, or deletion paths were exercised.",
+			"Owner and admin active workspaces had no persisted release/change fixtures; member existing detail controls were disabled. Disabled controls are evidence of the observed UI state, not proof of authorized write behavior.",
+			"No genuine affected-services overflow fixture; keyboard scrolling was not asserted.",
+			"Popup axe scanned owner 390 dark only; matrix page/dialog axe scanned all 72 DOM views. Original popup screenshots were captured before visual opacity settled; the three bounded 390 dark recheck images establish settled visual popup visibility. The earlier clipped member change screenshot was captured during the disclosure transition; only the bounded 390 dark recheck establishes settled visual control visibility.",
+			"Lead, viewer, and customer roles were outside this Service Desk browser scope."
+		]
+	},
+	"matrix": {
+		"source": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+		"runtime": "final service-desk local SIT",
+		"roles": [
+			{
+				"requested": "owner",
+				"session": 200,
+				"workspace": 200,
+				"membership": 200,
+				"role": "owner"
+			},
+			{
+				"requested": "admin",
+				"session": 200,
+				"workspace": 200,
+				"membership": 200,
+				"role": "admin"
+			},
+			{
+				"requested": "member",
+				"session": 200,
+				"workspace": 200,
+				"membership": 200,
+				"role": "member"
+			}
+		],
+		"rows": [
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "light",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-1440-light-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "light",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-1440-light-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 728,
+							"y": 318,
+							"width": 223,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 464,
+						"y": 117,
+						"width": 512,
+						"height": 463,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "light",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-1440-light-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "light",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-1440-light-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 489,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 728,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 464,
+						"y": 121,
+						"width": 512,
+						"height": 448,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "dark",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-1440-dark-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "dark",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-1440-dark-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 728,
+							"y": 318,
+							"width": 223,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 464,
+						"y": 117,
+						"width": 512,
+						"height": 463,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "dark",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-1440-dark-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "dark",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-1440-dark-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 489,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 728,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 464,
+						"y": 121,
+						"width": 512,
+						"height": 448,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 820,
+				"theme": "light",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-820-light-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 820,
+				"theme": "light",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-820-light-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 418,
+							"y": 318,
+							"width": 223,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 154,
+						"y": 117,
+						"width": 512,
+						"height": 463,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 820,
+				"theme": "light",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-820-light-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 820,
+				"theme": "light",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-820-light-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 179,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 418,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 154,
+						"y": 121,
+						"width": 512,
+						"height": 448,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 820,
+				"theme": "dark",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-820-dark-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 820,
+				"theme": "dark",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-820-dark-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 418,
+							"y": 318,
+							"width": 223,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 154,
+						"y": 117,
+						"width": 512,
+						"height": 463,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 820,
+				"theme": "dark",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-820-dark-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 820,
+				"theme": "dark",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-820-dark-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 179,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 418,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 154,
+						"y": 121,
+						"width": 512,
+						"height": 448,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 390,
+				"theme": "light",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-390-light-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 390,
+				"theme": "light",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-390-light-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 566,
+							"width": 342,
+							"height": 36,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 0,
+						"y": 258,
+						"width": 390,
+						"height": 642,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 390,
+				"theme": "light",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-390-light-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 390,
+				"theme": "light",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-390-light-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 662,
+							"width": 342,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 739,
+							"width": 342,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 0,
+						"y": 294,
+						"width": 390,
+						"height": 606,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 390,
+				"theme": "dark",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-390-dark-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 390,
+				"theme": "dark",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-390-dark-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 566,
+							"width": 342,
+							"height": 36,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 0,
+						"y": 258,
+						"width": 390,
+						"height": 642,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 390,
+				"theme": "dark",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-390-dark-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"width": 390,
+				"theme": "dark",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-owner-390-dark-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 662,
+							"width": 342,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 739,
+							"width": 342,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 0,
+						"y": 294,
+						"width": 390,
+						"height": 606,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "light",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-1440-light-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "light",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-1440-light-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 728,
+							"y": 318,
+							"width": 223,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 464,
+						"y": 117,
+						"width": 512,
+						"height": 463,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "light",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-1440-light-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "light",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-1440-light-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 489,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 728,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 464,
+						"y": 121,
+						"width": 512,
+						"height": 448,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "dark",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-1440-dark-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "dark",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-1440-dark-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 728,
+							"y": 318,
+							"width": 223,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 464,
+						"y": 117,
+						"width": 512,
+						"height": 463,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "dark",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-1440-dark-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "dark",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-1440-dark-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 489,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 728,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 464,
+						"y": 121,
+						"width": 512,
+						"height": 448,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"theme": "light",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-820-light-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"theme": "light",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-820-light-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 418,
+							"y": 318,
+							"width": 223,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 154,
+						"y": 117,
+						"width": 512,
+						"height": 463,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"theme": "light",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-820-light-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"theme": "light",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-820-light-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 179,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 418,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 154,
+						"y": 121,
+						"width": 512,
+						"height": 448,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"theme": "dark",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-820-dark-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"theme": "dark",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-820-dark-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 418,
+							"y": 318,
+							"width": 223,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 154,
+						"y": 117,
+						"width": 512,
+						"height": 463,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"theme": "dark",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-820-dark-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"theme": "dark",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-820-dark-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 179,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 418,
+							"y": 458,
+							"width": 223,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 154,
+						"y": 121,
+						"width": 512,
+						"height": 448,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"theme": "light",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-390-light-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"theme": "light",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-390-light-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 566,
+							"width": 342,
+							"height": 36,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 0,
+						"y": 258,
+						"width": 390,
+						"height": 642,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"theme": "light",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-390-light-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"theme": "light",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-390-light-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 662,
+							"width": 342,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 739,
+							"width": 342,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 0,
+						"y": 294,
+						"width": 390,
+						"height": 606,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"theme": "dark",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-390-dark-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"theme": "dark",
+				"name": "release-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-390-dark-release-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 566,
+							"width": 342,
+							"height": 36,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 0,
+						"y": 258,
+						"width": 390,
+						"height": 642,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"theme": "dark",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-390-dark-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"theme": "dark",
+				"name": "freeze-create-dialog",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-admin-390-dark-freeze-create-dialog.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "freeze-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 662,
+							"width": 342,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "freeze-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 24,
+							"y": 739,
+							"width": 342,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [
+					{
+						"x": 0,
+						"y": 294,
+						"width": 390,
+						"height": 606,
+						"fullyInViewport": true
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 1440,
+				"theme": "light",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-1440-light-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 1440,
+				"theme": "light",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-1440-light-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 1440,
+				"theme": "light",
+				"name": "release-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-1440-light-release-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases/vendh1lx308zhyz31e2qcjwx",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-edit-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 657,
+							"y": 306,
+							"width": 359,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 1440,
+				"theme": "light",
+				"name": "change-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-1440-light-change-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/work-items/HELP-4?sections=%7B%22itemKey%22%3A%22HELP-4%22%2C%22open%22%3A%5B%22change%22%5D%7D",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "change-window-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 1095,
+							"y": 584,
+							"width": 156,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "change-window-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 1263,
+							"y": 584,
+							"width": 156,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [],
+				"scrollRegion": {
+					"named": true,
+					"role": "region",
+					"viewportCount": 1,
+					"viewportHeight": 40,
+					"viewportScrollHeight": 41,
+					"viewportScrollTop": 0,
+					"viewportTabIndex": "0",
+					"box": {
+						"x": 1095,
+						"y": 773,
+						"width": 324,
+						"height": 40,
+						"fullyInViewport": true
+					}
+				},
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 1440,
+				"theme": "dark",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-1440-dark-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 1440,
+				"theme": "dark",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-1440-dark-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 1440,
+				"theme": "dark",
+				"name": "release-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-1440-dark-release-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases/vendh1lx308zhyz31e2qcjwx",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-edit-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 657,
+							"y": 306,
+							"width": 359,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 1440,
+				"theme": "dark",
+				"name": "change-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-1440-dark-change-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/work-items/HELP-4?sections=%7B%22itemKey%22%3A%22HELP-4%22%2C%22open%22%3A%5B%22change%22%5D%7D",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "change-window-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 1095,
+							"y": 584,
+							"width": 156,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "change-window-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 1263,
+							"y": 584,
+							"width": 156,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [],
+				"scrollRegion": {
+					"named": true,
+					"role": "region",
+					"viewportCount": 1,
+					"viewportHeight": 40,
+					"viewportScrollHeight": 41,
+					"viewportScrollTop": 0,
+					"viewportTabIndex": "0",
+					"box": {
+						"x": 1095,
+						"y": 773,
+						"width": 324,
+						"height": 40,
+						"fullyInViewport": true
+					}
+				},
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "light",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-820-light-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "light",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-820-light-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "light",
+				"name": "release-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-820-light-release-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases/vendh1lx308zhyz31e2qcjwx",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-edit-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 450,
+							"y": 368,
+							"width": 152,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "light",
+				"name": "change-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-820-light-change-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/work-items/HELP-4?sections=%7B%22itemKey%22%3A%22HELP-4%22%2C%22open%22%3A%5B%22change%22%5D%7D",
+				"actualTheme": "light",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "change-window-start",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 257,
+							"y": 545,
+							"width": 263,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					},
+					{
+						"id": "change-window-end",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 532,
+							"y": 545,
+							"width": 263,
+							"height": 28,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [],
+				"scrollRegion": {
+					"named": true,
+					"role": "region",
+					"viewportCount": 1,
+					"viewportHeight": 40,
+					"viewportScrollHeight": 41,
+					"viewportScrollTop": 0,
+					"viewportTabIndex": "0",
+					"box": {
+						"x": 257,
+						"y": 734,
+						"width": 538,
+						"height": 40,
+						"fullyInViewport": true
+					}
+				},
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "dark",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-820-dark-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "dark",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-820-dark-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "dark",
+				"name": "release-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-820-dark-release-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases/vendh1lx308zhyz31e2qcjwx",
+				"actualTheme": "dark",
+				"h1Count": 1,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"controls": [
+					{
+						"id": "release-edit-date",
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"role": null,
+						"slot": "popover-trigger",
+						"box": {
+							"x": 450,
+							"y": 368,
+							"width": 152,
+							"height": 32,
+							"fullyInViewport": true
+						}
+					}
+				],
+				"dialogs": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "dark",
+				"error": "page.waitForFunction: Timeout 20000ms exceeded."
+			}
+		],
+		"rateEvents": [
+			{
+				"path": "/api/auth/get-session",
+				"retryAfter": null
+			},
+			{
+				"path": "/api/auth/get-session",
+				"retryAfter": null
+			},
+			{
+				"path": "/api/auth/get-session",
+				"retryAfter": null
+			},
+			{
+				"path": "/api/auth/get-session",
+				"retryAfter": null
+			},
+			{
+				"path": "/api/auth/get-session",
+				"retryAfter": null
+			}
+		],
+		"nonGetRequests": [],
+		"containersStarted": "none",
+		"scope": "Read-only persisted browser matrix; form/dialog drafts cancelled, no form submissions.",
+		"stoppedOn429": true
+	},
+	"memberGap": {
+		"source": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+		"role": "member, previously live-verified",
+		"rows": [
+			{
+				"width": 390,
+				"theme": "light",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-gap-390-light-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "light",
+				"nativeDateTimeInputs": 0,
+				"documentOverflow": false,
+				"controls": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"width": 390,
+				"theme": "light",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-gap-390-light-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "light",
+				"nativeDateTimeInputs": 0,
+				"documentOverflow": false,
+				"controls": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"width": 390,
+				"theme": "light",
+				"name": "release-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-gap-390-light-release-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases/vendh1lx308zhyz31e2qcjwx",
+				"actualTheme": "light",
+				"nativeDateTimeInputs": 0,
+				"documentOverflow": false,
+				"controls": [
+					{
+						"id": "release-edit-date",
+						"tag": "BUTTON",
+						"disabled": true,
+						"slot": "popover-trigger"
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"width": 390,
+				"theme": "light",
+				"name": "change-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-gap-390-light-change-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/work-items/HELP-4?sections=%7B%22itemKey%22%3A%22HELP-4%22%2C%22open%22%3A%5B%22change%22%5D%7D",
+				"actualTheme": "light",
+				"nativeDateTimeInputs": 0,
+				"documentOverflow": false,
+				"controls": [
+					{
+						"id": "change-window-start",
+						"tag": "BUTTON",
+						"disabled": true,
+						"slot": "popover-trigger"
+					},
+					{
+						"id": "change-window-end",
+						"tag": "BUTTON",
+						"disabled": true,
+						"slot": "popover-trigger"
+					}
+				],
+				"scrollRegion": {
+					"named": true,
+					"viewportCount": 1,
+					"clientHeight": 44,
+					"scrollHeight": 45,
+					"tabIndex": "0"
+				},
+				"axe": []
+			},
+			{
+				"width": 390,
+				"theme": "dark",
+				"name": "releases-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-gap-390-dark-releases-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases",
+				"actualTheme": "dark",
+				"nativeDateTimeInputs": 0,
+				"documentOverflow": false,
+				"controls": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"width": 390,
+				"theme": "dark",
+				"name": "freezes-list",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-gap-390-dark-freezes-list.png",
+				"url": "https://ticketing.localhost/agent/service-management/changes?tab=freezes",
+				"actualTheme": "dark",
+				"nativeDateTimeInputs": 0,
+				"documentOverflow": false,
+				"controls": [],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"width": 390,
+				"theme": "dark",
+				"name": "release-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-gap-390-dark-release-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/service-management/releases/vendh1lx308zhyz31e2qcjwx",
+				"actualTheme": "dark",
+				"nativeDateTimeInputs": 0,
+				"documentOverflow": false,
+				"controls": [
+					{
+						"id": "release-edit-date",
+						"tag": "BUTTON",
+						"disabled": true,
+						"slot": "popover-trigger"
+					}
+				],
+				"scrollRegion": null,
+				"axe": []
+			},
+			{
+				"width": 390,
+				"theme": "dark",
+				"name": "change-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-gap-390-dark-change-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/work-items/HELP-4?sections=%7B%22itemKey%22%3A%22HELP-4%22%2C%22open%22%3A%5B%22change%22%5D%7D",
+				"actualTheme": "dark",
+				"nativeDateTimeInputs": 0,
+				"documentOverflow": false,
+				"controls": [
+					{
+						"id": "change-window-start",
+						"tag": "BUTTON",
+						"disabled": true,
+						"slot": "popover-trigger"
+					},
+					{
+						"id": "change-window-end",
+						"tag": "BUTTON",
+						"disabled": true,
+						"slot": "popover-trigger"
+					}
+				],
+				"scrollRegion": {
+					"named": true,
+					"viewportCount": 1,
+					"clientHeight": 44,
+					"scrollHeight": 45,
+					"tabIndex": "0"
+				},
+				"axe": []
+			},
+			{
+				"width": 820,
+				"theme": "dark",
+				"name": "change-existing-detail",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-gap-820-dark-change-existing-detail.png",
+				"url": "https://ticketing.localhost/agent/work-items/HELP-4?sections=%7B%22itemKey%22%3A%22HELP-4%22%2C%22open%22%3A%5B%22change%22%5D%7D",
+				"actualTheme": "dark",
+				"nativeDateTimeInputs": 0,
+				"documentOverflow": false,
+				"controls": [
+					{
+						"id": "change-window-start",
+						"tag": "BUTTON",
+						"disabled": true,
+						"slot": "popover-trigger"
+					},
+					{
+						"id": "change-window-end",
+						"tag": "BUTTON",
+						"disabled": true,
+						"slot": "popover-trigger"
+					}
+				],
+				"scrollRegion": {
+					"named": true,
+					"viewportCount": 1,
+					"clientHeight": 40,
+					"scrollHeight": 41,
+					"tabIndex": "0"
+				},
+				"axe": []
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"containersStarted": "none",
+		"stoppedOn429": false
+	},
+	"pointer": {
+		"runtime": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+		"role": "owner",
+		"variants": [
+			{
+				"width": 390,
+				"theme": "dark",
+				"stages": {
+					"outerOpen": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-390-dark-freeze-outer-open.png",
+						"path": "/agent/service-management/changes",
+						"actualTheme": "dark",
+						"active": {
+							"tag": "INPUT",
+							"id": "freeze-name",
+							"role": null,
+							"slot": "input",
+							"ariaLabel": null
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": false,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					},
+					"startsOpen": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-390-dark-freeze-starts-open.png",
+						"path": "/agent/service-management/changes",
+						"actualTheme": "dark",
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null,
+							"ariaLabel": "Go to the Previous Month"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": true,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 1,
+						"minuteText": "00",
+						"minuteExpanded": "false",
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					},
+					"daySelected": {
+						"path": "/agent/service-management/changes",
+						"actualTheme": "dark",
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null,
+							"ariaLabel": "Saturday, October 31st, 2026, selected"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": true,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 1,
+						"minuteText": "00",
+						"minuteExpanded": "false",
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					},
+					"minuteListOpen": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-390-dark-freeze-minute-list-open.png",
+						"path": "/agent/service-management/changes",
+						"actualTheme": "dark",
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item",
+							"ariaLabel": null
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": true,
+						"selectListboxOpen": true,
+						"selectPopupOpen": true,
+						"minuteComboboxCount": 1,
+						"minuteText": "00",
+						"minuteExpanded": "true",
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					},
+					"minute42Selected": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-390-dark-freeze-minute-42-selected.png",
+						"path": "/agent/service-management/changes",
+						"actualTheme": "dark",
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger",
+							"ariaLabel": null
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": true,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 1,
+						"minuteText": "42",
+						"minuteExpanded": "false",
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					},
+					"afterEscape": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-390-dark-freeze-after-escape.png",
+						"path": "/agent/service-management/changes",
+						"actualTheme": "dark",
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger",
+							"ariaLabel": "Starts"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": false,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					}
+				},
+				"trace": [
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						}
+					},
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "INPUT",
+							"id": "freeze-name",
+							"role": null,
+							"slot": "input"
+						},
+						"active": {
+							"tag": "INPUT",
+							"id": "freeze-name",
+							"role": null,
+							"slot": "input"
+						}
+					},
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						},
+						"active": {
+							"tag": "INPUT",
+							"id": "freeze-name",
+							"role": null,
+							"slot": "input"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "INPUT",
+							"id": "freeze-name",
+							"role": null,
+							"slot": "input"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "SPAN",
+							"id": "",
+							"role": null,
+							"slot": "select-value"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "SPAN",
+							"id": "",
+							"role": null,
+							"slot": "select-value"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						},
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "presentation",
+							"slot": "select-popup"
+						},
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "presentation",
+							"slot": "select-popup"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "presentation",
+							"slot": "select-popup"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						},
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						}
+					},
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						}
+					},
+					{
+						"type": "keydown",
+						"key": "Escape",
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						}
+					}
+				],
+				"release": {
+					"open": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-390-dark-release-date-open.png",
+						"path": "/agent/service-management/releases",
+						"actualTheme": "dark",
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null,
+							"ariaLabel": "Go to the Previous Month"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": true,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": null,
+						"releaseTriggerText": "Not set",
+						"documentOverflow": false
+					},
+					"selected": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-390-dark-release-date-selected.png",
+						"path": "/agent/service-management/releases",
+						"actualTheme": "dark",
+						"active": {
+							"tag": "BUTTON",
+							"id": "release-date",
+							"role": null,
+							"slot": "popover-trigger",
+							"ariaLabel": "Planned date"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": false,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": null,
+						"releaseTriggerText": "Oct 31, 2026",
+						"documentOverflow": false
+					},
+					"cleared": {
+						"path": "/agent/service-management/releases",
+						"actualTheme": "dark",
+						"active": {
+							"tag": "BUTTON",
+							"id": "release-date",
+							"role": null,
+							"slot": "popover-trigger",
+							"ariaLabel": "Planned date"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": false,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": null,
+						"releaseTriggerText": "Not set",
+						"documentOverflow": false
+					},
+					"afterEscape": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-390-dark-release-after-escape.png",
+						"path": "/agent/service-management/releases",
+						"actualTheme": "dark",
+						"active": {
+							"tag": "BUTTON",
+							"id": "release-date",
+							"role": null,
+							"slot": "popover-trigger",
+							"ariaLabel": "Planned date"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": false,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": null,
+						"releaseTriggerText": "Not set",
+						"documentOverflow": false
+					},
+					"outerCancelled": true
+				}
+			},
+			{
+				"width": 1440,
+				"theme": "light",
+				"stages": {
+					"outerOpen": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-1440-light-freeze-outer-open.png",
+						"path": "/agent/service-management/changes",
+						"actualTheme": "light",
+						"active": {
+							"tag": "INPUT",
+							"id": "freeze-name",
+							"role": null,
+							"slot": "input",
+							"ariaLabel": null
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": false,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					},
+					"startsOpen": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-1440-light-freeze-starts-open.png",
+						"path": "/agent/service-management/changes",
+						"actualTheme": "light",
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null,
+							"ariaLabel": "Go to the Previous Month"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": true,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 1,
+						"minuteText": "00",
+						"minuteExpanded": "false",
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					},
+					"daySelected": {
+						"path": "/agent/service-management/changes",
+						"actualTheme": "light",
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null,
+							"ariaLabel": "Saturday, October 31st, 2026, selected"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": true,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 1,
+						"minuteText": "00",
+						"minuteExpanded": "false",
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					},
+					"minuteListOpen": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-1440-light-freeze-minute-list-open.png",
+						"path": "/agent/service-management/changes",
+						"actualTheme": "light",
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item",
+							"ariaLabel": null
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": true,
+						"selectListboxOpen": true,
+						"selectPopupOpen": true,
+						"minuteComboboxCount": 1,
+						"minuteText": "00",
+						"minuteExpanded": "true",
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					},
+					"minute42Selected": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-1440-light-freeze-minute-42-selected.png",
+						"path": "/agent/service-management/changes",
+						"actualTheme": "light",
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger",
+							"ariaLabel": null
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": true,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 1,
+						"minuteText": "42",
+						"minuteExpanded": "false",
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					},
+					"afterEscape": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-1440-light-freeze-after-escape.png",
+						"path": "/agent/service-management/changes",
+						"actualTheme": "light",
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger",
+							"ariaLabel": "Starts"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": false,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": "Not set",
+						"releaseTriggerText": null,
+						"documentOverflow": false
+					}
+				},
+				"trace": [
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						}
+					},
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": "tab",
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": "button"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "INPUT",
+							"id": "freeze-name",
+							"role": null,
+							"slot": "input"
+						},
+						"active": {
+							"tag": "INPUT",
+							"id": "freeze-name",
+							"role": null,
+							"slot": "input"
+						}
+					},
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						},
+						"active": {
+							"tag": "INPUT",
+							"id": "freeze-name",
+							"role": null,
+							"slot": "input"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "INPUT",
+							"id": "freeze-name",
+							"role": null,
+							"slot": "input"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "SPAN",
+							"id": "",
+							"role": null,
+							"slot": "select-value"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "SPAN",
+							"id": "",
+							"role": null,
+							"slot": "select-value"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						},
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "presentation",
+							"slot": "select-popup"
+						},
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "presentation",
+							"slot": "select-popup"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "presentation",
+							"slot": "select-popup"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						},
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						}
+					},
+					{
+						"type": "pointerdown",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						}
+					},
+					{
+						"type": "click",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": null,
+							"slot": null
+						},
+						"active": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "DIV",
+							"id": "",
+							"role": "option",
+							"slot": "select-item"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						}
+					},
+					{
+						"type": "keydown",
+						"key": "Escape",
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						}
+					},
+					{
+						"type": "focusout",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start-minute",
+							"role": "combobox",
+							"slot": "select-trigger"
+						},
+						"active": {
+							"tag": "BODY",
+							"id": "",
+							"role": null,
+							"slot": null
+						}
+					},
+					{
+						"type": "focusin",
+						"key": null,
+						"target": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						},
+						"active": {
+							"tag": "BUTTON",
+							"id": "freeze-start",
+							"role": null,
+							"slot": "popover-trigger"
+						}
+					}
+				],
+				"release": {
+					"open": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-1440-light-release-date-open.png",
+						"path": "/agent/service-management/releases",
+						"actualTheme": "light",
+						"active": {
+							"tag": "BUTTON",
+							"id": "",
+							"role": null,
+							"slot": null,
+							"ariaLabel": "Go to the Previous Month"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": true,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": null,
+						"releaseTriggerText": "Not set",
+						"documentOverflow": false
+					},
+					"selected": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-1440-light-release-date-selected.png",
+						"path": "/agent/service-management/releases",
+						"actualTheme": "light",
+						"active": {
+							"tag": "BUTTON",
+							"id": "release-date",
+							"role": null,
+							"slot": "popover-trigger",
+							"ariaLabel": "Planned date"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": false,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": null,
+						"releaseTriggerText": "Oct 31, 2026",
+						"documentOverflow": false
+					},
+					"cleared": {
+						"path": "/agent/service-management/releases",
+						"actualTheme": "light",
+						"active": {
+							"tag": "BUTTON",
+							"id": "release-date",
+							"role": null,
+							"slot": "popover-trigger",
+							"ariaLabel": "Planned date"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": false,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": null,
+						"releaseTriggerText": "Not set",
+						"documentOverflow": false
+					},
+					"afterEscape": {
+						"screenshot": "docs/report/screens/20261030-service-desk-controls-1440-light-release-after-escape.png",
+						"path": "/agent/service-management/releases",
+						"actualTheme": "light",
+						"active": {
+							"tag": "BUTTON",
+							"id": "release-date",
+							"role": null,
+							"slot": "popover-trigger",
+							"ariaLabel": "Planned date"
+						},
+						"outerDialogOpen": true,
+						"dateTimePopoverOpen": false,
+						"selectListboxOpen": false,
+						"selectPopupOpen": false,
+						"minuteComboboxCount": 0,
+						"minuteText": null,
+						"minuteExpanded": null,
+						"startsTriggerText": null,
+						"releaseTriggerText": "Not set",
+						"documentOverflow": false
+					},
+					"outerCancelled": true
+				}
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"containersStarted": "none",
+		"scope": "Read-only nested picker focus diagnosis; local draft only; no freeze/release submission.",
+		"stoppedOn429": false
+	},
+	"keyboard": {
+		"runtime": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+		"role": "owner",
+		"width": 390,
+		"theme": "dark",
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"containersStarted": "none",
+		"focusBeforeOpen": {
+			"id": "freeze-start-minute",
+			"role": "combobox"
+		},
+		"open": {
+			"activeId": "",
+			"activeRole": "option",
+			"expanded": "true",
+			"listbox": true
+		},
+		"beforeChoose": {
+			"activeId": "",
+			"activeDescendant": null,
+			"highlighted": ["00", "42", "00"]
+		},
+		"afterChoose": {
+			"activeId": "freeze-start-minute",
+			"activeRole": "combobox",
+			"minuteText": "42",
+			"minuteExpanded": "false",
+			"dateTimePopoverOpen": true,
+			"outerDialogOpen": true
+		},
+		"screenshot": "docs/report/screens/20261030-service-desk-controls-390-dark-freeze-keyboard-minute-selected.png",
+		"afterEscape": {
+			"activeId": "freeze-start",
+			"outerDialogOpen": true
+		}
+	},
+	"range": {
+		"source": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+		"role": "owner previously verified",
+		"width": 390,
+		"theme": "dark",
+		"stages": [
+			{
+				"name": "release-calendar-open",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-popup-range-release-calendar-open-390-dark.png",
+				"axe": [],
+				"theme": "dark",
+				"nativeDateTimeInputs": 0,
+				"outerDialogOpen": true,
+				"popoverOpen": true,
+				"listboxOpen": false,
+				"startText": null,
+				"endText": null,
+				"rangeInvalid": false,
+				"declareDisabled": null,
+				"focusId": "",
+				"documentOverflow": false
+			},
+			{
+				"name": "freeze-calendar-open",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-popup-range-freeze-calendar-open-390-dark.png",
+				"axe": [],
+				"theme": "dark",
+				"nativeDateTimeInputs": 0,
+				"outerDialogOpen": true,
+				"popoverOpen": true,
+				"listboxOpen": false,
+				"startText": "Not set",
+				"endText": "Not set",
+				"rangeInvalid": false,
+				"declareDisabled": true,
+				"focusId": "",
+				"documentOverflow": false
+			},
+			{
+				"name": "freeze-minute-list-open",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-popup-range-freeze-minute-list-open-390-dark.png",
+				"axe": [],
+				"theme": "dark",
+				"nativeDateTimeInputs": 0,
+				"outerDialogOpen": true,
+				"popoverOpen": true,
+				"listboxOpen": true,
+				"startText": "Not set",
+				"endText": "Not set",
+				"rangeInvalid": false,
+				"declareDisabled": true,
+				"focusId": "",
+				"documentOverflow": false
+			},
+			{
+				"name": "freeze-reversed-range",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-popup-range-freeze-reversed-range-390-dark.png",
+				"axe": [],
+				"theme": "dark",
+				"nativeDateTimeInputs": 0,
+				"outerDialogOpen": true,
+				"popoverOpen": false,
+				"listboxOpen": false,
+				"startText": "10/31/2026, 10:42:00 AM",
+				"endText": "10/31/2026, 9:30:00 AM",
+				"rangeInvalid": true,
+				"declareDisabled": true,
+				"focusId": "freeze-end",
+				"documentOverflow": false
+			},
+			{
+				"name": "freeze-corrected-range",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-popup-range-freeze-corrected-range-390-dark.png",
+				"axe": [],
+				"theme": "dark",
+				"nativeDateTimeInputs": 0,
+				"outerDialogOpen": true,
+				"popoverOpen": false,
+				"listboxOpen": false,
+				"startText": "10/31/2026, 10:42:00 AM",
+				"endText": "10/31/2026, 11:30:00 AM",
+				"rangeInvalid": false,
+				"declareDisabled": false,
+				"focusId": "freeze-end",
+				"documentOverflow": false
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"containersStarted": "none",
+		"scope": "Read-only popup axe and local unsaved invalid/valid range; never submit outer forms.",
+		"outerCancelled": true,
+		"stoppedOn429": false
+	},
+	"settledDetails": {
+		"source": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+		"role": "member",
+		"width": 390,
+		"theme": "dark",
+		"views": [
+			{
+				"name": "change-window-start",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-390-dark-change-window-start-settled.png",
+				"geometry": {
+					"id": "change-window-start",
+					"disabled": true,
+					"visible": true,
+					"rect": {
+						"top": 570.609375,
+						"bottom": 602.609375,
+						"height": 32
+					},
+					"withinViewport": true,
+					"withinPanel": true,
+					"panel": {
+						"height": 675,
+						"scrollHeight": 675,
+						"state": null,
+						"overflow": "hidden"
+					}
+				}
+			},
+			{
+				"name": "change-window-end",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-390-dark-change-window-end-settled.png",
+				"geometry": {
+					"id": "change-window-end",
+					"disabled": true,
+					"visible": true,
+					"rect": {
+						"top": 570.609375,
+						"bottom": 602.609375,
+						"height": 32
+					},
+					"withinViewport": true,
+					"withinPanel": true,
+					"panel": {
+						"height": 675,
+						"scrollHeight": 675,
+						"state": null,
+						"overflow": "hidden"
+					}
+				}
+			},
+			{
+				"name": "affected-services",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-390-dark-affected-services-settled.png",
+				"geometry": {
+					"rect": {
+						"top": 775.609375,
+						"bottom": 819.609375,
+						"height": 44
+					},
+					"withinViewport": true,
+					"viewportClientHeight": 44,
+					"viewportScrollHeight": 45,
+					"named": true,
+					"tabIndex": "0"
+				}
+			},
+			{
+				"name": "release-edit-date",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-member-390-dark-release-edit-date-settled.png",
+				"geometry": {
+					"id": "release-edit-date",
+					"disabled": true,
+					"visible": true,
+					"rect": {
+						"top": 452,
+						"bottom": 488,
+						"height": 36
+					},
+					"withinViewport": true,
+					"withinPanel": true,
+					"panel": null
+				}
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"containersStarted": "none"
+	},
+	"settledPopups": {
+		"source": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+		"role": "owner, previously live verified",
+		"width": 390,
+		"theme": "dark",
+		"stages": [
+			{
+				"name": "release-calendar",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-settled-release-calendar-390-dark.png",
+				"readiness": {
+					"opacity": 1,
+					"visibility": "visible",
+					"rect": {
+						"x": 24.15625,
+						"y": 201.03125,
+						"right": 322.15625,
+						"bottom": 554.03125,
+						"width": 298,
+						"height": 353
+					},
+					"withinViewport": true,
+					"activeAnimationCount": 0,
+					"animationCount": 0,
+					"theme": "dark",
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				},
+				"afterScreenshot": {
+					"opacity": 1,
+					"visibility": "visible",
+					"rect": {
+						"x": 27.5625,
+						"y": 201.390625,
+						"right": 325.5625,
+						"bottom": 554.390625,
+						"width": 298,
+						"height": 353
+					},
+					"withinViewport": true,
+					"activeAnimationCount": 0,
+					"animationCount": 0,
+					"theme": "dark",
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				}
+			},
+			{
+				"name": "freeze-calendar",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-settled-freeze-calendar-390-dark.png",
+				"readiness": {
+					"opacity": 1,
+					"visibility": "visible",
+					"rect": {
+						"x": 24.0625,
+						"y": 198.21875,
+						"right": 366.0625,
+						"bottom": 650.21875,
+						"width": 342,
+						"height": 452
+					},
+					"withinViewport": true,
+					"activeAnimationCount": 0,
+					"animationCount": 0,
+					"theme": "dark",
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				},
+				"afterScreenshot": {
+					"opacity": 1,
+					"visibility": "visible",
+					"rect": {
+						"x": 24.234375,
+						"y": 198.21875,
+						"right": 366.234375,
+						"bottom": 650.21875,
+						"width": 342,
+						"height": 452
+					},
+					"withinViewport": true,
+					"activeAnimationCount": 0,
+					"animationCount": 0,
+					"theme": "dark",
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				}
+			},
+			{
+				"name": "nested-minute-select",
+				"screenshot": "docs/report/screens/20261030-service-desk-controls-settled-nested-minute-select-390-dark.png",
+				"readiness": {
+					"opacity": 1,
+					"visibility": "visible",
+					"rect": {
+						"x": 181.125,
+						"y": 533.484375,
+						"right": 355.125,
+						"bottom": 890,
+						"width": 174,
+						"height": 356.515625
+					},
+					"withinViewport": true,
+					"activeAnimationCount": 0,
+					"animationCount": 0,
+					"theme": "dark",
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				},
+				"afterScreenshot": {
+					"opacity": 1,
+					"visibility": "visible",
+					"rect": {
+						"x": 181.125,
+						"y": 533.484375,
+						"right": 355.125,
+						"bottom": 890,
+						"width": 174,
+						"height": 356.515625
+					},
+					"withinViewport": true,
+					"activeAnimationCount": 0,
+					"animationCount": 0,
+					"theme": "dark",
+					"nativeDateTimeInputs": 0,
+					"documentOverflow": false
+				}
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"scope": "Settled screenshot readiness for three popups; no outer form submission.",
+		"containersStarted": "none",
+		"outerCancelled": true
+	},
+	"local": {
+		"unitTests": 7252,
+		"focusedTests": 42,
+		"typecheckTasks": 9,
+		"permissionTests": 118,
+		"contrastCriteria": 401,
+		"contrastManifestUnchanged": true,
+		"lint": true,
+		"rawElements": true,
+		"i18n": true,
+		"routePolicy": true,
+		"contract": true,
+		"bundlesKb": {
+			"initial": 267.3,
+			"workItemGraph": 333.1,
+			"portal": 189.3
+		},
+		"bundlePurity": true,
+		"pinnedG8": {
+			"image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+			"platform": "linux/amd64",
+			"testsPassed": 3,
+			"seconds": 21.5,
+			"baselinesChanged": [],
+			"coverageLimit": "Adjacent change calendar, release list and work-item detail screens; these existing visual tests do not open the replaced picker or assert populated Change form/release detail."
+		},
+		"imageScan": {
+			"critical": 0,
+			"high": 42,
+			"fixableHighCritical": 0
+		},
+		"dependencyAudit": "Existing deepmerge low remains; no dependency change in this slice.",
+		"unitTestsBeforeMainIntegration": 7249,
+		"integratedPackageCounts": {
+			"@taskdesk/email": 59,
+			"@taskdesk/domain": 744,
+			"@taskdesk/ui": 327,
+			"@taskdesk/mcp": 74,
+			"@taskdesk/api": 2380,
+			"@taskdesk/permissions": 278,
+			"@taskdesk/libs": 16,
+			"@taskdesk/web": 3374
+		},
+		"integrationHistory": {
+			"overlappingRun": "Two settings tests exceeded unchanged 5000ms test deadlines while root ran independent heavy suites/builds in parallel; other3372 web cases passed. The log did not identify an awaited operation or prove a source race.",
+			"diagnosis": "Independent read-only inspection: settings files unchanged from main. Resource contention is plausible; no source cause claimed.",
+			"focusedSettings": {
+				"passed": 12,
+				"seconds": 5.87
+			},
+			"isolatedFull": {
+				"passed": 7252,
+				"tasks": 12,
+				"webSeconds": 143.35,
+				"totalSeconds": 182.57
+			},
+			"testHarnessChanges": false
+		}
+	},
+	"review": {
+		"model": "Sol high",
+		"independent": true,
+		"high": 0,
+		"medium": 0,
+		"scope": "Actual source diff, contracts, logs and before/after screenshots. Does not establish absent long-scroll or authorized persisted write fixtures."
+	},
+	"runtimeHealth": {
+		"source": "450a2380c0de98e9dfb4f6d2492a86c77fb77a70",
+		"backupVerified": true,
+		"healthy": true,
+		"https": {
+			"ticketing.localhost": 200,
+			"portal.localhost": 200
+		},
+		"countsUnchanged": true
+	},
+	"containers": {
+		"activeOwnedLocalSit": "2418695d6e503d4387ac10463e194a81baad4eb8e5e17c532658e4a948573ac4",
+		"supersededOwnedSit": "3fd56a437015380992ac3483498358ff5817cbf4db2d03cb7da53d4f440fb562",
+		"supersededRemoved": true,
+		"pinnedG8": "3167ed6a222d567209956155170948b5747036d4aa69c81e44c9688243f8055e",
+		"pinnedRemoved": true,
+		"originalRollbackPreserved": true,
+		"preExistingServicesReused": true
+	},
+	"status": "Local source and bounded browser checks complete; hosted checks and merge pending. No requirements row promoted."
+}
