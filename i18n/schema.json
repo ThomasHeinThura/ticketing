@@ -2307,6 +2307,9 @@
 						},
 						"reportExportSaveFailed": {
 							"type": "string"
+						},
+						"reminderLeadTimeUnitLabel": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -2416,7 +2419,8 @@
 						"reportExportHint",
 						"reportExportSave",
 						"reportExportSaved",
-						"reportExportSaveFailed"
+						"reportExportSaveFailed",
+						"reminderLeadTimeUnitLabel"
 					]
 				},
 				"preferencesPage": {
