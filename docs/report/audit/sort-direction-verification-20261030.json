@@ -1,0 +1,377 @@
+{
+	"generated": "2026-10-30T02:59:22.886Z",
+	"issue": 979,
+	"scope": "Existing Sort direction Button uses ActionTooltip, explicit translated accessible name and no native title; URL sorting, focus and lazy menu preserved.",
+	"source": {
+		"candidate": "e5839f68fb010e17ac1c04a007a553fd1061e429",
+		"runtime": "283867012e0af4cd5fa6664f6fd16d9ef30e1022",
+		"byteMatchedFile": "apps/web/src/components/common/sort-control.tsx"
+	},
+	"before": {
+		"rows": [
+			{
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"actualUrl": "https://ticketing.localhost/agent/projects/LQA/work?layout=list&sort=key&dir=desc",
+				"before": {
+					"title": "Ascending",
+					"ariaLabel": null,
+					"text": "",
+					"ariaPressed": null,
+					"box": {
+						"x": 243.5,
+						"y": 59,
+						"width": 28,
+						"height": 28,
+						"insideViewport": true
+					},
+					"focused": false
+				},
+				"after": {
+					"title": "Descending",
+					"ariaLabel": null,
+					"text": "",
+					"ariaPressed": null,
+					"box": {
+						"x": 243.5,
+						"y": 59,
+						"width": 28,
+						"height": 28,
+						"insideViewport": true
+					},
+					"focused": true
+				},
+				"nameByRole": 1,
+				"afterNameByRole": 1,
+				"tooltipBefore": 0,
+				"tooltipAfterHover": 0,
+				"keyboardEnterChangedTitle": true,
+				"focusAfterEnter": true,
+				"screenshot": "docs/report/screens/20261030-sort-direction-before-admin-sort-direction-390-dark.png",
+				"documentOverflow": false
+			},
+			{
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"actualUrl": "https://ticketing.localhost/agent/projects/LQA/work?layout=list&sort=key&dir=desc",
+				"before": {
+					"title": "Ascending",
+					"ariaLabel": null,
+					"text": "",
+					"ariaPressed": null,
+					"box": {
+						"x": 497.578125,
+						"y": 59,
+						"width": 28,
+						"height": 32,
+						"insideViewport": true
+					},
+					"focused": false
+				},
+				"after": {
+					"title": "Descending",
+					"ariaLabel": null,
+					"text": "",
+					"ariaPressed": null,
+					"box": {
+						"x": 497.578125,
+						"y": 59,
+						"width": 28,
+						"height": 32,
+						"insideViewport": true
+					},
+					"focused": true
+				},
+				"nameByRole": 1,
+				"afterNameByRole": 1,
+				"tooltipBefore": 0,
+				"tooltipAfterHover": 0,
+				"keyboardEnterChangedTitle": true,
+				"focusAfterEnter": true,
+				"screenshot": "docs/report/screens/20261030-sort-direction-before-admin-sort-direction-1440-light.png",
+				"documentOverflow": false
+			}
+		],
+		"summary": {
+			"settledCases": 2,
+			"actualRole": "admin",
+			"allTitleDerivedAccessibleNames": true,
+			"nativeTitleObserved": ["Ascending", "Ascending"],
+			"domTooltipAfterHover": [0, 0],
+			"keyboardEnterToggledDirectionAndRetainedFocus": true,
+			"allBoundsInsideViewport": true,
+			"pageOverflowCases": 0,
+			"rate429": 0,
+			"nonGetRequests": 0,
+			"errors": 0,
+			"privacy": "PNG captured from the control group only; no record or identity content visible.",
+			"limits": [
+				"DOM tooltip absence establishes no in-app tooltip element in these two hover observations; native browser tooltip rendering was not asserted.",
+				"URL sort direction changed only in the local browser state; no saved work-item mutation."
+			],
+			"containersStarted": "none"
+		}
+	},
+	"after": {
+		"rows": [
+			{
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"actualUrl": "https://ticketing.localhost/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+				"initialUrl": "https://ticketing.localhost/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+				"initialLabel": "Ascending",
+				"noNativeTitle": true,
+				"accessibleNameCount": 1,
+				"tooltipHoverVisible": true,
+				"tooltipFocusVisible": true,
+				"describedbyMatchesTooltip": true,
+				"baseFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-390-dark.png",
+				"hoverFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-390-dark-hover.png",
+				"focusFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-390-dark-focus.png",
+				"firstEnter": {
+					"label": "Descending",
+					"urlDir": "desc",
+					"focused": true
+				},
+				"secondEnter": {
+					"label": "Ascending",
+					"urlDir": "asc",
+					"focused": true
+				},
+				"menuItemCount": 7,
+				"menuEscapeClosed": true,
+				"menuFocusReturned": true,
+				"bounds": {
+					"x": 243.5,
+					"y": 59,
+					"width": 28,
+					"height": 28
+				},
+				"documentOverflow": false
+			},
+			{
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"actualUrl": "https://ticketing.localhost/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+				"initialUrl": "https://ticketing.localhost/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+				"initialLabel": "Ascending",
+				"noNativeTitle": true,
+				"accessibleNameCount": 1,
+				"tooltipHoverVisible": true,
+				"tooltipFocusVisible": true,
+				"describedbyMatchesTooltip": true,
+				"baseFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-820-dark.png",
+				"hoverFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-820-dark-hover.png",
+				"focusFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-820-dark-focus.png",
+				"firstEnter": {
+					"label": "Descending",
+					"urlDir": "desc",
+					"focused": true
+				},
+				"secondEnter": {
+					"label": "Ascending",
+					"urlDir": "asc",
+					"focused": true
+				},
+				"menuItemCount": 7,
+				"menuEscapeClosed": true,
+				"menuFocusReturned": true,
+				"bounds": {
+					"x": 497.578125,
+					"y": 59,
+					"width": 28,
+					"height": 32
+				},
+				"documentOverflow": false
+			},
+			{
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"actualUrl": "https://ticketing.localhost/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+				"initialUrl": "https://ticketing.localhost/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+				"initialLabel": "Ascending",
+				"noNativeTitle": true,
+				"accessibleNameCount": 1,
+				"tooltipHoverVisible": true,
+				"tooltipFocusVisible": true,
+				"describedbyMatchesTooltip": true,
+				"baseFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-820-light.png",
+				"hoverFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-820-light-hover.png",
+				"focusFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-820-light-focus.png",
+				"firstEnter": {
+					"label": "Descending",
+					"urlDir": "desc",
+					"focused": true
+				},
+				"secondEnter": {
+					"label": "Ascending",
+					"urlDir": "asc",
+					"focused": true
+				},
+				"menuItemCount": 7,
+				"menuEscapeClosed": true,
+				"menuFocusReturned": true,
+				"bounds": {
+					"x": 497.578125,
+					"y": 59,
+					"width": 28,
+					"height": 32
+				},
+				"documentOverflow": false
+			},
+			{
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"actualUrl": "https://ticketing.localhost/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+				"initialUrl": "https://ticketing.localhost/agent/projects/LQA/work?layout=list&sort=key&dir=asc",
+				"initialLabel": "Ascending",
+				"noNativeTitle": true,
+				"accessibleNameCount": 1,
+				"tooltipHoverVisible": true,
+				"tooltipFocusVisible": true,
+				"describedbyMatchesTooltip": true,
+				"baseFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-1440-light.png",
+				"hoverFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-1440-light-hover.png",
+				"focusFile": "docs/report/screens/20261030-sort-direction-after-admin-sort-direction-1440-light-focus.png",
+				"firstEnter": {
+					"label": "Descending",
+					"urlDir": "desc",
+					"focused": true
+				},
+				"secondEnter": {
+					"label": "Ascending",
+					"urlDir": "asc",
+					"focused": true
+				},
+				"menuItemCount": 7,
+				"menuEscapeClosed": true,
+				"menuFocusReturned": true,
+				"bounds": {
+					"x": 497.578125,
+					"y": 59,
+					"width": 28,
+					"height": 32
+				},
+				"documentOverflow": false
+			}
+		],
+		"summary": {
+			"cases": 4,
+			"widths": [390, 820, 1440],
+			"actualThemes": ["dark", "light"],
+			"actualRole": "admin",
+			"allNoNativeTitle": true,
+			"allExplicitAccessibleName": true,
+			"allLibraryTooltipHoverFocus": true,
+			"allEnterBothDirectionsURLFocus": true,
+			"allLazyMenuEscapeFocus": true,
+			"allNoOverflow": true,
+			"rate429": 0,
+			"nonGetRequests": 0,
+			"errors": 0,
+			"privacy": "Screenshots crop the Sort control or control-plus-tooltip only; no record content visible.",
+			"limits": [
+				"URL sort state changed locally; no persisted work-item mutation.",
+				"Focused tooltip DOM visibility and role association verified; hover screenshot is the clearest painted tooltip image."
+			],
+			"containersStarted": "none"
+		}
+	},
+	"local": {
+		"unitTests": 7273,
+		"typecheckTasks": 9,
+		"focusedTests": 3,
+		"permissions": 118,
+		"contrastCriteria": 401,
+		"contrastCriteriaUnchanged": true,
+		"checks": [
+			{
+				"command": "pnpm test",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm typecheck",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm lint:ci",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:ui:raw-elements",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:i18n",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm test:permissions",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:route-policy",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm test:contract",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:tokens",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:bundle-size",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:bundle-purity",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:visual-scope",
+				"exitCode": 0
+			}
+		],
+		"bundlesKb": {
+			"initial": 267.6,
+			"workList": 333.4,
+			"portal": 189.3
+		},
+		"pinnedG8": {
+			"scope": "Combined integration source; work list/board, Calendar list/editor and workspace/project labels",
+			"passed": 6,
+			"seconds": 30.9,
+			"baselineChanges": 0,
+			"pinnedImage": "mcr.microsoft.com/playwright:v1.63.0-noble",
+			"platform": "linux/amd64"
+		}
+	},
+	"review": {
+		"independent": "Terra",
+		"sourceAndFinal": true,
+		"high": 0,
+		"medium": 0,
+		"findings": 0
+	},
+	"limits": [
+		"Actual admin role only; no owner/member/customer complete matrix acceptance.",
+		"Four after cases and two matched before cases; URL sorting only, no persisted mutation.",
+		"Hosted exact-head full G4/G8 and remaining CI still required; no requirement row promoted."
+	],
+	"containers": {
+		"ownedSit": "b11e2dc343c191a9a9214e177bd19c67d071954e3df82fcea93508f82a17fde4",
+		"temporaryVisualRunnersRemoved": [
+			"dd1472314162ed20e237ed7ebe537e9beeabcbb2d69043a386e6d49994b3ebd5",
+			"93d40525cf348749e388d081ace53dbde073cdc570333d97ddf0af155501ca08"
+		],
+		"originalRollbackPreserved": true
+	}
+}
