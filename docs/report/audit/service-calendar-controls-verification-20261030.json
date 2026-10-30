@@ -1,0 +1,5381 @@
+{
+	"generated": "2026-10-30T00:47:05.872Z",
+	"scope": "Stage2 five Calendar findings #961/#962/#963/#969/#970. Read-only real persisted SIT views and unsaved drafts; not full Calendar or product acceptance.",
+	"source": {
+		"feature": "e60a7749cdf9560ec439bab46954fc9d316dbdb7",
+		"runtime": "23487ab9fea57e44105c575682d5d7f6b3319aec",
+		"productionSourceEqual": true,
+		"main": "565baa3ff0e79ddc8d5d5e62255071956b9f883f"
+	},
+	"before": {
+		"screenshots": [
+			"docs/report/screens/20261030-calendar-native-before-service-calendar-new-draft-owner-390-dark.png",
+			"docs/report/screens/20261030-calendar-native-before-service-calendar-draft-weekly-window-owner-390-dark.png",
+			"docs/report/screens/20261030-calendar-native-before-service-calendar-draft-holiday-owner-390-dark.png",
+			"docs/report/screens/20261030-calendar-native-before-member-calendar-timezone-focus-390-dark.png",
+			"docs/report/screens/20261030-calendar-native-before-member-calendar-existing-time-focus-390-dark.png",
+			"docs/report/screens/20261030-calendar-layout-before-matrix-owner-820-light.png",
+			"docs/report/screens/20261030-calendar-layout-before-matrix-owner-820-dark.png",
+			"docs/report/screens/20261030-calendar-layout-before-matrix-admin-820-light.png",
+			"docs/report/screens/20261030-calendar-layout-before-matrix-admin-820-dark.png",
+			"docs/report/screens/20261030-calendar-layout-before-matrix-member-820-light.png",
+			"docs/report/screens/20261030-calendar-layout-before-matrix-member-820-dark.png",
+			"docs/report/screens/20261030-calendar-pattern-before-holiday-pattern-date-settled-390-dark.png",
+			"docs/report/screens/20261030-calendar-native-after-repair-member-390-dark-timezone-focus.png",
+			"docs/report/screens/20261030-calendar-native-after-repair-member-390-dark-weekly-time-focus.png",
+			"docs/report/screens/20261030-calendar-native-after-repair-owner-390-dark-timezone-focus.png",
+			"docs/report/screens/20261030-calendar-native-after-repair-owner-390-dark-weekly-time-focus.png",
+			"docs/report/screens/20261030-calendar-native-after-repair-owner-390-dark-holiday-date-focus.png"
+		],
+		"note": "Native controls were observed before this slice. First corrected runtime also exposed unreadable tablet controls and raw pattern labels; those failures remain in matched before evidence."
+	},
+	"after": {
+		"runtime": "23487ab9fea57e44105c575682d5d7f6b3319aec",
+		"sourceRevision": "e60a7749cdf9560ec439bab46954fc9d316dbdb7",
+		"scope": "Read-only real SIT recheck of Calendar layout and Holiday pattern labels",
+		"viewsCompleted": 18,
+		"boundaryViewsCompleted": 4,
+		"roles": [
+			{
+				"requested": "owner",
+				"actual": "owner",
+				"sessionStatus": 200,
+				"membershipStatus": 200
+			},
+			{
+				"requested": "admin",
+				"actual": "admin",
+				"sessionStatus": 200,
+				"membershipStatus": 200
+			},
+			{
+				"requested": "member",
+				"actual": "member",
+				"sessionStatus": 200,
+				"membershipStatus": 200
+			}
+		],
+		"themes": ["light", "dark"],
+		"widths": [1440, 820, 390],
+		"all22NoNativeDateTimeOrDatalist": true,
+		"all22NoDocumentOverflow": true,
+		"all22NoSeriousCriticalAxe": true,
+		"width820": [
+			{
+				"person": "owner",
+				"theme": "light",
+				"from": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "00:00",
+					"fullyFits": true,
+					"disabled": false
+				},
+				"to": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "00:00",
+					"fullyFits": true,
+					"disabled": false
+				},
+				"labelControlNoOverlap": true,
+				"startEndNoOverlap": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-820-light-mon-0-from-focus.png"
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"from": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "00:00",
+					"fullyFits": true,
+					"disabled": false
+				},
+				"to": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "00:00",
+					"fullyFits": true,
+					"disabled": false
+				},
+				"labelControlNoOverlap": true,
+				"startEndNoOverlap": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-820-dark-mon-0-from-focus.png"
+			},
+			{
+				"person": "admin",
+				"theme": "light",
+				"from": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "00:00",
+					"fullyFits": true,
+					"disabled": false
+				},
+				"to": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "00:00",
+					"fullyFits": true,
+					"disabled": false
+				},
+				"labelControlNoOverlap": true,
+				"startEndNoOverlap": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-820-light-mon-0-from-focus.png"
+			},
+			{
+				"person": "admin",
+				"theme": "dark",
+				"from": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "00:00",
+					"fullyFits": true,
+					"disabled": false
+				},
+				"to": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "00:00",
+					"fullyFits": true,
+					"disabled": false
+				},
+				"labelControlNoOverlap": true,
+				"startEndNoOverlap": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-820-dark-mon-0-from-focus.png"
+			},
+			{
+				"person": "member",
+				"theme": "light",
+				"from": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "00:00",
+					"fullyFits": true,
+					"disabled": true
+				},
+				"to": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "24:00",
+					"fullyFits": true,
+					"disabled": true
+				},
+				"labelControlNoOverlap": true,
+				"startEndNoOverlap": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-820-light-mon-0-from-focus.png"
+			},
+			{
+				"person": "member",
+				"theme": "dark",
+				"from": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "00:00",
+					"fullyFits": true,
+					"disabled": true
+				},
+				"to": {
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"text": "24:00",
+					"fullyFits": true,
+					"disabled": true
+				},
+				"labelControlNoOverlap": true,
+				"startEndNoOverlap": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-820-dark-mon-0-from-focus.png"
+			}
+		],
+		"width820AllReadable": true,
+		"boundaryWidths": [
+			{
+				"width": 1023,
+				"startClientWidth": 259,
+				"endClientWidth": 259,
+				"startTextFits": true,
+				"endTextFits": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-1023-dark-boundary.png"
+			},
+			{
+				"width": 1024,
+				"startClientWidth": 132,
+				"endClientWidth": 132,
+				"startTextFits": true,
+				"endTextFits": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-1024-dark-boundary.png"
+			},
+			{
+				"width": 1279,
+				"startClientWidth": 259,
+				"endClientWidth": 259,
+				"startTextFits": true,
+				"endTextFits": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-1279-dark-boundary.png"
+			},
+			{
+				"width": 1280,
+				"startClientWidth": 88,
+				"endClientWidth": 88,
+				"startTextFits": true,
+				"endTextFits": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-1280-dark-boundary.png"
+			}
+		],
+		"matched820Pairs": [
+			{
+				"person": "owner",
+				"theme": "light",
+				"width": 820,
+				"before": "docs/report/screens/20261030-calendar-layout-before-matrix-owner-820-light.png",
+				"after": "docs/report/screens/20261030-calendar-after-matrix-owner-820-light-mon-0-from-focus.png",
+				"beforeExists": true,
+				"afterExists": true,
+				"beforeStartWidth": 32,
+				"afterStartClientWidth": 157,
+				"beforeEndWidth": 32,
+				"afterEndClientWidth": 157
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 820,
+				"before": "docs/report/screens/20261030-calendar-layout-before-matrix-owner-820-dark.png",
+				"after": "docs/report/screens/20261030-calendar-after-matrix-owner-820-dark-mon-0-from-focus.png",
+				"beforeExists": true,
+				"afterExists": true,
+				"beforeStartWidth": 32,
+				"afterStartClientWidth": 157,
+				"beforeEndWidth": 32,
+				"afterEndClientWidth": 157
+			},
+			{
+				"person": "admin",
+				"theme": "light",
+				"width": 820,
+				"before": "docs/report/screens/20261030-calendar-layout-before-matrix-admin-820-light.png",
+				"after": "docs/report/screens/20261030-calendar-after-matrix-admin-820-light-mon-0-from-focus.png",
+				"beforeExists": true,
+				"afterExists": true,
+				"beforeStartWidth": 32,
+				"afterStartClientWidth": 157,
+				"beforeEndWidth": 32,
+				"afterEndClientWidth": 157
+			},
+			{
+				"person": "admin",
+				"theme": "dark",
+				"width": 820,
+				"before": "docs/report/screens/20261030-calendar-layout-before-matrix-admin-820-dark.png",
+				"after": "docs/report/screens/20261030-calendar-after-matrix-admin-820-dark-mon-0-from-focus.png",
+				"beforeExists": true,
+				"afterExists": true,
+				"beforeStartWidth": 32,
+				"afterStartClientWidth": 157,
+				"beforeEndWidth": 32,
+				"afterEndClientWidth": 157
+			},
+			{
+				"person": "member",
+				"theme": "light",
+				"width": 820,
+				"before": "docs/report/screens/20261030-calendar-layout-before-matrix-member-820-light.png",
+				"after": "docs/report/screens/20261030-calendar-after-matrix-member-820-light-mon-0-from-focus.png",
+				"beforeExists": true,
+				"afterExists": true,
+				"beforeStartWidth": 32,
+				"afterStartClientWidth": 157,
+				"beforeEndWidth": 30,
+				"afterEndClientWidth": 157
+			},
+			{
+				"person": "member",
+				"theme": "dark",
+				"width": 820,
+				"before": "docs/report/screens/20261030-calendar-layout-before-matrix-member-820-dark.png",
+				"after": "docs/report/screens/20261030-calendar-after-matrix-member-820-dark-mon-0-from-focus.png",
+				"beforeExists": true,
+				"afterExists": true,
+				"beforeStartWidth": 32,
+				"afterStartClientWidth": 157,
+				"beforeEndWidth": 30,
+				"afterEndClientWidth": 157
+			}
+		],
+		"holidayPatterns": [
+			{
+				"name": "holiday-pattern-date",
+				"ok": true,
+				"actual": "One date",
+				"expected": "One date",
+				"openScreenshot": "docs/report/screens/20261030-calendar-after-core-holiday-date-menu-open.png",
+				"selectedScreenshot": "docs/report/screens/20261030-calendar-after-core-holiday-date-selected.png",
+				"focusRestoredBeforeNextControl": true,
+				"popupClosed": true
+			},
+			{
+				"name": "holiday-pattern-range",
+				"ok": true,
+				"actual": "Date range",
+				"expected": "Date range",
+				"openScreenshot": "docs/report/screens/20261030-calendar-after-core-holiday-range-menu-open.png",
+				"selectedScreenshot": "docs/report/screens/20261030-calendar-after-core-holiday-range-selected.png",
+				"focusRestoredBeforeNextControl": true,
+				"popupClosed": true
+			},
+			{
+				"name": "holiday-pattern-annual",
+				"ok": true,
+				"actual": "Repeats every year",
+				"expected": "Repeats every year",
+				"openScreenshot": "docs/report/screens/20261030-calendar-after-core-holiday-annual-menu-open.png",
+				"selectedScreenshot": "docs/report/screens/20261030-calendar-after-core-holiday-annual-selected.png",
+				"focusRestoredBeforeNextControl": true,
+				"popupClosed": true
+			}
+		],
+		"allThreePatternsTranslatedAndSettled": true,
+		"timePicker": [
+			{
+				"name": "time-start-09-12",
+				"ok": true,
+				"geometry": {
+					"popup": {
+						"x": 75.15625,
+						"y": 549.96875,
+						"right": 331.15625,
+						"bottom": 694.96875,
+						"width": 256,
+						"height": 145
+					},
+					"hour": {
+						"x": 92.15625,
+						"y": 586.96875,
+						"right": 197.15625,
+						"bottom": 622.96875,
+						"width": 105,
+						"height": 36
+					},
+					"minute": {
+						"x": 209.15625,
+						"y": 586.96875,
+						"right": 314.15625,
+						"bottom": 622.96875,
+						"width": 105,
+						"height": 36
+					},
+					"horizontalOverlap": 0,
+					"bothInsidePopup": true,
+					"bothInsideViewport": true
+				},
+				"focusRestoredBeforeTab": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-core-mon-0-from-picker-open.png"
+			},
+			{
+				"name": "time-end-17-23",
+				"ok": true,
+				"geometry": {
+					"popup": {
+						"x": 75.671875,
+						"y": 549.890625,
+						"right": 331.671875,
+						"bottom": 694.890625,
+						"width": 256,
+						"height": 145
+					},
+					"hour": {
+						"x": 92.671875,
+						"y": 586.890625,
+						"right": 197.671875,
+						"bottom": 622.890625,
+						"width": 105,
+						"height": 36
+					},
+					"minute": {
+						"x": 209.671875,
+						"y": 586.890625,
+						"right": 314.671875,
+						"bottom": 622.890625,
+						"width": 105,
+						"height": 36
+					},
+					"horizontalOverlap": 0,
+					"bothInsidePopup": true,
+					"bothInsideViewport": true
+				},
+				"focusRestoredBeforeTab": true,
+				"screenshot": "docs/report/screens/20261030-calendar-after-core-mon-0-to-picker-open.png"
+			}
+		],
+		"coreOtherInteractions": [
+			{
+				"name": "time-end-escape",
+				"ok": true,
+				"value": {
+					"focusRestoredBeforeTab": true,
+					"unchanged": true
+				}
+			},
+			{
+				"name": "24-end-toggle-restore",
+				"ok": true,
+				"value": {
+					"has24": true,
+					"restored": true
+				}
+			},
+			{
+				"name": "timezone-suggestion-keyboard-alias",
+				"ok": true,
+				"value": {
+					"screenshot": "docs/report/screens/20261030-calendar-after-core-timezone-suggestions.png",
+					"keyboardSelectedLondon": true,
+					"aliasRetained": true
+				}
+			},
+			{
+				"name": "holiday-date-invalid-valid-enter",
+				"ok": true,
+				"value": {
+					"invalid": "true",
+					"saveDisabled": true,
+					"screenshot": "docs/report/screens/20261030-calendar-after-core-holiday-invalid-Feb29.png",
+					"focusRestoredBeforeTab": true,
+					"localDateVisible": true
+				}
+			},
+			{
+				"name": "local-alias-reset-reload",
+				"ok": true,
+				"value": {
+					"aliasBeforeReload": true,
+					"resetToEmpty": true
+				}
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"probeHistory": "The first core attempt stopped on an over-strict popup opacity predicate; core-first-attempt.json and pattern-diagnostic.json retain that history. The corrected core uses listbox hidden, trigger collapsed/focused, and completed animation. It passed.",
+		"coverageLimits": [
+			"No Calendar create/edit/save API write or persisted change was performed.",
+			"Outer holiday range/reversal validation remains unverified because the editor Save action was forbidden.",
+			"Existing member Calendar had no holiday row.",
+			"Lead/viewer/customer roles, concurrency, permission revocation and failure/retry were outside this bounded recheck."
+		],
+		"containersStarted": "none",
+		"acceptance": "Source-bound observational browser recheck, not full Calendar acceptance."
+	},
+	"core": {
+		"mode": "core",
+		"runtime": "23487ab9fea57e44105c575682d5d7f6b3319aec",
+		"sourceRevision": "e60a7749cdf9560ec439bab46954fc9d316dbdb7",
+		"plannedViews": 3,
+		"rows": [
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-core-owner-390-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 264,
+						"scrollWidth": 264,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 63,
+							"y": 109,
+							"width": 264,
+							"height": 34,
+							"right": 327,
+							"bottom": 143
+						},
+						"labelBox": {
+							"x": 62,
+							"y": 82,
+							"width": 111.046875,
+							"height": 18,
+							"right": 173.046875,
+							"bottom": 100
+						},
+						"labelControlOverlap": {
+							"width": 110.046875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 516,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 552
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 492,
+							"width": 46,
+							"height": 18,
+							"right": 121,
+							"bottom": 510
+						},
+						"labelControlOverlap": {
+							"width": 46,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 587,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 623
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 563,
+							"width": 37.171875,
+							"height": 18,
+							"right": 112.171875,
+							"bottom": 581
+						},
+						"labelControlOverlap": {
+							"width": 37.171875,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 2028,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 2064
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 2004,
+							"width": 113.609375,
+							"height": 18,
+							"right": 188.609375,
+							"bottom": 2022
+						},
+						"labelControlOverlap": {
+							"width": 113.609375,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 2109,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 2145
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 2085,
+							"width": 35.15625,
+							"height": 18,
+							"right": 110.15625,
+							"bottom": 2103
+						},
+						"labelControlOverlap": {
+							"width": 35.15625,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 240,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "admin",
+				"theme": "light",
+				"width": 820,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-core-admin-820-light.png",
+				"actualTheme": "light",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 186,
+						"scrollWidth": 186,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 559,
+							"y": -150,
+							"width": 186,
+							"height": 30,
+							"right": 745,
+							"bottom": -120
+						},
+						"labelBox": {
+							"x": 558,
+							"y": -175,
+							"width": 97.171875,
+							"height": 16,
+							"right": 655.171875,
+							"bottom": -159
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 270,
+							"width": 159,
+							"height": 32,
+							"right": 526,
+							"bottom": 302
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 248,
+							"width": 40.25,
+							"height": 16,
+							"right": 407.25,
+							"bottom": 264
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 534,
+							"y": 232,
+							"width": 159,
+							"height": 32,
+							"right": 693,
+							"bottom": 264
+						},
+						"labelBox": {
+							"x": 534,
+							"y": 210,
+							"width": 32.515625,
+							"height": 16,
+							"right": 566.515625,
+							"bottom": 226
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 320,
+						"scrollWidth": 320,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1560,
+							"width": 322,
+							"height": 32,
+							"right": 689,
+							"bottom": 1592
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1538,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 1554
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 153,
+						"scrollWidth": 153,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1636,
+							"width": 155,
+							"height": 32,
+							"right": 522,
+							"bottom": 1668
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1614,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1630
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "member",
+				"theme": "dark",
+				"width": 820,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-core-member-820-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 186,
+						"scrollWidth": 186,
+						"readableText": "UTC",
+						"textFullyFits": true,
+						"box": {
+							"x": 559,
+							"y": 867,
+							"width": 186,
+							"height": 30,
+							"right": 745,
+							"bottom": 897
+						},
+						"labelBox": {
+							"x": 558,
+							"y": 842,
+							"width": 97.171875,
+							"height": 16,
+							"right": 655.171875,
+							"bottom": 858
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1287,
+							"width": 159,
+							"height": 32,
+							"right": 526,
+							"bottom": 1319
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1265,
+							"width": 40.25,
+							"height": 16,
+							"right": 407.25,
+							"bottom": 1281
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "INPUT",
+						"type": "text",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "24:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 535,
+							"y": 1250,
+							"width": 157,
+							"height": 30,
+							"right": 692,
+							"bottom": 1280
+						},
+						"labelBox": {
+							"x": 534,
+							"y": 1227,
+							"width": 32.515625,
+							"height": 16,
+							"right": 566.515625,
+							"bottom": 1243
+						},
+						"labelControlOverlap": {
+							"width": 31.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": null,
+					"holiday-0-date": null
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			}
+		],
+		"boundaryRows": [],
+		"interactions": [
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"name": "holiday-pattern-date",
+				"ok": true,
+				"value": {
+					"value": "date",
+					"expectedLabel": "One date",
+					"actualTrigger": "One date",
+					"open": "docs/report/screens/20261030-calendar-after-core-holiday-date-menu-open.png",
+					"selected": "docs/report/screens/20261030-calendar-after-core-holiday-date-selected.png",
+					"focusRestoredBeforeNextControl": true,
+					"popupClosed": true
+				}
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"name": "holiday-pattern-range",
+				"ok": true,
+				"value": {
+					"value": "range",
+					"expectedLabel": "Date range",
+					"actualTrigger": "Date range",
+					"open": "docs/report/screens/20261030-calendar-after-core-holiday-range-menu-open.png",
+					"selected": "docs/report/screens/20261030-calendar-after-core-holiday-range-selected.png",
+					"focusRestoredBeforeNextControl": true,
+					"popupClosed": true
+				}
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"name": "holiday-pattern-annual",
+				"ok": true,
+				"value": {
+					"value": "annual",
+					"expectedLabel": "Repeats every year",
+					"actualTrigger": "Repeats every year",
+					"open": "docs/report/screens/20261030-calendar-after-core-holiday-annual-menu-open.png",
+					"selected": "docs/report/screens/20261030-calendar-after-core-holiday-annual-selected.png",
+					"focusRestoredBeforeNextControl": true,
+					"popupClosed": true
+				}
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"name": "time-start-09-12",
+				"ok": true,
+				"value": {
+					"popup": "docs/report/screens/20261030-calendar-after-core-mon-0-from-picker-open.png",
+					"geometry": {
+						"popup": {
+							"x": 75.15625,
+							"y": 549.96875,
+							"right": 331.15625,
+							"bottom": 694.96875,
+							"width": 256,
+							"height": 145
+						},
+						"hour": {
+							"x": 92.15625,
+							"y": 586.96875,
+							"right": 197.15625,
+							"bottom": 622.96875,
+							"width": 105,
+							"height": 36
+						},
+						"minute": {
+							"x": 209.15625,
+							"y": 586.96875,
+							"right": 314.15625,
+							"bottom": 622.96875,
+							"width": 105,
+							"height": 36
+						},
+						"horizontalOverlap": 0,
+						"bothInsidePopup": true,
+						"bothInsideViewport": true
+					},
+					"value": "09:12",
+					"focusRestoredBeforeTab": true
+				}
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"name": "time-end-17-23",
+				"ok": true,
+				"value": {
+					"popup": "docs/report/screens/20261030-calendar-after-core-mon-0-to-picker-open.png",
+					"geometry": {
+						"popup": {
+							"x": 75.671875,
+							"y": 549.890625,
+							"right": 331.671875,
+							"bottom": 694.890625,
+							"width": 256,
+							"height": 145
+						},
+						"hour": {
+							"x": 92.671875,
+							"y": 586.890625,
+							"right": 197.671875,
+							"bottom": 622.890625,
+							"width": 105,
+							"height": 36
+						},
+						"minute": {
+							"x": 209.671875,
+							"y": 586.890625,
+							"right": 314.671875,
+							"bottom": 622.890625,
+							"width": 105,
+							"height": 36
+						},
+						"horizontalOverlap": 0,
+						"bothInsidePopup": true,
+						"bothInsideViewport": true
+					},
+					"value": "17:23",
+					"focusRestoredBeforeTab": true
+				}
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"name": "time-end-escape",
+				"ok": true,
+				"value": {
+					"focusRestoredBeforeTab": true,
+					"unchanged": true
+				}
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"name": "24-end-toggle-restore",
+				"ok": true,
+				"value": {
+					"has24": true,
+					"restored": true
+				}
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"name": "timezone-suggestion-keyboard-alias",
+				"ok": true,
+				"value": {
+					"screenshot": "docs/report/screens/20261030-calendar-after-core-timezone-suggestions.png",
+					"keyboardSelectedLondon": true,
+					"aliasRetained": true
+				}
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"name": "holiday-date-invalid-valid-enter",
+				"ok": true,
+				"value": {
+					"invalid": "true",
+					"saveDisabled": true,
+					"screenshot": "docs/report/screens/20261030-calendar-after-core-holiday-invalid-Feb29.png",
+					"focusRestoredBeforeTab": true,
+					"localDateVisible": true
+				}
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"name": "local-alias-reset-reload",
+				"ok": true,
+				"value": {
+					"aliasBeforeReload": true,
+					"resetToEmpty": true
+				}
+			},
+			{
+				"person": "admin",
+				"theme": "light",
+				"width": 820,
+				"name": "focus-mon-0-from",
+				"screenshot": "docs/report/screens/20261030-calendar-after-core-admin-820-light-mon-0-from-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": false,
+					"disabledFieldset": false,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 367,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 526,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 367,
+						"y": 508,
+						"width": 40.25,
+						"height": 16,
+						"right": 407.25,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 40.25,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-admin-820-light.png"
+			},
+			{
+				"person": "admin",
+				"theme": "light",
+				"width": 820,
+				"name": "focus-mon-0-to",
+				"screenshot": "docs/report/screens/20261030-calendar-after-core-admin-820-light-mon-0-to-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": false,
+					"disabledFieldset": false,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 534,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 693,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 534,
+						"y": 508,
+						"width": 32.515625,
+						"height": 16,
+						"right": 566.515625,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 32.515625,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-admin-820-light.png"
+			},
+			{
+				"person": "member",
+				"theme": "dark",
+				"width": 820,
+				"name": "focus-mon-0-from",
+				"screenshot": "docs/report/screens/20261030-calendar-after-core-member-820-dark-mon-0-from-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": true,
+					"disabledFieldset": true,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 367,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 526,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 367,
+						"y": 508,
+						"width": 40.25,
+						"height": 16,
+						"right": 407.25,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 40.25,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-member-820-dark.png"
+			},
+			{
+				"person": "member",
+				"theme": "dark",
+				"width": 820,
+				"name": "focus-mon-0-to",
+				"screenshot": "docs/report/screens/20261030-calendar-after-core-member-820-dark-mon-0-to-focus.png",
+				"control": {
+					"tag": "INPUT",
+					"type": "text",
+					"disabled": true,
+					"disabledFieldset": true,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "24:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 535,
+						"y": 531,
+						"width": 157,
+						"height": 30,
+						"right": 692,
+						"bottom": 561
+					},
+					"labelBox": {
+						"x": 534,
+						"y": 508,
+						"width": 32.515625,
+						"height": 16,
+						"right": 566.515625,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 31.515625,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-member-820-dark.png"
+			}
+		],
+		"roles": [
+			{
+				"requested": "owner",
+				"actualRole": "owner",
+				"sessionStatus": 200,
+				"workspaceStatus": 200,
+				"membershipStatus": 200,
+				"activeWorkspaceFound": true
+			},
+			{
+				"requested": "admin",
+				"actualRole": "admin",
+				"sessionStatus": 200,
+				"workspaceStatus": 200,
+				"membershipStatus": 200,
+				"activeWorkspaceFound": true
+			},
+			{
+				"requested": "member",
+				"actualRole": "member",
+				"sessionStatus": 200,
+				"workspaceStatus": 200,
+				"membershipStatus": 200,
+				"activeWorkspaceFound": true
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"errors": [],
+		"containersStarted": "none",
+		"scope": "Read-only new-runtime Calendar recheck; local unsaved drafts only.",
+		"completedViews": 3,
+		"stoppedOn429": false
+	},
+	"matrix": {
+		"mode": "matrix",
+		"runtime": "23487ab9fea57e44105c575682d5d7f6b3319aec",
+		"sourceRevision": "e60a7749cdf9560ec439bab46954fc9d316dbdb7",
+		"plannedViews": 18,
+		"rows": [
+			{
+				"person": "owner",
+				"theme": "light",
+				"width": 1440,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-1440-light.png",
+				"actualTheme": "light",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 324,
+						"scrollWidth": 324,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 697,
+							"y": -134,
+							"width": 324,
+							"height": 30,
+							"right": 1021,
+							"bottom": -104
+						},
+						"labelBox": {
+							"x": 696,
+							"y": -159,
+							"width": 97.171875,
+							"height": 16,
+							"right": 793.171875,
+							"bottom": -143
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 491,
+							"y": 210,
+							"width": 169.640625,
+							"height": 32,
+							"right": 660.640625,
+							"bottom": 242
+						},
+						"labelBox": {
+							"x": 491,
+							"y": 188,
+							"width": 40.25,
+							"height": 16,
+							"right": 531.25,
+							"bottom": 204
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 668.640625,
+							"y": 172,
+							"width": 169.640625,
+							"height": 32,
+							"right": 838.28125,
+							"bottom": 204
+						},
+						"labelBox": {
+							"x": 668.640625,
+							"y": 150,
+							"width": 32.515625,
+							"height": 16,
+							"right": 701.15625,
+							"bottom": 166
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 596,
+						"scrollWidth": 596,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 964,
+							"width": 598,
+							"height": 32,
+							"right": 965,
+							"bottom": 996
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 942,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 958
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 291,
+						"scrollWidth": 291,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1040,
+							"width": 293,
+							"height": 32,
+							"right": 660,
+							"bottom": 1072
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1018,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1034
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "owner",
+				"theme": "light",
+				"width": 820,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-820-light.png",
+				"actualTheme": "light",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 186,
+						"scrollWidth": 186,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 559,
+							"y": -150,
+							"width": 186,
+							"height": 30,
+							"right": 745,
+							"bottom": -120
+						},
+						"labelBox": {
+							"x": 558,
+							"y": -175,
+							"width": 97.171875,
+							"height": 16,
+							"right": 655.171875,
+							"bottom": -159
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 270,
+							"width": 159,
+							"height": 32,
+							"right": 526,
+							"bottom": 302
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 248,
+							"width": 40.25,
+							"height": 16,
+							"right": 407.25,
+							"bottom": 264
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 534,
+							"y": 232,
+							"width": 159,
+							"height": 32,
+							"right": 693,
+							"bottom": 264
+						},
+						"labelBox": {
+							"x": 534,
+							"y": 210,
+							"width": 32.515625,
+							"height": 16,
+							"right": 566.515625,
+							"bottom": 226
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 320,
+						"scrollWidth": 320,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1560,
+							"width": 322,
+							"height": 32,
+							"right": 689,
+							"bottom": 1592
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1538,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 1554
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 153,
+						"scrollWidth": 153,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1636,
+							"width": 155,
+							"height": 32,
+							"right": 522,
+							"bottom": 1668
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1614,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1630
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "owner",
+				"theme": "light",
+				"width": 390,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-390-light.png",
+				"actualTheme": "light",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 264,
+						"scrollWidth": 264,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 63,
+							"y": -3,
+							"width": 264,
+							"height": 34,
+							"right": 327,
+							"bottom": 31
+						},
+						"labelBox": {
+							"x": 62,
+							"y": -30,
+							"width": 111.046875,
+							"height": 18,
+							"right": 173.046875,
+							"bottom": -12
+						},
+						"labelControlOverlap": {
+							"width": 110.046875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 404,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 440
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 380,
+							"width": 46,
+							"height": 18,
+							"right": 121,
+							"bottom": 398
+						},
+						"labelControlOverlap": {
+							"width": 46,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 475,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 511
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 451,
+							"width": 37.171875,
+							"height": 18,
+							"right": 112.171875,
+							"bottom": 469
+						},
+						"labelControlOverlap": {
+							"width": 37.171875,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 1916,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 1952
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1892,
+							"width": 113.609375,
+							"height": 18,
+							"right": 188.609375,
+							"bottom": 1910
+						},
+						"labelControlOverlap": {
+							"width": 113.609375,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 1997,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 2033
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1973,
+							"width": 35.15625,
+							"height": 18,
+							"right": 110.15625,
+							"bottom": 1991
+						},
+						"labelControlOverlap": {
+							"width": 35.15625,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 240,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 1440,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-1440-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 324,
+						"scrollWidth": 324,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 697,
+							"y": -134,
+							"width": 324,
+							"height": 30,
+							"right": 1021,
+							"bottom": -104
+						},
+						"labelBox": {
+							"x": 696,
+							"y": -159,
+							"width": 97.171875,
+							"height": 16,
+							"right": 793.171875,
+							"bottom": -143
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 491,
+							"y": 210,
+							"width": 169.640625,
+							"height": 32,
+							"right": 660.640625,
+							"bottom": 242
+						},
+						"labelBox": {
+							"x": 491,
+							"y": 188,
+							"width": 40.25,
+							"height": 16,
+							"right": 531.25,
+							"bottom": 204
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 668.640625,
+							"y": 172,
+							"width": 169.640625,
+							"height": 32,
+							"right": 838.28125,
+							"bottom": 204
+						},
+						"labelBox": {
+							"x": 668.640625,
+							"y": 150,
+							"width": 32.515625,
+							"height": 16,
+							"right": 701.15625,
+							"bottom": 166
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 596,
+						"scrollWidth": 596,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 964,
+							"width": 598,
+							"height": 32,
+							"right": 965,
+							"bottom": 996
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 942,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 958
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 291,
+						"scrollWidth": 291,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1040,
+							"width": 293,
+							"height": 32,
+							"right": 660,
+							"bottom": 1072
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1018,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1034
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 820,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-820-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 186,
+						"scrollWidth": 186,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 559,
+							"y": -150,
+							"width": 186,
+							"height": 30,
+							"right": 745,
+							"bottom": -120
+						},
+						"labelBox": {
+							"x": 558,
+							"y": -175,
+							"width": 97.171875,
+							"height": 16,
+							"right": 655.171875,
+							"bottom": -159
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 270,
+							"width": 159,
+							"height": 32,
+							"right": 526,
+							"bottom": 302
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 248,
+							"width": 40.25,
+							"height": 16,
+							"right": 407.25,
+							"bottom": 264
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 534,
+							"y": 232,
+							"width": 159,
+							"height": 32,
+							"right": 693,
+							"bottom": 264
+						},
+						"labelBox": {
+							"x": 534,
+							"y": 210,
+							"width": 32.515625,
+							"height": 16,
+							"right": 566.515625,
+							"bottom": 226
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 320,
+						"scrollWidth": 320,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1560,
+							"width": 322,
+							"height": 32,
+							"right": 689,
+							"bottom": 1592
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1538,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 1554
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 153,
+						"scrollWidth": 153,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1636,
+							"width": 155,
+							"height": 32,
+							"right": 522,
+							"bottom": 1668
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1614,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1630
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 390,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-390-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 264,
+						"scrollWidth": 264,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 63,
+							"y": -3,
+							"width": 264,
+							"height": 34,
+							"right": 327,
+							"bottom": 31
+						},
+						"labelBox": {
+							"x": 62,
+							"y": -30,
+							"width": 111.046875,
+							"height": 18,
+							"right": 173.046875,
+							"bottom": -12
+						},
+						"labelControlOverlap": {
+							"width": 110.046875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 404,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 440
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 380,
+							"width": 46,
+							"height": 18,
+							"right": 121,
+							"bottom": 398
+						},
+						"labelControlOverlap": {
+							"width": 46,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 475,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 511
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 451,
+							"width": 37.171875,
+							"height": 18,
+							"right": 112.171875,
+							"bottom": 469
+						},
+						"labelControlOverlap": {
+							"width": 37.171875,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 1916,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 1952
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1892,
+							"width": 113.609375,
+							"height": 18,
+							"right": 188.609375,
+							"bottom": 1910
+						},
+						"labelControlOverlap": {
+							"width": 113.609375,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 1997,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 2033
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1973,
+							"width": 35.15625,
+							"height": 18,
+							"right": 110.15625,
+							"bottom": 1991
+						},
+						"labelControlOverlap": {
+							"width": 35.15625,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 240,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "admin",
+				"theme": "light",
+				"width": 1440,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-1440-light.png",
+				"actualTheme": "light",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 324,
+						"scrollWidth": 324,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 697,
+							"y": -134,
+							"width": 324,
+							"height": 30,
+							"right": 1021,
+							"bottom": -104
+						},
+						"labelBox": {
+							"x": 696,
+							"y": -159,
+							"width": 97.171875,
+							"height": 16,
+							"right": 793.171875,
+							"bottom": -143
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 491,
+							"y": 210,
+							"width": 169.640625,
+							"height": 32,
+							"right": 660.640625,
+							"bottom": 242
+						},
+						"labelBox": {
+							"x": 491,
+							"y": 188,
+							"width": 40.25,
+							"height": 16,
+							"right": 531.25,
+							"bottom": 204
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 668.640625,
+							"y": 172,
+							"width": 169.640625,
+							"height": 32,
+							"right": 838.28125,
+							"bottom": 204
+						},
+						"labelBox": {
+							"x": 668.640625,
+							"y": 150,
+							"width": 32.515625,
+							"height": 16,
+							"right": 701.15625,
+							"bottom": 166
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 596,
+						"scrollWidth": 596,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 964,
+							"width": 598,
+							"height": 32,
+							"right": 965,
+							"bottom": 996
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 942,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 958
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 291,
+						"scrollWidth": 291,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1040,
+							"width": 293,
+							"height": 32,
+							"right": 660,
+							"bottom": 1072
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1018,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1034
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "admin",
+				"theme": "light",
+				"width": 820,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-820-light.png",
+				"actualTheme": "light",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 186,
+						"scrollWidth": 186,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 559,
+							"y": -150,
+							"width": 186,
+							"height": 30,
+							"right": 745,
+							"bottom": -120
+						},
+						"labelBox": {
+							"x": 558,
+							"y": -175,
+							"width": 97.171875,
+							"height": 16,
+							"right": 655.171875,
+							"bottom": -159
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 270,
+							"width": 159,
+							"height": 32,
+							"right": 526,
+							"bottom": 302
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 248,
+							"width": 40.25,
+							"height": 16,
+							"right": 407.25,
+							"bottom": 264
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 534,
+							"y": 232,
+							"width": 159,
+							"height": 32,
+							"right": 693,
+							"bottom": 264
+						},
+						"labelBox": {
+							"x": 534,
+							"y": 210,
+							"width": 32.515625,
+							"height": 16,
+							"right": 566.515625,
+							"bottom": 226
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 320,
+						"scrollWidth": 320,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1560,
+							"width": 322,
+							"height": 32,
+							"right": 689,
+							"bottom": 1592
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1538,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 1554
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 153,
+						"scrollWidth": 153,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1636,
+							"width": 155,
+							"height": 32,
+							"right": 522,
+							"bottom": 1668
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1614,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1630
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "admin",
+				"theme": "light",
+				"width": 390,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-390-light.png",
+				"actualTheme": "light",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 264,
+						"scrollWidth": 264,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 63,
+							"y": -3,
+							"width": 264,
+							"height": 34,
+							"right": 327,
+							"bottom": 31
+						},
+						"labelBox": {
+							"x": 62,
+							"y": -30,
+							"width": 111.046875,
+							"height": 18,
+							"right": 173.046875,
+							"bottom": -12
+						},
+						"labelControlOverlap": {
+							"width": 110.046875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 404,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 440
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 380,
+							"width": 46,
+							"height": 18,
+							"right": 121,
+							"bottom": 398
+						},
+						"labelControlOverlap": {
+							"width": 46,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 475,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 511
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 451,
+							"width": 37.171875,
+							"height": 18,
+							"right": 112.171875,
+							"bottom": 469
+						},
+						"labelControlOverlap": {
+							"width": 37.171875,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 1916,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 1952
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1892,
+							"width": 113.609375,
+							"height": 18,
+							"right": 188.609375,
+							"bottom": 1910
+						},
+						"labelControlOverlap": {
+							"width": 113.609375,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 1997,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 2033
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1973,
+							"width": 35.15625,
+							"height": 18,
+							"right": 110.15625,
+							"bottom": 1991
+						},
+						"labelControlOverlap": {
+							"width": 35.15625,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 240,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "admin",
+				"theme": "dark",
+				"width": 1440,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-1440-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 324,
+						"scrollWidth": 324,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 697,
+							"y": -134,
+							"width": 324,
+							"height": 30,
+							"right": 1021,
+							"bottom": -104
+						},
+						"labelBox": {
+							"x": 696,
+							"y": -159,
+							"width": 97.171875,
+							"height": 16,
+							"right": 793.171875,
+							"bottom": -143
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 491,
+							"y": 210,
+							"width": 169.640625,
+							"height": 32,
+							"right": 660.640625,
+							"bottom": 242
+						},
+						"labelBox": {
+							"x": 491,
+							"y": 188,
+							"width": 40.25,
+							"height": 16,
+							"right": 531.25,
+							"bottom": 204
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 668.640625,
+							"y": 172,
+							"width": 169.640625,
+							"height": 32,
+							"right": 838.28125,
+							"bottom": 204
+						},
+						"labelBox": {
+							"x": 668.640625,
+							"y": 150,
+							"width": 32.515625,
+							"height": 16,
+							"right": 701.15625,
+							"bottom": 166
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 596,
+						"scrollWidth": 596,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 964,
+							"width": 598,
+							"height": 32,
+							"right": 965,
+							"bottom": 996
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 942,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 958
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 291,
+						"scrollWidth": 291,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1040,
+							"width": 293,
+							"height": 32,
+							"right": 660,
+							"bottom": 1072
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1018,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1034
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "admin",
+				"theme": "dark",
+				"width": 820,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-820-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 186,
+						"scrollWidth": 186,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 559,
+							"y": -150,
+							"width": 186,
+							"height": 30,
+							"right": 745,
+							"bottom": -120
+						},
+						"labelBox": {
+							"x": 558,
+							"y": -175,
+							"width": 97.171875,
+							"height": 16,
+							"right": 655.171875,
+							"bottom": -159
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 270,
+							"width": 159,
+							"height": 32,
+							"right": 526,
+							"bottom": 302
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 248,
+							"width": 40.25,
+							"height": 16,
+							"right": 407.25,
+							"bottom": 264
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 534,
+							"y": 232,
+							"width": 159,
+							"height": 32,
+							"right": 693,
+							"bottom": 264
+						},
+						"labelBox": {
+							"x": 534,
+							"y": 210,
+							"width": 32.515625,
+							"height": 16,
+							"right": 566.515625,
+							"bottom": 226
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 320,
+						"scrollWidth": 320,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1560,
+							"width": 322,
+							"height": 32,
+							"right": 689,
+							"bottom": 1592
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1538,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 1554
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 153,
+						"scrollWidth": 153,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1636,
+							"width": 155,
+							"height": 32,
+							"right": 522,
+							"bottom": 1668
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1614,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1630
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "admin",
+				"theme": "dark",
+				"width": 390,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-390-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 264,
+						"scrollWidth": 264,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 63,
+							"y": -3,
+							"width": 264,
+							"height": 34,
+							"right": 327,
+							"bottom": 31
+						},
+						"labelBox": {
+							"x": 62,
+							"y": -30,
+							"width": 111.046875,
+							"height": 18,
+							"right": 173.046875,
+							"bottom": -12
+						},
+						"labelControlOverlap": {
+							"width": 110.046875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 404,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 440
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 380,
+							"width": 46,
+							"height": 18,
+							"right": 121,
+							"bottom": 398
+						},
+						"labelControlOverlap": {
+							"width": 46,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 475,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 511
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 451,
+							"width": 37.171875,
+							"height": 18,
+							"right": 112.171875,
+							"bottom": 469
+						},
+						"labelControlOverlap": {
+							"width": 37.171875,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 1916,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 1952
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1892,
+							"width": 113.609375,
+							"height": 18,
+							"right": 188.609375,
+							"bottom": 1910
+						},
+						"labelControlOverlap": {
+							"width": 113.609375,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 1997,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 2033
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1973,
+							"width": 35.15625,
+							"height": 18,
+							"right": 110.15625,
+							"bottom": 1991
+						},
+						"labelControlOverlap": {
+							"width": 35.15625,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 240,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "member",
+				"theme": "light",
+				"width": 1440,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-1440-light.png",
+				"actualTheme": "light",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 324,
+						"scrollWidth": 324,
+						"readableText": "UTC",
+						"textFullyFits": true,
+						"box": {
+							"x": 697,
+							"y": 731,
+							"width": 324,
+							"height": 30,
+							"right": 1021,
+							"bottom": 761
+						},
+						"labelBox": {
+							"x": 696,
+							"y": 706,
+							"width": 97.171875,
+							"height": 16,
+							"right": 793.171875,
+							"bottom": 722
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 491,
+							"y": 1075,
+							"width": 169.640625,
+							"height": 32,
+							"right": 660.640625,
+							"bottom": 1107
+						},
+						"labelBox": {
+							"x": 491,
+							"y": 1053,
+							"width": 40.25,
+							"height": 16,
+							"right": 531.25,
+							"bottom": 1069
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "INPUT",
+						"type": "text",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "24:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 669.640625,
+							"y": 1038,
+							"width": 167.640625,
+							"height": 30,
+							"right": 837.28125,
+							"bottom": 1068
+						},
+						"labelBox": {
+							"x": 668.640625,
+							"y": 1015,
+							"width": 32.515625,
+							"height": 16,
+							"right": 701.15625,
+							"bottom": 1031
+						},
+						"labelControlOverlap": {
+							"width": 31.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": null,
+					"holiday-0-date": null
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "member",
+				"theme": "light",
+				"width": 820,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-820-light.png",
+				"actualTheme": "light",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 186,
+						"scrollWidth": 186,
+						"readableText": "UTC",
+						"textFullyFits": true,
+						"box": {
+							"x": 559,
+							"y": 867,
+							"width": 186,
+							"height": 30,
+							"right": 745,
+							"bottom": 897
+						},
+						"labelBox": {
+							"x": 558,
+							"y": 842,
+							"width": 97.171875,
+							"height": 16,
+							"right": 655.171875,
+							"bottom": 858
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1287,
+							"width": 159,
+							"height": 32,
+							"right": 526,
+							"bottom": 1319
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1265,
+							"width": 40.25,
+							"height": 16,
+							"right": 407.25,
+							"bottom": 1281
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "INPUT",
+						"type": "text",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "24:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 535,
+							"y": 1250,
+							"width": 157,
+							"height": 30,
+							"right": 692,
+							"bottom": 1280
+						},
+						"labelBox": {
+							"x": 534,
+							"y": 1227,
+							"width": 32.515625,
+							"height": 16,
+							"right": 566.515625,
+							"bottom": 1243
+						},
+						"labelControlOverlap": {
+							"width": 31.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": null,
+					"holiday-0-date": null
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "member",
+				"theme": "light",
+				"width": 390,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-390-light.png",
+				"actualTheme": "light",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 264,
+						"scrollWidth": 264,
+						"readableText": "UTC",
+						"textFullyFits": true,
+						"box": {
+							"x": 63,
+							"y": 1034,
+							"width": 264,
+							"height": 34,
+							"right": 327,
+							"bottom": 1068
+						},
+						"labelBox": {
+							"x": 62,
+							"y": 1007,
+							"width": 111.046875,
+							"height": 18,
+							"right": 173.046875,
+							"bottom": 1025
+						},
+						"labelControlOverlap": {
+							"width": 110.046875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 1441,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 1477
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1417,
+							"width": 46,
+							"height": 18,
+							"right": 121,
+							"bottom": 1435
+						},
+						"labelControlOverlap": {
+							"width": 46,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "INPUT",
+						"type": "text",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "24:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 76,
+							"y": 1513,
+							"width": 238,
+							"height": 34,
+							"right": 314,
+							"bottom": 1547
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1488,
+							"width": 37.171875,
+							"height": 18,
+							"right": 112.171875,
+							"bottom": 1506
+						},
+						"labelControlOverlap": {
+							"width": 36.171875,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": null,
+					"holiday-0-date": null
+				},
+				"timeControlOverlap": {
+					"width": 238,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "member",
+				"theme": "dark",
+				"width": 1440,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-1440-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 324,
+						"scrollWidth": 324,
+						"readableText": "UTC",
+						"textFullyFits": true,
+						"box": {
+							"x": 697,
+							"y": 731,
+							"width": 324,
+							"height": 30,
+							"right": 1021,
+							"bottom": 761
+						},
+						"labelBox": {
+							"x": 696,
+							"y": 706,
+							"width": 97.171875,
+							"height": 16,
+							"right": 793.171875,
+							"bottom": 722
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 491,
+							"y": 1075,
+							"width": 169.640625,
+							"height": 32,
+							"right": 660.640625,
+							"bottom": 1107
+						},
+						"labelBox": {
+							"x": 491,
+							"y": 1053,
+							"width": 40.25,
+							"height": 16,
+							"right": 531.25,
+							"bottom": 1069
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "INPUT",
+						"type": "text",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 168,
+						"scrollWidth": 168,
+						"readableText": "24:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 669.640625,
+							"y": 1038,
+							"width": 167.640625,
+							"height": 30,
+							"right": 837.28125,
+							"bottom": 1068
+						},
+						"labelBox": {
+							"x": 668.640625,
+							"y": 1015,
+							"width": 32.515625,
+							"height": 16,
+							"right": 701.15625,
+							"bottom": 1031
+						},
+						"labelControlOverlap": {
+							"width": 31.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": null,
+					"holiday-0-date": null
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "member",
+				"theme": "dark",
+				"width": 820,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-820-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 186,
+						"scrollWidth": 186,
+						"readableText": "UTC",
+						"textFullyFits": true,
+						"box": {
+							"x": 559,
+							"y": 867,
+							"width": 186,
+							"height": 30,
+							"right": 745,
+							"bottom": 897
+						},
+						"labelBox": {
+							"x": 558,
+							"y": 842,
+							"width": 97.171875,
+							"height": 16,
+							"right": 655.171875,
+							"bottom": 858
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1287,
+							"width": 159,
+							"height": 32,
+							"right": 526,
+							"bottom": 1319
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1265,
+							"width": 40.25,
+							"height": 16,
+							"right": 407.25,
+							"bottom": 1281
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "INPUT",
+						"type": "text",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 157,
+						"scrollWidth": 157,
+						"readableText": "24:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 535,
+							"y": 1250,
+							"width": 157,
+							"height": 30,
+							"right": 692,
+							"bottom": 1280
+						},
+						"labelBox": {
+							"x": 534,
+							"y": 1227,
+							"width": 32.515625,
+							"height": 16,
+							"right": 566.515625,
+							"bottom": 1243
+						},
+						"labelControlOverlap": {
+							"width": 31.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": null,
+					"holiday-0-date": null
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "member",
+				"theme": "dark",
+				"width": 390,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-390-dark.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 264,
+						"scrollWidth": 264,
+						"readableText": "UTC",
+						"textFullyFits": true,
+						"box": {
+							"x": 63,
+							"y": 1034,
+							"width": 264,
+							"height": 34,
+							"right": 327,
+							"bottom": 1068
+						},
+						"labelBox": {
+							"x": 62,
+							"y": 1007,
+							"width": 111.046875,
+							"height": 18,
+							"right": 173.046875,
+							"bottom": 1025
+						},
+						"labelControlOverlap": {
+							"width": 110.046875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 75,
+							"y": 1441,
+							"width": 240,
+							"height": 36,
+							"right": 315,
+							"bottom": 1477
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1417,
+							"width": 46,
+							"height": 18,
+							"right": 121,
+							"bottom": 1435
+						},
+						"labelControlOverlap": {
+							"width": 46,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "INPUT",
+						"type": "text",
+						"disabled": true,
+						"disabledFieldset": true,
+						"clientWidth": 238,
+						"scrollWidth": 238,
+						"readableText": "24:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 76,
+							"y": 1513,
+							"width": 238,
+							"height": 34,
+							"right": 314,
+							"bottom": 1547
+						},
+						"labelBox": {
+							"x": 75,
+							"y": 1488,
+							"width": 37.171875,
+							"height": 18,
+							"right": 112.171875,
+							"bottom": 1506
+						},
+						"labelControlOverlap": {
+							"width": 36.171875,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": null,
+					"holiday-0-date": null
+				},
+				"timeControlOverlap": {
+					"width": 238,
+					"height": 0
+				},
+				"axe": []
+			}
+		],
+		"boundaryRows": [
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 1023,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-1023-dark-boundary.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 288,
+						"scrollWidth": 288,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 660.5,
+							"y": 112,
+							"width": 287.5,
+							"height": 30,
+							"right": 948,
+							"bottom": 142
+						},
+						"labelBox": {
+							"x": 659.5,
+							"y": 87,
+							"width": 97.171875,
+							"height": 16,
+							"right": 756.671875,
+							"bottom": 103
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 259,
+						"scrollWidth": 259,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 512,
+							"width": 260.5,
+							"height": 32,
+							"right": 627.5,
+							"bottom": 544
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 490,
+							"width": 40.25,
+							"height": 16,
+							"right": 407.25,
+							"bottom": 506
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 259,
+						"scrollWidth": 259,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 635.5,
+							"y": 474,
+							"width": 260.5,
+							"height": 32,
+							"right": 896,
+							"bottom": 506
+						},
+						"labelBox": {
+							"x": 635.5,
+							"y": 452,
+							"width": 32.515625,
+							"height": 16,
+							"right": 668.015625,
+							"bottom": 468
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 523,
+						"scrollWidth": 523,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1786,
+							"width": 525,
+							"height": 32,
+							"right": 892,
+							"bottom": 1818
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1764,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 1780
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 255,
+						"scrollWidth": 255,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1862,
+							"width": 256.5,
+							"height": 32,
+							"right": 623.5,
+							"bottom": 1894
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1840,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1856
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 1024,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-1024-dark-boundary.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 288,
+						"scrollWidth": 288,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 661,
+							"y": 112,
+							"width": 288,
+							"height": 30,
+							"right": 949,
+							"bottom": 142
+						},
+						"labelBox": {
+							"x": 660,
+							"y": 87,
+							"width": 97.171875,
+							"height": 16,
+							"right": 757.171875,
+							"bottom": 103
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 132,
+						"scrollWidth": 132,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 491,
+							"y": 472,
+							"width": 133.640625,
+							"height": 32,
+							"right": 624.640625,
+							"bottom": 504
+						},
+						"labelBox": {
+							"x": 491,
+							"y": 450,
+							"width": 40.25,
+							"height": 16,
+							"right": 531.25,
+							"bottom": 466
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 132,
+						"scrollWidth": 132,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 632.640625,
+							"y": 434,
+							"width": 133.640625,
+							"height": 32,
+							"right": 766.28125,
+							"bottom": 466
+						},
+						"labelBox": {
+							"x": 632.640625,
+							"y": 412,
+							"width": 32.515625,
+							"height": 16,
+							"right": 665.15625,
+							"bottom": 428
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 524,
+						"scrollWidth": 524,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1226,
+							"width": 526,
+							"height": 32,
+							"right": 893,
+							"bottom": 1258
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1204,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 1220
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 255,
+						"scrollWidth": 255,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1302,
+							"width": 257,
+							"height": 32,
+							"right": 624,
+							"bottom": 1334
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1280,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1296
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 1279,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-1279-dark-boundary.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 416,
+						"scrollWidth": 416,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 788.5,
+							"y": 112,
+							"width": 415.5,
+							"height": 30,
+							"right": 1204,
+							"bottom": 142
+						},
+						"labelBox": {
+							"x": 787.5,
+							"y": 87,
+							"width": 97.171875,
+							"height": 16,
+							"right": 884.671875,
+							"bottom": 103
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 259,
+						"scrollWidth": 259,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 491,
+							"y": 456,
+							"width": 261.140625,
+							"height": 32,
+							"right": 752.140625,
+							"bottom": 488
+						},
+						"labelBox": {
+							"x": 491,
+							"y": 434,
+							"width": 40.25,
+							"height": 16,
+							"right": 531.25,
+							"bottom": 450
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 259,
+						"scrollWidth": 259,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 760.140625,
+							"y": 418,
+							"width": 261.140625,
+							"height": 32,
+							"right": 1021.28125,
+							"bottom": 450
+						},
+						"labelBox": {
+							"x": 760.140625,
+							"y": 396,
+							"width": 32.515625,
+							"height": 16,
+							"right": 792.65625,
+							"bottom": 412
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 779,
+						"scrollWidth": 779,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1190,
+							"width": 781,
+							"height": 32,
+							"right": 1148,
+							"bottom": 1222
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1168,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 1184
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 383,
+						"scrollWidth": 383,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1266,
+							"width": 384.5,
+							"height": 32,
+							"right": 751.5,
+							"bottom": 1298
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1244,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1260
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 1280,
+				"height": 1000,
+				"route": "/agent/settings/calendars/{id}",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-1280-dark-boundary.png",
+				"actualTheme": "dark",
+				"computedColorScheme": "normal",
+				"skeletons": 0,
+				"documentOverflow": false,
+				"nativeDateTimeInputs": 0,
+				"datalistInputs": 0,
+				"fields": {
+					"calendar-timezone": {
+						"tag": "INPUT",
+						"type": null,
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 244,
+						"scrollWidth": 244,
+						"readableText": "",
+						"textFullyFits": true,
+						"box": {
+							"x": 617,
+							"y": 128,
+							"width": 244,
+							"height": 30,
+							"right": 861,
+							"bottom": 158
+						},
+						"labelBox": {
+							"x": 616,
+							"y": 103,
+							"width": 97.171875,
+							"height": 16,
+							"right": 713.171875,
+							"bottom": 119
+						},
+						"labelControlOverlap": {
+							"width": 96.171875,
+							"height": 0
+						}
+					},
+					"mon-0-from": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 88,
+						"scrollWidth": 88,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 491,
+							"y": 488,
+							"width": 89.640625,
+							"height": 32,
+							"right": 580.640625,
+							"bottom": 520
+						},
+						"labelBox": {
+							"x": 491,
+							"y": 466,
+							"width": 40.25,
+							"height": 16,
+							"right": 531.25,
+							"bottom": 482
+						},
+						"labelControlOverlap": {
+							"width": 40.25,
+							"height": 0
+						}
+					},
+					"mon-0-to": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 88,
+						"scrollWidth": 88,
+						"readableText": "00:00",
+						"textFullyFits": true,
+						"box": {
+							"x": 588.640625,
+							"y": 450,
+							"width": 89.640625,
+							"height": 32,
+							"right": 678.28125,
+							"bottom": 482
+						},
+						"labelBox": {
+							"x": 588.640625,
+							"y": 428,
+							"width": 32.515625,
+							"height": 16,
+							"right": 621.15625,
+							"bottom": 444
+						},
+						"labelControlOverlap": {
+							"width": 32.515625,
+							"height": 0
+						}
+					},
+					"holiday-0-kind": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 436,
+						"scrollWidth": 436,
+						"readableText": "One date",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1258,
+							"width": 438,
+							"height": 32,
+							"right": 805,
+							"bottom": 1290
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1236,
+							"width": 99.40625,
+							"height": 16,
+							"right": 466.40625,
+							"bottom": 1252
+						},
+						"labelControlOverlap": {
+							"width": 99.40625,
+							"height": 0
+						}
+					},
+					"holiday-0-date": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"disabledFieldset": false,
+						"clientWidth": 211,
+						"scrollWidth": 211,
+						"readableText": "Not set",
+						"textFullyFits": true,
+						"box": {
+							"x": 367,
+							"y": 1334,
+							"width": 213,
+							"height": 32,
+							"right": 580,
+							"bottom": 1366
+						},
+						"labelBox": {
+							"x": 367,
+							"y": 1312,
+							"width": 30.75,
+							"height": 16,
+							"right": 397.75,
+							"bottom": 1328
+						},
+						"labelControlOverlap": {
+							"width": 30.75,
+							"height": 0
+						}
+					}
+				},
+				"timeControlOverlap": {
+					"width": 0,
+					"height": 0
+				},
+				"axe": []
+			}
+		],
+		"interactions": [
+			{
+				"person": "owner",
+				"theme": "light",
+				"width": 820,
+				"name": "focus-mon-0-from",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-820-light-mon-0-from-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": false,
+					"disabledFieldset": false,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 367,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 526,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 367,
+						"y": 508,
+						"width": 40.25,
+						"height": 16,
+						"right": 407.25,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 40.25,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-owner-820-light.png"
+			},
+			{
+				"person": "owner",
+				"theme": "light",
+				"width": 820,
+				"name": "focus-mon-0-to",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-820-light-mon-0-to-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": false,
+					"disabledFieldset": false,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 534,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 693,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 534,
+						"y": 508,
+						"width": 32.515625,
+						"height": 16,
+						"right": 566.515625,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 32.515625,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-owner-820-light.png"
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 820,
+				"name": "focus-mon-0-from",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-820-dark-mon-0-from-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": false,
+					"disabledFieldset": false,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 367,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 526,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 367,
+						"y": 508,
+						"width": 40.25,
+						"height": 16,
+						"right": 407.25,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 40.25,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-owner-820-dark.png"
+			},
+			{
+				"person": "owner",
+				"theme": "dark",
+				"width": 820,
+				"name": "focus-mon-0-to",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-owner-820-dark-mon-0-to-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": false,
+					"disabledFieldset": false,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 534,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 693,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 534,
+						"y": 508,
+						"width": 32.515625,
+						"height": 16,
+						"right": 566.515625,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 32.515625,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-owner-820-dark.png"
+			},
+			{
+				"person": "admin",
+				"theme": "light",
+				"width": 820,
+				"name": "focus-mon-0-from",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-820-light-mon-0-from-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": false,
+					"disabledFieldset": false,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 367,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 526,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 367,
+						"y": 508,
+						"width": 40.25,
+						"height": 16,
+						"right": 407.25,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 40.25,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-admin-820-light.png"
+			},
+			{
+				"person": "admin",
+				"theme": "light",
+				"width": 820,
+				"name": "focus-mon-0-to",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-820-light-mon-0-to-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": false,
+					"disabledFieldset": false,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 534,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 693,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 534,
+						"y": 508,
+						"width": 32.515625,
+						"height": 16,
+						"right": 566.515625,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 32.515625,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-admin-820-light.png"
+			},
+			{
+				"person": "admin",
+				"theme": "dark",
+				"width": 820,
+				"name": "focus-mon-0-from",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-820-dark-mon-0-from-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": false,
+					"disabledFieldset": false,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 367,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 526,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 367,
+						"y": 508,
+						"width": 40.25,
+						"height": 16,
+						"right": 407.25,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 40.25,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-admin-820-dark.png"
+			},
+			{
+				"person": "admin",
+				"theme": "dark",
+				"width": 820,
+				"name": "focus-mon-0-to",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-admin-820-dark-mon-0-to-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": false,
+					"disabledFieldset": false,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 534,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 693,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 534,
+						"y": 508,
+						"width": 32.515625,
+						"height": 16,
+						"right": 566.515625,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 32.515625,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-admin-820-dark.png"
+			},
+			{
+				"person": "member",
+				"theme": "light",
+				"width": 820,
+				"name": "focus-mon-0-from",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-820-light-mon-0-from-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": true,
+					"disabledFieldset": true,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 367,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 526,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 367,
+						"y": 508,
+						"width": 40.25,
+						"height": 16,
+						"right": 407.25,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 40.25,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-member-820-light.png"
+			},
+			{
+				"person": "member",
+				"theme": "light",
+				"width": 820,
+				"name": "focus-mon-0-to",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-820-light-mon-0-to-focus.png",
+				"control": {
+					"tag": "INPUT",
+					"type": "text",
+					"disabled": true,
+					"disabledFieldset": true,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "24:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 535,
+						"y": 531,
+						"width": 157,
+						"height": 30,
+						"right": 692,
+						"bottom": 561
+					},
+					"labelBox": {
+						"x": 534,
+						"y": 508,
+						"width": 32.515625,
+						"height": 16,
+						"right": 566.515625,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 31.515625,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-member-820-light.png"
+			},
+			{
+				"person": "member",
+				"theme": "dark",
+				"width": 820,
+				"name": "focus-mon-0-from",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-820-dark-mon-0-from-focus.png",
+				"control": {
+					"tag": "BUTTON",
+					"type": "button",
+					"disabled": true,
+					"disabledFieldset": true,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "00:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 367,
+						"y": 530,
+						"width": 159,
+						"height": 32,
+						"right": 526,
+						"bottom": 562
+					},
+					"labelBox": {
+						"x": 367,
+						"y": 508,
+						"width": 40.25,
+						"height": 16,
+						"right": 407.25,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 40.25,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-member-820-dark.png"
+			},
+			{
+				"person": "member",
+				"theme": "dark",
+				"width": 820,
+				"name": "focus-mon-0-to",
+				"screenshot": "docs/report/screens/20261030-calendar-after-matrix-member-820-dark-mon-0-to-focus.png",
+				"control": {
+					"tag": "INPUT",
+					"type": "text",
+					"disabled": true,
+					"disabledFieldset": true,
+					"clientWidth": 157,
+					"scrollWidth": 157,
+					"readableText": "24:00",
+					"textFullyFits": true,
+					"box": {
+						"x": 535,
+						"y": 531,
+						"width": 157,
+						"height": 30,
+						"right": 692,
+						"bottom": 561
+					},
+					"labelBox": {
+						"x": 534,
+						"y": 508,
+						"width": 32.515625,
+						"height": 16,
+						"right": 566.515625,
+						"bottom": 524
+					},
+					"labelControlOverlap": {
+						"width": 31.515625,
+						"height": 0
+					}
+				},
+				"beforeScreenshot": "docs/report/screens/20261030-calendar-layout-before-matrix-member-820-dark.png"
+			}
+		],
+		"roles": [
+			{
+				"requested": "owner",
+				"actualRole": "owner",
+				"sessionStatus": 200,
+				"workspaceStatus": 200,
+				"membershipStatus": 200,
+				"activeWorkspaceFound": true
+			},
+			{
+				"requested": "admin",
+				"actualRole": "admin",
+				"sessionStatus": 200,
+				"workspaceStatus": 200,
+				"membershipStatus": 200,
+				"activeWorkspaceFound": true
+			},
+			{
+				"requested": "member",
+				"actualRole": "member",
+				"sessionStatus": 200,
+				"workspaceStatus": 200,
+				"membershipStatus": 200,
+				"activeWorkspaceFound": true
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"errors": [],
+		"containersStarted": "none",
+		"scope": "Read-only new-runtime Calendar recheck; local unsaved drafts only.",
+		"completedViews": 18,
+		"stoppedOn429": false
+	},
+	"localChecks": {
+		"fullUnit": {
+			"source": "9e874964f6a72be43dcff7f01d422cb2b99ab4b5",
+			"passed": 7269,
+			"scope": "Integrated initial controls before final weekly breakpoint and translated selected-label delta"
+		},
+		"latestDelta": {
+			"source": "e60a7749cdf9560ec439bab46954fc9d316dbdb7",
+			"focused": 34,
+			"typecheckTasks": 9,
+			"mockedE2E": 11,
+			"pinnedVisual": 9,
+			"contrastCriteria": 401,
+			"bundleGzipKB": {
+				"agent": 267.4,
+				"work": 333.3,
+				"portal": 189.3
+			}
+		},
+		"otherPassing": [
+			"lint:ci",
+			"check:ui:raw-elements",
+			"i18n:check",
+			"test:permissions (118)",
+			"check:route-policy",
+			"test:contract (zero breaking)",
+			"check:bundle-purity",
+			"check:visual-scope"
+		],
+		"scopeWarning": "Mocked E2E is not real API persistence; browser drafts are not saved journey evidence."
+	},
+	"visual": {
+		"baseline": {
+			"source": "d280aff346b5b8be0e062f5eea79e21ccf24a040",
+			"platform": "linux/amd64",
+			"image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+			"initial": {
+				"passed": 8,
+				"failed": 1,
+				"cause": "intended calendar editor difference; comparison reported two changed pixels at the timezone control caret near the viewport edge"
+			},
+			"baselineChanges": [
+				{
+					"path": "apps/web/e2e/visual.spec.ts-snapshots/service-calendar-editor-linux.png",
+					"reason": "native datalist timezone control replaced by the library Autocomplete; caret at the lower visible edge",
+					"generatedBy": "pinned Playwright CLI update-snapshots, exact-one-test list guard",
+					"limit": "editor screenshot is limited by internal scrolling and does not visibly cover weekly time or holiday controls"
+				}
+			],
+			"final": {
+				"passed": 9,
+				"failed": 0,
+				"durationSeconds": 41.7
+			},
+			"containers": [
+				{
+					"sourceHead": "4f64e9fdb418625ed896946ec2a62cea3b58f69f",
+					"uncommittedSourceDelta": "one E2E Hour focus-restoration assertion, no production delta",
+					"startedAt": "2026-10-30T00:00:17.736Z",
+					"platform": "linux/amd64",
+					"image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+					"selectedTests": 9,
+					"containerId": "11dc680e80154fcbb168182e80547af9f61cba32a26f3144cb46067369279bbb",
+					"exitCode": 1,
+					"removed": true,
+					"finishedAt": "2026-10-30T00:02:34.279Z"
+				},
+				{
+					"sourceHead": "d280aff346b5b8be0e062f5eea79e21ccf24a040",
+					"uncommittedSourceDelta": "none; source matches d280aff",
+					"startedAt": "2026-10-30T00:03:17.247Z",
+					"platform": "linux/amd64",
+					"image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+					"selectedTests": 9,
+					"containerId": "d3dd9d00ba4534ad29047369c8f39908e491b9dce2bf41d0c99d23fd1b1e1cbc",
+					"exitCode": 1,
+					"removed": true,
+					"finishedAt": "2026-10-30T00:03:31.189Z"
+				},
+				{
+					"sourceHead": "d280aff346b5b8be0e062f5eea79e21ccf24a040",
+					"uncommittedSourceDelta": "none; source matches d280aff",
+					"startedAt": "2026-10-30T00:04:22.364Z",
+					"platform": "linux/amd64",
+					"image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+					"selectedTests": 9,
+					"containerId": "f826196b9a8916358b9fb6dad5b551a3b614d30c94dabae42ea3aa0405d1deba",
+					"exitCode": 2,
+					"removed": true,
+					"finishedAt": "2026-10-30T00:04:23.281Z"
+				},
+				{
+					"sourceHead": "d280aff346b5b8be0e062f5eea79e21ccf24a040",
+					"uncommittedSourceDelta": "none; source matches d280aff",
+					"startedAt": "2026-10-30T00:05:01.043Z",
+					"platform": "linux/amd64",
+					"image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+					"selectedTests": 9,
+					"containerId": "509416d46ba52e0048cec416bfd2312ad392905d4392419b650f26d99fca5a81",
+					"exitCode": 0,
+					"removed": true,
+					"finishedAt": "2026-10-30T00:06:07.212Z"
+				}
+			],
+			"thresholdsChanged": false
+		},
+		"finalLayout": {
+			"sourceHead": "e60a7749cdf9560ec439bab46954fc9d316dbdb7",
+			"uncommittedSourceDelta": "none; updated weekly/holiday production files match e60a7749c",
+			"startedAt": "2026-10-30T00:30:05.346Z",
+			"platform": "linux/amd64",
+			"image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+			"selectedTests": 9,
+			"containerId": "e0de15e8306cd1a321e8f047d00b44ed55eac3b7221b5e8b87a0355b5f408004",
+			"exitCode": 0,
+			"removed": true,
+			"finishedAt": "2026-10-30T00:32:11.424Z"
+		}
+	},
+	"history": [
+		"Initial application import graph exceeded the unchanged 350KB work bundle budget; moving holiday validation out of an eagerly imported helper restored 333.3KB. No threshold/harness change.",
+		"Private E2E probes first mis-scoped portalled options or raced focus restoration. Diagnosis preceded explicit named-popup/visible-option/focus assertions. Final 11 existing journeys pass; no retries/sleeps/timeout increases.",
+		"First real recheck popup predicate incorrectly required opacity zero for an accessibility-hidden closed node. Trigger collapsed/focused, hidden listbox and completed animation replace that predicate; the actual app needed no patch.",
+		"Earlier 820px values were 30–32px wide. Corrected responsive rows provide157px; four breakpoint checks also pass."
+	],
+	"independentReview": {
+		"tier": "Sol high nonauthor",
+		"source": "e60a7749cdf9560ec439bab46954fc9d316dbdb7",
+		"result": "No open high/medium source or bounded runtime findings. Prior tablet readability medium resolved by inspected before/after evidence.",
+		"remainingLow": "Starts/Ends groups remain visually staggered around38px and the checkbox wraps near1280px. Readability/function intact. Tracked as #971; full alignment acceptance not claimed.",
+		"coverageLimits": "No persisted Calendar Save/create, outer holiday range validation, lead/viewer/customer journeys, concurrency or final hosted results."
+	},
+	"runtime": {
+		"backupVerified": true,
+		"countsUnchanged": true,
+		"https": {
+			"agent": 200,
+			"portal": 200
+		},
+		"trivy": {
+			"critical": 0,
+			"high": 42,
+			"fixableHighCritical": 0
+		},
+		"ownedApp": "1fd857b4106baa2568a8523dc09bca8d920825b361008c4e8abe8013bae63c64",
+		"supersededOwnedAppRemoved": "5de83e141e50d151318fb4316da6db23f6a410751a7c759d9acfbf8dc70d3563",
+		"originalRollbackAppPreserved": true
+	},
+	"limits": [
+		"No Calendar create/edit/save API write or persisted change was performed.",
+		"Outer holiday range/reversal validation remains unverified because the editor Save action was forbidden.",
+		"Existing member Calendar had no holiday row.",
+		"Lead/viewer/customer roles, concurrency, permission revocation and failure/retry were outside this bounded recheck."
+	],
+	"requirementsPromoted": 0,
+	"publishedScreenshots": 68,
+	"hostedChecks": "Not run yet; every non-G11 check remains required before merge. Latest merged #965 G11 2983.9/192.0/198.8/33.4ms, zero qualifying LCP runs."
+}
