@@ -604,7 +604,7 @@
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
 			"reportExportTitle": "Report exports",
-			"reminderLeadTimeUnitLabel": "Reminder time unit"
+			"reminderLeadTimeUnitLabel": "提醒时间单位"
 		},
 		"preferencesPage": {
 			"title": "偏好设置",
@@ -4669,7 +4669,7 @@
 			"stableKeyHelp": "Used to match this setting when moving a project between workspaces. Keep it unchanged after creation.",
 			"stableKeyReadOnlyLabel": "Stable key (read only)",
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.",
-			"timezoneSuggestions": "Timezone suggestions"
+			"timezoneSuggestions": "时区建议"
 		},
 		"editor": {
 			"allCalendars": "All calendars",
@@ -4728,9 +4728,9 @@
 			"removeHoliday": "Remove holiday {{count}}",
 			"through": "Through",
 			"title": "Holidays",
-			"invalid": "Choose a valid date for every holiday. Date ranges must end on or after they start.",
+			"invalid": "请为每个节假日选择有效日期。日期范围的结束日期不得早于开始日期。",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid calendar date in YYYY-MM-DD format."
+			"invalidDate": "请按 YYYY-MM-DD 格式输入有效日期。"
 		},
 		"list": {
 			"create": "Create calendar",
@@ -5785,9 +5785,9 @@
 			"optional": "optional",
 			"requiredHint": "Required before this item can start or finish",
 			"yes": "Yes",
-			"hour": "Hour",
-			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
+			"hour": "时",
+			"minute": "分",
+			"invalidLocalTime": "此时间在时钟调整时被跳过。请选择其他时间。"
 		}
 	},
 	"teams": {
@@ -6483,7 +6483,7 @@
 			"save": "Save",
 			"close": "Close",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid date as YYYY-MM-DD."
+			"invalidDate": "请输入 YYYY-MM-DD 格式的有效日期。"
 		},
 		"complete": {
 			"action": "Complete {{term_cycle_one}}",
@@ -8044,7 +8044,7 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "Actions for {{title}}"
+			"widgetActions": "{{title}} 的操作"
 		},
 		"empty": {
 			"excluded_other": "{{count}} items were left out: {{reason}}.",
@@ -8110,8 +8110,8 @@
 			"to": "To",
 			"type": "Type",
 			"window": "Window",
-			"datePlaceholder": "Not set",
-			"clearDate": "Clear date"
+			"datePlaceholder": "未设置",
+			"clearDate": "清除日期"
 		},
 		"index": {
 			"categories": "Report categories",

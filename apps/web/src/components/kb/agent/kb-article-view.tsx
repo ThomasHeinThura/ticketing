@@ -43,7 +43,12 @@ import { HttpError } from "@/lib/http-error";
 import { KB_ARTICLE_TABS, type KbArticleSearch, routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { KbArticleContent, KbTableOfContents } from "../kb-article-content";
-import { formatKbDate, KbStateBadge, KbVisibilityBadge } from "../kb-badges";
+import {
+  formatKbDate,
+  formatKbDueDate,
+  KbStateBadge,
+  KbVisibilityBadge,
+} from "../kb-badges";
 import { KbWorkItemReference } from "./kb-work-item-reference";
 
 const renderers = {
@@ -438,7 +443,7 @@ export function KbArticleView({
                 {article.authorName ?? t("kb:fields.none")}
               </Meta>
               <Meta label={t("kb:fields.reviewDue")}>
-                {formatKbDate(article.reviewDueAt) || t("kb:fields.none")}
+                {formatKbDueDate(article.reviewDueAt) || t("kb:fields.none")}
               </Meta>
               <Meta label={t("kb:fields.views")}>{article.viewCount}</Meta>
               <Meta label={t("kb:fields.liveVersion")}>

@@ -128,6 +128,32 @@ describe("service calendar editor optimistic-concurrency recovery", () => {
     },
   );
 
+  it("keeps the holiday error while a holiday is invalid and clears it once fixed", async () => {
+    const { result } = renderEditor();
+    await waitFor(() =>
+      expect(result.current.form.getValues("name")).toBe("Original"),
+    );
+    act(() => result.current.addHoliday());
+    await act(async () => {
+      await result.current.handleSave({
+        key: "support-hours",
+        name: "Original",
+        timezone: "UTC",
+      });
+    });
+    expect(result.current.holidayError).toBe("holidays.invalid");
+    act(() =>
+      result.current.replaceHoliday(0, {
+        from: "2026-12-31",
+        to: "2026-12-30",
+      }),
+    );
+    expect(result.current.holidayError).toBe("holidays.invalid");
+    act(() => result.current.replaceHoliday(0, { date: "2026-12-25" }));
+    await waitFor(() => expect(result.current.holidayError).toBe(""));
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+  });
+
   it("persists date-only holiday shapes unchanged with the current version", async () => {
     const { result } = renderEditor();
     await waitFor(() =>
