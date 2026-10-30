@@ -1,0 +1,1677 @@
+{
+	"date": "2026-10-30",
+	"issues": [967, 968],
+	"status": "local source and bounded browser review pass; Module G8 unresolved; hosted checks pending",
+	"source": {
+		"planning": "9485935a5fc6c8bd03020d6151a2a42c0003aeed",
+		"runtime": "e3564bb5237f21a730fa7041e94ec7997cfc9f60",
+		"formsAndSharedDateFieldMatch": true
+	},
+	"before": {
+		"sourceBoundIssues": [
+			{
+				"id": 967,
+				"component": "cycle-form-dialog.tsx",
+				"lines": [116, 125],
+				"control": "Two native input[type=date] fields in admin New Cycle draft",
+				"candidate": "Replace both with existing library DateField while preserving ISO day values, field labels, reversal validation and draft focus."
+			},
+			{
+				"id": 968,
+				"component": "module-form-dialog.tsx",
+				"lines": [152],
+				"control": "One native input[type=date] field in admin New Module draft",
+				"candidate": "Replace with existing library DateField while preserving optional ISO day and draft focus."
+			}
+		],
+		"coverage": {
+			"listRows": 36,
+			"adminNewDialogRows": 12,
+			"existingDetailRows": 24,
+			"confirmedEffectiveRoles": ["owner", "admin", "member"],
+			"allObservedThemesMatchRequested": true,
+			"allAdminDateInputsVisible": true,
+			"allAdminPrimaryDateFieldsFocused": true,
+			"documentOverflowRows": 0,
+			"dialogSeriousCriticalAxeRows": 0,
+			"detailSeriousCriticalAxeRows": 14,
+			"rateEvents": 0,
+			"nonGetRequests": 0
+		},
+		"visualEvidence": {
+			"cycle390dark": "admin-cycles-new-draft-390-dark.png",
+			"module390dark": "admin-modules-new-draft-390-dark.png"
+		},
+		"limits": [
+			"No editable persisted cycle or module fixture was accessible to admin in the observed project; admin list had no detail links.",
+			"Owner and member observed project lists had no Create button, and their existing detail pages had no single Edit button; this is observed access only, not a permission model assertion.",
+			"Cycle end field was visible but not independently focused.",
+			"Several 1440/820 detail screenshots retained lower-page skeletons although page title and detail header were visible; no full detail-screen acceptance claimed.",
+			"Page-level serious axe issues on existing detail scroll regions and one contrast target were observed outside the New date dialogs."
+		]
+	},
+	"after": {
+		"sourceRevision": "e3564bb5237f21a730fa7041e94ec7997cfc9f60",
+		"observationCounts": {
+			"list": 36,
+			"newDialogs": 12,
+			"existingDetails": 24,
+			"total": 72
+		},
+		"localDraftInteractions": {
+			"cases": 12,
+			"popupObservations": 54,
+			"invalidLeapRejected": 12,
+			"validLeapSelected": 12,
+			"reversedCycleDisabled": 6,
+			"sameDayCycleEnabled": 6,
+			"requiredClearDisabled": 6,
+			"optionalClearEnabled": 6
+		},
+		"focus": {
+			"checks": 12,
+			"settledPass": 12,
+			"immediateTransientMisses": 4
+		},
+		"correctedMaskedVisuals": {
+			"outerDialogPhotos": 12,
+			"settledPopupPhotos": 18,
+			"selectedDatePhotos": 2,
+			"allFilesExist": true,
+			"allPopupBoundsInsideViewport": true,
+			"initialInteractionPhotosSuperseded": true
+		},
+		"existingDetailAxe": {
+			"matrixRowsWithSeriousScrollableRegion": 14,
+			"diagnosticCases": 3,
+			"diagnosticCasesWithScrollableRegion": 3,
+			"badgeContrastTargetFound": false
+		},
+		"interruptions": {
+			"rate429": 0,
+			"nonGetRequests": 0,
+			"initialDriverLocatorErrors": 2,
+			"initialErrorsRetainedIn": "interactions.json"
+		},
+		"limits": [
+			"New-dialog interactions are local drafts only; no final Create or persisted Save was clicked.",
+			"No persisted editable date fixture was available for admin; owner/member detail coverage is read-only.",
+			"Existing detail scroll accessibility findings are outside the changed dialogs.",
+			"Badge contrast target was absent from three settled detail diagnostics; no color-ratio claim.",
+			"The initial public popup captures were obscured/transient; use only public-settled-* photos for visual evidence."
+		],
+		"containersStarted": "none"
+	},
+	"rows": {
+		"list": [
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"axe": []
+			}
+		],
+		"newDialogs": [
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 2,
+				"axe": [],
+				"fields": {
+					"cycle-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 521,
+							"y": 390.25,
+							"width": 193,
+							"height": 32,
+							"right": 714,
+							"bottom": 422.25,
+							"onscreen": true
+						},
+						"clientWidth": 191,
+						"scrollWidth": 191
+					},
+					"cycle-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 726,
+							"y": 390.25,
+							"width": 193,
+							"height": 32,
+							"right": 919,
+							"bottom": 422.25,
+							"onscreen": true
+						},
+						"clientWidth": 191,
+						"scrollWidth": 191
+					},
+					"module-target": null
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 2,
+				"axe": [],
+				"fields": {
+					"cycle-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 211,
+							"y": 390.25,
+							"width": 193,
+							"height": 32,
+							"right": 404,
+							"bottom": 422.25,
+							"onscreen": true
+						},
+						"clientWidth": 191,
+						"scrollWidth": 191
+					},
+					"cycle-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 416,
+							"y": 390.25,
+							"width": 193,
+							"height": 32,
+							"right": 609,
+							"bottom": 422.25,
+							"onscreen": true
+						},
+						"clientWidth": 191,
+						"scrollWidth": 191
+					},
+					"module-target": null
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 2,
+				"axe": [],
+				"fields": {
+					"cycle-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 24,
+							"y": 779,
+							"width": 342,
+							"height": 36,
+							"right": 366,
+							"bottom": 815,
+							"onscreen": true
+						},
+						"clientWidth": 340,
+						"scrollWidth": 340
+					},
+					"cycle-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 24,
+							"y": 851,
+							"width": 342,
+							"height": 36,
+							"right": 366,
+							"bottom": 887,
+							"onscreen": true
+						},
+						"clientWidth": 340,
+						"scrollWidth": 340
+					},
+					"module-target": null
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 1,
+				"axe": [],
+				"fields": {
+					"cycle-start": null,
+					"cycle-end": null,
+					"module-target": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 521,
+							"y": 525.25,
+							"width": 398,
+							"height": 32,
+							"right": 919,
+							"bottom": 557.25,
+							"onscreen": true
+						},
+						"clientWidth": 396,
+						"scrollWidth": 396
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 1,
+				"axe": [],
+				"fields": {
+					"cycle-start": null,
+					"cycle-end": null,
+					"module-target": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 211,
+							"y": 525.25,
+							"width": 398,
+							"height": 32,
+							"right": 609,
+							"bottom": 557.25,
+							"onscreen": true
+						},
+						"clientWidth": 396,
+						"scrollWidth": 396
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 1,
+				"axe": [],
+				"fields": {
+					"cycle-start": null,
+					"cycle-end": null,
+					"module-target": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 24,
+							"y": 851,
+							"width": 342,
+							"height": 36,
+							"right": 366,
+							"bottom": 887,
+							"onscreen": true
+						},
+						"clientWidth": 340,
+						"scrollWidth": 340
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 2,
+				"axe": [],
+				"fields": {
+					"cycle-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 521,
+							"y": 390.25,
+							"width": 193,
+							"height": 32,
+							"right": 714,
+							"bottom": 422.25,
+							"onscreen": true
+						},
+						"clientWidth": 191,
+						"scrollWidth": 191
+					},
+					"cycle-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 726,
+							"y": 390.25,
+							"width": 193,
+							"height": 32,
+							"right": 919,
+							"bottom": 422.25,
+							"onscreen": true
+						},
+						"clientWidth": 191,
+						"scrollWidth": 191
+					},
+					"module-target": null
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 2,
+				"axe": [],
+				"fields": {
+					"cycle-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 211,
+							"y": 390.25,
+							"width": 193,
+							"height": 32,
+							"right": 404,
+							"bottom": 422.25,
+							"onscreen": true
+						},
+						"clientWidth": 191,
+						"scrollWidth": 191
+					},
+					"cycle-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 416,
+							"y": 390.25,
+							"width": 193,
+							"height": 32,
+							"right": 609,
+							"bottom": 422.25,
+							"onscreen": true
+						},
+						"clientWidth": 191,
+						"scrollWidth": 191
+					},
+					"module-target": null
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/cycles",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 2,
+				"axe": [],
+				"fields": {
+					"cycle-start": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 24,
+							"y": 779,
+							"width": 342,
+							"height": 36,
+							"right": 366,
+							"bottom": 815,
+							"onscreen": true
+						},
+						"clientWidth": 340,
+						"scrollWidth": 340
+					},
+					"cycle-end": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 24,
+							"y": 851,
+							"width": 342,
+							"height": 36,
+							"right": 366,
+							"bottom": 887,
+							"onscreen": true
+						},
+						"clientWidth": 340,
+						"scrollWidth": 340
+					},
+					"module-target": null
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 1,
+				"axe": [],
+				"fields": {
+					"cycle-start": null,
+					"cycle-end": null,
+					"module-target": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 521,
+							"y": 525.25,
+							"width": 398,
+							"height": 32,
+							"right": 919,
+							"bottom": 557.25,
+							"onscreen": true
+						},
+						"clientWidth": 396,
+						"scrollWidth": 396
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 1,
+				"axe": [],
+				"fields": {
+					"cycle-start": null,
+					"cycle-end": null,
+					"module-target": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 211,
+							"y": 525.25,
+							"width": 398,
+							"height": 32,
+							"right": 609,
+							"bottom": 557.25,
+							"onscreen": true
+						},
+						"clientWidth": 396,
+						"scrollWidth": 396
+					}
+				}
+			},
+			{
+				"role": "admin",
+				"kind": "modules",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/LQA/modules",
+				"overflow": false,
+				"nativeDateCount": 0,
+				"libraryDateFieldCount": 1,
+				"axe": [],
+				"fields": {
+					"cycle-start": null,
+					"cycle-end": null,
+					"module-target": {
+						"tag": "BUTTON",
+						"type": "button",
+						"disabled": false,
+						"box": {
+							"x": 24,
+							"y": 851,
+							"width": 342,
+							"height": 36,
+							"right": 366,
+							"bottom": 887,
+							"onscreen": true
+						},
+						"clientWidth": 340,
+						"scrollWidth": 340
+					}
+				}
+			}
+		],
+		"existingDetails": [
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles/ep65o1q0oitqcx7z8vpuyyi4",
+				"overflow": false,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles/ep65o1q0oitqcx7z8vpuyyi4",
+				"overflow": false,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles/ep65o1q0oitqcx7z8vpuyyi4",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": ["div[data-slot=\"table-container\"]"]
+					}
+				]
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules/gofyhysqotm5fvglnx92lau0",
+				"overflow": false,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules/gofyhysqotm5fvglnx92lau0",
+				"overflow": false,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules/gofyhysqotm5fvglnx92lau0",
+				"overflow": false,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles/ep65o1q0oitqcx7z8vpuyyi4",
+				"overflow": false,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles/ep65o1q0oitqcx7z8vpuyyi4",
+				"overflow": false,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/cycles/ep65o1q0oitqcx7z8vpuyyi4",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": ["div[data-slot=\"table-container\"]"]
+					}
+				]
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules/gofyhysqotm5fvglnx92lau0",
+				"overflow": false,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules/gofyhysqotm5fvglnx92lau0",
+				"overflow": false,
+				"axe": []
+			},
+			{
+				"role": "owner",
+				"kind": "modules",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/CCY/modules/gofyhysqotm5fvglnx92lau0",
+				"overflow": false,
+				"axe": []
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles/ngako0rosm7ki6i1cyfgdmx9",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles/ngako0rosm7ki6i1cyfgdmx9",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles/ngako0rosm7ki6i1cyfgdmx9",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules/vixyq6d5t060zgwkfhn74znu",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 820,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules/vixyq6d5t060zgwkfhn74znu",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 390,
+				"theme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules/vixyq6d5t060zgwkfhn74znu",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles/ngako0rosm7ki6i1cyfgdmx9",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles/ngako0rosm7ki6i1cyfgdmx9",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/cycles/ngako0rosm7ki6i1cyfgdmx9",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 1440,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules/vixyq6d5t060zgwkfhn74znu",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 820,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules/vixyq6d5t060zgwkfhn74znu",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 390,
+				"theme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/projects/HELP/modules/vixyq6d5t060zgwkfhn74znu",
+				"overflow": false,
+				"axe": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"targets": [".overflow-x-auto"]
+					}
+				]
+			}
+		]
+	},
+	"focus": {
+		"runtime": "e3564bb5237f21a730fa7041e94ec7997cfc9f60",
+		"role": "admin",
+		"cases": [
+			{
+				"theme": "light",
+				"width": 1440,
+				"fields": [
+					{
+						"id": "cycle-start",
+						"immediate": false,
+						"settled": true,
+						"outerDialogVisible": true
+					},
+					{
+						"id": "cycle-end",
+						"immediate": true,
+						"settled": true,
+						"outerDialogVisible": true
+					}
+				]
+			},
+			{
+				"theme": "light",
+				"width": 820,
+				"fields": [
+					{
+						"id": "cycle-start",
+						"immediate": true,
+						"settled": true,
+						"outerDialogVisible": true
+					},
+					{
+						"id": "cycle-end",
+						"immediate": true,
+						"settled": true,
+						"outerDialogVisible": true
+					}
+				]
+			},
+			{
+				"theme": "light",
+				"width": 390,
+				"fields": [
+					{
+						"id": "cycle-start",
+						"immediate": false,
+						"settled": true,
+						"outerDialogVisible": true
+					},
+					{
+						"id": "cycle-end",
+						"immediate": true,
+						"settled": true,
+						"outerDialogVisible": true
+					}
+				]
+			},
+			{
+				"theme": "dark",
+				"width": 1440,
+				"fields": [
+					{
+						"id": "cycle-start",
+						"immediate": false,
+						"settled": true,
+						"outerDialogVisible": true
+					},
+					{
+						"id": "cycle-end",
+						"immediate": true,
+						"settled": true,
+						"outerDialogVisible": true
+					}
+				]
+			},
+			{
+				"theme": "dark",
+				"width": 820,
+				"fields": [
+					{
+						"id": "cycle-start",
+						"immediate": true,
+						"settled": true,
+						"outerDialogVisible": true
+					},
+					{
+						"id": "cycle-end",
+						"immediate": true,
+						"settled": true,
+						"outerDialogVisible": true
+					}
+				]
+			},
+			{
+				"theme": "dark",
+				"width": 390,
+				"fields": [
+					{
+						"id": "cycle-start",
+						"immediate": false,
+						"settled": true,
+						"outerDialogVisible": true
+					},
+					{
+						"id": "cycle-end",
+						"immediate": true,
+						"settled": true,
+						"outerDialogVisible": true
+					}
+				]
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"errors": [],
+		"containersStarted": "none"
+	},
+	"existingDetailAxe": {
+		"runtime": "e3564bb5237f21a730fa7041e94ec7997cfc9f60",
+		"cases": [
+			{
+				"role": "owner",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "dark",
+				"actualUrl": "https://ticketing.localhost/agent/projects/CCY/cycles/ep65o1q0oitqcx7z8vpuyyi4",
+				"violations": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"nodes": [
+							{
+								"target": "div[data-slot=\"table-container\"]",
+								"failureSummary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+							}
+						]
+					}
+				],
+				"scroll": [
+					{
+						"tag": "DIV",
+						"slot": "table-container",
+						"className": "relative w-full overflow-x-auto",
+						"scrollWidth": 346,
+						"clientWidth": 338,
+						"scrollHeight": 41,
+						"clientHeight": 41,
+						"tabIndex": -1,
+						"role": null,
+						"ariaLabel": null,
+						"computedOverflowX": "auto",
+						"focusable": false,
+						"tableTestId": "burndown-table"
+					},
+					{
+						"tag": "DIV",
+						"slot": null,
+						"className": "min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch]",
+						"scrollWidth": 2032,
+						"clientWidth": 340,
+						"scrollHeight": 188,
+						"clientHeight": 188,
+						"tabIndex": -1,
+						"role": null,
+						"ariaLabel": null,
+						"computedOverflowX": "auto",
+						"focusable": false,
+						"tableTestId": null
+					}
+				],
+				"badgeStyle": null,
+				"skeletons": 0
+			},
+			{
+				"role": "member",
+				"kind": "cycles",
+				"width": 390,
+				"theme": "dark",
+				"actualUrl": "https://ticketing.localhost/agent/projects/HELP/cycles/ngako0rosm7ki6i1cyfgdmx9",
+				"violations": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"nodes": [
+							{
+								"target": ".overflow-x-auto",
+								"failureSummary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+							}
+						]
+					}
+				],
+				"scroll": [
+					{
+						"tag": "DIV",
+						"slot": null,
+						"className": "min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch]",
+						"scrollWidth": 1696,
+						"clientWidth": 340,
+						"scrollHeight": 125,
+						"clientHeight": 125,
+						"tabIndex": -1,
+						"role": null,
+						"ariaLabel": null,
+						"computedOverflowX": "auto",
+						"focusable": false,
+						"tableTestId": null
+					}
+				],
+				"badgeStyle": null,
+				"skeletons": 0
+			},
+			{
+				"role": "member",
+				"kind": "modules",
+				"width": 820,
+				"theme": "dark",
+				"actualUrl": "https://ticketing.localhost/agent/projects/HELP/modules/vixyq6d5t060zgwkfhn74znu",
+				"violations": [
+					{
+						"id": "scrollable-region-focusable",
+						"impact": "serious",
+						"nodes": [
+							{
+								"target": ".overflow-x-auto",
+								"failureSummary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+							}
+						]
+					}
+				],
+				"scroll": [
+					{
+						"tag": "DIV",
+						"slot": null,
+						"className": "min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch]",
+						"scrollWidth": 1704,
+						"clientWidth": 538,
+						"scrollHeight": 125,
+						"clientHeight": 125,
+						"tabIndex": -1,
+						"role": null,
+						"ariaLabel": null,
+						"computedOverflowX": "auto",
+						"focusable": false,
+						"tableTestId": null
+					}
+				],
+				"badgeStyle": null,
+				"skeletons": 0
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"errors": [],
+		"containersStarted": "none"
+	},
+	"screenshots": {
+		"paths": [
+			"../screens/20261030-planning-after-cycles-cycle-end-popup-1440-dark.png",
+			"../screens/20261030-planning-after-cycles-cycle-end-popup-1440-light.png",
+			"../screens/20261030-planning-after-cycles-cycle-end-popup-390-dark.png",
+			"../screens/20261030-planning-after-cycles-cycle-end-popup-390-light.png",
+			"../screens/20261030-planning-after-cycles-cycle-end-popup-820-dark.png",
+			"../screens/20261030-planning-after-cycles-cycle-end-popup-820-light.png",
+			"../screens/20261030-planning-after-cycles-cycle-start-popup-1440-dark.png",
+			"../screens/20261030-planning-after-cycles-cycle-start-popup-1440-light.png",
+			"../screens/20261030-planning-after-cycles-cycle-start-popup-390-dark.png",
+			"../screens/20261030-planning-after-cycles-cycle-start-popup-390-light.png",
+			"../screens/20261030-planning-after-cycles-cycle-start-popup-820-dark.png",
+			"../screens/20261030-planning-after-cycles-cycle-start-popup-820-light.png",
+			"../screens/20261030-planning-after-cycles-draft-1440-dark.png",
+			"../screens/20261030-planning-after-cycles-draft-1440-light.png",
+			"../screens/20261030-planning-after-cycles-draft-390-dark.png",
+			"../screens/20261030-planning-after-cycles-draft-390-light.png",
+			"../screens/20261030-planning-after-cycles-draft-820-dark.png",
+			"../screens/20261030-planning-after-cycles-draft-820-light.png",
+			"../screens/20261030-planning-after-cycles-selected-date-390-dark.png",
+			"../screens/20261030-planning-after-modules-draft-1440-dark.png",
+			"../screens/20261030-planning-after-modules-draft-1440-light.png",
+			"../screens/20261030-planning-after-modules-draft-390-dark.png",
+			"../screens/20261030-planning-after-modules-draft-390-light.png",
+			"../screens/20261030-planning-after-modules-draft-820-dark.png",
+			"../screens/20261030-planning-after-modules-draft-820-light.png",
+			"../screens/20261030-planning-after-modules-module-target-popup-1440-dark.png",
+			"../screens/20261030-planning-after-modules-module-target-popup-1440-light.png",
+			"../screens/20261030-planning-after-modules-module-target-popup-390-dark.png",
+			"../screens/20261030-planning-after-modules-module-target-popup-390-light.png",
+			"../screens/20261030-planning-after-modules-module-target-popup-820-dark.png",
+			"../screens/20261030-planning-after-modules-module-target-popup-820-light.png",
+			"../screens/20261030-planning-after-modules-selected-date-390-dark.png",
+			"../screens/20261030-planning-before-cycles-390-dark.png",
+			"../screens/20261030-planning-before-modules-390-dark.png"
+		],
+		"count": 34,
+		"mask": "Inputs and fixture identity masked during Playwright capture. Popup element screenshots mask only the popup input to avoid obscuring day cells. No image post-edit.",
+		"invalidated": "Earlier public popup photographs were obscured by masks for underlying inputs or caught a closing transition. Only corrected public-settled photos listed here are evidence."
+	},
+	"local": {
+		"unitTests": 7277,
+		"typecheckTasks": 9,
+		"focusedTests": 18,
+		"permissionTests": 118,
+		"contrastPairs": 401,
+		"bundlesGzipKB": {
+			"agent": 267.5,
+			"workList": 333.4,
+			"portal": 189.3
+		},
+		"passed": [
+			"pnpm test",
+			"pnpm typecheck",
+			"pnpm lint:ci",
+			"pnpm check:ui:raw-elements",
+			"pnpm check:tokens",
+			"pnpm check:i18n",
+			"pnpm test:permissions",
+			"pnpm check:route-policy",
+			"pnpm test:contract",
+			"pnpm check:bundle-size",
+			"pnpm check:bundle-purity",
+			"pnpm check:visual-scope"
+		]
+	},
+	"review": {
+		"independentTerra": true,
+		"independentSolHigh": true,
+		"sourceUIOpenHighMedium": 0,
+		"low": "New date-entry and invalid-date copy remains English fallback outside en-US.",
+		"fullAcceptance": false
+	},
+	"visual": {
+		"pinnedImage": "mcr.microsoft.com/playwright:v1.63.0-noble",
+		"platform": "linux/amd64",
+		"passed": 6,
+		"failed": 1,
+		"baselineChanges": 0,
+		"failure": "Module detail differs by 46 pixels at y=636, x=261..627; original zero-threshold assertion retained.",
+		"ab": {
+			"unchangedSource": "e60a7749cdf9560ec439bab46954fc9d316dbdb7",
+			"candidateSource": "e3564bb5237f21a730fa7041e94ec7997cfc9f60",
+			"bothFailPixels": 46,
+			"actualPngSHA256": "60dad7b443c89eba4f4155a0e8ba0bebc41fbe9ce294e4f1449e35d9f8d59c51",
+			"expectedPngSHA256": "4347e358a343c1734f761d697944429f56bcaf67911b974b600cc92cf2fcfc2d",
+			"diffPngSHA256": "a8de816d66222106c9ba142a5dc856fd5127986329d201e73c17fd78d4564a97",
+			"actualExpectedDiffGeometryByteIdentical": true,
+			"conclusion": "No observed candidate-specific rendering change. Board gradient/border locates the pixel region but underlying raster cause is unproven. This does not pass G8."
+		},
+		"artifactLimit": "Private diagnostic reused the default outputDir and overwrote original candidate screenshot artifacts. Original run logs and independent pixel measurements remain; fresh A/B images/traces/geometry preserved."
+	},
+	"failuresRetained": [
+		"First focused tests interacted during BaseUI starting-style; observable visibility wait corrected the driver; no sleep/retry/deadline change.",
+		"Two browser drivers used a generic popup input locator while closed popup DOM remained; scoped to the open popup, six corrected cycle cases pass, original errors retained.",
+		"Four immediate focus checks missed during closing transition; all twelve settled focus assertions passed.",
+		"G8 failure remains open as described above."
+	],
+	"limits": [
+		"New-dialog interactions are local drafts only; no final Create or persisted Save was clicked.",
+		"No persisted editable date fixture was available for admin; owner/member detail coverage is read-only.",
+		"Existing detail scroll accessibility findings are outside the changed dialogs.",
+		"Badge contrast target was absent from three settled detail diagnostics; no color-ratio claim.",
+		"The initial public popup captures were obscured/transient; use only public-settled-* photos for visual evidence."
+	],
+	"containers": {
+		"activeOwnedSIT": "b4398751652a660271f2f35788c7e1d1d0b0e52582c6312103bf4477e0cb8388",
+		"temporaryRemoved": [
+			"2dd0832092147b40250ad7fce3244211e177d8b8405e6541e03681ada9b9b753",
+			"a42c3f31186ac47b2492989e4b697df1ad70e87bd8bc73c2605f15eeffea3c02"
+		],
+		"browserStarted": 0
+	}
+}

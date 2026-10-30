@@ -54128,7 +54128,7 @@
 			"apps/web/src/components/service-calendar/holiday-preset-panel.tsx::HolidayPresetPanel::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/DndContext[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[2]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChangesCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChecklistCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
@@ -56057,7 +56057,7 @@
 					"apps/web/src/components/service-calendar/weekly-cover-card.tsx:WeeklyCoverCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
-				"id": "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[2]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-calendar/window-fields.tsx"
 			},
@@ -58712,7 +58712,7 @@
 			"apps/web/src/components/service-calendar/holiday-preset-panel.tsx::HolidayPresetPanel::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/DndContext[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[2]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChangesCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChecklistCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
@@ -60641,7 +60641,7 @@
 					"apps/web/src/components/service-calendar/weekly-cover-card.tsx:WeeklyCoverCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
-				"id": "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[2]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-calendar/window-fields.tsx"
 			},
