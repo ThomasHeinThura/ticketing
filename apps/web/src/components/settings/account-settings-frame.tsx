@@ -7,7 +7,14 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@taskdesk/ui";
-import { Bell, ClipboardCheck, Code, Settings, User } from "lucide-react";
+import {
+  Bell,
+  ClipboardCheck,
+  Code,
+  Settings,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
@@ -37,6 +44,11 @@ export function AccountSettingsFrame({ children }: { children: ReactNode }) {
       title: t("settings:preferences"),
       url: "/dashboard/settings/account/preferences",
       icon: Settings,
+    },
+    {
+      title: t("settings:security"),
+      url: "/dashboard/settings/account/security",
+      icon: ShieldCheck,
     },
     {
       title: t("navigation:sidebar.pendingActions"),

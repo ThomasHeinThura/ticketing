@@ -826,6 +826,15 @@
 						}
 					},
 					"required": ["requested", "requestFailed"]
+				},
+				"dateEntry": {
+					"type": "string"
+				},
+				"invalidDate": {
+					"type": "string"
+				},
+				"clearDate": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -843,7 +852,10 @@
 				"error",
 				"formats",
 				"modals",
-				"pendingDeletion"
+				"pendingDeletion",
+				"dateEntry",
+				"invalidDate",
+				"clearDate"
 			]
 		},
 		"auth": {
@@ -1811,6 +1823,9 @@
 					"type": "string"
 				},
 				"preferences": {
+					"type": "string"
+				},
+				"security": {
 					"type": "string"
 				},
 				"apiKeys": {
@@ -7953,6 +7968,7 @@
 				"information",
 				"notifications",
 				"preferences",
+				"security",
 				"apiKeys",
 				"informationPage",
 				"notificationsPage",

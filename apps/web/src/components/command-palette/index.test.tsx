@@ -11,6 +11,7 @@ import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
 import CommandPaletteLauncher from "./command-palette-launcher";
 
 const mocks = vi.hoisted(() => ({
+  navigate: vi.fn(),
   projectsPageModule: vi.fn(),
   preloadRoute: vi.fn().mockResolvedValue(undefined),
   search: vi.fn((_params: { q: string }) => ({
@@ -31,7 +32,7 @@ const mocks = vi.hoisted(() => ({
  */
 
 vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mocks.navigate,
   useLocation: () => ({ pathname: "/dashboard/workspace/w1" }),
   useRouter: () => ({ preloadRoute: mocks.preloadRoute }),
 }));
@@ -94,7 +95,9 @@ vi.mock("@taskdesk/ui", async () => {
       items,
     }: PropsWithChildren<{
       onItemHighlighted?: (value: unknown, details: { reason: string }) => void;
-      items?: Array<{ items: Array<{ value: string; label: string }> }>;
+      items?: Array<{
+        items: Array<{ value: string; label: string; onRun?: () => void }>;
+      }>;
     }>) => (
       <>
         {(() => {
@@ -116,7 +119,14 @@ vi.mock("@taskdesk/ui", async () => {
         <div data-testid="palette-items">
           {items?.flatMap((group) =>
             group.items.map((item) => (
-              <span key={item.value}>{item.label}</span>
+              <Button
+                key={item.value}
+                type="button"
+                variant="ghost"
+                onClick={() => item.onRun?.()}
+              >
+                {item.label}
+              </Button>
             )),
           )}
         </div>
@@ -247,6 +257,25 @@ describe("CommandPalette (#407)", () => {
     );
     expect(mocks.preloadRoute).toHaveBeenCalledWith({
       to: "/dashboard/workspace/$workspaceId",
+      params: { workspaceId: "w1" },
+    });
+  });
+
+  it("opens the workspace members page that exists, not a missing settings URL", async () => {
+    render(
+      <KeyboardShortcutsProvider>
+        <CommandPaletteLauncher />
+      </KeyboardShortcutsProvider>,
+    );
+
+    fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+    await vi.waitFor(() =>
+      expect(screen.getByTestId("command-dialog")).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByText("navigation:commandPalette.members"));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/dashboard/workspace/$workspaceId/members",
       params: { workspaceId: "w1" },
     });
   });

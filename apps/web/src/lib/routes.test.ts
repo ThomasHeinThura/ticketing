@@ -1117,6 +1117,82 @@ describe("P1 agent core, project overview, and settings routes", () => {
   });
 });
 
+describe("L-03 account and project settings URLs", () => {
+  it("registers only paths that exist in the generated agent tree", () => {
+    for (const path of [
+      routes.accountInformation.path,
+      routes.accountNotifications.path,
+      routes.accountPreferences.path,
+      routes.accountSecurity.path,
+      routes.accountDeveloper.path,
+      routes.projectSettingsGeneral.path,
+      routes.projectSettingsMembers.path,
+      routes.projectSettingsLabels.path,
+      routes.projectSettingsWorkflow.path,
+      routes.projectSettingsFeatures.path,
+      routes.projectSettingsAutomations.path,
+      routes.projectSettingsEstimates.path,
+      routes.projectSettingsBudget.path,
+    ]) {
+      expect(generatedRouteMetadata.agent).toContain(path);
+    }
+  });
+
+  it("builds account URLs and encoded project settings URLs", () => {
+    expect(routes.accountInformation.build()).toBe(
+      "/dashboard/settings/account/information",
+    );
+    expect(routes.accountNotifications.build()).toBe(
+      "/dashboard/settings/account/notifications",
+    );
+    expect(routes.accountPreferences.build()).toBe(
+      "/dashboard/settings/account/preferences",
+    );
+    expect(routes.accountDeveloper.build()).toBe(
+      "/dashboard/settings/account/developer",
+    );
+    const params = { projectId: "p 1" };
+    expect(routes.projectSettingsGeneral.build(params)).toBe(
+      "/dashboard/settings/projects/p%201/general",
+    );
+    expect(routes.projectSettingsMembers.build(params)).toBe(
+      "/dashboard/settings/projects/p%201/members",
+    );
+    expect(routes.projectSettingsWorkflow.build(params)).toBe(
+      "/dashboard/settings/projects/p%201/workflow",
+    );
+    expect(routes.projectSettingsFeatures.build(params)).toBe(
+      "/dashboard/settings/projects/p%201/features",
+    );
+    expect(routes.projectSettingsAutomations.build(params)).toBe(
+      "/dashboard/settings/projects/p%201/automations",
+    );
+    expect(routes.projectSettingsEstimates.build(params)).toBe(
+      "/dashboard/settings/projects/p%201/estimates",
+    );
+    expect(routes.projectSettingsBudget.build(params)).toBe(
+      "/dashboard/settings/projects/p%201/budget",
+    );
+  });
+
+  it("keeps the project label catalogue's dialog state in the query", () => {
+    expect(routes.projectSettingsLabels.build({ projectId: "p1" })).toBe(
+      "/dashboard/settings/projects/p1/labels",
+    );
+    const url = new URL(
+      routes.projectSettingsLabels.build(
+        { projectId: "p1" },
+        { action: "edit", label: "bug" },
+      ),
+      "https://example.test",
+    );
+    expect(url.pathname).toBe("/dashboard/settings/projects/p1/labels");
+    expect(
+      parseLabelCatalogueSearch(Object.fromEntries(url.searchParams)),
+    ).toEqual({ action: "edit", label: "bug" });
+  });
+});
+
 describe("label catalogue dialog URLs", () => {
   it("round-trips each action and opaque label identifiers", () => {
     for (const action of ["create", "edit", "delete"] as const) {
