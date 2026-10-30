@@ -2078,7 +2078,8 @@
 			"settingsTitle": "Поставки",
 			"backToWorkspace": "Назад кон работен простор",
 			"backToProject": "Назад кон проектот",
-			"settingsWorkspaceTab": "Работен простор"
+			"settingsWorkspaceTab": "Работен простор",
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

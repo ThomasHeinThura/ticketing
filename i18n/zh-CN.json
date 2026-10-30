@@ -2073,7 +2073,8 @@
 			"settingsTitle": "设置",
 			"backToWorkspace": "返回工作区",
 			"backToProject": "返回{{term_project_other}}",
-			"settingsWorkspaceTab": "工作区"
+			"settingsWorkspaceTab": "工作区",
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

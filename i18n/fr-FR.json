@@ -2083,7 +2083,8 @@
 			"settingsTitle": "Paramètres",
 			"backToWorkspace": "Retour à l'espace de travail",
 			"backToProject": "Retour au {{term_project_one}}",
-			"settingsWorkspaceTab": "Espace de travail"
+			"settingsWorkspaceTab": "Espace de travail",
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

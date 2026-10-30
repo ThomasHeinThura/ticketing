@@ -2073,7 +2073,8 @@
 			"settingsTitle": "Cài đặt",
 			"backToWorkspace": "Quay lại không gian làm việc",
 			"backToProject": "Quay lại {{term_project_other}}",
-			"settingsWorkspaceTab": "Không gian làm việc"
+			"settingsWorkspaceTab": "Không gian làm việc",
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_other}}"

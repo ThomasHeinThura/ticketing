@@ -8426,6 +8426,9 @@
 						},
 						"settingsWorkspaceTab": {
 							"type": "string"
+						},
+						"projectActions": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8433,7 +8436,8 @@
 						"settingsTitle",
 						"backToWorkspace",
 						"backToProject",
-						"settingsWorkspaceTab"
+						"settingsWorkspaceTab",
+						"projectActions"
 					]
 				},
 				"projectSettings": {

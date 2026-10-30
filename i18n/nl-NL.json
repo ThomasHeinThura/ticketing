@@ -2078,7 +2078,8 @@
 			"settingsTitle": "Instellingen",
 			"backToWorkspace": "Terug naar werkruimte",
 			"backToProject": "Terug naar project",
-			"settingsWorkspaceTab": "Werkruimte"
+			"settingsWorkspaceTab": "Werkruimte",
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

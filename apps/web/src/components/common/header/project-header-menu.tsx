@@ -16,8 +16,10 @@ import { routes } from "@/lib/routes";
  */
 export default function ProjectHeaderMenu({
   projectId,
+  projectName,
 }: {
   projectId: string;
+  projectName?: string;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -34,7 +36,11 @@ export default function ProjectHeaderMenu({
         }
       >
         <MoreHorizontal className="size-4" />
-        <span className="sr-only">{t("navigation:sidebar.more")}</span>
+        <span className="sr-only">
+          {projectName
+            ? t("navigation:page.projectActions", { name: projectName })
+            : t("navigation:sidebar.more")}
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-44 rounded-lg" align="end">
         <DropdownMenuItem
