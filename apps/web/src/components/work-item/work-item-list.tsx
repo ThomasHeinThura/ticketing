@@ -717,6 +717,10 @@ function WorkItemListPresentation({
         (fullTableColumnSpace * columnWidthFactor(column)) / columnFactorTotal,
       ),
   );
+  const titleColumnIndex = columns.indexOf("title");
+  const compactTitle =
+    titleColumnIndex >= 0 &&
+    (fullTableColumnWidths[titleColumnIndex] ?? 96) < 96;
   const fullTableMinWidth =
     fullTableFixedWidth +
     fullTableColumnWidths.reduce((total, width) => total + width, 0);
@@ -909,10 +913,22 @@ function WorkItemListPresentation({
         );
       case "title":
         return (
-          <div className="work-item-list-cell-content flex min-w-0 items-center gap-1">
+          <div
+            className={
+              compactTitle
+                ? "work-item-list-cell-content flex min-h-16 min-w-0 flex-col items-start gap-1 pointer-coarse:min-h-18 pointer-coarse:gap-2"
+                : "work-item-list-cell-content flex min-w-0 items-center gap-1 pointer-coarse:gap-2"
+            }
+          >
             {controls?.titleEditor ?? (
               <>
-                <span className="min-w-0 truncate">
+                <span
+                  className={
+                    compactTitle
+                      ? "w-full min-w-0 truncate"
+                      : "min-w-0 truncate"
+                  }
+                >
                   {item.unavailableFields.includes("title") ? (
                     <UnavailableField field="title" t={t} />
                   ) : !detailHref ? (
@@ -921,7 +937,7 @@ function WorkItemListPresentation({
                     <a
                       href={detailHref}
                       data-work-item-key={item.key}
-                      className="hover:underline"
+                      className="inline-block min-h-6 min-w-6 max-w-full truncate align-middle leading-6 hover:underline"
                       title={item.title}
                     >
                       {item.title}
@@ -1004,6 +1020,7 @@ function WorkItemListPresentation({
           item={item}
           disabled={Boolean(isPlaceholderData)}
           presentation="table"
+          compactTitle={compactTitle}
           customFieldColumns={customFieldColumns.filter((field) =>
             columns.includes(`cf.${field.key}` as WorkItemSearchColumn),
           )}
