@@ -22877,7 +22877,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/project-layout.tsx:ProjectLayout",
-					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[1]/ProjectHeaderMenu[0]",
+					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[1]/span[0]/Suspense[0]/ProjectHeaderMenu[0]",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
 				],
 				"id": "apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::hover:text-foreground#0",
@@ -23355,7 +23355,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/project-layout.tsx:ProjectLayout",
-					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[1]/ProjectHeaderMenu[0]",
+					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[1]/span[0]/Suspense[0]/ProjectHeaderMenu[0]",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
 				],
 				"id": "apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::hover:text-foreground#0",
@@ -54627,7 +54627,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/project-layout.tsx:ProjectLayout",
-					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[1]/ProjectHeaderMenu[0]",
+					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[1]/span[0]/Suspense[0]/ProjectHeaderMenu[0]",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
 				],
 				"id": "apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-muted-foreground#0",
@@ -59224,7 +59224,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/common/project-layout.tsx:ProjectLayout",
-					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[1]/ProjectHeaderMenu[0]",
+					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[1]/span[0]/Suspense[0]/ProjectHeaderMenu[0]",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
 				],
 				"id": "apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-muted-foreground#0",
