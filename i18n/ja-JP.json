@@ -206,7 +206,9 @@
 		"picker": {
 			"noResults": "No matching options",
 			"search": "Search options"
-		}
+		},
+		"dateEntry": "{{label}} (YYYY-MM-DD)",
+		"invalidDate": "YYYY-MM-DD形式で有効な日付を入力してください。"
 	},
 	"auth": {
 		"signIn": {

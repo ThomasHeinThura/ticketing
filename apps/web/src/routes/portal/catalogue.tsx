@@ -15,6 +15,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DateField } from "@/components/common/date-field";
 import {
   PortalKbSuggestions,
   usePortalKbDeflection,
@@ -425,6 +426,39 @@ function PortalCatalogueContent() {
                       });
                     }}
                   />
+                ) : field.type === "date" ? (
+                  <DateField
+                    id={`request-field-${field.key}`}
+                    label={`${field.label}${field.required ? " *" : ""}`}
+                    aria-invalid={Boolean(fieldErrors[field.key])}
+                    aria-describedby={
+                      fieldErrors[field.key]
+                        ? `request-field-error-${field.key}`
+                        : undefined
+                    }
+                    placeholder={t("common:empty.select")}
+                    clearLabel={t("common:actions.remove")}
+                    value={String(answers[field.key] ?? "")}
+                    dateEntry={{
+                      label: t("common:dateEntry", {
+                        label: field.label,
+                        defaultValue: "{{label}} (YYYY-MM-DD)",
+                      }),
+                      invalidLabel: t("common:invalidDate"),
+                      saveLabel: t("common:actions.save"),
+                    }}
+                    onChange={(value) => {
+                      setAnswers((old) => ({
+                        ...old,
+                        [field.key]: value,
+                      }));
+                      setFieldErrors((old) => {
+                        const next = { ...old };
+                        delete next[field.key];
+                        return next;
+                      });
+                    }}
+                  />
                 ) : (
                   <Input
                     id={`request-field-${field.key}`}
@@ -435,11 +469,7 @@ function PortalCatalogueContent() {
                         ? `request-field-error-${field.key}`
                         : undefined
                     }
-                    type={
-                      field.type === "number" || field.type === "date"
-                        ? field.type
-                        : "text"
-                    }
+                    type={field.type === "number" ? "number" : "text"}
                     required={field.required}
                     value={String(answers[field.key] ?? "")}
                     onChange={(event) => {

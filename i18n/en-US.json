@@ -206,7 +206,9 @@
 		"pendingDeletion": {
 			"requested": "Deletion requested. Approve it to complete.",
 			"requestFailed": "Deletion could not be requested."
-		}
+		},
+		"dateEntry": "{{label}} (YYYY-MM-DD)",
+		"invalidDate": "Enter a valid date as YYYY-MM-DD."
 	},
 	"auth": {
 		"signIn": {

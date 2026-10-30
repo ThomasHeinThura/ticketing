@@ -206,7 +206,9 @@
 		"picker": {
 			"noResults": "No matching options",
 			"search": "Search options"
-		}
+		},
+		"dateEntry": "{{label}} (YYYY-MM-DD)",
+		"invalidDate": "Voer een geldige datum in als YYYY-MM-DD."
 	},
 	"auth": {
 		"signIn": {

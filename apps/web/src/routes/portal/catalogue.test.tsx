@@ -137,6 +137,98 @@ describe("portal catalogue route", () => {
     expect(trigger).not.toHaveTextContent(/^organisation$/u);
   });
 
+  it("uses a calendar, preserves a date-only draft on reload and submits its exact selected day", async () => {
+    mocks.getRequestType.mockResolvedValue({
+      ...form,
+      formSchema: {
+        fields: [
+          { key: "title", label: "Summary", type: "text", required: true },
+          { key: "needed", label: "Needed by", type: "date", required: true },
+        ],
+      },
+    });
+    const storageKey = "taskdesk:intake-draft:customer-a:access:3";
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ title: "Dated request", needed: "2028-02-29" }),
+    );
+    mocks.submit.mockResolvedValue({ reference: "REQUEST-1" });
+    const view = renderCatalogue();
+    const trigger = await screen.findByRole("button", { name: "Needed by *" });
+    expect(view.container.querySelector('input[type="date"]')).toBeNull();
+    expect(trigger).toHaveTextContent("Feb 29, 2028");
+    fireEvent.click(trigger);
+    fireEvent.click(
+      screen.getByRole("button", { name: /February 28th, 2028/u }),
+    );
+    await waitFor(() =>
+      expect(JSON.parse(localStorage.getItem(storageKey) ?? "{}")).toEqual({
+        title: "Dated request",
+        needed: "2028-02-28",
+      }),
+    );
+    view.unmount();
+    renderCatalogue();
+    expect(
+      await screen.findByRole("button", { name: "Needed by *" }),
+    ).toHaveTextContent("Feb 28, 2028");
+    const reloadedForm = screen
+      .getByRole("textbox", { name: "Summary" })
+      .closest("form");
+    if (!reloadedForm) throw new Error("The request form is missing");
+    fireEvent.submit(reloadedForm);
+    await waitFor(() =>
+      expect(mocks.submit).toHaveBeenCalledExactlyOnceWith({
+        key: "access",
+        formData: { title: "Dated request", needed: "2028-02-28" },
+        customerVisibility: "organisation",
+      }),
+    );
+  });
+
+  it("focuses and describes a missing required date and clears its error after selection", async () => {
+    mocks.getRequestType.mockResolvedValue({
+      ...form,
+      formSchema: {
+        fields: [
+          { key: "needed", label: "Needed by", type: "date", required: true },
+        ],
+      },
+    });
+    renderCatalogue();
+    const trigger = await screen.findByRole("button", { name: "Needed by *" });
+    const requestForm = trigger.closest("form");
+    if (!requestForm) throw new Error("The request form is missing");
+    fireEvent.submit(requestForm);
+    expect(mocks.submit).not.toHaveBeenCalled();
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveAttribute("aria-invalid", "true");
+    expect(trigger).toHaveAccessibleDescription("This field is required.");
+    fireEvent.click(trigger);
+    const today = new Date();
+    const selected = new Date(today.getFullYear(), today.getMonth(), 15);
+    const dayName = new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }).format(selected);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: new RegExp(dayName.replace("15,", "15th,")),
+      }),
+    );
+    expect(trigger).toHaveAttribute("aria-invalid", "false");
+    expect(trigger).not.toHaveAttribute("aria-describedby");
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(trigger);
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:actions.remove" }),
+    );
+    fireEvent.submit(requestForm);
+    expect(mocks.submit).not.toHaveBeenCalled();
+    expect(trigger).toHaveAccessibleDescription("This field is required.");
+  });
+
   it("keeps the selected form and saved draft when q no longer matches the type", async () => {
     mocks.getCatalogue.mockImplementation(async (query?: string) =>
       query === "does-not-match" ? emptyCatalogue : catalogue,

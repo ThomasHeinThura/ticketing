@@ -206,7 +206,9 @@
 		"picker": {
 			"noResults": "No matching options",
 			"search": "Search options"
-		}
+		},
+		"dateEntry": "{{label}} (YYYY-MM-DD)",
+		"invalidDate": "Masukkan tanggal yang valid dalam format YYYY-MM-DD."
 	},
 	"auth": {
 		"signIn": {

@@ -206,7 +206,9 @@
 		"picker": {
 			"noResults": "No matching options",
 			"search": "Search options"
-		}
+		},
+		"dateEntry": "{{label}} (YYYY-MM-DD)",
+		"invalidDate": "YYYY-MM-DD 형식으로 올바른 날짜를 입력하세요."
 	},
 	"auth": {
 		"signIn": {

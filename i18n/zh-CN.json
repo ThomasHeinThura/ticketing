@@ -206,7 +206,9 @@
 		"picker": {
 			"noResults": "No matching options",
 			"search": "Search options"
-		}
+		},
+		"dateEntry": "{{label}} (YYYY-MM-DD)",
+		"invalidDate": "请输入 YYYY-MM-DD 格式的有效日期。"
 	},
 	"auth": {
 		"signIn": {
