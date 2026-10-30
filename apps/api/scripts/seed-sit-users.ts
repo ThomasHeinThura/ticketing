@@ -429,6 +429,20 @@ const SIT_REQUEST_TYPES = [
  * Publishes customer-visible request types for Acme through the real intake repository, so
  * the portal catalogue and agent triage have something to work with. Idempotent by name.
  */
+/**
+ * Intake and the customer portal default to off, and the portal catalogue only offers request
+ * types of a workspace with both on. A fresh install has no flag rows, so the SIT workspace turns
+ * them on here; an instance-level lock still wins (resolveFeatureFlag).
+ */
+async function enableSitPortalFeatures(workspaceId: string) {
+  for (const featureKey of ["feature.intake", "feature.customer_portal"]) {
+    await db
+      .insert(schema.workspaceFeatureFlagTable)
+      .values({ workspaceId, featureKey, enabled: true })
+      .onConflictDoNothing();
+  }
+}
+
 async function seedSitRequestTypes(input: {
   workspaceId: string;
   helpProjectId: string;
@@ -1525,6 +1539,7 @@ export async function runSitUserSeed(argv: readonly string[] = process.argv) {
       };
     });
 
+    await enableSitPortalFeatures(seeded.workspaceId);
     await seedSitRequestTypes(seeded);
     await seedDefaultWorkspaceRoles();
     console.log(
