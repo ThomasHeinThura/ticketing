@@ -1,0 +1,165 @@
+{
+	"recorded": "2026-10-30T06:18:17.081Z",
+	"issues": [982, 983],
+	"codeHead": "3b17e2a13313df56332e98e118e0fad0f78b7856",
+	"integratedHead": "697f8e9a3ca74e05ed7ec14421740e245a7d6ea3",
+	"main": "ac5b5c20f9aa56bbe1b4e12f94b32e0630840783",
+	"sourceMatchesRuntime": {
+		"sha": "7694ede275b24cdd225fa2e02c5b944c72669b17",
+		"paths": [
+			"apps/web/src/components/kb/agent/kb-list.tsx",
+			"apps/web/src/components/pages/pages-list.tsx"
+		],
+		"wholeTreeIdentical": false
+	},
+	"local": {
+		"gatesPassed": 12,
+		"unitTests": 7291,
+		"typeTasks": 9,
+		"focusedTests": 15,
+		"newTests": 10,
+		"freshIntegratedChecks": [
+			{
+				"command": "pnpm --filter @taskdesk/web exec vitest run src/components/common/content-create-dialog-focus.test.tsx src/components/pages/pages-list.test.tsx src/components/common/sort-control.test.tsx src/components/common/sort-control.lazy-content.test.tsx",
+				"exitCode": 0,
+				"durationMs": 4329
+			},
+			{
+				"command": "pnpm test",
+				"exitCode": 0,
+				"durationMs": 155763
+			},
+			{
+				"command": "pnpm typecheck",
+				"exitCode": 0,
+				"durationMs": 17468
+			},
+			{
+				"command": "pnpm lint:ci",
+				"exitCode": 0,
+				"durationMs": 3250
+			},
+			{
+				"command": "pnpm test:permissions",
+				"exitCode": 0,
+				"durationMs": 15253
+			},
+			{
+				"command": "pnpm check:route-policy",
+				"exitCode": 0,
+				"durationMs": 15267
+			}
+		],
+		"freshUnitTests": 7291,
+		"freshFocusedTests": 18
+	},
+	"browser": {
+		"matched820": [
+			{
+				"area": "KB",
+				"url": "https://ticketing.localhost/agent/kb",
+				"role": "owner",
+				"width": 820,
+				"requestedTheme": "dark",
+				"before": "docs/report/screens/20261030-next14-4-dialog-focus-open.png",
+				"status": "observed",
+				"actualTheme": "dark",
+				"focusInsideBeforeEscape": true,
+				"dialogBounds": {
+					"x": 154,
+					"y": 198.25,
+					"width": 512,
+					"height": 239,
+					"right": 666,
+					"bottom": 437.25,
+					"withinViewport": true
+				},
+				"openScreenshot": "docs/report/screens/20261030-content-focus-after-4-owner-820-dark-dialog-open.png",
+				"triggerFocusedAtHidden": true,
+				"triggerFocusedAfterAnimation": true,
+				"activeAfter": {
+					"tag": "BUTTON",
+					"role": null,
+					"isBody": false
+				},
+				"closedScreenshot": "docs/report/screens/20261030-content-focus-after-4-owner-820-dark-dialog-closed-focused.png"
+			},
+			{
+				"area": "Pages",
+				"url": "https://ticketing.localhost/agent/projects/CCY/pages",
+				"role": "owner",
+				"width": 820,
+				"requestedTheme": "light",
+				"before": "docs/report/screens/20261030-next14-5-dialog-focus-open.png",
+				"status": "observed",
+				"actualTheme": "light",
+				"focusInsideBeforeEscape": true,
+				"dialogBounds": {
+					"x": 154,
+					"y": 181.25,
+					"width": 512,
+					"height": 307,
+					"right": 666,
+					"bottom": 488.25,
+					"withinViewport": true
+				},
+				"openScreenshot": "docs/report/screens/20261030-content-focus-after-5-owner-820-light-dialog-open.png",
+				"triggerFocusedAtHidden": true,
+				"triggerFocusedAfterAnimation": true,
+				"activeAfter": {
+					"tag": "BUTTON",
+					"role": null,
+					"isBody": false
+				},
+				"closedScreenshot": "docs/report/screens/20261030-content-focus-after-5-owner-820-light-dialog-closed-focused.png"
+			}
+		],
+		"additional": "Owner KB/Pages390dark and1440light; memberKB820light Escape focus passed in bounded matrix",
+		"writes": 0,
+		"rate429": 0,
+		"before": [
+			"docs/report/screens/20261030-next14-4-dialog-focus-open.png",
+			"docs/report/screens/20261030-next14-5-dialog-focus-open.png"
+		],
+		"after": [
+			"docs/report/screens/20261030-content-focus-after-4-owner-820-dark-dialog-closed-focused.png",
+			"docs/report/screens/20261030-content-focus-after-4-owner-820-dark-dialog-open.png",
+			"docs/report/screens/20261030-content-focus-after-5-owner-820-light-dialog-closed-focused.png",
+			"docs/report/screens/20261030-content-focus-after-5-owner-820-light-dialog-open.png",
+			"docs/report/screens/20261030-content-focus-after-focus-kb-member-820-light-open.png",
+			"docs/report/screens/20261030-content-focus-after-focus-kb-owner-1440-light-open.png",
+			"docs/report/screens/20261030-content-focus-after-focus-kb-owner-390-dark-open.png",
+			"docs/report/screens/20261030-content-focus-after-focus-pages-owner-1440-light-open.png",
+			"docs/report/screens/20261030-content-focus-after-focus-pages-owner-390-dark-open.png"
+		]
+	},
+	"g8": {
+		"selected": 4,
+		"passed": 4,
+		"relevantContentCases": 2,
+		"baselineChanges": 0,
+		"pinnedIndex": "sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+		"amd64Manifest": "mcr.microsoft.com/playwright@sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7",
+		"checkContainer": "0bfb340419b417d5d7a2127694080bc7328dfcf3918e1d875c129d55a5077890",
+		"removed": true,
+		"scope": "Existing closed/default views only; full hosted G8 required"
+	},
+	"review": {
+		"sourceTier": "Independent Terra",
+		"finalSourceBrowserTier": "Independent Sol high",
+		"openHighMedium": 0
+	},
+	"limits": [
+		"No persisted Create/editor or all-role acceptance; success/navigation uses mocked unit tests",
+		"Member Pages Create trigger absent at820dark; no pass claimed",
+		"Screenshot-time masks hide record/identity text and cannot establish masked typography",
+		"Full hosted G4/G8 and every required non-G11 check remain gates"
+	],
+	"hosted": "Pending",
+	"requirementsPromoted": 0,
+	"containers": {
+		"ownedSit": "3a64d3f0b492",
+		"temporaryG8": "0bfb340419b417d5d7a2127694080bc7328dfcf3918e1d875c129d55a5077890",
+		"temporaryRemoved": true
+	}
+}

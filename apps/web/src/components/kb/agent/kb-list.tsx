@@ -31,7 +31,7 @@ import {
   TabsTrigger,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
@@ -59,20 +59,24 @@ const ALL = "all";
 function NewArticleDialog({
   workspaceId,
   onClose,
+  finalFocus,
 }: {
   workspaceId: string;
   onClose: () => void;
+  finalFocus: () => HTMLElement | false;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
+  const createdRef = useRef(false);
   const mutation = useMutation({
     mutationFn: () => createKbArticle(workspaceId, { title: title.trim() }),
     onSuccess: async (article) => {
       await queryClient.invalidateQueries({
         queryKey: kbKeys.all(workspaceId),
       });
+      createdRef.current = true;
       onClose();
       void navigate({
         to: routes.kbArticleEdit.path,
@@ -87,7 +91,10 @@ function NewArticleDialog({
         if (!open && !mutation.isPending) onClose();
       }}
     >
-      <DialogContent closeLabel={t("common:actions.close")}>
+      <DialogContent
+        closeLabel={t("common:actions.close")}
+        finalFocus={() => (createdRef.current ? false : finalFocus())}
+      >
         <DialogHeader>
           <DialogTitle>{t("kb:create.title")}</DialogTitle>
           <DialogDescription>{t("kb:create.description")}</DialogDescription>
@@ -367,6 +374,7 @@ export function KbList({
   const { data: workspace, isLoading } = useActiveWorkspace();
   const settings = useKbSettings(workspace?.id ?? "");
   const [creating, setCreating] = useState(false);
+  const createTriggerRef = useRef<HTMLButtonElement | null>(null);
   const view = search.view ?? "articles";
   const canWrite = settings.data?.canWrite === true;
   return (
@@ -381,7 +389,11 @@ export function KbList({
             </p>
           </div>
           {canWrite ? (
-            <Button onClick={() => setCreating(true)} disabled={!workspace}>
+            <Button
+              ref={createTriggerRef}
+              onClick={() => setCreating(true)}
+              disabled={!workspace}
+            >
               <Plus aria-hidden="true" />
               {t("kb:list.new")}
             </Button>
@@ -430,6 +442,10 @@ export function KbList({
         <NewArticleDialog
           workspaceId={workspace.id}
           onClose={() => setCreating(false)}
+          finalFocus={() => {
+            const target = createTriggerRef.current;
+            return target?.isConnected && !target.disabled ? target : false;
+          }}
         />
       ) : null}
     </>
