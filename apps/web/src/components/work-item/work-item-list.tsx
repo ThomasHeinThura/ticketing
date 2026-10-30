@@ -42,7 +42,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { ActionTooltip } from "@/components/common/action-tooltip";
+import { LazyActionTooltip } from "@/components/common/lazy-action-tooltip";
 import useRestoreWorkItem from "@/hooks/mutations/work-item/use-restore-work-item";
 import { useProjectViewPreferenceWithSave } from "@/hooks/use-project-view-preference-with-save";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -753,7 +753,7 @@ function WorkItemListPresentation({
         t("workItems:list.columnUnavailable", "Unavailable"))
       : t(COLUMN_LABEL_KEYS[column as NativeWorkItemSearchColumn]);
     return sortField ? (
-      <ActionTooltip label={label}>
+      <LazyActionTooltip label={label}>
         <Button
           variant="ghost"
           size="sm"
@@ -778,7 +778,7 @@ function WorkItemListPresentation({
             />
           </span>
         </Button>
-      </ActionTooltip>
+      </LazyActionTooltip>
     ) : (
       <span className="block min-w-0 truncate" title={label}>
         {label}

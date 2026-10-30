@@ -16,7 +16,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { ActionTooltip } from "@/components/common/action-tooltip";
+import { LazyActionTooltip } from "@/components/common/lazy-action-tooltip";
 import PageTitle from "@/components/page-title";
 import loadWorkItemBoardView, {
   isWorkItemBoardViewLoaded,
@@ -1006,13 +1006,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                     )}
                     {group !== "state" ? (
                       // A disabled Button ignores pointer events, so the reason tooltip sits on a wrapper.
-                      <ActionTooltip
+                      <LazyActionTooltip
                         label={t(
                           "workItems:board.combinedStateGroupingRequired",
                         )}
                       >
                         <span className="inline-flex">{combinedButton}</span>
-                      </ActionTooltip>
+                      </LazyActionTooltip>
                     ) : (
                       combinedButton
                     )}
