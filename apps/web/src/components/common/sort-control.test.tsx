@@ -12,10 +12,11 @@ vi.mock("react-i18next", () => ({
 
 describe("SortControl", () => {
   it("translates the active field label directly in the synchronous trigger", () => {
+    const onSortChange = vi.fn();
     render(
       <SortControl
         sort={{ field: "createdAt", direction: "desc" }}
-        onSortChange={vi.fn()}
+        onSortChange={onSortChange}
       />,
     );
 
@@ -24,6 +25,15 @@ describe("SortControl", () => {
         name: translate("tasks:sort.fields.createdAt"),
       }),
     ).toBeInTheDocument();
+    const direction = screen.getByRole("button", {
+      name: translate("tasks:sort.descending"),
+    });
+    expect(direction).not.toHaveAttribute("title");
+    fireEvent.click(direction);
+    expect(onSortChange).toHaveBeenCalledWith({
+      field: "createdAt",
+      direction: "asc",
+    });
   });
 
   it("resets a restricted active field to the available number field", async () => {
