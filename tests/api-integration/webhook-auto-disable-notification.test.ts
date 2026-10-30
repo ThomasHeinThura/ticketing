@@ -229,7 +229,7 @@ describe("WH-7 auto-disable notification fan-out", () => {
       }),
       payload: {
         key: webhook.id,
-        url: `/agent/settings/webhooks/${webhook.id}`,
+        url: `/dashboard/settings/workspace/webhooks/${webhook.id}`,
         webhookId: webhook.id,
         ownerPersonId: "untrusted-event-owner",
         lastError: "must-not-be-projected",

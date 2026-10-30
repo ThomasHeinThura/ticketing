@@ -1,4 +1,7 @@
+// Agent emails link to the account notifications page (L-03); emails sent before L-03 still
+// carry the old `/agent/settings/profile/notifications` entry, which keeps working.
 const HANDOFF_PATHS = new Map<string, "agent" | "customer">([
+  ["/dashboard/settings/account/notifications", "agent"],
   ["/agent/settings/profile/notifications", "agent"],
   ["/account", "customer"],
 ]);

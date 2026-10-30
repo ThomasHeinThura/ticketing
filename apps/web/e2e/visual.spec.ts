@@ -6250,7 +6250,7 @@ test("intake triage queue @visual", async ({ page }) => {
 test("request type catalogue editor @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto(
-    "/agent/settings/request-types?requestTypeId=visual-request-type",
+    "/dashboard/settings/workspace/request-types?requestTypeId=visual-request-type",
   );
   // The settings shell has its own "Settings" h1; target the page's.
   await expect(
@@ -6425,7 +6425,7 @@ test("authentication provider editor screen @visual", async ({ page }) => {
 
 test("pending actions list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/profile/pending-actions");
+  await page.goto("/dashboard/settings/account/pending-actions");
   await expect(
     page.getByRole("heading", { name: "My pending actions", exact: true }),
   ).toBeVisible();
@@ -6448,7 +6448,7 @@ test("pending actions list screen @visual", async ({ page }) => {
 test("pending action detail screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto(
-    "/agent/settings/profile/pending-actions/visual-pending-action",
+    "/dashboard/settings/account/pending-actions/visual-pending-action",
   );
   await expect(
     page.getByRole("heading", {
@@ -6471,7 +6471,7 @@ test("pending action detail screen @visual", async ({ page }) => {
 
 test("service calendar list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/calendars");
+  await page.goto("/dashboard/settings/workspace/calendars");
   await expect(
     page.getByRole("heading", { name: "Service calendars" }),
   ).toBeVisible();
@@ -6491,7 +6491,7 @@ test("service calendar list screen @visual", async ({ page }) => {
 
 test("service calendar editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/calendars/visual-calendar");
+  await page.goto("/dashboard/settings/workspace/calendars/visual-calendar");
   await expect(
     page.getByRole("heading", { name: "Support coverage" }),
   ).toBeVisible();
@@ -6509,7 +6509,7 @@ test("service calendar editor screen @visual", async ({ page }) => {
 
 test("SLA policy list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/sla-policies");
+  await page.goto("/dashboard/settings/workspace/sla-policies");
   await expect(
     page.getByRole("heading", { name: "SLA policies" }),
   ).toBeVisible();
@@ -6530,7 +6530,9 @@ test("SLA policy list screen @visual", async ({ page }) => {
 
 test("SLA policy editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/sla-policies/visual-sla-policy");
+  await page.goto(
+    "/dashboard/settings/workspace/sla-policies/visual-sla-policy",
+  );
   await expect(
     page.getByRole("heading", { name: "Priority support" }),
   ).toBeVisible();
@@ -6785,7 +6787,7 @@ test("project overview screen @visual", async ({ page }) => {
 
 test("profile settings general screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/profile");
+  await page.goto("/dashboard/settings/account/information");
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
     page.getByRole("heading", { level: 1, name: "Personal Information" }),
@@ -6803,7 +6805,7 @@ test("profile settings general screen @visual", async ({ page }) => {
 
 test("profile settings appearance screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/profile/appearance");
+  await page.goto("/dashboard/settings/account/preferences");
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
     page.getByRole("heading", { level: 1, name: "Preferences" }),
@@ -6821,7 +6823,7 @@ test("profile settings appearance screen @visual", async ({ page }) => {
 
 test("workspace settings general screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings");
+  await page.goto("/dashboard/settings/workspace/general");
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
     page.getByRole("heading", { level: 1, name: "General Settings" }),
@@ -6839,7 +6841,7 @@ test("workspace settings general screen @visual", async ({ page }) => {
 
 test("workspace settings members screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/members");
+  await page.goto("/dashboard/settings/workspace/members");
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(page.getByRole("table")).toBeVisible();
   // Kaneo's members page sits in the app shell, whose sidebar mounts after the page.
@@ -6859,7 +6861,7 @@ test("workspace settings members screen @visual", async ({ page }) => {
 
 test("workspace settings states screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/states");
+  await page.goto("/dashboard/settings/workspace/states");
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
     page.getByRole("heading", {
@@ -6885,7 +6887,7 @@ test("workspace settings states screen @visual", async ({ page }) => {
 
 test("workspace settings labels screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/labels");
+  await page.goto("/dashboard/settings/workspace/labels");
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
     page.getByRole("heading", { level: 1, name: "Labels" }),
@@ -6903,7 +6905,7 @@ test("workspace settings labels screen @visual", async ({ page }) => {
 
 test("workspace settings canned responses screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/canned-responses");
+  await page.goto("/dashboard/settings/workspace/canned-responses");
   await expect(
     page.getByRole("heading", { level: 1, name: "Canned responses" }),
   ).toBeVisible();
@@ -6923,7 +6925,7 @@ test("workspace settings canned responses screen @visual", async ({ page }) => {
 
 test("workspace settings danger screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/danger");
+  await page.goto("/dashboard/settings/workspace/danger");
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
     page.getByRole("heading", { level: 1, name: "General Settings" }),
@@ -7703,7 +7705,7 @@ test("timesheet screen @visual", async ({ page }) => {
 
 test("customer invitations screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/customer-invitations");
+  await page.goto("/dashboard/settings/workspace/customer-invitations");
   await expect(
     page.getByRole("heading", { name: "Customer invitations", exact: true }),
   ).toBeVisible();
@@ -7726,7 +7728,7 @@ test("customer invitations screen @visual", async ({ page }) => {
 
 test("workspace teams list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/teams");
+  await page.goto("/dashboard/settings/workspace/teams");
   await expect(
     page.getByRole("heading", { name: "Teams", exact: true }),
   ).toBeVisible();
@@ -7746,7 +7748,7 @@ test("workspace teams list screen @visual", async ({ page }) => {
 
 test("team detail screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/teams/visual-team");
+  await page.goto("/dashboard/settings/workspace/teams/visual-team");
   await expect(
     page.getByRole("heading", { name: "Service Desk", exact: true }),
   ).toBeVisible();
@@ -7769,7 +7771,7 @@ test("team detail screen @visual", async ({ page }) => {
 
 test("workspace roles list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/roles");
+  await page.goto("/dashboard/settings/workspace/roles");
   await expect(
     page.getByRole("heading", { name: "Roles", exact: true }),
   ).toBeVisible();
@@ -7789,7 +7791,7 @@ test("workspace roles list screen @visual", async ({ page }) => {
 
 test("role editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/roles/visual-role");
+  await page.goto("/dashboard/settings/workspace/roles/visual-role");
   await expect(
     page.getByRole("heading", { name: "Service desk analyst", exact: true }),
   ).toBeVisible();
@@ -7815,7 +7817,7 @@ test("role editor screen @visual", async ({ page }) => {
 
 test("workspace custom fields list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/custom-fields");
+  await page.goto("/dashboard/settings/workspace/custom-fields");
   await expect(
     page.getByRole("heading", { name: "Custom fields", exact: true }),
   ).toBeVisible();
@@ -7834,7 +7836,7 @@ test("workspace custom fields list screen @visual", async ({ page }) => {
 
 test("custom field editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/custom-fields/visual-field");
+  await page.goto("/dashboard/settings/workspace/custom-fields/visual-field");
   await expect(
     page.getByRole("heading", { name: "Affected system", exact: true }),
   ).toBeVisible();
@@ -7854,7 +7856,7 @@ test("custom field editor screen @visual", async ({ page }) => {
 
 test("profile notifications screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/profile/notifications");
+  await page.goto("/dashboard/settings/account/notifications");
   await expect(
     page.getByRole("heading", { name: "Notifications", exact: true }),
   ).toBeVisible();
@@ -7878,7 +7880,7 @@ test("profile notifications screen @visual", async ({ page }) => {
 // rates and time-activities are CLOCK-BLOCKED and deliberately NOT here (see NOTES).
 test("workspace settings automations screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/automations");
+  await page.goto("/dashboard/settings/workspace/automations");
   await expect(
     page.getByRole("heading", { name: "Automations", exact: true }),
   ).toBeVisible();
@@ -7901,7 +7903,7 @@ test("workspace settings automations screen @visual", async ({ page }) => {
 
 test("workspace settings webhooks screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/webhooks");
+  await page.goto("/dashboard/settings/workspace/webhooks");
   await expect(
     page.getByRole("heading", { name: "Webhooks", exact: true }),
   ).toBeVisible();
@@ -7924,7 +7926,7 @@ test("workspace settings webhooks screen @visual", async ({ page }) => {
 
 test("webhook editor screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/webhooks/visual-webhook");
+  await page.goto("/dashboard/settings/workspace/webhooks/visual-webhook");
   await expect(
     page.getByRole("heading", {
       name: "Service desk notifications",
@@ -7948,7 +7950,9 @@ test("webhook editor screen @visual", async ({ page }) => {
 
 test("webhook delivery history screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/webhooks/visual-webhook/deliveries");
+  await page.goto(
+    "/dashboard/settings/workspace/webhooks/visual-webhook/deliveries",
+  );
   await expect(
     page.getByRole("heading", { name: "Delivery history", exact: true }),
   ).toBeVisible();
@@ -7988,7 +7992,7 @@ test("workspace settings features screen @visual", async ({ page }) => {
 
 test("workspace settings workflows screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/workflows");
+  await page.goto("/dashboard/settings/workspace/workflows");
   await expect(
     page.getByRole("heading", { name: "Workflows", exact: true }),
   ).toBeVisible();
@@ -8439,7 +8443,7 @@ test("portal account preferences screen @visual", async ({ page }) => {
 
 test("workspace settings rates screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/rates");
+  await page.goto("/dashboard/settings/workspace/rates");
   await expect(
     page.getByRole("heading", { name: "Rates", exact: true }),
   ).toBeVisible();
@@ -8460,7 +8464,7 @@ test("workspace settings rates screen @visual", async ({ page }) => {
 
 test("workspace settings time activities screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
-  await page.goto("/agent/settings/time-activities");
+  await page.goto("/dashboard/settings/workspace/time-activities");
   await expect(
     page.getByRole("heading", { name: "Time activities", exact: true }),
   ).toBeVisible();

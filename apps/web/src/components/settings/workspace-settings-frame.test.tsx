@@ -96,13 +96,15 @@ describe("WorkspaceSettingsFrame", () => {
     const hrefs = screen
       .getAllByRole("link")
       .map((a) => a.getAttribute("href"));
-    expect(hrefs).toContain("/agent/settings/automations");
-    expect(hrefs).toContain("/agent/settings/customer-invitations");
-    expect(hrefs).toContain("/agent/settings/webhooks");
-    expect(hrefs).toContain("/agent/settings/roles");
-    expect(hrefs).toContain("/agent/settings/sla-policies");
-    expect(hrefs).toContain("/agent/settings/time-activities");
-    expect(hrefs).toContain("/agent/settings/rates");
+    expect(hrefs).toContain("/dashboard/settings/workspace/automations");
+    expect(hrefs).toContain(
+      "/dashboard/settings/workspace/customer-invitations",
+    );
+    expect(hrefs).toContain("/dashboard/settings/workspace/webhooks");
+    expect(hrefs).toContain("/dashboard/settings/workspace/roles");
+    expect(hrefs).toContain("/dashboard/settings/workspace/sla-policies");
+    expect(hrefs).toContain("/dashboard/settings/workspace/time-activities");
+    expect(hrefs).toContain("/dashboard/settings/workspace/rates");
     // General, labels and the 14 gated entries: roles, canned responses, templates, calendars,
     // SLA policies, request types, workflows, teams, time activities, rates, custom fields,
     // customer invitations, automations and webhooks.
@@ -116,11 +118,13 @@ describe("WorkspaceSettingsFrame", () => {
     permissions.settings = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     let hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(hrefs).not.toContain("/agent/settings/roles");
-    expect(hrefs).not.toContain("/agent/settings/webhooks");
-    expect(hrefs).not.toContain("/agent/settings/custom-fields");
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/roles");
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/webhooks");
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/custom-fields");
     // Customer invitations follow member:invite, not workspace settings.
-    expect(hrefs).not.toContain("/agent/settings/customer-invitations");
+    expect(hrefs).not.toContain(
+      "/dashboard/settings/workspace/customer-invitations",
+    );
     cleanup();
 
     // A webhook:manage holder without workspace settings still gets the entry.
@@ -128,8 +132,8 @@ describe("WorkspaceSettingsFrame", () => {
     permissions.webhooks = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(hrefs).toContain("/agent/settings/webhooks");
-    expect(hrefs).not.toContain("/agent/settings/custom-fields");
+    expect(hrefs).toContain("/dashboard/settings/workspace/webhooks");
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/custom-fields");
     cleanup();
 
     // A member:invite holder without workspace settings gets only the invitations entry.
@@ -137,8 +141,10 @@ describe("WorkspaceSettingsFrame", () => {
     permissions.invite = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(hrefs).toContain("/agent/settings/customer-invitations");
-    expect(hrefs).not.toContain("/agent/settings/webhooks");
+    expect(hrefs).toContain(
+      "/dashboard/settings/workspace/customer-invitations",
+    );
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/webhooks");
   });
 
   it("shows each P5 entry exactly to the holder of the capability its API enforces (R5-03)", () => {
@@ -147,27 +153,33 @@ describe("WorkspaceSettingsFrame", () => {
     // Settings rights alone open neither Rates nor Workflows.
     permissions.settings = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
-    expect(hrefsFor()).toContain("/agent/settings/time-activities");
-    expect(hrefsFor()).not.toContain("/agent/settings/rates");
-    expect(hrefsFor()).not.toContain("/agent/settings/workflows");
+    expect(hrefsFor()).toContain(
+      "/dashboard/settings/workspace/time-activities",
+    );
+    expect(hrefsFor()).not.toContain("/dashboard/settings/workspace/rates");
+    expect(hrefsFor()).not.toContain("/dashboard/settings/workspace/workflows");
     cleanup();
 
     // A finance role with manage_rates but no settings rights reaches Rates only.
     permissions.settings = false;
     permissions.rates = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
-    expect(hrefsFor()).toContain("/agent/settings/rates");
-    expect(hrefsFor()).not.toContain("/agent/settings/time-activities");
-    expect(hrefsFor()).not.toContain("/agent/settings/workflows");
+    expect(hrefsFor()).toContain("/dashboard/settings/workspace/rates");
+    expect(hrefsFor()).not.toContain(
+      "/dashboard/settings/workspace/time-activities",
+    );
+    expect(hrefsFor()).not.toContain("/dashboard/settings/workspace/workflows");
     cleanup();
 
     // workflow:manage alone opens Workflows (and the CAB template on it) only.
     permissions.rates = false;
     permissions.workflows = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
-    expect(hrefsFor()).toContain("/agent/settings/workflows");
-    expect(hrefsFor()).not.toContain("/agent/settings/rates");
-    expect(hrefsFor()).not.toContain("/agent/settings/time-activities");
+    expect(hrefsFor()).toContain("/dashboard/settings/workspace/workflows");
+    expect(hrefsFor()).not.toContain("/dashboard/settings/workspace/rates");
+    expect(hrefsFor()).not.toContain(
+      "/dashboard/settings/workspace/time-activities",
+    );
   });
 
   it("hides Service calendars and SLA policies while feature.sla is off or loading (P4R2-M1)", () => {
@@ -176,15 +188,15 @@ describe("WorkspaceSettingsFrame", () => {
     workspaceFeatureState.sla = false;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     let hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(hrefs).not.toContain("/agent/settings/sla-policies");
-    expect(hrefs).not.toContain("/agent/settings/calendars");
-    expect(hrefs).toContain("/agent/settings/request-types");
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/sla-policies");
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/calendars");
+    expect(hrefs).toContain("/dashboard/settings/workspace/request-types");
     cleanup();
 
     workspaceFeatureState.sla = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(hrefs).toContain("/agent/settings/sla-policies");
-    expect(hrefs).toContain("/agent/settings/calendars");
+    expect(hrefs).toContain("/dashboard/settings/workspace/sla-policies");
+    expect(hrefs).toContain("/dashboard/settings/workspace/calendars");
   });
 });

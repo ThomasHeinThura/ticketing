@@ -480,7 +480,7 @@ test("real Users UI binds delayed proof and approval to its current route intent
       expect(pending.confirmation).toBe("typed_name_step_up");
       expect(pending.pendingActionId).toBeTruthy();
       expect(pending.approveUrl).toBe(
-        `/agent/settings/profile/pending-actions/${encodeURIComponent(pending.pendingActionId)}`,
+        `/dashboard/settings/account/pending-actions/${encodeURIComponent(pending.pendingActionId)}`,
       );
       const deactivationNoticeText =
         "A deactivation approval was created. The account is unchanged until approval.";
@@ -554,7 +554,7 @@ test("real Users UI binds delayed proof and approval to its current route intent
 
       await page.getByRole("link", { name: "My pending actions" }).click();
       await expect(page).toHaveURL(
-        /\/agent\/settings\/profile\/pending-actions$/u,
+        /\/dashboard\/settings\/account\/pending-actions$/u,
       );
       await expect(
         page.getByRole("heading", {
@@ -609,7 +609,7 @@ test("real Users UI binds delayed proof and approval to its current route intent
         await leavePendingActionToInstanceUsers(page);
         await page.getByRole("link", { name: "My pending actions" }).click();
         await expect(page).toHaveURL(
-          /\/agent\/settings\/profile\/pending-actions$/u,
+          /\/dashboard\/settings\/account\/pending-actions$/u,
         );
         await page.getByRole("link", { name: "Review", exact: true }).click();
         await expect(page).toHaveURL(
@@ -746,7 +746,7 @@ test("real Users UI binds delayed proof and approval to its current route intent
 
       await page.getByRole("link", { name: "Back to pending actions" }).click();
       await expect(page).toHaveURL(
-        /\/agent\/settings\/profile\/pending-actions$/u,
+        /\/dashboard\/settings\/account\/pending-actions$/u,
       );
       await expect(
         page.getByText("You have no pending actions."),

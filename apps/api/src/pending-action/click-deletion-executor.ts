@@ -339,7 +339,7 @@ export async function approveClickDeletion<Result>(
                   }
                 : {
                     key: row.id,
-                    url: `/agent/settings/profile/pending-actions/${row.id}`,
+                    url: `/dashboard/settings/account/pending-actions/${row.id}`,
                     pendingActionId: row.id,
                     outcome: state === "executed" ? "approved" : state,
                     ...(reason ? { invalidationReason: reason } : {}),

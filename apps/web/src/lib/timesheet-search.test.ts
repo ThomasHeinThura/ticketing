@@ -37,9 +37,11 @@ describe("timesheet URL state", () => {
   });
 
   it("keeps the settings and budget routes at their documented paths", () => {
-    expect(routes.workspaceRates.path).toBe("/agent/settings/rates");
+    expect(routes.workspaceRates.path).toBe(
+      "/dashboard/settings/workspace/rates",
+    );
     expect(routes.workspaceTimeActivities.path).toBe(
-      "/agent/settings/time-activities",
+      "/dashboard/settings/workspace/time-activities",
     );
     expect(routes.projectBudget.build({ projectKey: "HELP" })).toBe(
       "/agent/projects/HELP/settings/budget",

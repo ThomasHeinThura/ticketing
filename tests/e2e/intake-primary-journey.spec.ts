@@ -453,7 +453,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     });
 
     const typeUrl = new URL(
-      `/agent/settings/request-types?requestTypeId=${encodeURIComponent(seeded.requestTypeId)}`,
+      `/dashboard/settings/workspace/request-types?requestTypeId=${encodeURIComponent(seeded.requestTypeId)}`,
       fixture.origin,
     ).toString();
     await runPhase(phaseJournal, "request-type-settings-form", async () => {

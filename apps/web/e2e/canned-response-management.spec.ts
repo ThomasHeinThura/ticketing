@@ -5,7 +5,7 @@ import {
   WORK_ITEM_KEY,
 } from "./helpers/g11-performance-fixture";
 
-const PATH = "/agent/settings/canned-responses";
+const PATH = "/dashboard/settings/workspace/canned-responses";
 test("workspace settings creates, edits and deletes reusable replies with URL-addressed dialogs", async ({
   page,
 }) => {
@@ -155,7 +155,7 @@ test("workspace settings creates, edits and deletes reusable replies with URL-ad
     .filter({ hasText: "Delete canned response" });
   await expect(approval).toBeVisible();
   await expect(page).toHaveURL(
-    /\/agent\/settings\/canned-responses\?q=Acknowledgement$/,
+    /\/dashboard\/settings\/workspace\/canned-responses\?q=Acknowledgement$/,
   );
   expect(deletions).toEqual(["snippet-1"]);
   expect(rows).toHaveLength(1);

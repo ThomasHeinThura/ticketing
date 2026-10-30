@@ -266,7 +266,7 @@ async function appendCalendarEvent(
 
   const payload = {
     key: input.calendar.id,
-    url: `/agent/settings/calendars/${input.calendar.id}`,
+    url: `/dashboard/settings/workspace/calendars/${input.calendar.id}`,
     calendarId: input.calendar.id,
     workspaceId: input.calendar.workspaceId,
     name: input.calendar.name,

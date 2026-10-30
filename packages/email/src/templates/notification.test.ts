@@ -12,7 +12,7 @@ describe("NotificationEmail", () => {
         actionUrl: "https://taskdesk.example/task/1",
         locale: "ja-JP",
         preferenceUrl:
-          "https://taskdesk.example/agent/settings/profile/notifications#preference_token=synthetic",
+          "https://taskdesk.example/dashboard/settings/account/notifications#preference_token=synthetic",
       }),
     );
     expect(html).toContain("TaskDesk で開く");

@@ -301,7 +301,7 @@ test("SLA policy editor saves an incomplete draft and publishes a complete snaps
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
-  await page.goto("/agent/settings/sla-policies/new");
+  await page.goto("/dashboard/settings/workspace/sla-policies/new");
   await expect(
     page.getByRole("heading", { name: "New SLA policy" }),
   ).toBeVisible();
@@ -314,7 +314,7 @@ test("SLA policy editor saves an incomplete draft and publishes a complete snaps
   await page.getByRole("button", { name: "Save draft" }).click();
 
   await expect(page).toHaveURL(
-    new RegExp(`/agent/settings/sla-policies/${policyId}$`),
+    new RegExp(`/dashboard/settings/workspace/sla-policies/${policyId}$`),
   );
   const publishButton = page.getByRole("button", { name: "Publish version" });
   if ((await publishButton.count()) > 0) {

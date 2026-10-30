@@ -73,7 +73,7 @@ function WebhookCard({ webhook }: { webhook: Webhook }) {
   );
 }
 
-/** `/agent/settings/webhooks`: the workspace's outbound webhooks with a health indicator. */
+/** `/dashboard/settings/workspace/webhooks`: the workspace's outbound webhooks with a health indicator. */
 export function WebhookList() {
   const { t } = useTranslation("webhooks");
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();

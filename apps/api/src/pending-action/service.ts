@@ -308,7 +308,7 @@ export async function createPendingActionInTransaction(
       }),
       payload: {
         key: id,
-        url: `/agent/settings/profile/pending-actions/${id}`,
+        url: `/dashboard/settings/account/pending-actions/${id}`,
         pendingActionId: id,
         action: input.action,
         origin: input.origin,
@@ -358,7 +358,7 @@ export async function createPendingActionInTransaction(
     summary: scope.summary,
     confirmation,
     expiresAt: expiresAt.toISOString(),
-    approveUrl: `/agent/settings/profile/pending-actions/${id}`,
+    approveUrl: `/dashboard/settings/account/pending-actions/${id}`,
     auditFailure,
   };
 }
@@ -494,7 +494,7 @@ export async function createPendingAction(requested: CreatePendingActionInput) {
               }),
               payload: {
                 key: id,
-                url: `/agent/settings/profile/pending-actions/${id}`,
+                url: `/dashboard/settings/account/pending-actions/${id}`,
                 pendingActionId: id,
                 action: input.action,
                 origin: input.origin,
@@ -644,7 +644,7 @@ export async function createPendingAction(requested: CreatePendingActionInput) {
     summary: responseSummary,
     confirmation: created.confirmation,
     expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
-    approveUrl: `/agent/settings/profile/pending-actions/${id}`,
+    approveUrl: `/dashboard/settings/account/pending-actions/${id}`,
   };
 }
 
@@ -915,7 +915,7 @@ export async function decideOwnPendingAction(input: {
       scope: pendingActionEventScope(row),
       payload: {
         key: row.id,
-        url: `/agent/settings/profile/pending-actions/${row.id}`,
+        url: `/dashboard/settings/account/pending-actions/${row.id}`,
         pendingActionId: row.id,
         outcome,
       },
@@ -1280,7 +1280,7 @@ export async function approveUserDeactivation(input: {
           "pending_action.decided",
           {
             key: row.id,
-            url: `/agent/settings/profile/pending-actions/${row.id}`,
+            url: `/dashboard/settings/account/pending-actions/${row.id}`,
             pendingActionId: row.id,
             outcome: "approved",
           },
@@ -1473,7 +1473,7 @@ async function writeUserDeactivationTransition(
     scope,
     payload: {
       key: input.row.id,
-      url: `/agent/settings/profile/pending-actions/${input.row.id}`,
+      url: `/dashboard/settings/account/pending-actions/${input.row.id}`,
       pendingActionId: input.row.id,
       outcome: input.state,
       ...(input.invalidationReason

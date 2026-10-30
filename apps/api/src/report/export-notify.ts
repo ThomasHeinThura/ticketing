@@ -18,7 +18,7 @@ const EMAIL_CHANNEL = "notify.email";
 /** Agent screens the email links to (P5-R3-01, P5-R3-02). */
 export const exportPagePath = (id: string) =>
   `/agent/reports/exports/${encodeURIComponent(id)}`;
-const PREFERENCES_PATH = "/agent/settings/profile/notifications";
+const PREFERENCES_PATH = "/dashboard/settings/account/notifications";
 
 /**
  * P5-R3-04: how long one worker's claim on an owed email lasts. The send has a 25 second

@@ -50,7 +50,7 @@ describe("AccountSettingsFrame (L-03)", () => {
       ["settings:security", "/dashboard/settings/account/security"],
       [
         "navigation:sidebar.pendingActions",
-        "/agent/settings/profile/pending-actions",
+        "/dashboard/settings/account/pending-actions",
       ],
       ["settings:apiKeys", "/dashboard/settings/account/developer"],
     ]);

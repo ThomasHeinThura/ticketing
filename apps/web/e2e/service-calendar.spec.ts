@@ -598,7 +598,7 @@ test("calendar list server cursors support Previous, deep links, and browser Bac
   // Fixture cursors exercise UI navigation; PostgreSQL integration covers cursor issuance and seeking.
   const fixture = await setupCalendarPage(page);
   fixture.paginationEnabled = true;
-  await page.goto("/agent/settings/calendars");
+  await page.goto("/dashboard/settings/workspace/calendars");
   await expect(
     page.getByRole("link", { name: "Support coverage" }),
   ).toBeVisible();
@@ -617,7 +617,9 @@ test("calendar list server cursors support Previous, deep links, and browser Bac
   await page.getByRole("button", { name: "Next" }).click();
   await page.goBack();
   await expect(page).toHaveURL(/cursor=previous-page-cursor/);
-  await page.goto("/agent/settings/calendars?cursor=third-page-cursor");
+  await page.goto(
+    "/dashboard/settings/workspace/calendars?cursor=third-page-cursor",
+  );
   await expect(
     page.getByRole("link", { name: "Third page calendar" }),
   ).toBeVisible();
@@ -632,7 +634,9 @@ test("calendar list resets a rejected cursor after Retry repeats the 400", async
   page,
 }) => {
   const fixture = await setupCalendarPage(page);
-  await page.goto("/agent/settings/calendars?cursor=unsupported-cursor");
+  await page.goto(
+    "/dashboard/settings/workspace/calendars?cursor=unsupported-cursor",
+  );
 
   await expect(page.getByText("Calendars could not be loaded")).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
@@ -657,7 +661,7 @@ test("calendar list and editor preserve URL state and confirm manual changes", a
   page,
 }, testInfo) => {
   const fixture = await setupCalendarPage(page);
-  await page.goto("/agent/settings/calendars");
+  await page.goto("/dashboard/settings/workspace/calendars");
   await expect(
     page.getByRole("heading", { name: "Service calendars" }),
   ).toBeVisible();
@@ -668,7 +672,9 @@ test("calendar list and editor preserve URL state and confirm manual changes", a
   await expectNoSeriousAxeViolations(page);
 
   await page.getByRole("link", { name: "Support coverage" }).click();
-  await expect(page).toHaveURL(/\/agent\/settings\/calendars\/calendar-e2e-1/);
+  await expect(page).toHaveURL(
+    /\/dashboard\/settings\/workspace\/calendars\/calendar-e2e-1/,
+  );
   await expect(
     page.getByRole("heading", { name: "Support coverage" }),
   ).toBeVisible();
@@ -750,7 +756,7 @@ test("calendar creation supports keyboard input and read-only access", async ({
   page,
 }) => {
   const fixture = await setupCalendarPage(page);
-  await page.goto("/agent/settings/calendars");
+  await page.goto("/dashboard/settings/workspace/calendars");
   await page.getByRole("link", { name: "New calendar" }).click();
   await page.getByLabel("Stable key").fill("new-regional-cover");
   await page.getByLabel("Name", { exact: true }).fill("New regional cover");
@@ -811,7 +817,7 @@ test("calendar creation supports keyboard input and read-only access", async ({
   await expect(keyboardStartTime).toBeFocused();
 
   fixture.canManageServiceCalendars = false;
-  await page.goto("/agent/settings/calendars");
+  await page.goto("/dashboard/settings/workspace/calendars");
   await expect(page.getByText("Read-only access")).toBeVisible();
   await expect(page.getByRole("button", { name: "New calendar" })).toHaveCount(
     0,
@@ -827,7 +833,7 @@ test("calendar creation supports keyboard input and read-only access", async ({
   await expect(
     page.getByRole("combobox", { name: "IANA timezone", exact: true }),
   ).toBeDisabled();
-  await page.goto("/agent/settings/calendars/new");
+  await page.goto("/dashboard/settings/workspace/calendars/new");
   await expect(
     page.getByRole("button", { name: "Create calendar" }),
   ).toBeDisabled();
@@ -841,7 +847,9 @@ test("calendar list and editor expose loading states and meet the G13 shift budg
   fixture.canManageServiceCalendars = true;
   fixture.savedCalendar = { ...calendar };
   fixture.holdListResponse = true;
-  const loadingNavigation = page.goto("/agent/settings/calendars");
+  const loadingNavigation = page.goto(
+    "/dashboard/settings/workspace/calendars",
+  );
   await fixture.listResponseHeldPromise;
   await expect(
     page.getByRole("status", { name: "Loading service calendars" }),
@@ -875,7 +883,7 @@ test("calendar list and editor expose loading states and meet the G13 shift budg
 
   fixture.holdEditorResponse = true;
   const editorLoadingNavigation = page.goto(
-    `/agent/settings/calendars/${loadingCalendarId}`,
+    `/dashboard/settings/workspace/calendars/${loadingCalendarId}`,
   );
   await fixture.editorResponseHeldPromise;
   const editorLoading = page.getByRole("status", {
@@ -897,9 +905,11 @@ test("calendar list exposes empty state and stale-cursor reset", async ({
 }) => {
   const fixture = await setupCalendarPage(page);
   fixture.listIsEmpty = true;
-  await page.goto("/agent/settings/calendars");
+  await page.goto("/dashboard/settings/workspace/calendars");
   await expect(page.getByText("No service calendars yet")).toBeVisible();
-  await page.goto("/agent/settings/calendars?cursor=stale-boundary");
+  await page.goto(
+    "/dashboard/settings/workspace/calendars?cursor=stale-boundary",
+  );
   await expect(page.getByRole("button", { name: "Reset" })).toBeVisible();
   await page.getByRole("button", { name: "Reset" }).click();
   await expect(page).not.toHaveURL(/cursor=/);
@@ -908,7 +918,7 @@ test("calendar list exposes empty state and stale-cursor reset", async ({
 test("calendar list error state recovers after Retry", async ({ page }) => {
   const fixture = await setupCalendarPage(page);
   fixture.listRequestFailure = true;
-  await page.goto("/agent/settings/calendars");
+  await page.goto("/dashboard/settings/workspace/calendars");
   await expect(page.getByText("Calendars could not be loaded")).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
   fixture.listRequestFailure = false;
@@ -921,7 +931,7 @@ test("calendar editor error state links back to the calendar list", async ({
 }) => {
   const fixture = await setupCalendarPage(page);
   fixture.editorRequestFailure = true;
-  await page.goto(`/agent/settings/calendars/${calendarId}`);
+  await page.goto(`/dashboard/settings/workspace/calendars/${calendarId}`);
   await expect(page.getByText("Calendar could not be loaded")).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Back to calendars" }),
@@ -933,7 +943,9 @@ test("calendar preview error state offers Retry", async ({ page }) => {
   fixture.previewRequestFailure = true;
   // Use a distinct year so the earlier successful preview cannot be reused from
   // TanStack Query's cache before the failure fixture receives a request.
-  await page.goto(`/agent/settings/calendars/${calendarId}?year=2027`);
+  await page.goto(
+    `/dashboard/settings/workspace/calendars/${calendarId}?year=2027`,
+  );
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     "Support coverage",
   );
@@ -955,7 +967,7 @@ test("calendar usage blocks deletion while referenced and requests a pending act
     currentSlaPolicies: 1,
     workItems: 3,
   };
-  await page.goto(`/agent/settings/calendars/${calendarId}`);
+  await page.goto(`/dashboard/settings/workspace/calendars/${calendarId}`);
   const usage = page.getByText("Where it is used").locator("xpath=../../..");
   await expect(
     usage.getByText("SLA policy versions (all retained)"),
@@ -1012,7 +1024,7 @@ test("calendar usage blocks deletion while referenced and requests a pending act
   await expect(approval).toBeVisible();
   await expect(approval.getByText("Pending", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(
-    new RegExp(`/agent/settings/calendars/${calendarId}(\\?|$)`),
+    new RegExp(`/dashboard/settings/workspace/calendars/${calendarId}(\\?|$)`),
   );
   expect(fixture.deleteRequestCount).toBe(1);
   expect(pendingActionApprovals).toBe(0);
@@ -1023,7 +1035,7 @@ test("calendar usage hides deletion without manage permission", async ({
 }) => {
   const fixture = await setupCalendarPage(page);
   fixture.canManageServiceCalendars = false;
-  await page.goto(`/agent/settings/calendars/${calendarId}`);
+  await page.goto(`/dashboard/settings/workspace/calendars/${calendarId}`);
   await expect(page.getByText("Where it is used")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Request deletion" }),

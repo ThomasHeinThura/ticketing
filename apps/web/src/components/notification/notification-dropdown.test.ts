@@ -77,7 +77,7 @@ describe("pending action notification deep link", () => {
         resourceType: "pending_action",
         resourceId: "pa/1",
       }),
-    ).toBe("/agent/settings/profile/pending-actions/pa%2F1");
+    ).toBe("/dashboard/settings/account/pending-actions/pa%2F1");
   });
 
   it("ignores other resources and missing ids", () => {
@@ -102,7 +102,7 @@ describe("webhook auto-disable notification deep link", () => {
       getWebhookNotificationHref({
         deepLink: { type: "webhook", id: "hook/1" },
       }),
-    ).toBe("/agent/settings/webhooks/hook%2F1");
+    ).toBe("/dashboard/settings/workspace/webhooks/hook%2F1");
   });
 
   it("ignores missing or unsupported deep links", () => {

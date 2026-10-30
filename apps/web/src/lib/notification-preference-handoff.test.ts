@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { initializeNotificationPreferenceHandoff } from "./notification-preference-handoff";
 
-const entry = "/agent/settings/profile/notifications";
+const entry = "/dashboard/settings/account/notifications";
+/** Emails sent before L-03 link to the old profile URL. */
+const legacyEntry = "/agent/settings/profile/notifications";
 const capability = "signed_payload.signature";
 const response = (status: number, body?: unknown) =>
   ({
@@ -296,5 +298,21 @@ describe("notification preference email handoff", () => {
     ).rejects.toThrow("Unable to initialize notification preferences");
     expect(continuation).not.toHaveBeenCalled();
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("still exchanges the capability on the pre-L-03 agent email link", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `${legacyEntry}#preference_token=${capability}`,
+    );
+    const fetcher = vi.fn().mockResolvedValue(response(401));
+    await initializeNotificationPreferenceHandoff(window, fetcher);
+    expect(window.location.hash).toBe("");
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/public/agent/notification-preference-handoffs",
+      expect.objectContaining({ body: JSON.stringify({ token: capability }) }),
+    );
   });
 });

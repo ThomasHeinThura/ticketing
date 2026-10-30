@@ -97,7 +97,10 @@ test("SLA policy publishes and reloads its persisted eight-goal snapshot", async
       throw new Error("No seeded work item type was returned.");
 
     await page.goto(
-      new URL("/agent/settings/sla-policies/new", origin).toString(),
+      new URL(
+        "/dashboard/settings/workspace/sla-policies/new",
+        origin,
+      ).toString(),
     );
     await expect(
       page.getByRole("heading", { name: "New SLA policy" }),
@@ -121,7 +124,9 @@ test("SLA policy publishes and reloads its persisted eight-goal snapshot", async
     }
     await page.getByLabel("At-risk threshold (%)").fill("80");
     await page.getByRole("button", { name: "Save draft" }).click();
-    await expect(page).toHaveURL(/\/agent\/settings\/sla-policies\/[a-z0-9]+$/);
+    await expect(page).toHaveURL(
+      /\/dashboard\/settings\/workspace\/sla-policies\/[a-z0-9]+$/,
+    );
     await expect(
       page.getByRole("button", { name: "Publish version" }),
     ).toBeEnabled();

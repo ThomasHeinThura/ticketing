@@ -45,7 +45,7 @@ async function automationUrl(
   executor: Executor,
   rule: { projectId: string | null },
 ): Promise<string> {
-  if (!rule.projectId) return "/agent/settings/automations";
+  if (!rule.projectId) return "/dashboard/settings/workspace/automations";
   const [project] = await executor
     .select({ slug: projectTable.slug })
     .from(projectTable)
@@ -53,7 +53,7 @@ async function automationUrl(
     .limit(1);
   return project
     ? `/agent/projects/${encodeURIComponent(project.slug)}/settings/automations`
-    : "/agent/settings/automations";
+    : "/dashboard/settings/workspace/automations";
 }
 
 /** `automation.run_failed` (events.md): an action threw, or the loop guard abandoned a chain. */

@@ -162,6 +162,21 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
       ["/agent/settings/labels", /\/dashboard\/settings\/workspace\/labels$/],
       ["/agent/settings/danger", /\/dashboard\/settings\/workspace\/general$/],
       ["/agent/settings/members", /\/dashboard\/workspace\/[^/]+\/members$/],
+      // L-03: old workspace pages keep their path and search under workspace settings.
+      // (Encoded ids are covered by src/lib/legacy-settings-redirect.test.ts.)
+      [
+        "/agent/settings/custom-fields?deleted=1",
+        /\/dashboard\/settings\/workspace\/custom-fields\?deleted=1$/,
+      ],
+      // Pending-action links already sent in notifications and emails open the account page.
+      [
+        "/agent/settings/profile/pending-actions",
+        /\/dashboard\/settings\/account\/pending-actions$/,
+      ],
+      [
+        "/agent/settings/profile/notifications",
+        /\/dashboard\/settings\/account\/notifications$/,
+      ],
     ] as const) {
       await page.goto(from);
       await expect(page).toHaveURL(to);

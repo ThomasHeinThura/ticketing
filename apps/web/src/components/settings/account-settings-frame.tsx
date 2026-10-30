@@ -52,7 +52,7 @@ export function AccountSettingsFrame({ children }: { children: ReactNode }) {
     },
     {
       title: t("navigation:sidebar.pendingActions"),
-      url: "/agent/settings/profile/pending-actions",
+      url: "/dashboard/settings/account/pending-actions",
       icon: ClipboardCheck,
     },
   ];

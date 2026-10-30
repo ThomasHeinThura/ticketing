@@ -14,11 +14,7 @@ export type SettingsScope = "account" | "workspace" | "project" | "instance";
 
 /** The scope a settings URL belongs to; the shared `/dashboard/settings` layout spans three. */
 export function settingsScopeFromPath(pathname: string): SettingsScope {
-  if (
-    pathname.startsWith("/dashboard/settings/account") ||
-    pathname.startsWith("/agent/settings/profile")
-  )
-    return "account";
+  if (pathname.startsWith("/dashboard/settings/account")) return "account";
   if (pathname.startsWith("/dashboard/settings/projects")) return "project";
   if (
     pathname.startsWith("/agent/god-mode") ||

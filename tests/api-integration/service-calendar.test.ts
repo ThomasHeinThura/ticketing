@@ -445,7 +445,7 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
       },
       payload: {
         key: calendar.id,
-        url: `/agent/settings/calendars/${calendar.id}`,
+        url: `/dashboard/settings/workspace/calendars/${calendar.id}`,
         calendarId: calendar.id,
         workspaceId: creator.workspace.id,
         name: "Business hours",

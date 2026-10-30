@@ -240,7 +240,7 @@ describe("report.export_ready is a settable email preference (P5-R3-02)", () => 
     expect(sent).toHaveLength(1);
     const preferenceUrl = new URL(String(sent[0]?.data.preferenceUrl));
     expect(preferenceUrl.pathname).toBe(
-      "/agent/settings/profile/notifications",
+      "/dashboard/settings/account/notifications",
     );
     const token = preferenceUrl.hash.replace(/^#preference_token=/, "");
     const claims = verifyNotificationPreferenceLink(token, "agent");
