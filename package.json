@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "sit:smoke": "NODE_EXTRA_CA_CERTS=${NODE_EXTRA_CA_CERTS-deploy/local/certs/local.crt} node scripts/sit/release-smoke.mjs",
     "build": "turbo build",
     "dev": "turbo dev",
     "i18n:check": "node ./scripts/i18n/check.mjs",
