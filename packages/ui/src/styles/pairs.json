@@ -12714,6 +12714,7 @@
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[2]::text-destructive#0",
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[5]::text-destructive#0",
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
+			"apps/web/src/components/common/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-destructive#0",
@@ -12733,7 +12734,6 @@
 			"apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/task/task-relations.tsx::TaskRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/task/task-status-popover.tsx::TaskStatusPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]::text-destructive#0",
-			"apps/web/src/components/time-tracking/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/move-work-item-dialog.tsx::MoveWorkItemDialog::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/p[0]::text-destructive#0",
@@ -12786,6 +12786,18 @@
 				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/date-field.tsx:DateField",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/p[0]",
+					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/common/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/common/date-field.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -13098,18 +13110,6 @@
 				"id": "apps/web/src/components/task/task-status-popover.tsx::TaskStatusPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/task/task-status-popover.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/time-tracking/date-field.tsx:DateField",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/p[0]",
-					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/time-tracking/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/time-tracking/date-field.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -13332,6 +13332,7 @@
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[2]::text-destructive#0",
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[5]::text-destructive#0",
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
+			"apps/web/src/components/common/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-destructive#0",
@@ -13351,7 +13352,6 @@
 			"apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/task/task-relations.tsx::TaskRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/task/task-status-popover.tsx::TaskStatusPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]::text-destructive#0",
-			"apps/web/src/components/time-tracking/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/move-work-item-dialog.tsx::MoveWorkItemDialog::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/p[0]::text-destructive#0",
@@ -13404,6 +13404,18 @@
 				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/common/date-field.tsx:DateField",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/p[0]",
+					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/common/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/common/date-field.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -13716,18 +13728,6 @@
 				"id": "apps/web/src/components/task/task-status-popover.tsx::TaskStatusPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/task/task-status-popover.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/time-tracking/date-field.tsx:DateField",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/p[0]",
-					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/time-tracking/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/time-tracking/date-field.tsx"
 			},
 			{
 				"backdropLayers": [],
