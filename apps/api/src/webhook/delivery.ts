@@ -317,6 +317,11 @@ async function recordAttempt(
   });
 }
 
+/** The agent web app's webhook editor (`routes.webhookEditor`), linked from the WH-7 notice. */
+export function webhookEditorPath(webhookId: string): string {
+  return `/agent/settings/webhooks/${encodeURIComponent(webhookId)}`;
+}
+
 /** `WH-7`: `webhook.auto_disabled` in the same transaction, plus its audit row. */
 async function emitAutoDisabled(
   tx: DbTransaction,
@@ -343,7 +348,7 @@ async function emitAutoDisabled(
       }),
       payload: {
         key: webhook.id,
-        url: `/agent/settings/integrations/webhooks/${webhook.id}`,
+        url: webhookEditorPath(webhook.id),
         webhookId: webhook.id,
         ownerPersonId: webhook.createdBy,
         lastError,

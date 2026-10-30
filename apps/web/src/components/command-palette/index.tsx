@@ -305,7 +305,11 @@ export function CommandPalette({
               defaultValue: "Members",
             }),
             onRun: () => {
-              navigate({ to: "/dashboard/settings/workspace/members" });
+              if (!workspace?.id) return;
+              navigate({
+                to: "/dashboard/workspace/$workspaceId/members",
+                params: { workspaceId: workspace.id },
+              });
             },
           },
           {

@@ -6279,8 +6279,6 @@
 		"occurrenceIds": [
 			"apps/web/src/components/common/workspace-layout.tsx::WorkspaceLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]/BreadcrumbLink[0]/span[0]::text-card-foreground#0",
 			"apps/web/src/components/common/workspace-layout.tsx::WorkspaceLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]/span[0]::text-card-foreground#0",
-			"apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]/BreadcrumbLink[0]/h1[0]::text-card-foreground#0",
-			"apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]/h1[0]::text-card-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Header[0]/div[0]/h1[0]::text-card-foreground#0"
 		],
 		"occurrences": [
@@ -6307,30 +6305,6 @@
 				"id": "apps/web/src/components/common/workspace-layout.tsx::WorkspaceLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]/span[0]::text-card-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/common/workspace-layout.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/settings-layout.tsx:SettingsLayout",
-					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]/BreadcrumbLink[0]/h1[0]",
-					"Layout->apps/web/src/components/common/layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]/BreadcrumbLink[0]/h1[0]::text-card-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/settings-layout.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/settings-layout.tsx:SettingsLayout",
-					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]/h1[0]",
-					"Layout->apps/web/src/components/common/layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]/h1[0]::text-card-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/settings-layout.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -6362,8 +6336,6 @@
 		"occurrenceIds": [
 			"apps/web/src/components/common/workspace-layout.tsx::WorkspaceLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]/BreadcrumbLink[0]/span[0]::text-card-foreground#0",
 			"apps/web/src/components/common/workspace-layout.tsx::WorkspaceLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]/span[0]::text-card-foreground#0",
-			"apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]/BreadcrumbLink[0]/h1[0]::text-card-foreground#0",
-			"apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]/h1[0]::text-card-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Header[0]/div[0]/h1[0]::text-card-foreground#0"
 		],
 		"occurrences": [
@@ -6390,30 +6362,6 @@
 				"id": "apps/web/src/components/common/workspace-layout.tsx::WorkspaceLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]/span[0]::text-card-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/common/workspace-layout.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/settings-layout.tsx:SettingsLayout",
-					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]/BreadcrumbLink[0]/h1[0]",
-					"Layout->apps/web/src/components/common/layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]/BreadcrumbLink[0]/h1[0]::text-card-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/settings-layout.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/settings-layout.tsx:SettingsLayout",
-					"jsx:Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]/h1[0]",
-					"Layout->apps/web/src/components/common/layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Header[0]/div[0]/div[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]/h1[0]::text-card-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/settings-layout.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -31664,7 +31612,6 @@
 			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[3]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/shared.tsx::PageFrame::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/settings/custom-fields/custom-field-editor.tsx::EditorForm::form[0]/p[0]::text-muted-foreground#0",
@@ -35729,18 +35676,6 @@
 				"id": "apps/web/src/components/service-management/shared.tsx::PageFrame::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/shared.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/settings-layout.tsx:SettingsLayout",
-					"jsx:Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]",
-					"Layout->apps/web/src/components/common/layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/settings-layout.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -42543,7 +42478,6 @@
 			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[3]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/shared.tsx::PageFrame::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/settings/custom-fields/custom-field-editor.tsx::EditorForm::form[0]/p[0]::text-muted-foreground#0",
@@ -46608,18 +46542,6 @@
 				"id": "apps/web/src/components/service-management/shared.tsx::PageFrame::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/shared.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/settings-layout.tsx:SettingsLayout",
-					"jsx:Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]",
-					"Layout->apps/web/src/components/common/layout.tsx:default>bg-background"
-				],
-				"id": "apps/web/src/components/settings-layout.tsx::SettingsLayout::Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/settings-layout.tsx"
 			},
 			{
 				"backdropLayers": [],

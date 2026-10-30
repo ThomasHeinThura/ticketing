@@ -9,6 +9,7 @@ import {
 import {
   nextFailureStreak,
   outcomeAfterAttempt,
+  webhookEditorPath,
 } from "../../../apps/api/src/webhook/delivery";
 import {
   absoluteUrl,
@@ -116,6 +117,15 @@ const baseEnvelope: InternalEnvelope = {
     typeId: "t1",
   },
 };
+
+describe("auto-disable notice link (WH-7)", () => {
+  it("points at the agent webhook editor route, not a non-existent integrations path", () => {
+    expect(webhookEditorPath("wh_1")).toBe("/agent/settings/webhooks/wh_1");
+    expect(webhookEditorPath("a/b c")).toBe(
+      "/agent/settings/webhooks/a%2Fb%20c",
+    );
+  });
+});
 
 describe("envelope projection", () => {
   const context = {

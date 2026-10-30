@@ -1121,6 +1121,24 @@ export const routes = {
       return `/dashboard/settings/account/security${query.size ? `?${query}` : ""}`;
     },
   },
+  /** Kaneo account settings (L-03); the bare `/dashboard/settings[/account]` lands here. */
+  accountInformation: {
+    path: "/dashboard/settings/account/information" as const,
+    build: () => "/dashboard/settings/account/information",
+  },
+  accountNotifications: {
+    path: "/dashboard/settings/account/notifications" as const,
+    build: () => "/dashboard/settings/account/notifications",
+  },
+  accountPreferences: {
+    path: "/dashboard/settings/account/preferences" as const,
+    build: () => "/dashboard/settings/account/preferences",
+  },
+  /** Personal API keys and service keys. */
+  accountDeveloper: {
+    path: "/dashboard/settings/account/developer" as const,
+    build: () => "/dashboard/settings/account/developer",
+  },
   /** `docs/screens.md` "Workspace — webhooks". */
   webhooks: { path: "/agent/settings/webhooks" as const },
   /** `docs/screens.md` "Webhook editor"; `new` creates. */
@@ -2004,6 +2022,47 @@ export const routes = {
     path: "/agent/projects/$projectKey/settings/danger" as const,
     build: (params: { projectKey: string }) =>
       `/agent/projects/${encodeURIComponent(params.projectKey)}/settings/danger`,
+  },
+  /** Kaneo project settings pages (L-03); the `$projectKey` routes above redirect here. */
+  projectSettingsGeneral: {
+    path: "/dashboard/settings/projects/$projectId/general" as const,
+    build: (params: { projectId: string }) =>
+      `/dashboard/settings/projects/${encodeURIComponent(params.projectId)}/general`,
+  },
+  projectSettingsMembers: {
+    path: "/dashboard/settings/projects/$projectId/members" as const,
+    build: (params: { projectId: string }) =>
+      `/dashboard/settings/projects/${encodeURIComponent(params.projectId)}/members`,
+  },
+  projectSettingsLabels: {
+    path: "/dashboard/settings/projects/$projectId/labels" as const,
+    build: (params: { projectId: string }, search: LabelCatalogueSearch = {}) =>
+      `/dashboard/settings/projects/${encodeURIComponent(params.projectId)}/labels${labelCatalogueQuery(search)}`,
+  },
+  projectSettingsWorkflow: {
+    path: "/dashboard/settings/projects/$projectId/workflow" as const,
+    build: (params: { projectId: string }) =>
+      `/dashboard/settings/projects/${encodeURIComponent(params.projectId)}/workflow`,
+  },
+  projectSettingsFeatures: {
+    path: "/dashboard/settings/projects/$projectId/features" as const,
+    build: (params: { projectId: string }) =>
+      `/dashboard/settings/projects/${encodeURIComponent(params.projectId)}/features`,
+  },
+  projectSettingsAutomations: {
+    path: "/dashboard/settings/projects/$projectId/automations" as const,
+    build: (params: { projectId: string }) =>
+      `/dashboard/settings/projects/${encodeURIComponent(params.projectId)}/automations`,
+  },
+  projectSettingsEstimates: {
+    path: "/dashboard/settings/projects/$projectId/estimates" as const,
+    build: (params: { projectId: string }) =>
+      `/dashboard/settings/projects/${encodeURIComponent(params.projectId)}/estimates`,
+  },
+  projectSettingsBudget: {
+    path: "/dashboard/settings/projects/$projectId/budget" as const,
+    build: (params: { projectId: string }) =>
+      `/dashboard/settings/projects/${encodeURIComponent(params.projectId)}/budget`,
   },
 };
 
