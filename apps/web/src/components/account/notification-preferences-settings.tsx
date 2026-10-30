@@ -763,14 +763,23 @@ export function NotificationPreferencesSettings() {
               }
               value={eventPrefs.dueDateReminderLeadUnit}
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger
+                className="w-32"
+                aria-label={t(
+                  "settings:notificationsPage.reminderLeadTimeUnitLabel",
+                )}
+              >
                 <SelectValue>
                   {eventPrefs.dueDateReminderLeadUnit === "days"
                     ? t("settings:notificationsPage.reminderLeadTimeUnitDays")
                     : t("settings:notificationsPage.reminderLeadTimeUnitHours")}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent
+                aria-label={t(
+                  "settings:notificationsPage.reminderLeadTimeUnitLabel",
+                )}
+              >
                 <SelectItem value="hours">
                   {t("settings:notificationsPage.reminderLeadTimeUnitHours")}
                 </SelectItem>
@@ -852,6 +861,7 @@ export function NotificationPreferencesSettings() {
               </div>
             ) : null}
             <Switch
+              aria-label={t("settings:notificationsPage.emailTitle")}
               checked={globalPrefs.emailEnabled}
               disabled={isSavingPreferences || !preferences?.emailAddress}
               onCheckedChange={(checked) =>
@@ -863,10 +873,14 @@ export function NotificationPreferencesSettings() {
         title={t("settings:notificationsPage.emailTitle")}
       >
         <div className="space-y-1">
-          <Label className="text-sm font-medium">
+          <Label
+            className="text-sm font-medium"
+            htmlFor="account-notifications-email"
+          >
             {t("settings:notificationsPage.accountEmailLabel")}
           </Label>
           <Input
+            id="account-notifications-email"
             disabled
             readOnly
             value={
@@ -946,6 +960,7 @@ export function NotificationPreferencesSettings() {
               </div>
             ) : null}
             <Switch
+              aria-label={t("settings:notificationsPage.gotifyTitle")}
               checked={globalPrefs.gotify.enabled}
               disabled={isSavingPreferences}
               onCheckedChange={(checked) =>
@@ -1076,6 +1091,7 @@ export function NotificationPreferencesSettings() {
               </div>
             ) : null}
             <Switch
+              aria-label={t("settings:notificationsPage.ntfyTitle")}
               checked={globalPrefs.ntfy.enabled}
               disabled={isSavingPreferences}
               onCheckedChange={(checked) =>
@@ -1217,6 +1233,7 @@ export function NotificationPreferencesSettings() {
               </div>
             ) : null}
             <Switch
+              aria-label={t("settings:notificationsPage.webhookTitle")}
               checked={globalPrefs.webhook.enabled}
               disabled={isSavingPreferences}
               onCheckedChange={(checked) =>

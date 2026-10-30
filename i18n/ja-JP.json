@@ -600,7 +600,8 @@
 			"reportExportSave": "Save export preference",
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
-			"reportExportTitle": "Report exports"
+			"reportExportTitle": "Report exports",
+			"reminderLeadTimeUnitLabel": "Reminder time unit"
 		},
 		"preferencesPage": {
 			"title": "環境設定",
