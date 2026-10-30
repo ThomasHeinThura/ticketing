@@ -284,6 +284,102 @@
 		}
 	},
 	"local": {
+		"unitTests": 7281,
+		"typecheckTasks": 9,
+		"focusedTests": 3,
+		"permissions": 118,
+		"contrastCriteria": 401,
+		"contrastCriteriaUnchanged": true,
+		"checks": [
+			{
+				"command": "pnpm test",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm typecheck",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm lint:ci",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:ui:raw-elements",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:i18n",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm test:permissions",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:route-policy",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm test:contract",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:tokens",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:bundle-size",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:bundle-purity",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:visual-scope",
+				"exitCode": 0
+			}
+		],
+		"bundlesKb": {
+			"initial": 267.6,
+			"workList": 333.4,
+			"portal": 189.3
+		},
+		"pinnedG8": {
+			"scope": "Combined integration source; work list/board, Calendar list/editor and workspace/project labels",
+			"passed": 6,
+			"seconds": 30.9,
+			"baselineChanges": 0,
+			"pinnedImage": "mcr.microsoft.com/playwright:v1.63.0-noble",
+			"platform": "linux/amd64"
+		},
+		"measuredHead": "a88ead899bfafe72bc7a42002cd1ec5a46a6852e",
+		"historicalFailures": [
+			"Initial refreshed full suite: unchanged role-capabilities typed-confirmation case exceeded5000ms; isolated unchanged full run passes7281. Exact stalled operation/rootcause remains unproved; no source/test timeout/retry changes.",
+			"First refreshed contract attempt: checksum-pinned oasdiff upstream fetch exceeded60000ms. Exact original gate passes on subsequent network recovery; failed log retained."
+		]
+	},
+	"review": {
+		"independent": "Terra",
+		"sourceAndFinal": true,
+		"high": 0,
+		"medium": 0,
+		"findings": 0
+	},
+	"limits": [
+		"Actual admin role only; no owner/member/customer complete matrix acceptance.",
+		"Four after cases and two matched before cases; URL sorting only, no persisted mutation.",
+		"Hosted exact-head full G4/G8 and remaining CI still required; no requirement row promoted."
+	],
+	"containers": {
+		"ownedSit": "b11e2dc343c191a9a9214e177bd19c67d071954e3df82fcea93508f82a17fde4",
+		"temporaryVisualRunnersRemoved": [
+			"dd1472314162ed20e237ed7ebe537e9beeabcbb2d69043a386e6d49994b3ebd5",
+			"93d40525cf348749e388d081ace53dbde073cdc570333d97ddf0af155501ca08"
+		],
+		"originalRollbackPreserved": true
+	},
+	"priorLocal": {
 		"unitTests": 7273,
 		"typecheckTasks": 9,
 		"focusedTests": 3,
@@ -353,25 +449,5 @@
 			"pinnedImage": "mcr.microsoft.com/playwright:v1.63.0-noble",
 			"platform": "linux/amd64"
 		}
-	},
-	"review": {
-		"independent": "Terra",
-		"sourceAndFinal": true,
-		"high": 0,
-		"medium": 0,
-		"findings": 0
-	},
-	"limits": [
-		"Actual admin role only; no owner/member/customer complete matrix acceptance.",
-		"Four after cases and two matched before cases; URL sorting only, no persisted mutation.",
-		"Hosted exact-head full G4/G8 and remaining CI still required; no requirement row promoted."
-	],
-	"containers": {
-		"ownedSit": "b11e2dc343c191a9a9214e177bd19c67d071954e3df82fcea93508f82a17fde4",
-		"temporaryVisualRunnersRemoved": [
-			"dd1472314162ed20e237ed7ebe537e9beeabcbb2d69043a386e6d49994b3ebd5",
-			"93d40525cf348749e388d081ace53dbde073cdc570333d97ddf0af155501ca08"
-		],
-		"originalRollbackPreserved": true
 	}
 }
