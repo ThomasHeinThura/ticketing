@@ -16,6 +16,7 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerSelect } from "@/components/automation/picker-select";
+import { DateField } from "@/components/time-tracking/date-field";
 import {
   createModule,
   type LeadCandidate,
@@ -147,11 +148,21 @@ export function ModuleFormDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="module-target">{t("modules.form.target")}</Label>
-            <Input
+            <DateField
               id="module-target"
-              type="date"
+              label={t("modules.form.target")}
+              placeholder={t("customFields:value.notSet")}
+              clearLabel={t("customFields:value.clear")}
               value={targetDate}
-              onChange={(event) => setTargetDate(event.target.value)}
+              onChange={setTargetDate}
+              disabled={save.isPending}
+              dateEntry={{
+                label: t("common.dateEntry", {
+                  label: t("modules.form.target"),
+                }),
+                invalidLabel: t("common.invalidDate"),
+                saveLabel: t("common.save"),
+              }}
             />
           </div>
           {problem ? (
