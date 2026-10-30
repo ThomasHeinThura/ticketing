@@ -1,0 +1,5025 @@
+{
+	"generated": "2026-10-30T03:39:59.542Z",
+	"issue": 977,
+	"scope": "Existing label color buttons retain their names and visual styling, gain explicit selected-state semantics and Kaneo ActionTooltip; canceled drafts only.",
+	"source": {
+		"candidate": "ca1695237517f6f5334c941e0f100d30086db1e4",
+		"runtime": "283867012e0af4cd5fa6664f6fd16d9ef30e1022",
+		"byteMatchedFile": "apps/web/src/components/settings/label-catalogue.tsx"
+	},
+	"before": {
+		"runtime": "e3564bb5237f21a730fa7041e94ec7997cfc9f60",
+		"summary": {
+			"listCases": 12,
+			"dialogCases": 14,
+			"actualRoles": ["owner", "admin", "member"],
+			"actualThemes": ["dark", "light"],
+			"allNineSwatchesNamedByTitle": true,
+			"allSwatchesLackSelectedSemantics": true,
+			"localCreateSelectionShiftCases": 10,
+			"dialogSeriousCriticalAxeTotal": 0,
+			"documentOverflowCases": 0,
+			"rate429": 0,
+			"nonGetRequests": 0,
+			"errors": 0,
+			"privacy": "Public-named screenshots masked visible input contents, avatar fallback, and persisted label row names at Playwright capture; dialog background is blurred by UI.",
+			"limits": [
+				"Existing Edit fixtures observed in owner project and member workspace only.",
+				"Member project had no Create/Edit control; fixture or role denial cannot be distinguished from this view alone.",
+				"Sort direction control was not browser-checked in this bounded label sweep.",
+				"No persisted label mutation was tested."
+			],
+			"containersStarted": "none"
+		},
+		"lists": [
+			{
+				"role": "owner",
+				"scope": "workspace",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-owner-workspace-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-owner-project-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "owner",
+				"scope": "workspace",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-owner-workspace-list-1440-light.png",
+				"overflow": false
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-owner-project-list-1440-light.png",
+				"overflow": false
+			},
+			{
+				"role": "admin",
+				"scope": "workspace",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-admin-workspace-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "admin",
+				"scope": "project",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-admin-project-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "admin",
+				"scope": "workspace",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-admin-workspace-list-1440-light.png",
+				"overflow": false
+			},
+			{
+				"role": "admin",
+				"scope": "project",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-admin-project-list-1440-light.png",
+				"overflow": false
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-member-workspace-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "member",
+				"scope": "project",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-member-project-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-member-workspace-list-1440-light.png",
+				"overflow": false
+			},
+			{
+				"role": "member",
+				"scope": "project",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-member-project-list-1440-light.png",
+				"overflow": false
+			}
+		],
+		"dialogs": [
+			{
+				"role": "owner",
+				"scope": "workspace",
+				"action": "create",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-owner-workspace-create-390-dark.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 22.399999618530273,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": null,
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"action": "create",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-owner-project-create-390-dark.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 22.399999618530273,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": null,
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"action": "edit",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-owner-project-edit-390-dark.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 182.39999389648438,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Forest"],
+				"dialogAxe": [],
+				"overflow": false
+			},
+			{
+				"role": "owner",
+				"scope": "workspace",
+				"action": "create",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-owner-workspace-create-1440-light.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 519.4000244140625,
+							"y": 481.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.199981689453125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": null,
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"action": "create",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-owner-project-create-1440-light.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 519.4000244140625,
+							"y": 394.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.20001220703125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": null,
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"action": "edit",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-owner-project-edit-1440-light.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 521,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 679.4000244140625,
+							"y": 379.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.20001220703125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Forest"],
+				"dialogAxe": [],
+				"overflow": false
+			},
+			{
+				"role": "admin",
+				"scope": "workspace",
+				"action": "create",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-admin-workspace-create-390-dark.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 22.399999618530273,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": null,
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "admin",
+				"scope": "project",
+				"action": "create",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-admin-project-create-390-dark.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 22.399999618530273,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": null,
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "admin",
+				"scope": "workspace",
+				"action": "create",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-admin-workspace-create-1440-light.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 519.4000244140625,
+							"y": 481.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.199981689453125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": null,
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "admin",
+				"scope": "project",
+				"action": "create",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-admin-project-create-1440-light.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 519.4000244140625,
+							"y": 394.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.20001220703125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": null,
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"action": "create",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-member-workspace-create-390-dark.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 22.399999618530273,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": null,
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"action": "edit",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-member-workspace-edit-390-dark.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 142.39999389648438,
+							"y": 789.4000244140625,
+							"width": 35.20001220703125,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Sage"],
+				"dialogAxe": [],
+				"overflow": false
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"action": "create",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-member-workspace-create-1440-light.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 519.4000244140625,
+							"y": 481.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.199981689453125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": null,
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"action": "edit",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-before-member-workspace-edit-1440-light.png",
+				"swatches": [
+					{
+						"title": "Stone",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 521,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Slate",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Lavender",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Sage",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 639.4000244140625,
+							"y": 466.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.20001220703125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Forest",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Amber",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Terracotta",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Rose",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": "Crimson",
+						"ariaLabel": null,
+						"ariaPressed": null,
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Sage"],
+				"dialogAxe": [],
+				"overflow": false
+			}
+		],
+		"screenshots": [
+			"docs/report/screens/20261030-label-colors-before-admin-project-create-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-admin-project-create-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-admin-project-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-admin-project-list-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-admin-workspace-create-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-admin-workspace-create-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-admin-workspace-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-admin-workspace-list-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-member-project-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-member-project-list-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-member-workspace-create-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-member-workspace-create-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-member-workspace-edit-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-member-workspace-edit-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-member-workspace-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-member-workspace-list-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-owner-project-create-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-owner-project-create-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-owner-project-edit-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-owner-project-edit-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-owner-project-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-owner-project-list-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-owner-workspace-create-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-owner-workspace-create-390-dark.png",
+			"docs/report/screens/20261030-label-colors-before-owner-workspace-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-before-owner-workspace-list-390-dark.png"
+		]
+	},
+	"after": {
+		"runtime": "283867012e0af4cd5fa6664f6fd16d9ef30e1022",
+		"summary": {
+			"listCases": 12,
+			"dialogCases": 14,
+			"actualRoles": ["owner", "admin", "member"],
+			"actualThemes": ["dark", "light"],
+			"allNineNamed": true,
+			"noNativeTitle": true,
+			"onePressedAndVisualMatches": true,
+			"createLocalStoneToLavenderCases": 10,
+			"dialogSeriousCriticalAxe": 0,
+			"pageOverflowCases": 0,
+			"tooltipAndKeyboardCases": 3,
+			"tooltipHoverFocusAndRestored": true,
+			"nestedEscapeCountForCreate": [2, 2],
+			"rate429": 0,
+			"nonGetRequests": 0,
+			"errors": 0,
+			"limits": [
+				"Owner project and member workspace have existing Edit fixtures; admin workspaces/projects have none in observed fixture.",
+				"Only local draft selection, Cancel and Escape were tested; no final Save/Create/Delete or persistence claim.",
+				"Public screenshots mask inputs, avatar fallback and persisted label names at capture."
+			],
+			"containersStarted": "none"
+		},
+		"lists": [
+			{
+				"role": "owner",
+				"scope": "workspace",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-owner-workspace-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-owner-project-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "owner",
+				"scope": "workspace",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-owner-workspace-list-1440-light.png",
+				"overflow": false
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-owner-project-list-1440-light.png",
+				"overflow": false
+			},
+			{
+				"role": "admin",
+				"scope": "workspace",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-admin-workspace-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "admin",
+				"scope": "project",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-admin-project-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "admin",
+				"scope": "workspace",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-admin-workspace-list-1440-light.png",
+				"overflow": false
+			},
+			{
+				"role": "admin",
+				"scope": "project",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-admin-project-list-1440-light.png",
+				"overflow": false
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-member-workspace-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "member",
+				"scope": "project",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-member-project-list-390-dark.png",
+				"overflow": false
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-member-workspace-list-1440-light.png",
+				"overflow": false
+			},
+			{
+				"role": "member",
+				"scope": "project",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-member-project-list-1440-light.png",
+				"overflow": false
+			}
+		],
+		"dialogs": [
+			{
+				"role": "owner",
+				"scope": "workspace",
+				"action": "create",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-owner-workspace-create-390-dark.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 22.399999618530273,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": "true",
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"action": "create",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-owner-project-create-390-dark.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 22.399999618530273,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": "true",
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"action": "edit",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-owner-project-edit-390-dark.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 182.39999389648438,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Forest"],
+				"dialogAxe": [],
+				"overflow": false
+			},
+			{
+				"role": "owner",
+				"scope": "workspace",
+				"action": "create",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-owner-workspace-create-1440-light.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 519.4000244140625,
+							"y": 481.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.199981689453125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": "true",
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"action": "create",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-owner-project-create-1440-light.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 519.4000244140625,
+							"y": 394.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.20001220703125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": "true",
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "owner",
+				"scope": "project",
+				"action": "edit",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-owner-project-edit-1440-light.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 521,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 679.4000244140625,
+							"y": 379.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.20001220703125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 381.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Forest"],
+				"dialogAxe": [],
+				"overflow": false
+			},
+			{
+				"role": "admin",
+				"scope": "workspace",
+				"action": "create",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-admin-workspace-create-390-dark.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 22.399999618530273,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": "true",
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "admin",
+				"scope": "project",
+				"action": "create",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-admin-project-create-390-dark.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 22.399999618530273,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": "true",
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "admin",
+				"scope": "workspace",
+				"action": "create",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-admin-workspace-create-1440-light.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 519.4000244140625,
+							"y": 481.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.199981689453125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": "true",
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "admin",
+				"scope": "project",
+				"action": "create",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-admin-project-create-1440-light.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 519.4000244140625,
+							"y": 394.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.20001220703125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 396.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": "true",
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"action": "create",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-member-workspace-create-390-dark.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 22.399999618530273,
+							"y": 789.4000244140625,
+							"width": 35.19999694824219,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 144,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": "true",
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"action": "edit",
+				"width": 390,
+				"theme": "dark",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-member-workspace-edit-390-dark.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 64,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 104,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 142.39999389648438,
+							"y": 789.4000244140625,
+							"width": 35.20001220703125,
+							"height": 35.199951171875,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 184,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 224,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 264,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 304,
+							"y": 791,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 24,
+							"y": 831,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Sage"],
+				"dialogAxe": [],
+				"overflow": false
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"action": "create",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-member-workspace-create-1440-light.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 519.4000244140625,
+							"y": 481.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.199981689453125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 641,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 483.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Stone"],
+				"dialogAxe": [],
+				"overflow": false,
+				"afterLocalColorClick": {
+					"selectedByStyle": ["Lavender"],
+					"selectedSemantics": "true",
+					"outerDialogVisible": true
+				}
+			},
+			{
+				"role": "member",
+				"scope": "workspace",
+				"action": "edit",
+				"width": 1440,
+				"theme": "light",
+				"screenshot": "docs/report/screens/20261030-label-colors-after-member-workspace-edit-1440-light.png",
+				"swatches": [
+					{
+						"title": null,
+						"ariaLabel": "Stone",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 521,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Slate",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 561,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Lavender",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 601,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Sage",
+						"ariaPressed": "true",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": true,
+						"box": {
+							"x": 639.4000244140625,
+							"y": 466.6499938964844,
+							"width": 35.199951171875,
+							"height": 35.20001220703125,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Forest",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 681,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Amber",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 721,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Terracotta",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 761,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Rose",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 801,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					},
+					{
+						"title": null,
+						"ariaLabel": "Crimson",
+						"ariaPressed": "false",
+						"ariaChecked": null,
+						"ariaSelected": null,
+						"selectedStyle": false,
+						"box": {
+							"x": 841,
+							"y": 468.25,
+							"width": 32,
+							"height": 32,
+							"insideViewport": true
+						}
+					}
+				],
+				"names": {
+					"Stone": 1,
+					"Slate": 1,
+					"Lavender": 1,
+					"Sage": 1,
+					"Forest": 1,
+					"Amber": 1,
+					"Terracotta": 1,
+					"Rose": 1,
+					"Crimson": 1
+				},
+				"selectedByStyle": ["Sage"],
+				"dialogAxe": [],
+				"overflow": false
+			}
+		],
+		"screenshots": [
+			"docs/report/screens/20261030-label-colors-after-admin-project-create-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-admin-project-create-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-admin-project-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-admin-project-list-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-admin-workspace-create-1440-light-focus.png",
+			"docs/report/screens/20261030-label-colors-after-admin-workspace-create-1440-light-hover.png",
+			"docs/report/screens/20261030-label-colors-after-admin-workspace-create-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-admin-workspace-create-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-admin-workspace-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-admin-workspace-list-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-member-project-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-member-project-list-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-member-workspace-create-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-member-workspace-create-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-member-workspace-edit-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-member-workspace-edit-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-member-workspace-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-member-workspace-list-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-owner-project-create-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-owner-project-create-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-owner-project-edit-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-owner-project-edit-390-dark-focus.png",
+			"docs/report/screens/20261030-label-colors-after-owner-project-edit-390-dark-hover.png",
+			"docs/report/screens/20261030-label-colors-after-owner-project-edit-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-owner-project-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-owner-project-list-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-owner-workspace-create-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-owner-workspace-create-390-dark-focus.png",
+			"docs/report/screens/20261030-label-colors-after-owner-workspace-create-390-dark-hover.png",
+			"docs/report/screens/20261030-label-colors-after-owner-workspace-create-390-dark.png",
+			"docs/report/screens/20261030-label-colors-after-owner-workspace-list-1440-light.png",
+			"docs/report/screens/20261030-label-colors-after-owner-workspace-list-390-dark.png"
+		]
+	},
+	"local": {
+		"measuredHead": "69f75558ff9fb6e97c46e1fcb4e7c60d750c0f72",
+		"prePlanningMainIntegration": false,
+		"unitTests": 7282,
+		"typecheckTasks": 9,
+		"focusedTests": 4,
+		"permissions": 118,
+		"contrastCriteria": 401,
+		"contrastManifestUnchanged": true,
+		"checks": [
+			{
+				"command": "pnpm test",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm typecheck",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm lint:ci",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:ui:raw-elements",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:i18n",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm test:permissions",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:route-policy",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm test:contract",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:tokens",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:bundle-size",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:bundle-purity",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:visual-scope",
+				"exitCode": 0
+			}
+		],
+		"lintDiagnosis": "Regenerator had left formatting-only JSON, identical data to HEAD. Canonical formatter restored clean manifest; no product patch. Original failed log retained.",
+		"pinnedG8": {
+			"scope": "Combined source283; work list/board, Calendar list/editor, workspace/project labels",
+			"passed": 6,
+			"baselineChanges": 0,
+			"image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+			"platform": "linux/amd64"
+		},
+		"contractRecovery": "Initial checksum-pinned upstream checker download hit60000ms timeout. Exact unchanged gate later passed after network recovery; original failure retained."
+	},
+	"review": {
+		"independent": "Terra",
+		"sourceAndFinal": true,
+		"high": 0,
+		"medium": 0,
+		"findings": 0
+	},
+	"limits": [
+		"Names existed through title before; this fixes missing selected-state semantics and library tooltip consistency, not a nameless/axe failure.",
+		"Only canceled local Create/Edit draft selection, keyboard and tooltip evidence; no persisted Create/Save/Delete.",
+		"No full role/width/theme or requirement acceptance; pending merged-main local checks and hosted full CI.",
+		"Create tooltip then dialog may require two Escapes, as recorded.",
+		"Public screenshots mask record/identity/input values at capture; those masked values are not visually verified."
+	],
+	"containers": {
+		"activeOwnedSit": "b11e2dc343c191a9a9214e177bd19c67d071954e3df82fcea93508f82a17fde4",
+		"temporaryPinnedRunnersRemoved": true,
+		"originalRollbackPreserved": true,
+		"startedForBrowser": "none"
+	},
+	"priorLocal": {
+		"measuredHead": "273db332511643552575d725af2b96bd1065f7a7",
+		"prePlanningMainIntegration": true,
+		"unitTests": 7274,
+		"typecheckTasks": 9,
+		"focusedTests": 4,
+		"permissions": 118,
+		"contrastCriteria": 401,
+		"contrastManifestUnchanged": true,
+		"checks": [
+			{
+				"command": "pnpm lint:ci",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:ui:raw-elements",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:i18n",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm test:permissions",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:route-policy",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm test:contract",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:tokens",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:bundle-size",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:bundle-purity",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:visual-scope",
+				"exitCode": 0
+			}
+		],
+		"lintDiagnosis": "Regenerator had left formatting-only JSON, identical data to HEAD. Canonical formatter restored clean manifest; no product patch. Original failed log retained.",
+		"pinnedG8": {
+			"scope": "Combined source283; work list/board, Calendar list/editor, workspace/project labels",
+			"passed": 6,
+			"baselineChanges": 0,
+			"image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+			"platform": "linux/amd64"
+		}
+	}
+}

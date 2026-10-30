@@ -1,0 +1,111 @@
+{
+	"date": "2026-10-30",
+	"issue": 986,
+	"status": "Draft for hosted verification; local contract tool download blocked",
+	"source": {
+		"locallyVerifiedHead": "fa9f0fe9f4e5abdc675105af57f9b9b96f2c5054",
+		"independentReviewedCommit": "3c5099cefcf60ab226d41653a8c77ac944d5553f",
+		"main": "2959ef906f6986da6eed966a6e172f38aae99813",
+		"productionFilesChanged": 0
+	},
+	"problem": {
+		"hostedRequiredJob": "https://github.com/ThomasHeinThura/ticketing/actions/runs/41000763004/job/123884359739",
+		"oldPassed": 117,
+		"total": 118,
+		"deadlineMs": 5000,
+		"observedMs": 5008,
+		"policyAssertionMismatch": false,
+		"hostedSlowSubphaseUnknown": true
+	},
+	"change": {
+		"realAppAndRegistrySequential": true,
+		"describeScopedBeforeAll": true,
+		"assertionTailBytes": 6153,
+		"assertionSha256": "b2ba761c70e7c0031fe0b47e84a2e8955fb643788e64ea9542457bdc8333aef9",
+		"assertionBytesIdentical": true,
+		"explicitTimeoutAdded": false,
+		"retriesAdded": 0,
+		"skipsAdded": 0,
+		"workflowsChanged": false,
+		"policyOrPermissionSemanticsChanged": false
+	},
+	"measurement": {
+		"localOnly": true,
+		"coldApiImportMs": 2114.675167,
+		"createAppMs": 2.052625,
+		"temporaryInstrumentationRestored": true
+	},
+	"local": {
+		"unitTests": 7281,
+		"typecheckTasks": 9,
+		"permissionTests": 118,
+		"routePolicyTests": 118,
+		"checks": [
+			{
+				"command": "pnpm test",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm typecheck",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm lint:ci",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm test:permissions",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:route-policy",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm test:contract",
+				"exitCode": 1
+			},
+			{
+				"command": "pnpm check:ui:raw-elements",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:i18n",
+				"exitCode": 0
+			},
+			{
+				"command": "pnpm check:visual-scope",
+				"exitCode": 0
+			}
+		],
+		"contractHistory": {
+			"attempts": 2,
+			"bothTimedOutDownloadingPinnedOasdiff": true,
+			"gateAndChecksumUnchanged": true,
+			"independentPublicDownloadProbe": {
+				"httpStatus": 200,
+				"receivedBytes": 1933294,
+				"expectedBytes": 13336632,
+				"deadlineSeconds": 30
+			}
+		},
+		"browser": "Not applicable to this test-only fixture correction; no product UI or persistence behavior changed"
+	},
+	"review": {
+		"independentSolHigh": true,
+		"openHigh": 0,
+		"openMedium": 0,
+		"sourceTestsBytesUnchangedSinceReview": true
+	},
+	"limits": [
+		"Hosted required checks still need to pass on the published current head.",
+		"The exact hosted import/createApp timing partition is unknown.",
+		"Local contract check remains failed due to pinned public-tool download timeout; no waiver or checker change."
+	],
+	"containers": {
+		"startedForThisFixture": [],
+		"activeOwnedSIT": "577890a99beb75c9677b2824f9ff0a2ff95f4d48a9347675d000d2e30b7867ef",
+		"supersededOwnedRemoved": "b11e2dc343c191a9a9214e177bd19c67d071954e3df82fcea93508f82a17fde4",
+		"originalRollbackStopped": "6c0d8bd2e4ff"
+	}
+}

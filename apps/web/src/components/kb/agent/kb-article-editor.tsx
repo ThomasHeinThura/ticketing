@@ -35,6 +35,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
+import { DateField } from "@/components/common/date-field";
 import PageTitle from "@/components/page-title";
 import {
   type KbArticle,
@@ -472,14 +473,23 @@ function Editor({
                 <Label htmlFor="kb-review-due">
                   {t("kb:fields.reviewDue")}
                 </Label>
-                <Input
+                <DateField
                   id="kb-review-due"
-                  type="date"
+                  label={t("kb:fields.reviewDue")}
+                  placeholder={t("customFields:value.notSet")}
+                  clearLabel={t("common:clearDate")}
                   value={draft.reviewDueAt}
-                  onChange={(event) =>
+                  dateEntry={{
+                    label: t("common:dateEntry", {
+                      label: t("kb:fields.reviewDue"),
+                    }),
+                    invalidLabel: t("common:invalidDate"),
+                    saveLabel: t("common:actions.save"),
+                  }}
+                  onChange={(value) =>
                     setDraft((old) => ({
                       ...old,
-                      reviewDueAt: event.target.value,
+                      reviewDueAt: value,
                     }))
                   }
                 />

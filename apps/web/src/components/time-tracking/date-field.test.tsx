@@ -5,12 +5,40 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { createInstance } from "i18next";
+import { I18nextProvider } from "react-i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DateField } from "./date-field";
 
 afterEach(cleanup);
 
 describe("calendar date field", () => {
+  it("uses its scoped locale and connects external validation to the trigger", async () => {
+    const instance = createInstance();
+    await instance.init({
+      lng: "fr-FR",
+      resources: { "fr-FR": { translation: {} } },
+    });
+    render(
+      <I18nextProvider i18n={instance}>
+        <DateField
+          id="review-date"
+          label="Review due"
+          value="2028-02-29"
+          onChange={vi.fn()}
+          aria-invalid
+          aria-describedby="review-error"
+        />
+        <p id="review-error">Choose a later review date.</p>
+      </I18nextProvider>,
+    );
+    const trigger = screen.getByRole("button", { name: "Review due" });
+    expect(trigger).toHaveTextContent("29 févr. 2028");
+    expect(trigger).toHaveAttribute("id", "review-date");
+    expect(trigger).toHaveAttribute("aria-invalid", "true");
+    expect(trigger).toHaveAccessibleDescription("Choose a later review date.");
+  });
+
   it("accepts a distant typed calendar date with Enter without submitting the outer form", async () => {
     const onChange = vi.fn();
     const onSubmit = vi.fn((event) => event.preventDefault());
