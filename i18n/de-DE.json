@@ -604,7 +604,7 @@
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
 			"reportExportTitle": "Report exports",
-			"reminderLeadTimeUnitLabel": "Reminder time unit"
+			"reminderLeadTimeUnitLabel": "Zeiteinheit der Erinnerung"
 		},
 		"preferencesPage": {
 			"title": "Einstellungen",
@@ -4687,7 +4687,7 @@
 			"stableKeyHelp": "Used to match this setting when moving a project between workspaces. Keep it unchanged after creation.",
 			"stableKeyReadOnlyLabel": "Stable key (read only)",
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.",
-			"timezoneSuggestions": "Timezone suggestions"
+			"timezoneSuggestions": "Zeitzonenvorschläge"
 		},
 		"editor": {
 			"allCalendars": "All calendars",
@@ -4747,9 +4747,9 @@
 			"removeHoliday": "Remove holiday {{count}}",
 			"through": "Through",
 			"title": "Holidays",
-			"invalid": "Choose a valid date for every holiday. Date ranges must end on or after they start.",
+			"invalid": "Wähle für jeden Feiertag ein gültiges Datum. Zeiträume müssen am oder nach ihrem Beginn enden.",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid calendar date in YYYY-MM-DD format."
+			"invalidDate": "Gib ein gültiges Kalenderdatum im Format YYYY-MM-DD ein."
 		},
 		"list": {
 			"create": "Create calendar",
@@ -5807,9 +5807,9 @@
 			"optional": "optional",
 			"requiredHint": "Required before this item can start or finish",
 			"yes": "Yes",
-			"hour": "Hour",
+			"hour": "Stunde",
 			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
+			"invalidLocalTime": "Diese Uhrzeit wird bei der Zeitumstellung übersprungen. Wähle eine andere Uhrzeit."
 		}
 	},
 	"teams": {
@@ -6512,7 +6512,7 @@
 			"save": "Save",
 			"close": "Close",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid date as YYYY-MM-DD."
+			"invalidDate": "Gib ein gültiges Datum im Format YYYY-MM-DD ein."
 		},
 		"complete": {
 			"action": "Complete {{term_cycle_one}}",
@@ -8097,7 +8097,7 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "Actions for {{title}}"
+			"widgetActions": "Aktionen für {{title}}"
 		},
 		"empty": {
 			"excluded_one": "{{count}} item was left out: {{reason}}.",
@@ -8166,8 +8166,8 @@
 			"to": "To",
 			"type": "Type",
 			"window": "Window",
-			"datePlaceholder": "Not set",
-			"clearDate": "Clear date"
+			"datePlaceholder": "Nicht festgelegt",
+			"clearDate": "Datum löschen"
 		},
 		"index": {
 			"categories": "Report categories",

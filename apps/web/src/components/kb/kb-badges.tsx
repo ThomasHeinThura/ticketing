@@ -28,6 +28,18 @@ export function KbVisibilityBadge({
   );
 }
 
+/**
+ * Review due dates are calendar dates stored as UTC midnight, so they are formatted in UTC;
+ * formatting them locally shows the previous day west of UTC.
+ */
+export function formatKbDueDate(value: string | null) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
 export function formatKbDate(value: string | null) {
   if (!value) return "";
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(

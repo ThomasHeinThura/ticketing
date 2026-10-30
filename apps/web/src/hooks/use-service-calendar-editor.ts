@@ -155,6 +155,13 @@ export function useServiceCalendarEditor({
     setHolidayIds(calendar.holidays.map(() => createFieldId()));
   }, [calendar, form, loading]);
 
+  // A shown holiday error follows the edits: it clears once every holiday is valid again
+  // instead of staying until the next save attempt.
+  useEffect(() => {
+    if (holidayError && holidays.every(isValidCalendarHoliday))
+      setHolidayError("");
+  }, [holidays, holidayError]);
+
   function validHolidays() {
     const valid = holidays.every(isValidCalendarHoliday);
     setHolidayError(valid ? "" : t("holidays.invalid"));
