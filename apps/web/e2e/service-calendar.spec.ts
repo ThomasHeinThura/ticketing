@@ -14,6 +14,37 @@ const workspaceId = "workspace-calendar-e2e";
 const calendarId = "calendar-e2e-1";
 const loadingCalendarId = "calendar-e2e-loading";
 
+async function chooseWindowTime(page: Page, label: string, value: string) {
+  const trigger = page.getByRole("button", { name: label, exact: true });
+  await trigger.click();
+  const picker = page.getByRole("dialog", { name: label, exact: true });
+  const [hour, minute] = value.split(":");
+  for (const [name, next] of [
+    ["Hour", hour],
+    ["Minute", minute],
+  ]) {
+    const select = picker.getByRole("combobox", { name });
+    await select.click();
+    await expect(select).toHaveAttribute("aria-expanded", "true");
+    const listbox = page.getByRole("listbox", { name, exact: true });
+    const option = listbox.getByRole("option", { name: next, exact: true });
+    await option.scrollIntoViewIfNeeded();
+    await option.click();
+  }
+  await picker.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(trigger).toHaveText(value);
+}
+
+async function chooseHolidayDate(page: Page, index: number, date: string) {
+  await page.locator(`#holiday-${index}-date`).click();
+  const picker = page.getByRole("dialog", { name: "Date", exact: true });
+  await picker
+    .getByRole("textbox", { name: "Date (YYYY-MM-DD)", exact: true })
+    .fill(date);
+  await picker.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(picker).toBeHidden();
+}
+
 type CalendarFixture = {
   id: string;
   workspaceId: string;
@@ -667,7 +698,7 @@ test("calendar list and editor preserve URL state and confirm manual changes", a
     },
   );
   await page.mouse.up();
-  await expect(page.getByLabel("Monday window 1 start")).not.toHaveValue(
+  await expect(page.getByLabel("Monday window 1 start")).not.toHaveText(
     "09:00",
   );
 
@@ -676,9 +707,15 @@ test("calendar list and editor preserve URL state and confirm manual changes", a
   await page
     .getByLabel("IANA timezone", { exact: true })
     .fill("America/New_York");
-  await page.getByLabel("Monday window 1 start").fill("10:00");
+  await page
+    .getByRole("combobox", { name: "IANA timezone", exact: true })
+    .press("Escape");
+  await expect(
+    page.getByRole("combobox", { name: "IANA timezone", exact: true }),
+  ).toHaveValue("America/New_York");
+  await chooseWindowTime(page, "Monday window 1 start", "10:00");
   await page.getByRole("button", { name: "Add holiday" }).click();
-  await page.getByLabel("Date").nth(1).fill("2026-12-26");
+  await chooseHolidayDate(page, 1, "2026-12-26");
   await page.getByRole("button", { name: "Save changes" }).click();
   const timezoneDialog = page.getByRole("alertdialog", {
     name: "Confirm calendar timezone change",
@@ -701,6 +738,7 @@ test("calendar list and editor preserve URL state and confirm manual changes", a
   expect(fixture.patchPayload?.timezone).toBe("America/New_York");
   expect(fixture.patchPayload?.windows.mon[0]?.from).toBe(600);
   expect(fixture.patchPayload?.holidays).toHaveLength(2);
+  expect(fixture.patchPayload?.holidays[1]?.date).toBe("2026-12-26");
   await page.screenshot({
     path: testInfo.outputPath("calendar-editor-mobile.png"),
   });
@@ -719,9 +757,15 @@ test("calendar creation supports keyboard input and read-only access", async ({
   await page
     .getByLabel("IANA timezone", { exact: true })
     .fill("America/New_York");
+  await page
+    .getByRole("combobox", { name: "IANA timezone", exact: true })
+    .press("Escape");
+  await expect(
+    page.getByRole("combobox", { name: "IANA timezone", exact: true }),
+  ).toHaveValue("America/New_York");
   await page.getByRole("button", { name: "Add window on Monday" }).click();
-  await page.getByLabel("Monday window 1 start").fill("09:00");
-  await page.getByLabel("Monday window 1 end", { exact: true }).fill("17:00");
+  await chooseWindowTime(page, "Monday window 1 start", "09:00");
+  await chooseWindowTime(page, "Monday window 1 end", "17:00");
   await page.getByRole("button", { name: "Create calendar" }).click();
   await expect(page).toHaveURL(/calendar-created-e2e/);
   await expect(
@@ -731,13 +775,40 @@ test("calendar creation supports keyboard input and read-only access", async ({
   expect(fixture.createPayload?.key).toBe("new-regional-cover");
   expect(fixture.createPayload?.windows.mon).toEqual([{ from: 540, to: 1020 }]);
 
-  // G10: edit weekly cover with keyboard input and leave the control by Tab.
-  const keyboardStartTime = page.getByLabel("Monday window 1 start");
+  // G10: edit weekly cover through the library picker using keyboard input.
+  const keyboardStartTime = page.getByRole("button", {
+    name: "Monday window 1 start",
+    exact: true,
+  });
   await keyboardStartTime.focus();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.type("10:00");
+  await page.keyboard.press("Enter");
+  const timePicker = page.getByRole("dialog", {
+    name: "Monday window 1 start",
+    exact: true,
+  });
+  const hour = timePicker.getByRole("combobox", { name: "Hour" });
+  await expect(hour).toBeFocused();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Home");
+  for (let i = 0; i < 10; i++) await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(hour).toHaveText("10");
+  await expect(hour).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(keyboardStartTime).toHaveValue("10:00");
+  await expect(
+    timePicker.getByRole("combobox", { name: "Minute" }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    timePicker.getByRole("button", { name: "Cancel", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    timePicker.getByRole("button", { name: "Save", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(keyboardStartTime).toHaveText("10:00");
+  await expect(keyboardStartTime).toBeFocused();
 
   fixture.canManageServiceCalendars = false;
   await page.goto("/agent/settings/calendars");
@@ -750,6 +821,12 @@ test("calendar creation supports keyboard input and read-only access", async ({
     page.getByRole("button", { name: "Save changes" }),
   ).toBeDisabled();
   await expect(page.getByLabel("Name", { exact: true })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Monday window 1 start", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("combobox", { name: "IANA timezone", exact: true }),
+  ).toBeDisabled();
   await page.goto("/agent/settings/calendars/new");
   await expect(
     page.getByRole("button", { name: "Create calendar" }),

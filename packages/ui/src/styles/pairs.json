@@ -907,6 +907,21 @@
 				"chain": [
 					"packages/ui/src/components/autocomplete.tsx:AutocompleteItem",
 					"jsx:AutocompletePrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
+					"jsx:Card[0]/CardContent[0]/div[2]/Autocomplete[0]/AutocompletePopup[0]/AutocompleteList[0]/AutocompleteItem[0]",
+					"component-slot:packages/ui/src/components/autocomplete.tsx:AutocompletePopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/autocomplete.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/autocomplete.tsx:AutocompleteItem",
+					"jsx:AutocompletePrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/work-item/work-item-approval-request.tsx:ApprovalRequestForm",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -2164,6 +2179,21 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/service-calendar/holiday-preset-panel.tsx:HolidayPresetPanel",
 					"jsx:section[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/service-calendar/time-field.tsx:TimeField",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -3420,6 +3450,21 @@
 				"chain": [
 					"packages/ui/src/components/autocomplete.tsx:AutocompleteItem",
 					"jsx:AutocompletePrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
+					"jsx:Card[0]/CardContent[0]/div[2]/Autocomplete[0]/AutocompletePopup[0]/AutocompleteList[0]/AutocompleteItem[0]",
+					"component-slot:packages/ui/src/components/autocomplete.tsx:AutocompletePopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/autocomplete.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/autocomplete.tsx:AutocompleteItem",
+					"jsx:AutocompletePrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/work-item/work-item-approval-request.tsx:ApprovalRequestForm",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -4677,6 +4722,21 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/service-calendar/holiday-preset-panel.tsx:HolidayPresetPanel",
 					"jsx:section[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/service-calendar/time-field.tsx:TimeField",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -11145,6 +11205,7 @@
 			"apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[1]/p[0]::text-destructive#0",
 			"apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[2]/p[0]::text-destructive#0",
 			"apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-destructive#0",
+			"apps/web/src/components/service-calendar/holiday-list-card.tsx::HolidayListCard::Card[0]/CardContent[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]/div[0]/Button[0]::hover:text-destructive#1",
@@ -11342,6 +11403,18 @@
 				"id": "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/service-calendar/coverage-preview-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/service-calendar/holiday-list-card.tsx::HolidayListCard::Card[0]/CardContent[0]/p[0]::text-destructive#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-calendar/holiday-list-card.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -11763,6 +11836,7 @@
 			"apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[1]/p[0]::text-destructive#0",
 			"apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[2]/p[0]::text-destructive#0",
 			"apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-destructive#0",
+			"apps/web/src/components/service-calendar/holiday-list-card.tsx::HolidayListCard::Card[0]/CardContent[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]/div[0]/Button[0]::hover:text-destructive#1",
@@ -11960,6 +12034,18 @@
 				"id": "apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/service-calendar/coverage-preview-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-calendar/holiday-list-card.tsx:HolidayListCard",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/service-calendar/holiday-list-card.tsx::HolidayListCard::Card[0]/CardContent[0]/p[0]::text-destructive#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-calendar/holiday-list-card.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -12647,6 +12733,7 @@
 			"apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/task/task-relations.tsx::TaskRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/task/task-status-popover.tsx::TaskStatusPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]::text-destructive#0",
+			"apps/web/src/components/time-tracking/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/move-work-item-dialog.tsx::MoveWorkItemDialog::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/p[0]::text-destructive#0",
@@ -13011,6 +13098,18 @@
 				"id": "apps/web/src/components/task/task-status-popover.tsx::TaskStatusPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/task/task-status-popover.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/time-tracking/date-field.tsx:DateField",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/p[0]",
+					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/time-tracking/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/time-tracking/date-field.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -13252,6 +13351,7 @@
 			"apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/task/task-relations.tsx::TaskRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/task/task-status-popover.tsx::TaskStatusPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]::text-destructive#0",
+			"apps/web/src/components/time-tracking/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/move-work-item-dialog.tsx::MoveWorkItemDialog::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/work-item-activity.tsx::WorkItemActivity::section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/work-item/work-item-comment-composer.tsx::WorkItemCommentComposer::div[0]/p[0]::text-destructive#0",
@@ -13616,6 +13716,18 @@
 				"id": "apps/web/src/components/task/task-status-popover.tsx::TaskStatusPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/task/task-status-popover.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/time-tracking/date-field.tsx:DateField",
+					"jsx:Popover[0]/PopoverContent[0]/div[0]/p[0]",
+					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/time-tracking/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/time-tracking/date-field.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -18958,6 +19070,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/service-calendar/time-field.tsx:TimeField",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -21595,6 +21718,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/service-calendar/time-field.tsx:TimeField",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -22632,6 +22766,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
+			"packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/legend[0]::text-foreground#0",
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/ul[0]/li[0]/div[0]/label[0]::text-foreground#0",
 			"packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
@@ -23004,6 +23139,17 @@
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/autocomplete.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -23085,6 +23231,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
+			"packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/legend[0]::text-foreground#0",
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/ul[0]/li[0]/div[0]/label[0]::text-foreground#0",
 			"packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
@@ -23457,6 +23604,17 @@
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/autocomplete.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -41071,6 +41229,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/service-calendar/time-field.tsx:TimeField",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -52006,6 +52175,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/service-calendar/holiday-preset-panel.tsx:HolidayPresetPanel",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-calendar/time-field.tsx:TimeField",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -79302,6 +79482,7 @@
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/Icon[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCounts::dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ServiceReference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::WorkItemChangeSection::p[0]::text-muted-foreground#0",
@@ -81025,6 +81206,18 @@
 				"id": "apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCounts::dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-calendar/calendar-usage-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/service-calendar/time-field.tsx:TimeField",
+					"jsx:Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]",
+					"Button->packages/ui/src/components/button.tsx:Button>bg-popover"
+				],
+				"id": "apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-calendar/time-field.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -83222,6 +83415,18 @@
 					"apps/web/src/components/custom-field/custom-field-value-input.tsx:MultiChoice",
 					"jsx:Popover[0]/PopoverContent[0]/PickerSearchList[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
+				],
+				"id": "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/autocomplete.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
+					"jsx:Card[0]/CardContent[0]/div[2]/Autocomplete[0]/AutocompletePopup[0]/AutocompleteEmpty[0]",
+					"component-slot:packages/ui/src/components/autocomplete.tsx:AutocompletePopup.children"
 				],
 				"id": "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -84226,6 +84431,7 @@
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/Icon[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCounts::dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ServiceReference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::WorkItemChangeSection::p[0]::text-muted-foreground#0",
@@ -85949,6 +86155,18 @@
 				"id": "apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCounts::dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-calendar/calendar-usage-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/service-calendar/time-field.tsx:TimeField",
+					"jsx:Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]",
+					"Button->packages/ui/src/components/button.tsx:Button>bg-popover"
+				],
+				"id": "apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-calendar/time-field.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -88170,6 +88388,18 @@
 					"apps/web/src/components/custom-field/custom-field-value-input.tsx:MultiChoice",
 					"jsx:Popover[0]/PopoverContent[0]/PickerSearchList[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
+				],
+				"id": "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/autocomplete.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
+					"jsx:Card[0]/CardContent[0]/div[2]/Autocomplete[0]/AutocompletePopup[0]/AutocompleteEmpty[0]",
+					"component-slot:packages/ui/src/components/autocomplete.tsx:AutocompletePopup.children"
 				],
 				"id": "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",

@@ -21456,6 +21456,9 @@
 						},
 						"stableKeyInvalid": {
 							"type": "string"
+						},
+						"timezoneSuggestions": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -21471,7 +21474,8 @@
 						"stableKeyLabel",
 						"stableKeyHelp",
 						"stableKeyReadOnlyLabel",
-						"stableKeyInvalid"
+						"stableKeyInvalid",
+						"timezoneSuggestions"
 					]
 				},
 				"preview": {
@@ -21736,6 +21740,15 @@
 						},
 						"removeHoliday_other": {
 							"type": "string"
+						},
+						"invalid": {
+							"type": "string"
+						},
+						"dateEntry": {
+							"type": "string"
+						},
+						"invalidDate": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -21754,7 +21767,10 @@
 						"month",
 						"day",
 						"nameOptional",
-						"remove"
+						"remove",
+						"invalid",
+						"dateEntry",
+						"invalidDate"
 					]
 				},
 				"import": {
@@ -22716,6 +22732,15 @@
 						},
 						"yes": {
 							"type": "string"
+						},
+						"hour": {
+							"type": "string"
+						},
+						"minute": {
+							"type": "string"
+						},
+						"invalidLocalTime": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -22728,7 +22753,10 @@
 						"notSet",
 						"optional",
 						"requiredHint",
-						"yes"
+						"yes",
+						"hour",
+						"minute",
+						"invalidLocalTime"
 					]
 				}
 			},
@@ -33412,6 +33440,12 @@
 						},
 						"clear": {
 							"type": "string"
+						},
+						"datePlaceholder": {
+							"type": "string"
+						},
+						"clearDate": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -33429,7 +33463,9 @@
 						"allTeams",
 						"allTypes",
 						"allPriorities",
-						"clear"
+						"clear",
+						"datePlaceholder",
+						"clearDate"
 					]
 				},
 				"options": {
@@ -34233,6 +34269,9 @@
 								}
 							},
 							"required": ["outside", "overlap"]
+						},
+						"widgetActions": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -34264,7 +34303,8 @@
 						"remove",
 						"position",
 						"unsaved",
-						"refused"
+						"refused",
+						"widgetActions"
 					]
 				},
 				"series": {

@@ -30,6 +30,7 @@ export function WeeklyCoverCard({
   onChange,
   onAdd,
   onRemove,
+  disabled = false,
 }: {
   windows: CalendarWindowsForm;
   windowIds: Record<Weekday, string[]>;
@@ -42,6 +43,7 @@ export function WeeklyCoverCard({
   ) => void;
   onAdd: (day: Weekday) => void;
   onRemove: (day: Weekday, index: number) => void;
+  disabled?: boolean;
 }) {
   const { t } = useTranslation("serviceCalendars");
   const sensors = useSensors(
@@ -82,6 +84,7 @@ export function WeeklyCoverCard({
                       day={key}
                       index={index}
                       window={window}
+                      disabled={disabled}
                       onChange={(patch) => onChange(key, index, patch)}
                       onRemove={() => onRemove(key, index)}
                     />

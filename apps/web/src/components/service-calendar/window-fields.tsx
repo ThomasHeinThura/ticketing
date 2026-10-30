@@ -5,7 +5,8 @@ import { Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CalendarWindow, Weekday } from "@/fetchers/service-calendar";
-import { formatClockTime, parseClockTime } from "@/lib/service-calendar-form";
+import { formatClockTime } from "@/lib/service-calendar-form";
+import { TimeField } from "./time-field";
 
 const TIME_MARKERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
 
@@ -16,6 +17,7 @@ export function WindowFields({
   window,
   onChange,
   onRemove,
+  disabled = false,
 }: {
   id: string;
   day: Weekday;
@@ -23,6 +25,7 @@ export function WindowFields({
   window: CalendarWindow;
   onChange: (patch: Partial<CalendarWindow>) => void;
   onRemove: () => void;
+  disabled?: boolean;
 }) {
   const { t } = useTranslation("serviceCalendars");
   const weekdayLabel = t(`weekdays.${day}`);
@@ -33,7 +36,7 @@ export function WindowFields({
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id,
-      disabled: window.from >= window.to,
+      disabled: disabled || window.from >= window.to,
       data: {
         day,
         index,
@@ -79,6 +82,7 @@ export function WindowFields({
               ref={setNodeRef}
               type="button"
               variant="default"
+              disabled={disabled}
               size="sm"
               className={`absolute top-0.5 z-10 h-8 min-w-0 justify-start gap-1 overflow-hidden px-1.5 text-xs ${isDragging ? "opacity-70" : ""}`}
               style={{
@@ -102,17 +106,12 @@ export function WindowFields({
       </div>
       <div className="space-y-1.5">
         <Label htmlFor={`${day}-${index}-from`}>{t("window.starts")}</Label>
-        <Input
+        <TimeField
           id={`${day}-${index}-from`}
-          type="time"
-          step={60}
-          required
-          value={formatClockTime(window.from)}
-          onChange={(event) => {
-            const minutes = parseClockTime(event.target.value, false);
-            if (minutes !== null) onChange({ from: minutes });
-          }}
-          aria-label={t("window.startLabel", { label: timeLabel })}
+          value={window.from}
+          onChange={(from) => onChange({ from })}
+          disabled={disabled}
+          label={t("window.startLabel", { label: timeLabel })}
         />
       </div>
       <div className="space-y-1.5">
@@ -123,27 +122,24 @@ export function WindowFields({
             type="text"
             value="24:00"
             readOnly
+            disabled={disabled}
             aria-label={t("window.endLabel", { label: timeLabel })}
           />
         ) : (
-          <Input
+          <TimeField
             id={`${day}-${index}-to`}
-            type="time"
-            step={60}
-            required
-            value={formatClockTime(window.to)}
-            onChange={(event) => {
-              const minutes = parseClockTime(event.target.value, false);
-              if (minutes !== null) {
-                setLastEnd(minutes);
-                onChange({ to: minutes });
-              }
+            value={window.to}
+            onChange={(minutes) => {
+              setLastEnd(minutes);
+              onChange({ to: minutes });
             }}
-            aria-label={t("window.endLabel", { label: timeLabel })}
+            disabled={disabled}
+            label={t("window.endLabel", { label: timeLabel })}
           />
         )}
         <div className="flex min-h-8 items-center gap-2 text-xs text-muted-foreground">
           <Checkbox
+            disabled={disabled}
             checked={endAtDayBoundary}
             onCheckedChange={(checked) => {
               if (checked) {
@@ -168,6 +164,7 @@ export function WindowFields({
         variant="ghost"
         size="sm"
         onClick={onRemove}
+        disabled={disabled}
         aria-label={t("window.removeWindow", { label: timeLabel })}
       >
         <Trash2 aria-hidden="true" />

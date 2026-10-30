@@ -26,6 +26,7 @@ import {
   timezoneChangeNeedsConfirmation,
   WEEKDAYS,
 } from "@/lib/service-calendar-form";
+import { isValidCalendarHoliday } from "@/lib/service-calendar-holiday";
 import { toast } from "@/lib/toast";
 
 export type CalendarMetadata = {
@@ -89,6 +90,7 @@ export function useServiceCalendarEditor({
   });
   const [holidayIds, setHolidayIds] = useState<string[]>([]);
   const [windowError, setWindowError] = useState("");
+  const [holidayError, setHolidayError] = useState("");
   const [retroactiveImpact, setRetroactiveImpact] = useState(0);
   const [timezoneConfirmationOpen, setTimezoneConfirmationOpen] =
     useState(false);
@@ -153,6 +155,12 @@ export function useServiceCalendarEditor({
     setHolidayIds(calendar.holidays.map(() => createFieldId()));
   }, [calendar, form, loading]);
 
+  function validHolidays() {
+    const valid = holidays.every(isValidCalendarHoliday);
+    setHolidayError(valid ? "" : t("holidays.invalid"));
+    return valid;
+  }
+
   async function persist(values: CalendarMetadata) {
     if (!canManageServiceCalendars()) {
       toast.error(t("editor.readOnlyDescription"));
@@ -166,6 +174,7 @@ export function useServiceCalendarEditor({
       return;
     }
     setWindowError("");
+    if (!validHolidays()) return;
 
     const data = {
       name: values.name.trim(),
@@ -225,6 +234,7 @@ export function useServiceCalendarEditor({
       toast.error(t("editor.readOnlyDescription"));
       return;
     }
+    if (!validHolidays()) return;
     if (
       timezoneChangeNeedsConfirmation(
         isNew,
@@ -416,6 +426,7 @@ export function useServiceCalendarEditor({
     windowIds,
     holidayIds,
     windowError,
+    holidayError,
     retroactiveImpact,
     dismissRetroactiveImpact: () => setRetroactiveImpact(0),
     saving: createCalendar.isPending || updateCalendar.isPending,

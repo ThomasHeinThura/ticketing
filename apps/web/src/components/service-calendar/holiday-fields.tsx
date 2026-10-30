@@ -10,6 +10,7 @@ import {
 } from "@taskdesk/ui";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { DateField } from "@/components/time-tracking/date-field";
 import type { Holiday } from "@/fetchers/service-calendar";
 
 export function HolidayFields({
@@ -18,16 +19,23 @@ export function HolidayFields({
   onChange,
   onPatch,
   onRemove,
+  disabled = false,
 }: {
   holiday: Holiday;
   index: number;
   onChange: (holiday: Holiday) => void;
   onPatch: (patch: Partial<Holiday>) => void;
   onRemove: () => void;
+  disabled?: boolean;
 }) {
   const { t } = useTranslation("serviceCalendars");
   const kind =
     "date" in holiday ? "date" : "from" in holiday ? "range" : "annual";
+  const dateEntry = (label: string) => ({
+    label: t("holidays.dateEntry", { label }),
+    invalidLabel: t("holidays.invalidDate"),
+    saveLabel: t("common:actions.save"),
+  });
 
   return (
     <fieldset className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -41,6 +49,7 @@ export function HolidayFields({
           </Label>
           <Select
             value={kind}
+            disabled={disabled}
             onValueChange={(value) => {
               const name = holiday.name;
               if (value === "range") {
@@ -68,12 +77,14 @@ export function HolidayFields({
             <Label htmlFor={`holiday-${index}-date`}>
               {t("holidays.dateLabel")}
             </Label>
-            <Input
+            <DateField
               id={`holiday-${index}-date`}
-              type="date"
-              required
+              label={t("holidays.dateLabel")}
+              dateEntry={dateEntry(t("holidays.dateLabel"))}
+              placeholder={t("customFields:value.notSet")}
+              disabled={disabled}
               value={"date" in holiday ? holiday.date : ""}
-              onChange={(event) => onPatch({ date: event.target.value })}
+              onChange={(date) => onPatch({ date })}
             />
           </div>
         ) : kind === "range" && "from" in holiday ? (
@@ -82,24 +93,28 @@ export function HolidayFields({
               <Label htmlFor={`holiday-${index}-from`}>
                 {t("holidays.from")}
               </Label>
-              <Input
+              <DateField
                 id={`holiday-${index}-from`}
-                type="date"
-                required
+                label={t("holidays.from")}
+                dateEntry={dateEntry(t("holidays.from"))}
+                placeholder={t("customFields:value.notSet")}
+                disabled={disabled}
                 value={holiday.from}
-                onChange={(event) => onPatch({ from: event.target.value })}
+                onChange={(from) => onPatch({ from })}
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={`holiday-${index}-to`}>
                 {t("holidays.through")}
               </Label>
-              <Input
+              <DateField
                 id={`holiday-${index}-to`}
-                type="date"
-                required
+                label={t("holidays.through")}
+                dateEntry={dateEntry(t("holidays.through"))}
+                placeholder={t("customFields:value.notSet")}
+                disabled={disabled}
                 value={holiday.to}
-                onChange={(event) => onPatch({ to: event.target.value })}
+                onChange={(to) => onPatch({ to })}
               />
             </div>
           </>
