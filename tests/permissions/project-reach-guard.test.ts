@@ -1,5 +1,5 @@
 import { isCapabilityPolicy, normaliseRouteKey } from "@taskdesk/permissions";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { requireAssetProjectReach } from "../../apps/api/src/utils/authorize-asset-access";
 import {
   requireReachContext,
@@ -484,10 +484,17 @@ describe("project reach guard: the checker is not vacuous", () => {
 });
 
 describe("project reach guard: the real router", () => {
-  it("every project-scoped route resolves project reach and has a behavioural row", async () => {
-    const app = await loadApiApp();
-    const registry = await loadPolicyRegistry();
+  let app: Awaited<ReturnType<typeof loadApiApp>>;
+  let registry: Awaited<ReturnType<typeof loadPolicyRegistry>>;
 
+  // Loading the real API module graph constructs this suite's fixture. Keep it
+  // separate from the guard assertions, as in the other real-router suites.
+  beforeAll(async () => {
+    app = await loadApiApp();
+    registry = await loadPolicyRegistry();
+  });
+
+  it("every project-scoped route resolves project reach and has a behavioural row", () => {
     const handlersByKey = new Map<string, Handler[]>();
     for (const entry of app.routes) {
       let routeKey: string;
