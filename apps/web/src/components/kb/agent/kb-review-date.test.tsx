@@ -102,7 +102,7 @@ describe("KB review date library picker", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(trigger).toHaveTextContent("Feb 29, 2028");
     expect(mocks.update).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(mocks.update).toHaveBeenCalledExactlyOnceWith("qa-article", 7, {
         reviewDueAt: "2028-02-29T00:00:00.000Z",
@@ -121,16 +121,13 @@ describe("KB review date library picker", () => {
     expect(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Save",
-        exact: true,
       }),
     ).toBeDisabled();
     fireEvent.keyDown(entry, { key: "Enter", code: "Enter" });
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid date");
     fireEvent.keyDown(entry, { key: "Escape", code: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(
-      screen.getByRole("button", { name: "Save", exact: true }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     expect(mocks.update).not.toHaveBeenCalled();
   });
 

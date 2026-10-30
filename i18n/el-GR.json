@@ -208,7 +208,8 @@
 			"search": "Search options"
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
-		"invalidDate": "Εισαγάγετε μια έγκυρη ημερομηνία σε μορφή YYYY-MM-DD."
+		"invalidDate": "Εισαγάγετε μια έγκυρη ημερομηνία σε μορφή YYYY-MM-DD.",
+		"clearDate": "Εκκαθάριση ημερομηνίας"
 	},
 	"auth": {
 		"signIn": {

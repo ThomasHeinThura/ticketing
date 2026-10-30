@@ -8,7 +8,13 @@ import {
   PopoverTrigger,
 } from "@taskdesk/ui";
 import { CalendarDays } from "lucide-react";
-import { type AriaAttributes, useEffect, useId, useState } from "react";
+import {
+  type AriaAttributes,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
@@ -71,6 +77,10 @@ export function DateField({
 }) {
   const { i18n } = useTranslation();
   const locale = i18n?.resolvedLanguage || i18n?.language || "en-US";
+  const dateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
+    [locale],
+  );
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (disabled) setOpen(false);
@@ -116,11 +126,7 @@ export function DateField({
           className="w-full justify-start gap-2 font-normal tabular-nums"
         >
           <CalendarDays aria-hidden="true" />
-          {selected
-            ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-                selected,
-              )
-            : (placeholder ?? value)}
+          {selected ? dateFormatter.format(selected) : (placeholder ?? value)}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="p-0" align="start" aria-label={label}>

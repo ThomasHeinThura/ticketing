@@ -477,7 +477,7 @@ function Editor({
                   id="kb-review-due"
                   label={t("kb:fields.reviewDue")}
                   placeholder={t("customFields:value.notSet")}
-                  clearLabel={t("customFields:value.clear")}
+                  clearLabel={t("common:clearDate")}
                   value={draft.reviewDueAt}
                   dateEntry={{
                     label: t("common:dateEntry", {

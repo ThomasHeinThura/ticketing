@@ -208,7 +208,8 @@
 			"search": "Search options"
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
-		"invalidDate": "Inserisci una data valida nel formato YYYY-MM-DD."
+		"invalidDate": "Inserisci una data valida nel formato YYYY-MM-DD.",
+		"clearDate": "Cancella data"
 	},
 	"auth": {
 		"signIn": {

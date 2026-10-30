@@ -208,7 +208,8 @@
 			"search": "Search options"
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
-		"invalidDate": "Gib ein gültiges Datum im Format YYYY-MM-DD ein."
+		"invalidDate": "Gib ein gültiges Datum im Format YYYY-MM-DD ein.",
+		"clearDate": "Datum löschen"
 	},
 	"auth": {
 		"signIn": {

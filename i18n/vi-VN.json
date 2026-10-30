@@ -208,7 +208,8 @@
 			"search": "Search options"
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
-		"invalidDate": "Nhập ngày hợp lệ theo định dạng YYYY-MM-DD."
+		"invalidDate": "Nhập ngày hợp lệ theo định dạng YYYY-MM-DD.",
+		"clearDate": "Xóa ngày"
 	},
 	"auth": {
 		"signIn": {

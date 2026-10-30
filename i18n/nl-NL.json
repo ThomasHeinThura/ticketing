@@ -208,7 +208,8 @@
 			"search": "Search options"
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
-		"invalidDate": "Voer een geldige datum in als YYYY-MM-DD."
+		"invalidDate": "Voer een geldige datum in als YYYY-MM-DD.",
+		"clearDate": "Datum wissen"
 	},
 	"auth": {
 		"signIn": {

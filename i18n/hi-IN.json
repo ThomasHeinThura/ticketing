@@ -208,7 +208,8 @@
 			"search": "Search options"
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
-		"invalidDate": "YYYY-MM-DD प्रारूप में मान्य तारीख दर्ज करें।"
+		"invalidDate": "YYYY-MM-DD प्रारूप में मान्य तारीख दर्ज करें।",
+		"clearDate": "तारीख हटाएँ"
 	},
 	"auth": {
 		"signIn": {

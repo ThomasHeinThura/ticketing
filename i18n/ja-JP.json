@@ -208,7 +208,8 @@
 			"search": "Search options"
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
-		"invalidDate": "YYYY-MM-DD形式で有効な日付を入力してください。"
+		"invalidDate": "YYYY-MM-DD形式で有効な日付を入力してください。",
+		"clearDate": "日付をクリア"
 	},
 	"auth": {
 		"signIn": {

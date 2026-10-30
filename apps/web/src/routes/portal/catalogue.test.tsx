@@ -218,12 +218,10 @@ describe("portal catalogue route", () => {
       }),
     );
     expect(trigger).toHaveAttribute("aria-invalid", "false");
-    expect(trigger).not.toHaveAttribute("aria-describedby");
+    expect(trigger).toHaveAccessibleDescription("This field is required.");
     expect(screen.queryByRole("alert")).toBeNull();
     fireEvent.click(trigger);
-    fireEvent.click(
-      screen.getByRole("button", { name: "common:actions.remove" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "common:clearDate" }));
     fireEvent.submit(requestForm);
     expect(mocks.submit).not.toHaveBeenCalled();
     expect(trigger).toHaveAccessibleDescription("This field is required.");

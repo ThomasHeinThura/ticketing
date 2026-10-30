@@ -434,10 +434,12 @@ function PortalCatalogueContent() {
                     aria-describedby={
                       fieldErrors[field.key]
                         ? `request-field-error-${field.key}`
-                        : undefined
+                        : field.required
+                          ? `request-field-required-${field.key}`
+                          : undefined
                     }
                     placeholder={t("common:empty.select")}
-                    clearLabel={t("common:actions.remove")}
+                    clearLabel={t("common:clearDate")}
                     value={String(answers[field.key] ?? "")}
                     dateEntry={{
                       label: t("common:dateEntry", {
@@ -485,6 +487,16 @@ function PortalCatalogueContent() {
                     }}
                   />
                 )}
+                {field.type === "date" && field.required ? (
+                  <span
+                    className="sr-only"
+                    id={`request-field-required-${field.key}`}
+                  >
+                    {t("portal:intake.fieldRequired", {
+                      defaultValue: "This field is required.",
+                    })}
+                  </span>
+                ) : null}
                 {fieldErrors[field.key] && (
                   <p
                     className="text-destructive text-sm"

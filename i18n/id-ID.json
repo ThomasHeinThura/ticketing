@@ -208,7 +208,8 @@
 			"search": "Search options"
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
-		"invalidDate": "Masukkan tanggal yang valid dalam format YYYY-MM-DD."
+		"invalidDate": "Masukkan tanggal yang valid dalam format YYYY-MM-DD.",
+		"clearDate": "Hapus tanggal"
 	},
 	"auth": {
 		"signIn": {

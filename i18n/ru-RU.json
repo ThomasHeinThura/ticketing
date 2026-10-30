@@ -208,7 +208,8 @@
 			"search": "Search options"
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
-		"invalidDate": "Введите допустимую дату в формате YYYY-MM-DD."
+		"invalidDate": "Введите допустимую дату в формате YYYY-MM-DD.",
+		"clearDate": "Очистить дату"
 	},
 	"auth": {
 		"signIn": {

@@ -208,7 +208,8 @@
 			"search": "Search options"
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
-		"invalidDate": "YYYY-MM-DD biçiminde geçerli bir tarih girin."
+		"invalidDate": "YYYY-MM-DD biçiminde geçerli bir tarih girin.",
+		"clearDate": "Tarihi temizle"
 	},
 	"auth": {
 		"signIn": {
