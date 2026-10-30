@@ -6507,7 +6507,9 @@
 			"edit": "Edit",
 			"loading": "Loading",
 			"save": "Save",
-			"close": "Close"
+			"close": "Close",
+			"dateEntry": "{{label}} (YYYY-MM-DD)",
+			"invalidDate": "Enter a valid date as YYYY-MM-DD."
 		},
 		"complete": {
 			"action": "Complete {{term_cycle_one}}",

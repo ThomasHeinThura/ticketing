@@ -26732,9 +26732,24 @@
 						},
 						"close": {
 							"type": "string"
+						},
+						"dateEntry": {
+							"type": "string"
+						},
+						"invalidDate": {
+							"type": "string"
 						}
 					},
-					"required": ["cancel", "save", "edit", "delete", "loading", "close"]
+					"required": [
+						"cancel",
+						"save",
+						"edit",
+						"delete",
+						"loading",
+						"close",
+						"dateEntry",
+						"invalidDate"
+					]
 				},
 				"units": {
 					"type": "object",
