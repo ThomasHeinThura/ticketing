@@ -395,7 +395,8 @@ probe_api() {
   say "probing the API"
   local i
   for i in $(seq 1 30); do
-    if dc exec -T taskdesk wget -q -O- "http://127.0.0.1:${port}/api/public/health/ready" >/dev/null 2>&1; then
+    # The image ships no wget or curl; Node is the one HTTP client it has.
+    if dc exec -T taskdesk node -e "fetch('http://127.0.0.1:${port}/api/public/health/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))" >/dev/null 2>&1; then
       ok "the API answers /api/public/health/ready"
       return 0
     fi
@@ -426,8 +427,19 @@ print_setup_token() {
 seed_if_permitted() {
   [ "$MODE" = "local" ] || [ "$MODE" = "sit" ] || return 0
   say "seeding SIT accounts, catalogue and submissions inside the application container"
-  dc exec -T taskdesk node apps/api/dist/seed-sit-users.js --sit \
+  # The seed writes the generated passwords to a new private file; the container's only
+  # writable path is its /tmp tmpfs, so the file is copied out (0600, outside the checkout)
+  # and removed from the container.
+  local in_container="/tmp/sit-credentials-$$.json"
+  local credentials="$HOME/.taskdesk/sit-credentials.json"
+  dc exec -T taskdesk node apps/api/dist/seed-sit-users.js --sit --credentials-file "$in_container" \
     || die "SIT seeding failed. The stack is up; fix the error above and rerun scripts/deploy.sh."
+  mkdir -p "$(dirname "$credentials")"
+  chmod 700 "$(dirname "$credentials")"
+  (umask 077; dc exec -T taskdesk cat "$in_container" > "$credentials") \
+    || die "could not copy the SIT credentials out of the container"
+  dc exec -T taskdesk rm -f "$in_container" || true
+  ok "SIT account passwords are in $credentials (0600)"
 }
 
 print_urls() {

@@ -62,7 +62,7 @@ Performance budgets (G11/G13) and bundle budgets are gates; diagnose misses in t
 
 - **Local SIT:** one Docker Compose deployment using only `deploy/compose.testing.yml`. Agent `https://ticketing.localhost`, portal `https://portal.localhost`, both on 443. Build with `VITE_API_URL=''`; never run two web builds at once. Keep superseded deployments stopped and their data preserved.
 - **Release:** merging to `main` runs `release.yml`: multi-arch image, Trivy (blocks fixable HIGH/CRITICAL), SBOM, cosign signature, GHCR publish. Deploy only signed images by digest.
-- **Technexus public SIT** (`tickting.technexus.info`, `portal.technexus.info`) through the SSH proxy, only with Thomas's approval: back up database and files, record the running digest and counts, `scripts/deploy.sh upgrade` (verifies cosign), verify health/HTTPS/separate sessions/browser smoke on both hosts, keep `scripts/deploy.sh rollback <digest>` ready. Hosts, keys and credentials are never written to docs, logs or PRs.
+- **Technexus (SIT, and UAT from 6 Nov 2026)** — the agent and portal hosts — through the SSH proxy, only with Thomas's approval: back up database and files, record the running digest and counts, `scripts/deploy.sh upgrade` (verifies cosign), verify health/HTTPS/separate sessions/browser smoke on both hosts, keep `scripts/deploy.sh rollback <digest>` ready. Hosts, keys and credentials are never written to docs, logs or PRs.
 
 ## Git
 

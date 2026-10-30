@@ -19,7 +19,8 @@ Locally before opening the PR: run the affected targeted tests first, then the g
 
 ## Level 2 — every release (merge to `main`), before deploying
 
-1. **Release regression suite on local SIT** (to be built, backlog L-03a): persisted Playwright journeys against `https://ticketing.localhost` / `https://portal.localhost` with real API and database, covering every area per role. Seed specs live in `apps/web/e2e-sit/`.
+1. **Release smoke** — `pnpm sit:smoke` (read-only; signs in every account in `~/.taskdesk/sit-credentials.json`, checks the API and opens the main agent and portal screens in Chromium, failing on HTTP 5xx/429, page or console errors and error boundaries). Against Technexus: `NODE_EXTRA_CA_CERTS= pnpm sit:smoke -- --agent https://<agent host> --portal https://<portal host> --credentials <file>`.
+2. **Release regression suite on local SIT** (to be built, backlog L-03a): persisted Playwright journeys against `https://ticketing.localhost` / `https://portal.localhost` with real API and database, covering every area per role. Seed specs live in `apps/web/e2e-sit/`.
 
 | Area | Journeys |
 | --- | --- |

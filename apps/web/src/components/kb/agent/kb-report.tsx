@@ -18,7 +18,7 @@ import { updateKbSettings } from "@/fetchers/kb";
 import { kbKeys, useKbReport } from "@/hooks/queries/kb";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
-import { formatKbDate } from "../kb-badges";
+import { formatKbDueDate } from "../kb-badges";
 
 /**
  * The deflection report (KB-10), articles that are read but do not help (KB-17), reviews that
@@ -164,7 +164,7 @@ export function KbReport({
                   </Link>
                   <span className="shrink-0 text-muted-foreground">
                     {article.ownerName ?? ""}{" "}
-                    {formatKbDate(article.reviewDueAt)}
+                    {formatKbDueDate(article.reviewDueAt)}
                   </span>
                 </li>
               ))}

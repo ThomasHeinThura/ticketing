@@ -604,7 +604,7 @@
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
 			"reportExportTitle": "Report exports",
-			"reminderLeadTimeUnitLabel": "Reminder time unit"
+			"reminderLeadTimeUnitLabel": "Временска единица на потсетникот"
 		},
 		"preferencesPage": {
 			"title": "Преференции",
@@ -4687,7 +4687,7 @@
 			"stableKeyHelp": "Used to match this setting when moving a project between workspaces. Keep it unchanged after creation.",
 			"stableKeyReadOnlyLabel": "Stable key (read only)",
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.",
-			"timezoneSuggestions": "Timezone suggestions"
+			"timezoneSuggestions": "Предлози за временска зона"
 		},
 		"editor": {
 			"allCalendars": "All calendars",
@@ -4747,9 +4747,9 @@
 			"removeHoliday": "Remove holiday {{count}}",
 			"through": "Through",
 			"title": "Holidays",
-			"invalid": "Choose a valid date for every holiday. Date ranges must end on or after they start.",
+			"invalid": "Изберете важечки датум за секој празник. Периодите мора да завршуваат на или по датумот на почеток.",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid calendar date in YYYY-MM-DD format."
+			"invalidDate": "Внесете важечки датум во формат YYYY-MM-DD."
 		},
 		"list": {
 			"create": "Create calendar",
@@ -5807,9 +5807,9 @@
 			"optional": "optional",
 			"requiredHint": "Required before this item can start or finish",
 			"yes": "Yes",
-			"hour": "Hour",
-			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
+			"hour": "Час",
+			"minute": "Минута",
+			"invalidLocalTime": "Ова време се прескокнува при промена на часовникот. Изберете друго време."
 		}
 	},
 	"teams": {
@@ -6512,7 +6512,7 @@
 			"save": "Save",
 			"close": "Close",
 			"dateEntry": "{{label}} (YYYY-MM-DD)",
-			"invalidDate": "Enter a valid date as YYYY-MM-DD."
+			"invalidDate": "Внесете важечки датум во формат YYYY-MM-DD."
 		},
 		"complete": {
 			"action": "Complete {{term_cycle_one}}",
@@ -8097,7 +8097,7 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "Actions for {{title}}"
+			"widgetActions": "Дејства за {{title}}"
 		},
 		"empty": {
 			"excluded_one": "{{count}} item was left out: {{reason}}.",
@@ -8166,8 +8166,8 @@
 			"to": "To",
 			"type": "Type",
 			"window": "Window",
-			"datePlaceholder": "Not set",
-			"clearDate": "Clear date"
+			"datePlaceholder": "Не е поставено",
+			"clearDate": "Исчисти датум"
 		},
 		"index": {
 			"categories": "Report categories",
