@@ -30,6 +30,7 @@ async function chooseTime(name: "Hour" | "Minute", value: string) {
   fireEvent.pointerUp(option, { pointerType: "mouse", button: 0 });
   fireEvent.mouseUp(option, { button: 0 });
   fireEvent.click(option, { button: 0, detail: 1 });
+  await waitFor(() => expect(trigger).toHaveFocus());
 }
 
 describe("calendar-local time field", () => {
