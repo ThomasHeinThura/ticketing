@@ -3,6 +3,7 @@ import { Button, useIsMobile } from "@taskdesk/ui";
 import { ChevronLeft, PanelLeftIcon } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import PageTitle from "@/components/page-title";
 import { SettingsSidebarProvider } from "@/components/SettingsSidebar";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -58,17 +59,18 @@ export function SettingsShell({
         <div className="relative flex h-full min-h-0 flex-col gap-6 overflow-hidden rounded-md border border-border bg-card p-3 md:gap-4 sm:p-4">
           <div className="shrink-0">
             <div className="flex items-center">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="shrink-0 md:hidden"
-                aria-label="Open settings menu"
-                title="Open settings menu"
-                onClick={() => setSettingsMenuOpen(true)}
-              >
-                <PanelLeftIcon className="size-4" />
-              </Button>
+              <ActionTooltip label="Open settings menu">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="shrink-0 md:hidden"
+                  aria-label="Open settings menu"
+                  onClick={() => setSettingsMenuOpen(true)}
+                >
+                  <PanelLeftIcon className="size-4" />
+                </Button>
+              </ActionTooltip>
 
               <div className="flex items-center gap-1 md:hidden">
                 <ChevronLeft className="size-4 text-muted-foreground" />

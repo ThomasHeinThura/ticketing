@@ -23,6 +23,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useState } from "react";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { getPortalKb } from "@/fetchers/kb/portal";
 import { getPortalReleases } from "@/fetchers/portal/releases";
 import {
@@ -135,10 +136,9 @@ export default function PortalSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigation.map(({ to, label, icon: Icon, title }) => (
-                <SidebarMenuItem key={to}>
+              {navigation.map(({ to, label, icon: Icon, title }) => {
+                const button = (
                   <SidebarMenuButton
-                    title={title}
                     isActive={
                       location.pathname === to ||
                       (to === routes.portalKb.path &&
@@ -156,8 +156,17 @@ export default function PortalSidebar() {
                     <Icon className="size-4" aria-hidden="true" />
                     <span>{label}</span>
                   </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                );
+                return (
+                  <SidebarMenuItem key={to}>
+                    {title ? (
+                      <ActionTooltip label={title}>{button}</ActionTooltip>
+                    ) : (
+                      button
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

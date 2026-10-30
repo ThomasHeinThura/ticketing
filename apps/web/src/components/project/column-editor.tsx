@@ -9,6 +9,7 @@ import {
 import { CheckCircle2, Circle, GripVertical, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import columnIcons, {
   DEFAULT_COLUMN_ICON_NAMES,
 } from "@/constants/column-icons";
@@ -227,19 +228,20 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
               }}
               modal={true}
             >
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 shrink-0"
-                  title={t("settings:columnEditor.pickIconTitle")}
-                  aria-label={t("settings:columnEditor.pickIconTitle")}
-                  disabled={!canEdit}
-                >
-                  {getColumnIcon(col.slug, col.isFinal, col.icon)}
-                </Button>
-              </PopoverTrigger>
+              <ActionTooltip label={t("settings:columnEditor.pickIconTitle")}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 shrink-0"
+                    aria-label={t("settings:columnEditor.pickIconTitle")}
+                    disabled={!canEdit}
+                  >
+                    {getColumnIcon(col.slug, col.isFinal, col.icon)}
+                  </Button>
+                </PopoverTrigger>
+              </ActionTooltip>
               <PopoverContent className="w-80" align="start">
                 <div className="space-y-2">
                   <Input
@@ -263,22 +265,22 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
                           ];
                         const isSelected = selectedIconName === iconName;
                         return (
-                          <Button
-                            key={iconName}
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleUpdateIcon(col.id, iconName)}
-                            className={cn(
-                              "h-10 items-center justify-center rounded-md p-0",
-                              isSelected &&
-                                "bg-sidebar-accent text-sidebar-accent-foreground",
-                            )}
-                            title={iconName}
-                            aria-label={iconName}
-                          >
-                            <Icon className="h-4 w-4" />
-                          </Button>
+                          <ActionTooltip key={iconName} label={iconName}>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleUpdateIcon(col.id, iconName)}
+                              className={cn(
+                                "h-10 items-center justify-center rounded-md p-0",
+                                isSelected &&
+                                  "bg-sidebar-accent text-sidebar-accent-foreground",
+                              )}
+                              aria-label={iconName}
+                            >
+                              <Icon className="h-4 w-4" />
+                            </Button>
+                          </ActionTooltip>
                         );
                       })}
                     </div>
@@ -363,18 +365,19 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
             }}
             modal={true}
           >
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0 shrink-0"
-                title={t("settings:columnEditor.pickIconTitle")}
-                aria-label={t("settings:columnEditor.pickIconTitle")}
-              >
-                {getColumnIcon("", false, newColumnIcon)}
-              </Button>
-            </PopoverTrigger>
+            <ActionTooltip label={t("settings:columnEditor.pickIconTitle")}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0 shrink-0"
+                  aria-label={t("settings:columnEditor.pickIconTitle")}
+                >
+                  {getColumnIcon("", false, newColumnIcon)}
+                </Button>
+              </PopoverTrigger>
+            </ActionTooltip>
             <PopoverContent className="w-80" align="start">
               <div className="space-y-2">
                 <Input
@@ -391,26 +394,26 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
                     {filteredIcons.map(([iconName, Icon]) => {
                       const isSelected = newColumnIcon === iconName;
                       return (
-                        <Button
-                          key={iconName}
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setNewColumnIcon(iconName);
-                            setNewIconPickerOpen(false);
-                            setIconSearch("");
-                          }}
-                          className={cn(
-                            "h-10 items-center justify-center rounded-md p-0",
-                            isSelected &&
-                              "bg-sidebar-accent text-sidebar-accent-foreground",
-                          )}
-                          title={iconName}
-                          aria-label={iconName}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </Button>
+                        <ActionTooltip key={iconName} label={iconName}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setNewColumnIcon(iconName);
+                              setNewIconPickerOpen(false);
+                              setIconSearch("");
+                            }}
+                            className={cn(
+                              "h-10 items-center justify-center rounded-md p-0",
+                              isSelected &&
+                                "bg-sidebar-accent text-sidebar-accent-foreground",
+                            )}
+                            aria-label={iconName}
+                          >
+                            <Icon className="h-4 w-4" />
+                          </Button>
+                        </ActionTooltip>
                       );
                     })}
                   </div>

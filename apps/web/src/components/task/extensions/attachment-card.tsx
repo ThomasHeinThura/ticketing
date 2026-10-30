@@ -2,6 +2,7 @@ import { mergeAttributes, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { FileText } from "lucide-react";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { escapeHtml, isValidUrl } from "./url-safety";
 
 function formatBytes(size: number) {
@@ -22,24 +23,25 @@ function AttachmentCardView({ node }: NodeViewProps) {
 
   return (
     <NodeViewWrapper as="span" className="taskdesk-attachment-node">
-      <a
-        href={url || undefined}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="taskdesk-attachment-card"
-        title={filename}
-      >
-        <span className="taskdesk-attachment-card-icon">
-          <FileText className="size-4" />
-        </span>
-        <span className="taskdesk-attachment-card-content">
-          <span className="taskdesk-attachment-card-title">{filename}</span>
-          <span className="taskdesk-attachment-card-meta">
-            {formatBytes(size)}
-            {mimeType ? ` · ${mimeType}` : ""}
+      <ActionTooltip label={filename}>
+        <a
+          href={url || undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="taskdesk-attachment-card"
+        >
+          <span className="taskdesk-attachment-card-icon">
+            <FileText className="size-4" />
           </span>
-        </span>
-      </a>
+          <span className="taskdesk-attachment-card-content">
+            <span className="taskdesk-attachment-card-title">{filename}</span>
+            <span className="taskdesk-attachment-card-meta">
+              {formatBytes(size)}
+              {mimeType ? ` · ${mimeType}` : ""}
+            </span>
+          </span>
+        </a>
+      </ActionTooltip>
     </NodeViewWrapper>
   );
 }

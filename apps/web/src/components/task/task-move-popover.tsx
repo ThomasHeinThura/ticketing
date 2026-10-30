@@ -22,6 +22,7 @@ import {
   useTransition,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { useMoveTask } from "@/hooks/mutations/task/use-move-task";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
@@ -175,18 +176,19 @@ export default function TaskMovePopover({
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={cn("text-foreground", triggerClassName)}
-          title={t("tasks:move.title")}
-          aria-label={t("tasks:move.title")}
-        >
-          <ArrowRightLeft className="size-4" />
-        </Button>
-      </PopoverTrigger>
+      <ActionTooltip label={t("tasks:move.title")}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn("text-foreground", triggerClassName)}
+            aria-label={t("tasks:move.title")}
+          >
+            <ArrowRightLeft className="size-4" />
+          </Button>
+        </PopoverTrigger>
+      </ActionTooltip>
       <PopoverContent className="w-80 p-3" align="end" sideOffset={4}>
         <div className="flex flex-col gap-3">
           <p className="text-sm font-medium text-foreground">

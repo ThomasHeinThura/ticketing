@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import PageTitle from "@/components/page-title";
 import DefaultCommentVisibilitySetting from "@/components/project/default-comment-visibility-setting";
 import ProjectEngagementSettings from "@/components/project/project-engagement-settings";
@@ -464,27 +465,31 @@ function RouteComponent() {
                   }}
                   modal={true}
                 >
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-auto justify-start gap-2 font-normal"
-                      title={t("settings:projectGeneral.pickIconTitle")}
-                      disabled={!canEdit}
-                    >
-                      {(() => {
-                        const selectedKey =
-                          (projectForm.watch("icon") as keyof typeof icons) ||
-                          "Layout";
-                        const SelectedIcon = icons[selectedKey] || icons.Layout;
-                        return <SelectedIcon className="h-4 w-4" />;
-                      })()}
-                      <span className="truncate text-xs">
-                        {projectForm.watch("icon") || "Layout"}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
+                  <ActionTooltip
+                    label={t("settings:projectGeneral.pickIconTitle")}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-auto justify-start gap-2 font-normal"
+                        disabled={!canEdit}
+                      >
+                        {(() => {
+                          const selectedKey =
+                            (projectForm.watch("icon") as keyof typeof icons) ||
+                            "Layout";
+                          const SelectedIcon =
+                            icons[selectedKey] || icons.Layout;
+                          return <SelectedIcon className="h-4 w-4" />;
+                        })()}
+                        <span className="truncate text-xs">
+                          {projectForm.watch("icon") || "Layout"}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                  </ActionTooltip>
                   <PopoverContent className="w-80" align="end">
                     <div className="space-y-2">
                       <Input
@@ -507,28 +512,29 @@ function RouteComponent() {
                               const isSelected =
                                 projectForm.getValues("icon") === iconName;
                               return (
-                                <Button
-                                  key={iconName}
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    projectForm.setValue("icon", iconName, {
-                                      shouldDirty: true,
-                                      shouldValidate: true,
-                                    });
-                                    setIconPopoverOpen(false);
-                                    setIconSearch("");
-                                  }}
-                                  className={cn(
-                                    "h-10 items-center justify-center rounded-md p-0",
-                                    isSelected &&
-                                      "bg-sidebar-accent text-sidebar-accent-foreground",
-                                  )}
-                                  title={iconName}
-                                >
-                                  <Icon className="h-4 w-4" />
-                                </Button>
+                                <ActionTooltip key={iconName} label={iconName}>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      projectForm.setValue("icon", iconName, {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      });
+                                      setIconPopoverOpen(false);
+                                      setIconSearch("");
+                                    }}
+                                    className={cn(
+                                      "h-10 items-center justify-center rounded-md p-0",
+                                      isSelected &&
+                                        "bg-sidebar-accent text-sidebar-accent-foreground",
+                                    )}
+                                    aria-label={iconName}
+                                  >
+                                    <Icon className="h-4 w-4" />
+                                  </Button>
+                                </ActionTooltip>
                               );
                             })}
                         </div>

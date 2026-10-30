@@ -25,6 +25,7 @@ import { produce } from "immer";
 import { Archive, ChevronRight, Clock, Flag, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { priorityColorsTaskCard } from "@/constants/priority-colors";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
@@ -349,18 +350,20 @@ function BacklogListView({
 
           <div className="flex items-center gap-1">
             {showAddButton && (
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={() => {
-                  setIsTaskModalOpen(true);
-                  setActiveColumn("planned");
-                }}
-                className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
-                title={t("tasks:backlog.addTask")}
-              >
-                <Plus className="w-3 h-3" />
-              </Button>
+              <ActionTooltip label={t("tasks:backlog.addTask")}>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={() => {
+                    setIsTaskModalOpen(true);
+                    setActiveColumn("planned");
+                  }}
+                  className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={t("tasks:backlog.addTask")}
+                >
+                  <Plus className="w-3 h-3" />
+                </Button>
+              </ActionTooltip>
             )}
           </div>
         </div>

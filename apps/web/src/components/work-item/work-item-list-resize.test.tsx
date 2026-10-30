@@ -225,7 +225,7 @@ describe("work item list column resizing (VW-21)", () => {
     expect(table.parentElement).toHaveClass("overflow-x-auto");
   });
 
-  it("keeps intentionally narrow saved columns readable through truncation and titles", () => {
+  it("keeps intentionally narrow saved columns readable through truncation and header tooltips", async () => {
     mocks.preferenceValue = {
       key: 64,
       title: 64,
@@ -243,14 +243,19 @@ describe("work item list column resizing (VW-21)", () => {
     expect(columns.map((column) => column.style.width)).toEqual(
       Array(6).fill("64px"),
     );
-    expect(table.querySelector("thead th button")).toHaveAttribute(
-      "title",
+    const keyHeader = table.querySelector("thead th button") as HTMLElement;
+    expect(keyHeader).not.toHaveAttribute("title");
+    act(() => keyHeader.focus());
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "workItems:list.columnKey",
     );
-    expect(screen.getByRole("link", { name: "A work item" })).toHaveAttribute(
-      "title",
-      "A work item",
-    );
+    act(() => keyHeader.blur());
+
+    // Row titles carry no tooltip (one per row is too costly on the 500-row first paint);
+    // the link text itself is the full title.
+    const titleLink = screen.getByRole("link", { name: "A work item" });
+    expect(titleLink).not.toHaveAttribute("title");
+    expect(titleLink).toHaveTextContent("A work item");
   });
 
   it("isolates a deferred old-project width save from the next project's widths", async () => {
