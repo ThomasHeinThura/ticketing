@@ -600,7 +600,8 @@
 			"reportExportHint": "The email links to the export, which can be downloaded for 24 hours. Email delivery also requires an enabled instance email provider.",
 			"reportExportSave": "Save export preference",
 			"reportExportSaved": "Export preference saved.",
-			"reportExportSaveFailed": "The preference could not be saved. Try again."
+			"reportExportSaveFailed": "The preference could not be saved. Try again.",
+			"reminderLeadTimeUnitLabel": "Reminder time unit"
 		},
 		"preferencesPage": {
 			"title": "Preferences",
