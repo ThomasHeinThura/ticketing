@@ -603,7 +603,7 @@ export default function WorkItemInlineFields({
       >
         <PopoverTrigger asChild>{titleButton}</PopoverTrigger>
         <PopoverContent
-          className="w-80 max-w-(--available-width) p-2"
+          className="w-80 max-w-[calc(100vw-(--spacing(4)*2))] p-2"
           align="start"
           aria-label={t("workItems:list.editTitle")}
           finalFocus={() =>
