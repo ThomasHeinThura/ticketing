@@ -12,6 +12,7 @@ import { ImpersonationBanner } from "@/components/god-mode/impersonation-banner"
 import { getApiUrl } from "@/fetchers/get-api-url";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { authClient } from "@/lib/auth-client";
+import { isGodModePath } from "@/lib/god-mode-paths";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 
 /**
@@ -180,8 +181,12 @@ export const Route = createFileRoute("/_layout/_authenticated")({
       // (#97). `location.href` is the router's own pathname+search+hash
       // string (see router-core's `buildLocation`), so use that directly
       // rather than re-deriving it from parts that aren't all strings.
+      // God Mode has its own sign-in page (password and MFA only, no SSO); every other agent
+      // page uses the normal one. Same session, same enforcement below (L-03 option A).
       throw redirect({
-        to: "/auth/sign-in",
+        to: isGodModePath(location.pathname)
+          ? "/god-mode/sign-in"
+          : "/auth/sign-in",
         search: {
           redirect: location.href,
         },

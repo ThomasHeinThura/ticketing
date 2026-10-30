@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "Најава во God Mode",
+			"title": "Најавете се во God Mode",
+			"subtitle": "Администраторите на инстанцата се најавуваат со лозинка и код од апликацијата за автентикација. Единствената најава (SSO) не е достапна тука.",
+			"passwordDisabled": "Најавата со лозинка е исклучена на оваа инстанца, па God Mode не може да се отвори од оваа страница. Побарајте од операторот да ја вклучи локалната најава."
 		}
 	},
 	"settings": {

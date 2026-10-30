@@ -68,8 +68,8 @@ describe("SettingsShell scoped heading", () => {
     ],
     ["/dashboard/settings/account/pending-actions", undefined, "Account"],
     ["/dashboard/settings/workspace/request-types", undefined, "Workspace"],
-    ["/agent/god-mode", "instance", "God Mode"],
-    ["/agent/god-mode/users", undefined, "God Mode"],
+    ["/god-mode", "instance", "God Mode"],
+    ["/god-mode/users", undefined, "God Mode"],
     ["/dashboard/settings/workspace/request-types", "account", "Account"],
   ];
 

@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "Logowanie do God Mode",
+			"title": "Zaloguj się do God Mode",
+			"subtitle": "Administratorzy instancji logują się hasłem i kodem z aplikacji uwierzytelniającej. Logowanie jednokrotne nie jest tu dostępne.",
+			"passwordDisabled": "Logowanie hasłem jest wyłączone w tej instancji, więc nie można otworzyć God Mode z tej strony. Poproś operatora o włączenie logowania lokalnego."
 		}
 	},
 	"navigation": {

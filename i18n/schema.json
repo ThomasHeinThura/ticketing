@@ -1344,6 +1344,25 @@
 						"error"
 					]
 				},
+				"godModeSignIn": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"pageTitle": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string"
+						},
+						"subtitle": {
+							"type": "string"
+						},
+						"passwordDisabled": {
+							"type": "string"
+						}
+					},
+					"required": ["pageTitle", "title", "subtitle", "passwordDisabled"]
+				},
 				"accountSecurity": {
 					"type": "object",
 					"additionalProperties": false,
@@ -1800,6 +1819,7 @@
 				"signInForm",
 				"signUpForm",
 				"twoFactor",
+				"godModeSignIn",
 				"accountSecurity",
 				"invitation",
 				"onboarding",

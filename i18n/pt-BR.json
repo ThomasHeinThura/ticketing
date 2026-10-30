@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "Entrar no God Mode",
+			"title": "Entrar no God Mode",
+			"subtitle": "Administradores da instância entram com a senha e o código do aplicativo autenticador. O login único não está disponível aqui.",
+			"passwordDisabled": "O login com senha está desativado nesta instância, então o God Mode não pode ser aberto por esta página. Peça ao operador para ativar o login local."
 		}
 	},
 	"settings": {

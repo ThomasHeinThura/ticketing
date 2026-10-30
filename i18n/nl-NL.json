@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "Aanmelden bij God Mode",
+			"title": "Aanmelden bij God Mode",
+			"subtitle": "Instantiebeheerders melden zich aan met hun wachtwoord en de code uit hun authenticator-app. Single sign-on is hier niet beschikbaar.",
+			"passwordDisabled": "Aanmelden met een wachtwoord is uitgeschakeld op deze instantie, dus God Mode kan niet vanaf deze pagina worden geopend. Vraag de beheerder om lokaal aanmelden in te schakelen."
 		}
 	},
 	"settings": {

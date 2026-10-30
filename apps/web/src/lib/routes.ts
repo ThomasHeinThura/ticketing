@@ -1,3 +1,4 @@
+import { godModeRedirectPath } from "./god-mode-paths";
 import {
   type DashboardSearch,
   parseDashboardSearch,
@@ -250,7 +251,7 @@ export const IDENTITY_CONNECTION_TABS = [
 ] as const;
 export type IdentityConnectionTab = (typeof IDENTITY_CONNECTION_TABS)[number];
 
-/** URL state of `/agent/god-mode/authentication/{id}`: the open tab, the events page and the open SCIM mapping form. */
+/** URL state of `/god-mode/authentication/{id}`: the open tab, the events page and the open SCIM mapping form. */
 export type IdentityConnectionEditorSearch = {
   tab?: Exclude<IdentityConnectionTab, "connection">;
   /** Opaque events cursor (base64url, produced by the API). Only meaningful on the events tab. */
@@ -1531,84 +1532,104 @@ export const routes = {
   },
   /** God Mode Users directory and its query-string-backed selection/filters. */
   notificationProvider: {
-    path: "/agent/god-mode/notifications" as const,
-    build: () => "/agent/god-mode/notifications",
+    path: "/god-mode/notifications" as const,
+    build: () => "/god-mode/notifications",
   },
-  /** God Mode home: the Health landing page. */
+  /** God Mode home: the Health landing page, at the agent host root (L-03, Thomas 30 Oct). */
   godModeHealth: {
-    path: "/agent/god-mode" as const,
-    build: () => "/agent/god-mode",
+    path: "/god-mode" as const,
+    build: () => "/god-mode",
+  },
+  /**
+   * God Mode's own sign-in (password and MFA only, no SSO). `redirect` is honoured only when it
+   * is a safe same-origin God Mode path; anything else opens God Mode home.
+   */
+  godModeSignIn: {
+    path: "/god-mode/sign-in" as const,
+    build: (search: { redirect?: string } = {}) => {
+      const redirect = search.redirect
+        ? godModeRedirectPath(search.redirect)
+        : undefined;
+      return redirect && redirect !== "/god-mode"
+        ? `/god-mode/sign-in?${new URLSearchParams({ redirect })}`
+        : "/god-mode/sign-in";
+    },
+  },
+  /** God Mode log levels, local factor policy and the metrics scrape token. */
+  godModeObservability: {
+    path: "/god-mode/observability" as const,
+    build: () => "/god-mode/observability",
   },
   /** God Mode General and Storage settings (`instance_setting`). */
   godModeGeneral: {
-    path: "/agent/god-mode/general" as const,
-    build: () => "/agent/god-mode/general",
+    path: "/god-mode/general" as const,
+    build: () => "/god-mode/general",
   },
   /** `ST-1`, `ST-2`: God Mode instance feature switches and locks. */
   godModeFeatures: {
-    path: "/agent/god-mode/features" as const,
-    build: () => "/agent/god-mode/features",
+    path: "/god-mode/features" as const,
+    build: () => "/god-mode/features",
   },
   /** `AK-7`: God Mode inventory of every API key on the instance. */
   godModeWebhooks: {
-    path: "/agent/god-mode/webhooks" as const,
-    build: () => "/agent/god-mode/webhooks",
+    path: "/god-mode/webhooks" as const,
+    build: () => "/god-mode/webhooks",
   },
   godModeJobs: {
-    path: "/agent/god-mode/jobs" as const,
-    build: () => "/agent/god-mode/jobs",
+    path: "/god-mode/jobs" as const,
+    build: () => "/god-mode/jobs",
   },
   godModePlugins: {
-    path: "/agent/god-mode/plugins" as const,
-    build: () => "/agent/god-mode/plugins",
+    path: "/god-mode/plugins" as const,
+    build: () => "/god-mode/plugins",
   },
   godModeStorage: {
-    path: "/agent/god-mode/storage" as const,
-    build: () => "/agent/god-mode/storage",
+    path: "/god-mode/storage" as const,
+    build: () => "/god-mode/storage",
   },
   godModeMcpUsage: {
-    path: "/agent/god-mode/mcp" as const,
-    build: () => "/agent/god-mode/mcp",
+    path: "/god-mode/mcp" as const,
+    build: () => "/god-mode/mcp",
   },
   godModeImports: {
-    path: "/agent/god-mode/imports" as const,
+    path: "/god-mode/imports" as const,
     build: (search: GodModeImportsSearch = {}) =>
-      `/agent/god-mode/imports${godModeImportsQuery(search)}`,
+      `/god-mode/imports${godModeImportsQuery(search)}`,
   },
   godModeImportRun: {
-    path: "/agent/god-mode/imports/$id" as const,
+    path: "/god-mode/imports/$id" as const,
     build: (params: { id: string }, search: GodModeImportsSearch = {}) =>
-      `/agent/god-mode/imports/${encodeURIComponent(params.id)}${godModeImportsQuery(search)}`,
+      `/god-mode/imports/${encodeURIComponent(params.id)}${godModeImportsQuery(search)}`,
   },
   godModeDeliveries: {
-    path: "/agent/god-mode/deliveries" as const,
-    build: () => "/agent/god-mode/deliveries",
+    path: "/god-mode/deliveries" as const,
+    build: () => "/god-mode/deliveries",
   },
   godModeApiKeys: {
-    path: "/agent/god-mode/api-keys" as const,
-    build: () => "/agent/god-mode/api-keys",
+    path: "/god-mode/api-keys" as const,
+    build: () => "/god-mode/api-keys",
   },
   godModeAudit: {
-    path: "/agent/god-mode/audit" as const,
+    path: "/god-mode/audit" as const,
     build: (search: { action?: string; limit?: number } = {}) => {
       const resolved = parseInstanceAuditSearch(search);
       const params = new URLSearchParams({ limit: String(resolved.limit) });
       if (resolved.action) params.set("action", resolved.action);
-      return `/agent/god-mode/audit?${params}`;
+      return `/god-mode/audit?${params}`;
     },
   },
   godModeOrganisations: {
-    path: "/agent/god-mode/organisations" as const,
+    path: "/god-mode/organisations" as const,
     build: (search: GodModeOrganisationsSearch = {}) => {
       const resolved = parseGodModeOrganisationsSearch(search);
       const query = new URLSearchParams();
       if (resolved.organisationId)
         query.set("organisationId", resolved.organisationId);
-      return `/agent/god-mode/organisations${query.size ? `?${query}` : ""}`;
+      return `/god-mode/organisations${query.size ? `?${query}` : ""}`;
     },
   },
   godModeUsers: {
-    path: "/agent/god-mode/users" as const,
+    path: "/god-mode/users" as const,
     build: (search: Partial<GodModeUsersSearch> = {}) => {
       const resolved = parseGodModeUsersSearch(search);
       const query = new URLSearchParams();
@@ -1622,19 +1643,17 @@ export const routes = {
       if (resolved.user && resolved.action)
         query.set("action", resolved.action);
       const suffix = query.toString();
-      return suffix
-        ? `/agent/god-mode/users?${suffix}`
-        : "/agent/god-mode/users";
+      return suffix ? `/god-mode/users?${suffix}` : "/god-mode/users";
     },
   },
   /** `docs/02-design/screen-inventory.md` "Authentication providers". */
   identityConnections: {
-    path: "/agent/god-mode/authentication" as const,
-    build: () => "/agent/god-mode/authentication",
+    path: "/god-mode/authentication" as const,
+    build: () => "/god-mode/authentication",
   },
   /** `docs/02-design/screen-inventory.md` "Provider editor"; the id `new` opens the create form. */
   identityConnectionEditor: {
-    path: "/agent/god-mode/authentication/$id" as const,
+    path: "/god-mode/authentication/$id" as const,
     build: (
       params: { id: string },
       search: IdentityConnectionEditorSearch = {},
@@ -1646,13 +1665,13 @@ export const routes = {
         query.set("eventsCursor", resolved.eventsCursor);
       if (resolved.mapping) query.set("mapping", resolved.mapping);
       const suffix = query.toString();
-      const path = `/agent/god-mode/authentication/${encodeURIComponent(params.id)}`;
+      const path = `/god-mode/authentication/${encodeURIComponent(params.id)}`;
       return suffix ? `${path}?${suffix}` : path;
     },
   },
   /** God Mode organisation "Identity" tab (CP-17, IP-5): the customer organisation's own OIDC connection and SCIM. */
   organisationIdentity: {
-    path: "/agent/god-mode/organisations/$id/identity" as const,
+    path: "/god-mode/organisations/$id/identity" as const,
     build: (
       params: { id: string },
       search: IdentityConnectionEditorSearch = {},
@@ -1664,7 +1683,7 @@ export const routes = {
         query.set("eventsCursor", resolved.eventsCursor);
       if (resolved.mapping) query.set("mapping", resolved.mapping);
       const suffix = query.toString();
-      const path = `/agent/god-mode/organisations/${encodeURIComponent(params.id)}/identity`;
+      const path = `/god-mode/organisations/${encodeURIComponent(params.id)}/identity`;
       return suffix ? `${path}?${suffix}` : path;
     },
   },

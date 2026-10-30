@@ -25,7 +25,7 @@ export const KB_BYTES = 1000;
 export const WORK_LIST_COMPONENT_SUFFIX =
   "/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component";
 export const INSTANCE_USERS_COMPONENT_SUFFIX =
-  "/routes/agent/_layout/_authenticated/agent/god-mode/users.tsx?tsr-split=component";
+  "/routes/agent/_layout/_authenticated/god-mode/users.tsx?tsr-split=component";
 export const PENDING_ACTION_DETAIL_COMPONENT_SUFFIX =
   "/routes/agent/_layout/_authenticated/dashboard/settings/account/pending-actions/$id.tsx?tsr-split=component";
 

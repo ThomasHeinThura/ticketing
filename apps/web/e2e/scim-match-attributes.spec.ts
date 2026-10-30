@@ -8,7 +8,7 @@ import {
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
-const SCIM = "/agent/god-mode/authentication/conn-staff?tab=scim";
+const SCIM = "/god-mode/authentication/conn-staff?tab=scim";
 
 test("SCIM settings save one closed request bound to the connection version @a11y", async ({
   page,

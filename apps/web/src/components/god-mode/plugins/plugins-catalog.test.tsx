@@ -18,8 +18,8 @@ vi.mock("react-i18next", () => ({
 vi.mock("@/lib/format", () => ({ formatDateTime: (value: string) => value }));
 vi.mock("@/lib/routes", () => ({
   routes: {
-    notificationProvider: { path: "/agent/god-mode/notifications" },
-    godModeJobs: { path: "/agent/god-mode/jobs" },
+    notificationProvider: { path: "/god-mode/notifications" },
+    godModeJobs: { path: "/god-mode/jobs" },
   },
 }));
 vi.mock("@/fetchers/god-mode/plugins", () => ({
@@ -83,6 +83,6 @@ describe("PluginsCatalog", () => {
     expect(screen.getByText("healthNotRecorded")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "manageSettings" }),
-    ).toHaveAttribute("href", "/agent/god-mode/notifications");
+    ).toHaveAttribute("href", "/god-mode/notifications");
   });
 });

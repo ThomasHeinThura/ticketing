@@ -607,9 +607,7 @@ describe("God Mode Users and requester pending-action URLs", () => {
       action: "reset-mfa",
       q: "Ada",
     });
-    expect(url).toBe(
-      "/agent/god-mode/users?q=Ada&user=user%2Fone&action=reset-mfa",
-    );
+    expect(url).toBe("/god-mode/users?q=Ada&user=user%2Fone&action=reset-mfa");
     expect(
       parseGodModeUsersSearch(
         Object.fromEntries(new URL(url, "https://taskdesk.test").searchParams),
@@ -632,7 +630,7 @@ describe("God Mode Users and requester pending-action URLs", () => {
     ).toEqual({ user: "user/one" });
     expect(parseGodModeUsersSearch({ action: "suspend" })).toEqual({});
     expect(routes.godModeUsers.build({ action: "suspend" })).toBe(
-      "/agent/god-mode/users",
+      "/god-mode/users",
     );
   });
 
@@ -706,14 +704,12 @@ describe("routes.slaPolicies", () => {
 
 describe("routes.identityConnections", () => {
   it("builds the routes the screen inventory names", () => {
-    expect(routes.identityConnections.build()).toBe(
-      "/agent/god-mode/authentication",
-    );
+    expect(routes.identityConnections.build()).toBe("/god-mode/authentication");
     expect(routes.identityConnectionEditor.build({ id: "new" })).toBe(
-      "/agent/god-mode/authentication/new",
+      "/god-mode/authentication/new",
     );
     expect(routes.identityConnectionEditor.build({ id: "conn/a" })).toBe(
-      "/agent/god-mode/authentication/conn%2Fa",
+      "/god-mode/authentication/conn%2Fa",
     );
     expect(generatedRouteMetadata.agent).toContain(
       routes.identityConnections.path,
@@ -876,19 +872,19 @@ describe("routes.savedViews", () => {
 
 describe("God Mode import routes", () => {
   it("round-trips selected workspace for history and encoded run-detail URLs", () => {
-    expect(routes.godModeImports.build()).toBe("/agent/god-mode/imports");
+    expect(routes.godModeImports.build()).toBe("/god-mode/imports");
     expect(routes.godModeImports.build({ workspaceId: "workspace/one" })).toBe(
-      "/agent/god-mode/imports?workspaceId=workspace%2Fone",
+      "/god-mode/imports?workspaceId=workspace%2Fone",
     );
     expect(routes.godModeImportRun.build({ id: "run/with spaces" })).toBe(
-      "/agent/god-mode/imports/run%2Fwith%20spaces",
+      "/god-mode/imports/run%2Fwith%20spaces",
     );
     expect(
       routes.godModeImportRun.build(
         { id: "run-1" },
         { workspaceId: "workspace-1" },
       ),
-    ).toBe("/agent/god-mode/imports/run-1?workspaceId=workspace-1");
+    ).toBe("/god-mode/imports/run-1?workspaceId=workspace-1");
     expect(parseGodModeImportsSearch({ workspaceId: "workspace-1" })).toEqual({
       workspaceId: "workspace-1",
     });
@@ -907,11 +903,9 @@ describe("God Mode import routes", () => {
         { id: "run-1" },
         { workspaceId: "workspace-1", step: "mapping" },
       ),
-    ).toBe(
-      "/agent/god-mode/imports/run-1?workspaceId=workspace-1&step=mapping",
-    );
+    ).toBe("/god-mode/imports/run-1?workspaceId=workspace-1&step=mapping");
     expect(routes.godModeImports.build({ step: "connect" })).toBe(
-      "/agent/god-mode/imports?step=connect",
+      "/god-mode/imports?step=connect",
     );
     expect(parseGodModeImportsSearch({ step: "dry-run" })).toEqual({
       step: "dry-run",

@@ -23,7 +23,7 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 | Sign in | `/auth/sign-in` (legacy `/agent/sign-in`) | Valid then invalid password | Valid lands on `/agent`; invalid shows error, no account hint | |
 | MFA challenge | `/auth/two-factor` | Wrong then right code; backup code | Wrong rejected and rate-limited; right signs in | |
 | MFA enrolment | `/dashboard/settings/account/security` | Enrol TOTP, reload, sign out and in | Code required next sign-in | |
-| Observability / MFA policy | `/agent/god-mode/observability` | Toggle policy as instance admin; as non-admin | Admin saves and audit row written; non-admin 403 | |
+| Observability / MFA policy | `/god-mode/observability` | Toggle policy as instance admin; as non-admin | Admin saves and audit row written; non-admin 403 | |
 | Delete anything (project, workspace, work item) | any danger zone | Request delete | 202 pending action, requester approves, typed project key / workspace name + step-up | |
 | Pending actions | `/dashboard/settings/account/pending-actions` | Approve, decline, open detail | State changes; failed executor shows terminal `failed` | |
 
@@ -59,7 +59,7 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 | SLA policies and editor | `/dashboard/settings/workspace/sla-policies/{id}` | Create policy, attach calendar, breach item | Clock, pause and breach shown; escalation notifies recipients | |
 | Service calendars | `/dashboard/settings/workspace/calendars/{id}` | Edit hours and holidays | SLA due date respects calendar | |
 | Workflows | `/dashboard/settings/workspace/workflows/{id}` | Add guarded edge; scheduled transition | A person may use any matching edge their roles hold (an ungated edge beside a gated one stays usable); a scheduled/system hop applies the most restrictive matching edge; transition fires on time | |
-| Audit log | `/agent/god-mode/audit` | Filter by action, entity, date | Rows match actions; read is itself audited | |
+| Audit log | `/god-mode/audit` | Filter by action, entity, date | Rows match actions; read is itself audited | |
 
 ## P3 — Customer portal and identity
 
@@ -72,7 +72,7 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 | Submission detail | `/submissions/{ref}` | Raise priority up, down; reopen; rate | Escalate-only priority; reopen allowed; rating saved once | |
 | Approval decision | `/approvals?approval={id}` | Approve and reject as customer | Recorded; non-approver refused | |
 | Portal host routing | `/requests` and `/account` | Open and reload on portal host; try agent session | Host-root routes load; staff credentials cannot authorize portal | |
-| Authentication providers | `/agent/god-mode/authentication/{id}` | Add OIDC provider, test | IdP data never grants instance admin | |
+| Authentication providers | `/god-mode/authentication/{id}` | Add OIDC provider, test | IdP data never grants instance admin | |
 | SCIM | God Mode identity | Rotate token, hit rate limit, health job | Token shown once; limit returns 429 | |
 
 ## P4 — Administration (implementation gaps and browser verification pending)
@@ -88,14 +88,14 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 | MCP | MCP client with a key | Create item with idempotency key twice; call a destructive tool | One item created; delete returns pending action | |
 | Webhooks / editor / deliveries | `/dashboard/settings/workspace/webhooks/{id}/deliveries` | Create, send test, fail endpoint, replay | Signed delivery; failures retried then dead-lettered | |
 | Automations (workspace, project) | `/dashboard/settings/workspace/automations`; project: `/agent/projects/{key}/settings/automations` (redirects to `/dashboard/settings/projects/{id}/automations`) | Create rule, trigger, loop guard | Action runs once; loops stopped | |
-| God Mode home / health | `/agent/god-mode` | Open as instance admin | DB, secrets and outbox health shown | |
-| Webhook security posture / incident rotation | `/agent/god-mode/webhooks` | List full-reach owners; refresh/paginate; enter one distinct replacement secret per current webhook; step-up; change set/version; replay proof | Metadata excludes URLs/secrets/bodies; current instance admin only; rotation all-or-nothing with digest-bound proof and 24h dual signatures | Posture empty state: six width/theme states pass on189; incident rotation source190, browser pending |
-| General settings | `/agent/god-mode/general` | Change retention days, timezone | Saved; last-changed shown | |
-| Feature flags | `/agent/god-mode/features`; project: `/agent/projects/{key}/settings/features` (redirects to `/dashboard/settings/projects/{id}/features`) | Lock at instance, override at project, clear override | Write below lock returns 409; stale version returns 409 | |
-| Notification channels | `/agent/god-mode/notifications` | Configure SMTP, send test | Test email delivered | Scoped schema-form render/validation/cancel passes375/768/1440 light/dark; provider unchanged. Actual test-send journey remains pending. [Evidence](report/browser/gm5-schema-form/gm5-schema-form-20261026.json) |
+| God Mode home / health | `/god-mode` | Open as instance admin | DB, secrets and outbox health shown | |
+| Webhook security posture / incident rotation | `/god-mode/webhooks` | List full-reach owners; refresh/paginate; enter one distinct replacement secret per current webhook; step-up; change set/version; replay proof | Metadata excludes URLs/secrets/bodies; current instance admin only; rotation all-or-nothing with digest-bound proof and 24h dual signatures | Posture empty state: six width/theme states pass on189; incident rotation source190, browser pending |
+| General settings | `/god-mode/general` | Change retention days, timezone | Saved; last-changed shown | |
+| Feature flags | `/god-mode/features`; project: `/agent/projects/{key}/settings/features` (redirects to `/dashboard/settings/projects/{id}/features`) | Lock at instance, override at project, clear override | Write below lock returns 409; stale version returns 409 | |
+| Notification channels | `/god-mode/notifications` | Configure SMTP, send test | Test email delivered | Scoped schema-form render/validation/cancel passes375/768/1440 light/dark; provider unchanged. Actual test-send journey remains pending. [Evidence](report/browser/gm5-schema-form/gm5-schema-form-20261026.json) |
 | Customer notifications | `/notifications` (portal host) | Produce public comment; live update; read/unread; unread URL; comment link; bell | Own-request inbox updates without reload or polling; actions persist; exact public comment opens | Scoped186 browser journey passes18 assertions with a real customer cookie and one owned QA comment. Six complete-shell sizes/themes pass, each with one authenticated socket and bell menu. Broader negative/role/flag matrix pending. [Evidence](report/browser/portal-notifications186/journey.json) |
 | Notifications | `/agent/inbox` | Quiet hours, digest, mark unread | Quiet hours defer except SLA breach; read state persists | |
-| Users | `/agent/god-mode/users` | Deactivate user | Removed from rosters; sessions revoked | |
+| Users | `/god-mode/users` | Deactivate user | Removed from rosters; sessions revoked | |
 
 ## P5 — Planning, time, knowledge, service management (implementation gaps and browser verification pending)
 
@@ -127,7 +127,7 @@ Fresh feature acceptance pending. Scripted sign-in on the audit copy is authoriz
 
 | Screen | Route | Test | Expected | Result |
 | --- | --- | --- | --- | :-: |
-| Import history/detail | `/agent/god-mode/imports`, `…/{id}` | Create an own run; reload; direct link; Back; selected workspace; non-admin | Persisted run; matching workspace retained in URL; non-admin API/UI denied | Scoped192 pass: creation/persistence, direct detail/Back,375/768/1440 light/dark and non-admin denial. Remaining common/role/empty/error cases pending. [Evidence](report/browser/imports192/journey.json), [denial](report/browser/imports192/non-admin.json) |
+| Import history/detail | `/god-mode/imports`, `…/{id}` | Create an own run; reload; direct link; Back; selected workspace; non-admin | Persisted run; matching workspace retained in URL; non-admin API/UI denied | Scoped192 pass: creation/persistence, direct detail/Back,375/768/1440 light/dark and non-admin denial. Remaining common/role/empty/error cases pending. [Evidence](report/browser/imports192/journey.json), [denial](report/browser/imports192/non-admin.json) |
 | Large import approval | Profile pending-action dialog/detail | Preview and submit51 records/links; exact count and fresh authentication; retry | No targets before owner approval; exactly-once commit | 51-record owner browser approval passes at375/768/1440 light/dark; wrong count/missing proof blocked; retry leaves51 targets/links and totals unchanged. Temporary key revoked, flag restored.51-link browser approval remains pending. |
 
 ## Not testable yet

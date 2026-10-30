@@ -147,7 +147,7 @@ test("God Mode organisation lifecycle on persisted local SIT data", async ({
     screenshots: [] as string[],
   };
 
-  await page.goto("/agent/god-mode/organisations", {
+  await page.goto("/god-mode/organisations", {
     waitUntil: "domcontentloaded",
   });
   await expect(
@@ -316,7 +316,7 @@ test("God Mode organisation lifecycle on persisted local SIT data", async ({
     organisationId = new URL(page.url()).searchParams.get("organisationId");
   }
   if (!organisationId) throw new Error("Created organisation was not selected");
-  const profileUrl = `${agentOrigin}/agent/god-mode/organisations?organisationId=${encodeURIComponent(organisationId)}`;
+  const profileUrl = `${agentOrigin}/god-mode/organisations?organisationId=${encodeURIComponent(organisationId)}`;
   const catalogueCheckbox = page.getByRole("checkbox", {
     name: selectedType.name,
     exact: true,

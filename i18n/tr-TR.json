@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "God Mode girişi",
+			"title": "God Mode'a giriş yapın",
+			"subtitle": "Örnek yöneticileri parolaları ve kimlik doğrulayıcı kodlarıyla giriş yapar. Çoklu oturum açma burada kullanılamaz.",
+			"passwordDisabled": "Bu örnekte parolayla giriş kapalı olduğundan God Mode bu sayfadan açılamaz. Operatörden yerel girişi etkinleştirmesini isteyin."
 		}
 	},
 	"settings": {

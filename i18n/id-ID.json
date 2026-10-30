@@ -445,6 +445,12 @@
 			"useBackupCode": "Use a backup code",
 			"verify": "Verify and sign in",
 			"verifying": "Verifying…"
+		},
+		"godModeSignIn": {
+			"pageTitle": "Masuk God Mode",
+			"title": "Masuk ke God Mode",
+			"subtitle": "Administrator instans masuk dengan kata sandi dan kode aplikasi autentikator. Single sign-on tidak tersedia di sini.",
+			"passwordDisabled": "Masuk dengan kata sandi dinonaktifkan di instans ini, jadi God Mode tidak dapat dibuka dari halaman ini. Minta operator untuk mengaktifkan masuk lokal."
 		}
 	},
 	"settings": {

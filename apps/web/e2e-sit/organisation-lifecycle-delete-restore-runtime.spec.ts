@@ -211,7 +211,7 @@ test("soft-delete and restore the existing QA organisation through God Mode", as
   let restoreSucceeded = false;
 
   try {
-    await page.goto("/agent/god-mode/organisations", {
+    await page.goto("/god-mode/organisations", {
       waitUntil: "domcontentloaded",
       timeout: 12_000,
     });
@@ -233,7 +233,7 @@ test("soft-delete and restore the existing QA organisation through God Mode", as
       );
     organisationId = fixture.id;
     organisationName = fixture.name;
-    profileUrl = `/agent/god-mode/organisations?organisationId=${encodeURIComponent(fixture.id)}`;
+    profileUrl = `/god-mode/organisations?organisationId=${encodeURIComponent(fixture.id)}`;
     const outsideBefore = outsideDirectorySignature(
       beforeDirectory,
       fixture.id,
@@ -487,7 +487,7 @@ test("soft-delete and restore the existing QA organisation through God Mode", as
       for (const theme of ["light", "dark"] as const) {
         await setTheme(page, theme);
         await page.setViewportSize({ width, height: 1000 });
-        await page.goto("/agent/god-mode/plugins", {
+        await page.goto("/god-mode/plugins", {
           waitUntil: "domcontentloaded",
           timeout: 12_000,
         });

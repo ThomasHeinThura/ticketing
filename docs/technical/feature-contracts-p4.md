@@ -647,9 +647,17 @@ one-time **setup page** an empty database serves, unlocked by a token printed in
 container log ([auth-and-identity.md](#pending-01-architectureauth-and-identity-break-glass));
 `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` exists only for headless installs.
 
-God Mode is a route group inside the agent application — `/agent/god-mode/*` — rather than
-a separate application. A separate application means separate authentication, separate
-deployment and separate design drift, which is a price without a benefit.
+God Mode is a route group inside the agent application at the agent host root —
+`/god-mode/*` — rather than a separate application. A separate application means separate
+authentication, separate deployment and separate design drift, which is a price without a
+benefit. It has its own God Mode sign-in page, `/god-mode/sign-in`, which offers only the
+password and the existing two-factor step (no SSO, identity-provider, email-code, sign-up or
+invitation path) and creates the same agent session; a signed-out visit to any God Mode page
+goes there, MFA enrolment is enforced as everywhere else, and a signed-in user who is not an
+instance administrator sees the access-denied screen. The API (`requireCurrentInstanceAdmin`,
+`instance:admin`, session only) stays the authority. Old `/agent/god-mode[/*]` links redirect
+to `/god-mode[/*]`, keeping search and hash; the portal host never serves God Mode (L-03,
+Thomas 30 Oct 2026, option A).
 
 <a id="god-mode-sections"></a>
 ### Sections
@@ -820,7 +828,7 @@ fall back to. What the screen shows is a **read-through of the organisation's
 Provisioning a new customer organisation is the operation performed most often, so it is
 one screen and one submit.
 
-**Organisation → Identity** (`/agent/god-mode/organisations/{id}/identity`, P3): the
+**Organisation → Identity** (`/god-mode/organisations/{id}/identity`, P3): the
 customer organisation's own identity connection — enable/disable portal SSO; provider type
 (Microsoft Entra first); organisation-bound OIDC settings; SCIM endpoint information; SCIM
 token create and rotate; Test OIDC; Test SCIM; provisioning status and last sync result;
@@ -1914,8 +1922,8 @@ Notifications inbox at `/agent/notifications`; staff scoped preferences under
 `/dashboard/settings/account/notifications` and customer global preferences under
 `/account`; the email-link fragment is exchanged for a server-side handoff before
 authentication, so neither page stores the signed token; God Mode channel
-configuration at `/agent/god-mode/notifications`;
-delivery operations at `/agent/god-mode/deliveries`. Workspace and project choices are
+configuration at `/god-mode/notifications`;
+delivery operations at `/god-mode/deliveries`. Workspace and project choices are
 per-person preference scopes on the staff profile screen, not administrator-managed rule
 screens.
 
@@ -2892,7 +2900,7 @@ See [data-model.md](data-model.md).
 Under profile settings (`/dashboard/settings/account/developer`): API keys, with an "Use with an
 AI agent" section giving a copy-pasteable configuration block for common clients.
 
-In God Mode (`/agent/god-mode/mcp`, backed by `GET /api/instance/mcp/usage` with
+In God Mode (`/god-mode/mcp`, backed by `GET /api/instance/mcp/usage` with
 `instance:admin`): MCP usage — which keys, how many calls, which tools, error rates.
 
 Thomas approved client-reported tool/error statistics on 25 October 2026. Label these

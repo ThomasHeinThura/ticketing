@@ -8,6 +8,7 @@ import PageTitle from "@/components/page-title";
 import { SettingsSidebarProvider } from "@/components/SettingsSidebar";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { isGodModePath } from "@/lib/god-mode-paths";
 import { routes } from "@/lib/routes";
 
 export type SettingsScope = "account" | "workspace" | "project" | "instance";
@@ -16,11 +17,7 @@ export type SettingsScope = "account" | "workspace" | "project" | "instance";
 export function settingsScopeFromPath(pathname: string): SettingsScope {
   if (pathname.startsWith("/dashboard/settings/account")) return "account";
   if (pathname.startsWith("/dashboard/settings/projects")) return "project";
-  if (
-    pathname.startsWith("/agent/god-mode") ||
-    pathname.startsWith("/god-mode")
-  )
-    return "instance";
+  if (isGodModePath(pathname)) return "instance";
   return "workspace";
 }
 
