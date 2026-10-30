@@ -2056,7 +2056,7 @@
 			"signedOutSuccess": "로그아웃되었습니다",
 			"signOutFailed": "로그아웃에 실패했습니다",
 			"unnamedUser": "사용자",
-			"settings": "설정",
+			"accountSettings": "계정 설정",
 			"signingOut": "로그아웃 중...",
 			"logOut": "로그아웃"
 		},
@@ -2064,6 +2064,7 @@
 			"workspaces": "워크스페이스",
 			"switching": "전환 중...",
 			"addWorkspace": "워크스페이스 추가",
+			"workspaceSettings": "워크스페이스 설정",
 			"instanceUsers": "인스턴스 사용자",
 			"selectWorkspace": "워크스페이스 선택"
 		},
@@ -2071,8 +2072,9 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "설정",
 			"backToWorkspace": "워크스페이스로 돌아가기",
+			"backToProject": "{{term_project_other}}(으)로 돌아가기",
 			"settingsWorkspaceTab": "워크스페이스",
-			"settingsAccountTab": "계정"
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_other}}"

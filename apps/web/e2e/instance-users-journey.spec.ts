@@ -264,7 +264,10 @@ async function openInstanceUsers(page: Page) {
   await page
     .getByRole("button", { name: /Disposable Users Workspace/u })
     .click();
-  await page.getByRole("menuitem", { name: "Instance users" }).click();
+  // L-03: the switcher has one God Mode item; Instance users is in the God Mode menu.
+  await page.getByRole("menuitem", { name: "God Mode" }).click();
+  await expect(page).toHaveURL(/\/agent\/god-mode$/u);
+  await page.locator('a[href="/agent/god-mode/users"]').click();
   await expect(page).toHaveURL(/\/agent\/god-mode\/users(?:\?|$)/u);
   await expect(
     page.getByRole("heading", { name: "Instance users", exact: true }),

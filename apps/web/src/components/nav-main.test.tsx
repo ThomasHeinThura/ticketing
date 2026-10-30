@@ -21,7 +21,6 @@ const mocks = vi.hoisted(() => ({
   countSavedView: vi.fn(),
   getWorkspaceResolvedFeatures: vi.fn(),
   logTime: true,
-  instanceAdmin: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -41,9 +40,6 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canLogTime: () => mocks.logTime }),
-}));
-vi.mock("@/hooks/use-instance-admin-signal", () => ({
-  useInstanceAdminSignal: () => mocks.instanceAdmin,
 }));
 vi.mock("@/hooks/queries/invitation/use-pending-invitations", () => ({
   usePendingInvitations: () => ({ data: [] }),
@@ -98,7 +94,6 @@ beforeEach(() => {
       }) as MediaQueryList,
   );
   mocks.user = { id: "viewer-1" };
-  mocks.instanceAdmin = false;
   mocks.navigate.mockReset();
   mocks.getWorkspaceResolvedFeatures.mockResolvedValue([]);
   mocks.getSavedViews.mockResolvedValue([
@@ -277,30 +272,19 @@ describe("NavMain feature entries (P5-R4-04)", () => {
   });
 });
 
-describe("NavMain scoped settings entry", () => {
-  it("offers separate Account, Workspace and Project settings destinations", () => {
+describe("NavMain settings entry (L-03)", () => {
+  it("has no sidebar Settings group; settings open from the avatar, workspace and project menus", () => {
     renderNav();
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Settings" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Account" })).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Workspace" }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Project settings" }));
-    expect(mocks.navigate).toHaveBeenCalledWith({
-      to: "/dashboard/settings/projects",
-    });
-  });
-
-  it("shows the independent God Mode destination only to instance admins", () => {
-    const { unmount } = renderNav();
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+      screen.queryByRole("button", { name: "Project settings" }),
+    ).toBeNull();
     expect(screen.queryByRole("button", { name: "God Mode" })).toBeNull();
-    unmount();
-
-    mocks.instanceAdmin = true;
-    renderNav();
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    fireEvent.click(screen.getByRole("button", { name: "God Mode" }));
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent/god-mode" });
+    // The workspace pages that have no settings frame of their own keep their entries.
+    expect(screen.getByRole("button", { name: "Members" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Invitations" }),
+    ).toBeInTheDocument();
   });
 });

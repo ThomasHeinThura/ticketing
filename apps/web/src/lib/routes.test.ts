@@ -1125,6 +1125,7 @@ describe("L-03 account and project settings URLs", () => {
       routes.accountPreferences.path,
       routes.accountSecurity.path,
       routes.accountDeveloper.path,
+      routes.workspaceGeneral.path,
       routes.projectSettingsGeneral.path,
       routes.projectSettingsMembers.path,
       routes.projectSettingsLabels.path,
@@ -1150,6 +1151,9 @@ describe("L-03 account and project settings URLs", () => {
     );
     expect(routes.accountDeveloper.build()).toBe(
       "/dashboard/settings/account/developer",
+    );
+    expect(routes.workspaceGeneral.build()).toBe(
+      "/dashboard/settings/workspace/general",
     );
     const params = { projectId: "p 1" };
     expect(routes.projectSettingsGeneral.build(params)).toBe(

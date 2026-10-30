@@ -2056,7 +2056,7 @@
 			"signedOutSuccess": "已成功退出登录",
 			"signOutFailed": "退出登录失败",
 			"unnamedUser": "用户",
-			"settings": "设置",
+			"accountSettings": "账户设置",
 			"signingOut": "正在退出…",
 			"logOut": "退出登录"
 		},
@@ -2064,6 +2064,7 @@
 			"workspaces": "工作区",
 			"switching": "切换中…",
 			"addWorkspace": "添加工作区",
+			"workspaceSettings": "工作区设置",
 			"instanceUsers": "实例用户",
 			"selectWorkspace": "选择工作区"
 		},
@@ -2071,8 +2072,9 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "设置",
 			"backToWorkspace": "返回工作区",
+			"backToProject": "返回{{term_project_other}}",
 			"settingsWorkspaceTab": "工作区",
-			"settingsAccountTab": "账户"
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

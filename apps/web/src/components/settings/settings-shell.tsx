@@ -6,34 +6,43 @@ import { useTranslation } from "react-i18next";
 import { ActionTooltip } from "@/components/common/action-tooltip";
 import PageTitle from "@/components/page-title";
 import { SettingsSidebarProvider } from "@/components/SettingsSidebar";
+import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { routes } from "@/lib/routes";
 
-function scopedSettingsTitle(
-  t: (key: string) => string,
-  pathname: string,
-  instance: boolean,
-) {
-  if (instance) return t("navigation:sidebar.godMode");
-  if (pathname.startsWith("/dashboard/settings/account"))
-    return t("settings:account");
-  if (pathname.startsWith("/agent/settings/profile"))
-    return t("settings:account");
-  if (pathname.startsWith("/dashboard/settings/projects"))
-    return t("navigation:projectList.projectSettings");
-  if (pathname.startsWith("/dashboard/settings/workspace"))
-    return t("navigation:page.settingsWorkspaceTab");
-  if (pathname.startsWith("/agent/settings"))
-    return t("navigation:page.settingsWorkspaceTab");
-  return t("navigation:page.settingsWorkspaceTab");
+export type SettingsScope = "account" | "workspace" | "project" | "instance";
+
+/** The scope a settings URL belongs to; the shared `/dashboard/settings` layout spans three. */
+export function settingsScopeFromPath(pathname: string): SettingsScope {
+  if (
+    pathname.startsWith("/dashboard/settings/account") ||
+    pathname.startsWith("/agent/settings/profile")
+  )
+    return "account";
+  if (pathname.startsWith("/dashboard/settings/projects")) return "project";
+  if (
+    pathname.startsWith("/agent/god-mode") ||
+    pathname.startsWith("/god-mode")
+  )
+    return "instance";
+  return "workspace";
 }
+
+const scopeTitleKeys: Record<SettingsScope, string> = {
+  account: "settings:account",
+  workspace: "navigation:page.settingsWorkspaceTab",
+  project: "navigation:projectList.projectSettings",
+  instance: "navigation:sidebar.godMode",
+};
 
 /** Kaneo settings chrome shared by its existing account, workspace, project and instance areas. */
 export function SettingsShell({
   children,
-  instance = false,
+  scope,
 }: {
   children: ReactNode;
-  instance?: boolean;
+  /** The settings scope; without it the scope follows the URL. */
+  scope?: SettingsScope;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -41,7 +50,29 @@ export function SettingsShell({
   const isMobile = useIsMobile();
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const { data: workspace } = useActiveWorkspace();
-  const title = scopedSettingsTitle(t, location.pathname, instance);
+  const resolvedScope = scope ?? settingsScopeFromPath(location.pathname);
+  const title = t(scopeTitleKeys[resolvedScope]);
+  // Project settings go back to that project's board; the other scopes go back to the workspace.
+  const settingsProjectId =
+    resolvedScope === "project"
+      ? location.pathname.match(
+          /^\/dashboard\/settings\/projects\/([^/]+)/,
+        )?.[1]
+      : undefined;
+  const { data: settingsProject } = useGetProjects(
+    { workspaceId: workspace?.id ?? "" },
+    Boolean(settingsProjectId),
+    (projects) =>
+      projects?.find(
+        (project) => project.id === decodeURIComponent(settingsProjectId ?? ""),
+      ),
+  );
+  const backToProject = settingsProject?.slug
+    ? routes.workItemList.build(
+        { projectKey: settingsProject.slug },
+        { layout: "board", sort: "position", dir: "asc" },
+      )
+    : undefined;
 
   useEffect(() => {
     if (location.pathname) setSettingsMenuOpen(false);
@@ -84,11 +115,14 @@ export function SettingsShell({
                 className="hidden md:inline-flex"
                 onClick={() => {
                   if (!workspace?.id) return;
-                  navigate({ to: "/agent" });
+                  if (backToProject) navigate({ href: backToProject });
+                  else navigate({ to: "/agent" });
                 }}
               >
                 <ChevronLeft />
-                {t("navigation:page.backToWorkspace")}
+                {backToProject
+                  ? t("navigation:page.backToProject")
+                  : t("navigation:page.backToWorkspace")}
               </Button>
             </div>
 

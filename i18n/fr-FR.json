@@ -2066,7 +2066,7 @@
 			"signedOutSuccess": "Déconnexion réussie",
 			"signOutFailed": "Échec de la déconnexion",
 			"unnamedUser": "Utilisateur",
-			"settings": "Paramètres",
+			"accountSettings": "Paramètres du compte",
 			"signingOut": "Déconnexion...",
 			"logOut": "Déconnexion"
 		},
@@ -2074,6 +2074,7 @@
 			"workspaces": "Espaces de travail",
 			"switching": "Changement...",
 			"addWorkspace": "Ajouter un espace de travail",
+			"workspaceSettings": "Paramètres de l'espace de travail",
 			"instanceUsers": "Utilisateurs de l’instance",
 			"selectWorkspace": "Sélectionner un espace de travail"
 		},
@@ -2081,8 +2082,9 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Paramètres",
 			"backToWorkspace": "Retour à l'espace de travail",
+			"backToProject": "Retour au {{term_project_one}}",
 			"settingsWorkspaceTab": "Espace de travail",
-			"settingsAccountTab": "Compte"
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

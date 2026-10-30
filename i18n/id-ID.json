@@ -2056,7 +2056,7 @@
 			"signedOutSuccess": "Berhasil keluar",
 			"signOutFailed": "Gagal keluar",
 			"unnamedUser": "Pengguna",
-			"settings": "Pengaturan",
+			"accountSettings": "Pengaturan Akun",
 			"signingOut": "Keluar...",
 			"logOut": "Keluar"
 		},
@@ -2064,6 +2064,7 @@
 			"workspaces": "Ruang kerja",
 			"switching": "Beralih...",
 			"addWorkspace": "Tambah ruang kerja",
+			"workspaceSettings": "Pengaturan Ruang Kerja",
 			"instanceUsers": "Pengguna instans",
 			"selectWorkspace": "Pilih ruang kerja"
 		},
@@ -2071,8 +2072,9 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Pengaturan",
 			"backToWorkspace": "Kembali ke Ruang Kerja",
+			"backToProject": "Kembali ke {{term_project_other}}",
 			"settingsWorkspaceTab": "Ruang Kerja",
-			"settingsAccountTab": "Akun"
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_other}}"

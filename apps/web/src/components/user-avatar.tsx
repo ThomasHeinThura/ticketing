@@ -16,6 +16,7 @@ import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import useSignOut from "@/hooks/mutations/use-sign-out";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import { getInitials } from "@/lib/get-initials";
+import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 
@@ -49,8 +50,8 @@ export function UserAvatar() {
     }
   };
 
-  const handleSettings = () => {
-    navigate({ to: "/dashboard/settings/account/information" });
+  const handleAccountSettings = () => {
+    navigate({ to: routes.accountInformation.path });
   };
 
   const initials = getInitials(user.name || user.email, "UN");
@@ -97,11 +98,11 @@ export function UserAvatar() {
 
         <div className="p-0.5">
           <DropdownMenuItem
-            onClick={handleSettings}
+            onClick={handleAccountSettings}
             className="h-7 gap-2 px-2 text-sm font-normal"
           >
             <Settings className="size-3.5" />
-            {t("navigation:userMenu.settings")}
+            {t("navigation:userMenu.accountSettings")}
           </DropdownMenuItem>
         </div>
 

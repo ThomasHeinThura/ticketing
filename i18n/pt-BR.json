@@ -2066,7 +2066,7 @@
 			"signedOutSuccess": "Logout realizado com sucesso",
 			"signOutFailed": "Falha ao sair",
 			"unnamedUser": "Usuário",
-			"settings": "Configurações",
+			"accountSettings": "Configurações da conta",
 			"signingOut": "Saindo...",
 			"logOut": "Sair"
 		},
@@ -2074,6 +2074,7 @@
 			"workspaces": "Espaços de trabalho",
 			"switching": "Alternando...",
 			"addWorkspace": "Adicionar espaço de trabalho",
+			"workspaceSettings": "Configurações do espaço de trabalho",
 			"instanceUsers": "Usuários da instância",
 			"selectWorkspace": "Selecionar espaço de trabalho"
 		},
@@ -2081,8 +2082,9 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Configurações",
 			"backToWorkspace": "Voltar ao espaço de trabalho",
+			"backToProject": "Voltar ao {{term_project_one}}",
 			"settingsWorkspaceTab": "Espaço de trabalho",
-			"settingsAccountTab": "Conta"
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

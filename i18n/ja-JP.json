@@ -2056,7 +2056,7 @@
 			"signedOutSuccess": "サインアウトしました",
 			"signOutFailed": "サインアウトに失敗しました",
 			"unnamedUser": "ユーザー",
-			"settings": "設定",
+			"accountSettings": "アカウント設定",
 			"signingOut": "サインアウト中...",
 			"logOut": "ログアウト"
 		},
@@ -2064,6 +2064,7 @@
 			"workspaces": "ワークスペース",
 			"switching": "切り替え中...",
 			"addWorkspace": "ワークスペースを追加",
+			"workspaceSettings": "ワークスペース設定",
 			"instanceUsers": "インスタンスユーザー",
 			"selectWorkspace": "ワークスペースを選択"
 		},
@@ -2071,8 +2072,9 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "設定",
 			"backToWorkspace": "ワークスペースに戻る",
+			"backToProject": "{{term_project_other}}に戻る",
 			"settingsWorkspaceTab": "ワークスペース",
-			"settingsAccountTab": "アカウント"
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_other}}"

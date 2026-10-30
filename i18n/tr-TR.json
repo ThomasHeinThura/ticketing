@@ -2061,7 +2061,7 @@
 			"signedOutSuccess": "Başarıyla çıkış yapıldı",
 			"signOutFailed": "Çıkış yapılamadı",
 			"unnamedUser": "Kullanıcı",
-			"settings": "Ayarlar",
+			"accountSettings": "Hesap ayarları",
 			"signingOut": "Çıkış yapılıyor...",
 			"logOut": "Çıkış yap"
 		},
@@ -2069,6 +2069,7 @@
 			"workspaces": "Çalışma Alanları",
 			"switching": "Geçiliyor...",
 			"addWorkspace": "Çalışma alanı ekle",
+			"workspaceSettings": "Çalışma alanı ayarları",
 			"instanceUsers": "Örnek kullanıcıları",
 			"selectWorkspace": "Çalışma alanı seç"
 		},
@@ -2076,8 +2077,9 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Ayarlar",
 			"backToWorkspace": "Çalışma Alanına Dön",
+			"backToProject": "{{term_project_one}} sayfasına dön",
 			"settingsWorkspaceTab": "Çalışma Alanı",
-			"settingsAccountTab": "Hesap"
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

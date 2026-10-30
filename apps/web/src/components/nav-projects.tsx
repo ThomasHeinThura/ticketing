@@ -37,6 +37,7 @@ import {
   getDefaultAgentTerm,
   useAgentTranslation,
 } from "@/lib/i18n/agent-translation";
+import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 
 // The closed creation form pulls in the icon catalogue and editor controls.
@@ -162,7 +163,7 @@ export function NavProjects() {
             className="h-7 items-start cursor-pointer text-sm"
             onClick={() => {
               navigate({
-                to: "/dashboard/settings/projects/$projectId/general",
+                to: routes.projectSettingsGeneral.path,
                 params: { projectId: project.id },
               });
             }}

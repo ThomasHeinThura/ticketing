@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_layout/_authenticated/agent/god-mode")({
 function InstanceSettingsRoute() {
   const isAdmin = useInstanceAdminSignal();
   return (
-    <SettingsShell instance>
+    <SettingsShell scope="instance">
       {isAdmin ? (
         <InstanceSettingsFrame>
           <Outlet />
