@@ -47,44 +47,44 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Timesheet | `/agent/timesheet` | route | P5 | 🟡 |
 | Saved views index | `/agent/views` | route | P1 | 🟡 |
 | Saved view | `/agent/views/{id}` | route | P1 | 🟡 |
-| Profile — general | `/agent/settings/profile` | route | P1 | 🟡 |
-| Profile — appearance | `/agent/settings/profile/appearance` | route | P1 | 🟡 |
-| Profile — notifications | `/agent/settings/profile/notifications` | route | P4 | 🟡 |
-| Profile — security & sessions | `/agent/settings/profile/security` | route | P3 | ⬜ |
-| Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/agent/settings/profile/pending-actions` | route | P4 | 🟡 |
-| Profile — pending action detail | `/agent/settings/profile/pending-actions/{id}` | route | P4 | 🟡 |
+| Profile — general | `/dashboard/settings/account/information` | route | P1 | 🟡 |
+| Profile — appearance | `/dashboard/settings/account/preferences` | route | P1 | 🟡 |
+| Profile — notifications | `/dashboard/settings/account/notifications` | route | P4 | 🟡 |
+| Profile — security & sessions | `/dashboard/settings/account/security` | route | P3 | ⬜ |
+| Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/dashboard/settings/account/pending-actions` | route | P4 | 🟡 |
+| Profile — pending action detail | `/dashboard/settings/account/pending-actions/{id}` | route | P4 | 🟡 |
 | Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ⬜ |
-| Workspace — general | `/agent/settings` | route | P1 | 🟡 |
+| Workspace — general | `/dashboard/settings/workspace/general` | route | P1 | 🟡 |
 | Workspace — terminology | `/agent/settings/terminology` | route | P4 | ⬜ |
-| Workspace — members | `/agent/settings/members` | route | P1 | 🟡 |
-| Workspace — customer invitations | `/agent/settings/customer-invitations` | route | P5 | 🟡 |
-| Workspace — teams | `/agent/settings/teams` | route | P4 | 🟡 |
-| Team detail | `/agent/settings/teams/{id}` | route | P4 | 🟡 |
-| **Workspace — roles** | `/agent/settings/roles` | route | P4 | 🟡 |
-| **Role editor** | `/agent/settings/roles/{id}` | route | P4 | 🟡 |
-| Workspace — work item types | `/agent/settings/work-item-types` | route | P2 | ⬜ |
-| Workspace — states | `/agent/settings/states` | route | P1 | 🟡 |
-| Workspace — workflows | `/agent/settings/workflows` | route | P2 | 🟡 |
-| Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ⬜ |
-| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | 🟡 |
-| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | 🟡 |
-| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | 🟡 |
-| Service calendar editor | `/agent/settings/calendars/{id}` | route | P2 | 🟡 |
-| Workspace request types and selected editor | `/agent/settings/request-types?requestTypeId={id}` | route | P2 | 🟡 |
-| Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | 🟡 |
-| Custom field editor | `/agent/settings/custom-fields/{id}` | route | P4 | 🟡 |
-| Workspace — labels | `/agent/settings/labels` | route | P1 | 🟡 |
-| Workspace — canned responses | `/agent/settings/canned-responses` | route | P1 | 🟡 |
+| Workspace — members | `/dashboard/settings/workspace/members` | route | P1 | 🟡 |
+| Workspace — customer invitations | `/dashboard/settings/workspace/customer-invitations` | route | P5 | 🟡 |
+| Workspace — teams | `/dashboard/settings/workspace/teams` | route | P4 | 🟡 |
+| Team detail | `/dashboard/settings/workspace/teams/{id}` | route | P4 | 🟡 |
+| **Workspace — roles** | `/dashboard/settings/workspace/roles` | route | P4 | 🟡 |
+| **Role editor** | `/dashboard/settings/workspace/roles/{id}` | route | P4 | 🟡 |
+| Workspace — work item types | `/dashboard/settings/workspace/work-item-types` | route | P2 | ⬜ |
+| Workspace — states | `/dashboard/settings/workspace/states` | route | P1 | 🟡 |
+| Workspace — workflows | `/dashboard/settings/workspace/workflows` | route | P2 | 🟡 |
+| Workflow editor | `/dashboard/settings/workspace/workflows/{id}` | route | P2 | ⬜ |
+| Workspace — SLA policies | `/dashboard/settings/workspace/sla-policies` | route | P2 | 🟡 |
+| SLA policy editor | `/dashboard/settings/workspace/sla-policies/{id}` | route | P2 | 🟡 |
+| Workspace — service calendars | `/dashboard/settings/workspace/calendars` | route | P2 | 🟡 |
+| Service calendar editor | `/dashboard/settings/workspace/calendars/{id}` | route | P2 | 🟡 |
+| Workspace request types and selected editor | `/dashboard/settings/workspace/request-types?requestTypeId={id}` | route | P2 | 🟡 |
+| Workspace — custom fields (incl. sections) | `/dashboard/settings/workspace/custom-fields` | route | P4 | 🟡 |
+| Custom field editor | `/dashboard/settings/workspace/custom-fields/{id}` | route | P4 | 🟡 |
+| Workspace — labels | `/dashboard/settings/workspace/labels` | route | P1 | 🟡 |
+| Workspace — canned responses | `/dashboard/settings/workspace/canned-responses` | route | P1 | 🟡 |
 | Project — estimates (system, scale, cycle completion default) | `/agent/projects/{key}/settings/estimates` | route | P5 | 🟡 |
-| Workspace — rates | `/agent/settings/rates` | route | P5 | 🟡 |
-| Workspace — time activities | `/agent/settings/time-activities` | route | P5 | 🟡 |
-| Workspace — cost types (Rates section) | `/agent/settings/rates` | section | P5 | 🟡 |
-| Workspace — automations | `/agent/settings/automations` | route | P4 | 🟡 |
-| Workspace — webhooks | `/agent/settings/webhooks` | route | P4 | 🟡 |
-| Webhook editor | `/agent/settings/webhooks/{id}` | route | P4 | 🟡 |
-| Webhook delivery history | `/agent/settings/webhooks/{id}/deliveries` | route | P4 | 🟡 |
-| Workspace — import | `/agent/settings/import` | route | P6 | ⬜ |
-| Workspace — danger zone | `/agent/settings/danger` | route | P1 | 🟡 |
+| Workspace — rates | `/dashboard/settings/workspace/rates` | route | P5 | 🟡 |
+| Workspace — time activities | `/dashboard/settings/workspace/time-activities` | route | P5 | 🟡 |
+| Workspace — cost types (Rates section) | `/dashboard/settings/workspace/rates` | section | P5 | 🟡 |
+| Workspace — automations | `/dashboard/settings/workspace/automations` | route | P4 | 🟡 |
+| Workspace — webhooks | `/dashboard/settings/workspace/webhooks` | route | P4 | 🟡 |
+| Webhook editor | `/dashboard/settings/workspace/webhooks/{id}` | route | P4 | 🟡 |
+| Webhook delivery history | `/dashboard/settings/workspace/webhooks/{id}/deliveries` | route | P4 | 🟡 |
+| Workspace — import | `/dashboard/settings/workspace/import` | route | P6 | ⬜ |
+| Workspace — danger zone | `/dashboard/settings/workspace/danger` | route | P1 | 🟡 |
 | Project — general | `/agent/projects/{key}/settings` | route | P1 | 🟡 |
 | Project — members | `/agent/projects/{key}/settings/members` | route | P1 | 🟡 |
 | Project — states | `/agent/projects/{key}/settings/states` | route | P1 | 🟡 |

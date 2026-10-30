@@ -734,7 +734,7 @@ export function PendingActionApproval({
       }
       // The role's page no longer exists: return to the roles list.
       if (executed && action.data?.targetType === "workspace_role") {
-        await navigate({ to: "/agent/settings/roles" });
+        await navigate({ to: "/dashboard/settings/workspace/roles" });
       }
       // The deleted calendar's editor would refetch into its 404: return to the list.
       if (

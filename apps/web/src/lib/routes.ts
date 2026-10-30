@@ -1140,29 +1140,29 @@ export const routes = {
     build: () => "/dashboard/settings/account/developer",
   },
   /** `docs/screens.md` "Workspace — webhooks". */
-  webhooks: { path: "/agent/settings/webhooks" as const },
+  webhooks: { path: "/dashboard/settings/workspace/webhooks" as const },
   /** `docs/screens.md` "Webhook editor"; `new` creates. */
   webhookEditor: {
-    path: "/agent/settings/webhooks/$id" as const,
+    path: "/dashboard/settings/workspace/webhooks/$id" as const,
     build: (params: { id: string }) =>
-      `/agent/settings/webhooks/${encodeURIComponent(params.id)}`,
+      `/dashboard/settings/workspace/webhooks/${encodeURIComponent(params.id)}`,
   },
   /** `docs/screens.md` "Webhook delivery history". */
   webhookDeliveries: {
-    path: "/agent/settings/webhooks/$id/deliveries" as const,
+    path: "/dashboard/settings/workspace/webhooks/$id/deliveries" as const,
     build: (params: { id: string }) =>
-      `/agent/settings/webhooks/${encodeURIComponent(params.id)}/deliveries`,
+      `/dashboard/settings/workspace/webhooks/${encodeURIComponent(params.id)}/deliveries`,
   },
   /** `docs/screens.md` "Workspace — automations". */
-  automations: { path: "/agent/settings/automations" as const },
+  automations: { path: "/dashboard/settings/workspace/automations" as const },
   /** `docs/screens.md` "Workspace — customer invitations" (CP-20..CP-23). */
   customerInvitations: {
-    path: "/agent/settings/customer-invitations" as const,
+    path: "/dashboard/settings/workspace/customer-invitations" as const,
     build: (search: CustomerInvitationsSearch = {}) => {
       const resolved = parseCustomerInvitationsSearch(search);
       return resolved.organisation
-        ? `/agent/settings/customer-invitations?organisation=${encodeURIComponent(resolved.organisation)}`
-        : "/agent/settings/customer-invitations";
+        ? `/dashboard/settings/workspace/customer-invitations?organisation=${encodeURIComponent(resolved.organisation)}`
+        : "/dashboard/settings/workspace/customer-invitations";
     },
   },
   /** `docs/screens.md` "Project — automations" (redirects into the Kaneo project settings). */
@@ -1173,61 +1173,61 @@ export const routes = {
   },
   /** `docs/02-design/screen-inventory.md` "Workspace — service calendars". */
   serviceCalendars: {
-    path: "/agent/settings/calendars" as const,
+    path: "/dashboard/settings/workspace/calendars" as const,
     build: (search: ServiceCalendarListSearch = {}) => {
       const resolved = parseServiceCalendarListSearch(search);
       const query = new URLSearchParams();
       if (resolved.cursor) query.set("cursor", resolved.cursor);
       const suffix = query.toString();
       return suffix
-        ? `/agent/settings/calendars?${suffix}`
-        : "/agent/settings/calendars";
+        ? `/dashboard/settings/workspace/calendars?${suffix}`
+        : "/dashboard/settings/workspace/calendars";
     },
   },
   /** `docs/02-design/screen-inventory.md` "Service calendar editor". */
   serviceCalendarEditor: {
-    path: "/agent/settings/calendars/$id" as const,
+    path: "/dashboard/settings/workspace/calendars/$id" as const,
     build: (params: { id: string }, year?: number) => {
-      const path = `/agent/settings/calendars/${encodeURIComponent(params.id)}`;
+      const path = `/dashboard/settings/workspace/calendars/${encodeURIComponent(params.id)}`;
       return year === undefined ? path : `${path}?year=${year}`;
     },
   },
   /** `docs/02-design/screen-inventory.md` "Workspace — SLA policies". */
   slaPolicies: {
-    path: "/agent/settings/sla-policies" as const,
+    path: "/dashboard/settings/workspace/sla-policies" as const,
     build: (search: SlaPolicyListSearch = {}) => {
       const resolved = parseSlaPolicyListSearch(search);
       const query = new URLSearchParams();
       if (resolved.cursor) query.set("cursor", resolved.cursor);
       const suffix = query.toString();
       return suffix
-        ? `/agent/settings/sla-policies?${suffix}`
-        : "/agent/settings/sla-policies";
+        ? `/dashboard/settings/workspace/sla-policies?${suffix}`
+        : "/dashboard/settings/workspace/sla-policies";
     },
   },
   /** `docs/02-design/screen-inventory.md` "SLA policy editor". */
   slaPolicyEditor: {
-    path: "/agent/settings/sla-policies/$id" as const,
+    path: "/dashboard/settings/workspace/sla-policies/$id" as const,
     build: (params: { id: string }) =>
-      `/agent/settings/sla-policies/${encodeURIComponent(params.id)}`,
+      `/dashboard/settings/workspace/sla-policies/${encodeURIComponent(params.id)}`,
   },
   requestTypes: {
-    path: "/agent/settings/request-types" as const,
+    path: "/dashboard/settings/workspace/request-types" as const,
     build: (search: RequestTypeEditorSearch = {}) => {
       const resolved = parseRequestTypeEditorSearch(search);
       return resolved.requestTypeId
-        ? `/agent/settings/request-types?requestTypeId=${encodeURIComponent(resolved.requestTypeId)}`
-        : "/agent/settings/request-types";
+        ? `/dashboard/settings/workspace/request-types?requestTypeId=${encodeURIComponent(resolved.requestTypeId)}`
+        : "/dashboard/settings/workspace/request-types";
     },
   },
   /** `WF-9`: workflow versions, validation and publish, in the settings frame. */
   workflowSettings: {
-    path: "/agent/settings/workflows" as const,
+    path: "/dashboard/settings/workspace/workflows" as const,
     build: (search: WorkflowSettingsSearch = {}) => {
       const resolved = parseWorkflowSettingsSearch(search);
       return resolved.workflowId
-        ? `/agent/settings/workflows?workflowId=${encodeURIComponent(resolved.workflowId)}`
-        : "/agent/settings/workflows";
+        ? `/dashboard/settings/workspace/workflows?workflowId=${encodeURIComponent(resolved.workflowId)}`
+        : "/dashboard/settings/workspace/workflows";
     },
   },
   intakeQueue: {
@@ -1670,21 +1670,21 @@ export const routes = {
   },
   /** PA-6 requester-owned browser approval list and item. */
   pendingActions: {
-    path: "/agent/settings/profile/pending-actions" as const,
+    path: "/dashboard/settings/account/pending-actions" as const,
     build: (search: PendingActionsSearch = {}) => {
       const resolved = parsePendingActionsSearch(search);
       const query = new URLSearchParams();
       if (resolved.cursor) query.set("cursor", resolved.cursor);
       const suffix = query.toString();
       return suffix
-        ? `/agent/settings/profile/pending-actions?${suffix}`
-        : "/agent/settings/profile/pending-actions";
+        ? `/dashboard/settings/account/pending-actions?${suffix}`
+        : "/dashboard/settings/account/pending-actions";
     },
   },
   pendingAction: {
-    path: "/agent/settings/profile/pending-actions/$id" as const,
+    path: "/dashboard/settings/account/pending-actions/$id" as const,
     build: (params: { id: string }) =>
-      `/agent/settings/profile/pending-actions/${encodeURIComponent(params.id)}`,
+      `/dashboard/settings/account/pending-actions/${encodeURIComponent(params.id)}`,
   },
   agentHome: {
     path: "/agent" as const,
@@ -1757,22 +1757,8 @@ export const routes = {
     build: (params: { projectKey: string }) =>
       `/agent/projects/${encodeURIComponent(params.projectKey)}`,
   },
-  profileSettings: {
-    path: "/agent/settings/profile" as const,
-    build: () => "/agent/settings/profile",
-  },
-  profileNotifications: {
-    path: "/agent/settings/profile/notifications" as const,
-    build: () => "/agent/settings/profile/notifications",
-  },
-  profileAppearance: {
-    path: "/agent/settings/profile/appearance" as const,
-    build: () => "/agent/settings/profile/appearance",
-  },
-  workspaceSettings: {
-    path: "/agent/settings" as const,
-    build: () => "/agent/settings",
-  },
+  /** L-03: every old `/agent/settings/*` link (including `/agent/settings`) redirects to its canonical settings page. */
+  legacySettings: { path: "/agent/settings/$" as const },
   /** Kaneo workspace settings landing page (L-03); the workspace switcher opens it. */
   workspaceGeneral: {
     path: "/dashboard/settings/workspace/general" as const,
@@ -1787,37 +1773,37 @@ export const routes = {
     build: () => "/dashboard/settings/workspace/features",
   },
   workspaceMembers: {
-    path: "/agent/settings/members" as const,
+    path: "/dashboard/settings/workspace/members" as const,
     build: (search: SettingsTextFilterSearch = {}) => {
       const resolved = parseSettingsTextFilterSearch(search);
       return resolved.q
-        ? `/agent/settings/members?q=${encodeURIComponent(resolved.q)}`
-        : "/agent/settings/members";
+        ? `/dashboard/settings/workspace/members?q=${encodeURIComponent(resolved.q)}`
+        : "/dashboard/settings/workspace/members";
     },
   },
   workspaceStates: {
-    path: "/agent/settings/states" as const,
-    build: () => "/agent/settings/states",
+    path: "/dashboard/settings/workspace/states" as const,
+    build: () => "/dashboard/settings/workspace/states",
   },
   workspaceLabels: {
-    path: "/agent/settings/labels" as const,
+    path: "/dashboard/settings/workspace/labels" as const,
     build: (search: LabelCatalogueSearch = {}) =>
-      `/agent/settings/labels${labelCatalogueQuery(search)}`,
+      `/dashboard/settings/workspace/labels${labelCatalogueQuery(search)}`,
   },
   workspaceCannedResponses: {
-    path: "/agent/settings/canned-responses" as const,
+    path: "/dashboard/settings/workspace/canned-responses" as const,
     build: (search: CannedResponseSearch = {}) => {
       const resolved = parseCannedResponseSearch(search);
       const query = new URLSearchParams(resolved).toString();
-      return `/agent/settings/canned-responses${query ? `?${query}` : ""}`;
+      return `/dashboard/settings/workspace/canned-responses${query ? `?${query}` : ""}`;
     },
   },
   workspaceWorkItemTemplates: {
-    path: "/agent/settings/work-item-templates" as const,
+    path: "/dashboard/settings/workspace/work-item-templates" as const,
     build: (search: WorkItemTemplateSearch = {}) => {
       const resolved = parseWorkItemTemplateSearch(search);
       const query = new URLSearchParams(resolved).toString();
-      return `/agent/settings/work-item-templates${query ? `?${query}` : ""}`;
+      return `/dashboard/settings/workspace/work-item-templates${query ? `?${query}` : ""}`;
     },
   },
   /** `docs/screens.md` "Timesheet": the week grid (P5 time and cost). */
@@ -1887,22 +1873,22 @@ export const routes = {
   },
   /** `docs/screens.md` "Workspace — rates" and "Workspace — time activities". */
   workspaceRates: {
-    path: "/agent/settings/rates" as const,
-    build: () => "/agent/settings/rates",
+    path: "/dashboard/settings/workspace/rates" as const,
+    build: () => "/dashboard/settings/workspace/rates",
   },
   workspaceTimeActivities: {
-    path: "/agent/settings/time-activities" as const,
-    build: () => "/agent/settings/time-activities",
+    path: "/dashboard/settings/workspace/time-activities" as const,
+    build: () => "/dashboard/settings/workspace/time-activities",
   },
   /** `docs/screens.md` "Workspace — teams" and "Team detail". */
   workspaceTeams: {
-    path: "/agent/settings/teams" as const,
-    build: () => "/agent/settings/teams",
+    path: "/dashboard/settings/workspace/teams" as const,
+    build: () => "/dashboard/settings/workspace/teams",
   },
   workspaceTeamDetail: {
-    path: "/agent/settings/teams/$id" as const,
+    path: "/dashboard/settings/workspace/teams/$id" as const,
     build: (params: { id: string }, search: TeamDetailSearch = {}) => {
-      const base = `/agent/settings/teams/${encodeURIComponent(params.id)}`;
+      const base = `/dashboard/settings/workspace/teams/${encodeURIComponent(params.id)}`;
       return parseTeamDetailSearch(search).inactive
         ? `${base}?inactive=1`
         : base;
@@ -1910,13 +1896,13 @@ export const routes = {
   },
   /** `docs/screens.md` "Workspace — roles" and "Role editor". */
   workspaceRoles: {
-    path: "/agent/settings/roles" as const,
-    build: () => "/agent/settings/roles",
+    path: "/dashboard/settings/workspace/roles" as const,
+    build: () => "/dashboard/settings/workspace/roles",
   },
   workspaceRoleDetail: {
-    path: "/agent/settings/roles/$id" as const,
+    path: "/dashboard/settings/workspace/roles/$id" as const,
     build: (params: { id: string }, search: RoleDetailSearch = {}) => {
-      const base = `/agent/settings/roles/${encodeURIComponent(params.id)}`;
+      const base = `/dashboard/settings/workspace/roles/${encodeURIComponent(params.id)}`;
       const query = new URLSearchParams(
         parseRoleDetailSearch(search) as Record<string, string>,
       ).toString();
@@ -1925,21 +1911,22 @@ export const routes = {
   },
   /** `docs/screens.md` "Workspace — custom fields (incl. sections)". */
   workspaceCustomFields: {
-    path: "/agent/settings/custom-fields" as const,
+    path: "/dashboard/settings/workspace/custom-fields" as const,
     build: (search: CustomFieldListSearch = {}) =>
       parseCustomFieldListSearch(search).deleted
-        ? "/agent/settings/custom-fields?deleted=1"
-        : "/agent/settings/custom-fields",
+        ? "/dashboard/settings/workspace/custom-fields?deleted=1"
+        : "/dashboard/settings/workspace/custom-fields",
   },
   /** `docs/screens.md` "Custom field editor"; `new` opens the create form. */
   workspaceCustomFieldEditor: {
-    path: "/agent/settings/custom-fields/$id" as const,
+    path: "/dashboard/settings/workspace/custom-fields/$id" as const,
     build: (params: { id: string }) =>
-      `/agent/settings/custom-fields/${encodeURIComponent(params.id)}`,
+      `/dashboard/settings/workspace/custom-fields/${encodeURIComponent(params.id)}`,
   },
+  /** The danger zone is part of General today (ST-8); this URL redirects there. */
   workspaceDangerZone: {
-    path: "/agent/settings/danger" as const,
-    build: () => "/agent/settings/danger",
+    path: "/dashboard/settings/workspace/danger" as const,
+    build: () => "/dashboard/settings/workspace/danger",
   },
   projectSettings: {
     path: "/agent/projects/$projectKey/settings" as const,

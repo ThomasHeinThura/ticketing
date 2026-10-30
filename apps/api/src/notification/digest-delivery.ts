@@ -163,7 +163,9 @@ async function preferenceUrl(
       ? getConfiguredAgentOrigin()
       : getConfiguredCustomerOrigin();
   const path =
-    audience === "agent" ? "/agent/settings/profile/notifications" : "/account";
+    audience === "agent"
+      ? "/dashboard/settings/account/notifications"
+      : "/account";
   return `${origin}${path}#preference_token=${token}`;
 }
 

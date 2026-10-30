@@ -416,7 +416,7 @@ describe("SCIM administration API", () => {
       scope: {},
       payload: {
         key: pending.id,
-        url: `/agent/settings/profile/pending-actions/${pending.id}`,
+        url: `/dashboard/settings/account/pending-actions/${pending.id}`,
         pendingActionId: pending.id,
         outcome: "invalidated",
         invalidationReason: "requester_deactivated",

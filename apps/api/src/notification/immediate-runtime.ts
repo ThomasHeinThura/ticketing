@@ -157,7 +157,7 @@ export function immediateNotificationRuntime(
           : getConfiguredCustomerOrigin();
       const preferencePath =
         audience === "agent"
-          ? "/agent/settings/profile/notifications"
+          ? "/dashboard/settings/account/notifications"
           : "/account";
       const token = signNotificationPreferenceLink({
         audience,

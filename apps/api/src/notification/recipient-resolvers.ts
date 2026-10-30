@@ -399,6 +399,15 @@ export async function resolveWebhookAutoDisabledRecipients(
   return recipients;
 }
 
+/**
+ * Where an `api_key.auto_disabled` event links (MC-22): the account developer page since L-03,
+ * and the old profile URL on events emitted before it.
+ */
+const API_KEY_AUTO_DISABLED_URLS: ReadonlySet<unknown> = new Set([
+  "/dashboard/settings/account/developer",
+  "/agent/settings/profile/api-keys",
+]);
+
 /** MC-22: the current owner of a personal MCP key is the sole auto-disable recipient. */
 export async function resolveApiKeyAutoDisabledRecipient(
   tx: DbTransaction,
@@ -417,7 +426,7 @@ export async function resolveApiKeyAutoDisabledRecipient(
     typeof apiKeyId !== "string" ||
     !apiKeyId ||
     event.payload.key !== apiKeyId ||
-    event.payload.url !== "/agent/settings/profile/api-keys" ||
+    !API_KEY_AUTO_DISABLED_URLS.has(event.payload.url) ||
     event.payload.reason !== "mcp_burst_threshold_exceeded"
   )
     return [];

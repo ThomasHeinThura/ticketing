@@ -537,7 +537,7 @@ describe("executed role deletion", () => {
     mocks.approve.mockReset().mockResolvedValue({ state: "executed" });
     mocks.navigate.mockReset().mockResolvedValue(undefined);
     mocks.invalidate.mockReset().mockResolvedValue(undefined);
-    mocks.pathname.current = "/agent/settings/roles/role-1";
+    mocks.pathname.current = "/dashboard/settings/workspace/roles/role-1";
     mocks.action.current = workItemAction({
       targetType: "workspace_role",
       targetIds: ["role-1"],
@@ -550,7 +550,7 @@ describe("executed role deletion", () => {
     await approve();
     expect(screen.getByText("Service desk lead")).toBeTruthy();
     expect(mocks.navigate).toHaveBeenCalledWith({
-      to: "/agent/settings/roles",
+      to: "/dashboard/settings/workspace/roles",
     });
   });
 });

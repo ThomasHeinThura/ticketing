@@ -294,7 +294,7 @@ export async function findCurrentNotificationResources(
       organisationId: row.organisationId,
       visibleToPersonIds: null,
       customerVisible: false,
-      staffUrl: `/agent/settings/webhooks/${encodeURIComponent(row.id)}`,
+      staffUrl: `/dashboard/settings/workspace/webhooks/${encodeURIComponent(row.id)}`,
       portalUrl: null,
       ownerPersonId: row.ownerPersonId,
     });
@@ -508,7 +508,7 @@ export async function findCurrentNotificationResource(
       organisationId: webhook.organisationId,
       visibleToPersonIds: null,
       customerVisible: false,
-      staffUrl: `/agent/settings/webhooks/${encodeURIComponent(webhook.id)}`,
+      staffUrl: `/dashboard/settings/workspace/webhooks/${encodeURIComponent(webhook.id)}`,
       portalUrl: null,
       ownerPersonId: webhook.ownerPersonId,
     };

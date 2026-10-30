@@ -262,7 +262,7 @@ export async function approveServiceCalendarDeletion(input: {
         scope: eventScope(row),
         payload: {
           key: row.id,
-          url: `/agent/settings/profile/pending-actions/${row.id}`,
+          url: `/dashboard/settings/account/pending-actions/${row.id}`,
           pendingActionId: row.id,
           outcome: "expired",
         },
@@ -474,7 +474,7 @@ export async function approveServiceCalendarDeletion(input: {
         "pending_action.decided",
         {
           key: row.id,
-          url: `/agent/settings/profile/pending-actions/${row.id}`,
+          url: `/dashboard/settings/account/pending-actions/${row.id}`,
           pendingActionId: row.id,
           outcome: "approved",
         },
@@ -494,7 +494,7 @@ export async function approveServiceCalendarDeletion(input: {
           calendarId: calendar.id,
           workspaceId: calendar.workspaceId,
           name: calendar.name,
-          url: "/agent/settings/calendars",
+          url: "/dashboard/settings/workspace/calendars",
         },
       ],
     ] as const) {
@@ -696,7 +696,7 @@ export async function approveSavedViewDeletion(input: {
         scope: eventScope(row),
         payload: {
           key: row.id,
-          url: `/agent/settings/profile/pending-actions/${row.id}`,
+          url: `/dashboard/settings/account/pending-actions/${row.id}`,
           pendingActionId: row.id,
           outcome: "expired",
         },
@@ -935,7 +935,7 @@ export async function approveSavedViewDeletion(input: {
         "pending_action.decided",
         {
           key: row.id,
-          url: `/agent/settings/profile/pending-actions/${row.id}`,
+          url: `/dashboard/settings/account/pending-actions/${row.id}`,
           pendingActionId: row.id,
           outcome: "approved",
         },
@@ -1074,7 +1074,7 @@ async function invalidateSavedViewDeletion(
     scope: eventScope(input.row),
     payload: {
       key: input.row.id,
-      url: `/agent/settings/profile/pending-actions/${input.row.id}`,
+      url: `/dashboard/settings/account/pending-actions/${input.row.id}`,
       pendingActionId: input.row.id,
       outcome: "invalidated",
       invalidationReason: input.reason,
@@ -1150,7 +1150,7 @@ async function invalidateServiceCalendarDeletion(
     scope: eventScope(input.row),
     payload: {
       key: input.row.id,
-      url: `/agent/settings/profile/pending-actions/${input.row.id}`,
+      url: `/dashboard/settings/account/pending-actions/${input.row.id}`,
       pendingActionId: input.row.id,
       outcome: "invalidated",
       invalidationReason: input.reason,

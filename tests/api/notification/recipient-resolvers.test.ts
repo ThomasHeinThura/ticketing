@@ -8,6 +8,19 @@ import {
   resolveWorkspaceCreatedRecipient,
 } from "../../../apps/api/src/notification/recipient-resolvers";
 
+const repository = vi.hoisted(() => ({
+  findApiKeyAutoDisableOwner: vi.fn(async () => null),
+}));
+vi.mock(
+  "../../../apps/api/src/notification/repository",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("../../../apps/api/src/notification/repository")
+    >()),
+    findApiKeyAutoDisableOwner: repository.findApiKeyAutoDisableOwner,
+  }),
+);
+
 describe("workspace-created recipient resolution", () => {
   it("fails closed when the event scope does not match its workspace resource", async () => {
     const tx = {} as DbTransaction;
@@ -43,7 +56,7 @@ describe("API-key auto-disable recipient resolution", () => {
       payload: {
         key: "key-1",
         apiKeyId: "key-1",
-        url: "/agent/settings/profile/api-keys",
+        url: "/dashboard/settings/account/developer",
         reason: "mcp_burst_threshold_exceeded",
       },
       causationId: null,
@@ -61,5 +74,47 @@ describe("API-key auto-disable recipient resolution", () => {
         payload: { ...event.payload, reason: "unexpected" },
       }),
     ).resolves.toEqual([]);
+  });
+
+  it("looks up the owner for the account developer link and for events emitted before L-03", async () => {
+    const tx = {} as DbTransaction;
+    const event = (
+      url: string,
+    ): DomainEventEnvelope<Record<string, unknown>> => ({
+      id: "event-3",
+      kind: "api_key.auto_disabled",
+      occurredAt: "2026-10-30T00:00:00.000Z",
+      actor: { type: "system", id: null, name: "TaskDesk" },
+      scope: {},
+      payload: {
+        key: "key-1",
+        apiKeyId: "key-1",
+        url,
+        reason: "mcp_burst_threshold_exceeded",
+      },
+      causationId: null,
+      depth: 0,
+      originAutomationId: null,
+    });
+
+    repository.findApiKeyAutoDisableOwner.mockClear();
+    await expect(
+      resolveApiKeyAutoDisabledRecipient(tx, event("/agent/settings/rates")),
+    ).resolves.toEqual([]);
+    expect(repository.findApiKeyAutoDisableOwner).not.toHaveBeenCalled();
+
+    for (const url of [
+      "/dashboard/settings/account/developer",
+      "/agent/settings/profile/api-keys",
+    ]) {
+      repository.findApiKeyAutoDisableOwner.mockClear();
+      await expect(
+        resolveApiKeyAutoDisabledRecipient(tx, event(url)),
+      ).resolves.toEqual([]);
+      expect(repository.findApiKeyAutoDisableOwner).toHaveBeenCalledWith(
+        tx,
+        "key-1",
+      );
+    }
   });
 });

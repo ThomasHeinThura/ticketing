@@ -150,7 +150,7 @@ function RuleCard({
 }
 
 /**
- * The rule list shared by the workspace screen (`/agent/settings/automations`) and the project
+ * The rule list shared by the workspace screen (`/dashboard/settings/workspace/automations`) and the project
  * screen (Kaneo project settings, `/agent/projects/{key}/settings/automations`). A rule list with
  * enabled state, last run and fire count; the editor, dry-run and run history open as dialogs
  * over the list, as the work item templates screen does.

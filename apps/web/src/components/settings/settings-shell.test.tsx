@@ -66,11 +66,11 @@ describe("SettingsShell scoped heading", () => {
       undefined,
       "Project settings",
     ],
-    ["/agent/settings/profile/preferences", undefined, "Account"],
-    ["/agent/settings/request-types", undefined, "Workspace"],
+    ["/dashboard/settings/account/pending-actions", undefined, "Account"],
+    ["/dashboard/settings/workspace/request-types", undefined, "Workspace"],
     ["/agent/god-mode", "instance", "God Mode"],
     ["/agent/god-mode/users", undefined, "God Mode"],
-    ["/agent/settings/request-types", "account", "Account"],
+    ["/dashboard/settings/workspace/request-types", "account", "Account"],
   ];
 
   it.each(scopes)("shows only the %s scope", (pathname, scope, title) => {

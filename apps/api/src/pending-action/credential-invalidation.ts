@@ -592,7 +592,7 @@ async function invalidatePendingActionRow(
     }),
     payload: {
       key: row.id,
-      url: `/agent/settings/profile/pending-actions/${row.id}`,
+      url: `/dashboard/settings/account/pending-actions/${row.id}`,
       pendingActionId: row.id,
       outcome: "invalidated",
       invalidationReason: reason,

@@ -64,15 +64,15 @@
 	},
 	{
 		"name": "pending-actions-list",
-		"inventoryRoute": "/agent/settings/profile/pending-actions",
-		"applicationRoute": "/agent/settings/profile/pending-actions",
+		"inventoryRoute": "/dashboard/settings/account/pending-actions",
+		"applicationRoute": "/dashboard/settings/account/pending-actions",
 		"test": "pending actions list screen @visual",
 		"screenshot": "pending-actions-list.png"
 	},
 	{
 		"name": "pending-action-detail",
-		"inventoryRoute": "/agent/settings/profile/pending-actions/{id}",
-		"applicationRoute": "/agent/settings/profile/pending-actions/$id",
+		"inventoryRoute": "/dashboard/settings/account/pending-actions/{id}",
+		"applicationRoute": "/dashboard/settings/account/pending-actions/$id",
 		"test": "pending action detail screen @visual",
 		"screenshot": "pending-action-detail.png"
 	},
@@ -85,8 +85,8 @@
 	},
 	{
 		"name": "request-types",
-		"inventoryRoute": "/agent/settings/request-types?requestTypeId={id}",
-		"applicationRoute": "/agent/settings/request-types",
+		"inventoryRoute": "/dashboard/settings/workspace/request-types?requestTypeId={id}",
+		"applicationRoute": "/dashboard/settings/workspace/request-types",
 		"test": "request type catalogue editor @visual",
 		"screenshot": "request-types.png"
 	},
@@ -116,29 +116,29 @@
 	},
 	{
 		"name": "service-calendar-list",
-		"inventoryRoute": "/agent/settings/calendars",
-		"applicationRoute": "/agent/settings/calendars",
+		"inventoryRoute": "/dashboard/settings/workspace/calendars",
+		"applicationRoute": "/dashboard/settings/workspace/calendars",
 		"test": "service calendar list screen @visual",
 		"screenshot": "service-calendar-list.png"
 	},
 	{
 		"name": "service-calendar-editor",
-		"inventoryRoute": "/agent/settings/calendars/{id}",
-		"applicationRoute": "/agent/settings/calendars/$id",
+		"inventoryRoute": "/dashboard/settings/workspace/calendars/{id}",
+		"applicationRoute": "/dashboard/settings/workspace/calendars/$id",
 		"test": "service calendar editor screen @visual",
 		"screenshot": "service-calendar-editor.png"
 	},
 	{
 		"name": "sla-policy-list",
-		"inventoryRoute": "/agent/settings/sla-policies",
-		"applicationRoute": "/agent/settings/sla-policies",
+		"inventoryRoute": "/dashboard/settings/workspace/sla-policies",
+		"applicationRoute": "/dashboard/settings/workspace/sla-policies",
 		"test": "SLA policy list screen @visual",
 		"screenshot": "sla-policy-list.png"
 	},
 	{
 		"name": "sla-policy-editor",
-		"inventoryRoute": "/agent/settings/sla-policies/{id}",
-		"applicationRoute": "/agent/settings/sla-policies/$id",
+		"inventoryRoute": "/dashboard/settings/workspace/sla-policies/{id}",
+		"applicationRoute": "/dashboard/settings/workspace/sla-policies/$id",
 		"test": "SLA policy editor screen @visual",
 		"screenshot": "sla-policy-editor.png"
 	},
@@ -214,57 +214,57 @@
 	},
 	{
 		"name": "profile-settings-general",
-		"inventoryRoute": "/agent/settings/profile",
-		"applicationRoute": "/agent/settings/profile",
+		"inventoryRoute": "/dashboard/settings/account/information",
+		"applicationRoute": "/dashboard/settings/account/information",
 		"test": "profile settings general screen @visual",
 		"screenshot": "profile-settings-general.png"
 	},
 	{
 		"name": "profile-settings-appearance",
-		"inventoryRoute": "/agent/settings/profile/appearance",
-		"applicationRoute": "/agent/settings/profile/appearance",
+		"inventoryRoute": "/dashboard/settings/account/preferences",
+		"applicationRoute": "/dashboard/settings/account/preferences",
 		"test": "profile settings appearance screen @visual",
 		"screenshot": "profile-settings-appearance.png"
 	},
 	{
 		"name": "workspace-settings-general",
-		"inventoryRoute": "/agent/settings",
-		"applicationRoute": "/agent/settings",
+		"inventoryRoute": "/dashboard/settings/workspace/general",
+		"applicationRoute": "/dashboard/settings/workspace/general",
 		"test": "workspace settings general screen @visual",
 		"screenshot": "workspace-settings-general.png"
 	},
 	{
 		"name": "workspace-settings-members",
-		"inventoryRoute": "/agent/settings/members",
-		"applicationRoute": "/agent/settings/members",
+		"inventoryRoute": "/dashboard/settings/workspace/members",
+		"applicationRoute": "/dashboard/settings/workspace/members",
 		"test": "workspace settings members screen @visual",
 		"screenshot": "workspace-settings-members.png"
 	},
 	{
 		"name": "workspace-settings-states",
-		"inventoryRoute": "/agent/settings/states",
-		"applicationRoute": "/agent/settings/states",
+		"inventoryRoute": "/dashboard/settings/workspace/states",
+		"applicationRoute": "/dashboard/settings/workspace/states",
 		"test": "workspace settings states screen @visual",
 		"screenshot": "workspace-settings-states.png"
 	},
 	{
 		"name": "workspace-settings-labels",
-		"inventoryRoute": "/agent/settings/labels",
-		"applicationRoute": "/agent/settings/labels",
+		"inventoryRoute": "/dashboard/settings/workspace/labels",
+		"applicationRoute": "/dashboard/settings/workspace/labels",
 		"test": "workspace settings labels screen @visual",
 		"screenshot": "workspace-settings-labels.png"
 	},
 	{
 		"name": "workspace-settings-canned-responses",
-		"inventoryRoute": "/agent/settings/canned-responses",
-		"applicationRoute": "/agent/settings/canned-responses",
+		"inventoryRoute": "/dashboard/settings/workspace/canned-responses",
+		"applicationRoute": "/dashboard/settings/workspace/canned-responses",
 		"test": "workspace settings canned responses screen @visual",
 		"screenshot": "workspace-settings-canned-responses.png"
 	},
 	{
 		"name": "workspace-settings-danger",
-		"inventoryRoute": "/agent/settings/danger",
-		"applicationRoute": "/agent/settings/danger",
+		"inventoryRoute": "/dashboard/settings/workspace/danger",
+		"applicationRoute": "/dashboard/settings/workspace/danger",
 		"test": "workspace settings danger screen @visual",
 		"screenshot": "workspace-settings-danger.png"
 	},
@@ -504,85 +504,85 @@
 	},
 	{
 		"name": "customer-invitations",
-		"inventoryRoute": "/agent/settings/customer-invitations",
-		"applicationRoute": "/agent/settings/customer-invitations",
+		"inventoryRoute": "/dashboard/settings/workspace/customer-invitations",
+		"applicationRoute": "/dashboard/settings/workspace/customer-invitations",
 		"test": "customer invitations screen @visual",
 		"screenshot": "customer-invitations.png"
 	},
 	{
 		"name": "teams",
-		"inventoryRoute": "/agent/settings/teams",
-		"applicationRoute": "/agent/settings/teams",
+		"inventoryRoute": "/dashboard/settings/workspace/teams",
+		"applicationRoute": "/dashboard/settings/workspace/teams",
 		"test": "workspace teams list screen @visual",
 		"screenshot": "teams.png"
 	},
 	{
 		"name": "team-detail",
-		"inventoryRoute": "/agent/settings/teams/{id}",
-		"applicationRoute": "/agent/settings/teams/$id",
+		"inventoryRoute": "/dashboard/settings/workspace/teams/{id}",
+		"applicationRoute": "/dashboard/settings/workspace/teams/$id",
 		"test": "team detail screen @visual",
 		"screenshot": "team-detail.png"
 	},
 	{
 		"name": "roles",
-		"inventoryRoute": "/agent/settings/roles",
-		"applicationRoute": "/agent/settings/roles",
+		"inventoryRoute": "/dashboard/settings/workspace/roles",
+		"applicationRoute": "/dashboard/settings/workspace/roles",
 		"test": "workspace roles list screen @visual",
 		"screenshot": "roles.png"
 	},
 	{
 		"name": "role-detail",
-		"inventoryRoute": "/agent/settings/roles/{id}",
-		"applicationRoute": "/agent/settings/roles/$id",
+		"inventoryRoute": "/dashboard/settings/workspace/roles/{id}",
+		"applicationRoute": "/dashboard/settings/workspace/roles/$id",
 		"test": "role editor screen @visual",
 		"screenshot": "role-detail.png"
 	},
 	{
 		"name": "custom-fields",
-		"inventoryRoute": "/agent/settings/custom-fields",
-		"applicationRoute": "/agent/settings/custom-fields",
+		"inventoryRoute": "/dashboard/settings/workspace/custom-fields",
+		"applicationRoute": "/dashboard/settings/workspace/custom-fields",
 		"test": "workspace custom fields list screen @visual",
 		"screenshot": "custom-fields.png"
 	},
 	{
 		"name": "custom-field-detail",
-		"inventoryRoute": "/agent/settings/custom-fields/{id}",
-		"applicationRoute": "/agent/settings/custom-fields/$id",
+		"inventoryRoute": "/dashboard/settings/workspace/custom-fields/{id}",
+		"applicationRoute": "/dashboard/settings/workspace/custom-fields/$id",
 		"test": "custom field editor screen @visual",
 		"screenshot": "custom-field-detail.png"
 	},
 	{
 		"name": "profile-notifications",
-		"inventoryRoute": "/agent/settings/profile/notifications",
-		"applicationRoute": "/agent/settings/profile/notifications",
+		"inventoryRoute": "/dashboard/settings/account/notifications",
+		"applicationRoute": "/dashboard/settings/account/notifications",
 		"test": "profile notifications screen @visual",
 		"screenshot": "profile-notifications.png"
 	},
 	{
 		"name": "workspace-settings-automations",
-		"inventoryRoute": "/agent/settings/automations",
-		"applicationRoute": "/agent/settings/automations",
+		"inventoryRoute": "/dashboard/settings/workspace/automations",
+		"applicationRoute": "/dashboard/settings/workspace/automations",
 		"test": "workspace settings automations screen @visual",
 		"screenshot": "workspace-settings-automations.png"
 	},
 	{
 		"name": "workspace-settings-webhooks",
-		"inventoryRoute": "/agent/settings/webhooks",
-		"applicationRoute": "/agent/settings/webhooks",
+		"inventoryRoute": "/dashboard/settings/workspace/webhooks",
+		"applicationRoute": "/dashboard/settings/workspace/webhooks",
 		"test": "workspace settings webhooks screen @visual",
 		"screenshot": "workspace-settings-webhooks.png"
 	},
 	{
 		"name": "webhook-editor",
-		"inventoryRoute": "/agent/settings/webhooks/{id}",
-		"applicationRoute": "/agent/settings/webhooks/$id",
+		"inventoryRoute": "/dashboard/settings/workspace/webhooks/{id}",
+		"applicationRoute": "/dashboard/settings/workspace/webhooks/$id",
 		"test": "webhook editor screen @visual",
 		"screenshot": "webhook-editor.png"
 	},
 	{
 		"name": "webhook-delivery-history",
-		"inventoryRoute": "/agent/settings/webhooks/{id}/deliveries",
-		"applicationRoute": "/agent/settings/webhooks/$id/deliveries",
+		"inventoryRoute": "/dashboard/settings/workspace/webhooks/{id}/deliveries",
+		"applicationRoute": "/dashboard/settings/workspace/webhooks/$id/deliveries",
 		"test": "webhook delivery history screen @visual",
 		"screenshot": "webhook-delivery-history.png"
 	},
@@ -595,8 +595,8 @@
 	},
 	{
 		"name": "workspace-settings-workflows",
-		"inventoryRoute": "/agent/settings/workflows",
-		"applicationRoute": "/agent/settings/workflows",
+		"inventoryRoute": "/dashboard/settings/workspace/workflows",
+		"applicationRoute": "/dashboard/settings/workspace/workflows",
 		"test": "workspace settings workflows screen @visual",
 		"screenshot": "workspace-settings-workflows.png"
 	},
@@ -733,15 +733,15 @@
 	},
 	{
 		"name": "workspace-settings-rates",
-		"inventoryRoute": "/agent/settings/rates",
-		"applicationRoute": "/agent/settings/rates",
+		"inventoryRoute": "/dashboard/settings/workspace/rates",
+		"applicationRoute": "/dashboard/settings/workspace/rates",
 		"test": "workspace settings rates screen @visual",
 		"screenshot": "workspace-settings-rates.png"
 	},
 	{
 		"name": "workspace-settings-time-activities",
-		"inventoryRoute": "/agent/settings/time-activities",
-		"applicationRoute": "/agent/settings/time-activities",
+		"inventoryRoute": "/dashboard/settings/workspace/time-activities",
+		"applicationRoute": "/dashboard/settings/workspace/time-activities",
 		"test": "workspace settings time activities screen @visual",
 		"screenshot": "workspace-settings-time-activities.png"
 	}

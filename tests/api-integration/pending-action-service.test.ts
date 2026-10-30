@@ -267,7 +267,7 @@ describe("pending-action service persistence", () => {
         recoveryDays: 30,
       },
       confirmation: "click",
-      approveUrl: `/agent/settings/profile/pending-actions/${response.pendingActionId}`,
+      approveUrl: `/dashboard/settings/account/pending-actions/${response.pendingActionId}`,
     });
     expect(row).toMatchObject({
       state: "pending",
@@ -1595,7 +1595,7 @@ describe("pending-action service persistence", () => {
           scope: { workspaceId, projectId, organisationId },
           payload: {
             key: created.pendingActionId,
-            url: `/agent/settings/profile/pending-actions/${created.pendingActionId}`,
+            url: `/dashboard/settings/account/pending-actions/${created.pendingActionId}`,
             pendingActionId: created.pendingActionId,
             outcome: state,
           },

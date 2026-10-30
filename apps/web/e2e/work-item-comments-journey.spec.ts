@@ -1048,7 +1048,10 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
     const created =
       await test.step("CA19 phase: create a canned response through workspace settings", async () => {
         await page.goto(
-          new URL("/agent/settings/canned-responses", origin).toString(),
+          new URL(
+            "/dashboard/settings/workspace/canned-responses",
+            origin,
+          ).toString(),
         );
         await page
           .getByRole("button", { name: "New response", exact: true })

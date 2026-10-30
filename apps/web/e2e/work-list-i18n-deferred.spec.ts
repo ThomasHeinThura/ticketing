@@ -144,7 +144,10 @@ test("opening a work item while the deferred namespaces are held waits for them,
   expect(await rawKeys(page)).toEqual([]);
 });
 
-for (const target of ["/agent/triage", "/agent/settings/calendars"]) {
+for (const target of [
+  "/agent/triage",
+  "/dashboard/settings/workspace/calendars",
+]) {
   test(`navigating to ${target} while the deferred namespaces are held shows no raw keys`, async ({
     page,
   }) => {

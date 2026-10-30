@@ -222,7 +222,7 @@ test("God Mode users directory supports filters and audited account actions", as
           summary: { personId: "person-1", email: user.email },
           expiresAt: "2026-10-05T00:15:00.000Z",
           approveUrl:
-            "/agent/settings/profile/pending-actions/pending-deactivation-1",
+            "/dashboard/settings/account/pending-actions/pending-deactivation-1",
         },
         202,
       );

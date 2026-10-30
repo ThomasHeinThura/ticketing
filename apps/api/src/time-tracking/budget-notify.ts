@@ -138,7 +138,7 @@ export async function evaluateBudgetThresholds(
           budgetName: budget.name,
           threshold,
           currency: budget.currency,
-          url: `/agent/settings/projects/${encodeURIComponent(projectId)}/budget`,
+          url: `/dashboard/settings/projects/${encodeURIComponent(projectId)}/budget`,
         },
         causationId: null,
         depth: 0,

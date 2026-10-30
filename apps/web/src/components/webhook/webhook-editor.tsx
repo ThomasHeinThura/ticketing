@@ -135,7 +135,7 @@ function TestResult({ delivery }: { delivery: WebhookDelivery }) {
 }
 
 /**
- * The webhook editor (`/agent/settings/webhooks/{id}`; `new` creates). Creating a webhook and
+ * The webhook editor (`/dashboard/settings/workspace/webhooks/{id}`; `new` creates). Creating a webhook and
  * rotating its secret are session-only elevated actions (`WH-15`); the API refuses them from a
  * key. The secret is write-only: the form generates one for the owner to copy before saving.
  */

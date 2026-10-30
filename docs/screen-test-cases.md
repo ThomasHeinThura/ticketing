@@ -25,7 +25,7 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 | MFA enrolment | `/dashboard/settings/account/security` | Enrol TOTP, reload, sign out and in | Code required next sign-in | |
 | Observability / MFA policy | `/agent/god-mode/observability` | Toggle policy as instance admin; as non-admin | Admin saves and audit row written; non-admin 403 | |
 | Delete anything (project, workspace, work item) | any danger zone | Request delete | 202 pending action, requester approves, typed project key / workspace name + step-up | |
-| Pending actions | `/agent/settings/profile/pending-actions` | Approve, decline, open detail | State changes; failed executor shows terminal `failed` | |
+| Pending actions | `/dashboard/settings/account/pending-actions` | Approve, decline, open detail | State changes; failed executor shows terminal `failed` | |
 
 ## P1 — Work, hierarchy, search
 
@@ -44,9 +44,9 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 | Saved views | `/agent/views`, `/agent/views/{id}` | Create, rename, share, delete | Pending-action delete; shared view respects reach | |
 | Project members | `/agent/projects/{key}/settings/members` | Add roster member; child inherits parent member | Inherited reach and authority shown as inherited | |
 | Project states / labels | `…/settings/states`, `…/labels` | Create, reorder, rename | Persisted | |
-| Workspace members, states, labels, canned responses | `/agent/settings/*` | CRUD each | Persisted; deletes via pending action where required | |
-| Danger zones | `/agent/settings/danger`, `…/settings/danger` | Delete with wrong then right project key / workspace name | Wrong blocked; right creates pending action | |
-| Profile general / appearance | `/agent/settings/profile`, `…/appearance` | Change name, theme, language | Saved after reload | |
+| Workspace members, states, labels, canned responses | `/dashboard/settings/workspace/*` | CRUD each | Persisted; deletes via pending action where required | |
+| Danger zones | `/dashboard/settings/workspace/danger`, `…/settings/danger` | Delete with wrong then right project key / workspace name | Wrong blocked; right creates pending action | |
+| Profile general / appearance | `/dashboard/settings/account/information`, `…/appearance` | Change name, theme, language | Saved after reload | |
 
 ## P2 — Service desk
 
@@ -55,10 +55,10 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 | Triage | `/agent/triage?state=new&ref={ref}` | Accept, decline with reason, request clarification | State changes; clarification auto-declines on expiry | |
 | Saved intake queues | `/agent/triage?queue={id}` | Paired filter persistence, CAS, private visibility, responsive labels | Both saved queries remain distinct; stale writes refused; readable mobile table | Earlier26-check functional pass; deployed192375/1440dark labels/layout pass and mobile repair inspected. Remaining common/role/flag cases pending. [Evidence](report/browser/intake-queues192/readonly.json) |
 | Approvals | `/agent/my-work?lens=approvals` | Approve, reject, expired approval | Decision recorded and audited | |
-| Request types | `/agent/settings/request-types?requestTypeId={id}` | Edit form fields, intake window | Portal form reflects change | |
-| SLA policies and editor | `/agent/settings/sla-policies/{id}` | Create policy, attach calendar, breach item | Clock, pause and breach shown; escalation notifies recipients | |
-| Service calendars | `/agent/settings/calendars/{id}` | Edit hours and holidays | SLA due date respects calendar | |
-| Workflows | `/agent/settings/workflows/{id}` | Add guarded edge; scheduled transition | A person may use any matching edge their roles hold (an ungated edge beside a gated one stays usable); a scheduled/system hop applies the most restrictive matching edge; transition fires on time | |
+| Request types | `/dashboard/settings/workspace/request-types?requestTypeId={id}` | Edit form fields, intake window | Portal form reflects change | |
+| SLA policies and editor | `/dashboard/settings/workspace/sla-policies/{id}` | Create policy, attach calendar, breach item | Clock, pause and breach shown; escalation notifies recipients | |
+| Service calendars | `/dashboard/settings/workspace/calendars/{id}` | Edit hours and holidays | SLA due date respects calendar | |
+| Workflows | `/dashboard/settings/workspace/workflows/{id}` | Add guarded edge; scheduled transition | A person may use any matching edge their roles hold (an ungated edge beside a gated one stays usable); a scheduled/system hop applies the most restrictive matching edge; transition fires on time | |
 | Audit log | `/agent/god-mode/audit` | Filter by action, entity, date | Rows match actions; read is itself audited | |
 
 ## P3 — Customer portal and identity
@@ -79,15 +79,15 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 
 | Screen | Route | Test | Expected | Result |
 | --- | --- | --- | --- | :-: |
-| Teams / detail | `/agent/settings/teams`, `…/{id}` | Create team, add members, set lead and allocation, second CAB team | Persisted; second CAB returns 409; lead can edit roster | |
-| Roles / editor | `/agent/settings/roles`, `…/{id}` | Create, edit capabilities, delete role in use; remove last `ac:update` holder | Delete via pending action; last-holder change returns 409 | |
-| Custom fields / editor | `/agent/settings/custom-fields`, `…/{id}` | Create field and section, reorder, delete and restore | Appears in work item properties and create dialog | |
+| Teams / detail | `/dashboard/settings/workspace/teams`, `…/{id}` | Create team, add members, set lead and allocation, second CAB team | Persisted; second CAB returns 409; lead can edit roster | |
+| Roles / editor | `/dashboard/settings/workspace/roles`, `…/{id}` | Create, edit capabilities, delete role in use; remove last `ac:update` holder | Delete via pending action; last-holder change returns 409 | |
+| Custom fields / editor | `/dashboard/settings/workspace/custom-fields`, `…/{id}` | Create field and section, reorder, delete and restore | Appears in work item properties and create dialog | |
 | Required field | work item create / transition | Leave required field empty; move to started; cancel | Blocked on create and on started/completed; cancelled exempt | |
 | API keys | `/dashboard/settings/account/developer` (`/agent/settings/profile/api-keys` redirects) | Create, copy once, revoke, IP allowlist, capability set | Secret shown once, never stored in idempotency replay | |
 | Workspace service keys | workspace api-keys | Create, delete | Delete is pending action; service key cannot approve (403 `no_approver`) | |
 | MCP | MCP client with a key | Create item with idempotency key twice; call a destructive tool | One item created; delete returns pending action | |
-| Webhooks / editor / deliveries | `/agent/settings/webhooks/{id}/deliveries` | Create, send test, fail endpoint, replay | Signed delivery; failures retried then dead-lettered | |
-| Automations (workspace, project) | `/agent/settings/automations`; project: `/agent/projects/{key}/settings/automations` (redirects to `/dashboard/settings/projects/{id}/automations`) | Create rule, trigger, loop guard | Action runs once; loops stopped | |
+| Webhooks / editor / deliveries | `/dashboard/settings/workspace/webhooks/{id}/deliveries` | Create, send test, fail endpoint, replay | Signed delivery; failures retried then dead-lettered | |
+| Automations (workspace, project) | `/dashboard/settings/workspace/automations`; project: `/agent/projects/{key}/settings/automations` (redirects to `/dashboard/settings/projects/{id}/automations`) | Create rule, trigger, loop guard | Action runs once; loops stopped | |
 | God Mode home / health | `/agent/god-mode` | Open as instance admin | DB, secrets and outbox health shown | |
 | Webhook security posture / incident rotation | `/agent/god-mode/webhooks` | List full-reach owners; refresh/paginate; enter one distinct replacement secret per current webhook; step-up; change set/version; replay proof | Metadata excludes URLs/secrets/bodies; current instance admin only; rotation all-or-nothing with digest-bound proof and 24h dual signatures | Posture empty state: six width/theme states pass on189; incident rotation source190, browser pending |
 | General settings | `/agent/god-mode/general` | Change retention days, timezone | Saved; last-changed shown | |
@@ -108,7 +108,7 @@ Fresh feature acceptance pending. Scripted sign-in on the audit copy is authoriz
 | Estimates | `/agent/projects/{key}/settings/estimates` | Change system and scale, preview, save | Preview shows effect before save; existing values handled as previewed | |
 | Timesheet | `/agent/timesheet` | Weekly grid by keyboard, start and stop timer, reload, edit past week | Entries persist; locked period refuses edit | |
 | Time entries | work item section | Add manual entry, edit, delete | Totals update; delete follows pending action where required | |
-| Rates / time activities | `/agent/settings/rates`, `/agent/settings/time-activities` | Set rate, add activity; open as user without rate capability | Rates hidden and 403 for restricted user | |
+| Rates / time activities | `/dashboard/settings/workspace/rates`, `/dashboard/settings/workspace/time-activities` | Set rate, add activity; open as user without rate capability | Rates hidden and 403 for restricted user | |
 | Budget | `/agent/projects/{key}/settings/budget` | Set budget, log time, reload | Time and cost actuals reconcile; thresholds shown; currency and rate visibility enforced | |
 | Knowledge base (agent) | `/agent/kb`, `/agent/kb/{id}`, `/agent/kb/{id}/edit` | Create, publish, version, set visibility | Version history kept; draft invisible to customers | |
 | Knowledge base (portal) | `/kb`, `/kb/{id}` and request form | Search; type request title in form | Only customer-visible articles; deflection suggestions appear | |
@@ -119,7 +119,7 @@ Fresh feature acceptance pending. Scripted sign-in on the audit copy is authoriz
 | Reports | `/agent/reports`, `…/{key}` | Open each tier, filter, export CSV | Known-answer aggregates; scoped to reach; customer denied | |
 | Report builder | `/agent/reports/new` | Build custom chart, save | Saved table reloads with same result | |
 | Dashboards / editor | `/agent/dashboard`, `/agent/dashboard/edit` | Add, drag and resize widgets, save, reload | Layout persists | |
-| Customer invitations | `/agent/settings/customer-invitations` | Invite, resend, revoke; open invalid and expired link | Lifetime and limits as shipped; revoked link refused | |
+| Customer invitations | `/dashboard/settings/workspace/customer-invitations` | Invite, resend, revoke; open invalid and expired link | Lifetime and limits as shipped; revoked link refused | |
 | Portal accept / sign-up | `/invite/{id}` (portal host) | Accept as new and existing customer | Account linked to organisation; needs customer password provider on | |
 | Pages / editor | `/agent/projects/{key}/pages`, `…/{id}` | Create nested page, edit, move, restore | Tree persists; move respects permission | |
 

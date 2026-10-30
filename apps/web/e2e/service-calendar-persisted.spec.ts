@@ -57,7 +57,7 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
     await enableSlaFeature(page, origin, workspaceId);
 
     await page.goto(
-      new URL("/agent/settings/calendars/new", origin).toString(),
+      new URL("/dashboard/settings/workspace/calendars/new", origin).toString(),
     );
     await page.getByLabel("Stable key").fill("persisted-holiday-calendar");
     await page
@@ -69,7 +69,9 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
     await expect(timezone).toHaveAttribute("aria-expanded", "false");
     await expect(timezone).toHaveValue("UTC");
     await page.getByRole("button", { name: "Create calendar" }).click();
-    await expect(page).toHaveURL(/\/agent\/settings\/calendars\/[a-z0-9]+/);
+    await expect(page).toHaveURL(
+      /\/dashboard\/settings\/workspace\/calendars\/[a-z0-9]+/,
+    );
     await expect(
       page.getByRole("heading", { name: "Persisted holiday calendar" }),
     ).toBeVisible();

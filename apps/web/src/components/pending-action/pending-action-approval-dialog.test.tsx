@@ -320,7 +320,7 @@ describe("in-place deletion approval", () => {
 
   it("leaves a deleted service calendar's editor and refreshes the calendar list", async () => {
     mocks.targetType = "service_calendar";
-    mocks.pathname = "/agent/settings/calendars/l1";
+    mocks.pathname = "/dashboard/settings/workspace/calendars/l1";
     usePendingActionDialogStore.setState({ pendingActionId: "pa-cal" });
     render(<PendingActionApprovalDialog />);
     expect(
@@ -333,7 +333,7 @@ describe("in-place deletion approval", () => {
     );
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({
-        href: "/agent/settings/calendars",
+        href: "/dashboard/settings/workspace/calendars",
       }),
     );
     const invalidated = mocks.invalidate.mock.calls.map(

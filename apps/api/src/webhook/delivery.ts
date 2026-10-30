@@ -319,7 +319,7 @@ async function recordAttempt(
 
 /** The agent web app's webhook editor (`routes.webhookEditor`), linked from the WH-7 notice. */
 export function webhookEditorPath(webhookId: string): string {
-  return `/agent/settings/webhooks/${encodeURIComponent(webhookId)}`;
+  return `/dashboard/settings/workspace/webhooks/${encodeURIComponent(webhookId)}`;
 }
 
 /** `WH-7`: `webhook.auto_disabled` in the same transaction, plus its audit row. */

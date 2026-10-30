@@ -132,7 +132,11 @@ async function apiChecks(account, base, cookies) {
     `${workspaces.status} n=${length(workspaces.body)}`,
   );
   const workspaceId = workspaces.body?.[0]?.id;
-  const pages = ["/agent/my-work", "/agent/inbox", "/agent/settings"];
+  const pages = [
+    "/agent/my-work",
+    "/agent/inbox",
+    "/dashboard/settings/workspace/general",
+  ];
   if (!workspaceId) return pages;
   const projects = await getJson(
     base,

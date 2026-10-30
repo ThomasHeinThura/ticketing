@@ -492,7 +492,7 @@ an event once, and for list filtering. It is never the answer to "what is the st
 Policy list, policy editor (goal matrix by type × priority), calendar editor, SLA badge
 and bar primitives, SLA columns in list and table, SLA reports.
 
-Policy list/editor routes are `/agent/settings/sla-policies` and `/agent/settings/sla-policies/{id}`. The editor provides a metric-by-priority grid per work-item type, version-checked draft save and publish; calendar list/editor behavior is defined in [service calendars](feature-contracts-p2.md#service-calendars). SLA badge/bar primitives, columns and reports remain requirements regardless of current implementation.
+Policy list/editor routes are `/dashboard/settings/workspace/sla-policies` and `/dashboard/settings/workspace/sla-policies/{id}`. The editor provides a metric-by-priority grid per work-item type, version-checked draft save and publish; calendar list/editor behavior is defined in [service calendars](feature-contracts-p2.md#service-calendars). SLA badge/bar primitives, columns and reports remain requirements regardless of current implementation.
 
 The goal editor is a matrix, not a list of forms — service desk managers think in a grid
 of "for this type at this priority, this long", and giving them anything else makes
@@ -854,7 +854,7 @@ meaningless with SLA turned off.
 **Calendar list** — name, timezone, weekly cover total and holiday count, with cursor
 paging. The list does not show reference counts: `/usage` is per calendar and there is no
 batched usage read, so counts appear in the editor instead. The list and editor screens are
-specified at `/agent/settings/calendars` and `/agent/settings/calendars/{id}`.
+specified at `/dashboard/settings/workspace/calendars` and `/dashboard/settings/workspace/calendars/{id}`.
 
 **Calendar editor** — a week grid with draggable window blocks, a timezone selector, and a
 holiday list with a year picker and bounded iCalendar file selection, event-name preview and

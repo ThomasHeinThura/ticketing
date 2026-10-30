@@ -198,7 +198,7 @@ async function invalidateForAutoDisable(tx: Tx, apiKeyId: string) {
       }),
       payload: {
         key: apiKeyId,
-        url: "/agent/settings/profile/api-keys",
+        url: "/dashboard/settings/account/developer",
         apiKeyId,
         reason: AUTO_DISABLE_REASON,
       },

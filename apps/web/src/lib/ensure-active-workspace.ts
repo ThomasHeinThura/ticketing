@@ -10,8 +10,8 @@ type SessionContext = {
 };
 
 /**
- * Workspace settings pages (kaneo's /dashboard/settings/workspace/* and the v2 pages under
- * /agent/settings/*) have no workspace in the URL and rely on the session's active
+ * Workspace settings pages (/dashboard/settings/workspace/*) and the pending-action pages
+ * have no workspace in the URL and rely on the session's active
  * organization; this picks the first workspace when none is active.
  */
 export async function ensureActiveWorkspace({

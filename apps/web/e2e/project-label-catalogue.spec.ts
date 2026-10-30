@@ -337,7 +337,9 @@ test("workspace catalogue keeps its existing Kaneo surface and URL-addressed edi
       ],
     }),
   );
-  await page.goto("/agent/settings/labels?action=edit&label=workspace-label");
+  await page.goto(
+    "/dashboard/settings/workspace/labels?action=edit&label=workspace-label",
+  );
   const dialog = page.getByRole("dialog", { name: "Edit Label", exact: true });
   await expect(dialog.getByLabel("Label name")).toHaveValue(
     "Workspace priority",

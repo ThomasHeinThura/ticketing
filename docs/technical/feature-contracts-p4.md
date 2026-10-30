@@ -357,8 +357,8 @@ Board. Team membership and ownership participate in the existing [reach contract
 <a id="teams-screens"></a>
 ### Screens
 
-`Workspace — teams` (`/agent/settings/teams`, list) and `Team detail`
-(`/agent/settings/teams/{id}`: roster, leads, capacity, CAB flag, owned projects, shared
+`Workspace — teams` (`/dashboard/settings/workspace/teams`, list) and `Team detail`
+(`/dashboard/settings/workspace/teams/{id}`: roster, leads, capacity, CAB flag, owned projects, shared
 views). Both P4; in the [screen inventory](#pending-02-designscreen-inventory).
 
 <a id="teams-api"></a>
@@ -1604,7 +1604,7 @@ unique key, digest values, and per-person quiet-hours fields are defined in
   The signed, single-purpose token binds `purpose: notification_pref`, its `audience`
   (`agent` or `customer`), the recipient, `event_kind`, channel, scope and optional
   `scope_id`, and expires after 30 days. Staff
-  links open `/agent/settings/profile/notifications#preference_token={token}` and customer
+  links open `/dashboard/settings/account/notifications#preference_token={token}` and customer
   links open `/account#preference_token={token}`. Opening the link never changes a
   preference.
 
@@ -1911,7 +1911,7 @@ assume a `projectId` is present in the event payload.
 ### Screens
 
 Notifications inbox at `/agent/notifications`; staff scoped preferences under
-`/agent/settings/profile/notifications` and customer global preferences under
+`/dashboard/settings/account/notifications` and customer global preferences under
 `/account`; the email-link fragment is exchanged for a server-side handoff before
 authentication, so neither page stores the signed token; God Mode channel
 configuration at `/agent/god-mode/notifications`;
@@ -2262,7 +2262,7 @@ That last constraint is the important one.
 ### Screens
 
 Project automations (`/agent/projects/{key}/settings/automations`) and Workspace
-automations (`/agent/settings/automations`): rule list with enabled state, last run, and
+automations (`/dashboard/settings/workspace/automations`): rule list with enabled state, last run, and
 fire count. Rule editor as three stacked sections — trigger, conditions, actions — in plain
 language. Run history per rule with per-action outcomes.
 
@@ -2889,7 +2889,7 @@ See [data-model.md](data-model.md).
 <a id="mcp-server-screens"></a>
 ### Screens
 
-Under profile settings (`/agent/settings/profile/api-keys`): API keys, with an "Use with an
+Under profile settings (`/dashboard/settings/account/developer`): API keys, with an "Use with an
 AI agent" section giving a copy-pasteable configuration block for common clients.
 
 In God Mode (`/agent/god-mode/mcp`, backed by `GET /api/instance/mcp/usage` with

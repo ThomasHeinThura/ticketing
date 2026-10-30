@@ -389,9 +389,11 @@ describe("G5 route metadata", () => {
       "/agent/projects/$projectKey/work",
     );
     expect(generatedRouteMetadata.agent).toContain(
-      "/agent/settings/request-types",
+      "/dashboard/settings/workspace/request-types",
     );
-    expect(generatedRouteMetadata.agent).toContain("/agent/settings/workflows");
+    expect(generatedRouteMetadata.agent).toContain(
+      "/dashboard/settings/workspace/workflows",
+    );
     expect(generatedRouteMetadata.agent).toContain("/agent/triage");
     expect(generatedRouteMetadata.portal).toContain("/catalogue");
     expect(generatedRouteMetadata.portal).toContain("/sign-in");
@@ -640,17 +642,19 @@ describe("God Mode Users and requester pending-action URLs", () => {
       parsePendingActionsSearch({ cursor: "cursor/a+b" }),
     );
     expect(url).toBe(
-      "/agent/settings/profile/pending-actions?cursor=cursor%2Fa%2Bb",
+      "/dashboard/settings/account/pending-actions?cursor=cursor%2Fa%2Bb",
     );
     expect(routes.pendingAction.build({ id: "action/one" })).toBe(
-      "/agent/settings/profile/pending-actions/action%2Fone",
+      "/dashboard/settings/account/pending-actions/action%2Fone",
     );
   });
 });
 
 describe("routes.serviceCalendars", () => {
   it("builds the list route named by the screen inventory", () => {
-    expect(routes.serviceCalendars.build()).toBe("/agent/settings/calendars");
+    expect(routes.serviceCalendars.build()).toBe(
+      "/dashboard/settings/workspace/calendars",
+    );
   });
 
   it("round-trips one opaque cursor through URL encoding without page history", () => {
@@ -664,7 +668,9 @@ describe("routes.serviceCalendars", () => {
 
   it("preserves the editor id and preview year in its URL", () => {
     const url = routes.serviceCalendarEditor.build({ id: "cal/one" }, 2026);
-    expect(url).toBe("/agent/settings/calendars/cal%2Fone?year=2026");
+    expect(url).toBe(
+      "/dashboard/settings/workspace/calendars/cal%2Fone?year=2026",
+    );
     expect(
       parseCalendarEditorSearch({
         year: new URL(url, "https://taskdesk.invalid").searchParams.get("year"),
@@ -674,7 +680,7 @@ describe("routes.serviceCalendars", () => {
 
   it("does not add search state when the year is not supplied", () => {
     expect(routes.serviceCalendarEditor.build({ id: "new" })).toBe(
-      "/agent/settings/calendars/new",
+      "/dashboard/settings/workspace/calendars/new",
     );
   });
 });
@@ -682,7 +688,9 @@ describe("routes.serviceCalendars", () => {
 describe("routes.slaPolicies", () => {
   it("round-trips the list cursor and editor id through registered route builders", () => {
     const url = routes.slaPolicies.build({ cursor: "opaque/a+b" });
-    expect(url).toBe("/agent/settings/sla-policies?cursor=opaque%2Fa%2Bb");
+    expect(url).toBe(
+      "/dashboard/settings/workspace/sla-policies?cursor=opaque%2Fa%2Bb",
+    );
     expect(
       parseSlaPolicyListSearch({
         cursor: new URL(url, "https://taskdesk.invalid").searchParams.get(
@@ -691,7 +699,7 @@ describe("routes.slaPolicies", () => {
       }),
     ).toEqual({ cursor: "opaque/a+b" });
     expect(routes.slaPolicyEditor.build({ id: "policy/one" })).toBe(
-      "/agent/settings/sla-policies/policy%2Fone",
+      "/dashboard/settings/workspace/sla-policies/policy%2Fone",
     );
   });
 });
@@ -967,9 +975,9 @@ describe("P1 agent core, project overview, and settings routes", () => {
       routes.agentMyWork.path,
       routes.agentSearch.path,
       routes.projectOverview.path,
-      routes.profileSettings.path,
-      routes.profileAppearance.path,
-      routes.workspaceSettings.path,
+      routes.accountInformation.path,
+      routes.accountPreferences.path,
+      routes.workspaceGeneral.path,
       routes.workspaceMembers.path,
       routes.workspaceStates.path,
       routes.workspaceLabels.path,
@@ -1047,10 +1055,10 @@ describe("P1 agent core, project overview, and settings routes", () => {
     });
 
     expect(routes.workspaceMembers.build({ q: "ada" })).toBe(
-      "/agent/settings/members?q=ada",
+      "/dashboard/settings/workspace/members?q=ada",
     );
     expect(routes.workspaceCannedResponses.build({ q: "reset" })).toBe(
-      "/agent/settings/canned-responses?q=reset",
+      "/dashboard/settings/workspace/canned-responses?q=reset",
     );
     expect(parseSettingsTextFilterSearch({ q: "ada" })).toEqual({ q: "ada" });
   });

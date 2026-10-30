@@ -120,9 +120,11 @@ const baseEnvelope: InternalEnvelope = {
 
 describe("auto-disable notice link (WH-7)", () => {
   it("points at the agent webhook editor route, not a non-existent integrations path", () => {
-    expect(webhookEditorPath("wh_1")).toBe("/agent/settings/webhooks/wh_1");
+    expect(webhookEditorPath("wh_1")).toBe(
+      "/dashboard/settings/workspace/webhooks/wh_1",
+    );
     expect(webhookEditorPath("a/b c")).toBe(
-      "/agent/settings/webhooks/a%2Fb%20c",
+      "/dashboard/settings/workspace/webhooks/a%2Fb%20c",
     );
   });
 });
