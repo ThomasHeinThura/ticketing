@@ -4,6 +4,7 @@ import { Button } from "@taskdesk/ui";
 import { Check } from "lucide-react";
 import type { JSX } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { cn } from "@/lib/cn";
 import { formatDateShort } from "@/lib/format";
 import type { PackableTask, WeekSegment } from "./month-grid-model";
@@ -91,49 +92,52 @@ export default function CalendarTaskBar({
   )}`;
 
   return (
-    <Button
-      variant="ghost"
-      type="button"
-      ref={setNodeRef}
-      {...(canReschedule ? attributes : {})}
-      {...(canReschedule ? listeners : {})}
-      style={{
-        gridColumn: `${columnStart} / ${columnEnd}`,
-        // Row 1 holds the date numbers, so lanes start at row 2.
-        gridRow: lane + 2,
-        transform: CSS.Translate.toString(transform),
-      }}
-      title={
+    <ActionTooltip
+      label={
         taskKey
           ? `${taskKey} · ${task.title} · ${range}`
           : `${task.title} · ${range}`
       }
-      aria-label={
-        selectionMode
-          ? t("workItems:bulk.selectItem", { key: taskKey ?? task.title })
-          : t("tasks:calendar.taskAriaLabel", {
-              title: task.title,
-              range,
-            })
-      }
-      aria-pressed={selectionMode ? isSelected : undefined}
-      data-task-status={task.status}
-      onClick={() => onOpenTask(task.id)}
-      className={cn(
-        isDragging ? "z-30 cursor-grabbing shadow-md" : "z-10",
-        "mb-0.5 flex h-6 min-w-0 items-center overflow-hidden border px-1.5 text-left text-[11px] font-medium leading-none text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-5",
-        getCalendarTaskStatusClass(task.status),
-        isSelected && "ring-2 ring-ring",
-        // Bars that run past a week edge lose their cap there so the two halves
-        // read as one continuous span across rows.
-        continuesBefore ? "rounded-l-none border-l-0" : "ml-1 rounded-l-md",
-        continuesAfter ? "rounded-r-none border-r-0" : "mr-1 rounded-r-md",
-      )}
     >
-      {isSelected ? (
-        <Check className="mr-1 size-3 shrink-0" aria-hidden="true" />
-      ) : null}
-      <span className="truncate">{task.title}</span>
-    </Button>
+      <Button
+        variant="ghost"
+        type="button"
+        ref={setNodeRef}
+        {...(canReschedule ? attributes : {})}
+        {...(canReschedule ? listeners : {})}
+        style={{
+          gridColumn: `${columnStart} / ${columnEnd}`,
+          // Row 1 holds the date numbers, so lanes start at row 2.
+          gridRow: lane + 2,
+          transform: CSS.Translate.toString(transform),
+        }}
+        aria-label={
+          selectionMode
+            ? t("workItems:bulk.selectItem", { key: taskKey ?? task.title })
+            : t("tasks:calendar.taskAriaLabel", {
+                title: task.title,
+                range,
+              })
+        }
+        aria-pressed={selectionMode ? isSelected : undefined}
+        data-task-status={task.status}
+        onClick={() => onOpenTask(task.id)}
+        className={cn(
+          isDragging ? "z-30 cursor-grabbing shadow-md" : "z-10",
+          "mb-0.5 flex h-6 min-w-0 items-center overflow-hidden border px-1.5 text-left text-[11px] font-medium leading-none text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-5",
+          getCalendarTaskStatusClass(task.status),
+          isSelected && "ring-2 ring-ring",
+          // Bars that run past a week edge lose their cap there so the two halves
+          // read as one continuous span across rows.
+          continuesBefore ? "rounded-l-none border-l-0" : "ml-1 rounded-l-md",
+          continuesAfter ? "rounded-r-none border-r-0" : "mr-1 rounded-r-md",
+        )}
+      >
+        {isSelected ? (
+          <Check className="mr-1 size-3 shrink-0" aria-hidden="true" />
+        ) : null}
+        <span className="truncate">{task.title}</span>
+      </Button>
+    </ActionTooltip>
   );
 }

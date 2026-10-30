@@ -225,7 +225,7 @@ describe("work item list column resizing (VW-21)", () => {
     expect(table.parentElement).toHaveClass("overflow-x-auto");
   });
 
-  it("keeps intentionally narrow saved columns readable through truncation and titles", () => {
+  it("keeps intentionally narrow saved columns readable through truncation and tooltips", async () => {
     mocks.preferenceValue = {
       key: 64,
       title: 64,
@@ -243,13 +243,32 @@ describe("work item list column resizing (VW-21)", () => {
     expect(columns.map((column) => column.style.width)).toEqual(
       Array(6).fill("64px"),
     );
-    expect(table.querySelector("thead th button")).toHaveAttribute(
-      "title",
+    const keyHeader = table.querySelector("thead th button") as HTMLElement;
+    expect(keyHeader).not.toHaveAttribute("title");
+    act(() => keyHeader.focus());
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "workItems:list.columnKey",
     );
-    expect(screen.getByRole("link", { name: "A work item" })).toHaveAttribute(
-      "title",
-      "A work item",
+    act(() => keyHeader.blur());
+
+    const titleLink = screen.getByRole("link", { name: "A work item" });
+    expect(titleLink).not.toHaveAttribute("title");
+    // Focusing a title link scrolls its row into view; jsdom has no layout.
+    Object.defineProperty(
+      titleLink.closest("tr") as HTMLElement,
+      "scrollIntoView",
+      {
+        configurable: true,
+        value: vi.fn(),
+      },
+    );
+    act(() => titleLink.focus());
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("tooltip")
+          .some((tooltip) => tooltip.textContent === "A work item"),
+      ).toBe(true),
     );
   });
 

@@ -1,6 +1,7 @@
 import { Button, Tabs, TabsList, TabsTrigger } from "@taskdesk/ui";
 import { Bell, Mail, MailOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import {
   getNotificationContent,
   getNotificationTitle,
@@ -144,24 +145,25 @@ export default function NotificationInbox({
                     ) : null}
                   </div>
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={toggleLabel}
-                  title={toggleLabel}
-                  className="absolute top-2 right-3 text-muted-foreground opacity-0 pointer-coarse:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
-                  onClick={() =>
-                    notification.isRead
-                      ? markAsUnread(notification.id)
-                      : markAsRead(notification.id)
-                  }
-                >
-                  {notification.isRead ? (
-                    <Mail className="size-4" />
-                  ) : (
-                    <MailOpen className="size-4" />
-                  )}
-                </Button>
+                <ActionTooltip label={toggleLabel}>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={toggleLabel}
+                    className="absolute top-2 right-3 text-muted-foreground opacity-0 pointer-coarse:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+                    onClick={() =>
+                      notification.isRead
+                        ? markAsUnread(notification.id)
+                        : markAsRead(notification.id)
+                    }
+                  >
+                    {notification.isRead ? (
+                      <Mail className="size-4" />
+                    ) : (
+                      <MailOpen className="size-4" />
+                    )}
+                  </Button>
+                </ActionTooltip>
               </li>
             );
           })}

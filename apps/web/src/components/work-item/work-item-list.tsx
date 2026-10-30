@@ -42,6 +42,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import useRestoreWorkItem from "@/hooks/mutations/work-item/use-restore-work-item";
 import { useProjectViewPreferenceWithSave } from "@/hooks/use-project-view-preference-with-save";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -752,31 +753,32 @@ function WorkItemListPresentation({
         t("workItems:list.columnUnavailable", "Unavailable"))
       : t(COLUMN_LABEL_KEYS[column as NativeWorkItemSearchColumn]);
     return sortField ? (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-mx-2 h-auto min-w-0 max-w-full gap-1 overflow-hidden px-2 py-1 font-medium text-muted-foreground"
-        aria-label={t("workItems:list.sortColumnAria", {
-          column: label,
-          direction: t(
-            sortOrder === "asc"
-              ? "tasks:sort.ascending"
-              : "tasks:sort.descending",
-          ),
-          priority: sortIndex < 0 ? "none" : sortIndex + 1,
-        })}
-        onClick={(event) => handleHeaderClick(sortField, event)}
-        title={label}
-      >
-        <span className="min-w-0 truncate">{label}</span>
-        <span className="shrink-0">
-          <SortIcon
-            active={sortIndex >= 0}
-            dir={sortOrder}
-            priority={sortIndex > 0 ? sortIndex + 1 : undefined}
-          />
-        </span>
-      </Button>
+      <ActionTooltip label={label}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-mx-2 h-auto min-w-0 max-w-full gap-1 overflow-hidden px-2 py-1 font-medium text-muted-foreground"
+          aria-label={t("workItems:list.sortColumnAria", {
+            column: label,
+            direction: t(
+              sortOrder === "asc"
+                ? "tasks:sort.ascending"
+                : "tasks:sort.descending",
+            ),
+            priority: sortIndex < 0 ? "none" : sortIndex + 1,
+          })}
+          onClick={(event) => handleHeaderClick(sortField, event)}
+        >
+          <span className="min-w-0 truncate">{label}</span>
+          <span className="shrink-0">
+            <SortIcon
+              active={sortIndex >= 0}
+              dir={sortOrder}
+              priority={sortIndex > 0 ? sortIndex + 1 : undefined}
+            />
+          </span>
+        </Button>
+      </ActionTooltip>
     ) : (
       <span className="block min-w-0 truncate" title={label}>
         {label}
@@ -934,14 +936,15 @@ function WorkItemListPresentation({
                   ) : !detailHref ? (
                     <span title={item.title}>{item.title}</span>
                   ) : (
-                    <a
-                      href={detailHref}
-                      data-work-item-key={item.key}
-                      className="inline-block min-h-6 min-w-6 max-w-full truncate align-middle leading-6 hover:underline"
-                      title={item.title}
-                    >
-                      {item.title}
-                    </a>
+                    <ActionTooltip label={item.title}>
+                      <a
+                        href={detailHref}
+                        data-work-item-key={item.key}
+                        className="inline-block min-h-6 min-w-6 max-w-full truncate align-middle leading-6 hover:underline"
+                      >
+                        {item.title}
+                      </a>
+                    </ActionTooltip>
                   )}
                 </span>
                 {controls?.titleControl}

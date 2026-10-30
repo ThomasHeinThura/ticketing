@@ -5,6 +5,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  Checkbox,
   Input,
   Select,
   SelectContent,
@@ -403,7 +404,7 @@ function PortalCatalogueContent() {
                     </SelectContent>
                   </Select>
                 ) : field.type === "checkbox" ? (
-                  <Input
+                  <Checkbox
                     id={`request-field-${field.key}`}
                     aria-label={field.label}
                     aria-invalid={Boolean(fieldErrors[field.key])}
@@ -412,12 +413,11 @@ function PortalCatalogueContent() {
                         ? `request-field-error-${field.key}`
                         : undefined
                     }
-                    type="checkbox"
                     checked={Boolean(answers[field.key])}
-                    onChange={(event) => {
+                    onCheckedChange={(checked) => {
                       setAnswers((old) => ({
                         ...old,
-                        [field.key]: event.target.checked,
+                        [field.key]: checked,
                       }));
                       setFieldErrors((old) => {
                         const next = { ...old };

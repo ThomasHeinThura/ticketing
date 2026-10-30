@@ -103,7 +103,79 @@ const RAW_ELEMENT_TAGS = new Set([
 ]);
 
 /**
- * Return raw native form/dialog elements in a parsed TSX source file. The only exemption is
+ * The library `Input` still renders the browser's own control for these types; the shared
+ * DateField, Checkbox and RadioGroup primitives replace them.
+ */
+const NATIVE_PICKER_INPUT_TYPES = new Set([
+  "date",
+  "time",
+  "datetime-local",
+  "month",
+  "week",
+  "checkbox",
+  "radio",
+]);
+
+/** Interactive hosts whose `title` shows the browser's native tooltip; use ActionTooltip. */
+const TITLED_INTERACTIVE_TAGS = new Set([
+  "a",
+  "Button",
+  "Link",
+  "SidebarMenuButton",
+  "Switch",
+  "Checkbox",
+  "Toggle",
+  "ToggleGroupItem",
+  "TabsTrigger",
+  "MenuItem",
+  "DropdownMenuItem",
+]);
+
+function jsxStringAttribute(node, name) {
+  for (const attribute of node.attributes?.properties ?? []) {
+    if (
+      attribute.kind !== ts.SyntaxKind.JsxAttribute ||
+      attribute.name?.text !== name
+    )
+      continue;
+    const initializer = attribute.initializer;
+    if (!initializer) return "";
+    if (initializer.kind === ts.SyntaxKind.StringLiteral)
+      return initializer.text;
+    if (
+      initializer.kind === ts.SyntaxKind.JsxExpression &&
+      initializer.expression &&
+      (initializer.expression.kind === ts.SyntaxKind.StringLiteral ||
+        initializer.expression.kind ===
+          ts.SyntaxKind.NoSubstitutionTemplateLiteral)
+    )
+      return initializer.expression.text;
+    return null;
+  }
+  return undefined;
+}
+
+/** The native-control label for a JSX element, or undefined when it is not one. */
+function nativeControlTag(node) {
+  const tag = node.tagName;
+  if (tag?.kind !== ts.SyntaxKind.Identifier) return undefined;
+  if (RAW_ELEMENT_TAGS.has(tag.text)) return tag.text;
+  if (tag.text === "Input") {
+    const type = jsxStringAttribute(node, "type");
+    if (type && NATIVE_PICKER_INPUT_TYPES.has(type))
+      return `Input type="${type}"`;
+  }
+  if (
+    TITLED_INTERACTIVE_TAGS.has(tag.text) &&
+    jsxStringAttribute(node, "title") !== undefined
+  )
+    return `${tag.text} title`;
+  return undefined;
+}
+
+/**
+ * Return native form/dialog elements, library inputs that render a native picker, and native
+ * `title` tooltips on interactive hosts in a parsed TSX source file. The only exemption is
  * a single immediately preceding `// ui-exempt: <reason>` line; consuming the comment once
  * prevents one marker from excusing multiple raw elements.
  */
@@ -117,11 +189,8 @@ function rawElementsInSourceFile(sourceFile) {
       node.kind === ts.SyntaxKind.JsxOpeningElement ||
       node.kind === ts.SyntaxKind.JsxSelfClosingElement
     ) {
-      const tag = node.tagName;
-      if (
-        tag?.kind === ts.SyntaxKind.Identifier &&
-        RAW_ELEMENT_TAGS.has(tag.text)
-      ) {
+      const nativeTag = nativeControlTag(node);
+      if (nativeTag) {
         const start = node.getStart(sourceFile);
         const line = sourceFile.getLineAndCharacterOfPosition(start).line;
         const lineStart = text.lastIndexOf("\n", start - 1) + 1;
@@ -134,7 +203,7 @@ function rawElementsInSourceFile(sourceFile) {
           consumedExemptionLines.add(line - 1);
         } else {
           found.push({
-            tag: tag.text,
+            tag: nativeTag,
             line: line + 1,
           });
         }
@@ -529,7 +598,9 @@ async function main() {
             failures.push(
               violation(
                 relative,
-                `line ${line} uses raw <${tag}>. Use the shared @taskdesk/ui primitive; an exceptional native element needs an immediately preceding // ui-exempt: <reason> comment.`,
+                tag.endsWith(" title")
+                  ? `line ${line} gives <${tag.slice(0, -6)}> a native title tooltip. Wrap it in ActionTooltip (apps/web/src/components/common/action-tooltip.tsx) and give icon-only controls an aria-label.`
+                  : `line ${line} uses raw <${tag}>. Use the shared @taskdesk/ui primitive (DateField, Checkbox, RadioGroup for picker inputs); an exceptional native element needs an immediately preceding // ui-exempt: <reason> comment.`,
               ),
             );
           }

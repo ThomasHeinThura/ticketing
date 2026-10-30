@@ -20,6 +20,7 @@ import { CalendarClock, Check, Pencil, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { CustomFieldValueInput } from "@/components/custom-field/custom-field-value-input";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import transitionWorkItem from "@/fetchers/work-item/transition-work-item";
@@ -790,28 +791,30 @@ export default function WorkItemInlineFields({
       );
     } else if (canEditCustomField(field.key)) {
       customFieldControls[field.key] = (
-        <Button
-          ref={(element) => {
-            if (element) customFieldEditButtons.current.set(field.key, element);
-            else customFieldEditButtons.current.delete(field.key);
-          }}
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-7 min-w-0 max-w-full justify-start overflow-hidden px-1.5 text-xs"
-          aria-label={t("edit", { name: field.name })}
-          title={displayValue}
-          data-testid={`work-item-inline-custom-field-edit-${field.key}`}
-          disabled={mutation.isPending}
-          onClick={() => {
-            setError("");
-            setCustomFieldDraft(value ?? null);
-            setEditingCustomFieldKey(field.key);
-          }}
-        >
-          <span className="min-w-0 truncate">{displayValue}</span>
-          <Pencil className="ml-auto size-3 shrink-0" />
-        </Button>
+        <ActionTooltip label={displayValue}>
+          <Button
+            ref={(element) => {
+              if (element)
+                customFieldEditButtons.current.set(field.key, element);
+              else customFieldEditButtons.current.delete(field.key);
+            }}
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 min-w-0 max-w-full justify-start overflow-hidden px-1.5 text-xs"
+            aria-label={t("edit", { name: field.name })}
+            data-testid={`work-item-inline-custom-field-edit-${field.key}`}
+            disabled={mutation.isPending}
+            onClick={() => {
+              setError("");
+              setCustomFieldDraft(value ?? null);
+              setEditingCustomFieldKey(field.key);
+            }}
+          >
+            <span className="min-w-0 truncate">{displayValue}</span>
+            <Pencil className="ml-auto size-3 shrink-0" />
+          </Button>
+        </ActionTooltip>
       );
     }
   }

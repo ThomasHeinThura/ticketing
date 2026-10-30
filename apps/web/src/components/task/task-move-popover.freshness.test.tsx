@@ -118,6 +118,12 @@ vi.mock("@taskdesk/ui", async () => {
     SelectValue: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
     ),
+    // ActionTooltip wraps the move trigger; the tooltip surface is not under
+    // test here, so pass the trigger through unchanged.
+    TooltipProvider: ({ children }: { children: React.ReactNode }) => children,
+    Tooltip: ({ children }: { children: React.ReactNode }) => children,
+    TooltipTrigger: ({ children }: { children: React.ReactNode }) => children,
+    TooltipContent: () => null,
   };
 });
 

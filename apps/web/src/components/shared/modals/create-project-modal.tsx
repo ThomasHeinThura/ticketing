@@ -25,6 +25,7 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import icons from "@/constants/project-icons";
 import useCreateProject from "@/hooks/mutations/project/use-create-project";
 import useCustomerOrganisations from "@/hooks/queries/project/use-customer-organisations";
@@ -164,17 +165,19 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
               }}
               modal={true}
             >
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  className="h-8 w-8 p-0"
-                  title={t("common:modals.createProject.pickIcon")}
-                >
-                  <SelectedIcon className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
+              <ActionTooltip label={t("common:modals.createProject.pickIcon")}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="h-8 w-8 p-0"
+                    aria-label={t("common:modals.createProject.pickIcon")}
+                  >
+                    <SelectedIcon className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </ActionTooltip>
               <PopoverContent className="w-64 p-2" align="start">
                 <div className="space-y-2">
                   <Input
@@ -188,25 +191,26 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
                       {filteredIcons.map(([iconName, Icon]) => {
                         const isSelected = selectedIcon === iconName;
                         return (
-                          <Button
-                            key={iconName}
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedIcon(iconName);
-                              setIconPopoverOpen(false);
-                              setIconSearch("");
-                            }}
-                            className={cn(
-                              "h-10 items-center justify-center rounded-md p-0",
-                              isSelected &&
-                                "bg-sidebar-accent text-sidebar-accent-foreground",
-                            )}
-                            title={iconName}
-                          >
-                            <Icon className="h-4 w-4" />
-                          </Button>
+                          <ActionTooltip key={iconName} label={iconName}>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedIcon(iconName);
+                                setIconPopoverOpen(false);
+                                setIconSearch("");
+                              }}
+                              className={cn(
+                                "h-10 items-center justify-center rounded-md p-0",
+                                isSelected &&
+                                  "bg-sidebar-accent text-sidebar-accent-foreground",
+                              )}
+                              aria-label={iconName}
+                            >
+                              <Icon className="h-4 w-4" />
+                            </Button>
+                          </ActionTooltip>
                         );
                       })}
                     </div>

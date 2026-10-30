@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -242,8 +243,10 @@ describe("intake triage route", () => {
     expect(
       within(row as HTMLElement).getByRole("link", { name: "HELP-17" }),
     ).toHaveAttribute("href", "/agent/work-items/HELP-17");
-    expect(screen.getByRole("link", { name: "HELP-17" })).toHaveAttribute(
-      "title",
+    const duplicateLink = screen.getByRole("link", { name: "HELP-17" });
+    expect(duplicateLink).not.toHaveAttribute("title");
+    act(() => duplicateLink.focus());
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Matching request",
     );
     expect(mocks.getDuplicateSuggestions).not.toHaveBeenCalled();

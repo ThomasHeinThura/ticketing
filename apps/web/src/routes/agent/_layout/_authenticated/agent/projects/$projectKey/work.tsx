@@ -16,6 +16,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import PageTitle from "@/components/page-title";
 import loadWorkItemBoardView, {
   isWorkItemBoardViewLoaded,
@@ -907,6 +908,18 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
       ? t("workItems:bulk.modeOff")
       : "";
 
+  const combinedButton = (
+    <Button
+      variant={combinedActive ? "secondary" : "ghost"}
+      type="button"
+      aria-pressed={combinedActive}
+      disabled={group !== "state"}
+      onClick={handleCombinedChange}
+    >
+      {t("workItems:board.combinedDescendants")}
+    </Button>
+  );
+
   return (
     <>
       <PageTitle
@@ -991,20 +1004,18 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                         {t("workItems:board.combinedScope")}
                       </span>
                     )}
-                    <Button
-                      variant={combinedActive ? "secondary" : "ghost"}
-                      type="button"
-                      aria-pressed={combinedActive}
-                      disabled={group !== "state"}
-                      title={
-                        group !== "state"
-                          ? t("workItems:board.combinedStateGroupingRequired")
-                          : undefined
-                      }
-                      onClick={handleCombinedChange}
-                    >
-                      {t("workItems:board.combinedDescendants")}
-                    </Button>
+                    {group !== "state" ? (
+                      // A disabled Button ignores pointer events, so the reason tooltip sits on a wrapper.
+                      <ActionTooltip
+                        label={t(
+                          "workItems:board.combinedStateGroupingRequired",
+                        )}
+                      >
+                        <span className="inline-flex">{combinedButton}</span>
+                      </ActionTooltip>
+                    ) : (
+                      combinedButton
+                    )}
                   </>
                 ) : null}
               </div>

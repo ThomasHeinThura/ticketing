@@ -223,6 +223,54 @@ describe("check:ui — G1a rawElementsIn", () => {
     );
   });
 
+  it("finds library inputs that render a native picker", () => {
+    const source = [
+      "export const Fixture = () => (<>",
+      '  <Input type="date" /><Input type={"time"} /><Input type="checkbox" />',
+      '  <Input type="radio" /><Input type="datetime-local" />',
+      "</>);",
+    ].join("\n");
+    assert.deepEqual(
+      rawElementsIn(source).map(({ tag }) => tag),
+      [
+        'Input type="date"',
+        'Input type="time"',
+        'Input type="checkbox"',
+        'Input type="radio"',
+        'Input type="datetime-local"',
+      ],
+    );
+  });
+
+  it("allows library inputs with text-like or dynamic types", () => {
+    const source =
+      'export const Fixture = ({ t }) => <><Input /><Input type="text" /><Input type="email" /><Input type={t} /><Input type="file" /></>;';
+    assert.deepEqual(rawElementsIn(source), []);
+  });
+
+  it("finds native title tooltips on interactive hosts", () => {
+    const source = [
+      "export const Fixture = ({ label }) => (<>",
+      '  <Button title="Add row" /><a href="/x" title={label}>x</a>',
+      '  <Link to="/x" title={label} /><SidebarMenuButton title={label} />',
+      "</>);",
+    ].join("\n");
+    assert.deepEqual(
+      rawElementsIn(source).map(({ tag }) => tag),
+      ["Button title", "a title", "Link title", "SidebarMenuButton title"],
+    );
+  });
+
+  it("allows title on non-interactive elements and named controls without title", () => {
+    const source = [
+      "export const Fixture = ({ label }) => (<>",
+      '  <span title={label}>long text</span><Button aria-label="Add row" />',
+      '  <ActionTooltip label="Add row"><Button aria-label="Add row" /></ActionTooltip>',
+      "</>);",
+    ].join("\n");
+    assert.deepEqual(rawElementsIn(source), []);
+  });
+
   it("does not accept empty, distant, or non-directive comments as exemptions", () => {
     const source = [
       "// ui-exempt:",
