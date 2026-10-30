@@ -125,9 +125,10 @@ export default function CreateWorkItemProperties(props: Props) {
               variant="outline"
               className="flex items-center gap-1 pl-3 cursor-pointer hover:bg-accent/50 transition-colors"
               render={
-                // ui-exempt: Badge owns Kaneo styling; its render host needs native button semantics for keyboard label removal and disabled state.
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  className="active:scale-100 data-pressed:scale-100"
                   disabled={disabled || !canUpdate}
                   aria-label={`${t("common:modals.createTask.labels")}: ${label.name}`}
                   onClick={() =>
