@@ -2959,7 +2959,7 @@ action id, so one step-up cannot approve two things.
 ### Screens
 
 - **Pending action approval** — a dialog over whatever screen requested it (P1).
-- **Profile → Pending actions** — `/agent/settings/profile/pending-actions`: the list of
+- **Profile → Pending actions** — `/dashboard/settings/account/pending-actions`: the list of
   actions awaiting my approval, with origin (web/api/mcp), requesting key, target, expiry
   (P4).
 - **No portal dialog.** Customers cannot delete anything ([customer-portal.md](feature-contracts-p3.md#customer-portal),

@@ -130,3 +130,22 @@ describe("old /agent/settings links in the router", () => {
     expect(router.state.location.search).toEqual({ cursor: "a/b" });
   });
 });
+
+describe("legacy settings redirect casing", () => {
+  it("matches the fixed segments case-insensitively and keeps id case", () => {
+    expect(legacySettingsRedirectPath("/Agent/Settings/Roles")).toBe(
+      "/dashboard/settings/workspace/Roles",
+    );
+    expect(
+      legacySettingsRedirectPath(
+        "/agent/Settings/Profile/Pending-Actions/PA%2F1",
+      ),
+    ).toBe("/dashboard/settings/account/pending-actions/PA%2F1");
+    expect(
+      legacySettingsRedirectPath("/AGENT/SETTINGS/profile/Notifications"),
+    ).toBe("/dashboard/settings/account/notifications");
+    expect(legacySettingsRedirectPath("/agent/settings/DANGER")).toBe(
+      "/dashboard/settings/workspace/general",
+    );
+  });
+});

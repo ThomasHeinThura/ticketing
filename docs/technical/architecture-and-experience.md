@@ -1518,10 +1518,12 @@ Three levels, following Plane, with clear ownership at each.
 
 | Level | Path | Owns |
 | --- | --- | --- |
-| **Profile** | `/agent/settings/profile/*` | Account, appearance, notifications, security, sessions, API keys |
-| **Workspace** | `/agent/settings/*` | Members, teams, **roles**, work item types, workflows, SLA policies, service calendars, request types, custom fields, labels, estimates, integrations, webhooks, import |
+| **Profile** | `/dashboard/settings/account/*` | Account, appearance, notifications, security, sessions, API keys |
+| **Workspace** | `/dashboard/settings/workspace/*` | Members, teams, **roles**, work item types, workflows, SLA policies, service calendars, request types, custom fields, labels, estimates, integrations, webhooks, import |
 | **Project** | `/agent/projects/{key}/settings/*` | General, members, states, features, labels, automations, SLA binding, danger zone |
 | **Instance** | `/agent/god-mode/*` | Everything about the deployment |
+
+Old `/agent/settings/*` URLs (including `/agent/settings/profile/*`) redirect to these pages, keeping search and hash (L-03, Thomas 30 Oct 2026).
 
 Detail: [Settings hierarchy](feature-contracts-p4.md#settings-hierarchy).
 
@@ -1565,7 +1567,7 @@ Every screen has an address. Filters, layout, tab and selection are URL state.
 /agent/views/{viewId}
 /agent/reports/{reportKey}?window=30d
 /agent/kb/{articleId}
-/agent/settings/roles/{roleId}
+/dashboard/settings/workspace/roles/{roleId}
 /agent/projects/{key}/settings/states
 /agent/god-mode/authentication
 

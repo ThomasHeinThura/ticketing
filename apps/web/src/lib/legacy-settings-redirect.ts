@@ -18,28 +18,31 @@ const PROFILE_PAGES: Record<string, string> = {
  * exceptions.
  */
 export function legacySettingsRedirectPath(path: string): string {
-  const rest = path.startsWith(LEGACY_PREFIX)
-    ? path.slice(LEGACY_PREFIX.length).replace(/\/+$/u, "")
-    : "";
+  // Routes match case-insensitively, so the fixed segments do too; ids keep their case.
+  const rest =
+    path.slice(0, LEGACY_PREFIX.length).toLowerCase() === LEGACY_PREFIX
+      ? path.slice(LEGACY_PREFIX.length).replace(/\/+$/u, "")
+      : "";
+  const lower = rest.toLowerCase();
+  const startsWith = (segment: string) =>
+    lower === segment || lower.startsWith(`${segment}/`);
   if (rest !== "" && !rest.startsWith("/")) return `${WORKSPACE}/general`;
-  if (rest === "" || rest === "/danger") return `${WORKSPACE}/general`;
-  if (rest === "/profile" || rest.startsWith("/profile/")) {
+  if (rest === "" || lower === "/danger") return `${WORKSPACE}/general`;
+  if (startsWith("/profile")) {
     const profileRest = rest.slice("/profile".length);
+    const profileLower = profileRest.toLowerCase();
     if (
-      profileRest === "/pending-actions" ||
-      profileRest.startsWith("/pending-actions/")
+      profileLower === "/pending-actions" ||
+      profileLower.startsWith("/pending-actions/")
     )
-      return `${ACCOUNT}${profileRest}`;
-    return PROFILE_PAGES[profileRest] ?? `${ACCOUNT}/information`;
+      return `${ACCOUNT}/pending-actions${profileRest.slice("/pending-actions".length)}`;
+    return PROFILE_PAGES[profileLower] ?? `${ACCOUNT}/information`;
   }
-  if (rest === "/projects" || rest.startsWith("/projects/"))
-    return `/dashboard/settings${rest}`;
+  if (startsWith("/projects"))
+    return `/dashboard/settings/projects${rest.slice("/projects".length)}`;
   // An older webhook link pointed at a nested integrations path that never existed.
-  if (
-    rest === "/integrations/webhooks" ||
-    rest.startsWith("/integrations/webhooks/")
-  )
-    return `${WORKSPACE}${rest.slice("/integrations".length)}`;
+  if (startsWith("/integrations/webhooks"))
+    return `${WORKSPACE}/webhooks${rest.slice("/integrations/webhooks".length)}`;
   return `${WORKSPACE}${rest}`;
 }
 
