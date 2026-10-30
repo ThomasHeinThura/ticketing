@@ -454,10 +454,13 @@ The script is **idempotent** — safe to re-run, and it never regenerates a secr
 already exists. Existing deployment secrets and data are preserved.
 
 Local deployment runs the bundled SIT seed inside the healthy application container with
-`node apps/api/dist/seed-sit-users.js --sit`. No host Node/pnpm installation or published
+`node apps/api/dist/seed-sit-users.js --sit --credentials-file <container /tmp path>`. No host Node/pnpm installation or published
 database port is required. A seed failure fails deployment. The seed creates the four
-interactive test accounts, two published customer request forms and two real submissions
-(one private, one organisation-visible). Re-running preserves existing submissions and
+interactive test accounts, turns intake and the customer portal on for the SIT workspace
+(both default off, so a fresh install's catalogue would otherwise be empty), two published
+customer request forms and two real submissions (one private, one organisation-visible).
+The generated passwords are copied to `~/.taskdesk/sit-credentials.json` (0600) and removed
+from the container. Re-running preserves existing submissions and
 their triage progress. Production, upgrade and rollback never run this seed.
 
 It:
