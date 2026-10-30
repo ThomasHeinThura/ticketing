@@ -67,7 +67,7 @@ export function WeeklyCoverCard({
             <section
               key={key}
               aria-labelledby={`calendar-day-${key}`}
-              className="grid gap-3 border-b border-border pb-4 last:border-0 last:pb-0 sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:items-start"
+              className="grid gap-3 border-b border-border pb-4 last:border-0 last:pb-0 lg:grid-cols-[7rem_minmax(0,1fr)_auto] lg:items-start"
             >
               <h3
                 id={`calendar-day-${key}`}
