@@ -63,6 +63,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import type { Highlighter } from "shiki";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { EditorLinkDialog } from "@/components/common/editor-link-dialog";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
 import { selectTaskDescription } from "@/hooks/queries/task/select-task-description";
@@ -1689,92 +1690,134 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
             activeEditor.isActive("table") && from === to
           }
         >
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="taskdesk-tiptap-bubble-btn"
-            title={t("tasks:editor.table.addColumnBefore", {
+          <ActionTooltip
+            label={t("tasks:editor.table.addColumnBefore", {
               defaultValue: "Insert column left",
             })}
-            onClick={() => editor.chain().focus().addColumnBefore().run()}
           >
-            <BetweenVerticalStart className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="taskdesk-tiptap-bubble-btn"
-            title={t("tasks:editor.table.addColumnAfter", {
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="taskdesk-tiptap-bubble-btn"
+              aria-label={t("tasks:editor.table.addColumnBefore", {
+                defaultValue: "Insert column left",
+              })}
+              onClick={() => editor.chain().focus().addColumnBefore().run()}
+            >
+              <BetweenVerticalStart className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip
+            label={t("tasks:editor.table.addColumnAfter", {
               defaultValue: "Insert column right",
             })}
-            onClick={() => editor.chain().focus().addColumnAfter().run()}
           >
-            <BetweenVerticalEnd className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn("taskdesk-tiptap-bubble-btn", "text-destructive")}
-            title={t("tasks:editor.table.deleteColumn", {
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="taskdesk-tiptap-bubble-btn"
+              aria-label={t("tasks:editor.table.addColumnAfter", {
+                defaultValue: "Insert column right",
+              })}
+              onClick={() => editor.chain().focus().addColumnAfter().run()}
+            >
+              <BetweenVerticalEnd className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip
+            label={t("tasks:editor.table.deleteColumn", {
               defaultValue: "Delete column",
             })}
-            onClick={() => editor.chain().focus().deleteColumn().run()}
           >
-            <Columns3 className="size-3.5" />
-          </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn("taskdesk-tiptap-bubble-btn", "text-destructive")}
+              aria-label={t("tasks:editor.table.deleteColumn", {
+                defaultValue: "Delete column",
+              })}
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+            >
+              <Columns3 className="size-3.5" />
+            </Button>
+          </ActionTooltip>
           <span className="taskdesk-tiptap-bubble-separator" />
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="taskdesk-tiptap-bubble-btn"
-            title={t("tasks:editor.table.addRowBefore", {
+          <ActionTooltip
+            label={t("tasks:editor.table.addRowBefore", {
               defaultValue: "Insert row above",
             })}
-            onClick={() => editor.chain().focus().addRowBefore().run()}
           >
-            <BetweenHorizontalStart className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="taskdesk-tiptap-bubble-btn"
-            title={t("tasks:editor.table.addRowAfter", {
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="taskdesk-tiptap-bubble-btn"
+              aria-label={t("tasks:editor.table.addRowBefore", {
+                defaultValue: "Insert row above",
+              })}
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+            >
+              <BetweenHorizontalStart className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip
+            label={t("tasks:editor.table.addRowAfter", {
               defaultValue: "Insert row below",
             })}
-            onClick={() => editor.chain().focus().addRowAfter().run()}
           >
-            <BetweenHorizontalEnd className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn("taskdesk-tiptap-bubble-btn", "text-destructive")}
-            title={t("tasks:editor.table.deleteRow", {
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="taskdesk-tiptap-bubble-btn"
+              aria-label={t("tasks:editor.table.addRowAfter", {
+                defaultValue: "Insert row below",
+              })}
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+            >
+              <BetweenHorizontalEnd className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip
+            label={t("tasks:editor.table.deleteRow", {
               defaultValue: "Delete row",
             })}
-            onClick={() => editor.chain().focus().deleteRow().run()}
           >
-            <Rows3 className="size-3.5" />
-          </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn("taskdesk-tiptap-bubble-btn", "text-destructive")}
+              aria-label={t("tasks:editor.table.deleteRow", {
+                defaultValue: "Delete row",
+              })}
+              onClick={() => editor.chain().focus().deleteRow().run()}
+            >
+              <Rows3 className="size-3.5" />
+            </Button>
+          </ActionTooltip>
           <span className="taskdesk-tiptap-bubble-separator" />
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn("taskdesk-tiptap-bubble-btn", "text-destructive")}
-            title={t("tasks:editor.table.deleteTable", {
+          <ActionTooltip
+            label={t("tasks:editor.table.deleteTable", {
               defaultValue: "Delete table",
             })}
-            onClick={() => editor.chain().focus().deleteTable().run()}
           >
-            <Grid2x2X className="size-3.5" />
-          </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn("taskdesk-tiptap-bubble-btn", "text-destructive")}
+              aria-label={t("tasks:editor.table.deleteTable", {
+                defaultValue: "Delete table",
+              })}
+              onClick={() => editor.chain().focus().deleteTable().run()}
+            >
+              <Grid2x2X className="size-3.5" />
+            </Button>
+          </ActionTooltip>
         </BubbleMenu>
       )}
 

@@ -55,6 +55,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import type { Highlighter } from "shiki";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { EditorLinkDialog } from "@/components/common/editor-link-dialog";
 import { AttachmentCard } from "@/components/task/extensions/attachment-card";
 import { EmbedBlock } from "@/components/task/extensions/embed-block";
@@ -1839,101 +1840,143 @@ export default function CommentEditor({
             activeEditor.isActive("table") && from === to
           }
         >
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="taskdesk-comment-editor-bubble-btn"
-            title={t("activity:comment.editor.table.addColumnBefore", {
+          <ActionTooltip
+            label={t("activity:comment.editor.table.addColumnBefore", {
               defaultValue: "Insert column left",
             })}
-            onClick={() => editor.chain().focus().addColumnBefore().run()}
           >
-            <BetweenVerticalStart className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="taskdesk-comment-editor-bubble-btn"
-            title={t("activity:comment.editor.table.addColumnAfter", {
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="taskdesk-comment-editor-bubble-btn"
+              aria-label={t("activity:comment.editor.table.addColumnBefore", {
+                defaultValue: "Insert column left",
+              })}
+              onClick={() => editor.chain().focus().addColumnBefore().run()}
+            >
+              <BetweenVerticalStart className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip
+            label={t("activity:comment.editor.table.addColumnAfter", {
               defaultValue: "Insert column right",
             })}
-            onClick={() => editor.chain().focus().addColumnAfter().run()}
           >
-            <BetweenVerticalEnd className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "taskdesk-comment-editor-bubble-btn",
-              "text-destructive",
-            )}
-            title={t("activity:comment.editor.table.deleteColumn", {
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="taskdesk-comment-editor-bubble-btn"
+              aria-label={t("activity:comment.editor.table.addColumnAfter", {
+                defaultValue: "Insert column right",
+              })}
+              onClick={() => editor.chain().focus().addColumnAfter().run()}
+            >
+              <BetweenVerticalEnd className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip
+            label={t("activity:comment.editor.table.deleteColumn", {
               defaultValue: "Delete column",
             })}
-            onClick={() => editor.chain().focus().deleteColumn().run()}
           >
-            <Columns3 className="size-3.5" />
-          </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                "text-destructive",
+              )}
+              aria-label={t("activity:comment.editor.table.deleteColumn", {
+                defaultValue: "Delete column",
+              })}
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+            >
+              <Columns3 className="size-3.5" />
+            </Button>
+          </ActionTooltip>
           <span className="taskdesk-tiptap-bubble-separator" />
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="taskdesk-comment-editor-bubble-btn"
-            title={t("activity:comment.editor.table.addRowBefore", {
+          <ActionTooltip
+            label={t("activity:comment.editor.table.addRowBefore", {
               defaultValue: "Insert row above",
             })}
-            onClick={() => editor.chain().focus().addRowBefore().run()}
           >
-            <BetweenHorizontalStart className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="taskdesk-comment-editor-bubble-btn"
-            title={t("activity:comment.editor.table.addRowAfter", {
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="taskdesk-comment-editor-bubble-btn"
+              aria-label={t("activity:comment.editor.table.addRowBefore", {
+                defaultValue: "Insert row above",
+              })}
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+            >
+              <BetweenHorizontalStart className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip
+            label={t("activity:comment.editor.table.addRowAfter", {
               defaultValue: "Insert row below",
             })}
-            onClick={() => editor.chain().focus().addRowAfter().run()}
           >
-            <BetweenHorizontalEnd className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "taskdesk-comment-editor-bubble-btn",
-              "text-destructive",
-            )}
-            title={t("activity:comment.editor.table.deleteRow", {
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="taskdesk-comment-editor-bubble-btn"
+              aria-label={t("activity:comment.editor.table.addRowAfter", {
+                defaultValue: "Insert row below",
+              })}
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+            >
+              <BetweenHorizontalEnd className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip
+            label={t("activity:comment.editor.table.deleteRow", {
               defaultValue: "Delete row",
             })}
-            onClick={() => editor.chain().focus().deleteRow().run()}
           >
-            <Rows3 className="size-3.5" />
-          </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                "text-destructive",
+              )}
+              aria-label={t("activity:comment.editor.table.deleteRow", {
+                defaultValue: "Delete row",
+              })}
+              onClick={() => editor.chain().focus().deleteRow().run()}
+            >
+              <Rows3 className="size-3.5" />
+            </Button>
+          </ActionTooltip>
           <span className="taskdesk-tiptap-bubble-separator" />
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "taskdesk-comment-editor-bubble-btn",
-              "text-destructive",
-            )}
-            title={t("activity:comment.editor.table.deleteTable", {
+          <ActionTooltip
+            label={t("activity:comment.editor.table.deleteTable", {
               defaultValue: "Delete table",
             })}
-            onClick={() => editor.chain().focus().deleteTable().run()}
           >
-            <Grid2x2X className="size-3.5" />
-          </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                "text-destructive",
+              )}
+              aria-label={t("activity:comment.editor.table.deleteTable", {
+                defaultValue: "Delete table",
+              })}
+              onClick={() => editor.chain().focus().deleteTable().run()}
+            >
+              <Grid2x2X className="size-3.5" />
+            </Button>
+          </ActionTooltip>
         </BubbleMenu>
       )}
       {slashMenu && !readOnly && !disabled && (

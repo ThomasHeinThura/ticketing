@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { submissionAge } from "@/lib/intake-queue";
 import { routes } from "@/lib/routes";
 
@@ -91,21 +92,21 @@ export function SubmissionQueueTable({
               <div className="flex flex-wrap gap-2">
                 {(row.suggestedDuplicates ?? []).length ? (
                   (row.suggestedDuplicates ?? []).map((item) => (
-                    <Button
-                      key={item.id}
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0 font-mono"
-                      render={
-                        <Link
-                          to={routes.workItemDetail.path}
-                          params={{ key: item.key }}
-                        />
-                      }
-                      title={item.title}
-                    >
-                      {item.key}
-                    </Button>
+                    <ActionTooltip key={item.id} label={item.title}>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 font-mono"
+                        render={
+                          <Link
+                            to={routes.workItemDetail.path}
+                            params={{ key: item.key }}
+                          />
+                        }
+                      >
+                        {item.key}
+                      </Button>
+                    </ActionTooltip>
                   ))
                 ) : (
                   <span className="text-muted-foreground">

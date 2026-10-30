@@ -12745,9 +12745,9 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[2]::text-destructive#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[5]::text-destructive#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-destructive#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-destructive#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-destructive#0",
 			"apps/web/src/components/common/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
@@ -12762,9 +12762,9 @@
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[1]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]::text-destructive#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/p[0]::text-destructive#0",
-			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[2]::text-destructive#0",
-			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[5]::text-destructive#0",
-			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
+			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-destructive#0",
+			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-destructive#0",
+			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-destructive#0",
 			"apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/task/task-relations.tsx::TaskRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/task/task-status-popover.tsx::TaskStatusPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]::text-destructive#0",
@@ -12790,10 +12790,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[2]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]",
 					"css:.taskdesk-comment-editor-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[2]::text-destructive#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -12802,10 +12802,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[5]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]",
 					"css:.taskdesk-comment-editor-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[5]::text-destructive#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -12814,10 +12814,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[6]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]",
 					"css:.taskdesk-comment-editor-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -13078,10 +13078,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/task/task-description.tsx:TaskDescription",
-					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[2]",
+					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]",
 					"css:.taskdesk-tiptap-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[2]::text-destructive#0",
+				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/task/task-description.tsx"
 			},
@@ -13090,10 +13090,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/task/task-description.tsx:TaskDescription",
-					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[5]",
+					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]",
 					"css:.taskdesk-tiptap-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[5]::text-destructive#0",
+				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/task/task-description.tsx"
 			},
@@ -13102,10 +13102,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/task/task-description.tsx:TaskDescription",
-					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[6]",
+					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]",
 					"css:.taskdesk-tiptap-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
+				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/task/task-description.tsx"
 			},
@@ -13363,9 +13363,9 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[2]::text-destructive#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[5]::text-destructive#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-destructive#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-destructive#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-destructive#0",
 			"apps/web/src/components/common/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
@@ -13380,9 +13380,9 @@
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[1]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]::text-destructive#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/p[0]::text-destructive#0",
-			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[2]::text-destructive#0",
-			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[5]::text-destructive#0",
-			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
+			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-destructive#0",
+			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-destructive#0",
+			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-destructive#0",
 			"apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/task/task-relations.tsx::TaskRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/task/task-status-popover.tsx::TaskStatusPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]::text-destructive#0",
@@ -13408,10 +13408,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[2]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]",
 					"css:.taskdesk-comment-editor-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[2]::text-destructive#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -13420,10 +13420,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[5]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]",
 					"css:.taskdesk-comment-editor-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[5]::text-destructive#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -13432,10 +13432,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[6]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]",
 					"css:.taskdesk-comment-editor-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -13696,10 +13696,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/task/task-description.tsx:TaskDescription",
-					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[2]",
+					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]",
 					"css:.taskdesk-tiptap-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[2]::text-destructive#0",
+				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/task/task-description.tsx"
 			},
@@ -13708,10 +13708,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/task/task-description.tsx:TaskDescription",
-					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[5]",
+					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]",
 					"css:.taskdesk-tiptap-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[5]::text-destructive#0",
+				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/task/task-description.tsx"
 			},
@@ -13720,10 +13720,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/task/task-description.tsx:TaskDescription",
-					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[6]",
+					"jsx:TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]",
 					"css:.taskdesk-tiptap-bubble>background:var(--popover)"
 				],
-				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/Button[6]::text-destructive#0",
+				"id": "apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/task/task-description.tsx"
 			},
@@ -17070,7 +17070,7 @@
 			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]::text-foreground#0",
-			"apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::Button[0]::text-foreground#0",
+			"apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::hover:text-foreground#0",
 			"apps/web/src/components/common/group-control.tsx::GroupControl::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
@@ -17352,7 +17352,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::Button[0]::text-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/calendar-task-bar.tsx"
 			},
@@ -17363,7 +17363,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
 					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
 				],
-				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::Button[0]::text-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/calendar-task-bar.tsx"
 			},
@@ -19718,7 +19718,7 @@
 			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]::text-foreground#0",
-			"apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::Button[0]::text-foreground#0",
+			"apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::hover:text-foreground#0",
 			"apps/web/src/components/common/group-control.tsx::GroupControl::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
@@ -20000,7 +20000,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::Button[0]::text-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/calendar-task-bar.tsx"
 			},
@@ -20011,7 +20011,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
 					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
 				],
-				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::Button[0]::text-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/calendar-task-bar.tsx"
 			},
@@ -31639,10 +31639,10 @@
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[1]::text-muted-foreground#0",
 			"apps/web/src/components/pages/page-detail.tsx::PageView::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]::text-muted-foreground#0",
@@ -31861,7 +31861,7 @@
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::AssigneeControl::Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::DateControl::Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::DateControl::Icon[0]::text-muted-foreground#0",
@@ -34397,6 +34397,20 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
+				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
@@ -34426,20 +34440,6 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[1]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
 			},
@@ -38487,7 +38487,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
 			},
@@ -38502,7 +38502,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
 			},
@@ -38517,7 +38517,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
 			},
@@ -38531,7 +38531,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
 			},
@@ -38546,7 +38546,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
 			},
@@ -42505,10 +42505,10 @@
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[1]::text-muted-foreground#0",
 			"apps/web/src/components/pages/page-detail.tsx::PageView::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]::text-muted-foreground#0",
@@ -42727,7 +42727,7 @@
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::span[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+			"apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::AssigneeControl::Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::DateControl::Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::DateControl::Icon[0]::text-muted-foreground#0",
@@ -45263,6 +45263,20 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
+				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
@@ -45292,20 +45306,6 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[1]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
 			},
@@ -49353,7 +49353,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
 			},
@@ -49368,7 +49368,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
 			},
@@ -49383,7 +49383,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
 			},
@@ -49397,7 +49397,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
 			},
@@ -49412,7 +49412,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
 			},
@@ -89595,7 +89595,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
 					"state-backdrop:hover:bg-sidebar-accent/50",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -89608,7 +89608,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
 					"state-backdrop:hover:bg-sidebar-accent/50",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -89621,7 +89621,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
 					"state-backdrop:hover:bg-sidebar-accent/50",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -89656,7 +89656,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
 					"state-backdrop:hover:bg-sidebar-accent/50",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -89669,7 +89669,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
 					"state-backdrop:hover:bg-sidebar-accent/50",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -89682,7 +89682,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
 					"state-backdrop:hover:bg-sidebar-accent/50",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -90369,7 +90369,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]"
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
 				],
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -90380,7 +90380,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]"
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
 				],
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -90391,7 +90391,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]"
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
 				],
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -91592,7 +91592,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]"
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
 				],
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -91603,7 +91603,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]"
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
 				],
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -91614,7 +91614,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverTrigger[0]/Button[0]"
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
 				],
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -98273,7 +98273,7 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -98283,7 +98283,7 @@
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			}
@@ -98303,7 +98303,7 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -98313,7 +98313,7 @@
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			}
@@ -98422,10 +98422,10 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -98433,13 +98433,13 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
@@ -98448,13 +98448,13 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
@@ -98463,13 +98463,13 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-sidebar-accent",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -98478,13 +98478,13 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
-					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
-					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			}
@@ -98639,10 +98639,10 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -98650,13 +98650,13 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
@@ -98665,13 +98665,13 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
@@ -98680,13 +98680,13 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-sidebar-accent",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -98695,13 +98695,13 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
-					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
-					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			}
@@ -98933,7 +98933,7 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -98941,11 +98941,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"state-backdrop:hover:bg-sidebar-accent/50",
 					"opaque-backdrop:bg-sidebar"
 				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/column-editor.tsx"
 			}
@@ -98966,7 +98966,7 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -98974,11 +98974,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"state-backdrop:hover:bg-sidebar-accent/50",
 					"opaque-backdrop:bg-sidebar"
 				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/column-editor.tsx"
 			}
@@ -99000,8 +99000,8 @@
 		"surfaceContext": "same-element",
 		"occurrenceIds": [
 			"apps/web/src/components/nav-projects-sortable.tsx::SortableProjectList::DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -99020,9 +99020,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]"
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]"
 				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
@@ -99031,9 +99031,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
-					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]"
+					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			}
@@ -99054,8 +99054,8 @@
 		"surfaceContext": "same-element",
 		"occurrenceIds": [
 			"apps/web/src/components/nav-projects-sortable.tsx::SortableProjectList::DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -99074,9 +99074,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]"
+					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]"
 				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
@@ -99085,9 +99085,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
-					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]"
+					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			}

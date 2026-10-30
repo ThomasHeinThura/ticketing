@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import type { WorkItemAttachment } from "@/fetchers/attachment/work-item-attachments";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { formatDateMedium, formatDateTime } from "@/lib/format";
@@ -192,22 +193,23 @@ export default function WorkItemAttachmentTile({
       data-testid="work-item-attachment"
       data-kind="file"
     >
-      <a
-        href={attachmentUrl(attachment.id)}
-        className="taskdesk-attachment-card min-w-0 max-w-none flex-1"
-        aria-label={attachment.filename}
-        title={attachment.filename}
-      >
-        <span className="taskdesk-attachment-card-icon">
-          <KindIcon mimeType={attachment.mimeType} />
-        </span>
-        <span className="taskdesk-attachment-card-content">
-          <span className="taskdesk-attachment-card-title">
-            {attachment.filename}
+      <ActionTooltip label={attachment.filename}>
+        <a
+          href={attachmentUrl(attachment.id)}
+          className="taskdesk-attachment-card min-w-0 max-w-none flex-1"
+          aria-label={attachment.filename}
+        >
+          <span className="taskdesk-attachment-card-icon">
+            <KindIcon mimeType={attachment.mimeType} />
           </span>
-          <span className="taskdesk-attachment-card-meta">{meta}</span>
-        </span>
-      </a>
+          <span className="taskdesk-attachment-card-content">
+            <span className="taskdesk-attachment-card-title">
+              {attachment.filename}
+            </span>
+            <span className="taskdesk-attachment-card-meta">{meta}</span>
+          </span>
+        </a>
+      </ActionTooltip>
       {isPdfPreview(attachment.mimeType) ? (
         <Button
           variant="ghost"

@@ -11,7 +11,7 @@ GitHub CI is a required gate. All required checks must pass; a failing gate is f
 | Code | `pnpm lint:ci`, `pnpm typecheck`, `pnpm test` (unit + component), integration on PostgreSQL 18 (4 shards, `vitest.integration.config.ts`), `pnpm test:permissions`, `pnpm check:route-policy`, domain coverage 90% |
 | Contracts and registers | `pnpm test:contract` (OpenAPI drift; breaking changes need Thomas's approval in `scripts/ci/openapi-approved-breaks.json`), env/vocabulary/events/reviews/skips/overrides registers, gate checkers + red probes, CI matches `ci-cd.md` |
 | Features | `pnpm test:e2e` (mock-backed and Testcontainers journeys, `apps/web/e2e/`) |
-| Design | `pnpm check:ui:raw-elements`, `pnpm check:tokens` (contrast), visual regression G8 (`pnpm test:visual` in the pinned `mcr.microsoft.com/playwright:v1.63.0-noble` container; regenerate baselines only for intended changes), accessibility G4 (axe) |
+| Design | `pnpm check:ui:raw-elements` (raw controls, library `Input` date/time/checkbox/radio types, native `title` tooltips on interactive hosts), `pnpm check:tokens` (contrast), visual regression G8 (`pnpm test:visual` in the pinned `mcr.microsoft.com/playwright:v1.63.0-noble` container; regenerate baselines only for intended changes), accessibility G4 (axe) |
 | Performance | G11/G13 budgets (`apps/web/e2e/performance.bench.ts`), bundle budgets; thresholds never change without Thomas |
 | Security | Gitleaks secret scan, dependency audit, CodeQL, Trivy (release image) |
 
