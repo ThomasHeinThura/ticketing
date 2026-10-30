@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -121,6 +122,56 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("LabelCatalogue stable keys", () => {
+  it("announces the selected draft color in create and edit without saving", async () => {
+    mocks.workspaceLabels = [
+      {
+        id: "label-1",
+        name: "Support",
+        color: "purple",
+        key: "support",
+        taskId: null,
+      },
+    ];
+    renderCatalogue();
+
+    for (const action of ["createLabel", "editLabel"]) {
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: translate(`settings:workspaceLabels.${action}`),
+        }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      const controls = within(dialog);
+      const initialColor = action === "createLabel" ? "Stone" : "Lavender";
+      const nextColor = action === "createLabel" ? "Lavender" : "Stone";
+      expect(
+        controls.getByRole("button", { name: initialColor, pressed: true }),
+      ).toBeInTheDocument();
+      expect(controls.getAllByRole("button", { pressed: true })).toHaveLength(
+        1,
+      );
+      const next = controls.getByRole("button", { name: nextColor });
+      expect(next).not.toHaveAttribute("title");
+      fireEvent.click(next);
+      expect(next).toHaveAttribute("aria-pressed", "true");
+      expect(
+        controls.getByRole("button", { name: initialColor }),
+      ).toHaveAttribute("aria-pressed", "false");
+      expect(controls.getAllByRole("button", { pressed: true })).toHaveLength(
+        1,
+      );
+      fireEvent.click(
+        controls.getByRole("button", {
+          name: translate("common:actions.cancel"),
+        }),
+      );
+      await waitFor(() => expect(dialog).not.toBeVisible());
+    }
+
+    expect(mocks.createWorkspaceLabel).not.toHaveBeenCalled();
+    expect(mocks.updateLabel).not.toHaveBeenCalled();
+  });
+
   it("requires and sends a stable key for workspace labels", async () => {
     renderCatalogue();
     fireEvent.click(
