@@ -2,7 +2,20 @@
 
 **Direction (Thomas, 28 Oct 2026):** phases ended after P6. P0–P6 are implemented, independently AI-reviewed and accepted by Thomas (27 Oct, with open lows) and merged to `main` (28 Oct). All further work is one ordered backlog of fixes, bugs and features, worked top to bottom under [AGENTS.md](../AGENTS.md). Original Kaneo (`42bb8011`) stays the interface; real persisted data only; status counts come from the requirement index and evidence, never invented percentages. Progress is shown in the [report](report/report.html) and [status](status.md).
 
-Thomas's standing execution order (29 Oct) overrides the historical row ordering: land #933/#934/#931/#932 (complete), full Kaneo UI sweep (active; scoped #935/#937/#939/#943/#954/#956/#964/#965 fixes merged), L-05 #919 (one day maximum), L-02 speed/reliability, #918/#920, real regression journeys, then L-03/L-04/L-06–L-11. G11 runs report-only until L-05 lands; every other required check must pass. Qualified squash merges use the exact checked head; high-risk changes also need independent Sol high clearance. No further merge approval wait applies to this run.
+<a id="uat-week-plan-30-oct--6-nov-2026"></a>
+**UAT week plan (Thomas, 30 Oct 2026) overrides the 29 Oct order.** UAT launches on Friday 6 Nov on the Technexus hosts. Every merge runs the release chain in the [handover](handover.md): signed image → local SIT (Docker Desktop) → smoke → Technexus. Whatever is finished deploys first. G11 stays report-only; every other required check must pass.
+
+| Day | Work |
+| --- | --- |
+| Fri 30 Oct | Prove the chain with `main` (done), fix fresh-install deploy (#993), docs, finish the library Button change |
+| Sat 31 Oct | One-command release smoke suite (persisted journeys: sign-in, work items, board/list, task detail, service desk, portal, KB, settings; owner/member/customer). Extend the native-UI check (library date/checkbox inputs, interactive `title=`) and fix every hit |
+| Sun 1 – Mon 2 Nov | **L-03 settings split** (account, project, workspace menus; God Mode URL and sign-in; old-link redirects) |
+| Tue 3 Nov | UAT blockers: backup/restore rehearsal on a copy; user-reachable L-09 items (#231/#232, #704); lows (KB date timezone, untranslated keys, holiday error) |
+| Wed 4 Nov | **L-04 editor first slice** (slash menu, headings, lists, tables, code, links, autosave) |
+| Thu 5 Nov | UAT readiness: runtime configuration (no seeder on Technexus), identity-provider callback, full browser sweep across roles, widths and themes; L-05 at most half a day |
+| Fri 6 Nov | UAT launch; buffer |
+
+After launch, as UAT updates: rest of L-04, L-05, L-02, #918/#920, L-06, L-07, L-11 and the full regression suite.
 
 ## Linear backlog
 
