@@ -1,0 +1,1768 @@
+{
+	"at": "2026-10-30T08:35:47.840Z",
+	"issue": "https://github.com/ThomasHeinThura/ticketing/issues/991",
+	"featureSource": "83214470709363d74a2a6cc565645a92c3ebfdd0",
+	"baseMain": "fcf3ae8e15337d8ee93a38687536e7100bffb600",
+	"runtimeSource": "ea36e54e8314a7c2129c5c5392c2566b66ebec6f",
+	"productionPathsMatchRuntime": true,
+	"findings": [
+		{
+			"id": "UI-991-KB-DATE",
+			"issue": 991,
+			"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+			"role": "admin",
+			"problem": "Review due used a native date input",
+			"severity": "native-control",
+			"fix": "Shared Kaneo DateField; unchanged UTC-midnight/null versioned adapter",
+			"status": "implemented-unmerged"
+		},
+		{
+			"id": "UI-991-PORTAL-DATE",
+			"issue": 991,
+			"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+			"role": "customer",
+			"problem": "Request-form date fields used native date inputs",
+			"severity": "native-control",
+			"fix": "Shared Kaneo DateField; unchanged YYYY-MM-DD answers, draft key and formData",
+			"status": "implemented-unmerged"
+		}
+	],
+	"before": {
+		"kb": {
+			"runtimeSource": "7694ede275b24cdd225fa2e02c5b944c72669b17",
+			"fixture": "new QA-only private draft article created by root, reviewDueAt=2026-11-15T00:00:00Z, version=1",
+			"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+			"role": "admin",
+			"roleProof": {
+				"sessionStatus": 200,
+				"authenticated": true,
+				"workspaceStatus": 200,
+				"membershipStatus": 200,
+				"effectiveRole": "admin"
+			},
+			"rows": [
+				{
+					"width": 1440,
+					"requestedTheme": "light",
+					"actualTheme": "light",
+					"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+					"label": "Review due",
+					"labelAssociated": true,
+					"htmlType": "date",
+					"domType": "date",
+					"value": "2026-11-15",
+					"disabled": false,
+					"readOnly": false,
+					"required": false,
+					"ariaInvalid": null,
+					"inputRect": {
+						"x": 1137,
+						"y": 447,
+						"width": 252,
+						"height": 30
+					},
+					"labelRect": {
+						"x": 1136,
+						"y": 426,
+						"width": 75.25,
+						"height": 16
+					},
+					"fullyInsideViewport": true,
+					"nativeDateInputs": 1,
+					"documentOverflow": false,
+					"focused": true,
+					"screenshot": "docs/report/screens/20261030-date-only-before-kb-review-due-admin-1440-light.png"
+				},
+				{
+					"width": 820,
+					"requestedTheme": "light",
+					"actualTheme": "light",
+					"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+					"label": "Review due",
+					"labelAssociated": true,
+					"htmlType": "date",
+					"domType": "date",
+					"value": "2026-11-15",
+					"disabled": false,
+					"readOnly": false,
+					"required": false,
+					"ariaInvalid": null,
+					"inputRect": {
+						"x": 283,
+						"y": 729.140625,
+						"width": 486,
+						"height": 30
+					},
+					"labelRect": {
+						"x": 282,
+						"y": 708.140625,
+						"width": 75.25,
+						"height": 16
+					},
+					"fullyInsideViewport": true,
+					"nativeDateInputs": 1,
+					"documentOverflow": false,
+					"focused": true,
+					"screenshot": "docs/report/screens/20261030-date-only-before-kb-review-due-admin-820-light.png"
+				},
+				{
+					"width": 390,
+					"requestedTheme": "light",
+					"actualTheme": "light",
+					"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+					"label": "Review due",
+					"labelAssociated": true,
+					"htmlType": "date",
+					"domType": "date",
+					"value": "2026-11-15",
+					"disabled": false,
+					"readOnly": false,
+					"required": false,
+					"ariaInvalid": null,
+					"inputRect": {
+						"x": 51,
+						"y": 864.984375,
+						"width": 288,
+						"height": 34
+					},
+					"labelRect": {
+						"x": 50,
+						"y": 841.984375,
+						"width": 85.984375,
+						"height": 18
+					},
+					"fullyInsideViewport": true,
+					"nativeDateInputs": 1,
+					"documentOverflow": false,
+					"focused": true,
+					"screenshot": "docs/report/screens/20261030-date-only-before-kb-review-due-admin-390-light.png"
+				},
+				{
+					"width": 1440,
+					"requestedTheme": "dark",
+					"actualTheme": "dark",
+					"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+					"label": "Review due",
+					"labelAssociated": true,
+					"htmlType": "date",
+					"domType": "date",
+					"value": "2026-11-15",
+					"disabled": false,
+					"readOnly": false,
+					"required": false,
+					"ariaInvalid": null,
+					"inputRect": {
+						"x": 1137,
+						"y": 447,
+						"width": 252,
+						"height": 30
+					},
+					"labelRect": {
+						"x": 1136,
+						"y": 426,
+						"width": 75.25,
+						"height": 16
+					},
+					"fullyInsideViewport": true,
+					"nativeDateInputs": 1,
+					"documentOverflow": false,
+					"focused": true,
+					"screenshot": "docs/report/screens/20261030-date-only-before-kb-review-due-admin-1440-dark.png"
+				},
+				{
+					"width": 820,
+					"requestedTheme": "dark",
+					"actualTheme": "dark",
+					"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+					"label": "Review due",
+					"labelAssociated": true,
+					"htmlType": "date",
+					"domType": "date",
+					"value": "2026-11-15",
+					"disabled": false,
+					"readOnly": false,
+					"required": false,
+					"ariaInvalid": null,
+					"inputRect": {
+						"x": 283,
+						"y": 729.140625,
+						"width": 486,
+						"height": 30
+					},
+					"labelRect": {
+						"x": 282,
+						"y": 708.140625,
+						"width": 75.25,
+						"height": 16
+					},
+					"fullyInsideViewport": true,
+					"nativeDateInputs": 1,
+					"documentOverflow": false,
+					"focused": true,
+					"screenshot": "docs/report/screens/20261030-date-only-before-kb-review-due-admin-820-dark.png"
+				},
+				{
+					"width": 390,
+					"requestedTheme": "dark",
+					"actualTheme": "dark",
+					"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+					"label": "Review due",
+					"labelAssociated": true,
+					"htmlType": "date",
+					"domType": "date",
+					"value": "2026-11-15",
+					"disabled": false,
+					"readOnly": false,
+					"required": false,
+					"ariaInvalid": null,
+					"inputRect": {
+						"x": 51,
+						"y": 864.984375,
+						"width": 288,
+						"height": 34
+					},
+					"labelRect": {
+						"x": 50,
+						"y": 841.984375,
+						"width": 85.984375,
+						"height": 18
+					},
+					"fullyInsideViewport": true,
+					"nativeDateInputs": 1,
+					"documentOverflow": false,
+					"focused": true,
+					"screenshot": "docs/report/screens/20261030-date-only-before-kb-review-due-admin-390-dark.png"
+				}
+			],
+			"rate429": [],
+			"blockedWrites": [],
+			"errorPhases": [],
+			"publicSafeManifest": [
+				"public-kb-review-due-admin-1440-light.png",
+				"public-kb-review-due-admin-820-light.png",
+				"public-kb-review-due-admin-390-light.png",
+				"public-kb-review-due-admin-1440-dark.png",
+				"public-kb-review-due-admin-820-dark.png",
+				"public-kb-review-due-admin-390-dark.png"
+			],
+			"apiWrites": 0,
+			"containersStarted": "none",
+			"trafficStopped": true
+		},
+		"portal": {
+			"runtimeSource": "7694ede275b24cdd225fa2e02c5b944c72669b17",
+			"fixture": "new QA-only customer and request type created by root; required and optional date fields blank",
+			"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+			"customerProof": {
+				"sessionStatus": 200,
+				"authenticated": true,
+				"userRole": null
+			},
+			"qaTypeProof": {
+				"catalogueStatus": 200,
+				"availableTypeCount": 1,
+				"detailStatus": 200,
+				"dateFields": [
+					{
+						"label": "QA required date",
+						"required": true
+					},
+					{
+						"label": "QA optional date",
+						"required": false
+					}
+				]
+			},
+			"ownerQaArticleAccess": {
+				"sessionStatus": 200,
+				"workspaceStatus": 200,
+				"membershipStatus": 200,
+				"effectiveRole": "owner",
+				"articleGetStatus": 404,
+				"editorCaptureAttempted": false
+			},
+			"rows": [
+				{
+					"width": 1440,
+					"requestedTheme": "light",
+					"actualTheme": "light",
+					"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+					"formVisible": true,
+					"dateFields": [
+						{
+							"label": "QA required date *",
+							"accessibleName": "QA required date",
+							"type": "date",
+							"value": "",
+							"required": true,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 494,
+								"y": 491,
+								"width": 684,
+								"height": 30
+							},
+							"fullyInsideViewport": true
+						},
+						{
+							"label": "QA optional date",
+							"accessibleName": "QA optional date",
+							"type": "date",
+							"value": "",
+							"required": false,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 494,
+								"y": 567,
+								"width": 684,
+								"height": 30
+							},
+							"fullyInsideViewport": true
+						}
+					],
+					"nativeDateInputCount": 2,
+					"documentOverflow": false,
+					"screenshot": "docs/report/screens/20261030-date-only-before-portal-qa-dates-customer-1440-light.png"
+				},
+				{
+					"width": 820,
+					"requestedTheme": "light",
+					"actualTheme": "light",
+					"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+					"formVisible": true,
+					"dateFields": [
+						{
+							"label": "QA required date *",
+							"accessibleName": "QA required date",
+							"type": "date",
+							"value": "",
+							"required": true,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 283,
+								"y": 491,
+								"width": 486,
+								"height": 30
+							},
+							"fullyInsideViewport": true
+						},
+						{
+							"label": "QA optional date",
+							"accessibleName": "QA optional date",
+							"type": "date",
+							"value": "",
+							"required": false,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 283,
+								"y": 567,
+								"width": 486,
+								"height": 30
+							},
+							"fullyInsideViewport": true
+						}
+					],
+					"nativeDateInputCount": 2,
+					"documentOverflow": false,
+					"screenshot": "docs/report/screens/20261030-date-only-before-portal-qa-dates-customer-820-light.png"
+				},
+				{
+					"width": 390,
+					"requestedTheme": "light",
+					"actualTheme": "light",
+					"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+					"formVisible": true,
+					"dateFields": [
+						{
+							"label": "QA required date *",
+							"accessibleName": "QA required date",
+							"type": "date",
+							"value": "",
+							"required": true,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 51,
+								"y": 551,
+								"width": 288,
+								"height": 34
+							},
+							"fullyInsideViewport": true
+						},
+						{
+							"label": "QA optional date",
+							"accessibleName": "QA optional date",
+							"type": "date",
+							"value": "",
+							"required": false,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 51,
+								"y": 631,
+								"width": 288,
+								"height": 34
+							},
+							"fullyInsideViewport": true
+						}
+					],
+					"nativeDateInputCount": 2,
+					"documentOverflow": false,
+					"screenshot": "docs/report/screens/20261030-date-only-before-portal-qa-dates-customer-390-light.png"
+				},
+				{
+					"width": 1440,
+					"requestedTheme": "dark",
+					"actualTheme": "dark",
+					"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+					"formVisible": true,
+					"dateFields": [
+						{
+							"label": "QA required date *",
+							"accessibleName": "QA required date",
+							"type": "date",
+							"value": "",
+							"required": true,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 494,
+								"y": 491,
+								"width": 684,
+								"height": 30
+							},
+							"fullyInsideViewport": true
+						},
+						{
+							"label": "QA optional date",
+							"accessibleName": "QA optional date",
+							"type": "date",
+							"value": "",
+							"required": false,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 494,
+								"y": 567,
+								"width": 684,
+								"height": 30
+							},
+							"fullyInsideViewport": true
+						}
+					],
+					"nativeDateInputCount": 2,
+					"documentOverflow": false,
+					"screenshot": "docs/report/screens/20261030-date-only-before-portal-qa-dates-customer-1440-dark.png"
+				},
+				{
+					"width": 820,
+					"requestedTheme": "dark",
+					"actualTheme": "dark",
+					"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+					"formVisible": true,
+					"dateFields": [
+						{
+							"label": "QA required date *",
+							"accessibleName": "QA required date",
+							"type": "date",
+							"value": "",
+							"required": true,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 283,
+								"y": 491,
+								"width": 486,
+								"height": 30
+							},
+							"fullyInsideViewport": true
+						},
+						{
+							"label": "QA optional date",
+							"accessibleName": "QA optional date",
+							"type": "date",
+							"value": "",
+							"required": false,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 283,
+								"y": 567,
+								"width": 486,
+								"height": 30
+							},
+							"fullyInsideViewport": true
+						}
+					],
+					"nativeDateInputCount": 2,
+					"documentOverflow": false,
+					"screenshot": "docs/report/screens/20261030-date-only-before-portal-qa-dates-customer-820-dark.png"
+				},
+				{
+					"width": 390,
+					"requestedTheme": "dark",
+					"actualTheme": "dark",
+					"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+					"formVisible": true,
+					"dateFields": [
+						{
+							"label": "QA required date *",
+							"accessibleName": "QA required date",
+							"type": "date",
+							"value": "",
+							"required": true,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 51,
+								"y": 551,
+								"width": 288,
+								"height": 34
+							},
+							"fullyInsideViewport": true
+						},
+						{
+							"label": "QA optional date",
+							"accessibleName": "QA optional date",
+							"type": "date",
+							"value": "",
+							"required": false,
+							"disabled": false,
+							"readOnly": false,
+							"rect": {
+								"x": 51,
+								"y": 631,
+								"width": 288,
+								"height": 34
+							},
+							"fullyInsideViewport": true
+						}
+					],
+					"nativeDateInputCount": 2,
+					"documentOverflow": false,
+					"screenshot": "docs/report/screens/20261030-date-only-before-portal-qa-dates-customer-390-dark.png"
+				}
+			],
+			"rate429": [],
+			"blockedWrites": [],
+			"errorPhases": [],
+			"publicSafeManifest": [
+				"public-portal-qa-dates-customer-1440-light.png",
+				"public-portal-qa-dates-customer-820-light.png",
+				"public-portal-qa-dates-customer-390-light.png",
+				"public-portal-qa-dates-customer-1440-dark.png",
+				"public-portal-qa-dates-customer-820-dark.png",
+				"public-portal-qa-dates-customer-390-dark.png"
+			],
+			"apiWrites": 0,
+			"submissions": 0,
+			"containersStarted": "none",
+			"trafficStopped": true
+		}
+	},
+	"after": {
+		"expectedRuntimeTag": "ea36e54e8",
+		"sourceFeature": "date-only-fields",
+		"roleProof": [
+			{
+				"role": "admin",
+				"sessionStatus": 200,
+				"authenticated": true,
+				"workspaceStatus": 200,
+				"membershipStatus": 200,
+				"effectiveRole": "admin"
+			},
+			{
+				"role": "customer",
+				"sessionStatus": 200,
+				"authenticated": true
+			}
+		],
+		"fixtureProof": {
+			"catalogueStatus": 200,
+			"availableTypeCount": 1,
+			"detailStatus": 200,
+			"dateFields": [
+				{
+					"key": "qa_required_date",
+					"label": "QA required date",
+					"required": true
+				},
+				{
+					"key": "qa_optional_date",
+					"label": "QA optional date",
+					"required": false
+				}
+			]
+		},
+		"matrix": [
+			{
+				"role": "admin",
+				"width": 1440,
+				"requestedTheme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+				"fields": [
+					{
+						"id": "kb-review-due",
+						"label": "Review due",
+						"accessibleName": "Review due",
+						"tag": "button",
+						"type": "button",
+						"text": "Nov 15, 2026",
+						"ariaInvalid": null,
+						"valueField": false,
+						"rect": {
+							"x": 1136,
+							"y": 446,
+							"width": 254,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-admin-1440-light-dates.png"
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"requestedTheme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+				"fields": [
+					{
+						"id": "kb-review-due",
+						"label": "Review due",
+						"accessibleName": "Review due",
+						"tag": "button",
+						"type": "button",
+						"text": "Nov 15, 2026",
+						"ariaInvalid": null,
+						"valueField": false,
+						"rect": {
+							"x": 282,
+							"y": 728.140625,
+							"width": 488,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-admin-820-light-dates.png"
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"requestedTheme": "light",
+				"actualTheme": "light",
+				"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+				"fields": [
+					{
+						"id": "kb-review-due",
+						"label": "Review due",
+						"accessibleName": "Review due",
+						"tag": "button",
+						"type": "button",
+						"text": "Nov 15, 2026",
+						"ariaInvalid": null,
+						"valueField": false,
+						"rect": {
+							"x": 50,
+							"y": 863.984375,
+							"width": 290,
+							"height": 36
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-admin-390-light-dates.png"
+			},
+			{
+				"role": "admin",
+				"width": 1440,
+				"requestedTheme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+				"fields": [
+					{
+						"id": "kb-review-due",
+						"label": "Review due",
+						"accessibleName": "Review due",
+						"tag": "button",
+						"type": "button",
+						"text": "Nov 15, 2026",
+						"ariaInvalid": null,
+						"valueField": false,
+						"rect": {
+							"x": 1136,
+							"y": 446,
+							"width": 254,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-admin-1440-dark-dates.png"
+			},
+			{
+				"role": "admin",
+				"width": 820,
+				"requestedTheme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+				"fields": [
+					{
+						"id": "kb-review-due",
+						"label": "Review due",
+						"accessibleName": "Review due",
+						"tag": "button",
+						"type": "button",
+						"text": "Nov 15, 2026",
+						"ariaInvalid": null,
+						"valueField": false,
+						"rect": {
+							"x": 282,
+							"y": 728.140625,
+							"width": 488,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-admin-820-dark-dates.png"
+			},
+			{
+				"role": "admin",
+				"width": 390,
+				"requestedTheme": "dark",
+				"actualTheme": "dark",
+				"url": "https://ticketing.localhost/agent/kb/hbyisfycy1ztbde0tnq2xyxe/edit",
+				"fields": [
+					{
+						"id": "kb-review-due",
+						"label": "Review due",
+						"accessibleName": "Review due",
+						"tag": "button",
+						"type": "button",
+						"text": "Nov 15, 2026",
+						"ariaInvalid": null,
+						"valueField": false,
+						"rect": {
+							"x": 50,
+							"y": 863.984375,
+							"width": 290,
+							"height": 36
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-admin-390-dark-dates.png"
+			},
+			{
+				"role": "customer",
+				"width": 1440,
+				"requestedTheme": "light",
+				"actualTheme": "light",
+				"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+				"fields": [
+					{
+						"id": "request-field-qa_required_date",
+						"label": "QA required date *",
+						"accessibleName": "QA required date *",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 493,
+							"y": 490,
+							"width": 686,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					},
+					{
+						"id": "request-field-qa_optional_date",
+						"label": "QA optional date",
+						"accessibleName": "QA optional date",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 493,
+							"y": 566,
+							"width": 686,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-customer-1440-light-dates.png"
+			},
+			{
+				"role": "customer",
+				"width": 820,
+				"requestedTheme": "light",
+				"actualTheme": "light",
+				"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+				"fields": [
+					{
+						"id": "request-field-qa_required_date",
+						"label": "QA required date *",
+						"accessibleName": "QA required date *",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 282,
+							"y": 490,
+							"width": 488,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					},
+					{
+						"id": "request-field-qa_optional_date",
+						"label": "QA optional date",
+						"accessibleName": "QA optional date",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 282,
+							"y": 566,
+							"width": 488,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-customer-820-light-dates.png"
+			},
+			{
+				"role": "customer",
+				"width": 390,
+				"requestedTheme": "light",
+				"actualTheme": "light",
+				"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+				"fields": [
+					{
+						"id": "request-field-qa_required_date",
+						"label": "QA required date *",
+						"accessibleName": "QA required date *",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 50,
+							"y": 550,
+							"width": 290,
+							"height": 36
+						},
+						"fullyInsideViewport": true
+					},
+					{
+						"id": "request-field-qa_optional_date",
+						"label": "QA optional date",
+						"accessibleName": "QA optional date",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 50,
+							"y": 630,
+							"width": 290,
+							"height": 36
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-customer-390-light-dates.png"
+			},
+			{
+				"role": "customer",
+				"width": 1440,
+				"requestedTheme": "dark",
+				"actualTheme": "dark",
+				"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+				"fields": [
+					{
+						"id": "request-field-qa_required_date",
+						"label": "QA required date *",
+						"accessibleName": "QA required date *",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 493,
+							"y": 490,
+							"width": 686,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					},
+					{
+						"id": "request-field-qa_optional_date",
+						"label": "QA optional date",
+						"accessibleName": "QA optional date",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 493,
+							"y": 566,
+							"width": 686,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-customer-1440-dark-dates.png"
+			},
+			{
+				"role": "customer",
+				"width": 820,
+				"requestedTheme": "dark",
+				"actualTheme": "dark",
+				"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+				"fields": [
+					{
+						"id": "request-field-qa_required_date",
+						"label": "QA required date *",
+						"accessibleName": "QA required date *",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 282,
+							"y": 490,
+							"width": 488,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					},
+					{
+						"id": "request-field-qa_optional_date",
+						"label": "QA optional date",
+						"accessibleName": "QA optional date",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 282,
+							"y": 566,
+							"width": 488,
+							"height": 32
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-customer-820-dark-dates.png"
+			},
+			{
+				"role": "customer",
+				"width": 390,
+				"requestedTheme": "dark",
+				"actualTheme": "dark",
+				"url": "https://portal.localhost/catalogue?key={qaRequestTypeKey}",
+				"fields": [
+					{
+						"id": "request-field-qa_required_date",
+						"label": "QA required date *",
+						"accessibleName": "QA required date *",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 50,
+							"y": 550,
+							"width": 290,
+							"height": 36
+						},
+						"fullyInsideViewport": true
+					},
+					{
+						"id": "request-field-qa_optional_date",
+						"label": "QA optional date",
+						"accessibleName": "QA optional date",
+						"tag": "button",
+						"type": "button",
+						"text": "Choose an option",
+						"ariaInvalid": "false",
+						"valueField": false,
+						"rect": {
+							"x": 50,
+							"y": 630,
+							"width": 290,
+							"height": 36
+						},
+						"fullyInsideViewport": true
+					}
+				],
+				"nativeDateInputs": 0,
+				"documentOverflow": false,
+				"axe": [],
+				"screenshot": "docs/report/screens/20261030-date-only-after-customer-390-dark-dates.png"
+			}
+		],
+		"interactions": [
+			{
+				"role": "admin",
+				"width": 1440,
+				"theme": "light",
+				"steps": [
+					{
+						"name": "keyboard-open",
+						"geometry": {
+							"popup": {
+								"x": 1089.875,
+								"y": 481.515625,
+								"width": 296.3125,
+								"height": 406,
+								"inside": true
+							},
+							"positioner": {
+								"x": 1089.875,
+								"y": 481.515625,
+								"width": 296.3125,
+								"height": 406,
+								"inside": true
+							},
+							"opacity": "1"
+						},
+						"axe": [],
+						"popupScreenshot": "docs/report/screens/20261030-date-only-after-admin-1440-light-popup.png"
+					},
+					{
+						"name": "escape",
+						"triggerFocused": true,
+						"nativeDateInputs": 0
+					},
+					{
+						"name": "invalid-nonleap",
+						"alertVisible": true,
+						"entryAriaInvalid": "true",
+						"saveDisabled": true
+					},
+					{
+						"name": "valid-leap",
+						"alertCount": 0,
+						"saveEnabled": true
+					},
+					{
+						"name": "distant-year-enter-local-draft",
+						"triggerText": "Jul 3, 2042",
+						"submitEventCount": 0
+					},
+					{
+						"name": "reopen-selected",
+						"entryValue": "2042-07-03",
+						"clearEnabled": true
+					},
+					{
+						"name": "clear-local-draft",
+						"triggerText": "Not set",
+						"submitEventCount": 0
+					},
+					{
+						"name": "reload-restores-persisted-article-date",
+						"triggerText": "Nov 15, 2026"
+					}
+				],
+				"submitEventCount": 0
+			},
+			{
+				"role": "customer",
+				"width": 390,
+				"theme": "dark",
+				"steps": [
+					{
+						"name": "keyboard-open",
+						"geometry": {
+							"popup": {
+								"x": 54.34375,
+								"y": 103.546875,
+								"width": 324.9375,
+								"height": 443,
+								"inside": true
+							},
+							"positioner": {
+								"x": 54.34375,
+								"y": 103.546875,
+								"width": 324.9375,
+								"height": 443,
+								"inside": true
+							},
+							"opacity": "1"
+						},
+						"axe": [],
+						"popupScreenshot": "docs/report/screens/20261030-date-only-after-customer-390-dark-popup.png"
+					},
+					{
+						"name": "escape",
+						"triggerFocused": true,
+						"nativeDateInputs": 0
+					},
+					{
+						"name": "invalid-nonleap",
+						"alertVisible": true,
+						"entryAriaInvalid": "true",
+						"saveDisabled": true
+					},
+					{
+						"name": "valid-leap",
+						"alertCount": 0,
+						"saveEnabled": true
+					},
+					{
+						"name": "distant-year-enter-local-draft",
+						"triggerText": "Jul 3, 2042",
+						"submitEventCount": 0
+					},
+					{
+						"name": "reopen-selected",
+						"entryValue": "2042-07-03",
+						"clearEnabled": true
+					},
+					{
+						"name": "clear-local-draft",
+						"triggerText": "Choose an option",
+						"submitEventCount": 0
+					}
+				],
+				"submitEventCount": 0
+			}
+		],
+		"rate429": [],
+		"blockedWrites": [],
+		"errorPhases": [],
+		"publicSafeManifest": [
+			"docs/report/screens/20261030-date-only-after-admin-1440-light-dates.png",
+			"docs/report/screens/20261030-date-only-after-admin-820-light-dates.png",
+			"docs/report/screens/20261030-date-only-after-admin-390-light-dates.png",
+			"docs/report/screens/20261030-date-only-after-admin-1440-dark-dates.png",
+			"docs/report/screens/20261030-date-only-after-admin-820-dark-dates.png",
+			"docs/report/screens/20261030-date-only-after-admin-390-dark-dates.png",
+			"docs/report/screens/20261030-date-only-after-customer-1440-light-dates.png",
+			"docs/report/screens/20261030-date-only-after-customer-820-light-dates.png",
+			"docs/report/screens/20261030-date-only-after-customer-390-light-dates.png",
+			"docs/report/screens/20261030-date-only-after-customer-1440-dark-dates.png",
+			"docs/report/screens/20261030-date-only-after-customer-820-dark-dates.png",
+			"docs/report/screens/20261030-date-only-after-customer-390-dark-dates.png",
+			"docs/report/screens/20261030-date-only-after-admin-1440-light-popup.png",
+			"docs/report/screens/20261030-date-only-after-customer-390-dark-popup.png",
+			"docs/report/screens/20261030-date-only-after-admin-390-dark-date-control-crop.png",
+			"docs/report/screens/20261030-date-only-after-customer-390-dark-date-control-crop.png"
+		],
+		"apiWrites": 0,
+		"submissions": 0,
+		"containersStarted": "none",
+		"trafficStopped": true,
+		"runtimeSource": "ea36e54e8314a7c2129c5c5392c2566b66ebec6f",
+		"sourceControls": [
+			{
+				"file": "apps/web/src/components/kb/agent/kb-article-editor.tsx",
+				"line": 475,
+				"control": "DateField"
+			},
+			{
+				"file": "apps/web/src/routes/portal/catalogue.tsx",
+				"line": 431,
+				"control": "DateField"
+			},
+			{
+				"file": "apps/web/src/components/common/date-field.tsx",
+				"line": 52,
+				"control": "shared DateField"
+			}
+		],
+		"visualRecapture": {
+			"reason": "First masked page shots hid SVG calendar icons; final 12 page shots were recaptured with icon stroke preserved at screenshot time.",
+			"firstPassDir": "first-pass",
+			"finalRecaptureViews": 12,
+			"finalRecaptureRate429": 0,
+			"finalRecaptureBlockedWrites": 0,
+			"finalRecaptureErrorPhases": []
+		},
+		"controlCrops": {
+			"count": 2,
+			"rate429": 0,
+			"blockedWrites": 0,
+			"errorPhases": []
+		},
+		"visualInspection": [
+			"public-admin-390-dark-dates.png",
+			"public-customer-390-dark-dates.png",
+			"public-customer-390-dark-popup.png",
+			"public-admin-390-dark-date-control-crop.png",
+			"public-customer-390-dark-date-control-crop.png"
+		],
+		"coverageLimits": [
+			"All 12 baseline date surfaces were observed with actual roles and themes; popup interactions were tested only for admin 1440 light and customer 390 dark.",
+			"Portal optional date remained blank; local interactive checks targeted the required date.",
+			"No outer Save or Submit was invoked and no persisted date update was tested.",
+			"Axe serious/critical scans were run on all 12 settled base views and the two named open popups; this does not certify unrelated page regions or all popup widths."
+		]
+	},
+	"persistedJourney": {
+		"at": "2026-10-30T08:27:26.763Z",
+		"runtimeSource": "ea36e54e8314a7c2129c5c5392c2566b66ebec6f",
+		"name": "date-only-qa-browser-save-reload-and-submit",
+		"scope": "Only newly created QA article, QA organisation and QA customer; existing customer data unchanged",
+		"checks": [
+			{
+				"name": "GET /api/kb/articles/hbyisfycy1ztbde0tnq2xyxe status200",
+				"passed": true
+			},
+			{
+				"name": "new QA draft version1 initial date",
+				"passed": true
+			},
+			{
+				"name": "KB inner Enter does not mutate or outer-submit",
+				"passed": true
+			},
+			{
+				"name": "KB outer Save response successful",
+				"passed": true
+			},
+			{
+				"name": "GET /api/kb/articles/hbyisfycy1ztbde0tnq2xyxe status200",
+				"passed": true
+			},
+			{
+				"name": "KB UTC midnight persisted version2 from LA browser",
+				"passed": true
+			},
+			{
+				"name": "Exactly one browser PATCH on KB outer Save",
+				"passed": true
+			},
+			{
+				"name": "KB other persisted article fields remain unchanged",
+				"passed": true
+			},
+			{
+				"name": "KB reload recovers leap date unchanged",
+				"passed": true
+			},
+			{
+				"name": "GET /api/me/csrf-token status200",
+				"passed": true
+			},
+			{
+				"name": "KB stale version denied409",
+				"passed": true
+			},
+			{
+				"name": "GET /api/kb/articles/hbyisfycy1ztbde0tnq2xyxe status200",
+				"passed": true
+			},
+			{
+				"name": "KB conflict does not change saved date",
+				"passed": true
+			},
+			{
+				"name": "KB clear stays local until outer Save",
+				"passed": true
+			},
+			{
+				"name": "KB clear outer Save successful",
+				"passed": true
+			},
+			{
+				"name": "GET /api/kb/articles/hbyisfycy1ztbde0tnq2xyxe status200",
+				"passed": true
+			},
+			{
+				"name": "KB clear persists null version3",
+				"passed": true
+			},
+			{
+				"name": "KB cleared date survives reload",
+				"passed": true
+			},
+			{
+				"name": "GET /api/portal/catalogue status200",
+				"passed": true
+			},
+			{
+				"name": "QA customer sees only new QA type",
+				"passed": true
+			},
+			{
+				"name": "Portal required blank focuses DateField and does not submit",
+				"passed": true
+			},
+			{
+				"name": "Portal inner date Enter does not submit",
+				"passed": true
+			},
+			{
+				"name": "Portal local draft stores exact YYYY-MM-DD dates",
+				"passed": true
+			},
+			{
+				"name": "Portal both exact date drafts survive reload in Yangon timezone",
+				"passed": true
+			},
+			{
+				"name": "Portal clearing required date blocks submit and focuses field",
+				"passed": true
+			},
+			{
+				"name": "Portal new QA request submission successful",
+				"passed": true
+			},
+			{
+				"name": "Exactly one new QA submission",
+				"passed": true
+			},
+			{
+				"name": "GET /api/portal/submissions/SUB-9 status200",
+				"passed": true
+			},
+			{
+				"name": "Portal persisted formData remains date-only strings",
+				"passed": true
+			},
+			{
+				"name": "Portal QA request stays private and is not autoaccepted",
+				"passed": true
+			},
+			{
+				"name": "Portal persisted dates render after detail reload",
+				"passed": true
+			},
+			{
+				"name": "No429 responses",
+				"passed": true
+			}
+		],
+		"writes": [
+			{
+				"method": "PATCH",
+				"path": "/api/kb/articles/{qa-id}",
+				"status": 200
+			},
+			{
+				"method": "PATCH",
+				"path": "/api/kb/articles/{qa-id}",
+				"status": 409,
+				"expectedDenial": true
+			},
+			{
+				"method": "PATCH",
+				"path": "/api/kb/articles/{qa-id}",
+				"status": 200
+			},
+			{
+				"method": "POST",
+				"path": "/api/portal/submissions",
+				"status": 200,
+				"newQACustomerOnly": true
+			}
+		],
+		"rate429": 0,
+		"containersStarted": [],
+		"deletedRecords": 0,
+		"kbRequestBodyAvailable": false,
+		"portalSubmissionRef": "SUB-9",
+		"portalDateValues": {
+			"required": "2024-02-29",
+			"optional": "2042-07-03"
+		},
+		"kbFinal": {
+			"version": 3,
+			"reviewDueAt": null
+		},
+		"passed": true,
+		"finishedAt": "2026-10-30T08:27:31.218Z"
+	},
+	"timezones": {
+		"source": "7fb4f8039b78388b8d5a35ca34e7bb3959d2e5de",
+		"checks": [
+			{
+				"timezone": "America/Los_Angeles",
+				"exitCode": 0
+			},
+			{
+				"timezone": "Asia/Yangon",
+				"exitCode": 0
+			}
+		]
+	},
+	"localGates": {
+		"source": "83214470709363d74a2a6cc565645a92c3ebfdd0",
+		"checks": [
+			{
+				"command": "pnpm test",
+				"exitCode": 0,
+				"durationMs": 157963
+			},
+			{
+				"command": "pnpm typecheck",
+				"exitCode": 0,
+				"durationMs": 16486
+			},
+			{
+				"command": "pnpm lint:ci",
+				"exitCode": 0,
+				"durationMs": 3105
+			},
+			{
+				"command": "pnpm check:ui:raw-elements",
+				"exitCode": 0,
+				"durationMs": 4521
+			},
+			{
+				"command": "pnpm check:i18n",
+				"exitCode": 0,
+				"durationMs": 988
+			},
+			{
+				"command": "pnpm test:permissions",
+				"exitCode": 0,
+				"durationMs": 14922
+			},
+			{
+				"command": "pnpm check:route-policy",
+				"exitCode": 0,
+				"durationMs": 15101
+			},
+			{
+				"command": "pnpm test:contract",
+				"exitCode": 0,
+				"durationMs": 38570
+			},
+			{
+				"command": "pnpm check:tokens",
+				"exitCode": 0,
+				"durationMs": 76838
+			},
+			{
+				"command": "pnpm check:bundle-size",
+				"exitCode": 0,
+				"durationMs": 675
+			},
+			{
+				"command": "pnpm check:bundle-purity",
+				"exitCode": 0,
+				"durationMs": 547
+			},
+			{
+				"command": "pnpm check:visual-scope",
+				"exitCode": 0,
+				"durationMs": 1366
+			}
+		],
+		"fullUnits": 7309,
+		"types": 9,
+		"permissions": 118,
+		"routePolicies": 118,
+		"fingerprints": {
+			"apps/web/src/components/common/date-field.tsx": "cd38363bc5962c483140e55d9f8dbc110a9557eee01c484194bea2fda6c6a2ee",
+			"apps/web/src/components/time-tracking/date-field.tsx": "0667ac0fd1ae7eb47fb90951ad575de104deaee33c6562da38d4118707a960ed",
+			"apps/web/src/components/kb/agent/kb-article-editor.tsx": "b70408b9561675f7bdd5364782d01fd3242f84dc163fa6ee7dfa57cede25b513",
+			"apps/web/src/routes/portal/catalogue.tsx": "81a78b57bd76e6453023654d004f4a754fac628d95b853f026946ab5d6b28dce",
+			"apps/web/e2e/visual.spec.ts-snapshots/kb-edit-linux.png": "511fdb804cc5049117fc928ebf28e6cec02604228dbad4ff0ecab9bb42baac05"
+		},
+		"finishedAt": "2026-10-30T08:55:33.954Z",
+		"sourceFingerprintsUnchanged": true,
+		"retainedFirstFailure": "New evidence JSON formatting failed before formatting only that file; unit/type successes retained and remaining original commands rerun"
+	},
+	"bundle": {
+		"portalInitialGzipKB": 189.3,
+		"budgetKB": 200,
+		"initialAssets": 9,
+		"purity": "pass; static and dynamic graph",
+		"budgetsChanged": false
+	},
+	"contrast": {
+		"pairs": 401,
+		"passed": true,
+		"change": "Only two moved DateField source-path occurrences updated; ratio/category/theme/colours unchanged"
+	},
+	"independentReview": {
+		"tier": "Sol high",
+		"findingHigh": 0,
+		"findingMedium": 0,
+		"reviewed": "source, local gates, bundles, before/after masked screenshots and persisted QA receipt",
+		"g8Pending": false,
+		"hostedCIPending": true,
+		"g8Passed": false,
+		"verdict": "No high or medium source/UI/persistence finding; not merge-ready until all required non-G11 hosted checks pass",
+		"reviewSha256": "011eb33c3011103b6620b6e8636a28570cad49a25a7563720d262462cbef53c3"
+	},
+	"localVisual": {
+		"status": "failed locally: 5/6 verify; pre-existing Module mismatch remains; hosted G8 required before merge",
+		"initial": {
+			"passed": 3,
+			"failed": 3
+		},
+		"coldComparison": {
+			"passed": 4,
+			"failed": 2,
+			"portalPassed": true
+		},
+		"unchangedMain": {
+			"source": "fcf3ae8e15337d8ee93a38687536e7100bffb600",
+			"selected": 3,
+			"passed": 2,
+			"failed": 1,
+			"portalPassed": true,
+			"kbBeforePassed": true
+		},
+		"final": {
+			"selected": 6,
+			"passed": 5,
+			"failed": 1,
+			"kbPassed": true,
+			"portalPassed": true
+		},
+		"baselineChange": {
+			"at": "2026-10-30T08:45:10.820Z",
+			"path": "apps/web/e2e/visual.spec.ts-snapshots/kb-edit-linux.png",
+			"beforeSha256": "60ca5553f22074e0567c5459cae523a29ac6d7d9444863d67b1e994f4681831e",
+			"afterSha256": "511fdb804cc5049117fc928ebf28e6cec02604228dbad4ff0ecab9bb42baac05",
+			"firstInspectedActualSha256": "511fdb804cc5049117fc928ebf28e6cec02604228dbad4ff0ecab9bb42baac05",
+			"reason": "Replace native KB review-due input with same-size library DateField; 625 changed pixels confined to date text and icon",
+			"allOtherBaselinesUnchanged": true,
+			"comparedSnapshots": 105
+		},
+		"module": {
+			"pixels": 46,
+			"actualSha256": "60dad7b443c89eba4f4155a0e8ba0bebc41fbe9ce294e4f1449e35d9f8d59c51",
+			"expectedSha256": "4347e358a343c1734f761d697944429f56bcaf67911b974b600cc92cf2fcfc2d",
+			"diffSha256": "a8de816d66222106c9ba142a5dc856fd5127986329d201e73c17fd78d4564a97",
+			"byteIdenticalToMainAndPriorAB": true,
+			"causeUnproven": true,
+			"noBaselineUpdate": true
+		},
+		"thresholdsChanged": false,
+		"testOrWorkflowChanges": false,
+		"portalFirstFailure": "Two Vite document loads; later controlled fresh-cache candidate and unchanged-main portal tests pass. Optimizer cause not proven.",
+		"baselineDriverFailures": {
+			"attempt1": "No tests from anchored Playwright grep",
+			"attempt2": "Shell quoting corrupted by JS replacement expansion; no tests run",
+			"thirdAttempt": "Whole path diagnosed, literal shell syntax checked and exactly one test listed before successful pinned baseline update",
+			"productChanges": 0
+		},
+		"pinnedImage": "mcr.microsoft.com/playwright@sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7",
+		"pinnedIndex": "sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27"
+	},
+	"limitations": [
+		"Only admin KB and isolated QA customer portal at three widths and two themes",
+		"Two popup interaction variants; optional portal date persisted through root journey",
+		"Screenshots privacy-masked except QA-only date-control and popup crops",
+		"No full route/role/state sweep or whole-contract acceptance",
+		"KB raw PATCH body unavailable; date/version verified from normal GET and reload",
+		"First persistence driver aborted before a write after null diagnostic event payload; initial record read unchanged; diagnostic fixed, failure retained"
+	],
+	"containers": {
+		"activeOwnedSIT": "270c5490d9c4d1fe2b5ffad23ac02ab51ec1d8ed85f7bac8fa4f4be25a504cd0",
+		"purpose": "active local SIT browser verification",
+		"removedSuperseded": "3a64d3f0b492398161484ad7c6ba93dfe027448fdf064ea407e15d0beacf3465",
+		"temporaryPinned": [
+			{
+				"mode": "initial",
+				"id": "b09f04d7f45b097b6b39c745dce8fe355b75705500b461f7208cdf39088e68ea",
+				"exitCode": 1,
+				"removed": true
+			},
+			{
+				"mode": "main-baseline",
+				"id": "6902fdce70f3e6ed25f1c8ab97781a95a5b2e1bd7d27c3f377a7952c4e410896",
+				"exitCode": 1,
+				"removed": true
+			},
+			{
+				"mode": "cold-compare",
+				"id": "d9ad067e5641c60d4661455a9ed2f3536b46fc985a221555d0670d9f73e82b54",
+				"exitCode": 1,
+				"removed": true
+			},
+			{
+				"mode": "update-kb",
+				"id": "055485af24f7478b0b87025f27f38913ba76936e27f9313b8bbb2b6e6fa02368",
+				"exitCode": 1,
+				"removed": true
+			},
+			{
+				"mode": "update-kb-selected",
+				"id": "6b9669f7868aba1af3314360e93ccc8cdf0d7b0a95eed19d57163fba773c1c11",
+				"exitCode": 2,
+				"removed": true
+			},
+			{
+				"mode": "update-kb-final",
+				"id": "3d1ff990dbb55d7a398c497a5e45633bd8941c50aa3dfdf176067b466dcdb7e4",
+				"exitCode": 0,
+				"removed": true
+			},
+			{
+				"mode": "verify",
+				"id": "dfe464b996275b5de458a576b0a5decb861dc38fc30ffaa9705b871943705596",
+				"exitCode": 1,
+				"removed": true
+			}
+		]
+	},
+	"publishedScreenshots": 28,
+	"updatedAt": "2026-10-30T08:56:33.419Z",
+	"security": {
+		"imageScan": {
+			"at": "2026-10-30T08:49:28.001Z",
+			"image": "taskdesk-codex-sit:date-only-ea36e54e8",
+			"counts": {
+				"CRITICAL": 0,
+				"HIGH": 42,
+				"MEDIUM": 57,
+				"LOW": 60,
+				"UNKNOWN": 0
+			},
+			"fixableHighCritical": 0,
+			"comparison": {
+				"newFindings": []
+			}
+		},
+		"budgetsOrPoliciesChanged": false,
+		"stagedScan": "Initial generic-api-key matches were the same non-credential opaque QA request-type id in 14 URL samples. Public evidence redacts that identifier with an explicit URL template; no gitleaks rule or allowlist change."
+	},
+	"currentBaseVerification": {
+		"source": "83214470709363d74a2a6cc565645a92c3ebfdd0",
+		"fullUnits": 7309,
+		"typeTasks": 9,
+		"sourceAndStaticChecksPassed": 12,
+		"productionFingerprintsUnchanged": true,
+		"hostedRequiredChecksPending": true
+	},
+	"priorLocalGates": {
+		"source": "7fb4f8039b78388b8d5a35ca34e7bb3959d2e5de",
+		"checks": [
+			{
+				"command": "pnpm test",
+				"exitCode": 0,
+				"durationMs": 157465
+			},
+			{
+				"command": "pnpm typecheck",
+				"exitCode": 0,
+				"durationMs": 26154
+			},
+			{
+				"command": "pnpm lint:ci",
+				"exitCode": 0,
+				"durationMs": 3311
+			},
+			{
+				"command": "pnpm check:ui:raw-elements",
+				"exitCode": 0,
+				"durationMs": 4375
+			},
+			{
+				"command": "pnpm check:i18n",
+				"exitCode": 0,
+				"durationMs": 983
+			},
+			{
+				"command": "pnpm test:permissions",
+				"exitCode": 0,
+				"durationMs": 15893
+			},
+			{
+				"command": "pnpm check:route-policy",
+				"exitCode": 0,
+				"durationMs": 16011
+			},
+			{
+				"command": "pnpm test:contract",
+				"exitCode": 0,
+				"durationMs": 32659
+			},
+			{
+				"command": "pnpm check:tokens",
+				"exitCode": 0,
+				"durationMs": 79388
+			},
+			{
+				"command": "pnpm check:bundle-size",
+				"exitCode": 0,
+				"durationMs": 689
+			},
+			{
+				"command": "pnpm check:bundle-purity",
+				"exitCode": 0,
+				"durationMs": 546
+			},
+			{
+				"command": "pnpm check:visual-scope",
+				"exitCode": 0,
+				"durationMs": 1380
+			}
+		],
+		"fullUnits": 7299,
+		"types": 9,
+		"permissions": 118,
+		"routePolicies": 118
+	},
+	"publicUrlPolicy": "Portal selected-form URLs are explicit templates: {qaRequestTypeKey} stands for the real opaque QA request-type identifier retained in the private fixture receipt. The real selected URL and YYYY-MM-DD state were verified in the browser; no scan exclusion or application route change."
+}
