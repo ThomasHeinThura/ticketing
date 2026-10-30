@@ -8,7 +8,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Input,
   Label,
   Select,
   SelectContent,
@@ -19,11 +18,11 @@ import {
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { TimeField } from "@/components/service-calendar/time-field";
 import type { QuietHours } from "@/fetchers/notification-preferences/get-notification-preferences";
 import { saveQuietHours } from "@/fetchers/notification-preferences/quiet-hours";
 import useGetNotificationPreferences from "@/hooks/queries/notification-preferences/use-get-notification-preferences";
-
-const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+import { formatClockTime, parseClockTime } from "@/lib/service-calendar-form";
 
 function timeZones(current: string): string[] {
   const zones =
@@ -87,7 +86,9 @@ function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
       });
     },
   });
-  const valid = TIME.test(start) && TIME.test(end) && start !== end;
+  const startMinutes = parseClockTime(start, false);
+  const endMinutes = parseClockTime(end, false);
+  const valid = startMinutes !== null && endMinutes !== null && start !== end;
   const dirty =
     !saved ||
     saved.start !== start ||
@@ -98,6 +99,7 @@ function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
+        if (mutation.isPending || !valid || !dirty) return;
         setNotice(null);
         mutation.mutate({ start, end, timezone });
       }}
@@ -105,26 +107,28 @@ function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="quiet-hours-start">{t("quietHours.start")}</Label>
-          <Input
+          <TimeField
             id="quiet-hours-start"
-            type="time"
-            value={start}
+            label={t("quietHours.start")}
+            value={startMinutes}
+            placeholder={start}
             disabled={mutation.isPending}
-            onChange={(event) => {
-              setStart(event.target.value);
+            onChange={(minutes) => {
+              setStart(formatClockTime(minutes));
               setNotice(null);
             }}
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="quiet-hours-end">{t("quietHours.end")}</Label>
-          <Input
+          <TimeField
             id="quiet-hours-end"
-            type="time"
-            value={end}
+            label={t("quietHours.end")}
+            value={endMinutes}
+            placeholder={end}
             disabled={mutation.isPending}
-            onChange={(event) => {
-              setEnd(event.target.value);
+            onChange={(minutes) => {
+              setEnd(formatClockTime(minutes));
               setNotice(null);
             }}
           />
@@ -135,7 +139,9 @@ function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
           </Label>
           <Select
             value={timezone}
+            disabled={mutation.isPending}
             onValueChange={(value) => {
+              if (mutation.isPending) return;
               if (value) setTimezone(value);
               setNotice(null);
             }}
@@ -143,7 +149,7 @@ function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
             <SelectTrigger id="quiet-hours-timezone">
               <SelectValue>{timezone}</SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent aria-label={t("quietHours.timezone")}>
               {zones.map((zone) => (
                 <SelectItem key={zone} value={zone}>
                   {zone}
