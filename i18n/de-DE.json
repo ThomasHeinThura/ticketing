@@ -2061,7 +2061,7 @@
 			"signedOutSuccess": "Erfolgreich abgemeldet",
 			"signOutFailed": "Abmeldung fehlgeschlagen",
 			"unnamedUser": "Benutzer",
-			"settings": "Einstellungen",
+			"accountSettings": "Kontoeinstellungen",
 			"signingOut": "Wird abgemeldet...",
 			"logOut": "Abmelden"
 		},
@@ -2069,6 +2069,7 @@
 			"workspaces": "Workspaces",
 			"switching": "Wechseln...",
 			"addWorkspace": "Workspace hinzufügen",
+			"workspaceSettings": "Workspace-Einstellungen",
 			"instanceUsers": "Instanzbenutzer",
 			"selectWorkspace": "Workspace auswählen"
 		},
@@ -2076,8 +2077,8 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Einstellungen",
 			"backToWorkspace": "Zurück zum Workspace",
-			"settingsWorkspaceTab": "Workspace",
-			"settingsAccountTab": "Konto"
+			"backToProject": "Zurück zum Projekt",
+			"settingsWorkspaceTab": "Workspace"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

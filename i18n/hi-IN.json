@@ -2061,7 +2061,7 @@
 			"signedOutSuccess": "सफलतापूर्वक साइन आउट किया",
 			"signOutFailed": "साइन आउट विफल",
 			"unnamedUser": "उपयोगकर्ता",
-			"settings": "सेटिंग",
+			"accountSettings": "खाता सेटिंग",
 			"signingOut": "साइन आउट हो रहा है...",
 			"logOut": "लॉग आउट"
 		},
@@ -2069,6 +2069,7 @@
 			"workspaces": "वर्कस्पेस",
 			"switching": "बदल रहे हैं...",
 			"addWorkspace": "वर्कस्पेस जोड़ें",
+			"workspaceSettings": "वर्कस्पेस सेटिंग",
 			"instanceUsers": "इंस्टेंस उपयोगकर्ता",
 			"selectWorkspace": "वर्कस्पेस चुनें"
 		},
@@ -2076,8 +2077,8 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "सेटिंग",
 			"backToWorkspace": "वर्कस्पेस पर वापस जाएँ",
-			"settingsWorkspaceTab": "वर्कस्पेस",
-			"settingsAccountTab": "खाता"
+			"backToProject": "{{term_project_one}} पर वापस जाएँ",
+			"settingsWorkspaceTab": "वर्कस्पेस"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

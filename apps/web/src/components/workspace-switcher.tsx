@@ -181,6 +181,32 @@ export function WorkspaceSwitcher() {
                   </DropdownMenuItem>
                 ))}
 
+                <DropdownMenuSeparator />
+                {/* Workspace settings is offered to every member, like the frame's General page,
+                    which non-managers see read-only; each settings API still enforces access. */}
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setIsOpen(false);
+                      navigate({ to: routes.workspaceGeneral.path });
+                    }}
+                    className="h-7 text-sm data-highlighted:bg-sidebar-accent data-highlighted:text-sidebar-accent-foreground"
+                  >
+                    {t("navigation:workspaceSwitcher.workspaceSettings")}
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate({ to: routes.godModeHealth.path });
+                      }}
+                      className="h-7 text-sm data-highlighted:bg-sidebar-accent data-highlighted:text-sidebar-accent-foreground"
+                    >
+                      {t("navigation:sidebar.godMode")}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
+
                 {canCreateWorkspace && (
                   <>
                     <DropdownMenuSeparator />
@@ -194,33 +220,6 @@ export function WorkspaceSwitcher() {
                       <span>
                         {t("navigation:workspaceSwitcher.addWorkspace")}
                       </span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-                {isAdmin && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setIsOpen(false);
-                        navigate({ to: routes.godModeUsers.build() as never });
-                      }}
-                      className="h-7 text-sm data-highlighted:bg-sidebar-accent data-highlighted:text-sidebar-accent-foreground"
-                    >
-                      {t("navigation:workspaceSwitcher.instanceUsers", {
-                        defaultValue: "Instance users",
-                      })}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setIsOpen(false);
-                        navigate({
-                          to: routes.notificationProvider.build() as never,
-                        });
-                      }}
-                      className="h-7 text-sm data-highlighted:bg-sidebar-accent data-highlighted:text-sidebar-accent-foreground"
-                    >
-                      {t("notificationProvider:title")}
                     </DropdownMenuItem>
                   </>
                 )}

@@ -2056,7 +2056,7 @@
 			"signedOutSuccess": "Đăng xuất thành công",
 			"signOutFailed": "Không thể đăng xuất",
 			"unnamedUser": "Người dùng",
-			"settings": "Cài đặt",
+			"accountSettings": "Cài đặt tài khoản",
 			"signingOut": "Đang đăng xuất...",
 			"logOut": "Đăng xuất"
 		},
@@ -2064,6 +2064,7 @@
 			"workspaces": "Không gian làm việc",
 			"switching": "Đang chuyển...",
 			"addWorkspace": "Thêm không gian làm việc",
+			"workspaceSettings": "Cài đặt không gian làm việc",
 			"instanceUsers": "Người dùng phiên bản",
 			"selectWorkspace": "Chọn không gian làm việc"
 		},
@@ -2071,8 +2072,8 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Cài đặt",
 			"backToWorkspace": "Quay lại không gian làm việc",
-			"settingsWorkspaceTab": "Không gian làm việc",
-			"settingsAccountTab": "Tài khoản"
+			"backToProject": "Quay lại {{term_project_other}}",
+			"settingsWorkspaceTab": "Không gian làm việc"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_other}}"

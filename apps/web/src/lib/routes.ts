@@ -1773,6 +1773,11 @@ export const routes = {
     path: "/agent/settings" as const,
     build: () => "/agent/settings",
   },
+  /** Kaneo workspace settings landing page (L-03); the workspace switcher opens it. */
+  workspaceGeneral: {
+    path: "/dashboard/settings/workspace/general" as const,
+    build: () => "/dashboard/settings/workspace/general",
+  },
   workspaceTerminology: {
     path: "/dashboard/settings/workspace/terminology" as const,
     build: () => "/dashboard/settings/workspace/terminology",

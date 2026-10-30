@@ -1,9 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   pathname: "/dashboard/settings/account/information",
+  projects: [] as Array<{ id: string; slug: string }>,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -16,6 +17,7 @@ vi.mock("react-i18next", () => ({
       ({
         "navigation:page.settingsTitle": "Settings",
         "navigation:page.backToWorkspace": "Back to Workspace",
+        "navigation:page.backToProject": "Back to Project",
         "settings:account": "Account",
         "navigation:page.settingsWorkspaceTab": "Workspace",
         "navigation:projectList.projectSettings": "Project settings",
@@ -30,8 +32,15 @@ vi.mock("@taskdesk/ui", async (importOriginal) => {
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-1" } }),
 }));
+vi.mock("@/hooks/queries/project/use-get-projects", () => ({
+  default: (
+    _args: unknown,
+    enabled: boolean,
+    select: (projects: Array<{ id: string; slug: string }>) => unknown,
+  ) => ({ data: enabled ? select(mocks.projects) : undefined }),
+}));
 
-import { SettingsShell } from "./settings-shell";
+import { type SettingsScope, SettingsShell } from "./settings-shell";
 
 beforeEach(() => {
   mocks.navigate.mockReset();
@@ -39,31 +48,33 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-function renderSettings(pathname: string, instance = false) {
+function renderSettings(pathname: string, scope?: SettingsScope) {
   mocks.pathname = pathname;
   render(
-    <SettingsShell instance={instance}>
+    <SettingsShell scope={scope}>
       <div>Settings content</div>
     </SettingsShell>,
   );
 }
 
 describe("SettingsShell scoped heading", () => {
-  const scopes: Array<[string, boolean, string]> = [
-    ["/dashboard/settings/account/information", false, "Account"],
-    ["/dashboard/settings/workspace/general", false, "Workspace"],
+  const scopes: Array<[string, SettingsScope | undefined, string]> = [
+    ["/dashboard/settings/account/information", undefined, "Account"],
+    ["/dashboard/settings/workspace/general", undefined, "Workspace"],
     [
       "/dashboard/settings/projects/project-1/general",
-      false,
+      undefined,
       "Project settings",
     ],
-    ["/agent/settings/profile/preferences", false, "Account"],
-    ["/agent/settings/request-types", false, "Workspace"],
-    ["/agent/god-mode", true, "God Mode"],
+    ["/agent/settings/profile/preferences", undefined, "Account"],
+    ["/agent/settings/request-types", undefined, "Workspace"],
+    ["/agent/god-mode", "instance", "God Mode"],
+    ["/agent/god-mode/users", undefined, "God Mode"],
+    ["/agent/settings/request-types", "account", "Account"],
   ];
 
-  it.each(scopes)("shows only the %s scope", (pathname, instance, title) => {
-    renderSettings(pathname, instance);
+  it.each(scopes)("shows only the %s scope", (pathname, scope, title) => {
+    renderSettings(pathname, scope);
     expect(
       screen.getAllByText(title).some((element) => element.tagName === "H1"),
     ).toBe(true);
@@ -71,5 +82,23 @@ describe("SettingsShell scoped heading", () => {
     expect(
       screen.getByRole("button", { name: "Open settings menu" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("SettingsShell back link (L-03)", () => {
+  it("returns project settings to that project's board", () => {
+    mocks.projects = [{ id: "project-1", slug: "SUP" }];
+    renderSettings("/dashboard/settings/projects/project-1/general");
+    fireEvent.click(screen.getByRole("button", { name: "Back to Project" }));
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      href: "/agent/projects/SUP/work?layout=board&sort=position&dir=asc",
+    });
+  });
+
+  it("returns the other scopes to the workspace", () => {
+    mocks.projects = [{ id: "project-1", slug: "SUP" }];
+    renderSettings("/dashboard/settings/workspace/general");
+    fireEvent.click(screen.getByRole("button", { name: "Back to Workspace" }));
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" });
   });
 });

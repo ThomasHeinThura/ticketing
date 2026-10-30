@@ -537,7 +537,7 @@
 			"signedOutSuccess": "Pomyślnie wylogowano",
 			"signOutFailed": "Nie udało się wylogować",
 			"unnamedUser": "Użytkownik",
-			"settings": "Ustawienia",
+			"accountSettings": "Ustawienia konta",
 			"signingOut": "Wylogowywanie...",
 			"logOut": "Wyloguj się"
 		},
@@ -545,6 +545,7 @@
 			"workspaces": "Obszary robocze",
 			"switching": "Przełączanie...",
 			"addWorkspace": "Dodaj obszar roboczy",
+			"workspaceSettings": "Ustawienia obszaru roboczego",
 			"instanceUsers": "Użytkownicy instancji",
 			"selectWorkspace": "Wybierz obszar roboczy"
 		},
@@ -552,8 +553,8 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Ustawienia",
 			"backToWorkspace": "Wróć do obszaru roboczego",
-			"settingsWorkspaceTab": "Obszar roboczy",
-			"settingsAccountTab": "Konto"
+			"backToProject": "Wróć do projektu",
+			"settingsWorkspaceTab": "Obszar roboczy"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

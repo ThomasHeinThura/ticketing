@@ -2061,7 +2061,7 @@
 			"signedOutSuccess": "Succesvol uitgelogd",
 			"signOutFailed": "Uitloggen mislukt",
 			"unnamedUser": "Gebruiker",
-			"settings": "Instellingen",
+			"accountSettings": "Accountinstellingen",
 			"signingOut": "Uitloggen...",
 			"logOut": "Uitloggen"
 		},
@@ -2069,6 +2069,7 @@
 			"workspaces": "Werkruimtes",
 			"switching": "Wisselen...",
 			"addWorkspace": "Werkruimte toevoegen",
+			"workspaceSettings": "Werkruimte-instellingen",
 			"instanceUsers": "Instantiegebruikers",
 			"selectWorkspace": "Werkruimte selecteren"
 		},
@@ -2076,8 +2077,8 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Instellingen",
 			"backToWorkspace": "Terug naar werkruimte",
-			"settingsWorkspaceTab": "Werkruimte",
-			"settingsAccountTab": "Account"
+			"backToProject": "Terug naar project",
+			"settingsWorkspaceTab": "Werkruimte"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

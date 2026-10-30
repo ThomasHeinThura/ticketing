@@ -2061,7 +2061,7 @@
 			"signedOutSuccess": "Signed out successfully",
 			"signOutFailed": "Failed to sign out",
 			"unnamedUser": "User",
-			"settings": "Settings",
+			"accountSettings": "Account settings",
 			"signingOut": "Signing out...",
 			"logOut": "Log out"
 		},
@@ -2069,6 +2069,7 @@
 			"workspaces": "Workspaces",
 			"switching": "Switching...",
 			"addWorkspace": "Add workspace",
+			"workspaceSettings": "Workspace settings",
 			"instanceUsers": "Instance users",
 			"selectWorkspace": "Select workspace"
 		},
@@ -2076,8 +2077,8 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Settings",
 			"backToWorkspace": "Back to Workspace",
-			"settingsWorkspaceTab": "Workspace",
-			"settingsAccountTab": "Account"
+			"backToProject": "Back to {{term_project_one}}",
+			"settingsWorkspaceTab": "Workspace"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

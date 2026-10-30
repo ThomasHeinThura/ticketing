@@ -13,6 +13,11 @@ const CanonicalProjectRealtime = lazy(
 const LegacyProjectRealtime = lazy(
   () => import("@/components/common/legacy-project-realtime"),
 );
+// The header "…" menu pulls in the menu primitives, which the work-list route graph does not
+// otherwise need (G11), so it loads with the deferred project controls.
+const ProjectHeaderMenu = lazy(
+  () => import("@/components/common/header/project-header-menu"),
+);
 const CreateProjectModal = lazy(
   () => import("@/components/shared/modals/create-project-modal"),
 );
@@ -124,6 +129,16 @@ export default function ProjectLayout({
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {headerActions}
+            {projectId ? (
+              // A same-size placeholder keeps the fixed header's geometry until the menu loads.
+              <span className="flex size-7 shrink-0">
+                {showProjectLayoutControls ? (
+                  <Suspense fallback={null}>
+                    <ProjectHeaderMenu projectId={projectId} />
+                  </Suspense>
+                ) : null}
+              </span>
+            ) : null}
           </div>
         </div>
       </Layout.Header>

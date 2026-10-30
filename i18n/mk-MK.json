@@ -2061,7 +2061,7 @@
 			"signedOutSuccess": "Успешно одјавен",
 			"signOutFailed": "Неуспешна одјава",
 			"unnamedUser": "Корисник",
-			"settings": "Поставки",
+			"accountSettings": "Поставки на сметката",
 			"signingOut": "Се одјавува...",
 			"logOut": "Одјави се"
 		},
@@ -2069,6 +2069,7 @@
 			"workspaces": "Работни простори",
 			"switching": "Се префрлува...",
 			"addWorkspace": "Додади работен простор",
+			"workspaceSettings": "Поставки на работниот простор",
 			"instanceUsers": "Корисници на инстанцата",
 			"selectWorkspace": "Избери работен простор"
 		},
@@ -2076,8 +2077,8 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Поставки",
 			"backToWorkspace": "Назад кон работен простор",
-			"settingsWorkspaceTab": "Работен простор",
-			"settingsAccountTab": "Сметка"
+			"backToProject": "Назад кон проектот",
+			"settingsWorkspaceTab": "Работен простор"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

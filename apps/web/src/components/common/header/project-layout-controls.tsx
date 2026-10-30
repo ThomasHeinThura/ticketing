@@ -250,6 +250,12 @@ export default function ProjectLayoutControls({
               onSelectPages={pagesOn ? handleNavigateToPages : undefined}
               onSelectProject={handleProjectSwitch}
               onAddProject={addProject}
+              onOpenProjectSettings={() =>
+                void navigate({
+                  to: routes.projectSettingsGeneral.path,
+                  params: { projectId },
+                })
+              }
             />
           </Suspense>
         </div>

@@ -8,6 +8,7 @@ import {
   Menu,
   Plus,
   Repeat,
+  Settings,
   SquareKanban,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -39,6 +40,8 @@ type MobileProjectNavProps = {
   onSelectPages?: () => void;
   onSelectProject: (projectId: string) => void;
   onAddProject?: () => void;
+  /** Opens the current project's settings (L-03). */
+  onOpenProjectSettings?: () => void;
 };
 
 export default function MobileProjectNav({
@@ -54,6 +57,7 @@ export default function MobileProjectNav({
   onSelectPages,
   onSelectProject,
   onAddProject,
+  onOpenProjectSettings,
 }: MobileProjectNavProps) {
   const { t } = useTranslation();
   const { data: projects = [] } = useGetProjects({ workspaceId });
@@ -230,6 +234,18 @@ export default function MobileProjectNav({
             >
               <Plus className="size-3.5" />
               Add project
+            </Button>
+          ) : null}
+
+          {onOpenProjectSettings ? (
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={onOpenProjectSettings}
+              className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+            >
+              <Settings className="size-3.5" />
+              {t("navigation:projectList.projectSettings")}
             </Button>
           ) : null}
         </div>

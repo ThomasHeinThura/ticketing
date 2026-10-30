@@ -2071,7 +2071,7 @@
 			"signedOutSuccess": "Вихід виконано успішно",
 			"signOutFailed": "Не вдалося вийти",
 			"unnamedUser": "Користувач",
-			"settings": "Налаштування",
+			"accountSettings": "Налаштування облікового запису",
 			"signingOut": "Вихід...",
 			"logOut": "Вийти"
 		},
@@ -2079,6 +2079,7 @@
 			"workspaces": "Робочі простори",
 			"switching": "Перемикання...",
 			"addWorkspace": "Додати робочий простір",
+			"workspaceSettings": "Налаштування робочого простору",
 			"instanceUsers": "Користувачі екземпляра",
 			"selectWorkspace": "Обрати робочий простір"
 		},
@@ -2086,8 +2087,8 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Налаштування",
 			"backToWorkspace": "Повернутися до робочого простору",
-			"settingsWorkspaceTab": "Робочий простір",
-			"settingsAccountTab": "Обліковий запис"
+			"backToProject": "Повернутися до проєкту",
+			"settingsWorkspaceTab": "Робочий простір"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

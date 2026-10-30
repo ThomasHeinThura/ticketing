@@ -19,7 +19,6 @@ import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-fea
 import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
 import { useCatalogueStatus } from "@/hooks/queries/service-management";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { useInstanceAdminSignal } from "@/hooks/use-instance-admin-signal";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { routes } from "@/lib/routes";
@@ -45,7 +44,6 @@ function loadSavedViewFetchers(): Promise<SavedViewFetchers> {
 export function NavMain() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
-  const isInstanceAdmin = useInstanceAdminSignal();
   const navigate = useNavigate();
   const { data: invitations = [] } = usePendingInvitations();
   const { user } = useAuth();
@@ -197,38 +195,6 @@ export function NavMain() {
       badge: pendingCount > 0 ? pendingCount : null,
     },
   ];
-  const settingsItems = [
-    {
-      title: t("navigation:page.settingsAccountTab"),
-      url: "/dashboard/settings/account/information",
-      isActive:
-        path.startsWith("/dashboard/settings/account") ||
-        path.startsWith("/agent/settings/profile"),
-    },
-    {
-      title: t("navigation:page.settingsWorkspaceTab"),
-      url: "/dashboard/settings/workspace/general",
-      isActive:
-        path.startsWith("/dashboard/settings/workspace") ||
-        (path.startsWith("/agent/settings") &&
-          !path.startsWith("/agent/settings/profile")),
-    },
-    {
-      title: t("navigation:projectList.projectSettings"),
-      url: "/dashboard/settings/projects",
-      isActive: path.startsWith("/dashboard/settings/projects"),
-    },
-    ...(isInstanceAdmin
-      ? [
-          {
-            title: t("navigation:sidebar.godMode"),
-            url: routes.godModeHealth.path,
-            isActive: path.startsWith(routes.godModeHealth.path),
-          },
-        ]
-      : []),
-  ];
-  const settingsActive = settingsItems.some((item) => item.isActive);
 
   return (
     <Collapsible defaultOpen className="group/collapsible">
@@ -300,44 +266,6 @@ export function NavMain() {
                     : null}
                 </Fragment>
               ))}
-              <SidebarMenuItem>
-                <Collapsible
-                  defaultOpen={settingsActive}
-                  className="group/settings"
-                >
-                  <CollapsibleTrigger
-                    className="data-panel-open:[&_svg]:rotate-90"
-                    render={
-                      <SidebarMenuButton
-                        tooltip={t("navigation:sidebar.settings")}
-                        isActive={settingsActive}
-                        size="default"
-                        className="h-8 justify-between ps-3.5 text-sm hover:bg-transparent hover:text-sidebar-accent-foreground active:bg-transparent"
-                      />
-                    }
-                  >
-                    <span>{t("navigation:sidebar.settings")}</span>
-                    <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground transition-transform duration-200" />
-                  </CollapsibleTrigger>
-                  <CollapsiblePanel>
-                    <SidebarMenu className="gap-0.5 pt-0.5">
-                      {settingsItems.map((item) => (
-                        <SidebarMenuItem key={item.url}>
-                          <SidebarMenuButton
-                            tooltip={item.title}
-                            isActive={item.isActive}
-                            size="default"
-                            className="h-8 ps-6 text-sm hover:bg-transparent hover:text-sidebar-accent-foreground active:bg-transparent"
-                            onClick={() => navigate({ to: item.url })}
-                          >
-                            <span>{item.title}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </CollapsiblePanel>
-                </Collapsible>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </CollapsiblePanel>

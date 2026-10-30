@@ -8357,7 +8357,7 @@
 						"unnamedUser": {
 							"type": "string"
 						},
-						"settings": {
+						"accountSettings": {
 							"type": "string"
 						},
 						"signingOut": {
@@ -8371,7 +8371,7 @@
 						"signedOutSuccess",
 						"signOutFailed",
 						"unnamedUser",
-						"settings",
+						"accountSettings",
 						"signingOut",
 						"logOut"
 					]
@@ -8389,6 +8389,9 @@
 						"addWorkspace": {
 							"type": "string"
 						},
+						"workspaceSettings": {
+							"type": "string"
+						},
 						"instanceUsers": {
 							"type": "string"
 						},
@@ -8400,6 +8403,7 @@
 						"workspaces",
 						"switching",
 						"addWorkspace",
+						"workspaceSettings",
 						"instanceUsers",
 						"selectWorkspace"
 					]
@@ -8417,10 +8421,10 @@
 						"backToWorkspace": {
 							"type": "string"
 						},
-						"settingsWorkspaceTab": {
+						"backToProject": {
 							"type": "string"
 						},
-						"settingsAccountTab": {
+						"settingsWorkspaceTab": {
 							"type": "string"
 						}
 					},
@@ -8428,8 +8432,8 @@
 						"projectsTitle",
 						"settingsTitle",
 						"backToWorkspace",
-						"settingsWorkspaceTab",
-						"settingsAccountTab"
+						"backToProject",
+						"settingsWorkspaceTab"
 					]
 				},
 				"projectSettings": {

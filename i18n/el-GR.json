@@ -2061,7 +2061,7 @@
 			"signedOutSuccess": "Αποσυνδεθήκατε με επιτυχία",
 			"signOutFailed": "Αποτυχία αποσύνδεσης",
 			"unnamedUser": "Χρήστης",
-			"settings": "Ρυθμίσεις",
+			"accountSettings": "Ρυθμίσεις λογαριασμού",
 			"signingOut": "Γίνεται αποσύνδεση...",
 			"logOut": "Αποσύνδεση"
 		},
@@ -2069,6 +2069,7 @@
 			"workspaces": "Χώροι εργασίας",
 			"switching": "Γίνεται εναλλαγή...",
 			"addWorkspace": "Προσθήκη χώρου εργασίας",
+			"workspaceSettings": "Ρυθμίσεις χώρου εργασίας",
 			"instanceUsers": "Χρήστες στιγμιοτύπου",
 			"selectWorkspace": "Επιλέξτε χώρο εργασίας"
 		},
@@ -2076,8 +2077,8 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Ρυθμίσεις",
 			"backToWorkspace": "Επιστροφή στον χώρο εργασίας",
-			"settingsWorkspaceTab": "Χώρος εργασίας",
-			"settingsAccountTab": "Λογαριασμός"
+			"backToProject": "Επιστροφή στο έργο",
+			"settingsWorkspaceTab": "Χώρος εργασίας"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"
