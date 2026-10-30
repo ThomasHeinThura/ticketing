@@ -2096,7 +2096,8 @@
 			"settingsTitle": "Настройки",
 			"backToWorkspace": "Вернуться к рабочей области",
 			"backToProject": "Вернуться к проекту",
-			"settingsWorkspaceTab": "Рабочая область"
+			"settingsWorkspaceTab": "Рабочая область",
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

@@ -2078,7 +2078,8 @@
 			"settingsTitle": "Ayarlar",
 			"backToWorkspace": "Çalışma Alanına Dön",
 			"backToProject": "{{term_project_one}} sayfasına dön",
-			"settingsWorkspaceTab": "Çalışma Alanı"
+			"settingsWorkspaceTab": "Çalışma Alanı",
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

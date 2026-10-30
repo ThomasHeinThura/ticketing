@@ -2078,7 +2078,8 @@
 			"settingsTitle": "Ρυθμίσεις",
 			"backToWorkspace": "Επιστροφή στον χώρο εργασίας",
 			"backToProject": "Επιστροφή στο έργο",
-			"settingsWorkspaceTab": "Χώρος εργασίας"
+			"settingsWorkspaceTab": "Χώρος εργασίας",
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

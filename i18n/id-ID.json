@@ -2073,7 +2073,8 @@
 			"settingsTitle": "Pengaturan",
 			"backToWorkspace": "Kembali ke Ruang Kerja",
 			"backToProject": "Kembali ke {{term_project_other}}",
-			"settingsWorkspaceTab": "Ruang Kerja"
+			"settingsWorkspaceTab": "Ruang Kerja",
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_other}}"

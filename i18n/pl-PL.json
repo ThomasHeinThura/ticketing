@@ -554,7 +554,8 @@
 			"settingsTitle": "Ustawienia",
 			"backToWorkspace": "Wróć do obszaru roboczego",
 			"backToProject": "Wróć do projektu",
-			"settingsWorkspaceTab": "Obszar roboczy"
+			"settingsWorkspaceTab": "Obszar roboczy",
+			"projectActions": "Actions for {{name}}"
 		},
 		"projectSettings": {
 			"projectLabel": "{{term_project_one}}"

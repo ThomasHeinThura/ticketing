@@ -129,16 +129,18 @@ export default function ProjectLayout({
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {headerActions}
-            {projectId ? (
-              // A same-size placeholder keeps the fixed header's geometry until the menu loads.
-              <span className="flex size-7 shrink-0">
-                {showProjectLayoutControls ? (
-                  <Suspense fallback={null}>
-                    <ProjectHeaderMenu projectId={projectId} />
-                  </Suspense>
-                ) : null}
-              </span>
-            ) : null}
+            {/* A same-size placeholder keeps the header's geometry while the project and the
+                menu load. Phones use the mobile project menu's Project settings instead. */}
+            <span className="hidden size-7 shrink-0 md:flex">
+              {projectId && showProjectLayoutControls ? (
+                <Suspense fallback={null}>
+                  <ProjectHeaderMenu
+                    projectId={projectId}
+                    projectName={project?.name}
+                  />
+                </Suspense>
+              ) : null}
+            </span>
           </div>
         </div>
       </Layout.Header>
