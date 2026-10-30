@@ -62,9 +62,9 @@ export function HolidayFields({
             }}
           >
             <SelectTrigger id={`holiday-${index}-kind`}>
-              <SelectValue />
+              <SelectValue>{t(`holidays.${kind}`)}</SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent aria-label={t("holidays.pattern")}>
               <SelectItem value="date">{t("holidays.date")}</SelectItem>
               <SelectItem value="range">{t("holidays.range")}</SelectItem>
               <SelectItem value="annual">{t("holidays.annual")}</SelectItem>
