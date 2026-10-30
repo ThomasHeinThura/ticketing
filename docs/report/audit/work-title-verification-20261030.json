@@ -1,0 +1,339 @@
+{
+	"recorded": "2026-10-30T06:18:17.043Z",
+	"issue": 980,
+	"codeHead": "38df67341021ca00f0079abc653d57be0b1cb731",
+	"integratedHead": "a1ff12336b9c2728d3c28e338fdf052f70619406",
+	"main": "ac5b5c20f9aa56bbe1b4e12f94b32e0630840783",
+	"sourceMatchesRuntime": {
+		"sha": "7694ede275b24cdd225fa2e02c5b944c72669b17",
+		"paths": [
+			"apps/web/src/components/list-view/task-row.tsx",
+			"apps/web/src/components/work-item/work-item-inline-fields.tsx",
+			"apps/web/src/components/work-item/work-item-list.tsx"
+		],
+		"wholeTreeIdentical": false
+	},
+	"local": {
+		"sourceHead": "38df67341021ca00f0079abc653d57be0b1cb731",
+		"gatesPassed": 12,
+		"unitTests": 7289,
+		"typeTasks": 9,
+		"focusedTests": 80,
+		"freshIntegratedChecks": [
+			{
+				"command": "pnpm --filter @taskdesk/web exec vitest run src/components/list-view/task-row.test.tsx src/components/work-item/work-item-list-controls.test.tsx src/components/work-item/work-item-list.test.tsx src/components/work-item/work-item-inline-fields.test.tsx src/components/work-item/work-item-list-project-switch.test.tsx src/components/work-item/work-item-list-resize.test.tsx src/components/work-item/work-item-list-inline.test.tsx src/components/work-item/work-item-list-selection.test.tsx src/components/common/sort-control.test.tsx src/components/common/sort-control.lazy-content.test.tsx",
+				"exitCode": 0,
+				"durationMs": 5990
+			},
+			{
+				"command": "pnpm test",
+				"exitCode": 0,
+				"durationMs": 152440
+			},
+			{
+				"command": "pnpm typecheck",
+				"exitCode": 0,
+				"durationMs": 21178
+			},
+			{
+				"command": "pnpm lint:ci",
+				"exitCode": 0,
+				"durationMs": 3228
+			},
+			{
+				"command": "pnpm test:permissions",
+				"exitCode": 0,
+				"durationMs": 15800
+			},
+			{
+				"command": "pnpm check:route-policy",
+				"exitCode": 0,
+				"durationMs": 15347
+			}
+		],
+		"freshUnitTests": 7289,
+		"freshFocusedTests": 83,
+		"history": "Earlier failed lint receipt retained; evidence JSON formatted and the standard lint command later passed. No lint rule or gate changed."
+	},
+	"browser": {
+		"popupCases": [
+			{
+				"width": 390,
+				"theme": "dark",
+				"coarse": true,
+				"previewCellWidth": 64,
+				"popup": {
+					"x": 65,
+					"y": 305.625,
+					"width": 320,
+					"height": 93,
+					"right": 385,
+					"bottom": 398.625
+				},
+				"positioner": {
+					"x": 65,
+					"y": 305.625,
+					"width": 320,
+					"height": 93,
+					"right": 385,
+					"bottom": 398.625
+				},
+				"actionsWithinViewport": true,
+				"seriousCriticalAxe": 0,
+				"status": "observed-contained"
+			},
+			{
+				"width": 320,
+				"theme": "dark",
+				"coarse": true,
+				"previewCellWidth": 64,
+				"popup": {
+					"x": 27,
+					"y": 337.625,
+					"width": 288,
+					"height": 93,
+					"right": 315,
+					"bottom": 430.625
+				},
+				"positioner": {
+					"x": 27,
+					"y": 337.625,
+					"width": 288,
+					"height": 93,
+					"right": 315,
+					"bottom": 430.625
+				},
+				"actionsWithinViewport": true,
+				"seriousCriticalAxe": 0,
+				"status": "observed-contained"
+			},
+			{
+				"width": 390,
+				"theme": "dark",
+				"coarse": false,
+				"previewCellWidth": 64,
+				"popup": {
+					"x": 65,
+					"y": 301.625,
+					"width": 320,
+					"height": 93,
+					"right": 385,
+					"bottom": 394.625
+				},
+				"positioner": {
+					"x": 65,
+					"y": 301.625,
+					"width": 320,
+					"height": 93,
+					"right": 385,
+					"bottom": 394.625
+				},
+				"actionsWithinViewport": true,
+				"seriousCriticalAxe": 0,
+				"status": "observed-contained"
+			},
+			{
+				"width": 820,
+				"theme": "light",
+				"coarse": false,
+				"previewCellWidth": 64,
+				"popup": {
+					"x": 355.46875,
+					"y": 266.515625,
+					"width": 320,
+					"height": 79,
+					"right": 675.46875,
+					"bottom": 345.515625
+				},
+				"positioner": {
+					"x": 355.46875,
+					"y": 266.515625,
+					"width": 320,
+					"height": 79,
+					"right": 675.46875,
+					"bottom": 345.515625
+				},
+				"actionsWithinViewport": true,
+				"seriousCriticalAxe": 0,
+				"status": "observed-contained"
+			},
+			{
+				"width": 820,
+				"theme": "dark",
+				"coarse": false,
+				"previewCellWidth": 64,
+				"popup": {
+					"x": 355.46875,
+					"y": 266.515625,
+					"width": 320,
+					"height": 79,
+					"right": 675.46875,
+					"bottom": 345.515625
+				},
+				"positioner": {
+					"x": 355.46875,
+					"y": 266.515625,
+					"width": 320,
+					"height": 79,
+					"right": 675.46875,
+					"bottom": 345.515625
+				},
+				"actionsWithinViewport": true,
+				"seriousCriticalAxe": 0,
+				"status": "observed-contained"
+			}
+		],
+		"matrix": {
+			"popupCases": 5,
+			"popupContained": 5,
+			"matrixViews": 12,
+			"matrixObserved": 10,
+			"matrixBlocked": 2,
+			"memberLightListViews": 1,
+			"rate429": 0,
+			"blockedWrites": 0
+		},
+		"member390Light": {
+			"titleHeight": 24,
+			"rowHeight": 69,
+			"focus": true,
+			"centerHit": true,
+			"seriousCriticalAxe": 0
+		},
+		"writes": 0,
+		"rate429": 0,
+		"before": [
+			"docs/report/screens/20261030-next20-5-work-list-390-light.png",
+			"docs/report/screens/20261030-next20-7-work-table-1440-light.png",
+			"docs/report/screens/20261030-next20-13-work-create-820-dark.png"
+		],
+		"after": [
+			"docs/report/screens/20261030-title-after-member-390-light-list.png",
+			"docs/report/screens/20261030-title-after-popup-masked-320-dark-coarse.png",
+			"docs/report/screens/20261030-title-after-popup-masked-390-dark-coarse.png",
+			"docs/report/screens/20261030-title-after-popup-masked-390-dark-fine.png",
+			"docs/report/screens/20261030-title-after-popup-masked-820-dark-fine.png",
+			"docs/report/screens/20261030-title-after-popup-masked-820-light-fine.png",
+			"docs/report/screens/20261030-title-after-table-member-390-dark.png",
+			"docs/report/screens/20261030-title-after-table-member-820-light-preview64.png",
+			"docs/report/screens/20261030-title-after-table-member-820-light.png",
+			"docs/report/screens/20261030-title-after-table-owner-1440-light.png",
+			"docs/report/screens/20261030-title-after-table-owner-390-dark-coarse.png",
+			"docs/report/screens/20261030-title-after-table-owner-390-dark-preview64.png",
+			"docs/report/screens/20261030-title-after-table-owner-820-dark-preview64.png",
+			"docs/report/screens/20261030-title-after-table-owner-820-dark.png",
+			"docs/report/screens/20261030-title-after-member-820-dark-list-matched.png"
+		],
+		"matchedMember820Dark": {
+			"n": 5,
+			"kind": "work-title-match",
+			"requestedRole": "member",
+			"effectiveRole": "member",
+			"width": 820,
+			"theme": "dark",
+			"requestedUrl": "https://ticketing.localhost/agent/projects/HELP/work?layout=list&sort=key&dir=asc",
+			"before": "docs/report/screens/20261030-next20-13-work-create-820-dark.png",
+			"actions": [
+				{
+					"name": "title-focus",
+					"axe": [],
+					"screenshot": "public-5-member-820-dark-list-title.png"
+				}
+			],
+			"status": "observed",
+			"actualUrl": "https://ticketing.localhost/agent/projects/HELP/work?layout=list&sort=key&dir=asc",
+			"actualTheme": "dark",
+			"documentOverflow": false,
+			"visibleDialogs": 0,
+			"nativeDateTime": 0,
+			"nativeSelect": 0,
+			"initialAxe": [],
+			"initialScreenshot": "public-5-work-title-match-820-dark-initial.png",
+			"title": {
+				"x": 449.703125,
+				"y": 197,
+				"width": 220.453125,
+				"height": 24,
+				"hitCenter": true,
+				"ellipsis": "ellipsis",
+				"truncated": true,
+				"focused": true
+			},
+			"matchedMaskScreenshot": "docs/report/screens/20261030-title-after-member-820-dark-list-matched.png",
+			"matchedMaskGeometry": {
+				"width": 220.453125,
+				"height": 24,
+				"focused": true,
+				"hitCenter": true,
+				"actualTheme": "dark"
+			}
+		},
+		"matchedPairs": [
+			{
+				"role": "member",
+				"width": 390,
+				"theme": "light",
+				"before": "docs/report/screens/20261030-next20-5-work-list-390-light.png",
+				"after": "docs/report/screens/20261030-title-after-member-390-light-list.png"
+			},
+			{
+				"role": "owner",
+				"width": 1440,
+				"theme": "light",
+				"before": "docs/report/screens/20261030-next20-7-work-table-1440-light.png",
+				"after": "docs/report/screens/20261030-title-after-table-owner-1440-light.png"
+			},
+			{
+				"role": "member",
+				"width": 820,
+				"theme": "dark",
+				"before": "docs/report/screens/20261030-next20-13-work-create-820-dark.png",
+				"after": "docs/report/screens/20261030-title-after-member-820-dark-list-matched.png"
+			}
+		]
+	},
+	"g8": {
+		"selected": 4,
+		"passed": 4,
+		"relevantTitleCases": 2,
+		"baselineChanges": 0,
+		"pinnedIndex": "sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+		"amd64Manifest": "mcr.microsoft.com/playwright@sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7",
+		"checkContainer": "0bfb340419b417d5d7a2127694080bc7328dfcf3918e1d875c129d55a5077890",
+		"removed": true,
+		"scope": "Existing closed/default views only; full hosted G8 required"
+	},
+	"review": {
+		"tier": "Independent Terra",
+		"findings": 0,
+		"g8Final": "Four selected existing pinned visuals passed, including both affected list/table defaults. No changed baseline; full hosted G8 required."
+	},
+	"limits": [
+		"Admin table fixture did not expose a project link; no admin table claim.",
+		"Member HELP Pages Create trigger was absent; no member Pages Create focus claim.",
+		"Real 64px width was a canceled pointer preview, never persisted.",
+		"320 edge is supplemental without a matched before screenshot.",
+		"No >100-row virtualized table fixture; virtual path unverified.",
+		"No complete all-role/all-theme UI or accessibility acceptance.",
+		"Public page screenshots mask all record and identity text at screenshot time; private unmasked popup crops remain private for typography review."
+	],
+	"heldResizeEscape": {
+		"beforeFocusTag": "TEXTAREA",
+		"beforeInsidePopover": true,
+		"beforeWidth": 64,
+		"afterFocusTag": "TEXTAREA",
+		"afterInsidePopover": false,
+		"afterInsideEditor": true,
+		"afterWidth": 381,
+		"documentCaptureSawEscape": true,
+		"documentBubbleSawEscape": false,
+		"interpretation": "Resize document-capture Escape cancels held resize, restores width, and closes compact Popover as editor moves inline; active textarea remains focused. This combined held-pointer interaction does not test ordinary popup Escape focus return."
+	},
+	"hosted": "Pending; every non-G11 check must qualify",
+	"requirementsPromoted": 0,
+	"containers": {
+		"ownedSit": "3a64d3f0b492",
+		"temporaryG8": "0bfb340419b417d5d7a2127694080bc7328dfcf3918e1d875c129d55a5077890",
+		"temporaryRemoved": true
+	}
+}

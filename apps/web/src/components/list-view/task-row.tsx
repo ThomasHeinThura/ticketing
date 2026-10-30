@@ -300,6 +300,7 @@ function TaskRow({
               {taskHref ? (
                 <a
                   href={taskHref}
+                  className="inline-block min-h-6 min-w-6 max-w-full truncate align-middle leading-6 hover:underline"
                   aria-label={`${projectSlug}-${task.number} ${task.title}`}
                   onClick={(event) => {
                     event.stopPropagation();
