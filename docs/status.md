@@ -1,4 +1,19 @@
-# Current status — 30 October 2026
+# Current status — 30 October 2026, evening
+
+**Goal: UAT launch on Friday 6 November 2026 on the Technexus hosts.** Claude is the only version 2 implementer from 30 Oct; Codex works on version 1. Plan: [roadmap](roadmap.md#uat-week-plan-30-oct--6-nov-2026). Decisions and release chain: [handover](handover.md).
+
+- **Deployed:** `main` 308b45ff5 (signed digest `sha256:affc6cd4e520…`, GitHub attestation verified) on a fresh local SIT in Docker Desktop and on Technexus. Technexus: backup verified first, migrations 212 → 212, row counts unchanged, both public hosts 200 on `/` and readiness. Rollback is an image-only `.env` restore.
+- **Local SIT smoke:** 25/25 API checks for admin, agent, lead and customer (sign-in, session, workspaces, projects, work items, KB, portal catalogue and submissions). This is an API smoke, not a browser or full-role acceptance.
+- **In review:** [#993](https://github.com/ThomasHeinThura/ticketing/pull/993) — `deploy.sh local` fails on every fresh install (probe needs wget, seed needs a credentials file, empty portal catalogue); fixed and verified on the fresh stack.
+- **Merged today:** #985, #989, #990, #992 (date-only fields; #991 closed). All non-G11 checks green at merge.
+- **Open defects found by the 30 Oct audit:** the native-UI check misses library `<Input type="date|checkbox">` and interactive `title=` (portal request checkboxes still native); about 42 interactive `title=` tooltips; KB review date one day early west of UTC (`kb-badges.tsx`); 11 new strings English in all 18 locales; the generated report is still the 28 Oct one.
+- **Failing (report-only):** G11 on #992: work-list LCP 2948 ms (< 2500), list → detail 511.6 ms (< 300), assignment 201.2 ms (< 200), drag p95 33.4 ms (< 20). Budgets unchanged.
+- **Not yet verified:** signed-in journeys on Technexus, the full browser sweep across roles, widths and themes, and backup/restore rehearsal.
+- **Next:** release smoke suite and the UI-check/tooltip fixes (31 Oct), settings split L-03 (1–2 Nov), UAT blockers (3 Nov), editor first slice (4 Nov), UAT readiness (5 Nov), launch (6 Nov).
+
+## Dated evidence and execution history
+
+## Historical checkpoint — 30 October 2026, afternoon
 
 The approved seven-stage goal remains active; tonight's 22:00 Yangon checkpoint is at risk. Thomas's standing authority permits exact-head squash merges after fresh main integration, independent review and every non-G11 check green. Only G11 may be bypassed. Budgets, benchmark harness, ruleset, customer data, seeder and Technexus restrictions remain.
 
@@ -10,7 +25,6 @@ The approved seven-stage goal remains active; tonight's 22:00 Yangon checkpoint 
 - **Containers:** owned SIT 270c5490d9c4 (ea36e54e8) retained for verification after verified database/files/config backup, unchanged startup counts, both HTTPS 200 and zero fixable Trivy HIGH/CRITICAL. Superseded owned 3a64d3f0b492 removed by exact id. Original rollback and existing services preserved. Pinned check containers are removed by exact id and listed in the date receipt.
 - **Next:** date #991 visual/hosted gates, library Button (#593), ActionTooltip plus gate, calendar/i18n/test lows, traceable report publication, then full sweep including lead. Then L-05 performance/detail-noise diagnosis (one day), L-02 memory/CI speed, #918/#920, persisted area/role regression, settings/editor and L-06–L-11. No further approval wait for authorized fixes or qualified merges.
 
-## Dated evidence and execution history
 
 Earlier entries retain their original observations; the checkpoint above supersedes their current-status wording.
 
