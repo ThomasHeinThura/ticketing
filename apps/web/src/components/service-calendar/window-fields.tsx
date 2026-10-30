@@ -137,27 +137,27 @@ export function WindowFields({
             label={t("window.endLabel", { label: timeLabel })}
           />
         )}
-        <div className="flex min-h-8 items-center gap-2 text-xs text-muted-foreground">
-          <Checkbox
-            disabled={disabled}
-            checked={endAtDayBoundary}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                setLastEnd(window.to);
-                onChange({ to: 1440 });
-              } else {
-                onChange({
-                  to:
-                    lastEnd > window.from
-                      ? lastEnd
-                      : Math.min(1439, window.from + 1),
-                });
-              }
-            }}
-            aria-label={t("window.endBoundaryLabel", { label: timeLabel })}
-          />
-          <span>{t("window.endBoundary")}</span>
-        </div>
+      </div>
+      <div className="flex min-h-8 items-center gap-2 text-xs text-muted-foreground sm:col-span-2 sm:col-start-2 sm:row-start-3">
+        <Checkbox
+          disabled={disabled}
+          checked={endAtDayBoundary}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              setLastEnd(window.to);
+              onChange({ to: 1440 });
+            } else {
+              onChange({
+                to:
+                  lastEnd > window.from
+                    ? lastEnd
+                    : Math.min(1439, window.from + 1),
+              });
+            }
+          }}
+          aria-label={t("window.endBoundaryLabel", { label: timeLabel })}
+        />
+        <span>{t("window.endBoundary")}</span>
       </div>
       <Button
         type="button"

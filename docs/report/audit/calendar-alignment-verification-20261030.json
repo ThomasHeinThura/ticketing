@@ -1,0 +1,2770 @@
+{
+	"date": "2026-10-30",
+	"issue": 971,
+	"status": "Local code/design/browser checks pass; hosted CI pending",
+	"source": {
+		"reviewedProductionCommit": "64265e4ecfe6bd3d7da4e8d98ec9540fab436bcc",
+		"verifiedLocalHead": "a7ad1631268baad042f0c5636c02bd504147fd17",
+		"runtime": "283867012e0af4cd5fa6664f6fd16d9ef30e1022",
+		"windowFieldsByteMatch": true
+	},
+	"summary": {
+		"matrixViews": 18,
+		"boundaryViews": 4,
+		"actualRoles": ["owner", "admin", "member"],
+		"actualThemes": ["light", "dark"],
+		"tabletDesktopStartEndLabelSameRow": true,
+		"mobileStartEndStacked": true,
+		"tabletDesktopRemoveAligned": true,
+		"allCheckboxInsideRoot": true,
+		"allCheckboxNoVerticalOverlap": true,
+		"allDragPresent": true,
+		"allZeroScopedSeriousCriticalAxe": true,
+		"allZeroNativeDateTime": true,
+		"allZeroOverflow": true,
+		"localDraftFocusAndBoundaryPass": true,
+		"rate429": 0,
+		"nonGetRequests": 0,
+		"driverExpectationErrorsRetained": 2,
+		"limits": [
+			"No outer Calendar Save, persisted changes or reload were tested.",
+			"First matrix interaction expected invalid default 00:00 end to restore unchanged; existing guard correctly produced 00:01. Corrected 17:23 focused interaction passes and original driver errors remain recorded.",
+			"Screenshot crops show Monday window component only; persisted member time controls are masked."
+		],
+		"containersStarted": "none"
+	},
+	"rows": [
+		{
+			"person": "owner",
+			"width": 1440,
+			"theme": "light",
+			"actualTheme": "light",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-owner-1440-light.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 478,
+				"y": 777,
+				"width": 413.28125,
+				"height": 190,
+				"right": 891.28125,
+				"bottom": 967
+			},
+			"from": {
+				"x": 491,
+				"y": 882,
+				"width": 169.640625,
+				"height": 32,
+				"right": 660.640625,
+				"bottom": 914
+			},
+			"to": {
+				"x": 668.640625,
+				"y": 882,
+				"width": 169.640625,
+				"height": 32,
+				"right": 838.28125,
+				"bottom": 914
+			},
+			"fromLabel": {
+				"x": 491,
+				"y": 860,
+				"width": 40.25,
+				"height": 16,
+				"right": 531.25,
+				"bottom": 876
+			},
+			"toLabel": {
+				"x": 668.640625,
+				"y": 860,
+				"width": 32.515625,
+				"height": 16,
+				"right": 701.15625,
+				"bottom": 876
+			},
+			"checkbox": {
+				"x": 668.640625,
+				"y": 930,
+				"width": 16,
+				"height": 16,
+				"right": 684.640625,
+				"bottom": 946
+			},
+			"checkboxRow": {
+				"x": 668.640625,
+				"y": 922,
+				"width": 209.640625,
+				"height": 32,
+				"right": 878.28125,
+				"bottom": 954
+			},
+			"remove": {
+				"x": 846.28125,
+				"y": 886,
+				"width": 32,
+				"height": 28,
+				"right": 878.28125,
+				"bottom": 914
+			},
+			"drag": {
+				"x": 492,
+				"y": 815,
+				"width": 14,
+				"height": 28,
+				"right": 506,
+				"bottom": 843
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 169.640625,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "owner",
+			"width": 820,
+			"theme": "light",
+			"actualTheme": "light",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-owner-820-light.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 354,
+				"y": 777,
+				"width": 392,
+				"height": 190,
+				"right": 746,
+				"bottom": 967
+			},
+			"from": {
+				"x": 367,
+				"y": 882,
+				"width": 159,
+				"height": 32,
+				"right": 526,
+				"bottom": 914
+			},
+			"to": {
+				"x": 534,
+				"y": 882,
+				"width": 159,
+				"height": 32,
+				"right": 693,
+				"bottom": 914
+			},
+			"fromLabel": {
+				"x": 367,
+				"y": 860,
+				"width": 40.25,
+				"height": 16,
+				"right": 407.25,
+				"bottom": 876
+			},
+			"toLabel": {
+				"x": 534,
+				"y": 860,
+				"width": 32.515625,
+				"height": 16,
+				"right": 566.515625,
+				"bottom": 876
+			},
+			"checkbox": {
+				"x": 534,
+				"y": 930,
+				"width": 16,
+				"height": 16,
+				"right": 550,
+				"bottom": 946
+			},
+			"checkboxRow": {
+				"x": 534,
+				"y": 922,
+				"width": 199,
+				"height": 32,
+				"right": 733,
+				"bottom": 954
+			},
+			"remove": {
+				"x": 701,
+				"y": 886,
+				"width": 32,
+				"height": 28,
+				"right": 733,
+				"bottom": 914
+			},
+			"drag": {
+				"x": 368,
+				"y": 815,
+				"width": 14,
+				"height": 28,
+				"right": 382,
+				"bottom": 843
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 159,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "owner",
+			"width": 390,
+			"theme": "light",
+			"actualTheme": "light",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-owner-390-light.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 62,
+				"y": 673,
+				"width": 266,
+				"height": 306,
+				"right": 328,
+				"bottom": 979
+			},
+			"from": {
+				"x": 75,
+				"y": 779,
+				"width": 240,
+				"height": 36,
+				"right": 315,
+				"bottom": 815
+			},
+			"to": {
+				"x": 75,
+				"y": 850,
+				"width": 240,
+				"height": 36,
+				"right": 315,
+				"bottom": 886
+			},
+			"fromLabel": {
+				"x": 75,
+				"y": 755,
+				"width": 46,
+				"height": 18,
+				"right": 121,
+				"bottom": 773
+			},
+			"toLabel": {
+				"x": 75,
+				"y": 826,
+				"width": 37.171875,
+				"height": 18,
+				"right": 112.171875,
+				"bottom": 844
+			},
+			"checkbox": {
+				"x": 75,
+				"y": 901,
+				"width": 18,
+				"height": 18,
+				"right": 93,
+				"bottom": 919
+			},
+			"checkboxRow": {
+				"x": 75,
+				"y": 894,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 926
+			},
+			"remove": {
+				"x": 75,
+				"y": 934,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 966
+			},
+			"drag": {
+				"x": 76,
+				"y": 711,
+				"width": 14,
+				"height": 32,
+				"right": 90,
+				"bottom": 743
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 46,
+					"y": 0
+				},
+				"to": {
+					"x": 37.171875,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 240,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 240,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": false,
+			"removeAlignedWithEnd": false,
+			"axe": []
+		},
+		{
+			"person": "owner",
+			"width": 1440,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-owner-1440-dark.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 478,
+				"y": 777,
+				"width": 413.28125,
+				"height": 190,
+				"right": 891.28125,
+				"bottom": 967
+			},
+			"from": {
+				"x": 491,
+				"y": 882,
+				"width": 169.640625,
+				"height": 32,
+				"right": 660.640625,
+				"bottom": 914
+			},
+			"to": {
+				"x": 668.640625,
+				"y": 882,
+				"width": 169.640625,
+				"height": 32,
+				"right": 838.28125,
+				"bottom": 914
+			},
+			"fromLabel": {
+				"x": 491,
+				"y": 860,
+				"width": 40.25,
+				"height": 16,
+				"right": 531.25,
+				"bottom": 876
+			},
+			"toLabel": {
+				"x": 668.640625,
+				"y": 860,
+				"width": 32.515625,
+				"height": 16,
+				"right": 701.15625,
+				"bottom": 876
+			},
+			"checkbox": {
+				"x": 668.640625,
+				"y": 930,
+				"width": 16,
+				"height": 16,
+				"right": 684.640625,
+				"bottom": 946
+			},
+			"checkboxRow": {
+				"x": 668.640625,
+				"y": 922,
+				"width": 209.640625,
+				"height": 32,
+				"right": 878.28125,
+				"bottom": 954
+			},
+			"remove": {
+				"x": 846.28125,
+				"y": 886,
+				"width": 32,
+				"height": 28,
+				"right": 878.28125,
+				"bottom": 914
+			},
+			"drag": {
+				"x": 492,
+				"y": 815,
+				"width": 14,
+				"height": 28,
+				"right": 506,
+				"bottom": 843
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 169.640625,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "owner",
+			"width": 820,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-owner-820-dark.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 354,
+				"y": 777,
+				"width": 392,
+				"height": 190,
+				"right": 746,
+				"bottom": 967
+			},
+			"from": {
+				"x": 367,
+				"y": 882,
+				"width": 159,
+				"height": 32,
+				"right": 526,
+				"bottom": 914
+			},
+			"to": {
+				"x": 534,
+				"y": 882,
+				"width": 159,
+				"height": 32,
+				"right": 693,
+				"bottom": 914
+			},
+			"fromLabel": {
+				"x": 367,
+				"y": 860,
+				"width": 40.25,
+				"height": 16,
+				"right": 407.25,
+				"bottom": 876
+			},
+			"toLabel": {
+				"x": 534,
+				"y": 860,
+				"width": 32.515625,
+				"height": 16,
+				"right": 566.515625,
+				"bottom": 876
+			},
+			"checkbox": {
+				"x": 534,
+				"y": 930,
+				"width": 16,
+				"height": 16,
+				"right": 550,
+				"bottom": 946
+			},
+			"checkboxRow": {
+				"x": 534,
+				"y": 922,
+				"width": 199,
+				"height": 32,
+				"right": 733,
+				"bottom": 954
+			},
+			"remove": {
+				"x": 701,
+				"y": 886,
+				"width": 32,
+				"height": 28,
+				"right": 733,
+				"bottom": 914
+			},
+			"drag": {
+				"x": 368,
+				"y": 815,
+				"width": 14,
+				"height": 28,
+				"right": 382,
+				"bottom": 843
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 159,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "owner",
+			"width": 390,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-owner-390-dark.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 62,
+				"y": 673,
+				"width": 266,
+				"height": 306,
+				"right": 328,
+				"bottom": 979
+			},
+			"from": {
+				"x": 75,
+				"y": 779,
+				"width": 240,
+				"height": 36,
+				"right": 315,
+				"bottom": 815
+			},
+			"to": {
+				"x": 75,
+				"y": 850,
+				"width": 240,
+				"height": 36,
+				"right": 315,
+				"bottom": 886
+			},
+			"fromLabel": {
+				"x": 75,
+				"y": 755,
+				"width": 46,
+				"height": 18,
+				"right": 121,
+				"bottom": 773
+			},
+			"toLabel": {
+				"x": 75,
+				"y": 826,
+				"width": 37.171875,
+				"height": 18,
+				"right": 112.171875,
+				"bottom": 844
+			},
+			"checkbox": {
+				"x": 75,
+				"y": 901,
+				"width": 18,
+				"height": 18,
+				"right": 93,
+				"bottom": 919
+			},
+			"checkboxRow": {
+				"x": 75,
+				"y": 894,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 926
+			},
+			"remove": {
+				"x": 75,
+				"y": 934,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 966
+			},
+			"drag": {
+				"x": 76,
+				"y": 711,
+				"width": 14,
+				"height": 32,
+				"right": 90,
+				"bottom": 743
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 46,
+					"y": 0
+				},
+				"to": {
+					"x": 37.171875,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 240,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 240,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": false,
+			"removeAlignedWithEnd": false,
+			"axe": []
+		},
+		{
+			"person": "admin",
+			"width": 1440,
+			"theme": "light",
+			"actualTheme": "light",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-admin-1440-light.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 478,
+				"y": 777,
+				"width": 413.28125,
+				"height": 190,
+				"right": 891.28125,
+				"bottom": 967
+			},
+			"from": {
+				"x": 491,
+				"y": 882,
+				"width": 169.640625,
+				"height": 32,
+				"right": 660.640625,
+				"bottom": 914
+			},
+			"to": {
+				"x": 668.640625,
+				"y": 882,
+				"width": 169.640625,
+				"height": 32,
+				"right": 838.28125,
+				"bottom": 914
+			},
+			"fromLabel": {
+				"x": 491,
+				"y": 860,
+				"width": 40.25,
+				"height": 16,
+				"right": 531.25,
+				"bottom": 876
+			},
+			"toLabel": {
+				"x": 668.640625,
+				"y": 860,
+				"width": 32.515625,
+				"height": 16,
+				"right": 701.15625,
+				"bottom": 876
+			},
+			"checkbox": {
+				"x": 668.640625,
+				"y": 930,
+				"width": 16,
+				"height": 16,
+				"right": 684.640625,
+				"bottom": 946
+			},
+			"checkboxRow": {
+				"x": 668.640625,
+				"y": 922,
+				"width": 209.640625,
+				"height": 32,
+				"right": 878.28125,
+				"bottom": 954
+			},
+			"remove": {
+				"x": 846.28125,
+				"y": 886,
+				"width": 32,
+				"height": 28,
+				"right": 878.28125,
+				"bottom": 914
+			},
+			"drag": {
+				"x": 492,
+				"y": 815,
+				"width": 14,
+				"height": 28,
+				"right": 506,
+				"bottom": 843
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 169.640625,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "admin",
+			"width": 820,
+			"theme": "light",
+			"actualTheme": "light",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-admin-820-light.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 354,
+				"y": 777,
+				"width": 392,
+				"height": 190,
+				"right": 746,
+				"bottom": 967
+			},
+			"from": {
+				"x": 367,
+				"y": 882,
+				"width": 159,
+				"height": 32,
+				"right": 526,
+				"bottom": 914
+			},
+			"to": {
+				"x": 534,
+				"y": 882,
+				"width": 159,
+				"height": 32,
+				"right": 693,
+				"bottom": 914
+			},
+			"fromLabel": {
+				"x": 367,
+				"y": 860,
+				"width": 40.25,
+				"height": 16,
+				"right": 407.25,
+				"bottom": 876
+			},
+			"toLabel": {
+				"x": 534,
+				"y": 860,
+				"width": 32.515625,
+				"height": 16,
+				"right": 566.515625,
+				"bottom": 876
+			},
+			"checkbox": {
+				"x": 534,
+				"y": 930,
+				"width": 16,
+				"height": 16,
+				"right": 550,
+				"bottom": 946
+			},
+			"checkboxRow": {
+				"x": 534,
+				"y": 922,
+				"width": 199,
+				"height": 32,
+				"right": 733,
+				"bottom": 954
+			},
+			"remove": {
+				"x": 701,
+				"y": 886,
+				"width": 32,
+				"height": 28,
+				"right": 733,
+				"bottom": 914
+			},
+			"drag": {
+				"x": 368,
+				"y": 815,
+				"width": 14,
+				"height": 28,
+				"right": 382,
+				"bottom": 843
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 159,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "admin",
+			"width": 390,
+			"theme": "light",
+			"actualTheme": "light",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-admin-390-light.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 62,
+				"y": 673,
+				"width": 266,
+				"height": 306,
+				"right": 328,
+				"bottom": 979
+			},
+			"from": {
+				"x": 75,
+				"y": 779,
+				"width": 240,
+				"height": 36,
+				"right": 315,
+				"bottom": 815
+			},
+			"to": {
+				"x": 75,
+				"y": 850,
+				"width": 240,
+				"height": 36,
+				"right": 315,
+				"bottom": 886
+			},
+			"fromLabel": {
+				"x": 75,
+				"y": 755,
+				"width": 46,
+				"height": 18,
+				"right": 121,
+				"bottom": 773
+			},
+			"toLabel": {
+				"x": 75,
+				"y": 826,
+				"width": 37.171875,
+				"height": 18,
+				"right": 112.171875,
+				"bottom": 844
+			},
+			"checkbox": {
+				"x": 75,
+				"y": 901,
+				"width": 18,
+				"height": 18,
+				"right": 93,
+				"bottom": 919
+			},
+			"checkboxRow": {
+				"x": 75,
+				"y": 894,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 926
+			},
+			"remove": {
+				"x": 75,
+				"y": 934,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 966
+			},
+			"drag": {
+				"x": 76,
+				"y": 711,
+				"width": 14,
+				"height": 32,
+				"right": 90,
+				"bottom": 743
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 46,
+					"y": 0
+				},
+				"to": {
+					"x": 37.171875,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 240,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 240,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": false,
+			"removeAlignedWithEnd": false,
+			"axe": []
+		},
+		{
+			"person": "admin",
+			"width": 1440,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-admin-1440-dark.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 478,
+				"y": 777,
+				"width": 413.28125,
+				"height": 190,
+				"right": 891.28125,
+				"bottom": 967
+			},
+			"from": {
+				"x": 491,
+				"y": 882,
+				"width": 169.640625,
+				"height": 32,
+				"right": 660.640625,
+				"bottom": 914
+			},
+			"to": {
+				"x": 668.640625,
+				"y": 882,
+				"width": 169.640625,
+				"height": 32,
+				"right": 838.28125,
+				"bottom": 914
+			},
+			"fromLabel": {
+				"x": 491,
+				"y": 860,
+				"width": 40.25,
+				"height": 16,
+				"right": 531.25,
+				"bottom": 876
+			},
+			"toLabel": {
+				"x": 668.640625,
+				"y": 860,
+				"width": 32.515625,
+				"height": 16,
+				"right": 701.15625,
+				"bottom": 876
+			},
+			"checkbox": {
+				"x": 668.640625,
+				"y": 930,
+				"width": 16,
+				"height": 16,
+				"right": 684.640625,
+				"bottom": 946
+			},
+			"checkboxRow": {
+				"x": 668.640625,
+				"y": 922,
+				"width": 209.640625,
+				"height": 32,
+				"right": 878.28125,
+				"bottom": 954
+			},
+			"remove": {
+				"x": 846.28125,
+				"y": 886,
+				"width": 32,
+				"height": 28,
+				"right": 878.28125,
+				"bottom": 914
+			},
+			"drag": {
+				"x": 492,
+				"y": 815,
+				"width": 14,
+				"height": 28,
+				"right": 506,
+				"bottom": 843
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 169.640625,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "admin",
+			"width": 820,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-admin-820-dark.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 354,
+				"y": 777,
+				"width": 392,
+				"height": 190,
+				"right": 746,
+				"bottom": 967
+			},
+			"from": {
+				"x": 367,
+				"y": 882,
+				"width": 159,
+				"height": 32,
+				"right": 526,
+				"bottom": 914
+			},
+			"to": {
+				"x": 534,
+				"y": 882,
+				"width": 159,
+				"height": 32,
+				"right": 693,
+				"bottom": 914
+			},
+			"fromLabel": {
+				"x": 367,
+				"y": 860,
+				"width": 40.25,
+				"height": 16,
+				"right": 407.25,
+				"bottom": 876
+			},
+			"toLabel": {
+				"x": 534,
+				"y": 860,
+				"width": 32.515625,
+				"height": 16,
+				"right": 566.515625,
+				"bottom": 876
+			},
+			"checkbox": {
+				"x": 534,
+				"y": 930,
+				"width": 16,
+				"height": 16,
+				"right": 550,
+				"bottom": 946
+			},
+			"checkboxRow": {
+				"x": 534,
+				"y": 922,
+				"width": 199,
+				"height": 32,
+				"right": 733,
+				"bottom": 954
+			},
+			"remove": {
+				"x": 701,
+				"y": 886,
+				"width": 32,
+				"height": 28,
+				"right": 733,
+				"bottom": 914
+			},
+			"drag": {
+				"x": 368,
+				"y": 815,
+				"width": 14,
+				"height": 28,
+				"right": 382,
+				"bottom": 843
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 159,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "admin",
+			"width": 390,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-admin-390-dark.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 62,
+				"y": 673,
+				"width": 266,
+				"height": 306,
+				"right": 328,
+				"bottom": 979
+			},
+			"from": {
+				"x": 75,
+				"y": 779,
+				"width": 240,
+				"height": 36,
+				"right": 315,
+				"bottom": 815
+			},
+			"to": {
+				"x": 75,
+				"y": 850,
+				"width": 240,
+				"height": 36,
+				"right": 315,
+				"bottom": 886
+			},
+			"fromLabel": {
+				"x": 75,
+				"y": 755,
+				"width": 46,
+				"height": 18,
+				"right": 121,
+				"bottom": 773
+			},
+			"toLabel": {
+				"x": 75,
+				"y": 826,
+				"width": 37.171875,
+				"height": 18,
+				"right": 112.171875,
+				"bottom": 844
+			},
+			"checkbox": {
+				"x": 75,
+				"y": 901,
+				"width": 18,
+				"height": 18,
+				"right": 93,
+				"bottom": 919
+			},
+			"checkboxRow": {
+				"x": 75,
+				"y": 894,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 926
+			},
+			"remove": {
+				"x": 75,
+				"y": 934,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 966
+			},
+			"drag": {
+				"x": 76,
+				"y": 711,
+				"width": 14,
+				"height": 32,
+				"right": 90,
+				"bottom": 743
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 46,
+					"y": 0
+				},
+				"to": {
+					"x": 37.171875,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 240,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 240,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": false,
+			"removeAlignedWithEnd": false,
+			"axe": []
+		},
+		{
+			"person": "member",
+			"width": 1440,
+			"theme": "light",
+			"actualTheme": "light",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/sit-service-calendar",
+			"screenshot": "../screens/20261030-calendar-alignment-after-member-1440-light.png",
+			"maskedMemberSchedule": true,
+			"root": {
+				"x": 478,
+				"y": 777,
+				"width": 413.28125,
+				"height": 190,
+				"right": 891.28125,
+				"bottom": 967
+			},
+			"from": {
+				"x": 491,
+				"y": 882,
+				"width": 169.640625,
+				"height": 32,
+				"right": 660.640625,
+				"bottom": 914
+			},
+			"to": {
+				"x": 669.640625,
+				"y": 883,
+				"width": 167.640625,
+				"height": 30,
+				"right": 837.28125,
+				"bottom": 913
+			},
+			"fromLabel": {
+				"x": 491,
+				"y": 860,
+				"width": 40.25,
+				"height": 16,
+				"right": 531.25,
+				"bottom": 876
+			},
+			"toLabel": {
+				"x": 668.640625,
+				"y": 860,
+				"width": 32.515625,
+				"height": 16,
+				"right": 701.15625,
+				"bottom": 876
+			},
+			"checkbox": {
+				"x": 668.640625,
+				"y": 930,
+				"width": 16,
+				"height": 16,
+				"right": 684.640625,
+				"bottom": 946
+			},
+			"checkboxRow": {
+				"x": 668.640625,
+				"y": 922,
+				"width": 209.640625,
+				"height": 32,
+				"right": 878.28125,
+				"bottom": 954
+			},
+			"remove": {
+				"x": 846.28125,
+				"y": 886,
+				"width": 32,
+				"height": 28,
+				"right": 878.28125,
+				"bottom": 914
+			},
+			"drag": {
+				"x": 492,
+				"y": 815,
+				"width": 385.28125,
+				"height": 28,
+				"right": 877.28125,
+				"bottom": 843
+			},
+			"disabled": {
+				"from": true,
+				"to": true,
+				"checkbox": true,
+				"remove": true,
+				"drag": true
+			},
+			"dragPresent": true,
+			"checkboxChecked": true,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 31.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 167.640625,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "member",
+			"width": 820,
+			"theme": "light",
+			"actualTheme": "light",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/sit-service-calendar",
+			"screenshot": "../screens/20261030-calendar-alignment-after-member-820-light.png",
+			"maskedMemberSchedule": true,
+			"root": {
+				"x": 354,
+				"y": 451,
+				"width": 392,
+				"height": 190,
+				"right": 746,
+				"bottom": 641
+			},
+			"from": {
+				"x": 367,
+				"y": 556,
+				"width": 159,
+				"height": 32,
+				"right": 526,
+				"bottom": 588
+			},
+			"to": {
+				"x": 535,
+				"y": 557,
+				"width": 157,
+				"height": 30,
+				"right": 692,
+				"bottom": 587
+			},
+			"fromLabel": {
+				"x": 367,
+				"y": 534,
+				"width": 40.25,
+				"height": 16,
+				"right": 407.25,
+				"bottom": 550
+			},
+			"toLabel": {
+				"x": 534,
+				"y": 534,
+				"width": 32.515625,
+				"height": 16,
+				"right": 566.515625,
+				"bottom": 550
+			},
+			"checkbox": {
+				"x": 534,
+				"y": 604,
+				"width": 16,
+				"height": 16,
+				"right": 550,
+				"bottom": 620
+			},
+			"checkboxRow": {
+				"x": 534,
+				"y": 596,
+				"width": 199,
+				"height": 32,
+				"right": 733,
+				"bottom": 628
+			},
+			"remove": {
+				"x": 701,
+				"y": 560,
+				"width": 32,
+				"height": 28,
+				"right": 733,
+				"bottom": 588
+			},
+			"drag": {
+				"x": 368,
+				"y": 489,
+				"width": 364,
+				"height": 28,
+				"right": 732,
+				"bottom": 517
+			},
+			"disabled": {
+				"from": true,
+				"to": true,
+				"checkbox": true,
+				"remove": true,
+				"drag": true
+			},
+			"dragPresent": true,
+			"checkboxChecked": true,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 31.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 157,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "member",
+			"width": 390,
+			"theme": "light",
+			"actualTheme": "light",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/sit-service-calendar",
+			"screenshot": "../screens/20261030-calendar-alignment-after-member-390-light.png",
+			"maskedMemberSchedule": true,
+			"root": {
+				"x": 62,
+				"y": 642,
+				"width": 266,
+				"height": 306,
+				"right": 328,
+				"bottom": 948
+			},
+			"from": {
+				"x": 75,
+				"y": 748,
+				"width": 240,
+				"height": 36,
+				"right": 315,
+				"bottom": 784
+			},
+			"to": {
+				"x": 76,
+				"y": 820,
+				"width": 238,
+				"height": 34,
+				"right": 314,
+				"bottom": 854
+			},
+			"fromLabel": {
+				"x": 75,
+				"y": 724,
+				"width": 46,
+				"height": 18,
+				"right": 121,
+				"bottom": 742
+			},
+			"toLabel": {
+				"x": 75,
+				"y": 795,
+				"width": 37.171875,
+				"height": 18,
+				"right": 112.171875,
+				"bottom": 813
+			},
+			"checkbox": {
+				"x": 75,
+				"y": 870,
+				"width": 18,
+				"height": 18,
+				"right": 93,
+				"bottom": 888
+			},
+			"checkboxRow": {
+				"x": 75,
+				"y": 863,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 895
+			},
+			"remove": {
+				"x": 75,
+				"y": 903,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 935
+			},
+			"drag": {
+				"x": 76,
+				"y": 680,
+				"width": 238,
+				"height": 32,
+				"right": 314,
+				"bottom": 712
+			},
+			"disabled": {
+				"from": true,
+				"to": true,
+				"checkbox": true,
+				"remove": true,
+				"drag": true
+			},
+			"dragPresent": true,
+			"checkboxChecked": true,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 46,
+					"y": 0
+				},
+				"to": {
+					"x": 36.171875,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 238,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 240,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": false,
+			"removeAlignedWithEnd": false,
+			"axe": []
+		},
+		{
+			"person": "member",
+			"width": 1440,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/sit-service-calendar",
+			"screenshot": "../screens/20261030-calendar-alignment-after-member-1440-dark.png",
+			"maskedMemberSchedule": true,
+			"root": {
+				"x": 478,
+				"y": 777,
+				"width": 413.28125,
+				"height": 190,
+				"right": 891.28125,
+				"bottom": 967
+			},
+			"from": {
+				"x": 491,
+				"y": 882,
+				"width": 169.640625,
+				"height": 32,
+				"right": 660.640625,
+				"bottom": 914
+			},
+			"to": {
+				"x": 669.640625,
+				"y": 883,
+				"width": 167.640625,
+				"height": 30,
+				"right": 837.28125,
+				"bottom": 913
+			},
+			"fromLabel": {
+				"x": 491,
+				"y": 860,
+				"width": 40.25,
+				"height": 16,
+				"right": 531.25,
+				"bottom": 876
+			},
+			"toLabel": {
+				"x": 668.640625,
+				"y": 860,
+				"width": 32.515625,
+				"height": 16,
+				"right": 701.15625,
+				"bottom": 876
+			},
+			"checkbox": {
+				"x": 668.640625,
+				"y": 930,
+				"width": 16,
+				"height": 16,
+				"right": 684.640625,
+				"bottom": 946
+			},
+			"checkboxRow": {
+				"x": 668.640625,
+				"y": 922,
+				"width": 209.640625,
+				"height": 32,
+				"right": 878.28125,
+				"bottom": 954
+			},
+			"remove": {
+				"x": 846.28125,
+				"y": 886,
+				"width": 32,
+				"height": 28,
+				"right": 878.28125,
+				"bottom": 914
+			},
+			"drag": {
+				"x": 492,
+				"y": 815,
+				"width": 385.28125,
+				"height": 28,
+				"right": 877.28125,
+				"bottom": 843
+			},
+			"disabled": {
+				"from": true,
+				"to": true,
+				"checkbox": true,
+				"remove": true,
+				"drag": true
+			},
+			"dragPresent": true,
+			"checkboxChecked": true,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 31.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 167.640625,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "member",
+			"width": 820,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/sit-service-calendar",
+			"screenshot": "../screens/20261030-calendar-alignment-after-member-820-dark.png",
+			"maskedMemberSchedule": true,
+			"root": {
+				"x": 354,
+				"y": 451,
+				"width": 392,
+				"height": 190,
+				"right": 746,
+				"bottom": 641
+			},
+			"from": {
+				"x": 367,
+				"y": 556,
+				"width": 159,
+				"height": 32,
+				"right": 526,
+				"bottom": 588
+			},
+			"to": {
+				"x": 535,
+				"y": 557,
+				"width": 157,
+				"height": 30,
+				"right": 692,
+				"bottom": 587
+			},
+			"fromLabel": {
+				"x": 367,
+				"y": 534,
+				"width": 40.25,
+				"height": 16,
+				"right": 407.25,
+				"bottom": 550
+			},
+			"toLabel": {
+				"x": 534,
+				"y": 534,
+				"width": 32.515625,
+				"height": 16,
+				"right": 566.515625,
+				"bottom": 550
+			},
+			"checkbox": {
+				"x": 534,
+				"y": 604,
+				"width": 16,
+				"height": 16,
+				"right": 550,
+				"bottom": 620
+			},
+			"checkboxRow": {
+				"x": 534,
+				"y": 596,
+				"width": 199,
+				"height": 32,
+				"right": 733,
+				"bottom": 628
+			},
+			"remove": {
+				"x": 701,
+				"y": 560,
+				"width": 32,
+				"height": 28,
+				"right": 733,
+				"bottom": 588
+			},
+			"drag": {
+				"x": 368,
+				"y": 489,
+				"width": 364,
+				"height": 28,
+				"right": 732,
+				"bottom": 517
+			},
+			"disabled": {
+				"from": true,
+				"to": true,
+				"checkbox": true,
+				"remove": true,
+				"drag": true
+			},
+			"dragPresent": true,
+			"checkboxChecked": true,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 31.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 157,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "member",
+			"width": 390,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/sit-service-calendar",
+			"screenshot": "../screens/20261030-calendar-alignment-after-member-390-dark.png",
+			"maskedMemberSchedule": true,
+			"root": {
+				"x": 62,
+				"y": 642,
+				"width": 266,
+				"height": 306,
+				"right": 328,
+				"bottom": 948
+			},
+			"from": {
+				"x": 75,
+				"y": 748,
+				"width": 240,
+				"height": 36,
+				"right": 315,
+				"bottom": 784
+			},
+			"to": {
+				"x": 76,
+				"y": 820,
+				"width": 238,
+				"height": 34,
+				"right": 314,
+				"bottom": 854
+			},
+			"fromLabel": {
+				"x": 75,
+				"y": 724,
+				"width": 46,
+				"height": 18,
+				"right": 121,
+				"bottom": 742
+			},
+			"toLabel": {
+				"x": 75,
+				"y": 795,
+				"width": 37.171875,
+				"height": 18,
+				"right": 112.171875,
+				"bottom": 813
+			},
+			"checkbox": {
+				"x": 75,
+				"y": 870,
+				"width": 18,
+				"height": 18,
+				"right": 93,
+				"bottom": 888
+			},
+			"checkboxRow": {
+				"x": 75,
+				"y": 863,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 895
+			},
+			"remove": {
+				"x": 75,
+				"y": 903,
+				"width": 240,
+				"height": 32,
+				"right": 315,
+				"bottom": 935
+			},
+			"drag": {
+				"x": 76,
+				"y": 680,
+				"width": 238,
+				"height": 32,
+				"right": 314,
+				"bottom": 712
+			},
+			"disabled": {
+				"from": true,
+				"to": true,
+				"checkbox": true,
+				"remove": true,
+				"drag": true
+			},
+			"dragPresent": true,
+			"checkboxChecked": true,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 46,
+					"y": 0
+				},
+				"to": {
+					"x": 36.171875,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 238,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 240,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": false,
+			"removeAlignedWithEnd": false,
+			"axe": []
+		}
+	],
+	"breakpoints": [
+		{
+			"person": "owner",
+			"width": 1023,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-owner-1023-dark-boundary.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 354,
+				"y": 426,
+				"width": 595,
+				"height": 190,
+				"right": 949,
+				"bottom": 616
+			},
+			"from": {
+				"x": 367,
+				"y": 531,
+				"width": 260.5,
+				"height": 32,
+				"right": 627.5,
+				"bottom": 563
+			},
+			"to": {
+				"x": 635.5,
+				"y": 531,
+				"width": 260.5,
+				"height": 32,
+				"right": 896,
+				"bottom": 563
+			},
+			"fromLabel": {
+				"x": 367,
+				"y": 509,
+				"width": 40.25,
+				"height": 16,
+				"right": 407.25,
+				"bottom": 525
+			},
+			"toLabel": {
+				"x": 635.5,
+				"y": 509,
+				"width": 32.515625,
+				"height": 16,
+				"right": 668.015625,
+				"bottom": 525
+			},
+			"checkbox": {
+				"x": 635.5,
+				"y": 579,
+				"width": 16,
+				"height": 16,
+				"right": 651.5,
+				"bottom": 595
+			},
+			"checkboxRow": {
+				"x": 635.5,
+				"y": 571,
+				"width": 300.5,
+				"height": 32,
+				"right": 936,
+				"bottom": 603
+			},
+			"remove": {
+				"x": 904,
+				"y": 535,
+				"width": 32,
+				"height": 28,
+				"right": 936,
+				"bottom": 563
+			},
+			"drag": {
+				"x": 368,
+				"y": 464,
+				"width": 14,
+				"height": 28,
+				"right": 382,
+				"bottom": 492
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 260.5,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "owner",
+			"width": 1024,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-owner-1024-dark-boundary.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 478,
+				"y": 386,
+				"width": 341.28125,
+				"height": 190,
+				"right": 819.28125,
+				"bottom": 576
+			},
+			"from": {
+				"x": 491,
+				"y": 491,
+				"width": 133.640625,
+				"height": 32,
+				"right": 624.640625,
+				"bottom": 523
+			},
+			"to": {
+				"x": 632.640625,
+				"y": 491,
+				"width": 133.640625,
+				"height": 32,
+				"right": 766.28125,
+				"bottom": 523
+			},
+			"fromLabel": {
+				"x": 491,
+				"y": 469,
+				"width": 40.25,
+				"height": 16,
+				"right": 531.25,
+				"bottom": 485
+			},
+			"toLabel": {
+				"x": 632.640625,
+				"y": 469,
+				"width": 32.515625,
+				"height": 16,
+				"right": 665.15625,
+				"bottom": 485
+			},
+			"checkbox": {
+				"x": 632.640625,
+				"y": 539,
+				"width": 16,
+				"height": 16,
+				"right": 648.640625,
+				"bottom": 555
+			},
+			"checkboxRow": {
+				"x": 632.640625,
+				"y": 531,
+				"width": 173.640625,
+				"height": 32,
+				"right": 806.28125,
+				"bottom": 563
+			},
+			"remove": {
+				"x": 774.28125,
+				"y": 495,
+				"width": 32,
+				"height": 28,
+				"right": 806.28125,
+				"bottom": 523
+			},
+			"drag": {
+				"x": 492,
+				"y": 424,
+				"width": 14,
+				"height": 28,
+				"right": 506,
+				"bottom": 452
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 133.640625,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "owner",
+			"width": 1279,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-owner-1279-dark-boundary.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 478,
+				"y": 370,
+				"width": 596.28125,
+				"height": 190,
+				"right": 1074.28125,
+				"bottom": 560
+			},
+			"from": {
+				"x": 491,
+				"y": 475,
+				"width": 261.140625,
+				"height": 32,
+				"right": 752.140625,
+				"bottom": 507
+			},
+			"to": {
+				"x": 760.140625,
+				"y": 475,
+				"width": 261.140625,
+				"height": 32,
+				"right": 1021.28125,
+				"bottom": 507
+			},
+			"fromLabel": {
+				"x": 491,
+				"y": 453,
+				"width": 40.25,
+				"height": 16,
+				"right": 531.25,
+				"bottom": 469
+			},
+			"toLabel": {
+				"x": 760.140625,
+				"y": 453,
+				"width": 32.515625,
+				"height": 16,
+				"right": 792.65625,
+				"bottom": 469
+			},
+			"checkbox": {
+				"x": 760.140625,
+				"y": 523,
+				"width": 16,
+				"height": 16,
+				"right": 776.140625,
+				"bottom": 539
+			},
+			"checkboxRow": {
+				"x": 760.140625,
+				"y": 515,
+				"width": 301.140625,
+				"height": 32,
+				"right": 1061.28125,
+				"bottom": 547
+			},
+			"remove": {
+				"x": 1029.28125,
+				"y": 479,
+				"width": 32,
+				"height": 28,
+				"right": 1061.28125,
+				"bottom": 507
+			},
+			"drag": {
+				"x": 492,
+				"y": 408,
+				"width": 14,
+				"height": 28,
+				"right": 506,
+				"bottom": 436
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 261.140625,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		},
+		{
+			"person": "owner",
+			"width": 1280,
+			"theme": "dark",
+			"actualTheme": "dark",
+			"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+			"screenshot": "../screens/20261030-calendar-alignment-after-owner-1280-dark-boundary.png",
+			"maskedMemberSchedule": false,
+			"root": {
+				"x": 478,
+				"y": 402,
+				"width": 253.28125,
+				"height": 190,
+				"right": 731.28125,
+				"bottom": 592
+			},
+			"from": {
+				"x": 491,
+				"y": 507,
+				"width": 89.640625,
+				"height": 32,
+				"right": 580.640625,
+				"bottom": 539
+			},
+			"to": {
+				"x": 588.640625,
+				"y": 507,
+				"width": 89.640625,
+				"height": 32,
+				"right": 678.28125,
+				"bottom": 539
+			},
+			"fromLabel": {
+				"x": 491,
+				"y": 485,
+				"width": 40.25,
+				"height": 16,
+				"right": 531.25,
+				"bottom": 501
+			},
+			"toLabel": {
+				"x": 588.640625,
+				"y": 485,
+				"width": 32.515625,
+				"height": 16,
+				"right": 621.15625,
+				"bottom": 501
+			},
+			"checkbox": {
+				"x": 588.640625,
+				"y": 555,
+				"width": 16,
+				"height": 16,
+				"right": 604.640625,
+				"bottom": 571
+			},
+			"checkboxRow": {
+				"x": 588.640625,
+				"y": 547,
+				"width": 129.640625,
+				"height": 32,
+				"right": 718.28125,
+				"bottom": 579
+			},
+			"remove": {
+				"x": 686.28125,
+				"y": 511,
+				"width": 32,
+				"height": 28,
+				"right": 718.28125,
+				"bottom": 539
+			},
+			"drag": {
+				"x": 492,
+				"y": 440,
+				"width": 14,
+				"height": 28,
+				"right": 506,
+				"bottom": 468
+			},
+			"disabled": {
+				"from": false,
+				"to": false,
+				"checkbox": false,
+				"remove": false,
+				"drag": false
+			},
+			"dragPresent": true,
+			"checkboxChecked": false,
+			"nativeDateTime": 0,
+			"documentOverflow": false,
+			"rootOverflow": false,
+			"labelControlsOverlap": {
+				"from": {
+					"x": 40.25,
+					"y": 0
+				},
+				"to": {
+					"x": 32.515625,
+					"y": 0
+				}
+			},
+			"checkboxOverlapEnd": {
+				"x": 89.640625,
+				"y": 0
+			},
+			"checkboxOverlapRemove": {
+				"x": 32,
+				"y": 0
+			},
+			"checkboxWithinRoot": true,
+			"fromToSameRow": true,
+			"removeAlignedWithEnd": true,
+			"axe": []
+		}
+	],
+	"focusedInteractions": {
+		"runtime": "283867012e0af4cd5fa6664f6fd16d9ef30e1022",
+		"cases": [
+			{
+				"person": "owner",
+				"width": 390,
+				"theme": "dark",
+				"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+				"actualTheme": "dark",
+				"pickerOnlySavedLocalEnd": "17:23",
+				"escapeStartFocusRestored": true,
+				"boundaryOn": {
+					"checkboxWithinRoot": true,
+					"checked": true
+				},
+				"boundaryOffRestored17_23": true,
+				"drag": {
+					"present": true,
+					"ariaLabel": true,
+					"disabled": false
+				},
+				"onFile": "../screens/20261030-calendar-alignment-after-owner-390-dark-valid-end-boundary-on.png",
+				"restoredFile": "../screens/20261030-calendar-alignment-after-owner-390-dark-valid-end-restored.png"
+			},
+			{
+				"person": "admin",
+				"width": 820,
+				"theme": "light",
+				"actualUrl": "https://ticketing.localhost/agent/settings/calendars/new",
+				"actualTheme": "light",
+				"pickerOnlySavedLocalEnd": "17:23",
+				"escapeStartFocusRestored": true,
+				"boundaryOn": {
+					"checkboxWithinRoot": true,
+					"checked": true
+				},
+				"boundaryOffRestored17_23": true,
+				"drag": {
+					"present": true,
+					"ariaLabel": true,
+					"disabled": false
+				},
+				"onFile": "../screens/20261030-calendar-alignment-after-admin-820-light-valid-end-boundary-on.png",
+				"restoredFile": "../screens/20261030-calendar-alignment-after-admin-820-light-valid-end-restored.png"
+			}
+		],
+		"rateEvents": [],
+		"nonGetRequests": [],
+		"errors": [],
+		"scope": "Two local draft Calendar #971 boundary/focus journeys; no outer Save",
+		"containersStarted": "none",
+		"completed": {
+			"cases": 2,
+			"rate429": 0,
+			"nonGetRequests": 0,
+			"errors": 0,
+			"stoppedOn429": false
+		}
+	},
+	"screenshots": {
+		"before": [
+			"../screens/20261030-calendar-after-matrix-owner-820-light-mon-0-from-focus.png",
+			"../screens/20261030-calendar-after-matrix-owner-820-dark-mon-0-from-focus.png",
+			"../screens/20261030-calendar-after-matrix-owner-1280-dark-boundary.png"
+		],
+		"after": [
+			"../screens/20261030-calendar-alignment-after-admin-1440-dark.png",
+			"../screens/20261030-calendar-alignment-after-admin-1440-light.png",
+			"../screens/20261030-calendar-alignment-after-admin-390-dark.png",
+			"../screens/20261030-calendar-alignment-after-admin-390-light.png",
+			"../screens/20261030-calendar-alignment-after-admin-820-dark.png",
+			"../screens/20261030-calendar-alignment-after-admin-820-light-valid-end-boundary-on.png",
+			"../screens/20261030-calendar-alignment-after-admin-820-light-valid-end-restored.png",
+			"../screens/20261030-calendar-alignment-after-admin-820-light.png",
+			"../screens/20261030-calendar-alignment-after-member-1440-dark.png",
+			"../screens/20261030-calendar-alignment-after-member-1440-light.png",
+			"../screens/20261030-calendar-alignment-after-member-390-dark.png",
+			"../screens/20261030-calendar-alignment-after-member-390-light.png",
+			"../screens/20261030-calendar-alignment-after-member-820-dark.png",
+			"../screens/20261030-calendar-alignment-after-member-820-light.png",
+			"../screens/20261030-calendar-alignment-after-owner-1023-dark-boundary.png",
+			"../screens/20261030-calendar-alignment-after-owner-1024-dark-boundary.png",
+			"../screens/20261030-calendar-alignment-after-owner-1279-dark-boundary.png",
+			"../screens/20261030-calendar-alignment-after-owner-1280-dark-boundary.png",
+			"../screens/20261030-calendar-alignment-after-owner-1440-dark.png",
+			"../screens/20261030-calendar-alignment-after-owner-1440-light.png",
+			"../screens/20261030-calendar-alignment-after-owner-390-dark-valid-end-boundary-on.png",
+			"../screens/20261030-calendar-alignment-after-owner-390-dark-valid-end-restored.png",
+			"../screens/20261030-calendar-alignment-after-owner-390-dark.png",
+			"../screens/20261030-calendar-alignment-after-owner-390-light.png",
+			"../screens/20261030-calendar-alignment-after-owner-820-dark.png",
+			"../screens/20261030-calendar-alignment-after-owner-820-light.png"
+		],
+		"acceptedAfterCount": 26,
+		"privacy": "Actual browser component crops; member persisted time values masked at capture. No image post-edit."
+	},
+	"local": {
+		"unitTests": 7273,
+		"typecheckTasks": 9,
+		"focusedTests": 5,
+		"permissions": 118,
+		"contrastPairs": 401,
+		"checks": [
+			{
+				"command": "pnpm test",
+				"exitCode": 0,
+				"durationMs": 164684
+			},
+			{
+				"command": "pnpm typecheck",
+				"exitCode": 0,
+				"durationMs": 17083
+			},
+			{
+				"command": "pnpm lint:ci",
+				"exitCode": 0,
+				"durationMs": 3743
+			},
+			{
+				"command": "pnpm check:ui:raw-elements",
+				"exitCode": 0,
+				"durationMs": 4833
+			},
+			{
+				"command": "pnpm check:i18n",
+				"exitCode": 0,
+				"durationMs": 1040
+			},
+			{
+				"command": "pnpm test:permissions",
+				"exitCode": 0,
+				"durationMs": 16940
+			},
+			{
+				"command": "pnpm check:route-policy",
+				"exitCode": 0,
+				"durationMs": 16022
+			},
+			{
+				"command": "pnpm test:contract",
+				"exitCode": 0,
+				"durationMs": 17147
+			},
+			{
+				"command": "pnpm check:tokens",
+				"exitCode": 0,
+				"durationMs": 76574
+			},
+			{
+				"command": "pnpm check:bundle-size",
+				"exitCode": 0,
+				"durationMs": 673
+			},
+			{
+				"command": "pnpm check:bundle-purity",
+				"exitCode": 0,
+				"durationMs": 543
+			},
+			{
+				"command": "pnpm check:visual-scope",
+				"exitCode": 0,
+				"durationMs": 1246
+			}
+		],
+		"contrastManifest": {
+			"changedOccurrenceEntries": [199, 200],
+			"allColorCriteriaAndThresholdsUnchanged": true
+		},
+		"pinnedVisuals": {
+			"source": "283867012e0af4cd5fa6664f6fd16d9ef30e1022",
+			"passed": 6,
+			"failed": 0,
+			"baselineChanges": 0,
+			"actualRuntimeAssetsReused": true
+		}
+	},
+	"review": {
+		"independentTerra": true,
+		"sourceAndActualScreenshots": true,
+		"openHighMediumLow": 0
+	},
+	"history": [
+		"First token check correctly rejected stale occurrence paths for the moved checkbox. Existing generator refreshed only occurrence metadata for entries199/200; all401 criteria and ratios unchanged.",
+		"Two initial browser expectations tried restoring invalid00:00; unchanged existing guard returns00:01. Two corrected17:23→24:00→17:23 cases pass; original driver history retained.",
+		"First private pinned selector incorrectly anchored a file-prefixed title, selected0 and failed closed; corrected six-case selection passed without app/test/baseline changes."
+	],
+	"limits": [
+		"No outer Calendar Save, persisted changes or reload were tested.",
+		"First matrix interaction expected invalid default 00:00 end to restore unchanged; existing guard correctly produced 00:01. Corrected 17:23 focused interaction passes and original driver errors remain recorded.",
+		"Screenshot crops show Monday window component only; persisted member time controls are masked."
+	],
+	"containers": {
+		"activeOwnedSIT": "b11e2dc343c191a9a9214e177bd19c67d071954e3df82fcea93508f82a17fde4",
+		"supersededOwnedRemoved": "b4398751652a660271f2f35788c7e1d1d0b0e52582c6312103bf4477e0cb8388",
+		"temporaryRemoved": [
+			"dd1472314162ed20e237ed7ebe537e9beeabcbb2d69043a386e6d49994b3ebd5",
+			"93d40525cf348749e388d081ace53dbde073cdc570333d97ddf0af155501ca08"
+		],
+		"originalRollbackStopped": "6c0d8bd2e4ff"
+	}
+}
