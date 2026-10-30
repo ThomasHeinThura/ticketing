@@ -2018,6 +2018,7 @@
 			"backToBoard": "Назад на табла",
 			"savedViews": "Saved views",
 			"godMode": "God Mode",
+			"observability": "Набљудливост",
 			"inbox": "Inbox",
 			"myWork": "My work",
 			"search": "Search",
@@ -2083,7 +2084,7 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Поставки",
 			"backToWorkspace": "Назад кон работен простор",
-			"backToProject": "Назад кон проектот",
+			"backToProject": "Назад кон {{term_project_one}}",
 			"settingsWorkspaceTab": "Работен простор",
 			"projectActions": "Actions for {{name}}"
 		},
