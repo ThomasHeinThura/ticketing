@@ -15,6 +15,7 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DateField } from "@/components/time-tracking/date-field";
 import {
   type Cycle,
   CycleOverlapError,
@@ -108,23 +109,41 @@ export function CycleFormDialog({
               autoFocus
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="cycle-start">{t("cycles.form.start")}</Label>
-              <Input
+              <DateField
                 id="cycle-start"
-                type="date"
+                label={t("cycles.form.start")}
+                placeholder={t("customFields:value.notSet")}
+                clearLabel={t("customFields:value.clear")}
                 value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
+                onChange={setStartDate}
+                disabled={save.isPending}
+                dateEntry={{
+                  label: t("common.dateEntry", {
+                    label: t("cycles.form.start"),
+                  }),
+                  invalidLabel: t("common.invalidDate"),
+                  saveLabel: t("common.save"),
+                }}
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="cycle-end">{t("cycles.form.end")}</Label>
-              <Input
+              <DateField
                 id="cycle-end"
-                type="date"
+                label={t("cycles.form.end")}
+                placeholder={t("customFields:value.notSet")}
+                clearLabel={t("customFields:value.clear")}
                 value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
+                onChange={setEndDate}
+                disabled={save.isPending}
+                dateEntry={{
+                  label: t("common.dateEntry", { label: t("cycles.form.end") }),
+                  invalidLabel: t("common.invalidDate"),
+                  saveLabel: t("common.save"),
+                }}
               />
             </div>
           </div>
