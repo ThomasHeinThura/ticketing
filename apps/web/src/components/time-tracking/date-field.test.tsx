@@ -11,6 +11,66 @@ import { DateField } from "./date-field";
 afterEach(cleanup);
 
 describe("calendar date field", () => {
+  it("accepts a distant typed calendar date with Enter without submitting the outer form", async () => {
+    const onChange = vi.fn();
+    const onSubmit = vi.fn((event) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <DateField
+          label="Holiday"
+          value=""
+          onChange={onChange}
+          dateEntry={{
+            label: "Date (YYYY-MM-DD)",
+            invalidLabel: "Invalid date",
+            saveLabel: "Use date",
+          }}
+        />
+      </form>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Holiday" }));
+    const input = screen.getByRole("textbox", { name: "Date (YYYY-MM-DD)" });
+    fireEvent.change(input, { target: { value: "2021-02-29" } });
+    expect(screen.getByRole("button", { name: "Use date" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Invalid date");
+    fireEvent.change(input, { target: { value: "2021-12-30" } });
+    expect(screen.getByRole("button", { name: "Use date" })).toBeEnabled();
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    expect(onChange).toHaveBeenCalledExactlyOnceWith("2021-12-30");
+    expect(onSubmit).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("keeps four-digit early years when selecting another day", () => {
+    const onChange = vi.fn();
+    render(<DateField label="Date" value="0042-07-03" onChange={onChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Date" }));
+    fireEvent.click(screen.getByRole("button", { name: /July 4th, 42/ }));
+    expect(onChange).toHaveBeenCalledExactlyOnceWith("0042-07-04");
+  });
+  it("closes an open calendar when editing is disabled", async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <DateField label="Date" value="2026-10-30" onChange={onChange} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Date" }));
+    await waitFor(() =>
+      expect(screen.getByRole("dialog", { name: "Date" })).toBeVisible(),
+    );
+    rerender(
+      <DateField
+        label="Date"
+        value="2026-10-30"
+        onChange={onChange}
+        disabled
+      />,
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("button", { name: "Date" })).toBeDisabled();
+    rerender(<DateField label="Date" value="2026-10-30" onChange={onChange} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
   it("names its calendar and emits a calendar day without a UTC conversion", () => {
     const onChange = vi.fn();
     const { container } = render(

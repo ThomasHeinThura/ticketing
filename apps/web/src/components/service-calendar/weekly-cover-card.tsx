@@ -30,6 +30,7 @@ export function WeeklyCoverCard({
   onChange,
   onAdd,
   onRemove,
+  disabled = false,
 }: {
   windows: CalendarWindowsForm;
   windowIds: Record<Weekday, string[]>;
@@ -42,6 +43,7 @@ export function WeeklyCoverCard({
   ) => void;
   onAdd: (day: Weekday) => void;
   onRemove: (day: Weekday, index: number) => void;
+  disabled?: boolean;
 }) {
   const { t } = useTranslation("serviceCalendars");
   const sensors = useSensors(
@@ -65,7 +67,7 @@ export function WeeklyCoverCard({
             <section
               key={key}
               aria-labelledby={`calendar-day-${key}`}
-              className="grid gap-3 border-b border-border pb-4 last:border-0 last:pb-0 sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:items-start"
+              className="grid gap-3 border-b border-border pb-4 last:border-0 last:pb-0 lg:grid-cols-[7rem_minmax(0,1fr)_auto] lg:items-start"
             >
               <h3
                 id={`calendar-day-${key}`}
@@ -82,6 +84,7 @@ export function WeeklyCoverCard({
                       day={key}
                       index={index}
                       window={window}
+                      disabled={disabled}
                       onChange={(patch) => onChange(key, index, patch)}
                       onRemove={() => onRemove(key, index)}
                     />

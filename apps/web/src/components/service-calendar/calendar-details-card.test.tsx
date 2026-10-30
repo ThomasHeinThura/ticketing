@@ -27,20 +27,77 @@ const metadataSchema = z.object({
     .refine(isValidIanaTimezone, "Invalid timezone"),
 });
 
-function CalendarFormHarness() {
+function CalendarFormHarness({
+  disabled = false,
+  onSubmit = () => undefined,
+}: {
+  disabled?: boolean;
+  onSubmit?: (values: CalendarMetadata) => void;
+} = {}) {
   const form = useForm<CalendarMetadata>({
     resolver: standardSchemaResolver(metadataSchema),
     defaultValues: { key: "", name: "", timezone: "" },
   });
   return (
-    <form onSubmit={form.handleSubmit(() => undefined)}>
-      <MemoizedCalendarDetailsCard form={form} isNew />
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <MemoizedCalendarDetailsCard form={form} isNew disabled={disabled} />
       <Button type="submit">Create calendar</Button>
+      <Button
+        type="button"
+        onClick={() =>
+          form.reset(
+            { key: "support", name: "Support", timezone: "UTC" },
+            { keepFieldsRef: true },
+          )
+        }
+      >
+        Reset calendar
+      </Button>
     </form>
   );
 }
 
 describe("CalendarDetailsCard validation", () => {
+  it("retains free typed valid IANA aliases across blur and submits the controlled value after reset", async () => {
+    const onSubmit = vi.fn();
+    const { container } = render(<CalendarFormHarness onSubmit={onSubmit} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reset calendar" }));
+    const input = screen.getByRole("combobox", { name: "details.timezone" });
+    await waitFor(() => expect(input).toHaveValue("UTC"));
+    fireEvent.change(input, { target: { value: "Etc/GMT+12" } });
+    fireEvent.blur(input);
+    expect(input).toHaveValue("Etc/GMT+12");
+    fireEvent.click(screen.getByRole("button", { name: "Create calendar" }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        { key: "support", name: "Support", timezone: "Etc/GMT+12" },
+        expect.anything(),
+      ),
+    );
+    expect(container.querySelector("datalist, input[list]")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reset calendar" }));
+    await waitFor(() => expect(input).toHaveValue("UTC"));
+  });
+
+  it("closes timezone suggestions and disables input when permission is lost", async () => {
+    const { rerender } = render(<CalendarFormHarness />);
+    const input = screen.getByRole("combobox", { name: "details.timezone" });
+    input.focus();
+    fireEvent.input(input, {
+      target: { value: "Europe/Lon" },
+      inputType: "insertText",
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: "Europe/London" }),
+      ).toBeInTheDocument(),
+    );
+    rerender(<CalendarFormHarness disabled />);
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    expect(input).toBeDisabled();
+    rerender(<CalendarFormHarness />);
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });

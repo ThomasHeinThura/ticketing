@@ -9,8 +9,33 @@ import {
   timezoneChangeNeedsConfirmation,
   weeklyCoverHours,
 } from "./service-calendar-form";
+import { isValidCalendarHoliday } from "./service-calendar-holiday";
 
 describe("service calendar editor helpers", () => {
+  it("requires real dates and ordered inclusive ranges, with leap-day annual rules", () => {
+    expect(isValidCalendarHoliday({ date: "" })).toBe(false);
+    expect(isValidCalendarHoliday({ date: "2026-02-29" })).toBe(false);
+    expect(isValidCalendarHoliday({ date: "2028-02-29" })).toBe(true);
+    expect(
+      isValidCalendarHoliday({ from: "2026-12-31", to: "2026-12-30" }),
+    ).toBe(false);
+    expect(isValidCalendarHoliday({ from: "2026-12-31", to: "" })).toBe(false);
+    expect(
+      isValidCalendarHoliday({ from: "2026-12-31", to: "2027-01-01" }),
+    ).toBe(true);
+    expect(
+      isValidCalendarHoliday({ from: "2026-12-31", to: "2026-12-31" }),
+    ).toBe(true);
+    expect(
+      isValidCalendarHoliday({ recurs: "annually", month: 2, day: 29 }),
+    ).toBe(true);
+    expect(
+      isValidCalendarHoliday({ recurs: "annually", month: 4, day: 31 }),
+    ).toBe(false);
+    expect(
+      isValidCalendarHoliday({ recurs: "annually", month: 0, day: 1 }),
+    ).toBe(false);
+  });
   it("CAL-3: formats and parses minute boundaries including end-of-day", () => {
     expect(formatClockTime(0)).toBe("00:00");
     expect(formatClockTime(540)).toBe("09:00");
