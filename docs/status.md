@@ -1,17 +1,22 @@
-# Current status — 30 October 2026, evening
+# Current status — 31 October 2026, evening
 
-**Goal: UAT launch on Friday 6 November 2026 on the Technexus hosts.** Claude is the only version 2 implementer from 30 Oct; Codex works on version 1. Plan: [roadmap](roadmap.md#uat-week-plan-30-oct--6-nov-2026). Decisions and release chain: [handover](handover.md).
+**Goal: UAT launch on Friday 6 November 2026 on the Technexus hosts.** Claude is the only version 2 implementer from 30 Oct; Codex works on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
 
-- **Deployed:** `main` 308b45ff5 (signed digest `sha256:affc6cd4e520…`, GitHub attestation verified) on a fresh local SIT in Docker Desktop and on Technexus. Technexus: backup verified first, migrations 212 → 212, row counts unchanged, both public hosts 200 on `/` and readiness. Rollback is an image-only `.env` restore.
-- **Local SIT smoke:** 25/25 API checks for admin, agent, lead and customer (sign-in, session, workspaces, projects, work items, KB, portal catalogue and submissions). This is an API smoke, not a browser or full-role acceptance.
-- **In review:** [#993](https://github.com/ThomasHeinThura/ticketing/pull/993) — `deploy.sh local` fails on every fresh install (probe needs wget, seed needs a credentials file, empty portal catalogue); fixed and verified on the fresh stack.
-- **Merged today:** #985, #989, #990, #992 (date-only fields; #991 closed). All non-G11 checks green at merge.
-- **Open defects found by the 30 Oct audit:** the native-UI check misses library `<Input type="date|checkbox">` and interactive `title=` (portal request checkboxes still native); about 42 interactive `title=` tooltips; KB review date one day early west of UTC (`kb-badges.tsx`); 11 new strings English in all 18 locales; the generated report is still the 28 Oct one.
-- **Failing (report-only):** G11 on #992: work-list LCP 2948 ms (< 2500), list → detail 511.6 ms (< 300), assignment 201.2 ms (< 200), drag p95 33.4 ms (< 20). Budgets unchanged.
-- **UAT seed (not yet run on any host):** `dist/seed-uat.js --uat --credentials-file <private file>` adds the separate workspace `uat-ws` (Northwind Service Desk) beside the SIT data: owner, admin, lead, two agents, viewer, an instance admin, customers in two organisations (Contoso, Fabrikam), three projects, 44 work items, SLA, approvals, request types, KB and Pages. It is additive only, reruns change nothing, and it refuses the live database; covered by `tests/api-integration/uat-seed.test.ts`.
-- **Not yet verified:** signed-in journeys on Technexus, the full browser sweep across roles, widths and themes, and backup/restore rehearsal.
-- **L-03 settings split delivered:** #1000 (registration), #1001 (menus), #1002 (Kaneo URLs and old-link redirects), #1003 (God Mode at `/god-mode` with its own sign-in, option A), deployed through the release chain. Follow-ups: God Mode Observability menu entry and `Back to project` terminology in all locales. Open lows only, none blocking.
-- **Next:** release smoke suite and the UI-check/tooltip fixes (31 Oct), UAT blockers (3 Nov), editor first slice (4 Nov), UAT readiness (5 Nov), launch (6 Nov).
+- **Deployed:** `main` cbd076c (signed digest `sha256:aa96614708b2…`, attestation verified).
+  - **Local SIT (Docker Desktop):** wiped and reinstalled with the SIT seed. Smoke 43/43.
+  - **Technexus:** wiped (backup first) and reinstalled through first-run setup and the UAT seed (`uat-ws`, Northwind Service Desk: owner, admin, lead, two agents, viewer, customers at Contoso and Fabrikam, two instance admins). Signed-in smoke 108/110; the two misses are the instance admins, who belong to no workspace by design.
+- **Workaround on Technexus:** customer password sign-in was enabled with a direct database row, because no God Mode setting exists (A-14, fix U-6).
+- **Audit 31 Oct:** 61 confirmed findings (2 high, 32 medium, 27 low); every code gate passes.
+- **Thomas's UAT feedback 31 Oct:**
+  - the customer portal must follow the WSO2 support portal;
+  - projects need a v1-style Overview tab first;
+  - triage needs a side panel;
+  - the sidebar highlight is wrong;
+  - service management is unclear;
+  - the app is slow.
+
+  Work order U-1…U-10 in the roadmap.
+- **Not yet verified:** U-1…U-10, backup/restore rehearsal.
 
 ## Dated evidence and execution history
 
