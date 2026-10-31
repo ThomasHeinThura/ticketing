@@ -3,9 +3,11 @@ import { createRequire } from "node:module";
 import { expect, type Page, type Route, test } from "@playwright/test";
 import {
   installPerformanceApiFixture,
+  PROJECT,
   PROJECT_ID,
   WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
+import { installProjectOverviewFixture } from "./helpers/project-overview-fixture";
 
 const uiRequire = createRequire(
   new URL("../../../packages/ui/package.json", import.meta.url),
@@ -169,14 +171,85 @@ for (const [name, path] of [
   });
 }
 
-test("mobile project navigation retains keyboard calendar and Gantt journeys @a11y", async ({
+// S3/S3b: the project Overview (both kinds) and its Prerequisites, Team and Documents tabs,
+// on desktop and phone widths, light and dark. The scan waits for real content so it never
+// passes on a skeleton, and the phone run also checks there is no horizontal page scroll.
+const OVERVIEW_SCREENS = [
+  {
+    name: "overview",
+    path: "/agent/projects/WLP",
+    ready: "project-summary-panel",
+    text: "Move first-line support onto TaskDesk",
+  },
+  {
+    name: "prerequisites",
+    path: "/agent/projects/WLP/prerequisites",
+    ready: "project-prerequisite-row",
+    text: "Customer VPN access",
+  },
+  {
+    name: "team",
+    path: "/agent/projects/WLP/team",
+    ready: "project-stakeholder-row",
+    text: "Mia Manager",
+  },
+  {
+    name: "documents",
+    path: "/agent/projects/WLP/documents",
+    ready: "project-document-row",
+    text: "Statement of work",
+  },
+] as const;
+
+for (const screen of OVERVIEW_SCREENS)
+  for (const kind of ["project", "managed_service"] as const)
+    for (const [width, height, colorScheme] of [
+      [1280, 720, "light"],
+      [390, 844, "dark"],
+    ] as const) {
+      if (screen.name !== "overview" && kind === "managed_service") continue;
+      test(`project ${screen.name} (${kind}, ${width}px, ${colorScheme}) has no serious or critical axe violations @a11y`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height });
+        await page.emulateMedia({ colorScheme });
+        await mountProjectAdminApp(page);
+        await installProjectOverviewFixture(page, PROJECT_ID, {
+          project: { ...PROJECT, kind },
+          kind,
+        });
+        await page.goto(screen.path);
+        await expect(page.getByTestId(screen.ready).first()).toContainText(
+          screen.text,
+        );
+        if (screen.name === "overview") {
+          await expect(
+            page.getByTestId("project-milestones-panel"),
+          ).toContainText("Go-live");
+          if (kind === "managed_service")
+            await expect(
+              page.getByTestId("project-service-levels-panel"),
+            ).toContainText("Incident");
+        }
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        expect(await seriousOrCriticalViolations(page)).toEqual([]);
+      });
+    }
+
+test("mobile project navigation retains keyboard calendar and Timeline (Gantt) journeys @a11y", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mountProjectAdminApp(page);
   await page.goto(`${PROJECT_VIEW}/calendar`);
   await page.getByRole("button", { name: "Project navigation" }).press("Enter");
-  await page.getByRole("button", { name: "Gantt", exact: true }).press("Enter");
+  await page
+    .getByRole("button", { name: "Timeline", exact: true })
+    .press("Enter");
   await expect(page).toHaveURL(new RegExp(`${PROJECT_VIEW}/gantt`));
   await expect(
     page.getByRole("heading", { name: "Gantt Timeline" }),

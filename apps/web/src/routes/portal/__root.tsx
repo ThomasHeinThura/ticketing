@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import PortalLayout from "@/components/portal/portal-layout";
+import type { PortalShellUser } from "@/components/portal/portal-user-menu";
 import { portalAuthClient } from "@/lib/portal-auth-client";
 
 // Rarely shown, so kept out of the portal's initial bundle (G11 budget).
@@ -50,9 +51,21 @@ const isSignIn = (pathname: string) =>
   pathname === "/portal/sign-in" ||
   pathname.startsWith("/invite/");
 
+const anonymousUser: PortalShellUser = { name: "", email: "", image: null };
+
+/** Name, email and image for the avatar menu, from the session the root already reads. */
+function shellUser(user: Record<string, unknown>): PortalShellUser {
+  const text = (value: unknown) => (typeof value === "string" ? value : "");
+  return {
+    name: text(user.name),
+    email: text(user.email),
+    image: text(user.image) || null,
+  };
+}
+
 function PortalRoot() {
   const location = useLocation();
-  const { portalUserId, portalState } = Route.useRouteContext();
+  const { portalUserId, portalUser, portalState } = Route.useRouteContext();
   // P3-R2-03: the host marked the portal as switched off (or unreadable) for this visitor.
   if (portalState)
     return (
@@ -63,7 +76,7 @@ function PortalRoot() {
   return isSignIn(location.pathname) ? (
     <Outlet />
   ) : (
-    <PortalLayout key={portalUserId}>
+    <PortalLayout key={portalUserId} user={portalUser ?? anonymousUser}>
       <Outlet />
     </PortalLayout>
   );
@@ -76,7 +89,8 @@ export const Route = createRootRoute({
       "@/lib/portal-state"
     );
     const portalState = readPortalStateMarker();
-    if (portalState) return { portalState, portalUserId: undefined };
+    if (portalState)
+      return { portalState, portalUserId: undefined, portalUser: undefined };
     if (isSignIn(location.pathname)) return;
     const result = await portalAuthClient.getSession();
     if (result.error || !result.data?.session)
@@ -87,6 +101,7 @@ export const Route = createRootRoute({
     const userId = result.data.user.id;
     return {
       portalUserId: userId,
+      portalUser: shellUser(result.data.user),
       portalState: await organisationPortalState(userId),
     };
   },

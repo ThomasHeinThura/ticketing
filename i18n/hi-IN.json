@@ -128,7 +128,26 @@
 				"organisationEmpty": "अभी तक कोई सक्रिय ग्राहक संगठन नहीं है। यह {{term_project_one}} आंतरिक होगा।",
 				"organisationNone": "कोई नहीं (आंतरिक {{term_project_one}})",
 				"organisationHint": "वैकल्पिक। इसे अभी चुना जाता है और {{term_project_one}} बनने के बाद बदला नहीं जा सकता।",
-				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed."
+				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
+				"calendarHint": "Service hours for response and resolution targets. The default comes from the customer organisation or the workspace.",
+				"calendarInherit": "Default calendar",
+				"calendarInheritNamed": "Default calendar ({{name}})",
+				"calendarInvalid": "That service calendar is not available in this workspace.",
+				"calendarLabel": "Service calendar",
+				"calendarNoDefault": "This workspace has no default service calendar. Choose a calendar.",
+				"calendarNoneAvailable": "This workspace has no default service calendar. Ask an admin to set one in workspace settings.",
+				"calendarsError": "Could not load service calendars.",
+				"calendarsLoading": "Loading service calendars...",
+				"calendarsRetry": "Retry",
+				"kindDelivery": "Delivery {{term_project_one}}",
+				"kindDeliveryHint": "Planned work with an agreed scope, such as an implementation or a migration.",
+				"kindLabel": "Kind",
+				"kindManaged": "Managed service",
+				"kindManagedHint": "Ongoing support for a customer, with a support level and service hours.",
+				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
+				"supportLevelLabel": "Support level",
+				"supportLevelOption": "{{level}} support",
+				"supportLevelPlaceholder": "Choose a level"
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -1987,7 +2006,13 @@
 			"noProjects": "कोई {{term_project_other}} नहीं",
 			"cycles": "{{term_cycle_other}}",
 			"modules": "{{term_module_other}}",
-			"pages": "Pages"
+			"pages": "Pages",
+			"backlog": "Backlog",
+			"documents": "Documents",
+			"overview": "Overview",
+			"prerequisites": "Prerequisites",
+			"team": "Team",
+			"timeline": "Timeline"
 		},
 		"commandPalette": {
 			"suggestions": "सुझाव",
@@ -2921,7 +2946,15 @@
 			"showActive": "Back to {{term_project_other}}",
 			"showDeleted": "Recently deleted",
 			"visibleTreeDueDate": "Earliest due date in visible {{term_project_one}} tree",
-			"visibleTreeStatistics": "Visible {{term_project_one}} tree"
+			"visibleTreeStatistics": "Visible {{term_project_one}} tree",
+			"filteredEmptyDescription": "Choose another kind to see more {{term_project_other}}.",
+			"filteredEmptyTitle": "No {{term_project_other}} of this kind",
+			"kindAll": "All kinds",
+			"kindFilterLabel": "Filter by kind",
+			"kindManagedService": "Managed services",
+			"kindProject": "Delivery {{term_project_other}}",
+			"managedServiceBadge": "Managed service",
+			"showAllKinds": "Show all kinds"
 		},
 		"search": {
 			"pageTitle": "खोजें",
@@ -3778,17 +3811,17 @@
 		"navigation": {
 			"title": "Customer portal",
 			"description": "Navigate your {{term_request_other}} and approvals.",
-			"home": "Home",
 			"catalogue": "{{term_request_one}} catalogue",
 			"requests": "My {{term_request_other}}",
 			"approvals": "Approvals",
 			"signOut": "Sign out",
 			"signOutFailed": "Could not sign out. Try again.",
-			"breadcrumb": "Breadcrumb",
-			"request": "{{term_request_one}}",
 			"knowledgeBase": "Knowledge base",
-			"account": "Account",
-			"releases": "Release notes"
+			"announcements": "Announcements",
+			"dashboard": "Dashboard",
+			"settings": "Settings",
+			"support": "Support",
+			"updates": "Updates"
 		},
 		"home": {
 			"title": "How can we help?",
@@ -4083,6 +4116,23 @@
 		"temporarilyUnavailable": {
 			"description": "The customer portal can't be reached right now. Please try again in a moment.",
 			"title": "Customer portal temporarily unavailable"
+		},
+		"shell": {
+			"getHelp": "Get help",
+			"projectSelector": {
+				"all": "All projects",
+				"label": "Project"
+			},
+			"search": {
+				"label": "Search",
+				"placeholder": "Search for help"
+			},
+			"theme": "Toggle theme",
+			"userMenu": {
+				"label": "Account menu for {{name}}",
+				"signingOut": "Signing out…",
+				"unnamed": "Unnamed user"
+			}
 		}
 	},
 	"instanceUsers": {
@@ -4442,7 +4492,8 @@
 		"type": "Intake queue",
 		"claimedAt": "Claimed {{date}}",
 		"convertedWorkItem": "Converted {{term_work_item_one}}: {{label}}",
-		"prefilledFromType": "Prefilled from {{term_request_one}} type: {{name}}",
+		"defaultFromRequestType": "{{term_request_one}} type default: {{name}}",
+		"convertHeading": "Convert to {{term_work_item_one}}",
 		"nextPage": "Next page",
 		"retry": "Retry",
 		"age": "Age",
@@ -6713,8 +6764,8 @@
 				"title": "Calendar is off for this {{term_project_one}}"
 			},
 			"timeline": {
-				"description": "A {{term_project_one}} admin can switch on Gantt in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
-				"title": "Gantt is off for this {{term_project_one}}"
+				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
+				"title": "The timeline is off for this {{term_project_one}}"
 			},
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
@@ -7366,7 +7417,8 @@
 					"remove": "Remove",
 					"target": "Item",
 					"title": "Links",
-					"url": "Address"
+					"url": "Address",
+					"openProject": "Open {{name}}"
 				},
 				"noDescription": "No description yet.",
 				"none": "None",
@@ -7391,7 +7443,6 @@
 				"supportLevel": "Support level"
 			},
 			"list": {
-				"description": "What we run on behalf of customers: who owns each {{term_service_one}}, how it is doing and what depends on it.",
 				"emptyDescription": "Create the first {{term_service_one}} to start recording {{term_change_other}} and releases against it.",
 				"emptyTitle": "No {{term_service_other}} yet",
 				"incidents_one": "{{count}} incident",
@@ -7404,7 +7455,9 @@
 				"search": "Search",
 				"searchLabel": "Search {{term_service_other}}",
 				"searchPlaceholder": "Search by name or category",
-				"title": "{{term_service_other}}"
+				"title": "{{term_service_other}}",
+				"catalogueDescription": "A catalogue of the systems we run, used to record {{term_change_other}} and releases against them. It holds no customers, contracts or SLAs: to support a customer, create a managed service.",
+				"createManagedService": "Create managed service"
 			}
 		},
 		"status": {
@@ -9296,6 +9349,284 @@
 				"missing_title": "Items without a title: {{total}}",
 				"unreadable_item": "Items the source listed but did not return: {{total}}"
 			}
+		}
+	},
+	"projectOverview": {
+		"attention": {
+			"blocking_one": "{{count}} blocking prerequisite is outstanding.",
+			"blocking_other": "{{count}} blocking prerequisites are outstanding.",
+			"seeWaiting": "See what is waiting"
+		},
+		"common": {
+			"actionsFor": "Actions for {{name}}",
+			"cancel": "Cancel",
+			"close": "Close",
+			"delete": "Delete",
+			"edit": "Edit",
+			"failed": "That did not work. Try again.",
+			"forbidden": "You do not have permission to do that.",
+			"notFound": "This item no longer exists or is out of reach.",
+			"retry": "Retry",
+			"save": "Save",
+			"pickDate": "Pick a date"
+		},
+		"composition": {
+			"PR-10": "No start date is set.",
+			"PR-6": "No {{term_project_one}} manager is set.",
+			"PR-7": "Nobody is on the roster yet.",
+			"title": "Setup is not complete"
+		},
+		"contract": {
+			"add": "Add contract",
+			"coverage": "Coverage",
+			"coverageOption": {
+				"12x5": "12x5 extended hours",
+				"24x7": "24x7",
+				"9x5": "9x5 business hours"
+			},
+			"daysLeft_one": "{{count}} day left",
+			"daysLeft_other": "{{count}} days left",
+			"dialog": {
+				"addTitle": "Add contract",
+				"clearDate": "Clear date",
+				"description": "The contracted period and hours. Hours used are the billable time logged on this {{term_project_one}} inside the period.",
+				"editTitle": "Edit contract",
+				"end": "End date",
+				"endBeforeStart": "The end date must be on or after the start date.",
+				"hours": "Contracted hours",
+				"hoursHint": "Total hours for the whole period, for example 120 or 7.5.",
+				"hoursInvalid": "Enter a number of hours greater than zero.",
+				"kickoffDate": "Kickoff date",
+				"kickoffStatus": "Kickoff status",
+				"save": "Save contract",
+				"saved": "Contract saved.",
+				"start": "Start date"
+			},
+			"edit": "Edit contract",
+			"endedOn": "Ended {{date}}",
+			"hourBank": "Hour bank",
+			"hours": "{{hours}} h",
+			"kickoff": "Kickoff",
+			"kickoffStatus": {
+				"completed": "Completed",
+				"pending": "Pending",
+				"scheduled": "Scheduled"
+			},
+			"loadFailed": "The contract could not be loaded.",
+			"none": "No contract is recorded.",
+			"noRecent": "No billable time in this period yet.",
+			"overdrawn": "{{hours}} h over the contracted hours",
+			"period": "Period",
+			"recent": "Recent billable time",
+			"remaining": "{{hours}} h remaining",
+			"state": {
+				"active": "Active",
+				"expired": "Expired",
+				"expiring": "Expiring",
+				"kickoff_pending": "Kickoff pending",
+				"none": "No contract"
+			},
+			"title": "Contract",
+			"usedOf": "{{used}} h of {{contracted}} h used"
+		},
+		"documents": {
+			"add": "Add document link",
+			"addDescription": "A link, never a copy. Customers see it only when you allow it.",
+			"addTitle": "Add document link",
+			"customerVisible": "Customer can see",
+			"customerVisibleHint": "Shown in the customer portal for this {{term_project_one}}.",
+			"description": "Links to documents kept elsewhere, such as the statement of work or the runbook.",
+			"empty": "No document links yet.",
+			"fieldCustomerVisible": "Visible to the customer",
+			"fieldTitle": "Title",
+			"fieldUrl": "Address",
+			"links": "Document links",
+			"loadFailed": "Documents could not be loaded.",
+			"openPages": "Open Pages",
+			"pages": "Pages",
+			"pagesDescription": "Long-form staff documents for this {{term_project_one}} live in Pages.",
+			"pageTitle": "{{name}} · Documents",
+			"saved": "Document link added.",
+			"staffOnly": "Staff only",
+			"title": "Documents",
+			"urlInvalid": "Enter an address that starts with http:// or https://."
+		},
+		"editSummary": {
+			"description": "What this {{term_project_one}} is for, what it covers and how it is going. Clearing a field removes it.",
+			"save": "Save summary",
+			"saved": "Summary saved.",
+			"title": "Edit summary"
+		},
+		"facts": {
+			"calendar": "Service calendar",
+			"customer": "Customer",
+			"defaultAssignee": "New work lands on",
+			"end": "Target end",
+			"internal": "Internal",
+			"manager": "Manager",
+			"notSet": "Not set",
+			"start": "Start",
+			"supportLevel": "Support level",
+			"title": "Facts"
+		},
+		"header": {
+			"archived": "Archived",
+			"breached": "{{count}} breached",
+			"open": "{{count}} open",
+			"newItem": "New {{term_work_item_one}}",
+			"moreActions": "More {{term_project_one}} actions",
+			"archive": "Archive {{term_project_one}}",
+			"archiveTitle": "Archive {{name}}?",
+			"archiveDescription": "The {{term_project_one}} leaves the default {{term_project_one}} list. Its {{term_work_item_other}}, history and settings are kept.",
+			"archiveConfirm": "Archive",
+			"archivedToast": "{{name}} archived",
+			"archiveHasChildren": "Archive the child {{term_project_other}} first."
+		},
+		"health": {
+			"amber": "Needs attention",
+			"green": "On track",
+			"red": "At risk",
+			"unset": "Health not set"
+		},
+		"kind": {
+			"managed_service": "Managed service",
+			"project": "Delivery {{term_project_one}}"
+		},
+		"kpi": {
+			"blocking": "Blocking prerequisites",
+			"blockingOf": "{{count}} recorded",
+			"health": "Health",
+			"status": "Status",
+			"workBreakdown": "{{inProgress}} in progress · {{waiting}} waiting",
+			"workComplete": "Work complete"
+		},
+		"loadFailed": "The overview could not be loaded.",
+		"loading": "Loading the overview…",
+		"milestones": {
+			"add": "Add milestone",
+			"addTitle": "Add milestone",
+			"date": "Date",
+			"description": "A milestone is a dated checkpoint. The current milestone is the first one not yet reached.",
+			"editTitle": "Edit milestone",
+			"empty": "No milestones yet.",
+			"loadFailed": "Milestones could not be loaded.",
+			"markNotReached": "Mark not reached",
+			"markReached": "Mark reached",
+			"name": "Name",
+			"saved": "Milestone saved.",
+			"state": {
+				"current": "Current",
+				"overdue": "Overdue",
+				"reached": "Reached",
+				"upcoming": "Upcoming"
+			},
+			"title": "Milestones"
+		},
+		"notFound": "This {{term_project_one}} does not exist or is out of reach.",
+		"pageTitle": "{{name}} · Overview",
+		"prerequisites": {
+			"add": "Add prerequisite",
+			"addDescription": "Something the work is waiting on, and who owns it.",
+			"addTitle": "Add prerequisite",
+			"blocking": "Blocking",
+			"due": "Due {{date}}",
+			"emptyDescription": "Record what this {{term_project_one}} is waiting on, such as access, data or sign-off.",
+			"emptyTitle": "Nothing is outstanding",
+			"fieldBlocking": "Blocks the work",
+			"fieldDue": "Due date",
+			"fieldOwner": "Owner",
+			"fieldTitle": "Title",
+			"loadFailed": "Prerequisites could not be loaded.",
+			"markDone": "Mark \"{{title}}\" done",
+			"markOpen": "Mark \"{{title}}\" not done",
+			"overdue": "Overdue since {{date}}",
+			"owner": {
+				"both": "Both",
+				"customer": "Customer",
+				"us": "Us"
+			},
+			"pageTitle": "{{name}} · Prerequisites",
+			"saved": "Prerequisite added.",
+			"summary": "{{outstanding}} outstanding of {{total}}",
+			"title": "Prerequisites",
+			"statusDone": "Done",
+			"statusOpen": "Not done yet"
+		},
+		"serviceLevels": {
+			"days_one": "{{count}} day",
+			"days_other": "{{count}} days",
+			"firstResponse": "First response",
+			"hours_one": "{{count}} h",
+			"hours_other": "{{count}} h",
+			"minutes_one": "{{count}} min",
+			"minutes_other": "{{count}} min",
+			"none": "No SLA policy applies to this {{term_project_one}}.",
+			"noTargets": "The policy has no published targets yet.",
+			"priorities": {
+				"high": "High",
+				"low": "Low",
+				"medium": "Medium",
+				"urgent": "Urgent"
+			},
+			"priority": "Priority",
+			"resolution": "Resolution",
+			"source": {
+				"project": "{{name}} (set here)",
+				"workspace": "{{name}} (workspace default)",
+				"none": "{{name}}"
+			},
+			"title": "Service levels"
+		},
+		"status": {
+			"active": "Active",
+			"closed": "Closed",
+			"on_hold": "On hold",
+			"planning": "Planning"
+		},
+		"summary": {
+			"edit": "Edit summary",
+			"empty": "Not written yet",
+			"inScope": "In scope",
+			"objective": "Objective",
+			"outOfScope": "Out of scope",
+			"status": "Status",
+			"statusNote": "Status note",
+			"successCriteria": "Success criteria",
+			"title": "Summary",
+			"updated": "Updated {{date}}"
+		},
+		"team": {
+			"add": "Add stakeholder",
+			"addDescription": "Stakeholders are escalated to in order when an SLA target is breached.",
+			"addTitle": "Add stakeholder",
+			"description": "Who is accountable and who is escalated to, in order, when a target is breached.",
+			"emptyRoster": "Nobody is on the roster yet.",
+			"emptyStakeholders": "No stakeholders yet.",
+			"escalationOrder": "Escalation order {{order}}",
+			"inherited": "Inherited",
+			"loadFailed": "The team could not be loaded.",
+			"manageRoster": "Manage roster",
+			"noCandidates": "Add people to the roster first.",
+			"order": "Escalation order",
+			"pageTitle": "{{name}} · Team",
+			"person": "Person",
+			"role": "Role",
+			"rolePlaceholder": "Project manager",
+			"roster": "Roster",
+			"rosterUnavailable": "The roster is not available to you.",
+			"saved": "Stakeholder added.",
+			"stakeholders": "Stakeholders",
+			"standDown": "Stand down",
+			"stoodDown": "Stood down",
+			"stoodDownToast": "Stakeholder stood down.",
+			"standDownTitle": "Stand down {{name}}?",
+			"standDownDescription": "{{name}} leaves the escalation chain. This cannot be undone: to bring them back, add them again as a new stakeholder.",
+			"standDownConfirm": "Stand down",
+			"title": "Team",
+			"unnamed": "Unnamed person",
+			"wait": "Wait before escalating (minutes)",
+			"waitMinutes_one": "escalate after {{count}} minute",
+			"waitMinutes_other": "escalate after {{count}} minutes"
 		}
 	}
 }

@@ -1497,7 +1497,14 @@
 			"idx": 213,
 			"version": "7",
 			"when": 1792999978074,
-			"tag": "0213_auth_local_methods_step_up",
+			"tag": "0213_project_overview_contract",
+			"breakpoints": true
+		},
+		{
+			"idx": 214,
+			"version": "7",
+			"when": 1792999979074,
+			"tag": "0214_auth_local_methods_step_up",
 			"breakpoints": true
 		}
 	]

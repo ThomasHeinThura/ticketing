@@ -36,10 +36,15 @@ import {
 } from "@/fetchers/portal-backlog";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { readPortalSla } from "@/lib/portal-request";
-import { parsePortalRequestsSearch, routes } from "@/lib/routes";
+import {
+  parsePortalRequestsSearch,
+  portalProjectSearchMiddlewares,
+  routes,
+} from "@/lib/routes";
 
 export const Route = createFileRoute("/requests")({
   validateSearch: parsePortalRequestsSearch,
+  search: { middlewares: portalProjectSearchMiddlewares },
   component: PortalRequestsPage,
 });
 

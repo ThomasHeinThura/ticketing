@@ -1513,19 +1513,19 @@ are not accepted after the upgrade, and sessions issued by the new image are not
 a rollback to that earlier image. Either way users must sign in again. Tell users before the
 change; no data is lost.
 
-**Sign-in methods across migration 0213.** From the release with migration 0213, God Mode stores
+**Sign-in methods across migration 0214.** From the release with migration 0214, God Mode stores
 local sign-in methods per portal (`instance_plugin_config` rows for `auth.password`,
 `auth.magic-link` and `auth.email-otp`, `portal_scope` `agent`/`customer`), and the staff
 sign-in page falls back to the password form when staff email code is off. Earlier images
 still obey those rows, but their staff page shows only the email-code form when SMTP is
-configured, and they have no screen for customer methods. Before rolling back past 0213:
+configured, and they have no screen for customer methods. Before rolling back past 0214:
 
 1. In God Mode → Authentication → **Sign-in methods**, turn **Email code** for Staff back on (when SMTP is configured).
    Otherwise staff get a code form whose endpoint returns 404 and no password form.
 2. Set the customer methods to the state you want the earlier image to keep. It cannot change
    them.
 
-Prefer these God Mode saves over editing or deleting rows by hand. The 0213 CHECK change is
+Prefer these God Mode saves over editing or deleting rows by hand. The 0214 CHECK change is
 additive, so the earlier image runs on it and no schema rollback is needed.
 
 **Applicability:** migration-specific procedures below apply only when crossing their named frontier with the described pre-migration schema. Reconcile actual journal/schema/provenance first; neither old observation nor rank alone authorizes data correction. Operator approval for a concrete destructive repair is a data-safety control, not an implementation review round.

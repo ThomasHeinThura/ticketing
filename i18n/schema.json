@@ -557,6 +557,63 @@
 								},
 								"organisationHint": {
 									"type": "string"
+								},
+								"kindLabel": {
+									"type": "string"
+								},
+								"kindDelivery": {
+									"type": "string"
+								},
+								"kindDeliveryHint": {
+									"type": "string"
+								},
+								"kindManaged": {
+									"type": "string"
+								},
+								"kindManagedHint": {
+									"type": "string"
+								},
+								"supportLevelLabel": {
+									"type": "string"
+								},
+								"supportLevelPlaceholder": {
+									"type": "string"
+								},
+								"supportLevelOption": {
+									"type": "string"
+								},
+								"calendarLabel": {
+									"type": "string"
+								},
+								"calendarInherit": {
+									"type": "string"
+								},
+								"calendarInheritNamed": {
+									"type": "string"
+								},
+								"calendarHint": {
+									"type": "string"
+								},
+								"calendarNoDefault": {
+									"type": "string"
+								},
+								"calendarNoneAvailable": {
+									"type": "string"
+								},
+								"calendarsLoading": {
+									"type": "string"
+								},
+								"calendarsError": {
+									"type": "string"
+								},
+								"calendarsRetry": {
+									"type": "string"
+								},
+								"managedServiceIncomplete": {
+									"type": "string"
+								},
+								"calendarInvalid": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -579,7 +636,26 @@
 								"organisationRetry",
 								"organisationEmpty",
 								"organisationNone",
-								"organisationHint"
+								"organisationHint",
+								"kindLabel",
+								"kindDelivery",
+								"kindDeliveryHint",
+								"kindManaged",
+								"kindManagedHint",
+								"supportLevelLabel",
+								"supportLevelPlaceholder",
+								"supportLevelOption",
+								"calendarLabel",
+								"calendarInherit",
+								"calendarInheritNamed",
+								"calendarHint",
+								"calendarNoDefault",
+								"calendarNoneAvailable",
+								"calendarsLoading",
+								"calendarsError",
+								"calendarsRetry",
+								"managedServiceIncomplete",
+								"calendarInvalid"
 							]
 						},
 						"createWorkspace": {
@@ -12042,6 +12118,30 @@
 						},
 						"visibleTreeDueDate": {
 							"type": "string"
+						},
+						"kindFilterLabel": {
+							"type": "string"
+						},
+						"kindAll": {
+							"type": "string"
+						},
+						"kindProject": {
+							"type": "string"
+						},
+						"kindManagedService": {
+							"type": "string"
+						},
+						"managedServiceBadge": {
+							"type": "string"
+						},
+						"filteredEmptyTitle": {
+							"type": "string"
+						},
+						"filteredEmptyDescription": {
+							"type": "string"
+						},
+						"showAllKinds": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12069,7 +12169,15 @@
 						"deletedEmptyTitle",
 						"deletedEmptyDescription",
 						"visibleTreeStatistics",
-						"visibleTreeDueDate"
+						"visibleTreeDueDate",
+						"kindFilterLabel",
+						"kindAll",
+						"kindProject",
+						"kindManagedService",
+						"managedServiceBadge",
+						"filteredEmptyTitle",
+						"filteredEmptyDescription",
+						"showAllKinds"
 					]
 				},
 				"search": {
@@ -15529,9 +15637,6 @@
 						"description": {
 							"type": "string"
 						},
-						"home": {
-							"type": "string"
-						},
 						"catalogue": {
 							"type": "string"
 						},
@@ -15550,33 +15655,36 @@
 						"signOutFailed": {
 							"type": "string"
 						},
-						"breadcrumb": {
+						"dashboard": {
 							"type": "string"
 						},
-						"request": {
+						"support": {
 							"type": "string"
 						},
-						"account": {
+						"updates": {
 							"type": "string"
 						},
-						"releases": {
+						"announcements": {
+							"type": "string"
+						},
+						"settings": {
 							"type": "string"
 						}
 					},
 					"required": [
 						"title",
 						"description",
-						"home",
 						"catalogue",
 						"knowledgeBase",
 						"requests",
 						"approvals",
 						"signOut",
 						"signOutFailed",
-						"breadcrumb",
-						"request",
-						"account",
-						"releases"
+						"dashboard",
+						"support",
+						"updates",
+						"announcements",
+						"settings"
 					]
 				},
 				"home": {
@@ -16701,6 +16809,67 @@
 						"events",
 						"requestReference"
 					]
+				},
+				"shell": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"getHelp": {
+							"type": "string"
+						},
+						"theme": {
+							"type": "string"
+						},
+						"search": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"placeholder": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "placeholder"]
+						},
+						"userMenu": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"unnamed": {
+									"type": "string"
+								},
+								"signingOut": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "unnamed", "signingOut"]
+						},
+						"projectSelector": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"all": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "all"]
+						}
+					},
+					"required": [
+						"getHelp",
+						"theme",
+						"search",
+						"userMenu",
+						"projectSelector"
+					]
 				}
 			},
 			"required": [
@@ -16717,7 +16886,8 @@
 				"request",
 				"account",
 				"releases",
-				"notifications"
+				"notifications",
+				"shell"
 			]
 		},
 		"instanceUsers": {
@@ -18610,7 +18780,10 @@
 				"claimedAt": {
 					"type": "string"
 				},
-				"prefilledFromType": {
+				"defaultFromRequestType": {
+					"type": "string"
+				},
+				"convertHeading": {
 					"type": "string"
 				},
 				"convertedWorkItem": {
@@ -18957,7 +19130,8 @@
 				"download",
 				"type",
 				"claimedAt",
-				"prefilledFromType",
+				"defaultFromRequestType",
+				"convertHeading",
 				"convertedWorkItem",
 				"retry",
 				"nextPage",
@@ -29458,9 +29632,6 @@
 								"title": {
 									"type": "string"
 								},
-								"description": {
-									"type": "string"
-								},
 								"new": {
 									"type": "string"
 								},
@@ -29520,11 +29691,16 @@
 								},
 								"openChanges_other": {
 									"type": "string"
+								},
+								"catalogueDescription": {
+									"type": "string"
+								},
+								"createManagedService": {
+									"type": "string"
 								}
 							},
 							"required": [
 								"title",
-								"description",
 								"new",
 								"search",
 								"searchLabel",
@@ -29532,7 +29708,9 @@
 								"noMatch",
 								"emptyTitle",
 								"emptyDescription",
-								"noOwner"
+								"noOwner",
+								"catalogueDescription",
+								"createManagedService"
 							]
 						},
 						"create": {
@@ -29791,6 +29969,9 @@
 										},
 										"remove": {
 											"type": "string"
+										},
+										"openProject": {
+											"type": "string"
 										}
 									},
 									"required": [
@@ -29804,7 +29985,8 @@
 										"target",
 										"choose",
 										"add",
-										"remove"
+										"remove",
+										"openProject"
 									]
 								},
 								"checklist": {

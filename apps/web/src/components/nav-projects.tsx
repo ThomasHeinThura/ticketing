@@ -100,13 +100,13 @@ export function NavProjects() {
     );
   };
 
+  // S3: a project opens on its Overview; the work view is one tab away.
   const handleProjectClick = (project: ProjectRecord) => {
     navigate({
-      to: "/agent/projects/$projectKey/work",
+      to: "/agent/projects/$projectKey",
       params: {
         projectKey: project.slug,
       },
-      search: { layout: "board", sort: "position", dir: "asc" },
     });
   };
 
@@ -151,7 +151,7 @@ export function NavProjects() {
             className="h-7 items-start cursor-pointer text-sm"
             onClick={() => {
               navigator.clipboard.writeText(
-                `${window.location.origin}/agent/projects/${encodeURIComponent(project.slug)}/work?layout=board&sort=position&dir=asc`,
+                `${window.location.origin}${routes.projectOverview.build({ projectKey: project.slug })}`,
               );
               toast.success(t("navigation:projectList.linkCopied"));
             }}

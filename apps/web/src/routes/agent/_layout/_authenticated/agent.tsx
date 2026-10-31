@@ -82,7 +82,7 @@ export function agentSectionTitleKey(pathname: string): string {
 
 function AgentHome() {
   const { t } = useTranslation();
-  const { recovery } = Route.useSearch();
+  const { recovery, kind } = Route.useSearch();
   const navigate = useNavigate();
   const { data: activeWorkspace, isLoading } = useActiveWorkspace();
   const {
@@ -127,6 +127,13 @@ function AgentHome() {
             search: showDeleted ? { recovery: "deleted" } : {},
           })
         }
+        kindFilter={kind}
+        onKindFilterChange={(nextKind) =>
+          navigate({
+            to: "/agent",
+            search: nextKind ? { kind: nextKind } : {},
+          })
+        }
       />
     </Suspense>
   );
@@ -137,15 +144,27 @@ function AgentSectionTitle({ pathname }: { pathname: string }) {
   return t(agentSectionTitleKey(pathname));
 }
 
+type CanonicalProjectView =
+  | "overview"
+  | "work"
+  | "backlog"
+  | "cycles"
+  | "modules"
+  | "pages"
+  | "prerequisites"
+  | "team"
+  | "documents";
+
 function CanonicalProjectFrame({
   projectKey,
   view,
 }: {
   projectKey: string;
-  view: "work" | "backlog" | "cycles" | "modules" | "pages";
+  view: CanonicalProjectView;
 }) {
   const backlog = view === "backlog";
-  const agile = view === "cycles" || view === "modules" || view === "pages";
+  // Every view except the work list and backlog scrolls its own page inside the frame.
+  const agile = view !== "work" && view !== "backlog";
   const { data: workspace } = useActiveWorkspace();
   const { data: projects } = useGetProjects({
     workspaceId: workspace?.id ?? "",
@@ -163,13 +182,7 @@ function CanonicalProjectFrame({
         projectId={project?.id ?? ""}
         workspaceId={project?.workspaceId ?? workspace?.id ?? ""}
         showViewSwitcher={Boolean(project)}
-        activeView={
-          backlog
-            ? "backlog"
-            : view === "cycles" || view === "modules" || view === "pages"
-              ? view
-              : "board"
-        }
+        activeView={backlog ? "backlog" : view === "work" ? "board" : view}
         realtimeMode={backlog ? "canonical" : "page"}
       >
         {agile ? (
@@ -198,9 +211,10 @@ function AgentRootRoute() {
   ) {
     return <Outlet />;
   }
-  // P5 agile and pages: the cycles, modules and pages screens (list and one level of detail) share the frame.
+  // The project Overview (the bare project URL), its tabs, and the P5 agile and pages screens
+  // (list and one level of detail) share the frame.
   const projectPath =
-    /^\/agent\/projects\/([^/]+)\/(?:(work|backlog)|(cycles|modules|pages)(?:\/[^/]+)?)\/?$/u.exec(
+    /^\/agent\/projects\/([^/]+)(?:\/(?:(work|backlog|prerequisites|team|documents)|(cycles|modules|pages)(?:\/[^/]+)?))?\/?$/u.exec(
       location.pathname,
     );
   if (projectPath) {
@@ -214,12 +228,9 @@ function AgentRootRoute() {
       <CanonicalProjectFrame
         projectKey={projectKey}
         view={
-          (projectPath[2] ?? projectPath[3]) as
-            | "work"
-            | "backlog"
-            | "cycles"
-            | "modules"
-            | "pages"
+          (projectPath[2] ??
+            projectPath[3] ??
+            "overview") as CanonicalProjectView
         }
       />
     );
