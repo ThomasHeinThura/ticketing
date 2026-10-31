@@ -20,7 +20,7 @@ import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisat
 import { seedProjectStates } from "../src/utils/seed-project-states";
 import { seedWorkspaceDefaults } from "../src/utils/seed-workspace-defaults";
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 type SitAccount = {
   id: string;
@@ -81,10 +81,17 @@ const SIT_ACCOUNTS: readonly SitAccount[] = [
   },
 ];
 
-async function upsertUserAndPassword(
+/** Seed accounts need only these fields; `idPrefix` names child rows (default `sit`). */
+export type SeedAccount = Pick<
+  SitAccount,
+  "id" | "email" | "password" | "name" | "userRole"
+>;
+
+export async function upsertUserAndPassword(
   tx: Tx,
-  account: SitAccount,
+  account: SeedAccount,
   now: Date,
+  idPrefix = "sit",
 ): Promise<string> {
   const passwordHash = await bcrypt.hash(account.password, 12);
 
@@ -159,7 +166,7 @@ async function upsertUserAndPassword(
       .where(eq(schema.accountTable.id, existingCred.id));
   } else {
     await tx.insert(schema.accountTable).values({
-      id: `sit-cred-${userId}`,
+      id: `${idPrefix}-cred-${userId}`,
       accountId: userId,
       providerId: "credential",
       userId,
@@ -175,7 +182,7 @@ async function upsertUserAndPassword(
   return userId;
 }
 
-async function upsertPerson(
+export async function upsertPerson(
   tx: Tx,
   input: {
     userId: string;
@@ -236,13 +243,14 @@ async function upsertPerson(
   return personId;
 }
 
-async function ensureSystemRole(
+export async function ensureSystemRole(
   tx: Tx,
   input: {
     roleKey: BuiltInRoleKey;
     workspaceId: string | null;
     now: Date;
   },
+  idPrefix = "sit",
 ): Promise<string> {
   const def = BUILT_IN_ROLES[input.roleKey];
   const targetWorkspaceId =
@@ -281,7 +289,7 @@ async function ensureSystemRole(
     return existingRows[0].id;
   }
 
-  const roleId = `sit-role-${def.scope}-${targetWorkspaceId ?? "global"}-${def.key}`;
+  const roleId = `${idPrefix}-role-${def.scope}-${targetWorkspaceId ?? "global"}-${def.key}`;
   await tx.insert(schema.roleTable).values({
     id: roleId,
     scope: def.scope,
@@ -299,7 +307,7 @@ async function ensureSystemRole(
   return roleId;
 }
 
-async function upsertScopedMembership(
+export async function upsertScopedMembership(
   tx: Tx,
   input: {
     personId: string;
@@ -309,6 +317,7 @@ async function upsertScopedMembership(
     seesAll: boolean;
     now: Date;
   },
+  idPrefix = "sit",
 ): Promise<void> {
   const [existing] = await tx
     .select()
@@ -323,7 +332,8 @@ async function upsertScopedMembership(
     .limit(1);
 
   const membershipId =
-    existing?.id ?? `sit-mbr-${input.personId}-${input.scope}-${input.scopeId}`;
+    existing?.id ??
+    `${idPrefix}-mbr-${input.personId}-${input.scope}-${input.scopeId}`;
   if (existing) {
     await tx
       .update(schema.membershipTable)
@@ -350,7 +360,7 @@ async function upsertScopedMembership(
     INSERT INTO membership_grant (
       id, membership_id, person_id, scope, scope_id, role_id, source_kind, direct_origin, sees_all, created_at, updated_at
     ) VALUES (
-      ${`sit-grant-${membershipId}`},
+      ${`${idPrefix}-grant-${membershipId}`},
       ${membershipId},
       ${input.personId},
       ${input.scope},
