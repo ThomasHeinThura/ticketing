@@ -94033,7 +94033,7 @@
           "Pages"
         ],
         "summary": "Save a page (expected version required)",
-        "description": "Every successful save writes an immutable version. A stale expectedVersion is a 409 naming the current version; nothing is written.",
+        "description": "Every successful save advances the page version. It writes a new history version, except that a content-only save by the author of the latest edit version within 10 minutes of its creation updates that version (renumbered to the new page version). A stale expectedVersion is a 409 naming the current version; nothing is written.",
         "parameters": [
           {
             "schema": {
@@ -94492,6 +94492,10 @@
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
                           }
                         },
                         "required": [
@@ -94500,7 +94504,8 @@
                           "kind",
                           "restoredFrom",
                           "createdBy",
-                          "createdAt"
+                          "createdAt",
+                          "updatedAt"
                         ]
                       }
                     }
@@ -94629,6 +94634,10 @@
                       "type": "string",
                       "format": "date-time"
                     },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
                     "body": {
                       "type": "object",
                       "additionalProperties": {}
@@ -94641,6 +94650,7 @@
                     "restoredFrom",
                     "createdBy",
                     "createdAt",
+                    "updatedAt",
                     "body"
                   ]
                 }

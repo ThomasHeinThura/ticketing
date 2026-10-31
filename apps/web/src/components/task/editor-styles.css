@@ -134,6 +134,10 @@
     position: fixed;
     z-index: 50;
     min-width: 16rem;
+    /* SLASH_MENU_MAX_HEIGHT_PX in comment-editor.tsx mirrors this height. */
+    max-height: min(20rem, 70vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
     border-radius: 0.5rem;
     background: var(--popover);
@@ -141,6 +145,11 @@
     box-shadow:
       0 10px 28px --alpha(var(--color-black) / 18%),
       0 1px 2px --alpha(var(--color-black) / 10%);
+  }
+
+  /* Opened above the caret: `top` is the caret top, so grow upward from it. */
+  .taskdesk-tiptap-slash-menu.is-above {
+    transform: translateY(-100%);
   }
 
   .taskdesk-tiptap-slash-group + .taskdesk-tiptap-slash-group {
@@ -171,6 +180,20 @@
     color: color-mix(in srgb, var(--foreground) 88%, transparent);
   }
 
+  .taskdesk-tiptap-slash-main {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .taskdesk-tiptap-slash-icon {
+    width: 0.95rem;
+    height: 0.95rem;
+    flex-shrink: 0;
+    color: color-mix(in srgb, var(--foreground) 62%, transparent);
+  }
+
   .taskdesk-tiptap-slash-label {
     min-width: 0;
     overflow: hidden;
@@ -180,6 +203,7 @@
 
   .taskdesk-tiptap-slash-shortcut {
     flex-shrink: 0;
+    gap: 0.2rem;
     font-size: 0.68rem;
     color: color-mix(in srgb, var(--foreground) 52%, transparent);
   }
@@ -1095,6 +1119,82 @@
 
   .taskdesk-tiptap-content .ProseMirror ::selection {
     background: color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+
+
+  /* Long-form documents (Pages, KB). Comments keep the capped, compact rules above. */
+  .taskdesk-document-editor-content .ProseMirror {
+    min-height: 16rem;
+    max-height: none;
+    overflow: visible;
+    padding: 0.85rem 1rem 1.25rem;
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose p {
+    margin: 0.35rem 0;
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose h1,
+  .taskdesk-comment-editor-prose.taskdesk-document-prose h2,
+  .taskdesk-comment-editor-prose.taskdesk-document-prose h3 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.26;
+    color: var(--foreground);
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose h1 {
+    margin: 1.6rem 0 0.6rem;
+    font-size: 1.5rem;
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose h2 {
+    margin: 1.35rem 0 0.5rem;
+    font-size: 1.25rem;
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose h3 {
+    margin: 1.1rem 0 0.4rem;
+    font-size: 1.075rem;
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose > :first-child {
+    margin-top: 0;
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose
+    :is(ul, ol, ul[data-type="taskList"], pre, table, blockquote) {
+    margin: 0.5rem 0;
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose blockquote {
+    border-left: 2px solid var(--border);
+    padding-left: 0.75rem;
+    color: color-mix(in srgb, var(--foreground) 78%, transparent);
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose hr {
+    margin: 1.25rem 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose
+    hr.ProseMirror-selectednode {
+    border-top-color: var(--ring);
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose aside[data-variant] {
+    margin: 0.75rem 0;
+  }
+
+  .taskdesk-comment-editor-prose.taskdesk-document-prose
+    aside[data-variant]
+    > :is(p, ul, ol, pre, blockquote) {
+    margin: 0.25rem 0;
   }
 
 }

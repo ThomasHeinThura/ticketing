@@ -1,5 +1,5 @@
 // P5 pages tables (owned by the pages lane). Re-exported nowhere: import from this file directly.
-// Mirrors apps/api/drizzle/0154_p5_project_pages.sql, which is the hand-written source of truth.
+// Mirrors apps/api/drizzle/0154_p5_project_pages.sql and 0212, the hand-written source of truth.
 import { createId } from "@paralleldrive/cuid2";
 import { sql } from "drizzle-orm";
 import {
@@ -73,7 +73,10 @@ export const projectPageTable = pgTable(
   ],
 );
 
-/** PG-4: an immutable snapshot written by every successful save (an UPDATE trigger refuses edits). */
+/**
+ * PG-4: a version snapshot. Immutable (an UPDATE trigger refuses edits), except that autosave
+ * coalescing (0212, Thomas 31 Oct 2026) may update the page's latest "edit" version by its author.
+ */
 export const projectPageVersionTable = pgTable(
   "project_page_version",
   {
@@ -93,6 +96,8 @@ export const projectPageVersionTable = pgTable(
       onUpdate: "cascade",
     }),
     createdAt: timestamp("created_at", tz).defaultNow().notNull(),
+    /** Set when later saves were coalesced into this version (0212); NULL otherwise. */
+    updatedAt: timestamp("updated_at", tz),
   },
   (table) => [
     foreignKey({

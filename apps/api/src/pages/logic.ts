@@ -70,6 +70,48 @@ export function subtreeHeight(
   return height;
 }
 
+/**
+ * PG-4 autosave coalescing (Thomas, 31 Oct 2026): a save by the author of the page's latest
+ * "edit" version, within this many minutes of that version's creation (database clock), updates
+ * it instead of writing a new version. Measured from creation, so a long session still produces a
+ * version at least every window. Migration 0212's trigger repeats this rule with the same literal
+ * (`make_interval(mins => 10)`); change both together (an integration test checks they match).
+ */
+export const PAGE_VERSION_COALESCE_WINDOW_MINUTES = 10;
+
+export type LatestVersion = {
+  kind: string;
+  /** Coalescing needs this to be the page's current version (0212 renumbers it by exactly one). */
+  number: number;
+  createdBy: string | null;
+  /** Created less than `PAGE_VERSION_COALESCE_WINDOW_MINUTES` ago, by the database clock. */
+  withinWindow: boolean;
+};
+
+/**
+ * PG-4: whether a save updates the latest version rather than writing a new one. Only a plain
+ * content save coalesces: a rename or a move always writes its own version, and create and
+ * restore versions, another author's version and an erased author's version are never updated.
+ */
+export function shouldCoalesceVersion(input: {
+  latest: LatestVersion | undefined;
+  personId: string;
+  /** The page's version before this save. */
+  pageVersion: number;
+  titleChanged: boolean;
+  parentChanged: boolean;
+}): boolean {
+  const { latest } = input;
+  if (!latest || input.titleChanged || input.parentChanged) return false;
+  return (
+    latest.kind === "edit" &&
+    latest.number === input.pageVersion &&
+    latest.createdBy !== null &&
+    latest.createdBy === input.personId &&
+    latest.withinWindow
+  );
+}
+
 /** PG-5: a save is stale when the page has moved on from the version the client edited. */
 export function isStale(currentVersion: number, expectedVersion: number) {
   return currentVersion !== expectedVersion;

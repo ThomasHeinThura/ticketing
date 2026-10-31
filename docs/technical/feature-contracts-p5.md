@@ -774,7 +774,7 @@ Staff write long-form project documents (plans, runbooks, meeting notes) next to
 - `PG-1` A page belongs to exactly one project, has a title and a rich-text body, an author and timestamps. `Contract-new`
 - `PG-2` Pages are staff-only. No page, title, snippet, version or count appears in any portal response, portal search, deflection or notification; a portal session receives the constant-shape 404 on every page route. A page cannot be made customer-visible. `Contract-new`
 - `PG-3` The page editor is the knowledge-base Tiptap editor (`KB-5`) configured without KB publish controls: the same component, extensions and toolbar from Kaneo/`packages/ui`, not a second editor. `Contract-new`
-- `PG-4` Every successful save creates an immutable version (body, title, author, time). History is browsable and any version restorable; restore writes a new version rather than rewriting history. `Contract-new`
+- `PG-4` Every successful save advances the page version and is kept in the version history (body, title, author, time). Autosave coalescing (Thomas, 31 Oct 2026): a save that changes neither title nor parent, by the author of the page's latest `edit` version, less than 10 minutes (database clock) after that version was created, updates that version and renumbers it to the new page version instead of adding one; so history numbers can have gaps, and the latest entry always matches the page. Create and restore versions, other authors' versions and older versions are never changed; the version-immutability trigger (migration 0212) enforces the same rule in the database. A version number merged into a later save answers 404, and the history screen says so and reloads the list. History is browsable and any listed version restorable; restore writes a new version rather than rewriting history. `Contract-new`
 - `PG-5` Saves use optimistic concurrency: a stale save returns 409 with the current version and nothing is written. There is no real-time co-editing, presence or cursor sharing. `Contract-new`
 - `PG-6` Pages are included in canonical search as their own entity type for callers with reach to the project, using the same index and reach filter as other entities; they are excluded from every portal and deflection query. `Contract-new`
 - `PG-7` Deleting a page goes through the pending-action flow (soft delete, restore window, audit), never a direct destructive route. Deleting a project follows `RH-11`/`PR-16`; its pages follow the project. `Contract-new`
@@ -812,7 +812,7 @@ DELETE /api/projects/{projectId}/pages/{id}               project:update  (creat
 <a id="project-pages-testing"></a>
 ### Testing
 
-Integration: portal identity gets 404 on every route and finds no page in search; viewer cannot write; stale save is 409; each save adds a version; restore adds a version; delete creates a pending action and the page remains until approved; reach filter holds in search.
+Integration: portal identity gets 404 on every route and finds no page in search; viewer cannot write; stale save is 409; each save advances the version and adds a history version unless coalesced (`PG-4`); restore adds a version; delete creates a pending action and the page remains until approved; reach filter holds in search.
 
 E2E: create a page, edit twice, view history, restore, delete and approve.
 

@@ -9156,6 +9156,12 @@
 								"slashHeading": {
 									"type": "string"
 								},
+								"slashHeading1": {
+									"type": "string"
+								},
+								"slashHeading3": {
+									"type": "string"
+								},
 								"slashBulletList": {
 									"type": "string"
 								},
@@ -9171,6 +9177,12 @@
 								"slashCodeBlock": {
 									"type": "string"
 								},
+								"slashDivider": {
+									"type": "string"
+								},
+								"slashCallout": {
+									"type": "string"
+								},
 								"slashTable": {
 									"type": "string"
 								},
@@ -9181,6 +9193,12 @@
 									"type": "string"
 								},
 								"searchHeading": {
+									"type": "string"
+								},
+								"searchHeading1": {
+									"type": "string"
+								},
+								"searchHeading3": {
 									"type": "string"
 								},
 								"searchBulletList": {
@@ -9196,6 +9214,12 @@
 									"type": "string"
 								},
 								"searchCodeBlock": {
+									"type": "string"
+								},
+								"searchDivider": {
+									"type": "string"
+								},
+								"searchCallout": {
 									"type": "string"
 								},
 								"searchTable": {
@@ -9232,6 +9256,30 @@
 									"type": "string"
 								},
 								"noCommands": {
+									"type": "string"
+								},
+								"slashMenuLabel": {
+									"type": "string"
+								},
+								"bubbleBold": {
+									"type": "string"
+								},
+								"bubbleItalic": {
+									"type": "string"
+								},
+								"bubbleUnderline": {
+									"type": "string"
+								},
+								"bubbleStrike": {
+									"type": "string"
+								},
+								"bubbleCode": {
+									"type": "string"
+								},
+								"bubbleHeading": {
+									"type": "string"
+								},
+								"bubbleQuote": {
 									"type": "string"
 								},
 								"ariaCommentContent": {
@@ -9403,20 +9451,28 @@
 								"slashGroupInsert",
 								"slashParagraph",
 								"slashHeading",
+								"slashHeading1",
+								"slashHeading3",
 								"slashBulletList",
 								"slashTaskList",
 								"slashOrderedList",
 								"slashQuote",
 								"slashCodeBlock",
+								"slashDivider",
+								"slashCallout",
 								"slashTable",
 								"slashFile",
 								"searchParagraph",
 								"searchHeading",
+								"searchHeading1",
+								"searchHeading3",
 								"searchBulletList",
 								"searchTaskList",
 								"searchOrderedList",
 								"searchQuote",
 								"searchCodeBlock",
+								"searchDivider",
+								"searchCallout",
 								"searchTable",
 								"searchFile",
 								"embedErrorInvalidUrl",
@@ -9429,6 +9485,14 @@
 								"asLink",
 								"embed",
 								"noCommands",
+								"slashMenuLabel",
+								"bubbleBold",
+								"bubbleItalic",
+								"bubbleUnderline",
+								"bubbleStrike",
+								"bubbleCode",
+								"bubbleHeading",
+								"bubbleQuote",
 								"ariaCommentContent",
 								"ariaCommentEditor",
 								"ariaCopyCode",
@@ -28795,7 +28859,22 @@
 						"allSaved": {
 							"type": "string"
 						},
-						"saved": {
+						"saving": {
+							"type": "string"
+						},
+						"autosavePaused": {
+							"type": "string"
+						},
+						"leaveTitle": {
+							"type": "string"
+						},
+						"leaveUnsaved": {
+							"type": "string"
+						},
+						"stay": {
+							"type": "string"
+						},
+						"leave": {
 							"type": "string"
 						},
 						"removedTitle": {
@@ -28867,7 +28946,12 @@
 						"previewHiddenDescription",
 						"unsaved",
 						"allSaved",
-						"saved",
+						"saving",
+						"autosavePaused",
+						"leaveTitle",
+						"leaveUnsaved",
+						"stay",
+						"leave",
 						"removedTitle",
 						"removedDescription",
 						"done",
@@ -31530,9 +31614,6 @@
 						"breadcrumb": {
 							"type": "string"
 						},
-						"edit": {
-							"type": "string"
-						},
 						"notFoundTitle": {
 							"type": "string"
 						},
@@ -31549,7 +31630,6 @@
 					"required": [
 						"pageTitle",
 						"breadcrumb",
-						"edit",
 						"notFoundTitle",
 						"notFoundDescription",
 						"loadFailedTitle",
@@ -31563,16 +31643,28 @@
 						"saved": {
 							"type": "string"
 						},
+						"saving": {
+							"type": "string"
+						},
 						"saveFailed": {
 							"type": "string"
 						},
 						"unsaved": {
 							"type": "string"
 						},
-						"allSaved": {
+						"autosavePaused": {
 							"type": "string"
 						},
-						"save": {
+						"leaveTitle": {
+							"type": "string"
+						},
+						"leaveUnsaved": {
+							"type": "string"
+						},
+						"stay": {
+							"type": "string"
+						},
+						"leave": {
 							"type": "string"
 						},
 						"untitled": {
@@ -31583,17 +31675,29 @@
 						},
 						"bodyPlaceholder": {
 							"type": "string"
+						},
+						"removedTitle": {
+							"type": "string"
+						},
+						"removedDescription": {
+							"type": "string"
 						}
 					},
 					"required": [
 						"saved",
+						"saving",
 						"saveFailed",
 						"unsaved",
-						"allSaved",
-						"save",
+						"autosavePaused",
+						"leaveTitle",
+						"leaveUnsaved",
+						"stay",
+						"leave",
 						"untitled",
 						"bodyLabel",
-						"bodyPlaceholder"
+						"bodyPlaceholder",
+						"removedTitle",
+						"removedDescription"
 					]
 				},
 				"history": {
@@ -31625,6 +31729,9 @@
 							"type": "string"
 						},
 						"loadFailed": {
+							"type": "string"
+						},
+						"versionMoved": {
 							"type": "string"
 						},
 						"previewTitle": {
@@ -31660,6 +31767,7 @@
 						"restoreConflict",
 						"restoreFailed",
 						"loadFailed",
+						"versionMoved",
 						"previewTitle",
 						"previewDescription",
 						"kind"

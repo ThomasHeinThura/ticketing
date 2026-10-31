@@ -1,4 +1,5 @@
 import { mergeAttributes, Node } from "@tiptap/core";
+import { EyeOff, Hash, Info } from "lucide-react";
 import type { CommentEditorSlashCommand } from "@/components/activity/comment-editor";
 
 /** The KB server allowlist accepts this exact `callout` node and `variant` attribute. */
@@ -40,6 +41,68 @@ export const KbCallout = Node.create({
 
 export const KB_EDITOR_EXTENSIONS = [KbCallout];
 
+type SlashEditor = Parameters<CommentEditorSlashCommand["run"]>[0];
+type SlashRange = Parameters<CommentEditorSlashCommand["run"]>[1];
+
+function insertCallout(variant: "info" | "internal") {
+  return (editor: SlashEditor, range: SlashRange) => {
+    editor
+      .chain()
+      .focus()
+      .deleteRange(range)
+      .insertContent({
+        type: "callout",
+        attrs: { variant },
+        content: [{ type: "paragraph" }],
+      })
+      .run();
+  };
+}
+
+/** The plain info callout every document surface (Pages and KB) offers. */
+export function createCalloutSlashCommand(labels: {
+  callout: string;
+  calloutSearch: string;
+}): CommentEditorSlashCommand {
+  return {
+    id: "kb-callout",
+    label: labels.callout,
+    group: "insert",
+    icon: Info,
+    search: labels.calloutSearch,
+    run: insertCallout("info"),
+  };
+}
+
+/** KB-only actions: internal notes and work-item references never reach Pages. */
+export function createKbOnlySlashCommands(labels: {
+  internalCallout: string;
+  internalCalloutSearch: string;
+  workItemReference: string;
+  workItemReferenceSearch: string;
+}): CommentEditorSlashCommand[] {
+  return [
+    {
+      id: "kb-internal-callout",
+      label: labels.internalCallout,
+      group: "insert",
+      icon: EyeOff,
+      search: labels.internalCalloutSearch,
+      run: insertCallout("internal"),
+    },
+    {
+      id: "kb-work-item-reference",
+      label: labels.workItemReference,
+      group: "insert",
+      icon: Hash,
+      search: labels.workItemReferenceSearch,
+      run: (editor, range) => {
+        editor.chain().focus().deleteRange(range).insertContent("#").run();
+      },
+    },
+  ];
+}
+
 export function createKbSlashCommands(labels: {
   callout: string;
   calloutSearch: string;
@@ -48,47 +111,8 @@ export function createKbSlashCommands(labels: {
   workItemReference: string;
   workItemReferenceSearch: string;
 }): CommentEditorSlashCommand[] {
-  const insertCallout =
-    (variant: "info" | "internal") =>
-    (
-      editor: Parameters<CommentEditorSlashCommand["run"]>[0],
-      range: { from: number; to: number },
-    ) => {
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertContent({
-          type: "callout",
-          attrs: { variant },
-          content: [{ type: "paragraph" }],
-        })
-        .run();
-    };
-
   return [
-    {
-      id: "kb-callout",
-      label: labels.callout,
-      group: "insert",
-      search: labels.calloutSearch,
-      run: insertCallout("info"),
-    },
-    {
-      id: "kb-internal-callout",
-      label: labels.internalCallout,
-      group: "insert",
-      search: labels.internalCalloutSearch,
-      run: insertCallout("internal"),
-    },
-    {
-      id: "kb-work-item-reference",
-      label: labels.workItemReference,
-      group: "insert",
-      search: labels.workItemReferenceSearch,
-      run: (editor, range) => {
-        editor.chain().focus().deleteRange(range).insertContent("#").run();
-      },
-    },
+    createCalloutSlashCommand(labels),
+    ...createKbOnlySlashCommands(labels),
   ];
 }

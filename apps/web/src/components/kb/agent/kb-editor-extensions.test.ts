@@ -1,7 +1,12 @@
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { afterEach, describe, expect, it } from "vitest";
-import { createKbSlashCommands, KbCallout } from "./kb-editor-extensions";
+import {
+  createCalloutSlashCommand,
+  createKbOnlySlashCommands,
+  createKbSlashCommands,
+  KbCallout,
+} from "./kb-editor-extensions";
 
 const labels = {
   callout: "Callout",
@@ -68,5 +73,40 @@ describe("KB article editor extensions", () => {
     } finally {
       referenceEditor.destroy();
     }
+  });
+});
+
+describe("shared callout and KB-only slash commands", () => {
+  it("offers only the info callout to every document surface", () => {
+    const callout = createCalloutSlashCommand(labels);
+    expect(callout).toMatchObject({
+      id: "kb-callout",
+      label: "Callout",
+      group: "insert",
+    });
+    const editor = new Editor({
+      extensions: [StarterKit, KbCallout],
+      content: { type: "doc", content: [{ type: "paragraph" }] },
+    });
+    try {
+      callout.run(editor, { from: 1, to: 1 });
+      expect(editor.getJSON().content?.[0]).toMatchObject({
+        type: "callout",
+        attrs: { variant: "info" },
+      });
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("keeps internal notes and work-item references KB-only", () => {
+    expect(
+      createKbOnlySlashCommands(labels).map((command) => command.id),
+    ).toEqual(["kb-internal-callout", "kb-work-item-reference"]);
+    expect(createKbSlashCommands(labels).map((command) => command.id)).toEqual([
+      "kb-callout",
+      "kb-internal-callout",
+      "kb-work-item-reference",
+    ]);
   });
 });

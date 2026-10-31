@@ -13,7 +13,7 @@ import {
 } from "../pending-action/deletion-targets";
 import { authorisePages, pagesProjectReach } from "./access";
 import { PAGE_DELETION_ROUTE } from "./deletion-target";
-import { snippetOf } from "./logic";
+import { PAGE_VERSION_COALESCE_WINDOW_MINUTES, snippetOf } from "./logic";
 import {
   createPage,
   findPage,
@@ -154,8 +154,7 @@ const updateRoute = createRoute({
   operationId: "updateProjectPage",
   tags,
   summary: "Save a page (expected version required)",
-  description:
-    "Every successful save writes an immutable version. A stale expectedVersion is a 409 naming the current version; nothing is written.",
+  description: `Every successful save advances the page version. It writes a new history version, except that a content-only save by the author of the latest edit version within ${PAGE_VERSION_COALESCE_WINDOW_MINUTES} minutes of its creation updates that version (renumbered to the new page version). A stale expectedVersion is a 409 naming the current version; nothing is written.`,
   middleware: [pagesProjectReach] as const,
   request: {
     params: pageParam,

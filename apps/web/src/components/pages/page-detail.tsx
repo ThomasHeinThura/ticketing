@@ -22,7 +22,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
   Label,
   Select,
   SelectContent,
@@ -31,11 +30,16 @@ import {
   SelectValue,
   Skeleton,
 } from "@taskdesk/ui";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import CommentEditor from "@/components/activity/comment-editor";
-import { KbArticleContent } from "@/components/kb/kb-article-content";
+import { DocumentEditor } from "@/components/editor/document-editor";
+import { LeaveUnsavedDialog } from "@/components/editor/leave-unsaved-dialog";
+import {
+  KbArticleContent,
+  removedNodeTypes,
+} from "@/components/kb/kb-article-content";
 import PageTitle from "@/components/page-title";
+import { TaskTitlePresentation } from "@/components/task/task-detail-presentation";
 import {
   getPage,
   getPages,
@@ -50,6 +54,7 @@ import {
   restorePageVersion,
   savePage,
 } from "@/fetchers/pages";
+import { useDocumentAutosave } from "@/hooks/use-document-autosave";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
@@ -63,13 +68,15 @@ function draftOf(page: Page): Draft {
   return { title: page.title, body: page.body, parentId: page.parentId };
 }
 
-/** Only what differs from the loaded page; an unchanged body is never re-sent. */
-function changesOf(page: Page, draft: Draft, bodyEdited: boolean): PageInput {
+/** Only what differs from what the server holds; an unchanged body is never re-sent. Null when nothing does. */
+export function changesOf(saved: Draft, draft: Draft): PageInput | null {
   const changes: PageInput = {};
-  if (draft.title.trim() !== page.title) changes.title = draft.title.trim();
-  if (bodyEdited) changes.body = draft.body;
-  if (draft.parentId !== page.parentId) changes.parentId = draft.parentId;
-  return changes;
+  const title = draft.title.trim();
+  if (title && title !== saved.title) changes.title = title;
+  // The editor emits a new document object for every edit, so identity tells an edit apart.
+  if (draft.body !== saved.body) changes.body = draft.body;
+  if (draft.parentId !== saved.parentId) changes.parentId = draft.parentId;
+  return Object.keys(changes).length > 0 ? changes : null;
 }
 
 function useDateTime() {
@@ -88,6 +95,7 @@ function VersionPreview({
   onRestore,
   restoring,
   onClose,
+  onMissing,
 }: {
   projectKey: string;
   page: Page;
@@ -95,12 +103,23 @@ function VersionPreview({
   onRestore: () => void;
   restoring: boolean;
   onClose: () => void;
+  /** The version no longer exists (merged into a later autosave, PG-4). */
+  onMissing: () => void;
 }) {
   const { t } = useTranslation("pages");
   const version = useQuery({
     queryKey: pageKeys.version(projectKey, page.id, number),
     queryFn: () => getPageVersion(projectKey, page.id, number),
+    retry: (count, error) =>
+      !(error instanceof HttpError && error.status < 500) && count < 2,
   });
+  const missing =
+    version.error instanceof HttpError && version.error.status === 404;
+  const onMissingRef = useRef(onMissing);
+  onMissingRef.current = onMissing;
+  useEffect(() => {
+    if (missing) onMissingRef.current();
+  }, [missing]);
   return (
     <Dialog open onOpenChange={(open) => !open && !restoring && onClose()}>
       <DialogContent closeLabel={t("common.close")} className="max-w-3xl">
@@ -113,8 +132,10 @@ function VersionPreview({
         <div className="max-h-[60vh] space-y-3 overflow-y-auto px-6">
           {version.isLoading ? <Skeleton className="h-32 w-full" /> : null}
           {version.isError ? (
-            <Alert variant="error">
-              <AlertDescription>{t("history.loadFailed")}</AlertDescription>
+            <Alert variant={missing ? "info" : "error"}>
+              <AlertDescription>
+                {missing ? t("history.versionMoved") : t("history.loadFailed")}
+              </AlertDescription>
             </Alert>
           ) : null}
           {version.data ? (
@@ -142,10 +163,13 @@ function VersionPreview({
 function History({
   projectKey,
   page,
+  beforeRestore,
   onRestored,
 }: {
   projectKey: string;
   page: Page;
+  /** Saves pending edits first and returns the version the restore replaces. */
+  beforeRestore: () => Promise<number>;
   onRestored: (page: Page) => void;
 }) {
   const { t } = useTranslation("pages");
@@ -157,20 +181,29 @@ function History({
     queryFn: () => getPageVersions(projectKey, page.id),
   });
   const restore = useMutation({
-    mutationFn: (number: number) =>
-      restorePageVersion(projectKey, page.id, number, page.version),
+    mutationFn: async (number: number) =>
+      restorePageVersion(projectKey, page.id, number, await beforeRestore()),
     onSuccess: async (restored) => {
       setPreviewing(null);
+      cache.setQueryData(pageKeys.detail(projectKey, page.id), restored);
+      onRestored(restored);
       await cache.invalidateQueries({ queryKey: pageKeys.all });
       toast.success(t("history.restored"));
-      onRestored(restored);
     },
-    onError: (error) =>
+    onError: (error) => {
+      // Autosave can merge the chosen version into a later one (PG-4): show the current list.
+      if (error instanceof HttpError && error.status === 404) {
+        setPreviewing(null);
+        void versions.refetch();
+        toast.error(t("history.versionMoved"));
+        return;
+      }
       toast.error(
         error instanceof PageConflictError
           ? t("history.restoreConflict")
           : t("history.restoreFailed"),
-      ),
+      );
+    },
   });
   const label = (version: PageVersionSummary) =>
     version.kind === "restore" && version.restoredFrom
@@ -207,7 +240,7 @@ function History({
                 {" · "}
                 {version.createdBy?.name ?? t("common.unknownPerson")}
                 {" · "}
-                {format.format(new Date(version.createdAt))}
+                {format.format(new Date(version.updatedAt))}
               </p>
               <Button
                 size="xs"
@@ -229,6 +262,7 @@ function History({
           restoring={restore.isPending}
           onRestore={() => restore.mutate(previewing)}
           onClose={() => setPreviewing(null)}
+          onMissing={() => void versions.refetch()}
         />
       ) : null}
     </Card>
@@ -286,50 +320,110 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
   const { t } = useTranslation("pages");
   const cache = useQueryClient();
   const openPendingAction = useOpenPendingAction();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Draft>(() => draftOf(page));
-  const [bodyEdited, setBodyEdited] = useState(false);
-  // Tiptap reports updates of its own while it mounts; only edits after an interaction count.
-  const interacted = useRef(false);
-  const [generation, setGeneration] = useState(0);
   const [conflict, setConflict] = useState<PageConflictError | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const list = useQuery({
     queryKey: pageKeys.list(projectKey),
     queryFn: () => getPages(projectKey),
   });
-  const changes = changesOf(page, draft, bodyEdited);
-  const dirty = Object.keys(changes).length > 0;
 
-  const startEditing = () => {
-    setDraft(draftOf(page));
-    setBodyEdited(false);
-    interacted.current = false;
-    setGeneration((value) => value + 1);
-    setEditing(true);
+  // The draft is read when a save starts, so it lives in a ref; the state copy renders it.
+  const draftRef = useRef<Draft>(draftOf(page));
+  const [draft, setDraftState] = useState<Draft>(draftRef.current);
+  /** What the server holds for this editor: the loaded page, then each saved result. */
+  const saved = useRef<Draft>(draftOf(page));
+  /** The body the editor loads from. Changes only on purpose, with `editorKey`. */
+  const [editorBody, setEditorBody] = useState<unknown>(page.body);
+  const [editorKey, setEditorKey] = useState(0);
+  const reportedRemovals = useRef(new Set<string>());
+
+  const autosave = useDocumentAutosave<PageInput, Page>({
+    version: page.version,
+    enabled: page.canEdit,
+    getChanges: () => changesOf(saved.current, draftRef.current),
+    canSave: () => draftRef.current.title.trim() !== "",
+    save: (changes, expectedVersion) =>
+      savePage(projectKey, page.id, expectedVersion, changes),
+    isConflict: (error) => error instanceof PageConflictError,
+    onSaved: (result, sent) => {
+      saved.current = {
+        title: result.title,
+        parentId: result.parentId,
+        body: "body" in sent ? sent.body : saved.current.body,
+      };
+      cache.setQueryData(pageKeys.detail(projectKey, page.id), result);
+      // Coalescing renumbers the latest version, so the history is always refetched.
+      void cache.invalidateQueries({
+        queryKey: pageKeys.versions(projectKey, page.id),
+      });
+      void cache.invalidateQueries({ queryKey: pageKeys.list(projectKey) });
+      // Say so once rather than lose content silently; the editor keeps what was typed.
+      if ("body" in sent) {
+        const removed = removedNodeTypes(sent.body, result.body).filter(
+          (type) => !reportedRemovals.current.has(type),
+        );
+        for (const type of removed) reportedRemovals.current.add(type);
+        if (removed.length > 0)
+          toast.info(t("editor.removedTitle"), {
+            description: t("editor.removedDescription", {
+              types: removed.join(", "),
+            }),
+          });
+      }
+    },
+    onConflict: (error) => {
+      if (error instanceof PageConflictError) setConflict(error);
+    },
+    onError: (error) =>
+      toast.error(
+        error instanceof HttpError && error.status === 422
+          ? error.message
+          : t("editor.saveFailed"),
+      ),
+  });
+
+  const edit = (patch: Partial<Draft>) => {
+    draftRef.current = { ...draftRef.current, ...patch };
+    setDraftState(draftRef.current);
+    autosave.markDirty();
   };
 
-  const refresh = () => cache.invalidateQueries({ queryKey: pageKeys.all });
+  /** Load a page from the server into the editor, dropping unsaved edits (reload, restore). */
+  const loadIntoEditor = (next: Page) => {
+    autosave.reset(next.version);
+    draftRef.current = draftOf(next);
+    saved.current = draftOf(next);
+    setDraftState(draftRef.current);
+    setEditorBody(next.body);
+    setEditorKey((value) => value + 1);
+    setConflict(null);
+  };
 
-  const save = useMutation({
-    mutationFn: (version: number) =>
-      savePage(projectKey, page.id, version, changes),
-    onSuccess: async () => {
-      setConflict(null);
-      setEditing(false);
-      await refresh();
-      toast.success(t("editor.saved"));
-    },
-    onError: (error) => {
-      if (error instanceof PageConflictError) setConflict(error);
-      else
-        toast.error(
-          error instanceof HttpError && error.status === 422
-            ? error.message
-            : t("editor.saveFailed"),
-        );
-    },
-  });
+  // Someone else saved while this editor had nothing unsaved: show their page.
+  const adoptRef = useRef(loadIntoEditor);
+  adoptRef.current = loadIntoEditor;
+  useEffect(() => {
+    if (
+      page.version > autosave.baseVersion() &&
+      !autosave.hasUnsavedChanges() &&
+      autosave.status === "saved"
+    )
+      adoptRef.current(page);
+  }, [page, autosave]);
+
+  const reloadLatest = async () => {
+    try {
+      const latest = await getPage(projectKey, page.id);
+      cache.setQueryData(pageKeys.detail(projectKey, page.id), latest);
+      void cache.invalidateQueries({
+        queryKey: pageKeys.versions(projectKey, page.id),
+      });
+      loadIntoEditor(latest);
+    } catch {
+      toast.error(t("detail.loadFailedDescription"));
+    }
+  };
+
   const remove = useMutation({
     mutationFn: () => requestPageDeletion(projectKey, page.id),
     onSuccess: (pending) => {
@@ -353,6 +447,12 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
   const parentTitle = (list.data?.pages ?? []).find(
     (candidate) => candidate.id === page.parentId,
   )?.title;
+  const statusLabel = {
+    saved: t("editor.saved"),
+    unsaved: t("editor.unsaved"),
+    saving: t("editor.saving"),
+    paused: t("editor.autosavePaused"),
+  }[autosave.status];
 
   return (
     <>
@@ -395,74 +495,70 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="min-w-0 truncate font-semibold text-2xl">
-            {editing ? draft.title || t("editor.untitled") : page.title}
-          </h1>
-          <div className="flex flex-wrap items-center gap-2">
-            {editing ? (
-              <>
-                <span
-                  className="text-muted-foreground text-sm"
-                  aria-live="polite"
-                >
-                  {dirty ? t("editor.unsaved") : t("editor.allSaved")}
-                </span>
-                <Button
-                  variant="outline"
-                  disabled={save.isPending}
-                  onClick={() => setEditing(false)}
-                >
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  disabled={!dirty || save.isPending || !draft.title.trim()}
-                  onClick={() => save.mutate(page.version)}
-                >
-                  {t("editor.save")}
-                </Button>
-              </>
-            ) : page.canEdit ? (
-              <>
-                <Button variant="outline" onClick={startEditing}>
-                  {t("detail.edit")}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setConfirmingDelete(true)}
-                >
-                  {t("delete.action")}
-                </Button>
-              </>
-            ) : null}
-          </div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          {page.canEdit ? (
+            <div className="min-w-0 flex-1">
+              <TaskTitlePresentation
+                aria-label={t("fields.title")}
+                aria-invalid={draft.title.trim() === "" || undefined}
+                placeholder={t("editor.untitled")}
+                maxLength={200}
+                value={draft.title}
+                onChange={(event) =>
+                  edit({ title: event.target.value.replace(/[\r\n]+/g, " ") })
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.preventDefault();
+                }}
+                onBlur={() => void autosave.flush()}
+              />
+            </div>
+          ) : (
+            <h1 className="min-w-0 truncate font-semibold text-2xl">
+              {page.title}
+            </h1>
+          )}
+          {page.canEdit ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className="text-muted-foreground text-sm"
+                aria-live="polite"
+              >
+                {statusLabel}
+              </span>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmingDelete(true)}
+              >
+                {t("delete.action")}
+              </Button>
+            </div>
+          ) : null}
         </div>
         <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
           <div className="min-w-0 space-y-4">
-            {editing ? (
+            {page.canEdit ? (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="page-edit-title">{t("fields.title")}</Label>
-                  <Input
-                    id="page-edit-title"
-                    maxLength={200}
-                    value={draft.title}
-                    disabled={save.isPending}
-                    onChange={(event) =>
-                      setDraft((old) => ({ ...old, title: event.target.value }))
-                    }
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="page-edit-parent">{t("fields.parent")}</Label>
                   <Select
                     value={draft.parentId ?? TOP_LEVEL}
-                    onValueChange={(value) =>
-                      setDraft((old) => ({
-                        ...old,
-                        parentId: value && value !== TOP_LEVEL ? value : null,
-                      }))
-                    }
+                    // Labels for the trigger; without them the Select shows the page id.
+                    items={[
+                      { value: TOP_LEVEL, label: t("fields.topLevel") },
+                      ...parents.map(({ page: candidate, depth }) => ({
+                        value: candidate.id,
+                        label: `${"– ".repeat(depth)}${candidate.title}`,
+                      })),
+                    ]}
+                    onValueChange={(value) => {
+                      const parentId =
+                        value && value !== TOP_LEVEL ? value : null;
+                      if (parentId === draftRef.current.parentId) return;
+                      edit({ parentId });
+                      // A move is a discrete choice: save it now, not after the typing delay.
+                      void autosave.flush();
+                    }}
                   >
                     <SelectTrigger id="page-edit-parent">
                       <SelectValue />
@@ -479,40 +575,14 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
                     </SelectContent>
                   </Select>
                 </div>
-                {/* biome-ignore lint/a11y/noStaticElementInteractions: only notes the first interaction */}
-                <div
-                  className="rounded-lg border p-3"
-                  onFocus={() => {
-                    interacted.current = true;
-                  }}
-                  onKeyDown={() => {
-                    interacted.current = true;
-                  }}
-                  onPointerDown={() => {
-                    interacted.current = true;
-                  }}
-                  onPaste={() => {
-                    interacted.current = true;
-                  }}
-                  onDrop={() => {
-                    interacted.current = true;
-                  }}
-                >
-                  <CommentEditor
-                    key={generation}
-                    ariaLabel={t("editor.bodyLabel")}
-                    value=""
-                    documentValue={draft.body}
-                    onDocumentChange={(document) => {
-                      if (!interacted.current) return;
-                      setBodyEdited(true);
-                      setDraft((old) => ({ ...old, body: document }));
-                    }}
-                    enableMentions={false}
-                    showQuickAttachButton={false}
-                    placeholder={t("editor.bodyPlaceholder")}
-                  />
-                </div>
+                <DocumentEditor
+                  key={editorKey}
+                  ariaLabel={t("editor.bodyLabel")}
+                  documentValue={editorBody}
+                  onDocumentChange={(document) => edit({ body: document })}
+                  onBlur={() => void autosave.flush()}
+                  placeholder={t("editor.bodyPlaceholder")}
+                />
               </>
             ) : (
               <Card>
@@ -525,23 +595,36 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
           <History
             projectKey={projectKey}
             page={page}
-            onRestored={() => setEditing(false)}
+            beforeRestore={async () => {
+              await autosave.flush();
+              return autosave.baseVersion();
+            }}
+            onRestored={loadIntoEditor}
           />
         </div>
       </div>
       {conflict ? (
         <ConflictDialog
           conflict={conflict}
-          busy={save.isPending}
+          busy={autosave.status === "saving"}
           onClose={() => setConflict(null)}
-          onOverwrite={() => save.mutate(conflict.currentVersion)}
-          onReload={() => {
+          onOverwrite={() => {
+            autosave.resume(conflict.currentVersion);
             setConflict(null);
-            setEditing(false);
-            void refresh();
+            void autosave.flush();
           }}
+          onReload={() => void reloadLatest()}
         />
       ) : null}
+      <LeaveUnsavedDialog
+        leave={autosave.leave}
+        labels={{
+          title: t("editor.leaveTitle"),
+          description: t("editor.leaveUnsaved"),
+          stay: t("editor.stay"),
+          leave: t("editor.leave"),
+        }}
+      />
       {confirmingDelete ? (
         <Dialog
           open
@@ -623,12 +706,8 @@ export function PageDetail({
       </div>
     );
   }
-  // Keyed by id and version so an edit session starts from the saved page after a save or restore.
+  // Keyed by id only: saves update the cached page in place and must not remount the editor.
   return (
-    <PageView
-      key={`${query.data.id}:${query.data.version}`}
-      projectKey={projectKey}
-      page={query.data}
-    />
+    <PageView key={query.data.id} projectKey={projectKey} page={query.data} />
   );
 }

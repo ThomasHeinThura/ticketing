@@ -30,6 +30,7 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: PropsWithChildren<{ to: string }>) => (
     <a href={to}>{children}</a>
   ),
+  useBlocker: () => ({ status: "idle" }),
 }));
 vi.mock("react-i18next", async () => ({
   ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
@@ -47,7 +48,11 @@ vi.mock("@/fetchers/kb", async () => ({
   updateKbArticle: mocks.update,
 }));
 vi.mock("@/hooks/queries/kb", () => ({
-  kbKeys: { article: (id: string) => ["kb", id] },
+  kbKeys: {
+    all: (workspaceId: string) => ["kb", workspaceId],
+    article: (id: string) => ["kb", "article", id],
+    versions: (id: string) => ["kb", "article", id, "versions"],
+  },
   useKbArticle: () => ({
     data: { article, canWrite: mocks.canWrite, canPublish: false },
   }),
@@ -89,7 +94,7 @@ beforeEach(() => {
 });
 
 describe("KB review date library picker", () => {
-  it("keeps typed date selection in the draft until the versioned outer Save", async () => {
+  it("saves a chosen date at once on the loaded version, without a Save button", async () => {
     const view = renderEditor();
     expect(view.container.querySelector('input[type="date"]')).toBeNull();
     const trigger = screen.getByRole("button", { name: "Review due" });
@@ -101,8 +106,7 @@ describe("KB review date library picker", () => {
     fireEvent.keyDown(entry, { key: "Enter", code: "Enter" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(trigger).toHaveTextContent("Feb 29, 2028");
-    expect(mocks.update).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     await waitFor(() =>
       expect(mocks.update).toHaveBeenCalledExactlyOnceWith("qa-article", 7, {
         reviewDueAt: "2028-02-29T00:00:00.000Z",
@@ -127,7 +131,7 @@ describe("KB review date library picker", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid date");
     fireEvent.keyDown(entry, { key: "Escape", code: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByText("All changes saved")).toBeInTheDocument();
     expect(mocks.update).not.toHaveBeenCalled();
   });
 

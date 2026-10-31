@@ -21,8 +21,10 @@ import { auditPage, type PageActor } from "./audit";
 import {
   checkParent,
   isStale,
+  PAGE_VERSION_COALESCE_WINDOW_MINUTES,
   type ParentRefusal,
   purgeDeadline,
+  shouldCoalesceVersion,
   snippetOf,
 } from "./logic";
 
@@ -207,6 +209,48 @@ async function writeVersion(
   });
 }
 
+/** The page's latest version, with its coalescing window judged by the database clock. */
+async function latestVersion(tx: Executor, pageId: string) {
+  const [row] = await tx
+    .select({
+      id: projectPageVersionTable.id,
+      kind: projectPageVersionTable.kind,
+      number: projectPageVersionTable.number,
+      createdBy: projectPageVersionTable.createdBy,
+      withinWindow: sql<boolean>`${projectPageVersionTable.createdAt} > now() - make_interval(mins => ${PAGE_VERSION_COALESCE_WINDOW_MINUTES}::int)`,
+    })
+    .from(projectPageVersionTable)
+    .where(eq(projectPageVersionTable.pageId, pageId))
+    .orderBy(desc(projectPageVersionTable.number))
+    .limit(1);
+  return row;
+}
+
+/**
+ * PG-4 autosave: writes the saved page into its latest version, renumbered to the page's new
+ * version, so the latest history entry always matches the page. The caller holds the page row
+ * lock, so the latest version cannot change in between.
+ */
+async function coalesceVersion(
+  tx: Executor,
+  versionId: string,
+  page: Pick<PageRow, "title" | "body" | "bodyText">,
+  number: number,
+) {
+  const [row] = await tx
+    .update(projectPageVersionTable)
+    .set({
+      number,
+      title: page.title,
+      body: page.body,
+      bodyText: page.bodyText,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(projectPageVersionTable.id, versionId))
+    .returning({ id: projectPageVersionTable.id });
+  if (!row) throw new Error("page version coalesce returned no row");
+}
+
 export async function createPage(
   scope: Scope,
   input: {
@@ -287,7 +331,18 @@ export async function updatePage(
       .where(eq(projectPageTable.id, id))
       .returning();
     if (!row) throw new Error("page update returned no row");
-    await writeVersion(tx, row, next, "edit", null, actor.personId);
+    // PG-4: the page version always advances (PG-5 chains on it); only the history row coalesces.
+    const latest = await latestVersion(tx, id);
+    const coalesced = shouldCoalesceVersion({
+      latest,
+      personId: actor.personId,
+      pageVersion: page.version,
+      titleChanged: row.title !== page.title,
+      parentChanged: parentId !== page.parentId,
+    });
+    if (latest && coalesced) await coalesceVersion(tx, latest.id, row, next);
+    else await writeVersion(tx, row, next, "edit", null, actor.personId);
+    // PG-8: one audit row per save, coalesced or not; metadata only, never the body.
     await auditPage(tx, {
       action: "page.updated",
       workspaceId: scope.workspaceId,
@@ -299,7 +354,7 @@ export async function updatePage(
         version: page.version,
         parentId: page.parentId,
       },
-      after: { title: row.title, version: next, parentId },
+      after: { title: row.title, version: next, parentId, coalesced },
     });
     return row;
   });
@@ -314,15 +369,18 @@ export async function listVersions(pageId: string) {
       restoredFrom: projectPageVersionTable.restoredFrom,
       createdBy: projectPageVersionTable.createdBy,
       createdAt: projectPageVersionTable.createdAt,
+      updatedAt: projectPageVersionTable.updatedAt,
     })
     .from(projectPageVersionTable)
     .where(eq(projectPageVersionTable.pageId, pageId))
     .orderBy(desc(projectPageVersionTable.number));
   const names = await peopleNames(rows.map((row) => row.createdBy));
-  return rows.map(({ createdBy, kind, ...row }) => ({
+  return rows.map(({ createdBy, kind, updatedAt, ...row }) => ({
     ...row,
     kind: kind as "create" | "edit" | "restore",
     createdBy: person(names, createdBy),
+    // The time of the content this version holds: its last coalesced save, else its creation.
+    updatedAt: updatedAt ?? row.createdAt,
   }));
 }
 
@@ -340,7 +398,7 @@ export async function getVersion(pageId: string, number: number) {
   return row;
 }
 
-/** PG-4: restoring copies an old version's title and body into a NEW version; history is never rewritten. */
+/** PG-4: restoring copies an old version's title and body into a NEW version that is never coalesced. */
 export async function restoreVersion(
   scope: Scope,
   id: string,
