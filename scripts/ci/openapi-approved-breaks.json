@@ -459,7 +459,7 @@
 		"operation": "POST /service-calendars/{id}/holidays/import",
 		"rule": "request-property-max-length-set",
 		"fingerprint": "7e2f65842b28",
-		"pr": 704,
+		"pr": 1006,
 		"reason": "The holiday import body's `ics` string is now capped at 262144 characters (256 KiB), the parser's existing HOLIDAY_IMPORT_LIMITS.bytes; a longer file was already refused with 400 by the parser, so no previously accepted request is refused. The schema cap rejects it earlier, before parsing.",
 		"decision": "Thomas-approved 31 Oct 2026 — issue #704 part 1 (lone-surrogate 500 and holiday import bound); `pr` holds the issue number until the pull request number exists"
 	}
