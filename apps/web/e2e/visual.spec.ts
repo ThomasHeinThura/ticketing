@@ -6288,7 +6288,8 @@ async function installAuthenticatedFixture(page: Page) {
         customer: { password: true, magicLink: false, emailOtp: true },
         emailProviderEnabled: true,
         emailOtpDisabledByEnvironment: false,
-        revision: "a".repeat(64),
+        revision:
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       };
     } else if (
       path === "/api/instance/identity-connections/visual-connection/scim"
