@@ -18,8 +18,10 @@ vi.mock("@tanstack/react-router", () => ({
   },
 }));
 
+import { HttpError } from "@/lib/http-error";
 import {
   DOCUMENT_AUTOSAVE_DELAY_MS,
+  DOCUMENT_AUTOSAVE_RETRY_DELAYS_MS,
   type DocumentAutosaveOptions,
   useDocumentAutosave,
 } from "./use-document-autosave";
@@ -226,6 +228,67 @@ describe("useDocumentAutosave", () => {
     type(2);
     await elapse(DOCUMENT_AUTOSAVE_DELAY_MS);
     expect(save).toHaveBeenLastCalledWith({ body: 2 }, 4);
+    expect(hook.result.current.status).toBe("saved");
+  });
+
+  it("retries a network or server failure after 5 s, 15 s and 30 s, then waits for the next edit", async () => {
+    const { hook, save, type, onError } = setup();
+    save.mockRejectedValue(new HttpError(503, "unavailable"));
+    type(1);
+    await elapse(DOCUMENT_AUTOSAVE_DELAY_MS);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(DOCUMENT_AUTOSAVE_RETRY_DELAYS_MS).toEqual([5000, 15_000, 30_000]);
+    for (const [index, delay] of DOCUMENT_AUTOSAVE_RETRY_DELAYS_MS.entries()) {
+      await elapse(delay - 1);
+      expect(save).toHaveBeenCalledTimes(index + 1);
+      await elapse(1);
+      expect(save).toHaveBeenCalledTimes(index + 2);
+      expect(save).toHaveBeenLastCalledWith({ body: 1 }, 4);
+    }
+    // Reported once, not for each automatic retry.
+    expect(onError).toHaveBeenCalledTimes(1);
+    await elapse(120_000);
+    expect(save).toHaveBeenCalledTimes(4);
+    expect(hook.result.current.status).toBe("unsaved");
+
+    // The next edit starts over and, once the server is back, saves.
+    save.mockImplementation(async (_changes, expected) => ({
+      version: expected + 1,
+    }));
+    type(2);
+    await elapse(DOCUMENT_AUTOSAVE_DELAY_MS);
+    expect(save).toHaveBeenLastCalledWith({ body: 2 }, 4);
+    expect(hook.result.current.status).toBe("saved");
+  });
+
+  it("saves on the first retry once the connection is back", async () => {
+    const { hook, save, type } = setup();
+    save.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    type(1);
+    await elapse(DOCUMENT_AUTOSAVE_DELAY_MS);
+    expect(hook.result.current.status).toBe("unsaved");
+    await elapse(DOCUMENT_AUTOSAVE_RETRY_DELAYS_MS[0]);
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(hook.result.current.status).toBe("saved");
+    expect(hook.result.current.baseVersion()).toBe(5);
+  });
+
+  it("does not retry a refusal, and reset cancels a pending retry", async () => {
+    const refused = setup();
+    refused.save.mockRejectedValueOnce(new HttpError(422, "invalid"));
+    refused.type(1);
+    await elapse(DOCUMENT_AUTOSAVE_DELAY_MS);
+    await elapse(60_000);
+    expect(refused.save).toHaveBeenCalledTimes(1);
+    refused.hook.unmount();
+
+    const { hook, save, type } = setup();
+    save.mockRejectedValueOnce(new HttpError(500, "boom"));
+    type(1);
+    await elapse(DOCUMENT_AUTOSAVE_DELAY_MS);
+    act(() => hook.result.current.reset(9));
+    await elapse(60_000);
+    expect(save).toHaveBeenCalledTimes(1);
     expect(hook.result.current.status).toBe("saved");
   });
 

@@ -9257,6 +9257,15 @@
 								"slashMenuLabel": {
 									"type": "string"
 								},
+								"bubbleBold": {
+									"type": "string"
+								},
+								"bubbleItalic": {
+									"type": "string"
+								},
+								"bubbleUnderline": {
+									"type": "string"
+								},
 								"bubbleStrike": {
 									"type": "string"
 								},
@@ -9473,6 +9482,9 @@
 								"embed",
 								"noCommands",
 								"slashMenuLabel",
+								"bubbleBold",
+								"bubbleItalic",
+								"bubbleUnderline",
 								"bubbleStrike",
 								"bubbleCode",
 								"bubbleHeading",

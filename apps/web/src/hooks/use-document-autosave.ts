@@ -1,8 +1,21 @@
 import { useBlocker } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { HttpError } from "@/lib/http-error";
 
 /** How long after the last edit a document saves itself (L-04). */
 export const DOCUMENT_AUTOSAVE_DELAY_MS = 1500;
+/**
+ * After a network or server failure, the unsaved edits are sent again after each of these
+ * delays in turn; after the last one autosave waits for the next edit, blur, leave or Ctrl/⌘+S.
+ */
+export const DOCUMENT_AUTOSAVE_RETRY_DELAYS_MS = [
+  5000, 15_000, 30_000,
+] as const;
+
+/** A refusal the server gave on purpose (4xx) is not retried; a lost connection or a 5xx is. */
+function isRetryable(error: unknown) {
+  return !(error instanceof HttpError && error.status < 500);
+}
 
 export type DocumentAutosaveStatus = "saved" | "unsaved" | "saving" | "paused";
 
@@ -26,7 +39,9 @@ export type DocumentAutosaveOptions<
   onSaved?: (result: TResult, sent: TChanges) => void;
   /** Opens the screen's conflict dialog; also called again by Ctrl/⌘+S while paused. */
   onConflict: (error: unknown) => void;
-  /** Any other failure. The edits stay unsaved and are sent with the next edit or flush. */
+  /** Any other failure, reported once per run of failures (not for each automatic retry).
+   * The edits stay unsaved; a network or server failure is retried on its own
+   * (`DOCUMENT_AUTOSAVE_RETRY_DELAYS_MS`), and every failure is retried with the next edit or flush. */
   onError?: (error: unknown) => void;
 };
 
@@ -76,6 +91,8 @@ export function useDocumentAutosave<
   const failed = useRef(false);
   /** Bumped by `reset`: a save that started before it no longer applies. */
   const epoch = useRef(0);
+  /** Automatic retries made since the last success or edit. */
+  const retries = useRef(0);
 
   const dirty = useCallback(() => edits.current > savedEdits.current, []);
   const setStatus = useCallback((next: DocumentAutosaveStatus) => {
@@ -103,6 +120,19 @@ export function useDocumentAutosave<
     }, delayMs);
   }, [clearTimer, delayMs]);
 
+  /** After a retryable failure: one more try after the next backoff delay, if any is left. */
+  const scheduleRetry = useCallback(() => {
+    const delay = DOCUMENT_AUTOSAVE_RETRY_DELAYS_MS[retries.current];
+    if (delay === undefined) return;
+    retries.current += 1;
+    clearTimer();
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      if (inFlight.current) sendAfterFlight.current = true;
+      else void sendRef.current();
+    }, delay);
+  }, [clearTimer]);
+
   /** Sends one save of everything unsaved; false when nothing could be saved. */
   const send = useCallback(async (): Promise<boolean> => {
     if (inFlight.current || paused.current) return false;
@@ -121,6 +151,7 @@ export function useDocumentAutosave<
     }
     const started = epoch.current;
     let ok = false;
+    let retry = false;
     failed.current = false;
     const flight = (async () => {
       try {
@@ -138,7 +169,8 @@ export function useDocumentAutosave<
           optionsRef.current.onConflict(error);
         } else {
           failed.current = true;
-          optionsRef.current.onError?.(error);
+          retry = isRetryable(error);
+          if (retries.current === 0) optionsRef.current.onError?.(error);
         }
       }
     })();
@@ -148,13 +180,17 @@ export function useDocumentAutosave<
     if (inFlight.current === flight) inFlight.current = null;
     const again = sendAfterFlight.current;
     sendAfterFlight.current = false;
+    if (ok) retries.current = 0;
     if (ok && dirty() && !paused.current && (again || !timer.current)) {
       // Edits made during this save: their debounce already ran out, so send them now.
       void sendRef.current();
+    } else if (retry && dirty() && !paused.current && !timer.current) {
+      // No edit is waiting to trigger a save: try again after a backoff delay.
+      scheduleRetry();
     }
     settledStatus();
     return ok;
-  }, [setStatus, settledStatus, dirty]);
+  }, [setStatus, settledStatus, dirty, scheduleRetry]);
   sendRef.current = send;
 
   const flush = useCallback(async (): Promise<boolean> => {
@@ -175,6 +211,7 @@ export function useDocumentAutosave<
   const markDirty = useCallback(() => {
     if (!enabled) return;
     edits.current += 1;
+    retries.current = 0;
     if (paused.current) return;
     if (!inFlight.current) setStatus("unsaved");
     schedule();
@@ -196,6 +233,7 @@ export function useDocumentAutosave<
       epoch.current += 1;
       clearTimer();
       sendAfterFlight.current = false;
+      retries.current = 0;
       inFlight.current = null;
       versionRef.current = version;
       savedEdits.current = edits.current;

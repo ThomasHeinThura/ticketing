@@ -13,7 +13,13 @@ import {
   within,
 } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
-import { type PropsWithChildren, StrictMode, useEffect, useState } from "react";
+import {
+  type PropsWithChildren,
+  StrictMode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DocumentEditorProps } from "@/components/editor/document-editor";
 import { translate } from "@/test/en-translation";
@@ -22,6 +28,8 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   editorMounts: vi.fn(),
   editor: { current: null as DocumentEditorProps | null },
+  /** Types a paragraph at the end of what this editor instance holds, like a person would. */
+  type: { current: (_text: string) => {} },
 }));
 
 vi.mock("@tanstack/react-router", async () => ({
@@ -45,11 +53,23 @@ vi.mock("react-i18next", async () => {
     useTranslation: () => translation,
   };
 });
-// The article screen's autosave is tested against a recording editor; the real editor's
+// The article screen's autosave is tested against a recording editor that, like the real one,
+// loads `documentValue` when it mounts and then keeps its own content; the real editor's
 // behaviour is covered below and in document-editor.test.tsx.
 vi.mock("@/components/editor/document-editor", () => ({
   DocumentEditor: (props: DocumentEditorProps) => {
     mocks.editor.current = props;
+    const content = useRef(props.documentValue as { content?: unknown[] });
+    mocks.type.current = (text: string) => {
+      content.current = {
+        type: "doc",
+        content: [
+          ...(content.current.content ?? []),
+          { type: "paragraph", content: [{ type: "text", text }] },
+        ],
+      } as { content?: unknown[] };
+      props.onDocumentChange(content.current);
+    };
     useEffect(() => {
       mocks.editorMounts();
     }, []);
@@ -220,6 +240,14 @@ const editedBody = {
   ],
 };
 
+const paragraphs = (...texts: string[]) => ({
+  type: "doc",
+  content: texts.map((text) => ({
+    type: "paragraph",
+    content: [{ type: "text", text }],
+  })),
+});
+
 function renderArticleEditor() {
   const cache = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
@@ -356,5 +384,89 @@ describe("KB article editor autosave", () => {
       theirs.title,
     );
     expect(screen.getByText("All changes saved")).toBeInTheDocument();
+  });
+
+  it("keeps the editor and its edits across the customer preview, so the next edit saves on top of them", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mocks.update.mockImplementation(async (_id, version: number, changes) => ({
+      ...kbArticle,
+      ...changes,
+      version: version + 1,
+    }));
+    const cache = new QueryClient();
+    const screenAt = (search: { preview?: true }) => (
+      <QueryClientProvider client={cache}>
+        <KbArticleEditor
+          id={kbArticle.id}
+          search={search}
+          onSearchChange={vi.fn()}
+        />
+      </QueryClientProvider>
+    );
+    const view = render(screenAt({}));
+
+    act(() => mocks.type.current("First edit"));
+    await afterAutosaveDelay();
+    expect(mocks.update).toHaveBeenLastCalledWith("qa-article", 7, {
+      body: paragraphs("Step one", "First edit"),
+    });
+
+    view.rerender(screenAt({ preview: true }));
+    expect(screen.getByText("First edit")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Title" })).toBeNull();
+    view.rerender(screenAt({}));
+    expect(screen.getByRole("textbox", { name: "Title" })).toBeVisible();
+
+    act(() => mocks.type.current("Second edit"));
+    await afterAutosaveDelay();
+    expect(mocks.update).toHaveBeenLastCalledWith("qa-article", 8, {
+      body: paragraphs("Step one", "First edit", "Second edit"),
+    });
+  });
+
+  it("keeps only the fields this person changed when they keep their version after a conflict", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const theirs = {
+      ...kbArticle,
+      title: "Reset a password",
+      categoryId: "their-category",
+      version: 9,
+      body: paragraphs("Their body"),
+    };
+    mocks.update
+      .mockRejectedValueOnce(
+        new KbVersionConflictError(
+          theirs as unknown as ConstructorParameters<
+            typeof KbVersionConflictError
+          >[0],
+        ),
+      )
+      .mockImplementation(async (_id, version: number, changes) => ({
+        ...theirs,
+        ...changes,
+        version: version + 1,
+      }));
+    renderArticleEditor();
+    // Only the title changes; the body and the category stay as loaded.
+    fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
+      target: { value: "Reset a password quickly" },
+    });
+    await afterAutosaveDelay();
+    expect(await screen.findByText("Someone else saved first")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Keep mine" }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
+    expect(mocks.update).toHaveBeenLastCalledWith("qa-article", 9, {
+      title: "Reset a password quickly",
+    });
+    // The untouched body now shows (and later edits build on) the saved version.
+    await waitFor(() => expect(mocks.editorMounts).toHaveBeenCalledTimes(2));
+    expect(mocks.editor.current?.documentValue).toEqual(theirs.body);
+    await screen.findByText("All changes saved");
+    act(() => mocks.type.current("Mine on theirs"));
+    await afterAutosaveDelay();
+    expect(mocks.update).toHaveBeenLastCalledWith("qa-article", 10, {
+      body: paragraphs("Their body", "Mine on theirs"),
+    });
   });
 });

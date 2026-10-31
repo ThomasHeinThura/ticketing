@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   getPageVersion: vi.fn(),
   savePage: vi.fn(),
   requestPageDeletion: vi.fn(),
+  restorePageVersion: vi.fn(),
+  toastError: vi.fn(),
   open: vi.fn(),
   editorMounts: vi.fn(),
   editor: { current: null as DocumentEditorProps | null },
@@ -60,6 +62,14 @@ vi.mock("@/fetchers/pages", async (importOriginal) => ({
   savePage: (...args: unknown[]) => mocks.savePage(...args),
   requestPageDeletion: (...args: unknown[]) =>
     mocks.requestPageDeletion(...args),
+  restorePageVersion: (...args: unknown[]) => mocks.restorePageVersion(...args),
+}));
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    success: vi.fn(),
+    info: vi.fn(),
+    error: (...args: unknown[]) => mocks.toastError(...args),
+  },
 }));
 
 import { PageConflictError } from "@/fetchers/pages";
@@ -291,6 +301,35 @@ describe("PageDetail", () => {
       expect(mocks.getPageVersions.mock.calls.length).toBeGreaterThan(
         versionCalls,
       ),
+    );
+  });
+
+  it("explains a restore of a version that autosave merged into a later one, and refreshes the history", async () => {
+    setup(true);
+    mocks.getPageVersion.mockResolvedValue({
+      number: 1,
+      title: "Runbook",
+      body: { type: "doc", content: [] },
+    });
+    mocks.restorePageVersion.mockRejectedValue(new HttpError(404, "Not found"));
+    renderDetail();
+    const [, older] = await screen.findAllByText("history.view");
+    const versionCalls = mocks.getPageVersions.mock.calls.length;
+    fireEvent.click(older as HTMLElement);
+    const restore = await screen.findByText("history.restore");
+    await waitFor(() => expect(restore.closest("button")).not.toBeDisabled());
+    fireEvent.click(restore);
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith("history.versionMoved"),
+    );
+    expect(mocks.restorePageVersion).toHaveBeenCalledWith("HELP", "pg1", 1, 2);
+    await waitFor(() =>
+      expect(mocks.getPageVersions.mock.calls.length).toBeGreaterThan(
+        versionCalls,
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("history.restore")).toBeNull(),
     );
   });
 

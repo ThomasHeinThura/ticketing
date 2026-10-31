@@ -23,7 +23,7 @@ import TaskList from "@tiptap/extension-task-list";
 import { Markdown } from "@tiptap/markdown";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -88,7 +88,7 @@ import { getModifierKeyText } from "@/hooks/use-keyboard-shortcuts";
 import { useShikiHighlighterForCode } from "@/hooks/use-shiki-highlighter-for-code";
 import { cn } from "@/lib/cn";
 import "@/components/task/editor-styles.css";
-import { looksLikeMarkdown } from "@/lib/editor-markdown-paste";
+import { looksLikeMarkdown, withSafeLinks } from "@/lib/editor-markdown-paste";
 import { parseTaskListMarkdownToNodes } from "@/lib/editor-task-list-paste";
 import {
   extractIssueKeyFromUrl,
@@ -899,13 +899,31 @@ export default function CommentEditor({
             if (event.clipboardData?.getData("text/html")) return false;
             if (view.state.selection.$from.parent.type.spec.code) return false;
             if (!looksLikeMarkdown(plainText)) return false;
+            // Parse and check against the schema before taking the paste over: whatever the
+            // parser or the schema refuses falls back to the plain-text paste, never to nothing.
+            let content: JSONContent[];
+            try {
+              const parsed = liveEditor.markdown?.parse(plainText);
+              content = parsed ? (withSafeLinks(parsed).content ?? []) : [];
+              for (const node of content)
+                view.state.schema.nodeFromJSON(node).check();
+            } catch {
+              return false;
+            }
+            if (content.length === 0) return false;
             event.preventDefault();
-            liveEditor
-              .chain()
-              .focus()
-              .insertContent(plainText, { contentType: "markdown" })
-              .scrollIntoView()
-              .run();
+            try {
+              liveEditor
+                .chain()
+                .focus()
+                .insertContent(content)
+                .scrollIntoView()
+                .run();
+            } catch {
+              view.dispatch(
+                view.state.tr.insertText(plainText).scrollIntoView(),
+              );
+            }
             return true;
           };
           if (!pastedText || /\s/.test(pastedText)) return pasteAsMarkdown();
@@ -1483,6 +1501,28 @@ export default function CommentEditor({
     });
   }, [documentValue, editor, onChange]);
 
+  // The bubble menu's pressed states follow the selection: useEditor itself does not
+  // re-render on transactions, so without this they would show the last render's state.
+  const activeFormats = useEditorState({
+    editor,
+    selector: ({ editor: current }) =>
+      current && !current.isDestroyed
+        ? {
+            bold: current.isActive("bold"),
+            italic: current.isActive("italic"),
+            underline: current.isActive("underline"),
+            strike: current.isActive("strike"),
+            code: current.isActive("code"),
+            heading: current.isActive("heading"),
+            blockquote: current.isActive("blockquote"),
+            bulletList: current.isActive("bulletList"),
+            taskList: current.isActive("taskList"),
+            orderedList: current.isActive("orderedList"),
+            link: current.isActive("link"),
+          }
+        : null,
+  });
+
   const setLink = useCallback(() => {
     if (readOnly || disabled || !isLiveEditor(editor)) return;
     const previousUrl = editor.getAttributes("link").href as string | undefined;
@@ -1976,43 +2016,57 @@ export default function CommentEditor({
             return from !== to;
           }}
         >
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "taskdesk-comment-editor-bubble-btn",
-              editor.isActive("bold") && "bg-accent text-accent-foreground",
-            )}
-            onClick={() => editor.chain().focus().toggleBold().run()}
-          >
-            <Bold className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "taskdesk-comment-editor-bubble-btn",
-              editor.isActive("italic") && "bg-accent text-accent-foreground",
-            )}
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-          >
-            <Italic className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "taskdesk-comment-editor-bubble-btn",
-              editor.isActive("underline") &&
-                "bg-accent text-accent-foreground",
-            )}
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-          >
-            <UnderlineIcon className="size-3.5" />
-          </Button>
+          <ActionTooltip label={t("activity:comment.editor.bubbleBold")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                Boolean(activeFormats?.bold) &&
+                  "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.bubbleBold")}
+              aria-pressed={Boolean(activeFormats?.bold)}
+              onClick={() => editor.chain().focus().toggleBold().run()}
+            >
+              <Bold className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip label={t("activity:comment.editor.bubbleItalic")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                Boolean(activeFormats?.italic) &&
+                  "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.bubbleItalic")}
+              aria-pressed={Boolean(activeFormats?.italic)}
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+            >
+              <Italic className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip label={t("activity:comment.editor.bubbleUnderline")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                Boolean(activeFormats?.underline) &&
+                  "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.bubbleUnderline")}
+              aria-pressed={Boolean(activeFormats?.underline)}
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+            >
+              <UnderlineIcon className="size-3.5" />
+            </Button>
+          </ActionTooltip>
           <ActionTooltip label={t("activity:comment.editor.bubbleStrike")}>
             <Button
               type="button"
@@ -2020,10 +2074,11 @@ export default function CommentEditor({
               size="xs"
               className={cn(
                 "taskdesk-comment-editor-bubble-btn",
-                editor.isActive("strike") && "bg-accent text-accent-foreground",
+                Boolean(activeFormats?.strike) &&
+                  "bg-accent text-accent-foreground",
               )}
               aria-label={t("activity:comment.editor.bubbleStrike")}
-              aria-pressed={editor.isActive("strike")}
+              aria-pressed={Boolean(activeFormats?.strike)}
               onClick={() => editor.chain().focus().toggleStrike().run()}
             >
               <Strikethrough className="size-3.5" />
@@ -2036,10 +2091,11 @@ export default function CommentEditor({
               size="xs"
               className={cn(
                 "taskdesk-comment-editor-bubble-btn",
-                editor.isActive("code") && "bg-accent text-accent-foreground",
+                Boolean(activeFormats?.code) &&
+                  "bg-accent text-accent-foreground",
               )}
               aria-label={t("activity:comment.editor.bubbleCode")}
-              aria-pressed={editor.isActive("code")}
+              aria-pressed={Boolean(activeFormats?.code)}
               onClick={() => editor.chain().focus().toggleCode().run()}
             >
               <Code className="size-3.5" />
@@ -2053,13 +2109,16 @@ export default function CommentEditor({
               size="xs"
               className={cn(
                 "taskdesk-comment-editor-bubble-btn",
-                editor.isActive("heading", { level: 2 }) &&
+                Boolean(activeFormats?.heading) &&
                   "bg-accent text-accent-foreground",
               )}
               aria-label={t("activity:comment.editor.bubbleHeading")}
-              aria-pressed={editor.isActive("heading", { level: 2 })}
+              aria-pressed={Boolean(activeFormats?.heading)}
               onClick={() =>
-                editor.chain().focus().toggleHeading({ level: 2 }).run()
+                // Any heading level turns back into text; text becomes a level-2 heading.
+                editor.isActive("heading")
+                  ? editor.chain().focus().setParagraph().run()
+                  : editor.chain().focus().setHeading({ level: 2 }).run()
               }
             >
               <Heading2 className="size-3.5" />
@@ -2072,77 +2131,96 @@ export default function CommentEditor({
               size="xs"
               className={cn(
                 "taskdesk-comment-editor-bubble-btn",
-                editor.isActive("blockquote") &&
+                Boolean(activeFormats?.blockquote) &&
                   "bg-accent text-accent-foreground",
               )}
               aria-label={t("activity:comment.editor.bubbleQuote")}
-              aria-pressed={editor.isActive("blockquote")}
+              aria-pressed={Boolean(activeFormats?.blockquote)}
               onClick={() => editor.chain().focus().toggleBlockquote().run()}
             >
               <TextQuote className="size-3.5" />
             </Button>
           </ActionTooltip>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "taskdesk-comment-editor-bubble-btn",
-              editor.isActive("bulletList") &&
-                "bg-accent text-accent-foreground",
-            )}
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-          >
-            <List className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "taskdesk-comment-editor-bubble-btn",
-              editor.isActive("taskList") && "bg-accent text-accent-foreground",
-            )}
-            onClick={() => editor.chain().focus().toggleTaskList().run()}
-          >
-            <ListTodo className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "taskdesk-comment-editor-bubble-btn",
-              editor.isActive("orderedList") &&
-                "bg-accent text-accent-foreground",
-            )}
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          >
-            <ListOrdered className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "taskdesk-comment-editor-bubble-btn",
-              editor.isActive("link") && "bg-accent text-accent-foreground",
-            )}
-            aria-label={t("activity:comment.editor.enterUrl")}
-            onClick={setLink}
-          >
-            <Link2 className="size-3.5" />
-          </Button>
-          {canUploadFiles && (
+          <ActionTooltip label={t("activity:comment.editor.slashBulletList")}>
             <Button
               type="button"
               variant="ghost"
               size="xs"
-              className="taskdesk-comment-editor-bubble-btn"
-              onClick={() => openImagePicker(editor)}
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                Boolean(activeFormats?.bulletList) &&
+                  "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.slashBulletList")}
+              aria-pressed={Boolean(activeFormats?.bulletList)}
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
             >
-              <Paperclip className="size-3.5" />
+              <List className="size-3.5" />
             </Button>
+          </ActionTooltip>
+          <ActionTooltip label={t("activity:comment.editor.slashTaskList")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                Boolean(activeFormats?.taskList) &&
+                  "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.slashTaskList")}
+              aria-pressed={Boolean(activeFormats?.taskList)}
+              onClick={() => editor.chain().focus().toggleTaskList().run()}
+            >
+              <ListTodo className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip label={t("activity:comment.editor.slashOrderedList")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                Boolean(activeFormats?.orderedList) &&
+                  "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.slashOrderedList")}
+              aria-pressed={Boolean(activeFormats?.orderedList)}
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            >
+              <ListOrdered className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip label={t("activity:comment.editor.enterUrl")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                Boolean(activeFormats?.link) &&
+                  "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.enterUrl")}
+              onClick={setLink}
+            >
+              <Link2 className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          {canUploadFiles && (
+            <ActionTooltip label={t("activity:comment.attachFile")}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className="taskdesk-comment-editor-bubble-btn"
+                aria-label={t("activity:comment.attachFile")}
+                onClick={() => openImagePicker(editor)}
+              >
+                <Paperclip className="size-3.5" />
+              </Button>
+            </ActionTooltip>
           )}
         </BubbleMenu>
       )}

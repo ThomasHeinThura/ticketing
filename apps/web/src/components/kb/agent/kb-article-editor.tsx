@@ -385,35 +385,36 @@ function Editor({
                   <KbArticleContent body={customerView(draft.body)} />
                 </CardContent>
               </Card>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="kb-title">{t("kb:fields.title")}</Label>
-                  <Input
-                    id="kb-title"
-                    maxLength={200}
-                    value={draft.title}
-                    aria-invalid={draft.title.trim() === "" || undefined}
-                    onChange={(event) => edit({ title: event.target.value })}
-                    onBlur={() => void autosave.flush()}
-                  />
-                </div>
-                <Field className="items-stretch">
-                  <DocumentEditor
-                    key={generation}
-                    ariaLabel={t("kb:editor.bodyLabel")}
-                    documentValue={editorBody}
-                    onDocumentChange={(document) => edit({ body: document })}
-                    onBlur={() => void autosave.flush()}
-                    placeholder={t("kb:editor.bodyPlaceholder")}
-                    additionalSlashCommands={kbSlashCommands}
-                  />
-                  <FieldDescription>
-                    {t("kb:editor.workItemReferenceHelp")}
-                  </FieldDescription>
-                </Field>
-              </>
-            )}
+            ) : null}
+            {/* Hidden, not unmounted, during the preview: a remount would load the body the
+                editor started from and the next keystroke would save over the edits since. */}
+            <div className="space-y-4" hidden={preview}>
+              <div className="space-y-2">
+                <Label htmlFor="kb-title">{t("kb:fields.title")}</Label>
+                <Input
+                  id="kb-title"
+                  maxLength={200}
+                  value={draft.title}
+                  aria-invalid={draft.title.trim() === "" || undefined}
+                  onChange={(event) => edit({ title: event.target.value })}
+                  onBlur={() => void autosave.flush()}
+                />
+              </div>
+              <Field className="items-stretch">
+                <DocumentEditor
+                  key={generation}
+                  ariaLabel={t("kb:editor.bodyLabel")}
+                  documentValue={editorBody}
+                  onDocumentChange={(document) => edit({ body: document })}
+                  onBlur={() => void autosave.flush()}
+                  placeholder={t("kb:editor.bodyPlaceholder")}
+                  additionalSlashCommands={kbSlashCommands}
+                />
+                <FieldDescription>
+                  {t("kb:editor.workItemReferenceHelp")}
+                </FieldDescription>
+              </Field>
+            </div>
           </div>
           <Card>
             <CardHeader>
@@ -571,8 +572,24 @@ function Editor({
           busy={autosave.status === "saving"}
           onClose={() => setConflict(null)}
           onKeepMine={() => {
-            // Their article becomes the base, so every field that differs from it is re-sent.
+            // Only what this person changed since their own base is kept and re-sent on top of
+            // theirs; every field they did not touch (the body included) takes the saved value.
+            const mine = changesOf(
+              saved.current.article,
+              draftRef.current,
+              draftRef.current.body !== saved.current.body,
+              canPublish,
+            );
+            const kept: Draft = draftOf(conflict);
+            for (const key of Object.keys(mine) as Array<keyof Draft>)
+              Object.assign(kept, { [key]: draftRef.current[key] });
             saved.current = { article: conflict, body: conflict.body };
+            draftRef.current = kept;
+            setDraftState(kept);
+            if (!("body" in mine)) {
+              setEditorBody(conflict.body);
+              setGeneration((value) => value + 1);
+            }
             setBase(conflict);
             setConflict(null);
             autosave.resume(conflict.version);

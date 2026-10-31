@@ -263,6 +263,82 @@ describe("CommentEditor bubble menu", () => {
     expect(isActive(editor)).toBe(true);
   });
 
+  it("shows any heading level as pressed and turns it back into text", async () => {
+    const { editor } = await renderEditor();
+    await act(async () => {
+      editor.commands.setContent({
+        type: "doc",
+        content: [
+          {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "Big title" }],
+          },
+        ],
+      });
+      editor.commands.setTextSelection({ from: 1, to: 4 });
+    });
+    const button = await waitFor(() =>
+      screen.getByRole("button", {
+        name: label("bubbleHeading"),
+        hidden: true,
+      }),
+    );
+    await waitFor(() => expect(button).toHaveAttribute("aria-pressed", "true"));
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    expect(editor.isActive("heading")).toBe(false);
+    expect(topLevelNodes(editor)[0]?.type).toBe("paragraph");
+  });
+
+  it("names every button and reports the state of each format", async () => {
+    const { container, editor } = await renderEditor({
+      onFilesSelected: vi.fn(),
+    });
+    await act(async () => {
+      editor.commands.insertContent("label me");
+      editor.commands.setTextSelection({ from: 1, to: 6 });
+      editor.commands.toggleBold();
+    });
+    await waitFor(() =>
+      screen.getByRole("button", { name: label("bubbleBold"), hidden: true }),
+    );
+    const buttons = Array.from(
+      container.ownerDocument.querySelectorAll<HTMLButtonElement>(
+        ".taskdesk-comment-editor-bubble button",
+      ),
+    );
+    expect(buttons.length).toBeGreaterThan(10);
+    for (const button of buttons)
+      expect(button.getAttribute("aria-label")).toBeTruthy();
+    for (const key of [
+      "bubbleBold",
+      "bubbleItalic",
+      "bubbleUnderline",
+      "slashBulletList",
+      "slashTaskList",
+      "slashOrderedList",
+    ])
+      expect(
+        screen.getByRole("button", { name: label(key), hidden: true }),
+      ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: translate("activity:comment.attachFile"),
+        hidden: true,
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: label("bubbleBold"), hidden: true }),
+      ).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(
+      screen.getByRole("button", { name: label("bubbleItalic"), hidden: true }),
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("hides the attach button when the surface cannot store files", async () => {
     const { container, editor } = await renderEditor();
     await act(async () => {
@@ -373,6 +449,72 @@ describe("CommentEditor Markdown paste", () => {
         topLevelNodes(editor).some((node) => node.type === "heading"),
       ).toBe(true),
     );
+  });
+
+  it("pastes text naming HTML-like tags as it was copied, never losing it", async () => {
+    const { dom, editor } = await renderEditor();
+    await act(async () => {
+      fireEvent.paste(
+        dom,
+        clipboard("- Fix the <Input> component\n- check <span> rendering"),
+      );
+    });
+    expect(editor.getText()).toContain("- Fix the <Input> component");
+    expect(editor.getText()).toContain("- check <span> rendering");
+  });
+
+  it("falls back to the plain-text paste when the Markdown cannot be parsed", async () => {
+    const { dom, editor } = await renderEditor();
+    const markdown = editor.markdown;
+    if (!markdown) throw new Error("the Markdown extension is not loaded");
+    vi.spyOn(markdown, "parse").mockImplementation(() => {
+      throw new RangeError("Invalid content for node paragraph");
+    });
+    await act(async () => {
+      fireEvent.paste(dom, clipboard("# Plan\n- first\n- second"));
+    });
+    expect(editor.getText()).toContain("# Plan");
+    expect(editor.getText()).toContain("- second");
+    expect(topLevelNodes(editor).some((node) => node.type === "heading")).toBe(
+      false,
+    );
+  });
+
+  it("keeps ordinary text with one Markdown-looking line as it was copied", async () => {
+    const { dom, editor } = await renderEditor();
+    await act(async () => {
+      fireEvent.paste(
+        dom,
+        clipboard("Run this:\n> npm install\nsee __init__ and my_var_name_x"),
+      );
+    });
+    expect(
+      topLevelNodes(editor).some((node) => node.type === "blockquote"),
+    ).toBe(false);
+    expect(editor.getText()).toContain("> npm install");
+  });
+
+  it("drops javascript:, data: and vbscript: links from pasted Markdown and keeps safe ones", async () => {
+    const { dom, editor } = await renderEditor();
+    await act(async () => {
+      fireEvent.paste(
+        dom,
+        clipboard(
+          "- [one](javascript:alert(1))\n- [two](data:text/html,x)\n- [three](vbscript:msgbox)\n- [four](https://example.com/ok)",
+        ),
+      );
+    });
+    await waitFor(() =>
+      expect(topLevelNodes(editor)[0]?.type).toBe("bulletList"),
+    );
+    const hrefs: unknown[] = [];
+    editor.state.doc.descendants((node) => {
+      for (const mark of node.marks)
+        if (mark.type.name === "link") hrefs.push(mark.attrs.href);
+    });
+    expect(hrefs).toEqual(["https://example.com/ok"]);
+    expect(editor.getText()).toContain("one");
+    expect(editor.getText()).toContain("three");
   });
 
   it("leaves code blocks literal", async () => {

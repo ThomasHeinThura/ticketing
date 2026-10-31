@@ -15,15 +15,15 @@
 		"occurrenceIds": [
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[0]/Button[0]::text-accent-foreground#0",
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[1]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[10]/Button[0]::text-accent-foreground#0",
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-accent-foreground#0",
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[3]/Button[0]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[0]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[1]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[2]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[3]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[4]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[5]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[4]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[7]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[8]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[9]/Button[0]::text-accent-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[0]/DropdownMenuSubContent[0]/div[0]/Button[0]::text-accent-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[0]/DropdownMenuSubContent[0]/div[0]/Button[0]::text-accent-foreground#1",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[1]/DropdownMenuSubContent[0]/div[0]/Button[0]::text-accent-foreground#0",
@@ -79,6 +79,20 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[10]/Button[0]>bg-accent",
+					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[10]/Button[0]",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[10]/Button[0]::text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/activity/comment-editor.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
 					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
 					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]",
@@ -107,12 +121,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[0]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[4]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[0]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[4]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[0]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[4]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -121,12 +135,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[1]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[1]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[1]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -135,12 +149,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[2]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[2]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[2]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -149,12 +163,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[3]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[7]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[3]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[7]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[3]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[7]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -163,12 +177,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[4]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[8]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[4]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[8]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[4]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[8]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -177,26 +191,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[5]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[9]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[5]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[9]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[5]::text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/activity/comment-editor.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[6]>bg-accent",
-					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[6]",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[9]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -491,15 +491,15 @@
 		"occurrenceIds": [
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[0]/Button[0]::text-accent-foreground#0",
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[1]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[10]/Button[0]::text-accent-foreground#0",
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-accent-foreground#0",
 			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[3]/Button[0]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[0]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[1]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[2]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[3]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[4]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[5]::text-accent-foreground#0",
-			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[4]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[7]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[8]/Button[0]::text-accent-foreground#0",
+			"apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[9]/Button[0]::text-accent-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[0]/DropdownMenuSubContent[0]/div[0]/Button[0]::text-accent-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[0]/DropdownMenuSubContent[0]/div[0]/Button[0]::text-accent-foreground#1",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[1]/DropdownMenuSubContent[0]/div[0]/Button[0]::text-accent-foreground#0",
@@ -555,6 +555,20 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[10]/Button[0]>bg-accent",
+					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[10]/Button[0]",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[10]/Button[0]::text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/activity/comment-editor.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
 					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
 					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]",
@@ -583,12 +597,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[0]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[4]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[0]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[4]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[0]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[4]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -597,12 +611,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[1]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[1]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[1]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -611,12 +625,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[2]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[2]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[2]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -625,12 +639,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[3]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[7]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[3]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[7]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[3]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[7]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -639,12 +653,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[4]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[8]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[4]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[8]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[4]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[8]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},
@@ -653,26 +667,12 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[5]>bg-accent",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[9]/Button[0]>bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[5]",
+					"jsx:section[0]/BubbleMenu[0]/ActionTooltip[9]/Button[0]",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[5]::text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/activity/comment-editor.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[6]>bg-accent",
-					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
-					"jsx:section[0]/BubbleMenu[0]/Button[6]",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/Button[6]::text-accent-foreground#0",
+				"id": "apps/web/src/components/activity/comment-editor.tsx::CommentEditor::section[0]/BubbleMenu[0]/ActionTooltip[9]/Button[0]::text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/activity/comment-editor.tsx"
 			},

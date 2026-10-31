@@ -88,13 +88,19 @@ describe("snippetOf and purgeDeadline", () => {
 });
 
 describe("shouldCoalesceVersion (PG-4 autosave, Thomas 31 Oct 2026)", () => {
-  const mine = { kind: "edit", createdBy: "me", withinWindow: true };
+  const mine = {
+    kind: "edit",
+    number: 4,
+    createdBy: "me",
+    withinWindow: true,
+  };
   const save = (
     overrides: Partial<Parameters<typeof shouldCoalesceVersion>[0]>,
   ) =>
     shouldCoalesceVersion({
       latest: mine,
       personId: "me",
+      pageVersion: 4,
       titleChanged: false,
       parentChanged: false,
       ...overrides,
@@ -118,6 +124,11 @@ describe("shouldCoalesceVersion (PG-4 autosave, Thomas 31 Oct 2026)", () => {
     expect(save({ latest: { ...mine, kind: "create" } })).toBe(false);
     expect(save({ latest: { ...mine, kind: "restore" } })).toBe(false);
     expect(save({ latest: undefined })).toBe(false);
+  });
+
+  it("writes a new version when the latest version is not the page's current one", () => {
+    // The 0212 trigger accepts only a renumber to exactly the next number.
+    expect(save({ pageVersion: 5 })).toBe(false);
   });
 
   it("gives a rename and a move their own version", () => {

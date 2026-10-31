@@ -215,6 +215,7 @@ async function latestVersion(tx: Executor, pageId: string) {
     .select({
       id: projectPageVersionTable.id,
       kind: projectPageVersionTable.kind,
+      number: projectPageVersionTable.number,
       createdBy: projectPageVersionTable.createdBy,
       withinWindow: sql<boolean>`${projectPageVersionTable.createdAt} > now() - make_interval(mins => ${PAGE_VERSION_COALESCE_WINDOW_MINUTES}::int)`,
     })
@@ -335,6 +336,7 @@ export async function updatePage(
     const coalesced = shouldCoalesceVersion({
       latest,
       personId: actor.personId,
+      pageVersion: page.version,
       titleChanged: row.title !== page.title,
       parentChanged: parentId !== page.parentId,
     });

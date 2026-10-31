@@ -66,6 +66,8 @@ vi.mock("@tiptap/react", async () => {
       }
       return current.current?.editor ?? null;
     },
+    // The bubble menu's format state; this mock editor has no formats.
+    useEditorState: () => null,
     EditorContent: ({ editor }: { editor: Record<string, unknown> | null }) => {
       React.useLayoutEffect(() => {
         if (editor?.instanceId === 0) {
