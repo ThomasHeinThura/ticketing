@@ -134,7 +134,10 @@ import kb from "./kb";
 import label from "./label";
 import mcpTelemetry from "./mcp-telemetry";
 import meIdentity from "./me-identity";
-import { apiBodyLimitMiddleware } from "./middleware/body-limits";
+import {
+  apiBodyLimitMiddleware,
+  BodyLimitError,
+} from "./middleware/body-limits";
 import { idempotencyKeyMiddleware } from "./middleware/idempotency";
 import { createPostgresIdempotencyStore } from "./middleware/idempotency.repository";
 import { migrateColumns } from "./migrations/column-migration";
@@ -1865,6 +1868,9 @@ export function createApp(
         ? runWithImpersonator(impersonatorId, runRequest)
         : runRequest());
     } catch (error) {
+      // A body read past the app-wide limit (issue #704) is the client's 413, answered by
+      // apiBodyLimitMiddleware; it is not an authentication failure.
+      if (error instanceof BodyLimitError) throw error;
       if (!(error instanceof HTTPException)) {
         logTaskDesk({
           module: "auth",

@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { IMPORT_SOURCE_BODY_LIMIT_BYTES } from "../imports/engine/body-limit";
@@ -121,10 +122,64 @@ export class BodyLimitError extends Error {
 }
 
 /**
+ * A web stream over a Node request body that reads nothing by itself: each `pull` (only when a
+ * consumer asks, `highWaterMark: 0`) takes one chunk with `incoming.read()`, waiting for
+ * `readable`/`end`/`error` when nothing is buffered. Until the first pull, no byte leaves the
+ * `IncomingMessage` (`readableDidRead` stays false), so `@hono/node-server` can still drain or
+ * close an unread body after the response.
+ */
+export function incomingBody(incoming: Readable): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        return new Promise<void>((resolve) => {
+          const cleanup = () => {
+            incoming.off("readable", tryRead);
+            incoming.off("end", onEnd);
+            incoming.off("error", onError);
+          };
+          const onEnd = () => {
+            cleanup();
+            controller.close();
+            resolve();
+          };
+          const onError = (error: unknown) => {
+            cleanup();
+            controller.error(error);
+            resolve();
+          };
+          function tryRead() {
+            const chunk: unknown = incoming.read();
+            if (chunk === null) return false;
+            cleanup();
+            controller.enqueue(
+              typeof chunk === "string"
+                ? new TextEncoder().encode(chunk)
+                : new Uint8Array(chunk as Uint8Array),
+            );
+            resolve();
+            return true;
+          }
+          if (incoming.errored) return onError(incoming.errored);
+          if (incoming.readableEnded) return onEnd();
+          if (tryRead()) return;
+          incoming.on("readable", tryRead);
+          incoming.once("end", onEnd);
+          incoming.once("error", onError);
+        });
+      },
+    },
+    { highWaterMark: 0 },
+  );
+}
+
+/**
  * Wraps `source` in a stream that reads nothing by itself: a chunk is pulled from the source only
  * when the consumer asks for one (`highWaterMark: 0`, no read in `start`), counted, and passed on.
- * The chunk that takes the total past `maxBytes` is not passed on; the stream errors with
- * `BodyLimitError` and the source is cancelled.
+ * The chunk that takes the total past `maxBytes` is not passed on and the stream errors with
+ * `BodyLimitError`. The source is left as it is (not cancelled): cancelling a body stream that
+ * undici is still filling (a `FormData` body) raises an unhandled "already closed" error, and an
+ * unread Node request body is drained or closed by `@hono/node-server` after the response.
  */
 export function countingBody(
   source: ReadableStream<Uint8Array>,
@@ -144,14 +199,14 @@ export function countingBody(
         received += value.byteLength;
         if (received > maxBytes) {
           exceeded = true;
-          void reader.cancel().catch(() => undefined);
+          reader.releaseLock();
           controller.error(new BodyLimitError(maxBytes));
           return;
         }
         controller.enqueue(value);
       },
       cancel(reason) {
-        return reader.cancel(reason);
+        return reader.cancel(reason).catch(() => undefined);
       },
     },
     { highWaterMark: 0 },
@@ -159,34 +214,62 @@ export function countingBody(
   return { body, exceeded: () => exceeded };
 }
 
+/** The Node request behind `@hono/node-server`, when it is still unread. */
+function unreadIncoming(c: Context): Readable | undefined {
+  const incoming = (c.env as { incoming?: unknown } | undefined)?.incoming;
+  if (!(incoming instanceof Readable)) return undefined;
+  if (incoming.readableDidRead || "rawBody" in incoming) return undefined;
+  return incoming;
+}
+
 /**
- * App-wide `/api` body limit (issue #704). It never reads a body itself:
- * - a declared `Content-Length` over the limit is refused at once with `413` (Node's HTTP parser
- *   holds a request to its declared length, so a declared length within the limit passes as is);
- * - a body without a declared length (chunked) is replaced by a counting stream that reads only
- *   as fast as a downstream reader consumes it. A request refused before anything reads its body
- *   (the auth guard's `401`, a host or CSRF refusal) never pulls a byte. Whoever reads past the
- *   limit gets `BodyLimitError` (a body parser may turn that into its own error); either way the
- *   response becomes the rule's `413`.
- * Anything outside `/api` and the two exempt upload streams pass through untouched.
+ * App-wide `/api` body limit (issue #704). It never reads a body itself, and decides from the
+ * method and headers alone (`c.req.raw.body` is not touched: on `@hono/node-server` that would
+ * start reading the socket):
+ * - `GET`/`HEAD` pass through;
+ * - a declared `Content-Length` (without `Transfer-Encoding`) over the limit is refused at once
+ *   with `413`; within the limit it passes untouched (Node's HTTP parser holds a request to its
+ *   declared length, and node-server keeps its direct-read fast path);
+ * - otherwise (chunked or unknown length) the body is replaced by a counting stream that reads
+ *   from the Node request only as fast as a downstream reader consumes it. A request refused
+ *   before anything reads its body (the auth guard's `401`, a host or CSRF refusal) never reads a
+ *   byte. Whoever reads past the limit gets `BodyLimitError` (a body parser may turn that into its
+ *   own error); either way the response becomes the rule's `413`.
+ * Without a Node request (in-process `app.request`, other runtimes) the counting stream wraps
+ * `c.req.raw.body` instead. Anything outside `/api` and the two exempt upload streams pass
+ * through untouched.
  */
 export async function apiBodyLimitMiddleware(c: Context, next: Next) {
-  const rule = findRule(c.req.method, c.req.path);
+  const method = c.req.method.toUpperCase();
+  if (method === "GET" || method === "HEAD") return next();
+  const rule = findRule(method, c.req.path);
   if (!rule || rule.maxBytes === "exempt") return next();
   const maxBytes = rule.maxBytes;
   const tooLarge = rule.tooLarge ?? payloadTooLarge;
-  const raw = c.req.raw;
-  if (!raw.body) return next();
 
-  const declared = raw.headers.get("content-length");
-  if (declared !== null && !raw.headers.has("transfer-encoding")) {
+  const declared = c.req.header("content-length");
+  if (
+    declared !== undefined &&
+    c.req.header("transfer-encoding") === undefined
+  ) {
     const length = Number(declared);
-    if (Number.isSafeInteger(length) && length >= 0)
+    if (/^\d+$/.test(declared.trim()) && Number.isSafeInteger(length))
       return length > maxBytes ? tooLarge() : next();
   }
 
-  const limited = countingBody(raw.body, maxBytes);
-  c.req.raw = new Request(raw, {
+  const raw = c.req.raw;
+  const incoming = unreadIncoming(c);
+  let source: ReadableStream<Uint8Array>;
+  if (incoming) source = incomingBody(incoming);
+  else {
+    if (!raw.body) return next();
+    source = raw.body;
+  }
+  const limited = countingBody(source, maxBytes);
+  c.req.raw = new Request(raw.url, {
+    method: raw.method,
+    headers: raw.headers,
+    signal: raw.signal,
     body: limited.body,
     duplex: "half",
   } as RequestInit);
