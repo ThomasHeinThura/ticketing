@@ -2139,7 +2139,13 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       const id = `uat-wi-${project.slug.toLowerCase()}-${item.n}`;
       const finished = item.state === "done" || item.state === "cancelled";
       const started = item.state === "in-progress" || finished;
-      const created = date(Math.min(item.due, 0) - 7 - (item.n % 5));
+      const slaApplies = project.sla && item.type !== "epic" && item.requester;
+      // Open SLA items arrived within the last two days, so UAT sees a realistic mix of
+      // on-track, at-risk and breached timers rather than a wall of week-old breaches.
+      const created =
+        slaApplies && !finished
+          ? new Date(now.getTime() - [3, 6, 20, 26, 50][item.n % 5] * 3_600_000)
+          : date(Math.min(item.due, 0) - 7 - (item.n % 5));
       const visibility =
         item.visibility ??
         (key === "SUP"
@@ -2147,7 +2153,6 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
           : key === "WEB"
             ? "private"
             : "private");
-      const slaApplies = project.sla && item.type !== "epic" && item.requester;
       const inserted = await ensureById(
         tx,
         schema.workItemTable,
@@ -2173,7 +2178,10 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
           customerVisibility: visibility,
           slaStartedAt: slaApplies ? created : null,
           slaPolicyVersionId: slaApplies ? "uat-sla-policy-v1" : null,
-          firstResponseAt: slaApplies && started ? date(item.due - 6) : null,
+          firstResponseAt:
+            slaApplies && started
+              ? new Date(created.getTime() + 30 * 60_000)
+              : null,
           resolvedAt: item.state === "done" ? date(item.due) : null,
           createdAt: created,
           updatedAt: now,
