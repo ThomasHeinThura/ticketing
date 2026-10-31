@@ -81,9 +81,13 @@ import { Route as LayoutAuthenticatedGodModeOrganisationsIndexRouteImport } from
 import { Route as LayoutAuthenticatedAgentKbIdEditRouteImport } from './routes/agent/_layout/_authenticated/agent/kb_.$id_.edit'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/backlog'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyCyclesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/documents'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyModulesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyPagesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/pages'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/prerequisites'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/settings'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyTeamRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/team'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyTimelineRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/timeline'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyWorkRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/work'
 import { Route as LayoutAuthenticatedAgentReportsExportsIdRouteImport } from './routes/agent/_layout/_authenticated/agent/reports_.exports.$id'
 import { Route as LayoutAuthenticatedAgentServiceManagementReleasesIdRouteImport } from './routes/agent/_layout/_authenticated/agent/service-management/releases/$id'
@@ -572,6 +576,12 @@ const LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute =
     path: '/cycles',
     getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
   } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute =
   LayoutAuthenticatedAgentProjectsProjectKeyModulesRouteImport.update({
     id: '/modules',
@@ -584,10 +594,28 @@ const LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute =
     path: '/pages',
     getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
   } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRouteImport.update({
+    id: '/prerequisites',
+    path: '/prerequisites',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute =
   LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteImport.update({
     id: '/settings',
     path: '/settings',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyTeamRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyTeamRouteImport.update({
+    id: '/team',
+    path: '/team',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyTimelineRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyTimelineRouteImport.update({
+    id: '/timeline',
+    path: '/timeline',
     getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
   } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute =
@@ -1152,9 +1180,13 @@ export interface FileRoutesByFullPath {
   '/agent/kb/$id/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
   '/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
+  '/agent/projects/$projectKey/documents': typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   '/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
   '/agent/projects/$projectKey/pages': typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute
+  '/agent/projects/$projectKey/prerequisites': typeof LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRoute
   '/agent/projects/$projectKey/settings': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren
+  '/agent/projects/$projectKey/team': typeof LayoutAuthenticatedAgentProjectsProjectKeyTeamRoute
+  '/agent/projects/$projectKey/timeline': typeof LayoutAuthenticatedAgentProjectsProjectKeyTimelineRoute
   '/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
   '/agent/reports/exports/$id': typeof LayoutAuthenticatedAgentReportsExportsIdRoute
   '/agent/service-management/releases/$id': typeof LayoutAuthenticatedAgentServiceManagementReleasesIdRoute
@@ -1291,9 +1323,13 @@ export interface FileRoutesByTo {
   '/agent/kb/$id/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
   '/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
+  '/agent/projects/$projectKey/documents': typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   '/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
   '/agent/projects/$projectKey/pages': typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute
+  '/agent/projects/$projectKey/prerequisites': typeof LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRoute
   '/agent/projects/$projectKey/settings': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren
+  '/agent/projects/$projectKey/team': typeof LayoutAuthenticatedAgentProjectsProjectKeyTeamRoute
+  '/agent/projects/$projectKey/timeline': typeof LayoutAuthenticatedAgentProjectsProjectKeyTimelineRoute
   '/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
   '/agent/reports/exports/$id': typeof LayoutAuthenticatedAgentReportsExportsIdRoute
   '/agent/service-management/releases/$id': typeof LayoutAuthenticatedAgentServiceManagementReleasesIdRoute
@@ -1439,9 +1475,13 @@ export interface FileRoutesById {
   '/_layout/_authenticated/agent/kb_/$id_/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/_layout/_authenticated/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
   '/_layout/_authenticated/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/documents': typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   '/_layout/_authenticated/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
   '/_layout/_authenticated/agent/projects/$projectKey/pages': typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/prerequisites': typeof LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRoute
   '/_layout/_authenticated/agent/projects/$projectKey/settings': typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren
+  '/_layout/_authenticated/agent/projects/$projectKey/team': typeof LayoutAuthenticatedAgentProjectsProjectKeyTeamRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/timeline': typeof LayoutAuthenticatedAgentProjectsProjectKeyTimelineRoute
   '/_layout/_authenticated/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
   '/_layout/_authenticated/agent/reports_/exports/$id': typeof LayoutAuthenticatedAgentReportsExportsIdRoute
   '/_layout/_authenticated/agent/service-management/releases/$id': typeof LayoutAuthenticatedAgentServiceManagementReleasesIdRoute
@@ -1586,9 +1626,13 @@ export interface FileRouteTypes {
     | '/agent/kb/$id/edit'
     | '/agent/projects/$projectKey/backlog'
     | '/agent/projects/$projectKey/cycles'
+    | '/agent/projects/$projectKey/documents'
     | '/agent/projects/$projectKey/modules'
     | '/agent/projects/$projectKey/pages'
+    | '/agent/projects/$projectKey/prerequisites'
     | '/agent/projects/$projectKey/settings'
+    | '/agent/projects/$projectKey/team'
+    | '/agent/projects/$projectKey/timeline'
     | '/agent/projects/$projectKey/work'
     | '/agent/reports/exports/$id'
     | '/agent/service-management/releases/$id'
@@ -1725,9 +1769,13 @@ export interface FileRouteTypes {
     | '/agent/kb/$id/edit'
     | '/agent/projects/$projectKey/backlog'
     | '/agent/projects/$projectKey/cycles'
+    | '/agent/projects/$projectKey/documents'
     | '/agent/projects/$projectKey/modules'
     | '/agent/projects/$projectKey/pages'
+    | '/agent/projects/$projectKey/prerequisites'
     | '/agent/projects/$projectKey/settings'
+    | '/agent/projects/$projectKey/team'
+    | '/agent/projects/$projectKey/timeline'
     | '/agent/projects/$projectKey/work'
     | '/agent/reports/exports/$id'
     | '/agent/service-management/releases/$id'
@@ -1872,9 +1920,13 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/agent/kb_/$id_/edit'
     | '/_layout/_authenticated/agent/projects/$projectKey/backlog'
     | '/_layout/_authenticated/agent/projects/$projectKey/cycles'
+    | '/_layout/_authenticated/agent/projects/$projectKey/documents'
     | '/_layout/_authenticated/agent/projects/$projectKey/modules'
     | '/_layout/_authenticated/agent/projects/$projectKey/pages'
+    | '/_layout/_authenticated/agent/projects/$projectKey/prerequisites'
     | '/_layout/_authenticated/agent/projects/$projectKey/settings'
+    | '/_layout/_authenticated/agent/projects/$projectKey/team'
+    | '/_layout/_authenticated/agent/projects/$projectKey/timeline'
     | '/_layout/_authenticated/agent/projects/$projectKey/work'
     | '/_layout/_authenticated/agent/reports_/exports/$id'
     | '/_layout/_authenticated/agent/service-management/releases/$id'
@@ -2464,6 +2516,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
     }
+    '/_layout/_authenticated/agent/projects/$projectKey/documents': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/documents'
+      path: '/documents'
+      fullPath: '/agent/projects/$projectKey/documents'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
     '/_layout/_authenticated/agent/projects/$projectKey/modules': {
       id: '/_layout/_authenticated/agent/projects/$projectKey/modules'
       path: '/modules'
@@ -2478,11 +2537,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
     }
+    '/_layout/_authenticated/agent/projects/$projectKey/prerequisites': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/prerequisites'
+      path: '/prerequisites'
+      fullPath: '/agent/projects/$projectKey/prerequisites'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
     '/_layout/_authenticated/agent/projects/$projectKey/settings': {
       id: '/_layout/_authenticated/agent/projects/$projectKey/settings'
       path: '/settings'
       fullPath: '/agent/projects/$projectKey/settings'
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/team': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/team'
+      path: '/team'
+      fullPath: '/agent/projects/$projectKey/team'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyTeamRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/timeline': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/timeline'
+      path: '/timeline'
+      fullPath: '/agent/projects/$projectKey/timeline'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyTimelineRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
     }
     '/_layout/_authenticated/agent/projects/$projectKey/work': {
@@ -3031,9 +3111,13 @@ const LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren =
 interface LayoutAuthenticatedAgentProjectsProjectKeyRouteChildren {
   LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
   LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
   LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRoute
   LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren
+  LayoutAuthenticatedAgentProjectsProjectKeyTeamRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyTeamRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyTimelineRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyTimelineRoute
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
   LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute
   LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesModuleIdRoute
@@ -3046,12 +3130,20 @@ const LayoutAuthenticatedAgentProjectsProjectKeyRouteChildren: LayoutAuthenticat
       LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute,
     LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute,
     LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute,
     LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyPagesRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyPrerequisitesRoute,
     LayoutAuthenticatedAgentProjectsProjectKeySettingsRoute:
       LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren,
+    LayoutAuthenticatedAgentProjectsProjectKeyTeamRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyTeamRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyTimelineRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyTimelineRoute,
     LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute,
     LayoutAuthenticatedAgentProjectsProjectKeyCyclesCycleIdRoute:

@@ -2004,7 +2004,13 @@
 			"noProjects": "No {{term_project_other}}",
 			"cycles": "{{term_cycle_other}}",
 			"modules": "{{term_module_other}}",
-			"pages": "Pages"
+			"pages": "Pages",
+			"overview": "Overview",
+			"backlog": "Backlog",
+			"timeline": "Timeline",
+			"prerequisites": "Prerequisites",
+			"team": "Team",
+			"documents": "Documents"
 		},
 		"commandPalette": {
 			"suggestions": "Suggestions",
@@ -6576,8 +6582,8 @@
 				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"timeline": {
-				"title": "Gantt is off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on Gantt in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
+				"title": "The timeline is off for this {{term_project_one}}",
+				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"sla": {
 				"title": "SLAs are off for this workspace",
@@ -7737,6 +7743,284 @@
 			"confirm": "Request deletion",
 			"failed": "The deletion could not be requested.",
 			"hasChildren": "Move or delete this page's sub-pages first."
+		}
+	},
+	"projectOverview": {
+		"pageTitle": "{{name}} · Overview",
+		"loading": "Loading the overview…",
+		"loadFailed": "The overview could not be loaded.",
+		"notFound": "This {{term_project_one}} does not exist or is out of reach.",
+		"header": {
+			"archived": "Archived",
+			"open": "{{count}} open",
+			"breached": "{{count}} breached",
+			"newItem": "New {{term_work_item_one}}",
+			"moreActions": "More {{term_project_one}} actions",
+			"archive": "Archive {{term_project_one}}",
+			"archiveTitle": "Archive {{name}}?",
+			"archiveDescription": "The {{term_project_one}} leaves the default {{term_project_one}} list. Its {{term_work_item_other}}, history and settings are kept.",
+			"archiveConfirm": "Archive",
+			"archivedToast": "{{name}} archived",
+			"archiveHasChildren": "Archive the child {{term_project_other}} first."
+		},
+		"kind": {
+			"project": "Delivery {{term_project_one}}",
+			"managed_service": "Managed service"
+		},
+		"status": {
+			"planning": "Planning",
+			"active": "Active",
+			"on_hold": "On hold",
+			"closed": "Closed"
+		},
+		"health": {
+			"green": "On track",
+			"amber": "Needs attention",
+			"red": "At risk",
+			"unset": "Health not set"
+		},
+		"kpi": {
+			"health": "Health",
+			"status": "Status",
+			"workComplete": "Work complete",
+			"workBreakdown": "{{inProgress}} in progress · {{waiting}} waiting",
+			"blocking": "Blocking prerequisites",
+			"blockingOf": "{{count}} recorded"
+		},
+		"attention": {
+			"blocking_one": "{{count}} blocking prerequisite is outstanding.",
+			"blocking_other": "{{count}} blocking prerequisites are outstanding.",
+			"seeWaiting": "See what is waiting"
+		},
+		"composition": {
+			"title": "Setup is not complete",
+			"PR-6": "No {{term_project_one}} manager is set.",
+			"PR-7": "Nobody is on the roster yet.",
+			"PR-10": "No start date is set."
+		},
+		"summary": {
+			"title": "Summary",
+			"edit": "Edit summary",
+			"status": "Status",
+			"objective": "Objective",
+			"inScope": "In scope",
+			"outOfScope": "Out of scope",
+			"successCriteria": "Success criteria",
+			"statusNote": "Status note",
+			"updated": "Updated {{date}}",
+			"empty": "Not written yet"
+		},
+		"editSummary": {
+			"title": "Edit summary",
+			"description": "What this {{term_project_one}} is for, what it covers and how it is going. Clearing a field removes it.",
+			"save": "Save summary",
+			"saved": "Summary saved."
+		},
+		"milestones": {
+			"title": "Milestones",
+			"add": "Add milestone",
+			"addTitle": "Add milestone",
+			"editTitle": "Edit milestone",
+			"description": "A milestone is a dated checkpoint. The current milestone is the first one not yet reached.",
+			"name": "Name",
+			"date": "Date",
+			"saved": "Milestone saved.",
+			"empty": "No milestones yet.",
+			"loadFailed": "Milestones could not be loaded.",
+			"markReached": "Mark reached",
+			"markNotReached": "Mark not reached",
+			"state": {
+				"reached": "Reached",
+				"current": "Current",
+				"overdue": "Overdue",
+				"upcoming": "Upcoming"
+			}
+		},
+		"facts": {
+			"title": "Facts",
+			"customer": "Customer",
+			"internal": "Internal",
+			"start": "Start",
+			"end": "Target end",
+			"manager": "Manager",
+			"defaultAssignee": "New work lands on",
+			"supportLevel": "Support level",
+			"calendar": "Service calendar",
+			"notSet": "Not set"
+		},
+		"serviceLevels": {
+			"title": "Service levels",
+			"none": "No SLA policy applies to this {{term_project_one}}.",
+			"noTargets": "The policy has no published targets yet.",
+			"source": {
+				"project": "{{name}} (set here)",
+				"workspace": "{{name}} (workspace default)",
+				"none": "{{name}}"
+			},
+			"priority": "Priority",
+			"firstResponse": "First response",
+			"resolution": "Resolution",
+			"priorities": {
+				"urgent": "Urgent",
+				"high": "High",
+				"medium": "Medium",
+				"low": "Low"
+			},
+			"minutes_one": "{{count}} min",
+			"minutes_other": "{{count}} min",
+			"hours_one": "{{count}} h",
+			"hours_other": "{{count}} h",
+			"days_one": "{{count}} day",
+			"days_other": "{{count}} days"
+		},
+		"contract": {
+			"title": "Contract",
+			"add": "Add contract",
+			"edit": "Edit contract",
+			"none": "No contract is recorded.",
+			"loadFailed": "The contract could not be loaded.",
+			"state": {
+				"none": "No contract",
+				"expired": "Expired",
+				"kickoff_pending": "Kickoff pending",
+				"expiring": "Expiring",
+				"active": "Active"
+			},
+			"daysLeft_one": "{{count}} day left",
+			"daysLeft_other": "{{count}} days left",
+			"endedOn": "Ended {{date}}",
+			"hourBank": "Hour bank",
+			"usedOf": "{{used}} h of {{contracted}} h used",
+			"remaining": "{{hours}} h remaining",
+			"overdrawn": "{{hours}} h over the contracted hours",
+			"hours": "{{hours}} h",
+			"period": "Period",
+			"coverage": "Coverage",
+			"kickoff": "Kickoff",
+			"recent": "Recent billable time",
+			"noRecent": "No billable time in this period yet.",
+			"coverageOption": {
+				"9x5": "9x5 business hours",
+				"12x5": "12x5 extended hours",
+				"24x7": "24x7"
+			},
+			"kickoffStatus": {
+				"pending": "Pending",
+				"scheduled": "Scheduled",
+				"completed": "Completed"
+			},
+			"dialog": {
+				"addTitle": "Add contract",
+				"editTitle": "Edit contract",
+				"description": "The contracted period and hours. Hours used are the billable time logged on this {{term_project_one}} inside the period.",
+				"start": "Start date",
+				"end": "End date",
+				"hours": "Contracted hours",
+				"hoursHint": "Total hours for the whole period, for example 120 or 7.5.",
+				"hoursInvalid": "Enter a number of hours greater than zero.",
+				"kickoffStatus": "Kickoff status",
+				"kickoffDate": "Kickoff date",
+				"clearDate": "Clear date",
+				"endBeforeStart": "The end date must be on or after the start date.",
+				"save": "Save contract",
+				"saved": "Contract saved."
+			}
+		},
+		"prerequisites": {
+			"pageTitle": "{{name}} · Prerequisites",
+			"title": "Prerequisites",
+			"summary": "{{outstanding}} outstanding of {{total}}",
+			"add": "Add prerequisite",
+			"addTitle": "Add prerequisite",
+			"addDescription": "Something the work is waiting on, and who owns it.",
+			"fieldTitle": "Title",
+			"fieldOwner": "Owner",
+			"fieldDue": "Due date",
+			"fieldBlocking": "Blocks the work",
+			"saved": "Prerequisite added.",
+			"loadFailed": "Prerequisites could not be loaded.",
+			"emptyTitle": "Nothing is outstanding",
+			"emptyDescription": "Record what this {{term_project_one}} is waiting on, such as access, data or sign-off.",
+			"owner": {
+				"us": "Us",
+				"customer": "Customer",
+				"both": "Both"
+			},
+			"blocking": "Blocking",
+			"due": "Due {{date}}",
+			"overdue": "Overdue since {{date}}",
+			"markDone": "Mark \"{{title}}\" done",
+			"markOpen": "Mark \"{{title}}\" not done",
+			"statusDone": "Done",
+			"statusOpen": "Not done yet"
+		},
+		"team": {
+			"pageTitle": "{{name}} · Team",
+			"title": "Team",
+			"description": "Who is accountable and who is escalated to, in order, when a target is breached.",
+			"stakeholders": "Stakeholders",
+			"roster": "Roster",
+			"manageRoster": "Manage roster",
+			"add": "Add stakeholder",
+			"addTitle": "Add stakeholder",
+			"addDescription": "Stakeholders are escalated to in order when an SLA target is breached.",
+			"person": "Person",
+			"role": "Role",
+			"rolePlaceholder": "Project manager",
+			"order": "Escalation order",
+			"wait": "Wait before escalating (minutes)",
+			"saved": "Stakeholder added.",
+			"loadFailed": "The team could not be loaded.",
+			"emptyStakeholders": "No stakeholders yet.",
+			"emptyRoster": "Nobody is on the roster yet.",
+			"rosterUnavailable": "The roster is not available to you.",
+			"noCandidates": "Add people to the roster first.",
+			"unnamed": "Unnamed person",
+			"inherited": "Inherited",
+			"stoodDown": "Stood down",
+			"standDown": "Stand down",
+			"stoodDownToast": "Stakeholder stood down.",
+			"standDownTitle": "Stand down {{name}}?",
+			"standDownDescription": "{{name}} leaves the escalation chain. This cannot be undone: to bring them back, add them again as a new stakeholder.",
+			"standDownConfirm": "Stand down",
+			"escalationOrder": "Escalation order {{order}}",
+			"waitMinutes_one": "escalate after {{count}} minute",
+			"waitMinutes_other": "escalate after {{count}} minutes"
+		},
+		"documents": {
+			"pageTitle": "{{name}} · Documents",
+			"title": "Documents",
+			"description": "Links to documents kept elsewhere, such as the statement of work or the runbook.",
+			"links": "Document links",
+			"add": "Add document link",
+			"addTitle": "Add document link",
+			"addDescription": "A link, never a copy. Customers see it only when you allow it.",
+			"fieldTitle": "Title",
+			"fieldUrl": "Address",
+			"urlInvalid": "Enter an address that starts with http:// or https://.",
+			"fieldCustomerVisible": "Visible to the customer",
+			"customerVisibleHint": "Shown in the customer portal for this {{term_project_one}}.",
+			"customerVisible": "Customer can see",
+			"staffOnly": "Staff only",
+			"saved": "Document link added.",
+			"loadFailed": "Documents could not be loaded.",
+			"empty": "No document links yet.",
+			"pages": "Pages",
+			"pagesDescription": "Long-form staff documents for this {{term_project_one}} live in Pages.",
+			"openPages": "Open Pages"
+		},
+		"common": {
+			"cancel": "Cancel",
+			"close": "Close",
+			"save": "Save",
+			"edit": "Edit",
+			"delete": "Delete",
+			"retry": "Retry",
+			"actionsFor": "Actions for {{name}}",
+			"forbidden": "You do not have permission to do that.",
+			"notFound": "This item no longer exists or is out of reach.",
+			"failed": "That did not work. Try again.",
+			"pickDate": "Pick a date"
 		}
 	},
 	"customerInvitations": {

@@ -1806,6 +1806,7 @@ export const routes = {
       return suffix ? `${base}?${suffix}` : base;
     },
   },
+  /** S3: a project opens on its Overview (summary, contract, service levels, milestones). */
   projectOverview: {
     path: "/agent/projects/$projectKey" as const,
     build: (params: { projectKey: string }) =>
@@ -2051,6 +2052,30 @@ export const routes = {
     path: "/agent/projects/$projectKey/pages/$pageId" as const,
     build: (params: { projectKey: string; pageId: string }) =>
       `/agent/projects/${encodeURIComponent(params.projectKey)}/pages/${encodeURIComponent(params.pageId)}`,
+  },
+  /** S3 project Overview tabs (feature-contracts-p1 "Engagement structure"): the plan's prerequisites. */
+  projectPrerequisites: {
+    path: "/agent/projects/$projectKey/prerequisites" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/prerequisites`,
+  },
+  /** Stakeholders (escalation order) and the read-only project roster. */
+  projectTeam: {
+    path: "/agent/projects/$projectKey/team" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/team`,
+  },
+  /** Document links (customer visibility per link) and a link to the project's Pages. */
+  projectDocuments: {
+    path: "/agent/projects/$projectKey/documents" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/documents`,
+  },
+  /** The existing Kaneo Gantt, gated by `feature.timeline`; this link redirects there. */
+  projectTimeline: {
+    path: "/agent/projects/$projectKey/timeline" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/timeline`,
   },
   /** `ES-1`..`ES-3`: estimate system and cycle completion default (redirects to Kaneo's project settings). */
   projectEstimates: {

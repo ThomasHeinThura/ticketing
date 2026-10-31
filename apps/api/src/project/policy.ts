@@ -442,4 +442,32 @@ export const projectPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+
+  // Project Overview (0213; decisions D1/D2, Thomas 31 Oct 2026). Reads need project:read.
+  // The summary and lifecycle status share project:update with health and milestones; the
+  // contract is engagement configuration, so writing it needs project:manage_settings.
+  "GET /api/project/{id}/overview": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PATCH /api/project/{id}/summary": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "GET /api/project/{id}/contract": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  "PUT /api/project/{id}/contract": {
+    capability: "project:manage_settings",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
 } as const satisfies PolicyMap;

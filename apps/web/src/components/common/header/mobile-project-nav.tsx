@@ -3,14 +3,20 @@ import {
   CalendarDays,
   CalendarRange,
   Check,
+  Files,
   FileText,
   Layers,
+  LayoutDashboard,
+  ListChecks,
+  type LucideIcon,
   Menu,
   Plus,
   Repeat,
   Settings,
   SquareKanban,
+  Users,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import icons from "@/constants/project-icons";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -20,13 +26,22 @@ type MobileProjectNavProps = {
   workspaceId: string;
   projectId: string;
   activeView:
+    | "overview"
     | "backlog"
     | "board"
     | "calendar"
     | "gantt"
     | "cycles"
     | "modules"
-    | "pages";
+    | "pages"
+    | "prerequisites"
+    | "team"
+    | "documents";
+  /** S3 Overview and its tabs. */
+  onSelectOverview?: () => void;
+  onSelectPrerequisites?: () => void;
+  onSelectTeam?: () => void;
+  onSelectDocuments?: () => void;
   onSelectBoard: () => void;
   onSelectBacklog: () => void;
   /** Offered only while `feature.calendar` / `feature.timeline` is on. */
@@ -44,10 +59,44 @@ type MobileProjectNavProps = {
   onOpenProjectSettings?: () => void;
 };
 
+function MobileViewButton({
+  active,
+  icon: Icon,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  icon: LucideIcon;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+        active
+          ? "border-border bg-secondary text-foreground"
+          : "border-transparent text-muted-foreground hover:bg-accent",
+      )}
+    >
+      <Icon className="size-3.5" />
+      {children}
+    </Button>
+  );
+}
+
 export default function MobileProjectNav({
   workspaceId,
   projectId,
   activeView,
+  onSelectOverview,
+  onSelectPrerequisites,
+  onSelectTeam,
+  onSelectDocuments,
   onSelectBoard,
   onSelectBacklog,
   onSelectCalendar,
@@ -82,7 +131,16 @@ export default function MobileProjectNav({
             <p className="px-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
               View
             </p>
-            <div className="grid grid-cols-4 gap-1">
+            <div className="grid grid-cols-3 gap-1">
+              {onSelectOverview ? (
+                <MobileViewButton
+                  active={activeView === "overview"}
+                  icon={LayoutDashboard}
+                  onClick={onSelectOverview}
+                >
+                  {t("navigation:projectViews.overview")}
+                </MobileViewButton>
+              ) : null}
               <Button
                 variant="ghost"
                 type="button"
@@ -139,7 +197,7 @@ export default function MobileProjectNav({
                   )}
                 >
                   <CalendarDays className="size-3.5" />
-                  Gantt
+                  {t("navigation:projectViews.timeline")}
                 </Button>
               ) : null}
               {onSelectCycles ? (
@@ -189,6 +247,33 @@ export default function MobileProjectNav({
                   <FileText className="size-3.5" />
                   {t("navigation:projectViews.pages")}
                 </Button>
+              ) : null}
+              {onSelectPrerequisites ? (
+                <MobileViewButton
+                  active={activeView === "prerequisites"}
+                  icon={ListChecks}
+                  onClick={onSelectPrerequisites}
+                >
+                  {t("navigation:projectViews.prerequisites")}
+                </MobileViewButton>
+              ) : null}
+              {onSelectTeam ? (
+                <MobileViewButton
+                  active={activeView === "team"}
+                  icon={Users}
+                  onClick={onSelectTeam}
+                >
+                  {t("navigation:projectViews.team")}
+                </MobileViewButton>
+              ) : null}
+              {onSelectDocuments ? (
+                <MobileViewButton
+                  active={activeView === "documents"}
+                  icon={Files}
+                  onClick={onSelectDocuments}
+                >
+                  {t("navigation:projectViews.documents")}
+                </MobileViewButton>
               ) : null}
             </div>
           </div>

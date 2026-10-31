@@ -220,6 +220,34 @@
 		"screenshot": "project-overview.png"
 	},
 	{
+		"name": "project-prerequisites",
+		"inventoryRoute": "/agent/projects/{key}/prerequisites",
+		"applicationRoute": "/agent/projects/$projectKey/prerequisites",
+		"test": "project prerequisites screen @visual",
+		"screenshot": "project-prerequisites.png"
+	},
+	{
+		"name": "project-team",
+		"inventoryRoute": "/agent/projects/{key}/team",
+		"applicationRoute": "/agent/projects/$projectKey/team",
+		"test": "project team screen @visual",
+		"screenshot": "project-team.png"
+	},
+	{
+		"name": "project-documents",
+		"inventoryRoute": "/agent/projects/{key}/documents",
+		"applicationRoute": "/agent/projects/$projectKey/documents",
+		"test": "project documents screen @visual",
+		"screenshot": "project-documents.png"
+	},
+	{
+		"name": "project-timeline",
+		"inventoryRoute": "/agent/projects/{key}/timeline",
+		"applicationRoute": "/agent/projects/$projectKey/timeline",
+		"test": "project timeline screen @visual",
+		"screenshot": "project-timeline.png"
+	},
+	{
 		"name": "profile-settings-general",
 		"inventoryRoute": "/dashboard/settings/account/information",
 		"applicationRoute": "/dashboard/settings/account/information",

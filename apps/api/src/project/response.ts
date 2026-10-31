@@ -77,6 +77,19 @@ export const projectSchema = z
       description:
         "Highest task number issued in this project; the next task gets this plus one.",
     }),
+    status: z.string().openapi({
+      enum: ["planning", "active", "on_hold", "closed"],
+      description:
+        "Lifecycle status (D1), information only; archiving is archivedAt.",
+    }),
+    objective: z.string().nullable(),
+    inScope: z.string().nullable(),
+    outOfScope: z.string().nullable(),
+    successCriteria: z.string().nullable(),
+    statusNote: z.string().nullable(),
+    statusNoteAt: nullableResponseTimestamp.openapi({
+      description: "Set by the server whenever the status note changes.",
+    }),
   })
   .openapi("Project");
 
@@ -204,6 +217,10 @@ export const stakeholderSchema = z
     role: z.string(),
     escalationOrder: z.number(),
     escalationWaitMinutes: z.number(),
+    displayName: z.string().nullable().optional().openapi({
+      description:
+        "The person's name, on the list route only (a placeholder person may have none).",
+    }),
     active: z.boolean().openapi({
       description:
         "False once stood down (PR-12) -- never deleted, kept for history.",

@@ -185,6 +185,7 @@ import { initializePlugins } from "./plugins";
 import { policyRegistry } from "./policy-registry";
 import { isPortalClientRoute } from "./portal-client-routes";
 import project, { projectStates } from "./project";
+import { projectOverviewApi as projectOverview } from "./project/overview";
 import { projectSettingsInheritanceApi as projectSettingsInheritance } from "./project/settings-inheritance";
 import report from "./report";
 import {
@@ -2010,6 +2011,7 @@ export function createApp(
   const oauthApi = api.route("/oauth", oauth);
   const capabilitiesApi = api.route("/capabilities", capabilities);
   const projectApi = api.route("/project", project);
+  const projectOverviewApi = api.route("/project", projectOverview);
   const projectStatesApi = api.route("/projects", projectStates);
   const projectSettingsInheritanceApi = api.route(
     "/projects",
@@ -2556,6 +2558,7 @@ export function createApp(
     pendingActionApi,
     userPreferenceApi,
     projectApi,
+    projectOverviewApi,
     projectStatesApi,
     projectSettingsInheritanceApi,
     searchApi,
@@ -3100,6 +3103,7 @@ const {
   pendingActionApi,
   userPreferenceApi,
   projectApi,
+  projectOverviewApi,
   projectStatesApi,
   projectSettingsInheritanceApi,
   searchApi,
@@ -3165,6 +3169,7 @@ if (isMainModule) {
 export type AppType =
   | typeof configApi
   | typeof projectApi
+  | typeof projectOverviewApi
   | typeof projectStatesApi
   | typeof projectSettingsInheritanceApi
   | typeof taskApi

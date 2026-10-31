@@ -50,6 +50,243 @@ const project = {
   columns: [],
 };
 
+// S3 project Overview fixture (summary, overview counts, contract, plan, team, documents).
+const visualProjectSummary = {
+  status: "active",
+  objective: "Move first-line support onto TaskDesk",
+  inScope: "Incidents and service requests",
+  outOfScope: "Hardware replacement",
+  successCriteria: "Every urgent incident answered within 15 minutes",
+  statusNote: "Waiting for the customer's VPN access",
+  statusNoteAt: "2026-10-30T09:00:00.000Z",
+};
+
+const visualProjectOverview = {
+  projectId: project.id,
+  kind: "managed_service",
+  status: "active",
+  health: "amber",
+  archived: false,
+  counts: {
+    open: 3,
+    breached: 1,
+    inProgress: 2,
+    waiting: 1,
+    done: 1,
+    total: 4,
+    blockingPrerequisitesOutstanding: 1,
+    prerequisites: 2,
+  },
+  currentMilestone: {
+    id: "visual-milestone-2",
+    name: "Go-live",
+    date: "2026-12-01T00:00:00.000Z",
+  },
+  overdueMilestoneIds: [],
+  compositionWarnings: [],
+  facts: {
+    customerName: "Northwind Traders",
+    managerName: "Avery Agent",
+    defaultAssigneeName: "Avery Agent",
+    supportLevel: "L2",
+    serviceCalendarName: "Business hours",
+    startDate: "2026-01-05",
+    endDate: "2026-12-31",
+  },
+  serviceLevels: {
+    policyName: "Gold support",
+    source: "project",
+    goals: [
+      {
+        metric: "first_response",
+        workItemTypeName: "Incident",
+        priority: "urgent",
+        targetMinutes: 15,
+      },
+      {
+        metric: "resolution",
+        workItemTypeName: "Incident",
+        priority: "urgent",
+        targetMinutes: 240,
+      },
+      {
+        metric: "first_response",
+        workItemTypeName: "Incident",
+        priority: "high",
+        targetMinutes: 60,
+      },
+      {
+        metric: "resolution",
+        workItemTypeName: "Incident",
+        priority: "high",
+        targetMinutes: 480,
+      },
+      {
+        metric: "first_response",
+        workItemTypeName: "Incident",
+        priority: "medium",
+        targetMinutes: 240,
+      },
+      {
+        metric: "resolution",
+        workItemTypeName: "Incident",
+        priority: "medium",
+        targetMinutes: 1440,
+      },
+      {
+        metric: "first_response",
+        workItemTypeName: "Incident",
+        priority: "low",
+        targetMinutes: 480,
+      },
+      {
+        metric: "resolution",
+        workItemTypeName: "Incident",
+        priority: "low",
+        targetMinutes: 2880,
+      },
+    ],
+  },
+};
+
+const visualProjectContract = {
+  projectId: project.id,
+  contract: {
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
+    contractedMinutes: 7200,
+    coverage: "9x5",
+    kickoffStatus: "completed",
+    kickoffDate: "2026-01-05",
+    updatedAt: "2026-01-05T00:00:00.000Z",
+  },
+  state: "active",
+  daysRemaining: 61,
+  hourBank: {
+    contractedMinutes: 7200,
+    usedMinutes: 2700,
+    remainingMinutes: 4500,
+    usedPct: 38,
+  },
+  recentEntries: [
+    {
+      id: "visual-entry-1",
+      date: "2026-10-29",
+      minutes: 90,
+      workItemKey: "HELP-7",
+    },
+    {
+      id: "visual-entry-2",
+      date: "2026-10-27",
+      minutes: 45,
+      workItemKey: null,
+    },
+  ],
+  recentEntriesVisible: true,
+};
+
+const visualMilestones = [
+  {
+    id: "visual-milestone-1",
+    projectId: project.id,
+    name: "Kick-off",
+    date: "2026-01-05T00:00:00.000Z",
+    reachedAt: "2026-01-05T00:00:00.000Z",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-05T00:00:00.000Z",
+  },
+  {
+    id: "visual-milestone-2",
+    projectId: project.id,
+    name: "Go-live",
+    date: "2026-12-01T00:00:00.000Z",
+    reachedAt: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  },
+];
+
+const visualPrerequisites = [
+  {
+    id: "visual-prerequisite-1",
+    projectId: project.id,
+    title: "Customer VPN access",
+    ownerSide: "customer",
+    dueDate: "2026-12-15T00:00:00.000Z",
+    isBlocking: true,
+    completedAt: null,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  },
+  {
+    id: "visual-prerequisite-2",
+    projectId: project.id,
+    title: "Service accounts created",
+    ownerSide: "us",
+    dueDate: null,
+    isBlocking: false,
+    completedAt: "2026-10-10T00:00:00.000Z",
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-10T00:00:00.000Z",
+  },
+];
+
+const visualStakeholders = [
+  {
+    id: "visual-stakeholder-1",
+    projectId: project.id,
+    personId: "visual-person",
+    role: "Service manager",
+    escalationOrder: 1,
+    escalationWaitMinutes: 30,
+    displayName: "Avery Agent",
+    active: true,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  },
+];
+
+const visualDocumentLinks = [
+  {
+    id: "visual-document-1",
+    projectId: project.id,
+    url: "https://docs.example.test/statement-of-work",
+    title: "Statement of work",
+    customerVisible: true,
+    createdAt: "2026-10-01T00:00:00.000Z",
+  },
+  {
+    id: "visual-document-2",
+    projectId: project.id,
+    url: "https://docs.example.test/runbook",
+    title: "Support runbook",
+    customerVisible: false,
+    createdAt: "2026-10-02T00:00:00.000Z",
+  },
+];
+
+const visualProjectRoster = {
+  members: [
+    {
+      personId: "visual-person",
+      displayName: "Avery Agent",
+      active: true,
+      jobTitle: "Service manager",
+      roleId: "visual-role-lead",
+      roleKey: "lead",
+      roleName: "Lead",
+      roleRank: 3,
+      source: "direct",
+      inheritedFrom: null,
+      overridesInherited: null,
+      managedExternally: false,
+      removable: true,
+    },
+  ],
+  roles: [],
+  callerRank: 4,
+};
+
 const visualIdentityConnection = {
   id: "visual-connection",
   providerType: "entra",
@@ -5750,7 +5987,22 @@ async function installAuthenticatedFixture(page: Page) {
       };
     } else if (path.endsWith("/api/workspace")) body = [workspace];
     else if (path.endsWith("/api/project")) body = [project];
-    else if (path.endsWith("/api/project/visual-project")) body = project;
+    else if (path.endsWith("/api/project/visual-project"))
+      body = { ...project, ...visualProjectSummary };
+    else if (path.endsWith("/api/project/visual-project/overview"))
+      body = visualProjectOverview;
+    else if (path.endsWith("/api/project/visual-project/contract"))
+      body = visualProjectContract;
+    else if (path.endsWith("/api/project/visual-project/milestones"))
+      body = visualMilestones;
+    else if (path.endsWith("/api/project/visual-project/prerequisites"))
+      body = visualPrerequisites;
+    else if (path.endsWith("/api/project/visual-project/stakeholders"))
+      body = visualStakeholders;
+    else if (path.endsWith("/api/project/visual-project/document-links"))
+      body = visualDocumentLinks;
+    else if (path.endsWith("/api/projects/visual-project/members"))
+      body = visualProjectRoster;
     else if (path.endsWith("/api/workspace/visual-workspace/members")) {
       body = vExWorkspaceMembers;
     } else if (path.endsWith("/api/capabilities")) {
@@ -6830,15 +7082,94 @@ test("project overview screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
-  // A project opens on its work view (the list, with the realtime notice).
+  // S3: a project opens on its Overview (summary, contract, service levels, milestones).
+  await expect(page.getByTestId("project-overview-page")).toBeVisible();
+  await expect(page.getByTestId("project-service-levels-panel")).toBeVisible();
   await expect(
-    page.getByRole("link", {
-      name: "HELP-7 Customer cannot reset their password",
-      exact: true,
-    }),
+    page.getByText("Waiting for the customer's VPN access", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByTestId("realtime-unavailable")).toBeVisible();
+  await expect(
+    page.getByText("45 h of 120 h used", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Go-live", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("project-overview.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("project prerequisites screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/prerequisites");
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Customer VPN access", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("project-prerequisites.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("project team screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/team");
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByTestId("project-stakeholders")).toBeVisible();
+  await expect(page.getByTestId("project-roster")).toBeVisible();
+  await expect(page).toHaveScreenshot("project-team.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("project documents screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/documents");
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Statement of work", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("project-documents.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("project timeline screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/timeline");
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByTestId("feature-off-timeline")).toBeVisible();
+  await expect(page).toHaveScreenshot("project-timeline.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

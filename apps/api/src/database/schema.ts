@@ -620,8 +620,29 @@ export const projectTable = pgTable(
     purgeAfter: timestamp("purge_after", { mode: "date" }),
     lastTaskNumber: integer("last_task_number").notNull().default(0),
     position: integer("position").notNull().default(0),
+    // 0213 (feature-contracts-p1 "Engagement structure"): the project summary shown on the
+    // Overview. Free text, nullable. `statusNoteAt` is stamped by the server whenever
+    // `statusNote` changes (PATCH /api/project/{id}/summary), never by a client.
+    objective: text("objective"),
+    inScope: text("in_scope"),
+    outOfScope: text("out_of_scope"),
+    successCriteria: text("success_criteria"),
+    statusNote: text("status_note"),
+    statusNoteAt: timestamp("status_note_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    // 0213, decision D1 (Thomas, 31 Oct 2026): lifecycle status, information only. It does not
+    // archive, freeze or hide the project; `archived_at`/`deleted_at` keep those meanings.
+    status: text("status").notNull().default("active"),
   },
   (table) => [
+    check(
+      "project_status_allowed",
+      sql.raw(
+        "status = ANY (ARRAY['planning'::text, 'active'::text, 'on_hold'::text, 'closed'::text])",
+      ),
+    ),
     check(
       "project_sla_policy_mode_allowed",
       sql`${table.slaPolicyMode} IN ('inherit', 'override')`,
@@ -1087,6 +1108,57 @@ export const documentLinkTable = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },
   (table) => [index("document_link_projectId_idx").on(table.projectId)],
+);
+
+/**
+ * 0213, decision D2 (Thomas, 31 Oct 2026): the project's contract and hour bank, at most one per
+ * project (the primary key is the project), deleted with the project. Written only by
+ * `PUT /api/project/{id}/contract` (`project:manage_settings`, audited as `project_contract.set`).
+ * Hours used are never stored: they are the billable `time_entry` minutes on the project dated
+ * inside `[start_date, end_date]`, summed at read time.
+ */
+export const projectContractTable = pgTable(
+  "project_contract",
+  {
+    projectId: text("project_id")
+      .primaryKey()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    startDate: date("start_date", { mode: "string" }).notNull(),
+    endDate: date("end_date", { mode: "string" }).notNull(),
+    contractedMinutes: integer("contracted_minutes").notNull(),
+    coverage: text("coverage").notNull(),
+    kickoffStatus: text("kickoff_status").notNull().default("pending"),
+    kickoffDate: date("kickoff_date", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  () => [
+    check("project_contract_dates_ordered", sql.raw("end_date >= start_date")),
+    check(
+      "project_contract_minutes_allowed",
+      sql.raw("(contracted_minutes > 0) AND (contracted_minutes <= 60000000)"),
+    ),
+    check(
+      "project_contract_coverage_allowed",
+      sql.raw(
+        "coverage = ANY (ARRAY['9x5'::text, '12x5'::text, '24x7'::text])",
+      ),
+    ),
+    check(
+      "project_contract_kickoff_status_allowed",
+      sql.raw(
+        "kickoff_status = ANY (ARRAY['pending'::text, 'scheduled'::text, 'completed'::text])",
+      ),
+    ),
+  ],
 );
 
 export const workflowRuleTable = pgTable(
