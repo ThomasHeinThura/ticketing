@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SidebarProvider } from "@taskdesk/ui";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -23,9 +24,38 @@ const mocks = vi.hoisted(() => ({
   logTime: true,
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => mocks.navigate,
-}));
+/** A stand-in for the router's location store: only subscribers re-render when it changes. */
+const router = vi.hoisted(() => {
+  const listeners = new Set<() => void>();
+  const state = { pathname: "/agent/views" };
+  return {
+    state,
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    go(pathname: string) {
+      state.pathname = pathname;
+      for (const listener of listeners) listener();
+    },
+  };
+});
+
+vi.mock("@tanstack/react-router", async () => {
+  const { useSyncExternalStore } = await import("react");
+  return {
+    useNavigate: () => mocks.navigate,
+    useLocation: <T,>(options?: {
+      select?: (location: { pathname: string }) => T;
+    }) => {
+      const pathname = useSyncExternalStore(
+        router.subscribe,
+        () => router.state.pathname,
+      );
+      return options?.select ? options.select({ pathname }) : { pathname };
+    },
+  };
+});
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
@@ -94,6 +124,7 @@ beforeEach(() => {
       }) as MediaQueryList,
   );
   mocks.user = { id: "viewer-1" };
+  router.state.pathname = "/agent/views";
   mocks.navigate.mockReset();
   mocks.getWorkspaceResolvedFeatures.mockResolvedValue([]);
   mocks.getSavedViews.mockResolvedValue([
@@ -269,6 +300,43 @@ describe("NavMain feature entries (P5-R4-04)", () => {
       expect(mocks.getWorkspaceResolvedFeatures).toHaveBeenCalledTimes(2),
     );
     expect(screen.queryByRole("button", { name: "Knowledge base" })).toBeNull();
+  });
+});
+
+describe("NavMain highlight follows the router", () => {
+  const activeEntries = () =>
+    screen
+      .getAllByRole("button")
+      .filter((button) => button.getAttribute("data-active") === "true")
+      .map((button) => button.textContent?.replace(/\d+$/u, ""));
+
+  it("moves the highlight when the route changes, without any other re-render", async () => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
+      { key: "feature.knowledge_base", enabled: true },
+    ]);
+    renderNav();
+    mocks.paint.resolve();
+    await screen.findByRole("button", { name: "Knowledge base" });
+    expect(activeEntries()).toEqual(["Saved views"]);
+
+    act(() => router.go("/agent/triage"));
+    expect(activeEntries()).toEqual(["Triage"]);
+
+    act(() => router.go("/agent/kb/article-1"));
+    expect(activeEntries()).toEqual(["Knowledge base"]);
+
+    // Back to Saved views, as the browser Back button would.
+    act(() => router.go("/agent/views"));
+    expect(activeEntries()).toEqual(["Saved views"]);
+  });
+
+  it("highlights only the pinned view on its own page, not the Saved views index (SV-20)", async () => {
+    renderNav();
+    mocks.paint.resolve();
+    await screen.findByRole("button", { name: /Escalations/u });
+
+    act(() => router.go("/agent/views/v-pinned"));
+    expect(activeEntries()).toEqual(["Escalations"]);
   });
 });
 
