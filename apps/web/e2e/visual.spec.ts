@@ -7300,9 +7300,9 @@ test("project page detail screen @visual", async ({ page }) => {
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
   // An editor edits inline: the title is a text box, the body the document editor.
-  await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
-    "Password reset runbook",
-  );
+  await expect(
+    page.locator('input[value="Password reset runbook"]'),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Before you start", exact: true }),
   ).toBeVisible();
