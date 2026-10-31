@@ -4,7 +4,9 @@ import {
   isStale,
   MAX_PAGE_TREE_DEPTH,
   PAGE_RESTORE_WINDOW_DAYS,
+  PAGE_VERSION_COALESCE_WINDOW_MINUTES,
   purgeDeadline,
+  shouldCoalesceVersion,
   snippetOf,
   subtreeHeight,
 } from "../../apps/api/src/pages/logic";
@@ -82,5 +84,44 @@ describe("snippetOf and purgeDeadline", () => {
     expect(purgeDeadline(now).getTime() - now.getTime()).toBe(
       PAGE_RESTORE_WINDOW_DAYS * 86_400_000,
     );
+  });
+});
+
+describe("shouldCoalesceVersion (PG-4 autosave, Thomas 31 Oct 2026)", () => {
+  const mine = { kind: "edit", createdBy: "me", withinWindow: true };
+  const save = (
+    overrides: Partial<Parameters<typeof shouldCoalesceVersion>[0]>,
+  ) =>
+    shouldCoalesceVersion({
+      latest: mine,
+      personId: "me",
+      titleChanged: false,
+      parentChanged: false,
+      ...overrides,
+    });
+
+  it("uses a ten-minute window", () => {
+    expect(PAGE_VERSION_COALESCE_WINDOW_MINUTES).toBe(10);
+  });
+
+  it("coalesces a content save into the same author's recent edit version", () => {
+    expect(save({})).toBe(true);
+  });
+
+  it("writes a new version for another author, an erased author or after the window", () => {
+    expect(save({ personId: "someone-else" })).toBe(false);
+    expect(save({ latest: { ...mine, createdBy: null } })).toBe(false);
+    expect(save({ latest: { ...mine, withinWindow: false } })).toBe(false);
+  });
+
+  it("never coalesces into a create or restore version, or without a version", () => {
+    expect(save({ latest: { ...mine, kind: "create" } })).toBe(false);
+    expect(save({ latest: { ...mine, kind: "restore" } })).toBe(false);
+    expect(save({ latest: undefined })).toBe(false);
+  });
+
+  it("gives a rename and a move their own version", () => {
+    expect(save({ titleChanged: true })).toBe(false);
+    expect(save({ parentChanged: true })).toBe(false);
   });
 });

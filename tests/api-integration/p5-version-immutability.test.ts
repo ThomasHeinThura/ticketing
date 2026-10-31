@@ -1,7 +1,7 @@
 /**
  * P5-R2-03 / P5-R2-07: version rows are immutable (only the erased-author created_by -> NULL
  * change passes), cannot be deleted directly, still cascade with their parent, and the hand-written
- * P5 migrations 0150/0152/0154 re-run on a migrated database without error.
+ * P5 migrations 0150/0152/0154 (and 0212, the PG-4 autosave trigger) re-run without error.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -161,12 +161,14 @@ describe("project_page_version triggers", () => {
 });
 
 describe("P5 migrations are idempotent (P5-R2-07)", () => {
-  it("re-runs 0150, 0152 and 0154 on a migrated database without error", async () => {
+  it("re-runs 0150, 0152, 0154 and 0212 on a migrated database without error", async () => {
     const dir = path.resolve(__dirname, "../../apps/api/drizzle");
+    // 0212 re-runs after 0154 so the database keeps the current (autosave-aware) page trigger.
     for (const file of [
       "0150_p5_knowledge_base.sql",
       "0152_p5_reports_dashboards.sql",
       "0154_p5_project_pages.sql",
+      "0212_page_version_autosave_coalesce.sql",
     ]) {
       const statements = readFileSync(path.join(dir, file), "utf8")
         .split("--> statement-breakpoint")

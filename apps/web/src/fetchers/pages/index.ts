@@ -37,6 +37,8 @@ export type PageVersionSummary = {
   restoredFrom: number | null;
   createdBy: PagePerson | null;
   createdAt: string;
+  /** PG-4: when this version's content was last saved (later than createdAt once autosave coalesced into it). */
+  updatedAt: string;
 };
 
 export type PageVersion = PageVersionSummary & {

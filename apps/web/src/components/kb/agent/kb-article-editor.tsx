@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Alert,
@@ -22,6 +22,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Field,
+  FieldDescription,
   Input,
   Label,
   Select,
@@ -34,8 +36,9 @@ import {
 } from "@taskdesk/ui";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import CommentEditor from "@/components/activity/comment-editor";
 import { DateField } from "@/components/common/date-field";
+import { DocumentEditor } from "@/components/editor/document-editor";
+import { LeaveUnsavedDialog } from "@/components/editor/leave-unsaved-dialog";
 import PageTitle from "@/components/page-title";
 import {
   type KbArticle,
@@ -46,6 +49,7 @@ import {
 import { kbKeys, useKbArticle, useKbCategories } from "@/hooks/queries/kb";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { useDocumentAutosave } from "@/hooks/use-document-autosave";
 import { HttpError } from "@/lib/http-error";
 import { type KbEditorSearch, routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
@@ -55,10 +59,7 @@ import {
   KbArticleContent,
   removedNodeTypes,
 } from "../kb-article-content";
-import {
-  createKbSlashCommands,
-  KB_EDITOR_EXTENSIONS,
-} from "./kb-editor-extensions";
+import { createKbOnlySlashCommands } from "./kb-editor-extensions";
 
 const NONE = "none";
 
@@ -185,9 +186,8 @@ function Editor({
   const queryClient = useQueryClient();
   const kbSlashCommands = useMemo(
     () =>
-      createKbSlashCommands({
-        callout: t("kb:editor.slashCallout"),
-        calloutSearch: t("kb:editor.searchCallout"),
+      // DocumentEditor brings the shared info callout; KB adds only its own actions.
+      createKbOnlySlashCommands({
         internalCallout: t("kb:editor.slashInternalCallout"),
         internalCalloutSearch: t("kb:editor.searchInternalCallout"),
         workItemReference: t("kb:editor.slashWorkItemReference"),
@@ -212,48 +212,79 @@ function Editor({
       : [],
   );
   const [base, setBase] = useState(article);
-  const [draft, setDraft] = useState<Draft>(() => draftOf(article));
-  const [bodyEdited, setBodyEdited] = useState(false);
-  // Tiptap reports updates of its own while it mounts; only edits after an interaction count.
-  const interacted = useRef(false);
-  const touch = () => {
-    interacted.current = true;
-  };
-  const [conflict, setConflict] = useState<KbArticle | null>(null);
+  // The draft is read when a save starts, so it lives in a ref; the state copy renders it.
+  const draftRef = useRef<Draft>(draftOf(article));
+  const [draft, setDraftState] = useState<Draft>(draftRef.current);
+  /** What the server holds: the loaded article, then each saved one, and the body last sent. */
+  const saved = useRef({ article, body: article.body as unknown });
+  /** The body the editor loads from. Changes only on purpose, with `generation`. */
+  const [editorBody, setEditorBody] = useState<unknown>(article.body);
   const [generation, setGeneration] = useState(0);
+  const [conflict, setConflict] = useState<KbArticle | null>(null);
+  const reportedRemovals = useRef(new Set<string>());
   const preview = search.preview === true;
-  const changes = changesOf(base, draft, bodyEdited, canPublish);
-  const dirty = Object.keys(changes).length > 0;
 
-  const save = useMutation({
-    mutationFn: ({ version }: { version: number }) =>
-      updateKbArticle(article.id, version, changes),
-    onSuccess: async (saved) => {
-      // The server keeps only what articles may hold; say so rather than lose content silently.
-      const removed = bodyEdited
-        ? removedNodeTypes(draft.body, saved.body)
-        : [];
-      setConflict(null);
-      setBase(saved);
-      setBodyEdited(false);
-      setDraft(draftOf(saved));
-      queryClient.setQueryData(kbKeys.article(article.id), (old: unknown) =>
-        old && typeof old === "object" ? { ...old, article: saved } : old,
+  const autosave = useDocumentAutosave<KbArticleInput, KbArticle>({
+    version: article.version,
+    getChanges: () => {
+      const changes = changesOf(
+        saved.current.article,
+        draftRef.current,
+        draftRef.current.body !== saved.current.body,
+        canPublish,
       );
-      await queryClient.invalidateQueries({ queryKey: ["kb"] });
-      toast.success(t("kb:editor.saved"));
-      if (removed.length > 0)
-        toast.info(t("kb:editor.removedTitle"), {
-          description: t("kb:editor.removedDescription", {
-            types: removed.join(", "),
-          }),
-        });
+      return Object.keys(changes).length > 0 ? changes : null;
     },
-    onError: (error) => {
+    canSave: () => draftRef.current.title.trim() !== "",
+    save: (changes, version) => updateKbArticle(article.id, version, changes),
+    isConflict: (error) => error instanceof KbVersionConflictError,
+    onSaved: (result, sent) => {
+      saved.current = {
+        article: result,
+        body: "body" in sent ? sent.body : saved.current.body,
+      };
+      // Only the base moves on; the draft (and the editor) keep what is being typed.
+      setBase(result);
+      queryClient.setQueryData(kbKeys.article(article.id), (old: unknown) =>
+        old && typeof old === "object" ? { ...old, article: result } : old,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: kbKeys.all(article.workspaceId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: kbKeys.versions(article.id),
+      });
+      // The server keeps only what articles may hold; say so once rather than lose content silently.
+      if ("body" in sent) {
+        const removed = removedNodeTypes(sent.body, result.body).filter(
+          (type) => !reportedRemovals.current.has(type),
+        );
+        for (const type of removed) reportedRemovals.current.add(type);
+        if (removed.length > 0)
+          toast.info(t("kb:editor.removedTitle"), {
+            description: t("kb:editor.removedDescription", {
+              types: removed.join(", "),
+            }),
+          });
+      }
+    },
+    onConflict: (error) => {
       if (error instanceof KbVersionConflictError) setConflict(error.current);
-      else toast.error(error.message);
     },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : String(error)),
   });
+
+  const edit = (patch: Partial<Draft>) => {
+    draftRef.current = { ...draftRef.current, ...patch };
+    setDraftState(draftRef.current);
+    autosave.markDirty();
+  };
+  /** Settings are discrete choices (like Kaneo's task properties): saved at once, not after the typing delay. */
+  const choose = (patch: Partial<Draft>) => {
+    edit(patch);
+    void autosave.flush();
+  };
 
   const internal = hasInternalContent(draft.body);
   return (
@@ -302,7 +333,14 @@ function Editor({
               </Label>
             </div>
             <span className="text-muted-foreground text-sm" aria-live="polite">
-              {dirty ? t("kb:editor.unsaved") : t("kb:editor.allSaved")}
+              {
+                {
+                  saved: t("kb:editor.allSaved"),
+                  unsaved: t("kb:editor.unsaved"),
+                  saving: t("kb:editor.saving"),
+                  paused: t("kb:editor.autosavePaused"),
+                }[autosave.status]
+              }
             </span>
             <Button
               variant="outline"
@@ -311,12 +349,6 @@ function Editor({
               }
             >
               {t("kb:editor.done")}
-            </Button>
-            <Button
-              disabled={!dirty || save.isPending || !draft.title.trim()}
-              onClick={() => save.mutate({ version: base.version })}
-            >
-              {t("common:actions.save")}
             </Button>
           </div>
         </div>
@@ -361,41 +393,25 @@ function Editor({
                     id="kb-title"
                     maxLength={200}
                     value={draft.title}
-                    disabled={save.isPending}
-                    onChange={(event) =>
-                      setDraft((old) => ({ ...old, title: event.target.value }))
-                    }
+                    aria-invalid={draft.title.trim() === "" || undefined}
+                    onChange={(event) => edit({ title: event.target.value })}
+                    onBlur={() => void autosave.flush()}
                   />
                 </div>
-                {/* biome-ignore lint/a11y/noStaticElementInteractions: only notes the first interaction */}
-                <div
-                  className="rounded-lg border p-3"
-                  onFocus={touch}
-                  onKeyDown={touch}
-                  onPointerDown={touch}
-                  onPaste={touch}
-                  onDrop={touch}
-                >
-                  <CommentEditor
+                <Field className="items-stretch">
+                  <DocumentEditor
                     key={generation}
                     ariaLabel={t("kb:editor.bodyLabel")}
-                    value=""
-                    documentValue={draft.body}
-                    onDocumentChange={(document) => {
-                      if (!interacted.current) return;
-                      setBodyEdited(true);
-                      setDraft((old) => ({ ...old, body: document }));
-                    }}
-                    enableMentions={false}
-                    showQuickAttachButton={false}
+                    documentValue={editorBody}
+                    onDocumentChange={(document) => edit({ body: document })}
+                    onBlur={() => void autosave.flush()}
                     placeholder={t("kb:editor.bodyPlaceholder")}
-                    additionalExtensions={KB_EDITOR_EXTENSIONS}
                     additionalSlashCommands={kbSlashCommands}
                   />
-                  <p className="mt-2 text-muted-foreground text-xs">
+                  <FieldDescription>
                     {t("kb:editor.workItemReferenceHelp")}
-                  </p>
-                </div>
+                  </FieldDescription>
+                </Field>
               </>
             )}
           </div>
@@ -416,10 +432,7 @@ function Editor({
                     })),
                   ]}
                   onValueChange={(value) =>
-                    setDraft((old) => ({
-                      ...old,
-                      ownerId: value && value !== NONE ? value : null,
-                    }))
+                    choose({ ownerId: value && value !== NONE ? value : null })
                   }
                 >
                   <SelectTrigger id="kb-owner">
@@ -450,10 +463,9 @@ function Editor({
                     })),
                   ]}
                   onValueChange={(value) =>
-                    setDraft((old) => ({
-                      ...old,
+                    choose({
                       categoryId: value && value !== NONE ? value : null,
-                    }))
+                    })
                   }
                 >
                   <SelectTrigger id="kb-category">
@@ -486,12 +498,7 @@ function Editor({
                     invalidLabel: t("common:invalidDate"),
                     saveLabel: t("common:actions.save"),
                   }}
-                  onChange={(value) =>
-                    setDraft((old) => ({
-                      ...old,
-                      reviewDueAt: value,
-                    }))
-                  }
+                  onChange={(value) => choose({ reviewDueAt: value })}
                 />
                 <p className="text-muted-foreground text-xs">
                   {t("kb:editor.reviewDueHelp")}
@@ -511,10 +518,9 @@ function Editor({
                         })),
                       ]}
                       onValueChange={(value) =>
-                        setDraft((old) => ({
-                          ...old,
+                        choose({
                           projectId: value && value !== NONE ? value : null,
-                        }))
+                        })
                       }
                     >
                       <SelectTrigger id="kb-project">
@@ -540,10 +546,7 @@ function Editor({
                       id="kb-customer-visible"
                       checked={draft.customerVisible}
                       onCheckedChange={(checked) =>
-                        setDraft((old) => ({
-                          ...old,
-                          customerVisible: checked,
-                        }))
+                        choose({ customerVisible: checked })
                       }
                     />
                     <div className="space-y-1">
@@ -565,22 +568,38 @@ function Editor({
         <ConflictDialog
           mine={draft}
           theirs={conflict}
-          busy={save.isPending}
+          busy={autosave.status === "saving"}
           onClose={() => setConflict(null)}
           onKeepMine={() => {
+            // Their article becomes the base, so every field that differs from it is re-sent.
+            saved.current = { article: conflict, body: conflict.body };
             setBase(conflict);
-            save.mutate({ version: conflict.version });
+            setConflict(null);
+            autosave.resume(conflict.version);
+            autosave.markDirty();
+            void autosave.flush();
           }}
           onUseTheirs={() => {
+            autosave.reset(conflict.version);
+            saved.current = { article: conflict, body: conflict.body };
+            draftRef.current = draftOf(conflict);
             setBase(conflict);
-            setDraft(draftOf(conflict));
-            setBodyEdited(false);
-            interacted.current = false;
+            setDraftState(draftRef.current);
+            setEditorBody(conflict.body);
             setGeneration((value) => value + 1);
             setConflict(null);
           }}
         />
       ) : null}
+      <LeaveUnsavedDialog
+        leave={autosave.leave}
+        labels={{
+          title: t("kb:editor.leaveTitle"),
+          description: t("kb:editor.leaveUnsaved"),
+          stay: t("kb:editor.stay"),
+          leave: t("kb:editor.leave"),
+        }}
+      />
     </>
   );
 }

@@ -1459,6 +1459,7 @@ const vAgilePageVersions = {
       restoredFrom: null,
       createdBy: vAgilePageEditor,
       createdAt: "2026-10-14T10:20:00.000Z",
+      updatedAt: "2026-10-14T10:20:00.000Z",
     },
     {
       number: 2,
@@ -1467,6 +1468,7 @@ const vAgilePageVersions = {
       restoredFrom: null,
       createdBy: vAgilePageAuthor,
       createdAt: "2026-10-03T14:05:00.000Z",
+      updatedAt: "2026-10-03T14:05:00.000Z",
     },
     {
       number: 1,
@@ -1475,6 +1477,7 @@ const vAgilePageVersions = {
       restoredFrom: null,
       createdBy: vAgilePageAuthor,
       createdAt: "2026-09-28T08:45:00.000Z",
+      updatedAt: "2026-09-28T08:45:00.000Z",
     },
   ],
 };
@@ -7296,13 +7299,17 @@ test("project page detail screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Password reset runbook", exact: true }),
-  ).toBeVisible();
+  // An editor edits inline: the title is a text box, the body the document editor.
+  await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
+    "Password reset runbook",
+  );
   await expect(
     page.getByRole("heading", { name: "Before you start", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Version 3", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("All changes saved", { exact: true }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("project-page-detail.png", {
     animations: "disabled",
     caret: "hide",

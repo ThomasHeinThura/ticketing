@@ -34,6 +34,8 @@ export const pageVersionSummarySchema = z.object({
   restoredFrom: z.number().int().nullable(),
   createdBy: person.nullable(),
   createdAt: responseTimestamp,
+  /** PG-4: when this version's content was last saved (later than createdAt once coalesced). */
+  updatedAt: responseTimestamp,
 });
 
 export const pageVersionListSchema = z.object({

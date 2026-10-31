@@ -23,6 +23,8 @@ vi.mock("@tiptap/react", async () => {
         dom: {
           addEventListener: () => undefined,
           removeEventListener: () => undefined,
+          setAttribute: () => undefined,
+          removeAttribute: () => undefined,
         },
         dispatch: () => undefined,
       },

@@ -9,6 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
+  Kbd,
+  KbdGroup,
 } from "@taskdesk/ui";
 import type { Editor, Extensions, JSONContent } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
@@ -32,22 +34,34 @@ import {
   Bold,
   Check,
   ChevronDown,
+  Code,
   Columns3,
   Copy,
   Grid2x2X,
+  Heading1,
+  Heading2,
+  Heading3,
   Italic,
   Link2,
   List,
   ListOrdered,
   ListTodo,
+  type LucideIcon,
+  Minus,
   Paperclip,
+  Pilcrow,
   Rows3,
+  SquareCode,
+  Strikethrough,
+  TableIcon,
+  TextQuote,
   UnderlineIcon,
 } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useReducer,
   useRef,
@@ -70,9 +84,11 @@ import { TaskItemWithCheckbox } from "@/components/task/extensions/task-item-wit
 import { TaskDeskMention } from "@/components/task/extensions/taskdesk-mention";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { getModifierKeyText } from "@/hooks/use-keyboard-shortcuts";
 import { useShikiHighlighterForCode } from "@/hooks/use-shiki-highlighter-for-code";
 import { cn } from "@/lib/cn";
 import "@/components/task/editor-styles.css";
+import { looksLikeMarkdown } from "@/lib/editor-markdown-paste";
 import { parseTaskListMarkdownToNodes } from "@/lib/editor-task-list-paste";
 import {
   extractIssueKeyFromUrl,
@@ -125,6 +141,9 @@ type CommentEditorProps = {
   additionalExtensions?: Extensions;
   /** Optional caller-owned slash actions; defaults are unchanged for other surfaces. */
   additionalSlashCommands?: CommentEditorSlashCommand[];
+  /** Offer the YouTube embed composer when a video link is pasted. Surfaces whose
+   * server drops embed nodes (Pages, KB) turn this off and keep a plain link. */
+  allowEmbeds?: boolean;
 };
 
 const EMPTY_EXTENSIONS: Extensions = [];
@@ -137,11 +156,17 @@ export type CommentContentSnapshot = {
 
 type SlashRange = { from: number; to: number };
 
+/** One key of a shortcut hint. `Mod` is ⌘ on Apple platforms and Ctrl elsewhere;
+ * `Alt` is ⌥ there and Alt elsewhere. Any other value is shown as written. */
+export type EditorShortcutKey = "Mod" | "Alt" | "Shift" | (string & {});
+
 export type CommentEditorSlashCommand = {
   id: string;
   label: string;
   group: "text" | "lists" | "insert";
-  shortcut?: string;
+  /** The editor's real key binding for this action, e.g. `["Mod", "Alt", "2"]`. */
+  shortcut?: readonly EditorShortcutKey[];
+  icon?: LucideIcon;
   search: string;
   run: (editor: Editor, range: SlashRange) => void;
 };
@@ -154,8 +179,38 @@ type SlashMenuState = {
   query: string;
   top: number;
   left: number;
+  /** "above" when there is no room below the caret; the menu then grows upward. */
+  placement: "below" | "above";
   selectedIndex: number;
 };
+
+/** Matches the slash menu's CSS `max-height` (20rem) plus its 8px caret gap. */
+const SLASH_MENU_MAX_HEIGHT_PX = 328;
+
+function isApplePlatform() {
+  return getModifierKeyText() === "⌘";
+}
+
+/** Display labels and the `aria-keyshortcuts` value for a shortcut hint. */
+export function describeEditorShortcut(
+  keys: readonly EditorShortcutKey[],
+  apple = isApplePlatform(),
+) {
+  const display = keys.map((key) => {
+    if (key === "Mod") return apple ? "⌘" : "Ctrl";
+    if (key === "Alt") return apple ? "⌥" : "Alt";
+    if (key === "Shift") return apple ? "⇧" : "Shift";
+    return key.length === 1 ? key.toUpperCase() : key;
+  });
+  const aria = keys
+    .map((key) => {
+      if (key === "Mod") return apple ? "Meta" : "Control";
+      if (key === "Alt" || key === "Shift") return key;
+      return key.length === 1 ? key.toUpperCase() : key;
+    })
+    .join("+");
+  return { display, aria };
+}
 
 type HoveredCodeBlock = {
   language: string;
@@ -244,6 +299,7 @@ export default function CommentEditor({
   mentionMembers,
   additionalExtensions = EMPTY_EXTENSIONS,
   additionalSlashCommands = EMPTY_SLASH_COMMANDS,
+  allowEmbeds = true,
 }: CommentEditorProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder =
@@ -290,11 +346,18 @@ export default function CommentEditor({
   onCancelShortcutRef.current = onCancelShortcut;
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
+  // Ctrl/⌘+Shift+V asks for plain text; the next paste then skips Markdown parsing.
+  const plainPasteRef = useRef(false);
+  const slashMenuId = useId();
+  const editorRef = useRef<Editor | null>(null);
+  const slashMenuRef = useRef<SlashMenuState | null>(null);
+  const filteredSlashCommandsRef = useRef<SlashCommand[]>([]);
   const pendingImageInsertRef = useRef<{
     editor: Editor;
     range?: SlashRange;
   } | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
+  slashMenuRef.current = slashMenu;
   const shikiHighlighterRef = useRef<Highlighter | null>(null);
   const [hoveredCodeBlock, setHoveredCodeBlock] =
     useState<HoveredCodeBlock | null>(null);
@@ -536,16 +599,34 @@ export default function CommentEditor({
         id: "paragraph",
         label: t("activity:comment.editor.slashParagraph"),
         group: "text",
+        icon: Pilcrow,
         search: t("activity:comment.editor.searchParagraph"),
         run: (activeEditor, range) => {
           activeEditor.chain().focus().deleteRange(range).setParagraph().run();
         },
       },
       {
+        id: "heading-1",
+        label: t("activity:comment.editor.slashHeading1"),
+        group: "text",
+        icon: Heading1,
+        shortcut: ["Mod", "Alt", "1"],
+        search: t("activity:comment.editor.searchHeading1"),
+        run: (activeEditor, range) => {
+          activeEditor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .toggleHeading({ level: 1 })
+            .run();
+        },
+      },
+      {
         id: "heading-2",
         label: t("activity:comment.editor.slashHeading"),
         group: "text",
-        shortcut: "Ctrl Alt 2",
+        icon: Heading2,
+        shortcut: ["Mod", "Alt", "2"],
         search: t("activity:comment.editor.searchHeading"),
         run: (activeEditor, range) => {
           activeEditor
@@ -557,10 +638,27 @@ export default function CommentEditor({
         },
       },
       {
+        id: "heading-3",
+        label: t("activity:comment.editor.slashHeading3"),
+        group: "text",
+        icon: Heading3,
+        shortcut: ["Mod", "Alt", "3"],
+        search: t("activity:comment.editor.searchHeading3"),
+        run: (activeEditor, range) => {
+          activeEditor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .toggleHeading({ level: 3 })
+            .run();
+        },
+      },
+      {
         id: "bullet-list",
         label: t("activity:comment.editor.slashBulletList"),
         group: "lists",
-        shortcut: "Ctrl Alt 8",
+        icon: List,
+        shortcut: ["Mod", "Shift", "8"],
         search: t("activity:comment.editor.searchBulletList"),
         run: (activeEditor, range) => {
           activeEditor
@@ -575,6 +673,8 @@ export default function CommentEditor({
         id: "task-list",
         label: t("activity:comment.editor.slashTaskList"),
         group: "lists",
+        icon: ListTodo,
+        shortcut: ["Mod", "Shift", "9"],
         search: t("activity:comment.editor.searchTaskList"),
         run: (activeEditor, range) => {
           activeEditor
@@ -589,7 +689,8 @@ export default function CommentEditor({
         id: "ordered-list",
         label: t("activity:comment.editor.slashOrderedList"),
         group: "lists",
-        shortcut: "Ctrl Alt 9",
+        icon: ListOrdered,
+        shortcut: ["Mod", "Shift", "7"],
         search: t("activity:comment.editor.searchOrderedList"),
         run: (activeEditor, range) => {
           activeEditor
@@ -604,6 +705,8 @@ export default function CommentEditor({
         id: "blockquote",
         label: t("activity:comment.editor.slashQuote"),
         group: "insert",
+        icon: TextQuote,
+        shortcut: ["Mod", "Shift", "B"],
         search: t("activity:comment.editor.searchQuote"),
         run: (activeEditor, range) => {
           activeEditor
@@ -618,7 +721,8 @@ export default function CommentEditor({
         id: "code-block",
         label: t("activity:comment.editor.slashCodeBlock"),
         group: "insert",
-        shortcut: "Ctrl Alt \\",
+        icon: SquareCode,
+        shortcut: ["Mod", "Alt", "C"],
         search: t("activity:comment.editor.searchCodeBlock"),
         run: (activeEditor, range) => {
           activeEditor
@@ -630,9 +734,25 @@ export default function CommentEditor({
         },
       },
       {
+        id: "divider",
+        label: t("activity:comment.editor.slashDivider"),
+        group: "insert",
+        icon: Minus,
+        search: t("activity:comment.editor.searchDivider"),
+        run: (activeEditor, range) => {
+          activeEditor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .setHorizontalRule()
+            .run();
+        },
+      },
+      {
         id: "table",
         label: t("activity:comment.editor.slashTable"),
         group: "insert",
+        icon: TableIcon,
         search: t("activity:comment.editor.searchTable"),
         run: (activeEditor, range) => {
           activeEditor
@@ -647,6 +767,7 @@ export default function CommentEditor({
         id: "file",
         label: t("activity:comment.editor.slashFile"),
         group: "insert",
+        icon: Paperclip,
         search: t("activity:comment.editor.searchFile"),
         run: (activeEditor, range) => {
           activeEditor.chain().focus().deleteRange(range).run();
@@ -667,9 +788,10 @@ export default function CommentEditor({
     return availableCommands.filter(
       (command) =>
         command.label.toLowerCase().includes(query) ||
-        command.search.includes(query),
+        command.search.toLowerCase().includes(query),
     );
   }, [canUploadFiles, slashCommands, slashMenu?.query]);
+  filteredSlashCommandsRef.current = filteredSlashCommands;
 
   const editor = useEditor(
     {
@@ -739,6 +861,8 @@ export default function CommentEditor({
           ),
         },
         handlePaste: (view, event) => {
+          const plainPaste = plainPasteRef.current;
+          plainPasteRef.current = false;
           if (readOnly || disabled) return false;
 
           const pastedFiles = Array.from(event.clipboardData?.files || []);
@@ -769,10 +893,25 @@ export default function CommentEditor({
           }
 
           const pastedText = plainText.trim();
-          if (!pastedText || /\s/.test(pastedText)) return false;
+          const pasteAsMarkdown = () => {
+            const liveEditor = editorRef.current;
+            if (plainPaste || !isLiveEditor(liveEditor)) return false;
+            if (event.clipboardData?.getData("text/html")) return false;
+            if (view.state.selection.$from.parent.type.spec.code) return false;
+            if (!looksLikeMarkdown(plainText)) return false;
+            event.preventDefault();
+            liveEditor
+              .chain()
+              .focus()
+              .insertContent(plainText, { contentType: "markdown" })
+              .scrollIntoView()
+              .run();
+            return true;
+          };
+          if (!pastedText || /\s/.test(pastedText)) return pasteAsMarkdown();
 
           const url = normalizeUrl(pastedText);
-          if (!url) return false;
+          if (!url) return pasteAsMarkdown();
 
           const issueKey =
             extractIssueKeyFromUrl(url) ?? extractWorkItemKeyFromUrl(url);
@@ -791,7 +930,7 @@ export default function CommentEditor({
             return true;
           }
 
-          if (!isYouTubeUrl(url)) return false;
+          if (!allowEmbeds || !isYouTubeUrl(url)) return false;
 
           event.preventDefault();
           const { from } = view.state.selection;
@@ -880,8 +1019,31 @@ export default function CommentEditor({
           view.dispatch(tr.scrollIntoView());
           return true;
         },
-        handleKeyDown: (_view, event) => {
-          if (!readOnly && !disabled && slashMenu) {
+        handleKeyDown: (view, event) => {
+          const isMod = event.metaKey || event.ctrlKey;
+          const key = event.key.toLowerCase();
+          plainPasteRef.current = isMod && event.shiftKey && key === "v";
+          // Tiptap refreshes these props a task after each render; read live values.
+          const openSlashMenu = slashMenuRef.current;
+          const slashResults = filteredSlashCommandsRef.current;
+
+          if (!readOnly && !disabled && openSlashMenu) {
+            if (event.key === "Home" || event.key === "End") {
+              event.preventDefault();
+              setSlashMenu((current) =>
+                current
+                  ? {
+                      ...current,
+                      selectedIndex:
+                        event.key === "Home"
+                          ? 0
+                          : Math.max(slashResults.length - 1, 0),
+                    }
+                  : current,
+              );
+              return true;
+            }
+
             if (event.key === "ArrowDown") {
               event.preventDefault();
               setSlashMenu((current) => {
@@ -890,7 +1052,7 @@ export default function CommentEditor({
                   ...current,
                   selectedIndex:
                     (current.selectedIndex + 1) %
-                    Math.max(filteredSlashCommands.length, 1),
+                    Math.max(slashResults.length, 1),
                 };
               });
               return true;
@@ -905,8 +1067,8 @@ export default function CommentEditor({
                   selectedIndex:
                     (current.selectedIndex -
                       1 +
-                      Math.max(filteredSlashCommands.length, 1)) %
-                    Math.max(filteredSlashCommands.length, 1),
+                      Math.max(slashResults.length, 1)) %
+                    Math.max(slashResults.length, 1),
                 };
               });
               return true;
@@ -914,19 +1076,20 @@ export default function CommentEditor({
 
             if (
               (event.key === "Enter" || event.key === "Tab") &&
-              filteredSlashCommands.length
+              slashResults.length
             ) {
               event.preventDefault();
-              if (!isLiveEditor(editor)) return true;
+              const liveEditor = editorRef.current;
+              if (!isLiveEditor(liveEditor)) return true;
               const command =
-                filteredSlashCommands[
-                  Math.min(
-                    slashMenu.selectedIndex,
-                    filteredSlashCommands.length - 1,
-                  )
+                slashResults[
+                  Math.min(openSlashMenu.selectedIndex, slashResults.length - 1)
                 ];
               if (command) {
-                command.run(editor, { from: slashMenu.from, to: slashMenu.to });
+                command.run(liveEditor, {
+                  from: openSlashMenu.from,
+                  to: openSlashMenu.to,
+                });
                 setSlashMenu(null);
               }
               return true;
@@ -935,6 +1098,30 @@ export default function CommentEditor({
             if (event.key === "Escape") {
               event.preventDefault();
               setSlashMenu(null);
+              return true;
+            }
+          }
+
+          // Ctrl/⌘+K edits the link on a selection or under the caret. With nothing to
+          // link it falls through, so the global command palette still opens.
+          if (
+            isMod &&
+            key === "k" &&
+            !event.altKey &&
+            !event.shiftKey &&
+            !readOnly &&
+            !disabled
+          ) {
+            const { state } = view;
+            const linkType = state.schema.marks.link;
+            const linkMark = linkType?.isInSet(
+              state.storedMarks ?? state.selection.$from.marks(),
+            );
+            if (linkType && (!state.selection.empty || linkMark)) {
+              event.preventDefault();
+              event.stopPropagation();
+              const href = linkMark?.attrs.href;
+              setLinkUrl(typeof href === "string" ? href : "");
               return true;
             }
           }
@@ -999,6 +1186,8 @@ export default function CommentEditor({
       toShikiLanguage,
     ],
   );
+
+  editorRef.current = editor;
 
   // Tiptap can dispose an instance during a React layout transition before the
   // editor's passive hydration effects run. Render once more so `useEditor` replaces
@@ -1142,14 +1331,32 @@ export default function CommentEditor({
         $from.parentOffset - matchText.length + (startsWithSpace ? 1 : 0);
       const from = $from.start() + slashOffset;
       const to = from + matchText.trimStart().length;
-      const { top, left } = getOverlayPosition(view, $from.pos);
+      const below = getOverlayPosition(view, $from.pos);
+      // Near the bottom of the viewport the menu opens above the caret instead.
+      const caret = view.coordsAtPos($from.pos);
+      const viewportHeight =
+        typeof window === "undefined" ? 0 : window.innerHeight;
+      const spaceBelow = viewportHeight - caret.bottom;
+      const placement =
+        viewportHeight > 0 &&
+        spaceBelow < SLASH_MENU_MAX_HEIGHT_PX &&
+        caret.top > spaceBelow
+          ? "above"
+          : "below";
+      // `below.top` is the caret bottom plus an 8px gap; the line height turns it
+      // into the caret top minus the same gap. The menu is then lifted by its height.
+      const top =
+        placement === "above"
+          ? below.top - 16 - (caret.bottom - caret.top)
+          : below.top;
 
       setSlashMenu((current) => ({
         from,
         to,
         query,
         top,
-        left,
+        left: below.left,
+        placement,
         selectedIndex: current?.query === query ? current.selectedIndex : 0,
       }));
     },
@@ -1172,6 +1379,37 @@ export default function CommentEditor({
     if (!isLiveEditor(editor)) return;
     editor.setEditable(!readOnly && !disabled);
   }, [disabled, editor, readOnly]);
+
+  const slashMenuOpen = Boolean(slashMenu) && !readOnly && !disabled;
+  const activeSlashCommand = slashMenu
+    ? filteredSlashCommands[
+        Math.min(slashMenu.selectedIndex, filteredSlashCommands.length - 1)
+      ]
+    : undefined;
+  const activeSlashOptionId = activeSlashCommand
+    ? `${slashMenuId}-option-${activeSlashCommand.id}`
+    : null;
+
+  // Focus stays in the editor while the menu is open, so the editor names the
+  // listbox it controls and the option a screen reader should announce.
+  useEffect(() => {
+    if (!isLiveEditor(editor)) return;
+    const dom = editor.view.dom;
+    if (!slashMenuOpen) {
+      dom.removeAttribute("aria-controls");
+      dom.removeAttribute("aria-activedescendant");
+      return;
+    }
+    dom.setAttribute("aria-controls", slashMenuId);
+    if (!activeSlashOptionId) {
+      dom.removeAttribute("aria-activedescendant");
+      return;
+    }
+    dom.setAttribute("aria-activedescendant", activeSlashOptionId);
+    document
+      .getElementById(activeSlashOptionId)
+      ?.scrollIntoView?.({ block: "nearest" });
+  }, [activeSlashOptionId, editor, slashMenuId, slashMenuOpen]);
 
   useEffect(() => {
     if (!isLiveEditor(editor)) return;
@@ -1381,18 +1619,21 @@ export default function CommentEditor({
   const groupedSlashCommands = useMemo(
     () => [
       {
+        id: "text",
         title: t("activity:comment.editor.slashGroupText"),
         items: filteredSlashCommands.filter(
           (command) => command.group === "text",
         ),
       },
       {
+        id: "lists",
         title: t("activity:comment.editor.slashGroupLists"),
         items: filteredSlashCommands.filter(
           (command) => command.group === "lists",
         ),
       },
       {
+        id: "insert",
         title: t("activity:comment.editor.slashGroupInsert"),
         items: filteredSlashCommands.filter(
           (command) => command.group === "insert",
@@ -1618,6 +1859,9 @@ export default function CommentEditor({
           ref={imageInputRef}
           type="file"
           multiple={Boolean(onFilesSelected)}
+          // Unstyled: the styled control's `relative inline-flex w-full` outranks `sr-only` in the
+          // built CSS, which left an empty line box (a blank band) above every editable editor.
+          unstyled
           className="sr-only"
           // Opened only programmatically (slash menu / paste); an unlabelled,
           // invisible Tab stop in front of the editor is a keyboard defect.
@@ -1769,6 +2013,75 @@ export default function CommentEditor({
           >
             <UnderlineIcon className="size-3.5" />
           </Button>
+          <ActionTooltip label={t("activity:comment.editor.bubbleStrike")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                editor.isActive("strike") && "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.bubbleStrike")}
+              aria-pressed={editor.isActive("strike")}
+              onClick={() => editor.chain().focus().toggleStrike().run()}
+            >
+              <Strikethrough className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip label={t("activity:comment.editor.bubbleCode")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                editor.isActive("code") && "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.bubbleCode")}
+              aria-pressed={editor.isActive("code")}
+              onClick={() => editor.chain().focus().toggleCode().run()}
+            >
+              <Code className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <span className="taskdesk-tiptap-bubble-separator" />
+          <ActionTooltip label={t("activity:comment.editor.bubbleHeading")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                editor.isActive("heading", { level: 2 }) &&
+                  "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.bubbleHeading")}
+              aria-pressed={editor.isActive("heading", { level: 2 })}
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 2 }).run()
+              }
+            >
+              <Heading2 className="size-3.5" />
+            </Button>
+          </ActionTooltip>
+          <ActionTooltip label={t("activity:comment.editor.bubbleQuote")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={cn(
+                "taskdesk-comment-editor-bubble-btn",
+                editor.isActive("blockquote") &&
+                  "bg-accent text-accent-foreground",
+              )}
+              aria-label={t("activity:comment.editor.bubbleQuote")}
+              aria-pressed={editor.isActive("blockquote")}
+              onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            >
+              <TextQuote className="size-3.5" />
+            </Button>
+          </ActionTooltip>
           <Button
             type="button"
             variant="ghost"
@@ -1820,15 +2133,17 @@ export default function CommentEditor({
           >
             <Link2 className="size-3.5" />
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="taskdesk-comment-editor-bubble-btn"
-            onClick={() => openImagePicker(editor)}
-          >
-            <Paperclip className="size-3.5" />
-          </Button>
+          {canUploadFiles && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="taskdesk-comment-editor-bubble-btn"
+              onClick={() => openImagePicker(editor)}
+            >
+              <Paperclip className="size-3.5" />
+            </Button>
+          )}
         </BubbleMenu>
       )}
       {editor && !readOnly && !disabled && showBubbleMenu && (
@@ -1841,45 +2156,35 @@ export default function CommentEditor({
           }
         >
           <ActionTooltip
-            label={t("activity:comment.editor.table.addColumnBefore", {
-              defaultValue: "Insert column left",
-            })}
+            label={t("activity:comment.editor.table.addColumnBefore")}
           >
             <Button
               type="button"
               variant="ghost"
               size="xs"
               className="taskdesk-comment-editor-bubble-btn"
-              aria-label={t("activity:comment.editor.table.addColumnBefore", {
-                defaultValue: "Insert column left",
-              })}
+              aria-label={t("activity:comment.editor.table.addColumnBefore")}
               onClick={() => editor.chain().focus().addColumnBefore().run()}
             >
               <BetweenVerticalStart className="size-3.5" />
             </Button>
           </ActionTooltip>
           <ActionTooltip
-            label={t("activity:comment.editor.table.addColumnAfter", {
-              defaultValue: "Insert column right",
-            })}
+            label={t("activity:comment.editor.table.addColumnAfter")}
           >
             <Button
               type="button"
               variant="ghost"
               size="xs"
               className="taskdesk-comment-editor-bubble-btn"
-              aria-label={t("activity:comment.editor.table.addColumnAfter", {
-                defaultValue: "Insert column right",
-              })}
+              aria-label={t("activity:comment.editor.table.addColumnAfter")}
               onClick={() => editor.chain().focus().addColumnAfter().run()}
             >
               <BetweenVerticalEnd className="size-3.5" />
             </Button>
           </ActionTooltip>
           <ActionTooltip
-            label={t("activity:comment.editor.table.deleteColumn", {
-              defaultValue: "Delete column",
-            })}
+            label={t("activity:comment.editor.table.deleteColumn")}
           >
             <Button
               type="button"
@@ -1889,9 +2194,7 @@ export default function CommentEditor({
                 "taskdesk-comment-editor-bubble-btn",
                 "text-destructive",
               )}
-              aria-label={t("activity:comment.editor.table.deleteColumn", {
-                defaultValue: "Delete column",
-              })}
+              aria-label={t("activity:comment.editor.table.deleteColumn")}
               onClick={() => editor.chain().focus().deleteColumn().run()}
             >
               <Columns3 className="size-3.5" />
@@ -1899,46 +2202,32 @@ export default function CommentEditor({
           </ActionTooltip>
           <span className="taskdesk-tiptap-bubble-separator" />
           <ActionTooltip
-            label={t("activity:comment.editor.table.addRowBefore", {
-              defaultValue: "Insert row above",
-            })}
+            label={t("activity:comment.editor.table.addRowBefore")}
           >
             <Button
               type="button"
               variant="ghost"
               size="xs"
               className="taskdesk-comment-editor-bubble-btn"
-              aria-label={t("activity:comment.editor.table.addRowBefore", {
-                defaultValue: "Insert row above",
-              })}
+              aria-label={t("activity:comment.editor.table.addRowBefore")}
               onClick={() => editor.chain().focus().addRowBefore().run()}
             >
               <BetweenHorizontalStart className="size-3.5" />
             </Button>
           </ActionTooltip>
-          <ActionTooltip
-            label={t("activity:comment.editor.table.addRowAfter", {
-              defaultValue: "Insert row below",
-            })}
-          >
+          <ActionTooltip label={t("activity:comment.editor.table.addRowAfter")}>
             <Button
               type="button"
               variant="ghost"
               size="xs"
               className="taskdesk-comment-editor-bubble-btn"
-              aria-label={t("activity:comment.editor.table.addRowAfter", {
-                defaultValue: "Insert row below",
-              })}
+              aria-label={t("activity:comment.editor.table.addRowAfter")}
               onClick={() => editor.chain().focus().addRowAfter().run()}
             >
               <BetweenHorizontalEnd className="size-3.5" />
             </Button>
           </ActionTooltip>
-          <ActionTooltip
-            label={t("activity:comment.editor.table.deleteRow", {
-              defaultValue: "Delete row",
-            })}
-          >
+          <ActionTooltip label={t("activity:comment.editor.table.deleteRow")}>
             <Button
               type="button"
               variant="ghost"
@@ -1947,20 +2236,14 @@ export default function CommentEditor({
                 "taskdesk-comment-editor-bubble-btn",
                 "text-destructive",
               )}
-              aria-label={t("activity:comment.editor.table.deleteRow", {
-                defaultValue: "Delete row",
-              })}
+              aria-label={t("activity:comment.editor.table.deleteRow")}
               onClick={() => editor.chain().focus().deleteRow().run()}
             >
               <Rows3 className="size-3.5" />
             </Button>
           </ActionTooltip>
           <span className="taskdesk-tiptap-bubble-separator" />
-          <ActionTooltip
-            label={t("activity:comment.editor.table.deleteTable", {
-              defaultValue: "Delete table",
-            })}
-          >
+          <ActionTooltip label={t("activity:comment.editor.table.deleteTable")}>
             <Button
               type="button"
               variant="ghost"
@@ -1969,9 +2252,7 @@ export default function CommentEditor({
                 "taskdesk-comment-editor-bubble-btn",
                 "text-destructive",
               )}
-              aria-label={t("activity:comment.editor.table.deleteTable", {
-                defaultValue: "Delete table",
-              })}
+              aria-label={t("activity:comment.editor.table.deleteTable")}
               onClick={() => editor.chain().focus().deleteTable().run()}
             >
               <Grid2x2X className="size-3.5" />
@@ -1979,9 +2260,15 @@ export default function CommentEditor({
           </ActionTooltip>
         </BubbleMenu>
       )}
-      {slashMenu && !readOnly && !disabled && (
+      {slashMenu && slashMenuOpen && (
         <div
-          className="taskdesk-tiptap-slash-menu"
+          id={slashMenuId}
+          role="listbox"
+          aria-label={t("activity:comment.editor.slashMenuLabel")}
+          className={cn(
+            "taskdesk-tiptap-slash-menu",
+            slashMenu.placement === "above" && "is-above",
+          )}
           style={{
             top: slashMenu.top,
             left: slashMenu.left,
@@ -1991,23 +2278,46 @@ export default function CommentEditor({
           {filteredSlashCommands.length > 0 ? (
             groupedSlashCommands.map((group) => {
               if (!group.items.length) return null;
+              const titleId = `${slashMenuId}-group-${group.id}`;
               return (
-                <div key={group.title} className="taskdesk-tiptap-slash-group">
-                  <div className="taskdesk-tiptap-slash-group-title">
+                // biome-ignore lint/a11y/useSemanticElements: an ARIA listbox groups its options with role="group"; a fieldset groups form controls
+                <div
+                  key={group.id}
+                  role="group"
+                  aria-labelledby={titleId}
+                  className="taskdesk-tiptap-slash-group"
+                >
+                  <div
+                    id={titleId}
+                    role="presentation"
+                    className="taskdesk-tiptap-slash-group-title"
+                  >
                     {group.title}
                   </div>
                   {group.items.map((command) => {
                     const index = filteredSlashCommands.findIndex(
                       (candidate) => candidate.id === command.id,
                     );
+                    const isSelected = activeSlashCommand?.id === command.id;
+                    const shortcut = command.shortcut
+                      ? describeEditorShortcut(command.shortcut)
+                      : null;
+                    const Icon = command.icon;
                     return (
                       <Button
                         variant="ghost"
                         key={command.id}
+                        id={`${slashMenuId}-option-${command.id}`}
                         type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        aria-keyshortcuts={shortcut?.aria}
+                        // Options are chosen with the mouse or from the editor's
+                        // keys; they never take focus away from the editor.
+                        tabIndex={-1}
                         className={cn(
                           "taskdesk-tiptap-slash-item",
-                          slashMenu.selectedIndex === index && "is-selected",
+                          isSelected && "is-selected",
                         )}
                         onMouseEnter={() =>
                           setSlashMenu((current) =>
@@ -2026,13 +2336,26 @@ export default function CommentEditor({
                           setSlashMenu(null);
                         }}
                       >
-                        <span className="taskdesk-tiptap-slash-label">
-                          {command.label}
-                        </span>
-                        {command.shortcut && (
-                          <span className="taskdesk-tiptap-slash-shortcut">
-                            {command.shortcut}
+                        <span className="taskdesk-tiptap-slash-main">
+                          {Icon && (
+                            <Icon
+                              aria-hidden="true"
+                              className="taskdesk-tiptap-slash-icon"
+                            />
+                          )}
+                          <span className="taskdesk-tiptap-slash-label">
+                            {command.label}
                           </span>
+                        </span>
+                        {shortcut && (
+                          <KbdGroup
+                            aria-hidden="true"
+                            className="taskdesk-tiptap-slash-shortcut"
+                          >
+                            {shortcut.display.map((key) => (
+                              <Kbd key={key}>{key}</Kbd>
+                            ))}
+                          </KbdGroup>
                         )}
                       </Button>
                     );
