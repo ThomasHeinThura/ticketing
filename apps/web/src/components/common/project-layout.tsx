@@ -33,13 +33,17 @@ type ProjectLayoutProps = {
   children: ReactNode;
   showViewSwitcher?: boolean;
   activeView?:
+    | "overview"
     | "backlog"
     | "board"
     | "calendar"
     | "gantt"
     | "cycles"
     | "modules"
-    | "pages";
+    | "pages"
+    | "prerequisites"
+    | "team"
+    | "documents";
   realtimeMode?: "legacy" | "canonical" | "page";
 };
 
@@ -82,10 +86,11 @@ export default function ProjectLayout({
   }, []);
 
   const projectLayoutViewLabels = [
-    t("tasks:backlog.title"),
+    t("navigation:projectViews.overview"),
+    t("navigation:projectViews.backlog"),
     t("navigation:projectViews.workItems"),
     t("navigation:projectViews.calendar"),
-    t("tasks:gantt.title"),
+    t("navigation:projectViews.timeline"),
   ];
 
   return (

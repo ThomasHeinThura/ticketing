@@ -3,13 +3,18 @@ import { Button, ScrollArea, useIsMobile } from "@taskdesk/ui";
 import {
   CalendarDays,
   CalendarRange,
+  Files,
   FileText,
   Layers,
+  LayoutDashboard,
+  ListChecks,
+  type LucideIcon,
   Repeat,
   SquareKanban,
   SquircleDashed,
+  Users,
 } from "lucide-react";
-import { lazy, Suspense, useLayoutEffect, useRef } from "react";
+import { lazy, type ReactNode, Suspense, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
 import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
@@ -27,13 +32,70 @@ const MobileProjectNav = lazy(
 );
 
 type ProjectView =
+  | "overview"
   | "backlog"
   | "board"
   | "calendar"
   | "gantt"
   | "cycles"
   | "modules"
-  | "pages";
+  | "pages"
+  | "prerequisites"
+  | "team"
+  | "documents";
+
+/** S3 Overview tabs live at `/agent/projects/{key}[/prerequisites|/team|/documents]`. */
+const OVERVIEW_TAB_PATH =
+  /^\/agent\/projects\/[^/]+(?:\/(prerequisites|team|documents))?\/?$/u;
+
+/** The current view from the URL, when the route does not say it. Exported for tests. */
+export function projectViewFromPath(pathname: string): ProjectView {
+  const overviewTab = OVERVIEW_TAB_PATH.exec(pathname);
+  if (overviewTab)
+    return (overviewTab[1] as ProjectView | undefined) ?? "overview";
+  if (pathname.includes("/backlog")) return "backlog";
+  if (pathname.includes("/cycles")) return "cycles";
+  if (pathname.includes("/modules")) return "modules";
+  if (pathname.includes("/pages")) return "pages";
+  if (pathname.includes("/calendar")) return "calendar";
+  if (pathname.includes("/gantt")) return "gantt";
+  return "board";
+}
+
+const OVERVIEW_VIEW_ROUTES = {
+  overview: routes.projectOverview,
+  prerequisites: routes.projectPrerequisites,
+  team: routes.projectTeam,
+  documents: routes.projectDocuments,
+} as const;
+
+function ViewTab({
+  active,
+  icon: Icon,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  icon: LucideIcon;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Button
+      variant={active ? "secondary" : "ghost"}
+      size="xs"
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
+        !active && "text-muted-foreground",
+      )}
+    >
+      <Icon className="size-3.5" />
+      {children}
+    </Button>
+  );
+}
 
 type ProjectLayoutControlsProps = {
   projectId: string;
@@ -69,21 +131,7 @@ export default function ProjectLayoutControls({
   const calendarOn = useProjectFeature(projectId, "feature.calendar");
   const ganttOn = useProjectFeature(projectId, "feature.timeline");
   const tabsRef = useRef<HTMLDivElement>(null);
-  const resolvedView =
-    activeView ??
-    (location.pathname.includes("/backlog")
-      ? "backlog"
-      : location.pathname.includes("/cycles")
-        ? "cycles"
-        : location.pathname.includes("/modules")
-          ? "modules"
-          : location.pathname.includes("/pages")
-            ? "pages"
-            : location.pathname.includes("/calendar")
-              ? "calendar"
-              : location.pathname.includes("/gantt")
-                ? "gantt"
-                : "board");
+  const resolvedView = activeView ?? projectViewFromPath(location.pathname);
   useLayoutEffect(() => {
     if (
       !showViewSwitcher ||
@@ -120,6 +168,14 @@ export default function ProjectLayoutControls({
     calendarOn,
     ganttOn,
   ]);
+  const handleNavigateToOverviewView = (
+    view: keyof typeof OVERVIEW_VIEW_ROUTES,
+  ) => {
+    if (projectSlug)
+      void navigate({
+        href: OVERVIEW_VIEW_ROUTES[view].build({ projectKey: projectSlug }),
+      });
+  };
   const handleNavigateToBacklog = () => {
     if (projectSlug)
       void navigate({
@@ -181,6 +237,14 @@ export default function ProjectLayoutControls({
       (candidate) => candidate.id === nextProjectId,
     );
     if (!nextProject) return;
+    if (resolvedView in OVERVIEW_VIEW_ROUTES) {
+      void navigate({
+        href: OVERVIEW_VIEW_ROUTES[
+          resolvedView as keyof typeof OVERVIEW_VIEW_ROUTES
+        ].build({ projectKey: nextProject.slug }),
+      });
+      return;
+    }
     if (
       resolvedView === "board" ||
       resolvedView === "backlog" ||
@@ -235,6 +299,14 @@ export default function ProjectLayoutControls({
               workspaceId={workspaceId}
               projectId={projectId}
               activeView={resolvedView}
+              onSelectOverview={() => handleNavigateToOverviewView("overview")}
+              onSelectPrerequisites={() =>
+                handleNavigateToOverviewView("prerequisites")
+              }
+              onSelectTeam={() => handleNavigateToOverviewView("team")}
+              onSelectDocuments={() =>
+                handleNavigateToOverviewView("documents")
+              }
               onSelectBacklog={handleNavigateToBacklog}
               onSelectBoard={handleNavigateToBoard}
               onSelectCalendar={
@@ -278,107 +350,93 @@ export default function ProjectLayoutControls({
             ref={tabsRef}
             className="inline-flex h-full w-max min-w-max items-center gap-0.5 p-0.5"
           >
-            <Button
-              variant={resolvedView === "backlog" ? "secondary" : "ghost"}
-              size="xs"
+            <ViewTab
+              active={resolvedView === "overview"}
+              icon={LayoutDashboard}
+              onClick={() => handleNavigateToOverviewView("overview")}
+            >
+              {t("navigation:projectViews.overview")}
+            </ViewTab>
+            <ViewTab
+              active={resolvedView === "backlog"}
+              icon={SquircleDashed}
               onClick={handleNavigateToBacklog}
-              aria-current={resolvedView === "backlog" ? "page" : undefined}
-              className={cn(
-                "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
-                resolvedView !== "backlog" && "text-muted-foreground",
-              )}
             >
-              <SquircleDashed className="size-3.5" />
-              Backlog
-            </Button>
-            <Button
-              variant={resolvedView === "board" ? "secondary" : "ghost"}
-              size="xs"
+              {t("navigation:projectViews.backlog")}
+            </ViewTab>
+            <ViewTab
+              active={resolvedView === "board"}
+              icon={SquareKanban}
               onClick={handleNavigateToBoard}
-              aria-current={resolvedView === "board" ? "page" : undefined}
-              className={cn(
-                "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
-                resolvedView !== "board" && "text-muted-foreground",
-              )}
             >
-              <SquareKanban className="size-3.5" />
               {t("navigation:projectViews.workItems")}
-            </Button>
+            </ViewTab>
             {calendarOn ? (
-              <Button
-                variant={resolvedView === "calendar" ? "secondary" : "ghost"}
-                size="xs"
+              <ViewTab
+                active={resolvedView === "calendar"}
+                icon={CalendarRange}
                 onClick={handleNavigateToCalendar}
-                aria-current={resolvedView === "calendar" ? "page" : undefined}
-                className={cn(
-                  "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
-                  resolvedView !== "calendar" && "text-muted-foreground",
-                )}
               >
-                <CalendarRange className="size-3.5" />
                 {t("navigation:projectViews.calendar")}
-              </Button>
+              </ViewTab>
             ) : null}
             {ganttOn ? (
-              <Button
-                variant={resolvedView === "gantt" ? "secondary" : "ghost"}
-                size="xs"
+              <ViewTab
+                active={resolvedView === "gantt"}
+                icon={CalendarDays}
                 onClick={handleNavigateToGantt}
-                aria-current={resolvedView === "gantt" ? "page" : undefined}
-                className={cn(
-                  "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
-                  resolvedView !== "gantt" && "text-muted-foreground",
-                )}
               >
-                <CalendarDays className="size-3.5" />
-                Gantt
-              </Button>
+                {t("navigation:projectViews.timeline")}
+              </ViewTab>
             ) : null}
             {agileFeatures.cycles ? (
-              <Button
-                variant={resolvedView === "cycles" ? "secondary" : "ghost"}
-                size="xs"
+              <ViewTab
+                active={resolvedView === "cycles"}
+                icon={Repeat}
                 onClick={handleNavigateToCycles}
-                aria-current={resolvedView === "cycles" ? "page" : undefined}
-                className={cn(
-                  "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
-                  resolvedView !== "cycles" && "text-muted-foreground",
-                )}
               >
-                <Repeat className="size-3.5" />
                 {t("navigation:projectViews.cycles")}
-              </Button>
+              </ViewTab>
             ) : null}
             {agileFeatures.modules ? (
-              <Button
-                variant={resolvedView === "modules" ? "secondary" : "ghost"}
-                size="xs"
+              <ViewTab
+                active={resolvedView === "modules"}
+                icon={Layers}
                 onClick={handleNavigateToModules}
-                aria-current={resolvedView === "modules" ? "page" : undefined}
-                className={cn(
-                  "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
-                  resolvedView !== "modules" && "text-muted-foreground",
-                )}
               >
-                <Layers className="size-3.5" />
                 {t("navigation:projectViews.modules")}
-              </Button>
+              </ViewTab>
             ) : null}
             {pagesOn ? (
-              <Button
-                variant={resolvedView === "pages" ? "secondary" : "ghost"}
-                size="xs"
+              <ViewTab
+                active={resolvedView === "pages"}
+                icon={FileText}
                 onClick={handleNavigateToPages}
-                aria-current={resolvedView === "pages" ? "page" : undefined}
-                className={cn(
-                  "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
-                  resolvedView !== "pages" && "text-muted-foreground",
-                )}
               >
-                <FileText className="size-3.5" />
                 {t("navigation:projectViews.pages")}
-              </Button>
+              </ViewTab>
             ) : null}
+            <ViewTab
+              active={resolvedView === "prerequisites"}
+              icon={ListChecks}
+              onClick={() => handleNavigateToOverviewView("prerequisites")}
+            >
+              {t("navigation:projectViews.prerequisites")}
+            </ViewTab>
+            <ViewTab
+              active={resolvedView === "team"}
+              icon={Users}
+              onClick={() => handleNavigateToOverviewView("team")}
+            >
+              {t("navigation:projectViews.team")}
+            </ViewTab>
+            <ViewTab
+              active={resolvedView === "documents"}
+              icon={Files}
+              onClick={() => handleNavigateToOverviewView("documents")}
+            >
+              {t("navigation:projectViews.documents")}
+            </ViewTab>
           </div>
         </ScrollArea>
       )}

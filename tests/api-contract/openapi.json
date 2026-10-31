@@ -769,6 +769,54 @@
           "lastTaskNumber": {
             "type": "number",
             "description": "Highest task number issued in this project; the next task gets this plus one."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planning",
+              "active",
+              "on_hold",
+              "closed"
+            ],
+            "description": "Lifecycle status (D1), information only; archiving is archivedAt."
+          },
+          "objective": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inScope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outOfScope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "successCriteria": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusNoteAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Set by the server whenever the status note changes."
           }
         },
         "required": [
@@ -797,7 +845,14 @@
           "deletedAt",
           "purgeAfter",
           "position",
-          "lastTaskNumber"
+          "lastTaskNumber",
+          "status",
+          "objective",
+          "inScope",
+          "outOfScope",
+          "successCriteria",
+          "statusNote",
+          "statusNoteAt"
         ]
       },
       "ProjectDetail": {
@@ -968,6 +1023,54 @@
             "type": "number",
             "description": "Highest task number issued in this project; the next task gets this plus one."
           },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planning",
+              "active",
+              "on_hold",
+              "closed"
+            ],
+            "description": "Lifecycle status (D1), information only; archiving is archivedAt."
+          },
+          "objective": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inScope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outOfScope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "successCriteria": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusNoteAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Set by the server whenever the status note changes."
+          },
           "compositionWarnings": {
             "type": "array",
             "items": {
@@ -1008,6 +1111,13 @@
           "purgeAfter",
           "position",
           "lastTaskNumber",
+          "status",
+          "objective",
+          "inScope",
+          "outOfScope",
+          "successCriteria",
+          "statusNote",
+          "statusNoteAt",
           "compositionWarnings"
         ]
       },
@@ -1127,6 +1237,13 @@
           "escalationWaitMinutes": {
             "type": "number"
           },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The person's name, on the list route only (a placeholder person may have none)."
+          },
           "active": {
             "type": "boolean",
             "description": "False once stood down (PR-12) -- never deleted, kept for history."
@@ -1182,6 +1299,581 @@
           "title",
           "customerVisible",
           "createdAt"
+        ]
+      },
+      "ProjectOverview": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "project",
+              "managed_service"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planning",
+              "active",
+              "on_hold",
+              "closed"
+            ]
+          },
+          "health": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "red",
+              "amber",
+              "green"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "open": {
+                "type": "integer",
+                "description": "Live work items whose state group is not completed or cancelled."
+              },
+              "breached": {
+                "type": "integer",
+                "description": "Open work items with at least one breached SLA metric (work_item_sla_cache)."
+              },
+              "inProgress": {
+                "type": "integer",
+                "description": "Open work items in a started state that are not waiting on the customer."
+              },
+              "waiting": {
+                "type": "integer",
+                "description": "Open work items with an open waiting_customer SLA pause."
+              },
+              "done": {
+                "type": "integer",
+                "description": "Live work items in a completed state."
+              },
+              "total": {
+                "type": "integer",
+                "description": "Live work items, excluding cancelled ones."
+              },
+              "blockingPrerequisitesOutstanding": {
+                "type": "integer"
+              },
+              "prerequisites": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "open",
+              "breached",
+              "inProgress",
+              "waiting",
+              "done",
+              "total",
+              "blockingPrerequisitesOutstanding",
+              "prerequisites"
+            ],
+            "description": "Live means not archived and not deleted. Counts cover the whole project, not only the caller's assigned work."
+          },
+          "currentMilestone": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "date"
+            ],
+            "description": "The first milestone, by date, not yet reached."
+          },
+          "overdueMilestoneIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Milestones not yet reached whose date has passed."
+          },
+          "compositionWarnings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PR-6",
+                "PR-7",
+                "PR-10"
+              ]
+            }
+          },
+          "facts": {
+            "type": "object",
+            "properties": {
+              "customerName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The customer organisation; null for an internal project."
+              },
+              "managerName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "defaultAssigneeName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "supportLevel": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "L1",
+                  "L2",
+                  "L3"
+                ]
+              },
+              "serviceCalendarName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The effective service calendar (inherited or set)."
+              },
+              "startDate": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "endDate": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "customerName",
+              "managerName",
+              "defaultAssigneeName",
+              "supportLevel",
+              "serviceCalendarName",
+              "startDate",
+              "endDate"
+            ]
+          },
+          "serviceLevels": {
+            "type": "object",
+            "properties": {
+              "policyName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "project",
+                  "workspace",
+                  "none"
+                ]
+              },
+              "goals": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "metric": {
+                      "type": "string",
+                      "enum": [
+                        "first_response",
+                        "resolution"
+                      ]
+                    },
+                    "workItemTypeName": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": "string",
+                      "enum": [
+                        "low",
+                        "medium",
+                        "high",
+                        "urgent"
+                      ]
+                    },
+                    "targetMinutes": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "metric",
+                    "workItemTypeName",
+                    "priority",
+                    "targetMinutes"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "policyName",
+              "source",
+              "goals"
+            ],
+            "description": "The effective SLA policy's published targets, read-only. Empty goals when no policy or no published version applies."
+          }
+        },
+        "required": [
+          "projectId",
+          "kind",
+          "status",
+          "health",
+          "archived",
+          "counts",
+          "currentMilestone",
+          "overdueMilestoneIds",
+          "compositionWarnings",
+          "facts",
+          "serviceLevels"
+        ]
+      },
+      "ProjectSummary": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "objective": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inScope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outOfScope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "successCriteria": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusNoteAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Set by the server whenever the status note changes."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planning",
+              "active",
+              "on_hold",
+              "closed"
+            ]
+          }
+        },
+        "required": [
+          "projectId",
+          "objective",
+          "inScope",
+          "outOfScope",
+          "successCriteria",
+          "statusNote",
+          "statusNoteAt",
+          "status"
+        ]
+      },
+      "UpdateProjectSummaryBody": {
+        "type": "object",
+        "properties": {
+          "objective": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4000
+          },
+          "inScope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4000
+          },
+          "outOfScope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4000
+          },
+          "successCriteria": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4000
+          },
+          "statusNote": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planning",
+              "active",
+              "on_hold",
+              "closed"
+            ]
+          }
+        }
+      },
+      "ProjectContract": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "contract": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "startDate": {
+                "type": "string"
+              },
+              "endDate": {
+                "type": "string"
+              },
+              "contractedMinutes": {
+                "type": "integer"
+              },
+              "coverage": {
+                "type": "string",
+                "enum": [
+                  "9x5",
+                  "12x5",
+                  "24x7"
+                ]
+              },
+              "kickoffStatus": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "scheduled",
+                  "completed"
+                ]
+              },
+              "kickoffDate": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "startDate",
+              "endDate",
+              "contractedMinutes",
+              "coverage",
+              "kickoffStatus",
+              "kickoffDate",
+              "updatedAt"
+            ],
+            "description": "Null when the project has no contract."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "none",
+              "expired",
+              "kickoff_pending",
+              "expiring",
+              "active"
+            ],
+            "description": "Derived, in this order: none (no contract), expired (today after the end date), kickoff_pending (kickoff not completed), expiring (30 days or fewer left), active."
+          },
+          "daysRemaining": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Calendar days from today (UTC) to the end date; negative once expired."
+          },
+          "hourBank": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "contractedMinutes": {
+                "type": "integer"
+              },
+              "usedMinutes": {
+                "type": "integer",
+                "description": "Billable time_entry minutes on this project dated inside the contract period."
+              },
+              "remainingMinutes": {
+                "type": "integer",
+                "description": "Contracted minus used; negative when overdrawn."
+              },
+              "usedPct": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "contractedMinutes",
+              "usedMinutes",
+              "remainingMinutes",
+              "usedPct"
+            ]
+          },
+          "recentEntries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "workItemKey": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "date",
+                "minutes",
+                "workItemKey"
+              ]
+            },
+            "description": "The latest five billable entries in the period: date, minutes and work item only (no description, person or rate). Another person's individual time is `time_entry:read_any` data, so without that capability this is always empty (the aggregate hourBank stays, D3)."
+          },
+          "recentEntriesVisible": {
+            "type": "boolean",
+            "description": "Whether the caller holds `time_entry:read_any` and so may see recentEntries. False means the rows were withheld, not that there are none."
+          }
+        },
+        "required": [
+          "projectId",
+          "contract",
+          "state",
+          "daysRemaining",
+          "hourBank",
+          "recentEntries",
+          "recentEntriesVisible"
+        ]
+      },
+      "PutProjectContractBody": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+          },
+          "endDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+          },
+          "contractedMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60000000
+          },
+          "coverage": {
+            "type": "string",
+            "enum": [
+              "9x5",
+              "12x5",
+              "24x7"
+            ]
+          },
+          "kickoffStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "scheduled",
+              "completed"
+            ]
+          },
+          "kickoffDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+          }
+        },
+        "required": [
+          "startDate",
+          "endDate",
+          "contractedMinutes",
+          "coverage",
+          "kickoffStatus"
         ]
       },
       "ProjectState": {
@@ -11348,6 +12040,294 @@
           },
           "409": {
             "description": "An equivalent deletion is already pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project/{id}/overview": {
+      "get": {
+        "operationId": "getProjectOverview",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Get a project's overview",
+        "description": "Derived counts (open, breached, in progress, waiting, done/total, outstanding blocking prerequisites), the current and overdue milestones, composition warnings, facts and the effective service levels. Needs project:read.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project overview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOverview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project ID (including a NUL byte)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:read capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project/{id}/summary": {
+      "patch": {
+        "operationId": "updateProjectSummary",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Update a project's summary and status",
+        "description": "Partial update of objective, inScope, outOfScope, successCriteria, statusNote and the lifecycle status (planning, active, on_hold, closed). Blank text clears a field. statusNoteAt is set by the server when the note changes. Needs project:update; audited as project.summary_updated.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectSummaryBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The project summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project/{id}/contract": {
+      "get": {
+        "operationId": "getProjectContract",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Get a project's contract and hour bank",
+        "description": "The contract period, coverage and kickoff, its derived state and the hour bank (billable time in the period). contract is null when none is recorded. Needs project:read.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContract"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project ID (including a NUL byte)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:read capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putProjectContract",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Create or replace a project's contract",
+        "description": "Upsert the project's one contract. Needs project:manage_settings; audited as project_contract.set.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutProjectContractBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The saved contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectContract"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:manage_settings capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "End date before start date",
             "content": {
               "text/plain": {
                 "schema": {
