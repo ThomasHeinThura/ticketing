@@ -2147,7 +2147,7 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
           ? new Date(
               now.getTime() -
                 Math.max(
-                  [3, 6, 20, 26, 50][item.n % 5],
+                  [3, 6, 20, 26, 50][item.n % 5] ?? 3,
                   // Never newer than the item's oldest seeded comment.
                   ...COMMENTS.filter(
                     (comment) => comment.item === `${project.slug}-${item.n}`,
