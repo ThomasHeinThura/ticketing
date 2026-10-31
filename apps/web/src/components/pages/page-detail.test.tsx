@@ -333,6 +333,22 @@ describe("PageDetail", () => {
     );
   });
 
+  it("shows the parent page's title in the parent picker, not its id", async () => {
+    setup(true);
+    mocks.getPage.mockResolvedValue({ ...pageOf(true), parentId: "pg0" });
+    mocks.getPages.mockResolvedValue({
+      canEdit: true,
+      pages: [
+        { ...pageOf(true), id: "pg0", title: "Runbooks", parentId: null },
+        { ...pageOf(true), parentId: "pg0" },
+      ],
+    });
+    renderDetail();
+    const trigger = await screen.findByRole("combobox");
+    await waitFor(() => expect(trigger).toHaveTextContent("Runbooks"));
+    expect(trigger).not.toHaveTextContent("pg0");
+  });
+
   it("requests deletion as a pending action instead of deleting directly", async () => {
     setup(true);
     mocks.requestPageDeletion.mockResolvedValue({ pendingActionId: "pa1" });

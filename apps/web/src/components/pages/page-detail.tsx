@@ -543,6 +543,14 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
                   <Label htmlFor="page-edit-parent">{t("fields.parent")}</Label>
                   <Select
                     value={draft.parentId ?? TOP_LEVEL}
+                    // Labels for the trigger; without them the Select shows the page id.
+                    items={[
+                      { value: TOP_LEVEL, label: t("fields.topLevel") },
+                      ...parents.map(({ page: candidate, depth }) => ({
+                        value: candidate.id,
+                        label: `${"– ".repeat(depth)}${candidate.title}`,
+                      })),
+                    ]}
                     onValueChange={(value) => {
                       const parentId =
                         value && value !== TOP_LEVEL ? value : null;
