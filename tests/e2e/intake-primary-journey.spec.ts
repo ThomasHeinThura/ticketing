@@ -667,8 +667,8 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     ).toString();
     await runPhase(phaseJournal, "staff-triage-load", async () => {
       await staffPage.goto(triageUrl);
-      // The queue row and the open submission both show the title; assert the detail region.
-      const submissionDetail = staffPage.getByRole("region", {
+      // The queue row and the open submission both show the title; assert the side sheet.
+      const submissionDetail = staffPage.getByRole("dialog", {
         name: new RegExp(`Submission ${ref}`),
       });
       await expect(

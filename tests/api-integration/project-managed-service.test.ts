@@ -97,6 +97,78 @@ describe("API integration: managed-service project configuration", () => {
     });
   });
 
+  it("S5: inherits the workspace default calendar when none is sent, satisfying the DB check", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const calendar = await makeCalendar(owner.workspace.id, owner.user.id);
+    await db
+      .update(schema.workspaceTable)
+      .set({ defaultServiceCalendarId: calendar.id })
+      .where(eq(schema.workspaceTable.id, owner.workspace.id));
+    mockAuthenticatedSession(owner.user);
+
+    // The create modal's "Default calendar" choice: kind + support level, no calendar id.
+    const created = await createProjectRequest(owner.workspace.id, {
+      supportLevel: "L1",
+    });
+    expect(created.status).toBe(200);
+    const result =
+      (await created.json()) as typeof schema.projectTable.$inferSelect;
+    const persisted = await db.query.projectTable.findFirst({
+      where: eq(schema.projectTable.id, result.id),
+    });
+    // `project_managed_service_complete`: support level set and calendar mode `inherit`.
+    expect(persisted).toMatchObject({
+      kind: "managed_service",
+      supportLevel: "L1",
+      serviceCalendarId: null,
+      serviceCalendarMode: "inherit",
+    });
+
+    // A delivery project sends no engagement fields and keeps the defaults.
+    const delivery = await createProjectRequest(owner.workspace.id, {
+      kind: undefined,
+      slug: "DELIVER",
+      name: "Portal build",
+    });
+    expect(delivery.status).toBe(200);
+    const deliveryRow = await db.query.projectTable.findFirst({
+      where: eq(
+        schema.projectTable.id,
+        ((await delivery.json()) as { id: string }).id,
+      ),
+    });
+    expect(deliveryRow).toMatchObject({
+      kind: "project",
+      supportLevel: null,
+      serviceCalendarMode: "inherit",
+    });
+  });
+
+  it("S5: refuses a managed service with no calendar to inherit (422, not a DB error)", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(owner.user);
+    const response = await createProjectRequest(owner.workspace.id, {
+      supportLevel: "L3",
+    });
+    expect(response.status).toBe(422);
+    await expect(response.text()).resolves.toContain("PR-9");
+  });
+
+  it("S5: denies a managed-service create without project:create", async () => {
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const calendar = await makeCalendar(viewer.workspace.id, viewer.user.id);
+    mockAuthenticatedSession(viewer.user);
+    const response = await createProjectRequest(viewer.workspace.id, {
+      supportLevel: "L1",
+      serviceCalendarId: calendar.id,
+    });
+    expect(response.status).toBe(403);
+    const rows = await db.query.projectTable.findMany({
+      where: eq(schema.projectTable.workspaceId, viewer.workspace.id),
+    });
+    expect(rows).toHaveLength(0);
+  });
+
   it("exposes nullable RAG health through project read/update routes", async () => {
     const owner = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({

@@ -82,7 +82,7 @@ export function agentSectionTitleKey(pathname: string): string {
 
 function AgentHome() {
   const { t } = useTranslation();
-  const { recovery } = Route.useSearch();
+  const { recovery, kind } = Route.useSearch();
   const navigate = useNavigate();
   const { data: activeWorkspace, isLoading } = useActiveWorkspace();
   const {
@@ -125,6 +125,13 @@ function AgentHome() {
           navigate({
             to: "/agent",
             search: showDeleted ? { recovery: "deleted" } : {},
+          })
+        }
+        kindFilter={kind}
+        onKindFilterChange={(nextKind) =>
+          navigate({
+            to: "/agent",
+            search: nextKind ? { kind: nextKind } : {},
           })
         }
       />

@@ -16,14 +16,18 @@ function useGetProjects<TSelected = Projects>(
   enabled = true,
   select?: (projects: Projects) => TSelected,
 ) {
+  // `false` and an omitted flag send the same request, so they share one cache entry (the key
+  // `lib/work-list-prefetch.ts` also writes) instead of fetching the list twice on one screen.
+  const archived = includeArchived ? true : undefined;
+  const deleted = includeDeleted ? true : undefined;
   return useQuery({
     queryFn: () =>
       getProjects({
         workspaceId,
-        includeArchived: includeArchived ? "true" : undefined,
-        includeDeleted: includeDeleted ? "true" : undefined,
+        includeArchived: archived ? "true" : undefined,
+        includeDeleted: deleted ? "true" : undefined,
       }),
-    queryKey: ["projects", workspaceId, includeArchived, includeDeleted],
+    queryKey: ["projects", workspaceId, archived, deleted],
     enabled: Boolean(workspaceId) && enabled,
     select,
   });

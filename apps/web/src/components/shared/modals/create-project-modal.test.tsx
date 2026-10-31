@@ -15,10 +15,43 @@ const mocks = vi.hoisted(() => ({
   createProjectArgs: vi.fn(),
   navigate: vi.fn(),
   canBind: true,
+  slaOn: true,
+  workspaceDefaultCalendarId: "calendar-default" as string | null,
+  calendars: {
+    data: {
+      data: [
+        { id: "calendar-default", name: "Office hours" },
+        { id: "calendar-247", name: "Around the clock" },
+      ],
+    },
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  },
+  toastError: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn(async () => undefined) }),
+  // Only the workspace project settings (default calendar) read goes through here.
+  useQuery: ({ enabled }: { enabled: boolean }) =>
+    enabled
+      ? {
+          isSuccess: true,
+          data: { defaultServiceCalendarId: mocks.workspaceDefaultCalendarId },
+        }
+      : { isSuccess: false, data: undefined },
+}));
+
+vi.mock("@/hooks/queries/feature-flag/use-workspace-features", () => ({
+  default: () => ({
+    isOn: (key: string) => key === "feature.sla" && mocks.slaOn,
+    isLoading: false,
+  }),
+}));
+
+vi.mock("@/hooks/queries/service-calendar/use-service-calendars", () => ({
+  useServiceCalendars: () => mocks.calendars,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -32,6 +65,7 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canBindProjectOrganisation: () => mocks.canBind,
+    canManageWorkspaceSettings: () => true,
   }),
 }));
 
@@ -47,7 +81,7 @@ vi.mock("@/hooks/mutations/project/use-create-project", () => ({
 }));
 
 vi.mock("@/lib/toast", () => ({
-  toast: { error: vi.fn(), success: vi.fn() },
+  toast: { error: mocks.toastError, success: vi.fn() },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -66,6 +100,9 @@ function lastCreateArgs() {
   return mocks.createProjectArgs.mock.calls.at(-1)?.[0] as {
     organisationId: string | null;
     workspaceId: string;
+    kind?: string;
+    supportLevel?: string | null;
+    serviceCalendarId?: string | null;
   };
 }
 
@@ -83,6 +120,8 @@ function fillAndSubmit() {
 
 beforeEach(() => {
   mocks.canBind = true;
+  mocks.slaOn = true;
+  mocks.workspaceDefaultCalendarId = "calendar-default";
   mocks.createProject.mockResolvedValue({ id: "project-1" });
 });
 
@@ -303,5 +342,166 @@ describe("CreateProjectModal project key validation (PR-13)", () => {
       target: { value: "Z" },
     });
     expect(screen.getByTestId("project-key-error")).toBeTruthy();
+  });
+});
+
+describe("CreateProjectModal kind (S5)", () => {
+  async function choose(trigger: HTMLElement, name: string) {
+    fireEvent.click(trigger);
+    // The i18n mock renders every support level with the same key: take the first.
+    const [option] = await screen.findAllByRole("option", { name });
+    fireEvent.pointerDown(option);
+    fireEvent.mouseDown(option);
+    fireEvent.pointerUp(option);
+    fireEvent.mouseUp(option);
+    fireEvent.click(option);
+  }
+
+  function createButton() {
+    return screen.getByRole("button", {
+      name: "common:modals.createProject.createButton",
+    }) as HTMLButtonElement;
+  }
+
+  function typeProject() {
+    fireEvent.change(
+      screen.getByPlaceholderText("common:modals.createProject.projectName"),
+      { target: { value: "Acme support" } },
+    );
+  }
+
+  beforeEach(() => {
+    mocks.canBind = false;
+    mocks.organisations.mockReturnValue(loaded([]));
+  });
+
+  it("creates a delivery project by default, with no managed-service fields", async () => {
+    render(<CreateProjectModal open onClose={vi.fn()} />);
+    const delivery = screen.getByRole("radio", {
+      name: /common:modals.createProject.kindDelivery/,
+    });
+    expect(delivery.getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryByTestId("project-managed-service-fields")).toBeNull();
+
+    fillAndSubmit();
+    await waitFor(() => expect(mocks.createProject).toHaveBeenCalledTimes(1));
+    expect(lastCreateArgs()).toMatchObject({
+      kind: "project",
+      supportLevel: null,
+      serviceCalendarId: null,
+    });
+  });
+
+  it("presets managed service and blocks creation until a support level is chosen", async () => {
+    render(
+      <CreateProjectModal
+        open
+        onClose={vi.fn()}
+        defaultKind="managed_service"
+      />,
+    );
+    expect(
+      screen
+        .getByRole("radio", {
+          name: /common:modals.createProject.kindManaged/,
+        })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(screen.getByTestId("project-managed-service-fields")).toBeTruthy();
+    typeProject();
+    expect(createButton().disabled).toBe(true);
+
+    await choose(
+      screen.getByLabelText("common:modals.createProject.supportLevelLabel"),
+      "common:modals.createProject.supportLevelOption",
+    );
+    await waitFor(() => expect(createButton().disabled).toBe(false));
+    // The default calendar is inherited: no calendar id is sent.
+    expect(lastCreateArgs()).toMatchObject({
+      kind: "managed_service",
+      serviceCalendarId: null,
+    });
+    fireEvent.click(createButton());
+    await waitFor(() => expect(mocks.createProject).toHaveBeenCalledTimes(1));
+  });
+
+  it("sends an explicitly chosen service calendar", async () => {
+    render(
+      <CreateProjectModal
+        open
+        onClose={vi.fn()}
+        defaultKind="managed_service"
+      />,
+    );
+    await choose(
+      screen.getByLabelText("common:modals.createProject.calendarLabel"),
+      "Around the clock",
+    );
+    await waitFor(() =>
+      expect(lastCreateArgs().serviceCalendarId).toBe("calendar-247"),
+    );
+  });
+
+  it("explains and blocks the default calendar when the workspace has none", async () => {
+    mocks.workspaceDefaultCalendarId = null;
+    render(
+      <CreateProjectModal
+        open
+        onClose={vi.fn()}
+        defaultKind="managed_service"
+      />,
+    );
+    typeProject();
+    await choose(
+      screen.getByLabelText("common:modals.createProject.supportLevelLabel"),
+      "common:modals.createProject.supportLevelOption",
+    );
+    expect(screen.getByTestId("project-calendar-no-default").textContent).toBe(
+      "common:modals.createProject.calendarNoDefault",
+    );
+    expect(createButton().disabled).toBe(true);
+  });
+
+  it("offers only the default calendar while feature.sla is off", async () => {
+    mocks.slaOn = false;
+    render(
+      <CreateProjectModal
+        open
+        onClose={vi.fn()}
+        defaultKind="managed_service"
+      />,
+    );
+    fireEvent.click(
+      screen.getByLabelText("common:modals.createProject.calendarLabel"),
+    );
+    const options = await screen.findAllByRole("option");
+    expect(options).toHaveLength(1);
+  });
+
+  it("turns the API's PR-9 refusal into a clear message", async () => {
+    mocks.createProject.mockRejectedValueOnce(
+      new Error(
+        "PR-9: managed services require a support level and service calendar",
+      ),
+    );
+    render(
+      <CreateProjectModal
+        open
+        onClose={vi.fn()}
+        defaultKind="managed_service"
+      />,
+    );
+    typeProject();
+    await choose(
+      screen.getByLabelText("common:modals.createProject.supportLevelLabel"),
+      "common:modals.createProject.supportLevelOption",
+    );
+    await waitFor(() => expect(createButton().disabled).toBe(false));
+    fireEvent.click(createButton());
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "common:modals.createProject.managedServiceIncomplete",
+      ),
+    );
   });
 });

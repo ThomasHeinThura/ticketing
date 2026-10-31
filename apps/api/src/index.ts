@@ -720,6 +720,27 @@ function denyByHost(c: Context<AppVariables>) {
 }
 
 /**
+ * Build output under `/assets/` is named `[name]-[hash][extname]` (apps/web/vite.config.ts), so
+ * its bytes never change under the same URL: browsers and the CDN may keep it for a year without
+ * revalidating. HTML shells stay `no-store` (security-headers middleware), and anything without
+ * a content hash (root `public/` files such as the favicon and web manifest) keeps the default.
+ */
+const IMMUTABLE_ASSET_CACHE = "public, max-age=31536000, immutable";
+const CONTENT_HASHED_ASSET_PATH =
+  /^\/assets\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9._-]+-[A-Za-z0-9_-]{8}\.[A-Za-z0-9]+$/u;
+
+export function isContentHashedAssetPath(path: string): boolean {
+  return CONTENT_HASHED_ASSET_PATH.test(path);
+}
+
+function staticFileServers(root: string) {
+  return {
+    serveAsset: serveStatic({ root }),
+    serveIndex: serveStatic({ root, path: "/index.html" }),
+  };
+}
+
+/**
  * Serves the separate built app selected by the validated request authority.
  * A missing selected root returns 503; it never falls back across origins.
  */
@@ -736,6 +757,13 @@ function registerStaticServing(
     if (staticRoot)
       console.log(`[static] Serving the ${surface} app from ${staticRoot}`);
   }
+  // One file server per built app, created once rather than per request.
+  const servers = {
+    agent: staticRoots.agent ? staticFileServers(staticRoots.agent) : undefined,
+    portal: staticRoots.portal
+      ? staticFileServers(staticRoots.portal)
+      : undefined,
+  };
 
   const serveStaticOrSpaShell = async (
     c: Context<AppVariables>,
@@ -750,19 +778,18 @@ function registerStaticServing(
 
     const surface = c.get("appOrigin");
     if (surface !== "agent" && surface !== "portal") return next();
-    const staticRoot = staticRoots[surface];
+    const server = servers[surface];
     const portalOff =
       surface === "portal" ? c.get("portalFeatureState") : undefined;
-    if (!staticRoot && portalOff)
+    if (!server && portalOff)
       return portalFeatureOffResponse(c.req.path, portalOff);
-    if (!staticRoot) {
+    if (!server) {
       return c.req.method === "HEAD"
         ? c.body(null, 503, { "content-type": "application/json" })
         : c.json({ message: "Service Unavailable" }, 503);
     }
 
-    const serveAsset = serveStatic({ root: staticRoot });
-    const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
+    const { serveAsset, serveIndex } = server;
     const serveNoncedHtml = (response: Response, nonce: string) => {
       // Hono merges the previous context headers into returned responses. Clear
       // file metadata here as well as in the transformed Response, or the old
@@ -781,6 +808,11 @@ function registerStaticServing(
         result ?? c.res,
         c.req.path,
       );
+      if (
+        (assetResponse.status === 200 || assetResponse.status === 206) &&
+        isContentHashedAssetPath(c.req.path)
+      )
+        assetResponse.headers.set("Cache-Control", IMMUTABLE_ASSET_CACHE);
       const nonce = cspNonceForContext(c);
       const isHtml = assetResponse.headers
         .get("content-type")

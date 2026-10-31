@@ -128,7 +128,26 @@
 				"organisationEmpty": "Активных организаций клиентов пока нет. Этот {{term_project_one}} будет внутренним.",
 				"organisationNone": "Нет (внутренний {{term_project_one}})",
 				"organisationHint": "Необязательно. Выбирается сейчас и не может быть изменена после создания проекта.",
-				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed."
+				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
+				"calendarHint": "Service hours for response and resolution targets. The default comes from the customer organisation or the workspace.",
+				"calendarInherit": "Default calendar",
+				"calendarInheritNamed": "Default calendar ({{name}})",
+				"calendarInvalid": "That service calendar is not available in this workspace.",
+				"calendarLabel": "Service calendar",
+				"calendarNoDefault": "This workspace has no default service calendar. Choose a calendar.",
+				"calendarNoneAvailable": "This workspace has no default service calendar. Ask an admin to set one in workspace settings.",
+				"calendarsError": "Could not load service calendars.",
+				"calendarsLoading": "Loading service calendars...",
+				"calendarsRetry": "Retry",
+				"kindDelivery": "Delivery {{term_project_one}}",
+				"kindDeliveryHint": "Planned work with an agreed scope, such as an implementation or a migration.",
+				"kindLabel": "Kind",
+				"kindManaged": "Managed service",
+				"kindManagedHint": "Ongoing support for a customer, with a support level and service hours.",
+				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
+				"supportLevelLabel": "Support level",
+				"supportLevelOption": "{{level}} support",
+				"supportLevelPlaceholder": "Choose a level"
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -3001,7 +3020,15 @@
 			"showActive": "Back to {{term_project_other}}",
 			"showDeleted": "Recently deleted",
 			"visibleTreeDueDate": "Earliest due date in visible {{term_project_one}} tree",
-			"visibleTreeStatistics": "Visible {{term_project_one}} tree"
+			"visibleTreeStatistics": "Visible {{term_project_one}} tree",
+			"filteredEmptyDescription": "Choose another kind to see more {{term_project_other}}.",
+			"filteredEmptyTitle": "No {{term_project_other}} of this kind",
+			"kindAll": "All kinds",
+			"kindFilterLabel": "Filter by kind",
+			"kindManagedService": "Managed services",
+			"kindProject": "Delivery {{term_project_other}}",
+			"managedServiceBadge": "Managed service",
+			"showAllKinds": "Show all kinds"
 		},
 		"search": {
 			"pageTitle": "Поиск",
@@ -4544,7 +4571,8 @@
 		"type": "Intake queue",
 		"claimedAt": "Claimed {{date}}",
 		"convertedWorkItem": "Converted {{term_work_item_one}}: {{label}}",
-		"prefilledFromType": "Prefilled from {{term_request_one}} type: {{name}}",
+		"defaultFromRequestType": "{{term_request_one}} type default: {{name}}",
+		"convertHeading": "Convert to {{term_work_item_one}}",
 		"nextPage": "Next page",
 		"retry": "Retry",
 		"age": "Age",
@@ -7496,7 +7524,8 @@
 					"remove": "Remove",
 					"target": "Item",
 					"title": "Links",
-					"url": "Address"
+					"url": "Address",
+					"openProject": "Open {{name}}"
 				},
 				"noDescription": "No description yet.",
 				"none": "None",
@@ -7521,7 +7550,6 @@
 				"supportLevel": "Support level"
 			},
 			"list": {
-				"description": "What we run on behalf of customers: who owns each {{term_service_one}}, how it is doing and what depends on it.",
 				"emptyDescription": "Create the first {{term_service_one}} to start recording {{term_change_other}} and releases against it.",
 				"emptyTitle": "No {{term_service_other}} yet",
 				"incidents_few": "{{count}} incidents",
@@ -7538,7 +7566,9 @@
 				"search": "Search",
 				"searchLabel": "Search {{term_service_other}}",
 				"searchPlaceholder": "Search by name or category",
-				"title": "{{term_service_other}}"
+				"title": "{{term_service_other}}",
+				"catalogueDescription": "A catalogue of the systems we run, used to record {{term_change_other}} and releases against them. It holds no customers, contracts or SLAs: to support a customer, create a managed service.",
+				"createManagedService": "Create managed service"
 			}
 		},
 		"status": {

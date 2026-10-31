@@ -187,3 +187,100 @@ describe("ProjectsPage recovery mode", () => {
     });
   });
 });
+
+describe("ProjectsPage engagement kind (S5)", () => {
+  const delivery = {
+    ...deletedProject,
+    id: "project-delivery",
+    slug: "BUILD",
+    name: "Portal build",
+    deletedAt: null,
+    purgeAfter: null,
+  };
+  const managed = {
+    ...delivery,
+    id: "project-managed",
+    slug: "ACME",
+    name: "Acme support",
+    kind: "managed_service",
+    supportLevel: "L2",
+    position: 1,
+  };
+
+  it("badges managed services and leaves delivery projects unbadged", () => {
+    mocks.projects = [delivery, managed];
+    render(<ProjectsPage workspaceId="workspace-1" />);
+    const badges = screen.getAllByTestId("project-kind-badge");
+    expect(badges).toHaveLength(1);
+    expect(badges[0]).toHaveTextContent(
+      translate("workspace:projects.managedServiceBadge"),
+    );
+    expect(badges[0].closest("tr")).toHaveTextContent("Acme support");
+  });
+
+  it("shows only the filtered kind and hands filter changes to the URL owner", async () => {
+    mocks.projects = [delivery, managed];
+    const onKindFilterChange = vi.fn();
+    render(
+      <ProjectsPage
+        workspaceId="workspace-1"
+        kindFilter="managed_service"
+        onKindFilterChange={onKindFilterChange}
+      />,
+    );
+    expect(screen.getByText("Acme support")).toBeInTheDocument();
+    expect(screen.queryByText("Portal build")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("project-kind-filter"));
+    const option = await screen.findByRole("option", {
+      name: translate("workspace:projects.kindAll"),
+    });
+    fireEvent.pointerDown(option);
+    fireEvent.mouseDown(option);
+    fireEvent.pointerUp(option);
+    fireEvent.mouseUp(option);
+    fireEvent.click(option);
+    await waitFor(() =>
+      expect(onKindFilterChange).toHaveBeenCalledWith(undefined),
+    );
+  });
+
+  it("explains an empty filtered list and offers every kind again", () => {
+    mocks.projects = [delivery];
+    const onKindFilterChange = vi.fn();
+    render(
+      <ProjectsPage
+        workspaceId="workspace-1"
+        kindFilter="managed_service"
+        onKindFilterChange={onKindFilterChange}
+      />,
+    );
+    expect(screen.getByTestId("projects-kind-empty")).toHaveTextContent(
+      translate("workspace:projects.filteredEmptyTitle"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("workspace:projects.showAllKinds"),
+      }),
+    );
+    expect(onKindFilterChange).toHaveBeenCalledWith(undefined);
+  });
+
+  it("filters in memory when no URL owner is given (legacy dashboard route)", async () => {
+    mocks.projects = [delivery, managed];
+    render(<ProjectsPage workspaceId="workspace-1" />);
+    expect(screen.getByText("Portal build")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("project-kind-filter"));
+    const option = await screen.findByRole("option", {
+      name: translate("workspace:projects.kindManagedService"),
+    });
+    fireEvent.pointerDown(option);
+    fireEvent.mouseDown(option);
+    fireEvent.pointerUp(option);
+    fireEvent.mouseUp(option);
+    fireEvent.click(option);
+    await waitFor(() => expect(screen.queryByText("Portal build")).toBeNull());
+    expect(screen.getByText("Acme support")).toBeInTheDocument();
+  });
+});

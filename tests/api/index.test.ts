@@ -117,6 +117,17 @@ describe("static file serving", () => {
       join(staticRoot, "assets", "app.js"),
       "console.log('asset-marker');",
     );
+    // Build output names: `assets/[name]-[hash][extname]` (apps/web/vite.config.ts).
+    writeFileSync(
+      join(staticRoot, "assets", "work-route-Bq3x_9Zk.js"),
+      "console.log('hashed-asset-marker');",
+    );
+    mkdirSync(join(staticRoot, "assets", "pdf-preview"), { recursive: true });
+    writeFileSync(
+      join(staticRoot, "assets", "pdf-preview", "viewer-Dk2-7aQp.js"),
+      "console.log('pdf-preview-marker');",
+    );
+    writeFileSync(join(staticRoot, "favicon-96x96.png"), "png-marker");
     writeFileSync(privateFile, "private-marker");
   });
 
@@ -133,6 +144,72 @@ describe("static file serving", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("javascript");
     await expect(response.text()).resolves.toContain("asset-marker");
+  });
+
+  it("caches content-hashed build assets as immutable for GET and HEAD", async () => {
+    const { app } = createApp({ staticRoot });
+
+    for (const method of ["GET", "HEAD"]) {
+      for (const path of [
+        "/assets/work-route-Bq3x_9Zk.js",
+        "/assets/pdf-preview/viewer-Dk2-7aQp.js",
+      ]) {
+        const response = await app.request(path, {
+          method,
+          headers: { host: "localhost:5173" },
+        });
+        expect(response.status).toBe(200);
+        expect(response.headers.get("cache-control")).toBe(
+          "public, max-age=31536000, immutable",
+        );
+      }
+    }
+    // The PDF preview's cross-origin asset headers survive the cache header.
+    const preview = await requestAsAgent(
+      app,
+      "/assets/pdf-preview/viewer-Dk2-7aQp.js",
+    );
+    expect(preview.headers.get("cross-origin-resource-policy")).toBe(
+      "cross-origin",
+    );
+    await expect(preview.text()).resolves.toContain("pdf-preview-marker");
+  });
+
+  it("caches a byte-range response for a content-hashed asset as immutable", async () => {
+    const { app } = createApp({ staticRoot });
+
+    const response = await app.request("/assets/work-route-Bq3x_9Zk.js", {
+      headers: { host: "localhost:5173", range: "bytes=0-6" },
+    });
+    expect(response.status).toBe(206);
+    expect(response.headers.get("content-range")).toMatch(/^bytes 0-6\//u);
+    await expect(response.text()).resolves.toBe("console");
+    expect(response.headers.get("cache-control")).toBe(
+      "public, max-age=31536000, immutable",
+    );
+  });
+
+  it("never marks HTML, unhashed files or missing assets as immutable", async () => {
+    const { app } = createApp({ staticRoot });
+
+    for (const path of ["/", "/index.html", "/projects/some-project-id"]) {
+      const response = await requestAsAgent(app, path);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/html");
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+    for (const path of ["/assets/app.js", "/favicon-96x96.png"]) {
+      const response = await requestAsAgent(app, path);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control") ?? "").not.toContain(
+        "immutable",
+      );
+    }
+    const missing = await requestAsAgent(app, "/assets/missing-Bq3x_9Zk.js");
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("cache-control") ?? "").not.toContain(
+      "immutable",
+    );
   });
 
   it("falls back to index.html for an unmatched non-API route", async () => {

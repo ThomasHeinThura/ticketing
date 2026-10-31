@@ -143,7 +143,26 @@
 				"organisationRetry": "Retry",
 				"organisationEmpty": "No active customer organisations yet. This {{term_project_one}} will be internal.",
 				"organisationNone": "None (internal {{term_project_one}})",
-				"organisationHint": "Optional. Chosen now: it cannot be changed after the {{term_project_one}} is created."
+				"organisationHint": "Optional. Chosen now: it cannot be changed after the {{term_project_one}} is created.",
+				"kindLabel": "Kind",
+				"kindDelivery": "Delivery {{term_project_one}}",
+				"kindDeliveryHint": "Planned work with an agreed scope, such as an implementation or a migration.",
+				"kindManaged": "Managed service",
+				"kindManagedHint": "Ongoing support for a customer, with a support level and service hours.",
+				"supportLevelLabel": "Support level",
+				"supportLevelPlaceholder": "Choose a level",
+				"supportLevelOption": "{{level}} support",
+				"calendarLabel": "Service calendar",
+				"calendarInherit": "Default calendar",
+				"calendarInheritNamed": "Default calendar ({{name}})",
+				"calendarHint": "Service hours for response and resolution targets. The default comes from the customer organisation or the workspace.",
+				"calendarNoDefault": "This workspace has no default service calendar. Choose a calendar.",
+				"calendarNoneAvailable": "This workspace has no default service calendar. Ask an admin to set one in workspace settings.",
+				"calendarsLoading": "Loading service calendars...",
+				"calendarsError": "Could not load service calendars.",
+				"calendarsRetry": "Retry",
+				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
+				"calendarInvalid": "That service calendar is not available in this workspace."
 			},
 			"createWorkspace": {
 				"breadcrumbTaskDesk": "TASKDESK",
@@ -2925,7 +2944,15 @@
 			"deletedEmptyTitle": "No deleted {{term_project_other}}",
 			"deletedEmptyDescription": "No {{term_project_other}} are within the recovery window.",
 			"visibleTreeStatistics": "Visible {{term_project_one}} tree",
-			"visibleTreeDueDate": "Earliest due date in visible {{term_project_one}} tree"
+			"visibleTreeDueDate": "Earliest due date in visible {{term_project_one}} tree",
+			"kindFilterLabel": "Filter by kind",
+			"kindAll": "All kinds",
+			"kindProject": "Delivery {{term_project_other}}",
+			"kindManagedService": "Managed services",
+			"managedServiceBadge": "Managed service",
+			"filteredEmptyTitle": "No {{term_project_other}} of this kind",
+			"filteredEmptyDescription": "Choose another kind to see more {{term_project_other}}.",
+			"showAllKinds": "Show all kinds"
 		},
 		"search": {
 			"pageTitle": "Search",
@@ -4466,7 +4493,8 @@
 		"download": "Download",
 		"type": "Intake queue",
 		"claimedAt": "Claimed {{date}}",
-		"prefilledFromType": "Prefilled from {{term_request_one}} type: {{name}}",
+		"defaultFromRequestType": "{{term_request_one}} type default: {{name}}",
+		"convertHeading": "Convert to {{term_work_item_one}}",
 		"convertedWorkItem": "Converted {{term_work_item_one}}: {{label}}",
 		"retry": "Retry",
 		"nextPage": "Next page",
@@ -7083,7 +7111,6 @@
 		"services": {
 			"list": {
 				"title": "{{term_service_other}}",
-				"description": "What we run on behalf of customers: who owns each {{term_service_one}}, how it is doing and what depends on it.",
 				"new": "New {{term_service_one}}",
 				"search": "Search",
 				"searchLabel": "Search {{term_service_other}}",
@@ -7095,7 +7122,9 @@
 				"incidents_one": "{{count}} incident",
 				"incidents_other": "{{count}} incidents",
 				"openChanges_one": "{{count}} open {{term_change_one}}",
-				"openChanges_other": "{{count}} open {{term_change_other}}"
+				"openChanges_other": "{{count}} open {{term_change_other}}",
+				"catalogueDescription": "A catalogue of the systems we run, used to record {{term_change_other}} and releases against them. It holds no customers, contracts or SLAs: to support a customer, create a managed service.",
+				"createManagedService": "Create managed service"
 			},
 			"create": {
 				"title": "New {{term_service_one}}",
@@ -7167,7 +7196,8 @@
 					"target": "Item",
 					"choose": "Choose",
 					"add": "Add link",
-					"remove": "Remove"
+					"remove": "Remove",
+					"openProject": "Open {{name}}"
 				},
 				"checklist": {
 					"title": "Release checklist",

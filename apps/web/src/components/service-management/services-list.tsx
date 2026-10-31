@@ -31,7 +31,7 @@ import {
   Textarea,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -47,6 +47,7 @@ import {
 } from "@/hooks/queries/service-management";
 import { useTeams } from "@/hooks/queries/team/use-teams";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import { routes } from "@/lib/routes";
 import {
@@ -59,6 +60,11 @@ import {
 } from "./shared";
 
 const NONE = "";
+
+// Loaded on demand so the catalogue chunk does not carry the create-project modal.
+const CreateProjectModal = lazy(
+  () => import("@/components/shared/modals/create-project-modal"),
+);
 
 function CreateServiceDialog({
   workspaceId,
@@ -274,6 +280,11 @@ export function ServicesList({ q }: { q?: string }) {
   const status = useCatalogueStatus(workspaceId);
   const services = useServices(workspaceId, q);
   const [creating, setCreating] = useState(false);
+  const [creatingManagedService, setCreatingManagedService] = useState(false);
+  // The strict project:create capability, the one `POST /api/project` checks (the legacy
+  // `canCreateProjects` flag also admits members, who would only meet a 403).
+  const { canBindProjectOrganisation } = useWorkspacePermission();
+  const canCreateManagedService = canBindProjectOrganisation();
   const [draft, setDraft] = useState(q ?? "");
   const loading = workspaceLoading || services.isLoading;
   return (
@@ -285,13 +296,27 @@ export function ServicesList({ q }: { q?: string }) {
             {t("services.list.title")}
           </span>
         }
-        description={t("services.list.description")}
+        description={t("services.list.catalogueDescription")}
         actions={
-          status.data?.canManageServices ? (
-            <Button onClick={() => setCreating(true)} disabled={!workspace}>
-              <Plus aria-hidden="true" />
-              {t("services.list.new")}
-            </Button>
+          canCreateManagedService || status.data?.canManageServices ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {canCreateManagedService ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setCreatingManagedService(true)}
+                  disabled={!workspace}
+                  data-testid="create-managed-service"
+                >
+                  {t("services.list.createManagedService")}
+                </Button>
+              ) : null}
+              {status.data?.canManageServices ? (
+                <Button onClick={() => setCreating(true)} disabled={!workspace}>
+                  <Plus aria-hidden="true" />
+                  {t("services.list.new")}
+                </Button>
+              ) : null}
+            </div>
           ) : null
         }
       >
@@ -383,6 +408,15 @@ export function ServicesList({ q }: { q?: string }) {
           workspaceId={workspace.id}
           onClose={() => setCreating(false)}
         />
+      ) : null}
+      {creatingManagedService ? (
+        <Suspense fallback={null}>
+          <CreateProjectModal
+            open={creatingManagedService}
+            defaultKind="managed_service"
+            onClose={() => setCreatingManagedService(false)}
+          />
+        </Suspense>
       ) : null}
     </>
   );
