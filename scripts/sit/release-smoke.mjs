@@ -23,6 +23,8 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 
 const { values: opts } = parseArgs({
+  // pnpm forwards the "--" separator from `pnpm sit:smoke -- --credentials …`.
+  args: process.argv.slice(2).filter((arg) => arg !== "--"),
   options: {
     agent: { type: "string", default: "https://ticketing.localhost" },
     portal: { type: "string", default: "https://portal.localhost" },
@@ -58,7 +60,9 @@ const check = (name, ok, detail = "") => {
 };
 const who = (account) => account.email.split("@")[0];
 const isCustomer = (account) =>
-  account.side === "customer" || account.email.endsWith("@acme.example");
+  account.side === "customer" ||
+  /^customer\b/i.test(account.role ?? "") ||
+  account.email.endsWith("@acme.example");
 
 async function signIn(base, account, attempt = 0) {
   const response = await fetch(`${base}/api/auth/sign-in/email`, {
