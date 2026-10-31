@@ -18602,7 +18602,10 @@
 				"claimedAt": {
 					"type": "string"
 				},
-				"prefilledFromType": {
+				"defaultFromRequestType": {
+					"type": "string"
+				},
+				"convertHeading": {
 					"type": "string"
 				},
 				"convertedWorkItem": {
@@ -18949,7 +18952,8 @@
 				"download",
 				"type",
 				"claimedAt",
-				"prefilledFromType",
+				"defaultFromRequestType",
+				"convertHeading",
 				"convertedWorkItem",
 				"retry",
 				"nextPage",

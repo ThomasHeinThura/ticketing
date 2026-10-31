@@ -6271,15 +6271,31 @@ test("two-factor authenticator challenge screen @visual", async ({ page }) => {
 test("intake triage queue @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/triage?state=new&ref=SUB-7");
-  // The sidebar's project list is lazy; wait for it so the screenshot never races it.
+  // The modal sheet hides the page behind it from the accessibility tree, so the shell and
+  // queue checks include hidden elements. The sidebar's project list is lazy; wait for it so
+  // the screenshot never races it.
   await expect(
-    page.getByRole("button", { name: "Help Desk", exact: true }),
+    page.getByRole("button", {
+      name: "Help Desk",
+      exact: true,
+      includeHidden: true,
+    }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByText("SUB-7", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("region", { name: "Submission SUB-7" }),
+    page.getByRole("heading", { level: 1, includeHidden: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: "SUB-7",
+      exact: true,
+      includeHidden: true,
+    }),
+  ).toBeVisible();
+  // S2: the open submission is Kaneo's side sheet; wait for its lazy body, not the fallback.
+  await expect(
+    page.getByRole("dialog", { name: "Submission SUB-7" }),
+  ).toBeVisible();
+  await expect(page.getByText("Submitted answers")).toBeVisible();
   await expect(page).toHaveScreenshot("intake-queue.png", {
     animations: "disabled",
     caret: "hide",
