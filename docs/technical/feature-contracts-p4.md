@@ -1140,6 +1140,8 @@ POST   /api/instance/identity-connections/{id}/scim/rotate-token  instance:admin
 POST   /api/instance/identity-connections/{id}/scim/revoke-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
 GET    /api/instance/identity-connections/{id}/events             instance:admin
+GET    /api/instance/auth/local-methods                           instance:admin      (session-only; local sign-in methods per portal, never values or secrets)
+PUT    /api/instance/auth/local-methods                           instance:admin  E  (session-only; PA-15 `auth_local_methods_update` bound to all six flags and the read revision; staff password off, or email code on while `DISABLE_EMAIL_OTP_SIGN_IN` is set, refused with 422; stale revision 409)
 POST   /api/instance/purge                                        instance:admin  E  (PA-13 — legal hold checked)
 GET    /api/instance/users                            instance:admin
 POST   /api/instance/users/{id}/suspend               instance:admin  E for a current instance-admin target (PA-15 bound to target + request)

@@ -1,4 +1,8 @@
 import { config } from "dotenv-mono";
+import {
+  agentLocalAuthMethods,
+  isEmailOtpSignInDisabledByEnvironment,
+} from "../auth";
 import { isRuntimeSmtpConfigured } from "../notification-provider/runtime";
 import { isGithubSsoConfigured } from "./github-sso-env";
 
@@ -9,7 +13,11 @@ async function getSettings() {
     disableRegistration: process.env.DISABLE_REGISTRATION === "true",
     disablePasswordRegistration:
       process.env.DISABLE_PASSWORD_REGISTRATION === "true",
-    disableEmailOtpSignIn: process.env.DISABLE_EMAIL_OTP_SIGN_IN === "true",
+    // Off when the environment switches it off or God Mode turned staff email code off: the
+    // staff sign-in page then shows the password form instead of an unmounted send-code form.
+    disableEmailOtpSignIn:
+      isEmailOtpSignInDisabledByEnvironment() ||
+      !agentLocalAuthMethods().emailOtp,
     disableWorkspaceCreation: process.env.DISABLE_WORKSPACE_CREATION === "true",
     hasSmtp: await isRuntimeSmtpConfigured(),
     hasGithubSignIn: isGithubSsoConfigured(),

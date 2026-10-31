@@ -380,6 +380,49 @@ describe("portal sign-in", () => {
     );
   });
 
+  it("offers email code and magic link only while the portal reports them enabled", async () => {
+    mocks.authMethods.mockResolvedValue({
+      password: true,
+      magicLink: true,
+      emailOtp: true,
+    });
+    const view = renderSignIn();
+    expect(
+      await screen.findByRole("button", {
+        name: "auth:signInForm.sendEmailCode",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "auth:signInForm.sendMagicLink" }),
+    ).toBeInTheDocument();
+    view.unmount();
+
+    // An administrator switched both off: the next read hides them.
+    mocks.authMethods.mockResolvedValue({
+      password: true,
+      magicLink: false,
+      emailOtp: false,
+    });
+    const nextClient = new QueryClient();
+    renderSignIn(nextClient);
+    await waitFor(() =>
+      expect(nextClient.getQueryData(["portal", "auth-methods"])).toEqual({
+        password: true,
+        magicLink: false,
+        emailOtp: false,
+      }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "auth:signInForm.signIn" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "auth:signInForm.sendEmailCode" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "auth:signInForm.sendMagicLink" }),
+    ).toBeNull();
+  });
+
   it("supports enabled customer email OTP and returns to the invite after verification", async () => {
     mocks.authMethods.mockResolvedValue({
       password: false,

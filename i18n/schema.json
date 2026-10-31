@@ -1219,13 +1219,21 @@
 						},
 						"sendVerificationCode": {
 							"type": "string"
+						},
+						"usePassword": {
+							"type": "string"
+						},
+						"useEmailCode": {
+							"type": "string"
 						}
 					},
 					"required": [
 						"sendFailed",
 						"codeSent",
 						"sending",
-						"sendVerificationCode"
+						"sendVerificationCode",
+						"usePassword",
+						"useEmailCode"
 					]
 				},
 				"signInForm": {
@@ -24542,6 +24550,142 @@
 						"loadFailed",
 						"customerVisibility"
 					]
+				},
+				"signInMethods": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						},
+						"staff": {
+							"type": "string"
+						},
+						"customers": {
+							"type": "string"
+						},
+						"password": {
+							"type": "string"
+						},
+						"passwordDescription": {
+							"type": "string"
+						},
+						"magicLink": {
+							"type": "string"
+						},
+						"magicLinkDescription": {
+							"type": "string"
+						},
+						"emailOtp": {
+							"type": "string"
+						},
+						"emailOtpDescription": {
+							"type": "string"
+						},
+						"switchLabel": {
+							"type": "string"
+						},
+						"staffPasswordLocked": {
+							"type": "string"
+						},
+						"emailProviderNotice": {
+							"type": "string"
+						},
+						"emailProviderMissingTitle": {
+							"type": "string"
+						},
+						"emailProviderMissing": {
+							"type": "string"
+						},
+						"emailProviderLink": {
+							"type": "string"
+						},
+						"emailOtpEnvironmentDisabled": {
+							"type": "string"
+						},
+						"customersNone": {
+							"type": "string"
+						},
+						"reset": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"confirmTitle": {
+							"type": "string"
+						},
+						"confirmDescription": {
+							"type": "string"
+						},
+						"changeOn": {
+							"type": "string"
+						},
+						"changeOff": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"confirm": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"loading",
+						"unavailable",
+						"loadFailed",
+						"method",
+						"staff",
+						"customers",
+						"password",
+						"passwordDescription",
+						"magicLink",
+						"magicLinkDescription",
+						"emailOtp",
+						"emailOtpDescription",
+						"switchLabel",
+						"staffPasswordLocked",
+						"emailProviderNotice",
+						"emailProviderMissingTitle",
+						"emailProviderMissing",
+						"emailProviderLink",
+						"emailOtpEnvironmentDisabled",
+						"customersNone",
+						"reset",
+						"save",
+						"saved",
+						"confirmTitle",
+						"confirmDescription",
+						"changeOn",
+						"changeOff",
+						"cancel",
+						"confirm",
+						"failed"
+					]
 				}
 			},
 			"required": [
@@ -24553,7 +24697,8 @@
 				"editor",
 				"events",
 				"scim",
-				"organisation"
+				"organisation",
+				"signInMethods"
 			]
 		},
 		"notificationProvider": {

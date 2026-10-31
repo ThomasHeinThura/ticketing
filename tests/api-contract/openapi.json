@@ -7338,6 +7338,77 @@
           "pinnedViewIds"
         ]
       },
+      "LocalAuthMethodSet": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "boolean"
+          },
+          "magicLink": {
+            "type": "boolean"
+          },
+          "emailOtp": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "password",
+          "magicLink",
+          "emailOtp"
+        ],
+        "additionalProperties": false
+      },
+      "LocalAuthMethods": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/LocalAuthMethodSet"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/LocalAuthMethodSet"
+          },
+          "emailProviderEnabled": {
+            "type": "boolean"
+          },
+          "emailOtpDisabledByEnvironment": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$/u",
+            "description": "Opaque revision of the stored method rows"
+          }
+        },
+        "required": [
+          "agent",
+          "customer",
+          "emailProviderEnabled",
+          "emailOtpDisabledByEnvironment",
+          "revision"
+        ]
+      },
+      "LocalAuthMethodsUpdate": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/LocalAuthMethodSet"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/LocalAuthMethodSet"
+          },
+          "expectedRevision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$/u",
+            "description": "Opaque revision of the stored method rows"
+          }
+        },
+        "required": [
+          "agent",
+          "customer",
+          "expectedRevision"
+        ],
+        "additionalProperties": false
+      },
       "MeIdentity": {
         "type": "object",
         "properties": {
@@ -8189,7 +8260,7 @@
           "Config"
         ],
         "summary": "Get config",
-        "description": "Public instance settings: which sign-in methods, registration paths, and features are enabled.",
+        "description": "Public instance settings: which sign-in methods, registration paths, and features are enabled. `disableEmailOtpSignIn` is true when the environment or the God Mode staff sign-in methods turn email-code sign-in off on the staff host.",
         "security": [],
         "responses": {
           "200": {
@@ -61811,6 +61882,42 @@
                       "operation"
                     ],
                     "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "auth_local_methods_update"
+                        ]
+                      },
+                      "agent": {
+                        "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "customer": {
+                        "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "expectedRevision": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$/u",
+                        "description": "Opaque revision of the stored method rows"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "agent",
+                      "customer",
+                      "expectedRevision"
+                    ],
+                    "additionalProperties": false
                   }
                 ]
               }
@@ -67954,6 +68061,182 @@
                       "operation": {
                         "type": "string",
                         "enum": [
+                          "auth_local_methods_update"
+                        ]
+                      },
+                      "agent": {
+                        "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "customer": {
+                        "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "expectedRevision": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$/u",
+                        "description": "Opaque revision of the stored method rows"
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "agent",
+                      "customer",
+                      "expectedRevision",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "auth_local_methods_update"
+                        ]
+                      },
+                      "agent": {
+                        "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "customer": {
+                        "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "expectedRevision": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$/u",
+                        "description": "Opaque revision of the stored method rows"
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "agent",
+                      "customer",
+                      "expectedRevision",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "auth_local_methods_update"
+                        ]
+                      },
+                      "agent": {
+                        "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "customer": {
+                        "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "expectedRevision": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$/u",
+                        "description": "Opaque revision of the stored method rows"
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "agent",
+                      "customer",
+                      "expectedRevision",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
                           "impersonation_start"
                         ]
                       },
@@ -68831,6 +69114,59 @@
                     "required": [
                       "kind",
                       "operation",
+                      "challengeId",
+                      "nonce",
+                      "method"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "auth_local_methods_update"
+                        ]
+                      },
+                      "agent": {
+                        "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "customer": {
+                        "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "expectedRevision": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$/u",
+                        "description": "Opaque revision of the stored method rows"
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "sso_prompt_login"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "agent",
+                      "customer",
+                      "expectedRevision",
                       "challengeId",
                       "nonce",
                       "method"
@@ -71278,6 +71614,148 @@
           },
           "503": {
             "description": "Policy unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/auth/local-methods": {
+      "get": {
+        "operationId": "getLocalAuthMethods",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Get the local sign-in methods of the staff and customer portals",
+        "description": "Current instance administrators only, session-only. Returns the stored method flags per portal as the runtime resolves them, whether an email provider is enabled, and whether the environment switches email-code sign-in off. Never returns configuration values or secrets.",
+        "responses": {
+          "200": {
+            "description": "Local sign-in methods",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalAuthMethods"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateLocalAuthMethods",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Set the local sign-in methods of the staff and customer portals",
+        "description": "Current instance administrators only, elevated and session-only (PA-15 operation `auth_local_methods_update`, bound to all six flags). Staff password sign-in can never be disabled (R5), and email-code sign-in cannot be enabled while the environment switches it off: either request is refused with 422 before any proof is spent. The write stores one row per method and portal, retires any other stored row for these methods, audits the changed keys only and reloads authentication on every replica.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 43,
+              "maxLength": 43
+            },
+            "required": false,
+            "name": "x-taskdesk-step-up-token",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalAuthMethodsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated local sign-in methods",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalAuthMethods"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden or step-up unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The stored methods changed since they were read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Staff password sign-in cannot be disabled, or email code cannot be enabled in this environment",
             "content": {
               "application/json": {
                 "schema": {

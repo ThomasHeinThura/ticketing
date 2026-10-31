@@ -302,7 +302,9 @@
 			"sendFailed": "Doğrulama kodu gönderilemedi",
 			"codeSent": "Doğrulama kodu gönderildi! E-postanızı kontrol edin.",
 			"sending": "Gönderiliyor...",
-			"sendVerificationCode": "Doğrulama Kodu Gönder"
+			"sendVerificationCode": "Doğrulama Kodu Gönder",
+			"useEmailCode": "Use email code instead",
+			"usePassword": "Use password instead"
 		},
 		"signInForm": {
 			"failedSignIn": "Giriş başarısız",
@@ -5300,6 +5302,40 @@
 				"title": "Request visibility",
 				"unavailable": "Request visibility unavailable"
 			}
+		},
+		"signInMethods": {
+			"cancel": "Cancel",
+			"changeOff": "{{method}} for {{audience}}: off",
+			"changeOn": "{{method}} for {{audience}}: on",
+			"confirm": "Save changes",
+			"confirmDescription": "Verify it is you to apply these changes. They take effect immediately.",
+			"confirmTitle": "Save sign-in methods",
+			"customers": "Customers",
+			"customersNone": "No local method is on for customers. They can sign in only through their organisation's identity provider.",
+			"description": "Choose how staff and customers sign in without an identity provider. Saving needs fresh verification and applies to both portals at once.",
+			"emailOtp": "Email code",
+			"emailOtpDescription": "A one-time code sent by email.",
+			"emailOtpEnvironmentDisabled": "Email code sign-in is switched off by the server environment. It stays unavailable on both portals, whatever is set here.",
+			"emailProviderLink": "Open email settings",
+			"emailProviderMissing": "Magic link and email code need a working email provider. Until one is configured and enabled, people cannot receive their link or code.",
+			"emailProviderMissingTitle": "No email provider is enabled",
+			"emailProviderNotice": "Magic link and email code send their message through the configured email provider.",
+			"failed": "Sign-in methods were not saved",
+			"loadFailed": "The sign-in methods could not be loaded. Try again.",
+			"loading": "Loading sign-in methods",
+			"magicLink": "Magic link",
+			"magicLinkDescription": "A one-time sign-in link sent by email.",
+			"method": "Method",
+			"password": "Password",
+			"passwordDescription": "Email address and password.",
+			"reset": "Discard changes",
+			"save": "Save sign-in methods",
+			"saved": "Sign-in methods saved",
+			"staff": "Staff",
+			"staffPasswordLocked": "Staff password sign-in is always on. It is the recovery sign-in when every other method fails, so it cannot be turned off.",
+			"switchLabel": "{{method}} for {{audience}}",
+			"title": "Sign-in methods",
+			"unavailable": "Sign-in methods unavailable"
 		}
 	},
 	"notificationProvider": {

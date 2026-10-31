@@ -43,6 +43,8 @@ function SignIn() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
+  // Staff password stays reachable next to email code (R5 break-glass, e.g. when mail is down).
+  const [usePassword, setUsePassword] = useState(false);
   const baseUrl = window.location.origin;
   const lastLoginMethod = authClient.getLastUsedLoginMethod();
   const { data: config, isLoading: isConfigLoading } = useGetConfig();
@@ -369,12 +371,33 @@ function SignIn() {
           )}
           {!config?.disableLoginForm &&
             (config?.hasSmtp && !config?.disableEmailOtpSignIn ? (
-              <OtpSignInForm
-                invitationId={invitationId}
-                defaultEmail={defaultEmail}
-                redirect={getSafeRedirectPath()}
-                onSuccess={handleSignInSuccess}
-              />
+              <>
+                {usePassword ? (
+                  <SignInForm
+                    defaultEmail={defaultEmail}
+                    onSuccess={handleSignInSuccess}
+                  />
+                ) : (
+                  <OtpSignInForm
+                    invitationId={invitationId}
+                    defaultEmail={defaultEmail}
+                    redirect={getSafeRedirectPath()}
+                    onSuccess={handleSignInSuccess}
+                  />
+                )}
+                <div className="mt-3 flex justify-center">
+                  <Button
+                    onClick={() => setUsePassword((value) => !value)}
+                    size="sm"
+                    type="button"
+                    variant="link"
+                  >
+                    {usePassword
+                      ? t("auth:otpSignIn.useEmailCode")
+                      : t("auth:otpSignIn.usePassword")}
+                  </Button>
+                </div>
+              </>
             ) : (
               <SignInForm
                 defaultEmail={defaultEmail}

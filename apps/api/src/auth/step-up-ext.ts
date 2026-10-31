@@ -2,6 +2,7 @@ import { HTTPException } from "hono/http-exception";
 import { createServiceKeyBody } from "../api-key/schema";
 import { auditExportBody } from "../audit/schema";
 import type db from "../database";
+import { localAuthMethodsBody } from "../instance/auth-local-methods-schema";
 import { z } from "../openapi";
 import {
   assertCallerHasCapability,
@@ -76,6 +77,11 @@ export const CHANGE_FREEZE_OVERRIDE_ROUTE =
 /** AU-13: exporting the instance audit log, bound to the exact format, filters and row cap. */
 export const AUDIT_EXPORT_OPERATION = "audit_export" as const;
 export const AUDIT_EXPORT_ROUTE = "POST /api/instance/audit/export" as const;
+/** Changing the local sign-in methods of either portal, bound to all six method flags. */
+export const AUTH_LOCAL_METHODS_UPDATE_OPERATION =
+  "auth_local_methods_update" as const;
+export const AUTH_LOCAL_METHODS_UPDATE_ROUTE =
+  "PUT /api/instance/auth/local-methods" as const;
 export const CHANGE_FREEZE_OVERRIDE_REASON_MIN = 12;
 export const CHANGE_FREEZE_OVERRIDE_REASON_MAX = 500;
 
@@ -159,6 +165,8 @@ const shapes = {
   },
   // The route's own DTO: a proof minted for a narrow export cannot be spent on a wider one.
   [AUDIT_EXPORT_OPERATION]: auditExportBody.shape,
+  // The whole desired state: a proof minted for one combination cannot be spent on another.
+  [AUTH_LOCAL_METHODS_UPDATE_OPERATION]: localAuthMethodsBody.shape,
 } as const;
 
 export type ExtOperation = keyof typeof shapes;
@@ -239,7 +247,10 @@ export type ExtInput =
     }
   | ({
       operation: typeof AUDIT_EXPORT_OPERATION;
-    } & z.input<typeof auditExportBody>);
+    } & z.input<typeof auditExportBody>)
+  | ({
+      operation: typeof AUTH_LOCAL_METHODS_UPDATE_OPERATION;
+    } & z.infer<typeof localAuthMethodsBody>);
 
 const sortedUnique = (values: readonly string[]) => [...new Set(values)].sort();
 
@@ -563,6 +574,29 @@ function binding(input: ExtInput): {
           auditExportRequest(input),
         ),
       };
+    case AUTH_LOCAL_METHODS_UPDATE_OPERATION:
+      return {
+        operation: input.operation,
+        route: AUTH_LOCAL_METHODS_UPDATE_ROUTE,
+        body: canonicalOperationBody(
+          input.operation,
+          AUTH_LOCAL_METHODS_UPDATE_ROUTE,
+          1,
+          {
+            agent: {
+              password: input.agent.password,
+              magicLink: input.agent.magicLink,
+              emailOtp: input.agent.emailOtp,
+            },
+            customer: {
+              password: input.customer.password,
+              magicLink: input.customer.magicLink,
+              emailOtp: input.customer.emailOtp,
+            },
+            expectedRevision: input.expectedRevision,
+          },
+        ),
+      };
   }
 }
 
@@ -676,7 +710,8 @@ export async function extAuthority(
     input.operation === SECRETS_ROTATE_OPERATION ||
     input.operation === WEBHOOK_ROTATE_ALL_OPERATION ||
     input.operation === ORGANISATION_RESTORE_OPERATION ||
-    input.operation === AUDIT_EXPORT_OPERATION
+    input.operation === AUDIT_EXPORT_OPERATION ||
+    input.operation === AUTH_LOCAL_METHODS_UPDATE_OPERATION
   )
     return isCurrentInstanceAdminForStepUp(userId, executor);
   try {
