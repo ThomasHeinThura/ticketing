@@ -457,7 +457,7 @@ function toLinkInput(link: ServiceDetail["links"][number]): ServiceLinkInput {
 }
 
 /** SVC-2: documentation URLs, projects and knowledge base articles the service links to. */
-function LinksCard({
+export function LinksCard({
   service,
   workspaceId,
   canManage,
@@ -468,7 +468,12 @@ function LinksCard({
 }) {
   const { t } = useTranslation("serviceManagement");
   const invalidate = useInvalidateServiceManagement();
-  const projects = useGetProjects({ workspaceId }, canManage);
+  // Loaded for every reader: a linked project the reader can reach opens from here. The list
+  // is reach-filtered, so an unreachable project stays plain text (no key is revealed).
+  const projects = useGetProjects({ workspaceId });
+  const projectKeyById = new Map(
+    (projects.data ?? []).map((project) => [project.id, project.slug]),
+  );
   const articles = useKbArticles({ workspaceId, limit: 100 });
   const [kind, setKind] = useState<ServiceLinkInput["kind"]>("documentation");
   const [url, setUrl] = useState("");
@@ -543,7 +548,27 @@ function LinksCard({
                     <ExternalLink className="size-3" aria-hidden="true" />
                   </a>
                 ) : link.kind === "project" ? (
-                  <span>{link.projectName ?? link.projectId}</span>
+                  (() => {
+                    const projectKey = link.projectId
+                      ? projectKeyById.get(link.projectId)
+                      : undefined;
+                    const name = link.projectName ?? link.projectId;
+                    return projectKey ? (
+                      <Link
+                        className="underline-offset-4 hover:underline"
+                        to={routes.projectOverview.path}
+                        params={{ projectKey }}
+                        aria-label={t("services.detail.links.openProject", {
+                          name,
+                        })}
+                        data-testid="service-link-project"
+                      >
+                        {name}
+                      </Link>
+                    ) : (
+                      <span>{name}</span>
+                    );
+                  })()
                 ) : (
                   <Link
                     className="underline-offset-4 hover:underline"

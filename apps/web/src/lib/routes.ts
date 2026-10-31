@@ -497,11 +497,23 @@ export type AgentInboxSearch = {
   filter?: Exclude<AgentInboxFilter, "all">;
 };
 
-export type AgentHomeSearch = { recovery?: "deleted" };
+/** `project.kind` (PR-9): a delivery project or a managed service. */
+export const PROJECT_KINDS = ["project", "managed_service"] as const;
+export type ProjectKind = (typeof PROJECT_KINDS)[number];
+
+export function isProjectKind(value: unknown): value is ProjectKind {
+  return (PROJECT_KINDS as readonly unknown[]).includes(value);
+}
+
+/** S5: `kind` narrows the projects list to one engagement kind. */
+export type AgentHomeSearch = { recovery?: "deleted"; kind?: ProjectKind };
 
 export function parseAgentHomeSearch(raw: unknown): AgentHomeSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
-  return value.recovery === "deleted" ? { recovery: "deleted" } : {};
+  return {
+    ...(value.recovery === "deleted" ? { recovery: "deleted" as const } : {}),
+    ...(isProjectKind(value.kind) ? { kind: value.kind } : {}),
+  };
 }
 
 export function parseAgentHomeSearchFromQueryString(
@@ -510,6 +522,7 @@ export function parseAgentHomeSearchFromQueryString(
   const params = new URLSearchParams(queryString);
   return parseAgentHomeSearch({
     recovery: params.get("recovery") ?? undefined,
+    kind: params.get("kind") ?? undefined,
   });
 }
 
@@ -1709,9 +1722,11 @@ export const routes = {
     path: "/agent" as const,
     build: (search: AgentHomeSearch = {}) => {
       const resolved = parseAgentHomeSearch(search);
-      return resolved.recovery === "deleted"
-        ? "/agent?recovery=deleted"
-        : "/agent";
+      const query = new URLSearchParams();
+      if (resolved.recovery) query.set("recovery", resolved.recovery);
+      if (resolved.kind) query.set("kind", resolved.kind);
+      const suffix = query.toString();
+      return suffix ? `/agent?${suffix}` : "/agent";
     },
   },
   agentInbox: {

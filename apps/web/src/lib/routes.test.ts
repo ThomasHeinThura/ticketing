@@ -7,6 +7,7 @@ import {
   parseAccountSecuritySearch,
   parseAgentGlobalSearch,
   parseAgentHomeSearch,
+  parseAgentHomeSearchFromQueryString,
   parseAgentInboxSearch,
   parseAgentMyWorkSearch,
   parseCannedResponseSearch,
@@ -165,6 +166,20 @@ describe("routes.agentHome", () => {
     ).toEqual({ recovery: "deleted" });
     expect(parseAgentHomeSearch({ recovery: "anything-else" })).toEqual({});
     expect(routes.agentHome.build({})).toBe("/agent");
+  });
+
+  it("round-trips the S5 engagement kind filter, alone and with recovery", () => {
+    const url = routes.agentHome.build({ kind: "managed_service" });
+    expect(url).toBe("/agent?kind=managed_service");
+    expect(
+      parseAgentHomeSearchFromQueryString(
+        new URL(url, "https://example.test").search,
+      ),
+    ).toEqual({ kind: "managed_service" });
+    expect(
+      routes.agentHome.build({ recovery: "deleted", kind: "project" }),
+    ).toBe("/agent?recovery=deleted&kind=project");
+    expect(parseAgentHomeSearch({ kind: "catalogue" })).toEqual({});
   });
 });
 
