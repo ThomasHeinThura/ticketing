@@ -1,9 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PortalReleasesList } from "@/components/service-management/portal/portal-releases-list";
-import { parsePortalReleasesSearch } from "@/lib/routes";
+import {
+  parsePortalReleasesSearch,
+  portalProjectSearchMiddlewares,
+} from "@/lib/routes";
 
 export const Route = createFileRoute("/releases")({
   validateSearch: parsePortalReleasesSearch,
+  search: { middlewares: portalProjectSearchMiddlewares },
   component: Releases,
 });
 

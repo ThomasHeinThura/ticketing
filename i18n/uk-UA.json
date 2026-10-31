@@ -3831,17 +3831,17 @@
 		"navigation": {
 			"title": "Customer portal",
 			"description": "Navigate your {{term_request_other}} and approvals.",
-			"home": "Home",
 			"catalogue": "{{term_request_one}} catalogue",
 			"requests": "My {{term_request_other}}",
 			"approvals": "Approvals",
 			"signOut": "Sign out",
 			"signOutFailed": "Could not sign out. Try again.",
-			"breadcrumb": "Breadcrumb",
-			"request": "{{term_request_one}}",
 			"knowledgeBase": "Knowledge base",
-			"account": "Account",
-			"releases": "Release notes"
+			"announcements": "Announcements",
+			"dashboard": "Dashboard",
+			"settings": "Settings",
+			"support": "Support",
+			"updates": "Updates"
 		},
 		"home": {
 			"title": "How can we help?",
@@ -4138,6 +4138,23 @@
 		"temporarilyUnavailable": {
 			"description": "The customer portal can't be reached right now. Please try again in a moment.",
 			"title": "Customer portal temporarily unavailable"
+		},
+		"shell": {
+			"getHelp": "Get help",
+			"projectSelector": {
+				"all": "All projects",
+				"label": "Project"
+			},
+			"search": {
+				"label": "Search",
+				"placeholder": "Search for help"
+			},
+			"theme": "Toggle theme",
+			"userMenu": {
+				"label": "Account menu for {{name}}",
+				"signingOut": "Signing out…",
+				"unnamed": "Unnamed user"
+			}
 		}
 	},
 	"instanceUsers": {

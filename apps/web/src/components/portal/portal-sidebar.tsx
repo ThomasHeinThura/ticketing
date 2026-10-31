@@ -1,28 +1,26 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useLocation } from "@tanstack/react-router";
 import {
-  Alert,
-  AlertDescription,
-  Button,
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@taskdesk/ui";
 import {
-  BookOpen,
-  ClipboardList,
-  Home,
-  LayoutGrid,
-  LogOut,
-  UserRound,
+  Bell,
+  Headset,
+  LayoutDashboard,
+  type LucideIcon,
+  Megaphone,
+  Settings,
 } from "lucide-react";
-import { useState } from "react";
 import { ActionTooltip } from "@/components/common/action-tooltip";
 import { getPortalKb } from "@/fetchers/kb/portal";
 import { getPortalReleases } from "@/fetchers/portal/releases";
@@ -30,17 +28,24 @@ import {
   getDefaultPortalTerm,
   usePortalTranslation,
 } from "@/lib/i18n/portal-translation";
-import { portalAuthClient } from "@/lib/portal-auth-client";
 import { routes } from "@/lib/routes";
+import {
+  isPortalNavigationActive,
+  type PortalNavigationMatch,
+  portalAriaCurrent,
+  portalSupportMatch,
+} from "./portal-navigation";
+
+type NavigationEntry = PortalNavigationMatch & {
+  label: string;
+  icon: LucideIcon;
+  children?: Array<{ to: string; label: string; title?: string }>;
+};
 
 /** Customer navigation uses Kaneo's sidebar/inset composition, without agent imports. */
 export default function PortalSidebar() {
   const { t, i18n } = usePortalTranslation("portal");
-  const location = useLocation();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [pending, setPending] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const pathname = useLocation({ select: (location) => location.pathname });
   // The knowledge base entry only appears when the portal has something to show (KB flag on,
   // at least one published, customer-visible article within the organisation's reach).
   const knowledgeBase = useQuery({
@@ -49,72 +54,58 @@ export default function PortalSidebar() {
     retry: false,
     staleTime: 60_000,
   });
+  // Announcements lists portal release notes; it appears only where that feature answers.
   const releases = useQuery({
     queryKey: ["portal", "release-navigation"],
     queryFn: () => getPortalReleases({ limit: 1 }),
     retry: false,
     staleTime: 60_000,
   });
-  const navigation = [
-    { to: routes.portalHome.path, label: t("navigation.home"), icon: Home },
+  const navigation: NavigationEntry[] = [
     {
-      to: routes.portalCatalogue.path,
-      label: t("navigation.catalogue"),
-      icon: LayoutGrid,
+      to: routes.portalHome.path,
+      exact: true,
+      label: t("navigation.dashboard"),
+      icon: LayoutDashboard,
     },
-    ...((knowledgeBase.data?.total ?? 0) > 0
-      ? [
-          {
-            to: routes.portalKb.path,
-            label: t("navigation.knowledgeBase"),
-            icon: BookOpen,
-          },
-        ]
-      : []),
     {
-      to: routes.portalRequests.path,
-      label: t("navigation.requests"),
-      icon: ClipboardList,
-      title: getDefaultPortalTerm(i18n, "request", 2),
+      ...portalSupportMatch,
+      label: t("navigation.support"),
+      icon: Headset,
+      children: [
+        {
+          to: routes.portalRequests.path,
+          label: t("navigation.requests"),
+          // A renamed request noun keeps the shipped word as a tooltip.
+          title: getDefaultPortalTerm(i18n, "request", 2),
+        },
+        { to: routes.portalCatalogue.path, label: t("navigation.catalogue") },
+        { to: routes.portalApprovals.path, label: t("navigation.approvals") },
+        ...((knowledgeBase.data?.total ?? 0) > 0
+          ? [{ to: routes.portalKb.path, label: t("navigation.knowledgeBase") }]
+          : []),
+      ],
     },
-    ...(releases.data?.data.length
+    {
+      to: routes.portalInbox.path,
+      label: t("navigation.updates"),
+      icon: Bell,
+    },
+    ...(releases.isSuccess
       ? [
           {
             to: routes.portalReleases.path,
-            label: t("navigation.releases"),
-            icon: BookOpen,
+            label: t("navigation.announcements"),
+            icon: Megaphone,
           },
         ]
       : []),
     {
-      to: routes.portalApprovals.path,
-      label: t("navigation.approvals"),
-      icon: ClipboardList,
-    },
-    {
       to: routes.portalAccount.path,
-      label: t("navigation.account"),
-      icon: UserRound,
+      label: t("navigation.settings"),
+      icon: Settings,
     },
   ];
-  async function signOut() {
-    if (pending) return;
-    setPending(true);
-    setFailed(false);
-    try {
-      const result = await portalAuthClient.signOut();
-      if (result.error) throw new Error("sign out refused");
-      queryClient.clear();
-      await navigate({
-        to: routes.portalSignIn.path,
-        search: { stage: "email", factor: "totp" },
-      });
-    } catch {
-      setFailed(true);
-    } finally {
-      setPending(false);
-    }
-  }
   return (
     <Sidebar
       variant="inset"
@@ -127,43 +118,70 @@ export default function PortalSidebar() {
       <SidebarHeader className="pt-1 pb-1.5">
         <Link
           to={routes.portalHome.path}
-          className="px-2 py-2 font-medium text-sm"
+          className="flex h-8 items-center rounded-md px-2 font-medium text-sm"
         >
           {t("navigation.title")}
         </Link>
       </SidebarHeader>
-      <SidebarContent className="overflow-hidden gap-1 py-1" nativeScroll>
+      <SidebarContent className="gap-1 py-1" nativeScroll>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigation.map(({ to, label, icon: Icon, title }) => {
-                const button = (
-                  <SidebarMenuButton
-                    isActive={
-                      location.pathname === to ||
-                      (to === routes.portalKb.path &&
-                        location.pathname.startsWith(`${to}/`))
-                    }
-                    render={
-                      <Link
-                        to={to}
-                        aria-current={
-                          location.pathname === to ? "page" : undefined
-                        }
-                      />
-                    }
-                  >
-                    <Icon className="size-4" aria-hidden="true" />
-                    <span>{label}</span>
-                  </SidebarMenuButton>
-                );
+              {navigation.map((entry) => {
+                const Icon = entry.icon;
                 return (
-                  <SidebarMenuItem key={to}>
-                    {title ? (
-                      <ActionTooltip label={title}>{button}</ActionTooltip>
-                    ) : (
-                      button
-                    )}
+                  <SidebarMenuItem key={entry.to}>
+                    <SidebarMenuButton
+                      isActive={isPortalNavigationActive(pathname, entry)}
+                      render={
+                        <Link
+                          to={entry.to}
+                          aria-current={portalAriaCurrent(pathname, entry.to)}
+                        />
+                      }
+                    >
+                      <Icon className="size-4" aria-hidden="true" />
+                      <span>{entry.label}</span>
+                    </SidebarMenuButton>
+                    {entry.children ? (
+                      <SidebarMenuSub>
+                        {entry.children.map((child) => {
+                          const button = (
+                            <SidebarMenuSubButton
+                              isActive={isPortalNavigationActive(pathname, {
+                                to: child.to,
+                                prefixes:
+                                  child.to === routes.portalRequests.path
+                                    ? ["/submissions"]
+                                    : undefined,
+                              })}
+                              render={
+                                <Link
+                                  to={child.to}
+                                  aria-current={portalAriaCurrent(
+                                    pathname,
+                                    child.to,
+                                  )}
+                                />
+                              }
+                            >
+                              <span>{child.label}</span>
+                            </SidebarMenuSubButton>
+                          );
+                          return (
+                            <SidebarMenuSubItem key={child.to}>
+                              {child.title ? (
+                                <ActionTooltip label={child.title}>
+                                  {button}
+                                </ActionTooltip>
+                              ) : (
+                                button
+                              )}
+                            </SidebarMenuSubItem>
+                          );
+                        })}
+                      </SidebarMenuSub>
+                    ) : null}
                   </SidebarMenuItem>
                 );
               })}
@@ -171,22 +189,6 @@ export default function PortalSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <Button
-          variant="ghost"
-          className="justify-start"
-          disabled={pending}
-          onClick={() => void signOut()}
-        >
-          <LogOut className="size-4" aria-hidden="true" />
-          {t("navigation.signOut")}
-        </Button>
-        {failed ? (
-          <Alert variant="error">
-            <AlertDescription>{t("navigation.signOutFailed")}</AlertDescription>
-          </Alert>
-        ) : null}
-      </SidebarFooter>
     </Sidebar>
   );
 }

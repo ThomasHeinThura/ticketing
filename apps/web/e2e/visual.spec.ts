@@ -6340,7 +6340,9 @@ test("portal catalogue selected form @visual", async ({ page }) => {
     page.getByRole("heading", { name: "Access request", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Summary" })).toBeVisible();
-  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-catalogue-selected-form.png", {
     animations: "disabled",
     caret: "hide",
@@ -6361,7 +6363,9 @@ test("portal submission detail @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Your answers" }),
   ).toBeVisible();
-  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-submission-detail.png", {
     animations: "disabled",
     caret: "hide",
@@ -7108,7 +7112,9 @@ test("portal home screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: "SUB-7", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-home.png", {
     animations: "disabled",
     caret: "hide",
@@ -7128,7 +7134,9 @@ test("portal requests screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: "SUB-7", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-requests.png", {
     animations: "disabled",
     caret: "hide",
@@ -7146,7 +7154,9 @@ test("portal approval decision screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Approve", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-approvals.png", {
     animations: "disabled",
     caret: "hide",
@@ -8412,7 +8422,9 @@ test("portal knowledge base screen @visual", async ({ page }) => {
     page.getByRole("button", { name: "Network and VPN", exact: true }),
   ).toBeVisible();
   // The portal sidebar is lazy; wait for it so the screenshot never races it.
-  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-kb.png", {
     animations: "disabled",
     caret: "hide",
@@ -8439,7 +8451,9 @@ test("portal knowledge base article screen @visual", async ({ page }) => {
     page.getByText("Was this helpful?", { exact: true }),
   ).toBeVisible();
   // The portal sidebar is lazy; wait for it so the screenshot never races it.
-  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-kb-article.png", {
     animations: "disabled",
     caret: "hide",
@@ -8466,7 +8480,9 @@ test("portal notifications unread screen @visual", async ({ page }) => {
     page.getByRole("tab", { name: "Unread", exact: true }),
   ).toBeVisible();
   // The portal sidebar is lazy; wait for it so the screenshot never races it.
-  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-notifications.png", {
     animations: "disabled",
     caret: "hide",
@@ -8491,7 +8507,9 @@ test("portal account preferences screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("Daily digest", { exact: true })).toBeVisible();
   // The portal sidebar is lazy; wait for it so the screenshot never races it.
-  await expect(page.getByText("Sign out", { exact: true })).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-account.png", {
     animations: "disabled",
     caret: "hide",

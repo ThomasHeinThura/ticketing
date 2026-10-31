@@ -14,7 +14,11 @@
 			"types": "./src/index.ts",
 			"default": "./src/index.ts"
 		},
-		"./styles/*.css": "./src/styles/*.css"
+		"./styles/*.css": "./src/styles/*.css",
+		"./test/a11y": {
+			"types": "./src/test/a11y.ts",
+			"default": "./src/test/a11y.ts"
+		}
 	},
 	"scripts": {
 		"storybook": "storybook dev -p 6006 --host 127.0.0.1",

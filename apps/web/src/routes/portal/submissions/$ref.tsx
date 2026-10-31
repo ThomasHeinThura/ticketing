@@ -51,8 +51,14 @@ import {
   PortalActionError,
   readPortalSla,
 } from "@/lib/portal-request";
+import {
+  parsePortalProjectSearch,
+  portalProjectSearchMiddlewares,
+} from "@/lib/routes";
 
 export const Route = createFileRoute("/submissions/$ref")({
+  validateSearch: parsePortalProjectSearch,
+  search: { middlewares: portalProjectSearchMiddlewares },
   component: PortalSubmissionPage,
 });
 
