@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { IMPORT_SOURCE_BODY_LIMIT_BYTES } from "../imports/engine/body-limit";
+import { idempotencyBodyLimit } from "./body-limits";
 
 /**
  * `Idempotency-Key` handling for unsafe requests (api-design.md "Idempotency";
@@ -39,34 +39,6 @@ const SECRET_BEARING_ROUTES: readonly RegExp[] = [
 
 export function isSecretBearingRoute(pathname: string): boolean {
   return SECRET_BEARING_ROUTES.some((pattern) => pattern.test(pathname));
-}
-
-/**
- * Routes that accept a body larger than the rest of the API, with the most the route itself accepts.
- * The idempotency middleware hashes the whole body, so it must refuse an oversize one itself: the
- * route's own `bodyLimit` runs after it and would otherwise only see a body already fully buffered.
- * A route not listed here keeps the unchanged behaviour (no cap in this layer).
- */
-const ROUTE_BODY_LIMITS: ReadonlyArray<{
-  method: string;
-  pattern: RegExp;
-  maxBytes: number;
-}> = [
-  {
-    method: "POST",
-    pattern: /^\/api\/import-sources\/?$/,
-    maxBytes: IMPORT_SOURCE_BODY_LIMIT_BYTES,
-  },
-];
-
-export function idempotencyBodyLimit(
-  method: string,
-  pathname: string,
-): number | undefined {
-  const upper = method.toUpperCase();
-  return ROUTE_BODY_LIMITS.find(
-    (entry) => entry.method === upper && entry.pattern.test(pathname),
-  )?.maxBytes;
 }
 
 /**

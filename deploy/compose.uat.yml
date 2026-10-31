@@ -148,7 +148,7 @@ services:
       - traefik.http.middlewares.taskdesk-v2-uat-pdf-headers.headers.customResponseHeaders.Server=
       - traefik.http.middlewares.taskdesk-v2-uat-compress.compress=true
       - traefik.http.middlewares.taskdesk-v2-uat-ratelimit.ratelimit.average=100
-      - traefik.http.middlewares.taskdesk-v2-uat-ratelimit.ratelimit.burst=200
+      - traefik.http.middlewares.taskdesk-v2-uat-ratelimit.ratelimit.burst=1000
     networks:
       - taskdesk
       - dokploy-network

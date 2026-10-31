@@ -39,7 +39,7 @@ const { values: opts } = parseArgs({
       ),
     },
     "no-browser": { type: "boolean", default: false },
-    // Every account signs in from one IP. Local Traefik limits each IP to a 200-request burst
+    // Every account signs in from one IP. Local Traefik limits each IP to a 1000-request burst
     // and better-auth to 100 auth requests per 10 s, so accounts are spaced apart.
     pause: { type: "string", default: "12" },
   },
