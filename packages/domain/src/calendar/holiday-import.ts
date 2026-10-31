@@ -193,6 +193,11 @@ function eventToHoliday(event: EventValue, index: number): Holiday {
 }
 
 export function parseHolidayIcs(ics: string): Holiday[] {
+  // A lone UTF-16 surrogate cannot be UTF-8; `TextEncoder` would silently replace it with
+  // U+FFFD, so the strict decode below would never see it. With the `u` flag a valid pair is one
+  // code point, so `\p{Cs}` matches only lone surrogates (same test as ES2024 `isWellFormed`,
+  // which the ES2022 lib this package compiles against does not declare).
+  if (/\p{Cs}/u.test(ics)) return fail("Calendar file is not valid UTF-8");
   const bytes = new TextEncoder().encode(ics);
   if (bytes.byteLength > HOLIDAY_IMPORT_LIMITS.bytes)
     return fail("Calendar file exceeds the 256 KiB limit");

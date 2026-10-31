@@ -454,5 +454,13 @@
 		"pr": 891,
 		"reason": "Portal attachment-complete response is now a dedicated customer projection instead of allOf[Attachment, …]: the staff Attachment component gained commentId, canDelete and canRestore, which must not reach the portal. Fields returned to the customer are unchanged (same 11 properties, same required set).",
 		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p3.md CP-3/CP-4 (portal shapes are server-filtered customer projections)"
+	},
+	{
+		"operation": "POST /service-calendars/{id}/holidays/import",
+		"rule": "request-property-max-length-set",
+		"fingerprint": "7e2f65842b28",
+		"pr": 704,
+		"reason": "The holiday import body's `ics` string is now capped at 262144 characters (256 KiB), the parser's existing HOLIDAY_IMPORT_LIMITS.bytes; a longer file was already refused with 400 by the parser, so no previously accepted request is refused. The schema cap rejects it earlier, before parsing.",
+		"decision": "Thomas-approved 31 Oct 2026 — issue #704 part 1 (lone-surrogate 500 and holiday import bound); `pr` holds the issue number until the pull request number exists"
 	}
 ]

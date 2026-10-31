@@ -87,7 +87,11 @@ export const updateCalendarBody = calendarDataSchema
   .refine((value) => Object.keys(value).length > 0);
 
 export const importHolidayBody = z.object({
-  ics: z.string().min(1),
+  // HOLIDAY_IMPORT_LIMITS.bytes as a cheap first bound (characters; the parser checks bytes).
+  ics: z
+    .string()
+    .min(1)
+    .max(256 * 1024, "Calendar file exceeds the 256 KiB limit"),
 });
 
 /** CAL-10 / CAL-11: a country preset for one year. Preview first; the administrator confirms. */

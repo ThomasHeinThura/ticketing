@@ -1,4 +1,3 @@
-import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
   type BaseVariables,
@@ -18,10 +17,7 @@ import {
 } from "./combined-response";
 import { listCombinedWorkItems } from "./controllers/list-combined-work-items";
 import { listWorkItemsQuery, projectIdParam } from "./schema";
-import {
-  SEARCH_BODY_MAX_BYTES,
-  validateWorkItemSearchQuery,
-} from "./search/query";
+import { searchBodyLimit, validateWorkItemSearchQuery } from "./search/query";
 import { workItemSearchRequestSchema } from "./search/request-schema";
 
 const combinedBoardMiddleware = [
@@ -53,19 +49,7 @@ const searchCombinedWorkItemsRoute = createRoute({
   path: "/projects/{projectId}/work-items/combined",
   tags: ["Work items"],
   summary: "Filter visible work in a project and its live descendants",
-  middleware: [
-    async (c, next) => {
-      if (
-        (await c.req.raw.clone().arrayBuffer()).byteLength >
-        SEARCH_BODY_MAX_BYTES
-      )
-        throw new HTTPException(400, {
-          message: "Request body exceeds 32 KiB",
-        });
-      await next();
-    },
-    ...combinedBoardMiddleware,
-  ] as const,
+  middleware: [searchBodyLimit(), ...combinedBoardMiddleware] as const,
   request: {
     params: projectIdParam,
     body: {
