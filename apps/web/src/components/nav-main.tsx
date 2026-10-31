@@ -1,5 +1,5 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   Collapsible,
   CollapsiblePanel,
@@ -45,6 +45,9 @@ export function NavMain() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
   const navigate = useNavigate();
+  // The highlight follows the router. `window.location` read during render goes stale, because
+  // a navigation does not re-render the sidebar. Selecting only the path skips search changes.
+  const path = useLocation({ select: (location) => location.pathname });
   const { data: invitations = [] } = usePendingInvitations();
   const { user } = useAuth();
   // Pinned views and their counts are not needed to paint the shell (G11), so they are read
@@ -102,7 +105,6 @@ export function NavMain() {
 
   const pendingCount = invitations.length;
 
-  const path = window.location.pathname;
   const navItems = [
     {
       title: t("navigation:sidebar.inbox"),
@@ -236,7 +238,7 @@ export function NavMain() {
                           <SidebarMenuButton
                             tooltip={view.name}
                             isActive={
-                              window.location.pathname ===
+                              path ===
                               routes.savedView
                                 .build({ id: view.id })
                                 .split("?")[0]
