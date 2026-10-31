@@ -155,10 +155,7 @@ import {
   workItemsCsvHeader,
   workItemsCsvRows,
 } from "./search/csv";
-import {
-  SEARCH_BODY_MAX_BYTES,
-  validateWorkItemSearchQuery,
-} from "./search/query";
+import { searchBodyLimit, validateWorkItemSearchQuery } from "./search/query";
 import { searchWorkItems } from "./search/repository";
 import { workItemSearchRequestSchema } from "./search/request-schema";
 import { workItemSlaSchema } from "./sla-response";
@@ -365,14 +362,7 @@ const searchWorkItemsRoute = createRoute({
   description:
     "Bounded structured work-item filtering. See api-design.md § Work-item search v1.",
   middleware: [
-    async (c, next) => {
-      const body = await c.req.raw.clone().arrayBuffer();
-      if (body.byteLength > SEARCH_BODY_MAX_BYTES)
-        throw new HTTPException(400, {
-          message: "Request body exceeds 32 KiB",
-        });
-      await next();
-    },
+    searchBodyLimit(),
     async (c, next) => {
       try {
         await workspaceAccess.fromBody("workspaceId")(c, next);
@@ -446,14 +436,7 @@ const exportWorkItemsRoute = createRoute({
     "Enforces a 10,000-row hard cap (`422 export_limit_exceeded`), 30-second query timeout, " +
     "and 5 exports/minute/user rate limit (`429`). Audited as `work_item.exported`.",
   middleware: [
-    async (c, next) => {
-      const body = await c.req.raw.clone().arrayBuffer();
-      if (body.byteLength > SEARCH_BODY_MAX_BYTES)
-        throw new HTTPException(400, {
-          message: "Request body exceeds 32 KiB",
-        });
-      await next();
-    },
+    searchBodyLimit(),
     async (c, next) => {
       try {
         await workspaceAccess.fromBody("workspaceId")(c, next);

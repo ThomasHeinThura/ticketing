@@ -134,6 +134,10 @@ import kb from "./kb";
 import label from "./label";
 import mcpTelemetry from "./mcp-telemetry";
 import meIdentity from "./me-identity";
+import {
+  apiBodyLimitMiddleware,
+  BodyLimitError,
+} from "./middleware/body-limits";
 import { idempotencyKeyMiddleware } from "./middleware/idempotency";
 import { createPostgresIdempotencyStore } from "./middleware/idempotency.repository";
 import { migrateColumns } from "./migrations/column-migration";
@@ -688,7 +692,7 @@ async function explicitAuthCredentialMutationForRequest(
  * This catch-all registration is unconditional, even when neither build exists on disk. The
  * middleware returns 503 for document requests to a surface without a build and leaves API
  * paths to their own routing. Keeping the registration unconditional preserves the exact
- * five-entry `"ALL /*"` count declared by `packages/permissions` in
+ * six-entry `"ALL /*"` count declared by `packages/permissions` in
  * `DECLARED_ROUTER_MIDDLEWARE` for both built and API-only environments.
  */
 function resolveStaticRoots(options: {
@@ -1188,6 +1192,17 @@ export function createApp(
   // that happened to share the key.
   declareCatchAllMiddleware(corsMiddleware);
   app.use("*", corsMiddleware);
+
+  // Issue #704: every `/api` request body is capped -- 64 KiB for `/api/auth/*`, 20 MiB for
+  // `POST /api/import-sources`, 10 MiB otherwise, the two raw upload streams exempt
+  // (middleware/body-limits.ts). An oversize declared length is refused at once; a chunked body
+  // is counted lazily as a route (Better Auth included) reads it, so a request the auth guard
+  // refuses never has its body read at all. Registered after
+  // the host guard (a denied host never gets this far, and the 413 carries security headers) and
+  // after CORS (a cross-origin client can read the 413). Its own `ALL /*` registration, declared
+  // like the others, so route coverage counts it as the reviewed middleware it is.
+  declareCatchAllMiddleware(apiBodyLimitMiddleware);
+  app.use("*", apiBodyLimitMiddleware);
 
   // Large boards return multi-MB JSON (board/task list responses embed
   // labels and external links per task); gzip cuts that by 85-95% since
@@ -1853,6 +1868,9 @@ export function createApp(
         ? runWithImpersonator(impersonatorId, runRequest)
         : runRequest());
     } catch (error) {
+      // A body read past the app-wide limit (issue #704) is the client's 413, answered by
+      // apiBodyLimitMiddleware; it is not an authentication failure.
+      if (error instanceof BodyLimitError) throw error;
       if (!(error instanceof HTTPException)) {
         logTaskDesk({
           module: "auth",

@@ -93,6 +93,23 @@ describe("CAL-17 bounded holiday import", () => {
     expect(() => parseHolidayIcs(value)).toThrow(HolidayImportError);
   });
 
+  it.each([
+    ["lone high surrogate", "\uD83D"],
+    ["lone low surrogate", "\uDE00"],
+    ["reversed surrogate pair", "\uDE00\uD83D"],
+  ])("rejects a SUMMARY with a %s as invalid UTF-8", (_label, bad) => {
+    expect(() =>
+      parseHolidayIcs(file(event("20260101", `SUMMARY:Day ${bad}`))),
+    ).toThrow(new HolidayImportError("Calendar file is not valid UTF-8"));
+  });
+
+  it("accepts a well-formed surrogate pair (astral character)", () => {
+    expect(
+      parseHolidayIcs(file(event("20260101", "SUMMARY:Party \uD83C\uDF89")))[0]
+        ?.name,
+    ).toBe("Party \u{1F389}");
+  });
+
   it("rejects events longer than 366 inclusive dates", () => {
     expect(() =>
       parseHolidayIcs(file(event("20260101", "DTEND;VALUE=DATE:20270103"))),

@@ -2036,6 +2036,7 @@
 			"backToBoard": "Назад к доске",
 			"savedViews": "Saved views",
 			"godMode": "God Mode",
+			"observability": "Наблюдаемость",
 			"inbox": "Inbox",
 			"myWork": "My work",
 			"search": "Search",
@@ -2101,7 +2102,7 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Настройки",
 			"backToWorkspace": "Вернуться к рабочей области",
-			"backToProject": "Вернуться к проекту",
+			"backToProject": "Вернуться к разделу «{{term_project_one}}»",
 			"settingsWorkspaceTab": "Рабочая область",
 			"projectActions": "Actions for {{name}}"
 		},

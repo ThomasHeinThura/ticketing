@@ -8200,6 +8200,9 @@
 						"godMode": {
 							"type": "string"
 						},
+						"observability": {
+							"type": "string"
+						},
 						"pendingActions": {
 							"type": "string"
 						},
@@ -8234,6 +8237,7 @@
 						"workItem",
 						"search",
 						"godMode",
+						"observability",
 						"pendingActions",
 						"knowledgeBase",
 						"serviceManagement",

@@ -2409,7 +2409,7 @@ A first line at the edge, above the application's own per-identity limits:
 ```yaml
 rateLimit:
   average: 100      # requests per second per source
-  burst: 200
+  burst: 1000      # a cold page load fetches many assets at once
 ```
 
 The edge limit is crude and protects the process. The application's limits are

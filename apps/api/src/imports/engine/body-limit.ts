@@ -3,7 +3,8 @@
  * 5 MiB; `config.exportText`, up to 8 MB), and JSON escaping of quotes and newlines can double a
  * file, so this leaves headroom while still bounding what one request can make the server buffer.
  *
- * It lives in its own module because two layers enforce it: the route's `bodyLimit` and the
- * app-wide idempotency middleware, which runs first and must not buffer an oversize body.
+ * It lives in its own module because several layers enforce it: the app-wide `/api` body limit
+ * (middleware/body-limits.ts), the idempotency middleware, which must not buffer an oversize
+ * body, and the route's own `bodyLimit`.
  */
 export const IMPORT_SOURCE_BODY_LIMIT_BYTES = 20 * 1024 * 1024;

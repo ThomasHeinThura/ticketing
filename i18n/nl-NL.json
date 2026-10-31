@@ -2018,6 +2018,7 @@
 			"backToBoard": "Terug naar bord",
 			"savedViews": "Saved views",
 			"godMode": "God Mode",
+			"observability": "Observeerbaarheid",
 			"inbox": "Inbox",
 			"myWork": "My work",
 			"search": "Search",
@@ -2083,7 +2084,7 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Instellingen",
 			"backToWorkspace": "Terug naar werkruimte",
-			"backToProject": "Terug naar project",
+			"backToProject": "Terug naar {{term_project_one}}",
 			"settingsWorkspaceTab": "Werkruimte",
 			"projectActions": "Actions for {{name}}"
 		},

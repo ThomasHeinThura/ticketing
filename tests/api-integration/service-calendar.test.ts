@@ -801,6 +801,32 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
       },
     );
     expect(invalid.status).toBe(400);
+    // Issue #704: a lone UTF-16 surrogate (valid JSON escape, not valid UTF-8) is a 400, not a 500.
+    for (const surrogate of ["\uD83D", "\uDE00"]) {
+      const loneSurrogate = await app.request(
+        `/api/service-calendars/${created.id}/holidays/import`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            ics: ics.replace("New Year observed", `New Year ${surrogate}`),
+          }),
+        },
+      );
+      expect(loneSurrogate.status).toBe(400);
+      expect(await loneSurrogate.text()).toBe(
+        "Calendar file is not valid UTF-8",
+      );
+    }
+    const oversize = await app.request(
+      `/api/service-calendars/${created.id}/holidays/import`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ics: " ".repeat(256 * 1024 + 1) }),
+      },
+    );
+    expect(oversize.status).toBe(400);
     expect(
       (
         await db

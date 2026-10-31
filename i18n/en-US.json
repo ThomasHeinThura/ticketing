@@ -2024,6 +2024,7 @@
 			"workItem": "{{term_work_item_one}}",
 			"search": "Search",
 			"godMode": "God Mode",
+			"observability": "Observability",
 			"pendingActions": "Pending actions",
 			"knowledgeBase": "Knowledge base",
 			"serviceManagement": "Service management",

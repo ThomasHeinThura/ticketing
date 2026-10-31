@@ -1,4 +1,5 @@
 import { STATE_GROUPS } from "@taskdesk/domain";
+import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import {
   CUSTOM_FIELD_FILTER_KEY,
@@ -487,3 +488,17 @@ export function printFilterText(filter: SearchFilter): string {
 }
 
 export const SEARCH_BODY_MAX_BYTES = 32 * 1024;
+
+/**
+ * Route middleware for the search document routes: refuses a body above 32 KiB with `400`
+ * (api-design.md § Work-item search v1) as soon as the declared length or the bytes read so far
+ * pass the limit, instead of buffering the whole body first.
+ */
+export function searchBodyLimit() {
+  return bodyLimit({
+    maxSize: SEARCH_BODY_MAX_BYTES,
+    onError: () => {
+      throw new HTTPException(400, { message: "Request body exceeds 32 KiB" });
+    },
+  });
+}

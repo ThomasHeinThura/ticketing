@@ -169,7 +169,8 @@ dc up -d --wait taskdesk
 
 printf '==> Step 6: Probing /api/public/health/ready\n'
 for _ in $(seq 1 30); do
-  if dc exec -T taskdesk wget -q -O- "http://127.0.0.1:${PORT}/api/public/health/ready" >/dev/null 2>&1; then
+  # The image ships no wget or curl; Node is the one HTTP client it has.
+  if dc exec -T taskdesk node -e "fetch('http://127.0.0.1:${PORT}/api/public/health/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))" >/dev/null 2>&1; then
     printf ' ok Restore verified and /api/public/health/ready is green\n'
     exit 0
   fi

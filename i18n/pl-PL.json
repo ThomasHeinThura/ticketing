@@ -494,6 +494,7 @@
 			"backToBoard": "Wróć do tablicy",
 			"savedViews": "Saved views",
 			"godMode": "God Mode",
+			"observability": "Obserwowalność",
 			"inbox": "Inbox",
 			"myWork": "My work",
 			"search": "Search",
@@ -559,7 +560,7 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Ustawienia",
 			"backToWorkspace": "Wróć do obszaru roboczego",
-			"backToProject": "Wróć do projektu",
+			"backToProject": "Wróć do sekcji „{{term_project_one}}”",
 			"settingsWorkspaceTab": "Obszar roboczy",
 			"projectActions": "Actions for {{name}}"
 		},
