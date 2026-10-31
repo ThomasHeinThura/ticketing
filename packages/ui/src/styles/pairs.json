@@ -13922,6 +13922,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/rotate-secrets-dialog.tsx:RotateSecretsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -14572,6 +14583,17 @@
 				"id": "apps/web/src/components/common/date-field.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/common/date-field.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -55820,6 +55842,12 @@
 			"apps/web/src/components/god-mode/instance-settings-form.tsx::SettingsFields::form[0]/Card[1]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/instance-settings-form.tsx::SettingsFields::form[0]/Card[2]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/instance-settings-form.tsx::SettingsFields::form[0]/Card[6]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[1]::text-muted-foreground#0",
@@ -56902,6 +56930,76 @@
 				"id": "apps/web/src/components/god-mode/instance-settings-form.tsx::SettingsFields::form[0]/Card[6]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/instance-settings-form.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"jsx:Card[0]/CardContent[0]/div[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -59849,6 +59947,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/organisation-profile-editor.tsx:OrganisationProfileEditor",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
@@ -60942,6 +61051,12 @@
 			"apps/web/src/components/god-mode/instance-settings-form.tsx::SettingsFields::form[0]/Card[1]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/instance-settings-form.tsx::SettingsFields::form[0]/Card[2]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/instance-settings-form.tsx::SettingsFields::form[0]/Card[6]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[1]::text-muted-foreground#0",
@@ -62024,6 +62139,76 @@
 				"id": "apps/web/src/components/god-mode/instance-settings-form.tsx::SettingsFields::form[0]/Card[6]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/instance-settings-form.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"jsx:Card[0]/CardContent[0]/div[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/local-sign-in-methods-card.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -64974,6 +65159,17 @@
 					"apps/web/src/components/account/canonical-mention-preference.tsx:CanonicalMentionPreference",
 					"Card->packages/ui/src/components/card.tsx:Card",
 					"transparent-wrapper:light"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -69695,6 +69891,19 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
@@ -70349,6 +70558,19 @@
 					"apps/web/src/components/god-mode/imports/import-run-create-dialog.tsx:ImportRunCreateDialog",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/imports/import-run-create-dialog.tsx:ImportRunCreateDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -74258,6 +74480,19 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
@@ -74912,6 +75147,19 @@
 					"apps/web/src/components/god-mode/imports/import-run-create-dialog.tsx:ImportRunCreateDialog",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/imports/import-run-create-dialog.tsx:ImportRunCreateDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -76905,6 +77153,19 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/storage-usage-panel.tsx:StorageUsagePanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/storage-usage-panel.tsx:StorageUsagePanel",
@@ -78048,6 +78309,19 @@
 					"apps/web/src/components/god-mode/imports/wizard/execute-progress.tsx:ExecuteStep",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/imports/wizard/execute-progress.tsx:ExecuteStep",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -83579,6 +83853,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/rotate-secrets-dialog.tsx:RotateSecretsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -83671,6 +83956,17 @@
 					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
@@ -87129,6 +87425,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/god-mode/imports/import-run-create-dialog.tsx:ImportRunCreateDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/dialog.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
@@ -88849,6 +89156,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/rotate-secrets-dialog.tsx:RotateSecretsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -88941,6 +89259,17 @@
 					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
@@ -92435,6 +92764,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/god-mode/imports/import-run-create-dialog.tsx:ImportRunCreateDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/dialog.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",

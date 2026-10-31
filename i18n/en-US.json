@@ -321,7 +321,9 @@
 			"sendFailed": "Failed to send verification code",
 			"codeSent": "Verification code sent! Check your email.",
 			"sending": "Sending...",
-			"sendVerificationCode": "Send Verification Code"
+			"sendVerificationCode": "Send Verification Code",
+			"usePassword": "Use password instead",
+			"useEmailCode": "Use email code instead"
 		},
 		"signInForm": {
 			"failedSignIn": "Failed to sign in",
@@ -5960,6 +5962,40 @@
 				"reload": "Reload setting",
 				"loading": "Loading request visibility…"
 			}
+		},
+		"signInMethods": {
+			"title": "Sign-in methods",
+			"description": "Choose how staff and customers sign in without an identity provider. Saving needs fresh verification and applies to both portals at once.",
+			"loading": "Loading sign-in methods",
+			"unavailable": "Sign-in methods unavailable",
+			"loadFailed": "The sign-in methods could not be loaded. Try again.",
+			"method": "Method",
+			"staff": "Staff",
+			"customers": "Customers",
+			"password": "Password",
+			"passwordDescription": "Email address and password.",
+			"magicLink": "Magic link",
+			"magicLinkDescription": "A one-time sign-in link sent by email.",
+			"emailOtp": "Email code",
+			"emailOtpDescription": "A one-time code sent by email.",
+			"switchLabel": "{{method}} for {{audience}}",
+			"staffPasswordLocked": "Staff password sign-in is always on. It is the recovery sign-in when every other method fails, so it cannot be turned off.",
+			"emailProviderNotice": "Magic link and email code send their message through the configured email provider.",
+			"emailProviderMissingTitle": "No email provider is enabled",
+			"emailProviderMissing": "Magic link and email code need a working email provider. Until one is configured and enabled, people cannot receive their link or code.",
+			"emailProviderLink": "Open email settings",
+			"emailOtpEnvironmentDisabled": "Email code sign-in is switched off by the server environment. It stays unavailable on both portals, whatever is set here.",
+			"customersNone": "No local method is on for customers. They can sign in only through their organisation's identity provider.",
+			"reset": "Discard changes",
+			"save": "Save sign-in methods",
+			"saved": "Sign-in methods saved",
+			"confirmTitle": "Save sign-in methods",
+			"confirmDescription": "Verify it is you to apply these changes. They take effect immediately.",
+			"changeOn": "{{method}} for {{audience}}: on",
+			"changeOff": "{{method}} for {{audience}}: off",
+			"cancel": "Cancel",
+			"confirm": "Save changes",
+			"failed": "Sign-in methods were not saved"
 		}
 	},
 	"notificationProvider": {

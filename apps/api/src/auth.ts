@@ -122,6 +122,11 @@ const isLoginFormDisabled = process.env.DISABLE_LOGIN_FORM === "true";
 const isEmailOtpSignInDisabled =
   process.env.DISABLE_EMAIL_OTP_SIGN_IN === "true";
 
+/** Whether the bootstrap environment switches email-code sign-in off on both hosts. */
+export function isEmailOtpSignInDisabledByEnvironment(): boolean {
+  return isEmailOtpSignInDisabled;
+}
+
 function normalizeInvitationId(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const normalized = value.trim();
@@ -259,9 +264,14 @@ const disabledCustomerLocalAuthProviders: LocalAuthProviders = {
   emailOtp: false,
 };
 
-export function resolveLocalAuthProviders(
+/**
+ * The stored local-provider state for one portal, without the agent break-glass guard. God Mode
+ * reads it to show exactly what is stored; the runtime always goes through
+ * `resolveLocalAuthProviders`, which refuses a configuration without agent password.
+ */
+export function resolveStoredLocalAuthProviders(
   portal: AuthPortal,
-  rows: AuthPluginConfigRow[],
+  rows: readonly AuthPluginConfigRow[],
 ): LocalAuthProviders {
   const pluginIds = [
     ["auth.password", "password"],
@@ -284,6 +294,14 @@ export function resolveLocalAuthProviders(
     if (configuredRows.length === 0) continue;
     providers[key] = configuredRows.some((row) => row.enabled);
   }
+  return providers;
+}
+
+export function resolveLocalAuthProviders(
+  portal: AuthPortal,
+  rows: readonly AuthPluginConfigRow[],
+): LocalAuthProviders {
+  const providers = resolveStoredLocalAuthProviders(portal, rows);
 
   // Password remains the agent break-glass path. A malformed persisted
   // configuration cannot swap out the last working staff sign-in method.
@@ -291,6 +309,20 @@ export function resolveLocalAuthProviders(
     throw new Error("auth.password must remain enabled for the agent portal.");
   }
   return providers;
+}
+
+/**
+ * The providers a portal can actually serve: `DISABLE_EMAIL_OTP_SIGN_IN` keeps the email-code
+ * plugin unmounted (see `createAuth`), so a stored enabled email-otp row must not be advertised
+ * or admitted at the host.
+ */
+export function effectiveLocalAuthProviders(
+  providers: LocalAuthProviders,
+): LocalAuthProviders {
+  return {
+    ...providers,
+    emailOtp: providers.emailOtp && !isEmailOtpSignInDisabled,
+  };
 }
 
 const agentOrigin = process.env.TASKDESK_AGENT_URL || "http://localhost:5173";
@@ -1387,15 +1419,31 @@ function createAuth(
 export let auth = createAuth("agent");
 export let portalAuth = createAuth("customer");
 let customerLocalAuthProviders = disabledCustomerLocalAuthProviders;
+// What the agent Better Auth instance of this replica serves; `/api/config` follows it so the staff
+// sign-in page never offers a method whose endpoint is not mounted (R5 keeps password on).
+let agentLocalAuthProviders = effectiveLocalAuthProviders(
+  defaultAgentLocalAuthProviders,
+);
 
 let authConfigVersion = -1;
 let authConfigFingerprint: string | null = null;
 let authReloadPromise: Promise<boolean> | null = null;
+let authReloadFollowUp: Promise<boolean> | null = null;
 let authConfigPoller: ReturnType<typeof setInterval> | null = null;
 
 /** Build a fresh pair from the stored, portal-scoped auth plugin rows. */
 export async function reloadAuthConfiguration(): Promise<boolean> {
-  if (authReloadPromise) return authReloadPromise;
+  if (authReloadPromise) {
+    // The reload in flight may have read the rows before the caller's change committed, so one
+    // more reload runs after it. Callers arriving meanwhile share that single follow-up.
+    authReloadFollowUp ??= authReloadPromise
+      .catch(() => false)
+      .then(() => {
+        authReloadFollowUp = null;
+        return reloadAuthConfiguration();
+      });
+    return authReloadFollowUp;
+  }
   authReloadPromise = (async () => {
     const [pluginRows, connectionRows] = await Promise.all([
       getStoredAuthPluginConfigRows(),
@@ -1413,9 +1461,8 @@ export async function reloadAuthConfiguration(): Promise<boolean> {
     if (authConfigFingerprint === nextFingerprint) return false;
 
     const nextAgentProviders = resolveLocalAuthProviders("agent", pluginRows);
-    const nextCustomerProviders = resolveLocalAuthProviders(
-      "customer",
-      pluginRows,
+    const nextCustomerProviders = effectiveLocalAuthProviders(
+      resolveLocalAuthProviders("customer", pluginRows),
     );
     const nextAgentAuth = createAuth("agent", nextAgentProviders);
     const nextPortalAuth = createAuth("customer", nextCustomerProviders);
@@ -1424,6 +1471,7 @@ export async function reloadAuthConfiguration(): Promise<boolean> {
     // mixed generation of host-specific Better Auth configuration.
     auth = nextAgentAuth;
     portalAuth = nextPortalAuth;
+    agentLocalAuthProviders = effectiveLocalAuthProviders(nextAgentProviders);
     customerLocalAuthProviders = nextCustomerProviders;
     authConfigVersion = nextVersion;
     authConfigFingerprint = nextFingerprint;
@@ -1487,6 +1535,11 @@ export function isCustomerLocalAuthEndpoint(
     (path === "/api/auth/sign-in/email-otp" ||
       path === "/api/auth/email-otp/send-verification-otp")
   );
+}
+
+/** Public, non-secret methods enabled on the current agent-host auth instance. */
+export function agentLocalAuthMethods(): LocalAuthProviders {
+  return { ...agentLocalAuthProviders };
 }
 
 /** Public, non-secret methods enabled on the current customer-host auth instance. */

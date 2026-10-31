@@ -85,6 +85,7 @@ import scimAdmin from "./identity/scim-admin";
 import scimProtocol from "./identity/scim-protocol";
 import { createImportRouter } from "./imports";
 import { requestImportChunkApproval } from "./imports/pending-action";
+import authLocalMethods from "./instance/auth-local-methods";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
 import instanceDeliveries from "./instance/deliveries";
 import instanceDeliveryRequeue from "./instance/deliveries/requeue";
@@ -2111,6 +2112,7 @@ export function createApp(
   const observabilityApi = api.route("/instance", observability);
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
+  const authLocalMethodsApi = api.route("/", authLocalMethods);
   const resetMfaApi = api.route("/instance", resetMfa);
   const usersApi = api.route("/instance", users);
   const hardPurgeApi = api.route("/instance", hardPurge);
@@ -2494,6 +2496,7 @@ export function createApp(
     observabilityApi,
     metricsTokenRotationApi,
     localFactorPolicyApi,
+    authLocalMethodsApi,
     resetMfaApi,
     usersApi,
     hardPurgeApi,
@@ -3039,6 +3042,7 @@ const {
   observabilityApi,
   metricsTokenRotationApi,
   localFactorPolicyApi,
+  authLocalMethodsApi,
   resetMfaApi,
   usersApi,
   hardPurgeApi,
@@ -3205,6 +3209,7 @@ export type AppType =
   | typeof observabilityApi
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
+  | typeof authLocalMethodsApi
   | typeof resetMfaApi
   | typeof usersApi
   | typeof hardPurgeApi

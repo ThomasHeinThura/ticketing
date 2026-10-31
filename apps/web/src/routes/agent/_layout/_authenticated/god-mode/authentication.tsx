@@ -20,6 +20,7 @@ import {
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
+import { LocalSignInMethodsCard } from "@/components/god-mode/local-sign-in-methods-card";
 import PageTitle from "@/components/page-title";
 import { identityAdminFailureKind } from "@/fetchers/god-mode/identity-admin-error";
 import { useIdentityConnections } from "@/hooks/queries/god-mode/use-identity-connections";
@@ -190,6 +191,8 @@ function IdentityConnectionsRoute() {
             })}
           </section>
         ) : null}
+
+        <LocalSignInMethodsCard />
       </div>
     </>
   );

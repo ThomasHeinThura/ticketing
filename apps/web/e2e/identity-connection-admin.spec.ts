@@ -292,3 +292,48 @@ test("a session without the instance-admin signal never sees the create form or 
   ).toEqual([]);
   await expectNoSeriousAxeViolations(page);
 });
+
+test("sign-in methods keep staff password locked and save customer methods with a bound proof @a11y", async ({
+  page,
+}) => {
+  const fixture = newIdentityFixture();
+  await installIdentityAdminFixture(page, fixture);
+  await page.goto(LIST);
+  await expect(
+    page.getByRole("heading", { name: "Sign-in methods", level: 2 }),
+  ).toBeVisible();
+  const staffPassword = page.getByRole("switch", {
+    name: "Password for Staff",
+  });
+  await expect(staffPassword).toBeChecked();
+  await expect(staffPassword).toBeDisabled();
+  await expectNoSeriousAxeViolations(page);
+
+  await page.getByRole("switch", { name: "Password for Customers" }).click();
+  await page.getByRole("button", { name: "Save sign-in methods" }).click();
+  await expect(page.getByText("Password for Customers: on")).toBeVisible();
+  await expectNoSeriousAxeViolations(page);
+  await enterVerification(page);
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Sign-in methods saved")).toBeVisible();
+
+  const request = {
+    agent: { password: true, magicLink: true, emailOtp: true },
+    customer: { password: true, magicLink: false, emailOtp: false },
+    expectedRevision: "a".repeat(64),
+  };
+  expect(fixture.challenges).toEqual([
+    { kind: "operation", operation: "auth_local_methods_update", ...request },
+  ]);
+  expect(fixture.mutations).toEqual([
+    {
+      method: "PUT",
+      path: "/api/instance/auth/local-methods",
+      token: "p".repeat(43),
+      body: request,
+    },
+  ]);
+  await expect(
+    page.getByRole("button", { name: "Save sign-in methods" }),
+  ).toBeDisabled();
+});

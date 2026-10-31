@@ -153,6 +153,14 @@ export type IdentityAdminFixture = {
     body: unknown;
   }>;
   requests: string[];
+  /** GET/PUT /api/instance/auth/local-methods state (S6). */
+  localMethods: {
+    agent: { password: boolean; magicLink: boolean; emailOtp: boolean };
+    customer: { password: boolean; magicLink: boolean; emailOtp: boolean };
+    emailProviderEnabled: boolean;
+    emailOtpDisabledByEnvironment: boolean;
+    revision: string;
+  };
 };
 
 export function newIdentityFixture(): IdentityAdminFixture {
@@ -227,6 +235,13 @@ export function newIdentityFixture(): IdentityAdminFixture {
     proofs: [],
     mutations: [],
     requests: [],
+    localMethods: {
+      agent: { password: true, magicLink: true, emailOtp: true },
+      customer: { password: false, magicLink: false, emailOtp: false },
+      emailProviderEnabled: true,
+      emailOtpDisabledByEnvironment: false,
+      revision: "a".repeat(64),
+    },
   };
 }
 
@@ -334,6 +349,31 @@ export async function installIdentityAdminFixture(
         token: "p".repeat(43),
         expiresAt: "2030-01-01T00:00:00.000Z",
       });
+    }
+
+    if (path === "/api/instance/auth/local-methods") {
+      if (method === "GET") return json(fixture.localMethods);
+      const body = request.postDataJSON() as Pick<
+        IdentityAdminFixture["localMethods"],
+        "agent" | "customer"
+      > & { expectedRevision: string };
+      fixture.mutations.push({
+        method,
+        path,
+        token: request.headers()["x-taskdesk-step-up-token"],
+        body,
+      });
+      if (!body.agent.password)
+        return json({ message: "agent_password_required" }, 422);
+      if (body.expectedRevision !== fixture.localMethods.revision)
+        return json({ message: "version_conflict" }, 409);
+      fixture.localMethods = {
+        ...fixture.localMethods,
+        agent: body.agent,
+        customer: body.customer,
+        revision: "b".repeat(64),
+      };
+      return json(fixture.localMethods);
     }
 
     const organisationIdentity =

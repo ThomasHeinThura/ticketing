@@ -6282,6 +6282,15 @@ async function installAuthenticatedFixture(page: Page) {
       };
     } else if (path === "/api/instance/identity-connections") {
       body = { data: [visualIdentityConnection] };
+    } else if (path === "/api/instance/auth/local-methods") {
+      body = {
+        agent: { password: true, magicLink: true, emailOtp: true },
+        customer: { password: true, magicLink: false, emailOtp: true },
+        emailProviderEnabled: true,
+        emailOtpDisabledByEnvironment: false,
+        revision:
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      };
     } else if (
       path === "/api/instance/identity-connections/visual-connection/scim"
     ) {
@@ -6707,6 +6716,9 @@ test("authentication providers list screen @visual", async ({ page }) => {
     }),
   ).toBeVisible();
   await expect(page.getByText("Staff Entra", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Sign-in methods", exact: true }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("authentication-providers-list.png", {
     animations: "disabled",
     caret: "hide",

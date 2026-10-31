@@ -11,7 +11,7 @@ const getConfigRoute = createRoute({
   tags: ["Config"],
   summary: "Get config",
   description:
-    "Public instance settings: which sign-in methods, registration paths, and features are enabled.",
+    "Public instance settings: which sign-in methods, registration paths, and features are enabled. `disableEmailOtpSignIn` is true when the environment or the God Mode staff sign-in methods turn email-code sign-in off on the staff host.",
   security: [],
   responses: {
     200: jsonResponse("Application settings", configSchema),
