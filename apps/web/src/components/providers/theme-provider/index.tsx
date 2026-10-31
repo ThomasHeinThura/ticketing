@@ -30,11 +30,14 @@ export function ThemeProvider({
   children,
   followSystemWhenUnset = false,
 }: ThemeProviderProps) {
-  const { theme: storedTheme } = useUserPreferencesStore();
-  const [unset] = useState(
-    () => followSystemWhenUnset && !hasStoredThemePreference(),
-  );
-  const theme = unset ? "system" : storedTheme;
+  // A visitor with no stored choice starts on "system". Writing it to the store (before the
+  // store is read below) keeps the store the single source of truth, so a later toggle wins.
+  useState(() => {
+    if (followSystemWhenUnset && !hasStoredThemePreference())
+      useUserPreferencesStore.setState({ theme: "system" });
+    return null;
+  });
+  const { theme } = useUserPreferencesStore();
 
   useEffect(() => {
     const root = document.documentElement;

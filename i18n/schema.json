@@ -15521,9 +15521,6 @@
 						"description": {
 							"type": "string"
 						},
-						"home": {
-							"type": "string"
-						},
 						"catalogue": {
 							"type": "string"
 						},
@@ -15542,33 +15539,36 @@
 						"signOutFailed": {
 							"type": "string"
 						},
-						"breadcrumb": {
+						"dashboard": {
 							"type": "string"
 						},
-						"request": {
+						"support": {
 							"type": "string"
 						},
-						"account": {
+						"updates": {
 							"type": "string"
 						},
-						"releases": {
+						"announcements": {
+							"type": "string"
+						},
+						"settings": {
 							"type": "string"
 						}
 					},
 					"required": [
 						"title",
 						"description",
-						"home",
 						"catalogue",
 						"knowledgeBase",
 						"requests",
 						"approvals",
 						"signOut",
 						"signOutFailed",
-						"breadcrumb",
-						"request",
-						"account",
-						"releases"
+						"dashboard",
+						"support",
+						"updates",
+						"announcements",
+						"settings"
 					]
 				},
 				"home": {
@@ -16693,6 +16693,67 @@
 						"events",
 						"requestReference"
 					]
+				},
+				"shell": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"getHelp": {
+							"type": "string"
+						},
+						"theme": {
+							"type": "string"
+						},
+						"search": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"placeholder": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "placeholder"]
+						},
+						"userMenu": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"unnamed": {
+									"type": "string"
+								},
+								"signingOut": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "unnamed", "signingOut"]
+						},
+						"projectSelector": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"all": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "all"]
+						}
+					},
+					"required": [
+						"getHelp",
+						"theme",
+						"search",
+						"userMenu",
+						"projectSelector"
+					]
 				}
 			},
 			"required": [
@@ -16709,7 +16770,8 @@
 				"request",
 				"account",
 				"releases",
-				"notifications"
+				"notifications",
+				"shell"
 			]
 		},
 		"instanceUsers": {

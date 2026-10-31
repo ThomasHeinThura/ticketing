@@ -12905,6 +12905,7 @@
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::DialogPanel[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::p[0]::text-destructive#0",
+			"apps/web/src/components/portal/portal-user-menu.tsx::PortalUserMenu::DropdownMenu[0]/DropdownMenuContent[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#1",
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[1]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
@@ -13160,6 +13161,18 @@
 				"id": "apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::p[0]::text-destructive#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/pending-action/pending-action-approval.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/portal-user-menu.tsx:PortalUserMenu",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/p[0]",
+					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/portal/portal-user-menu.tsx::PortalUserMenu::DropdownMenu[0]/DropdownMenuContent[0]/p[0]::text-destructive#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/portal-user-menu.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -13523,6 +13536,7 @@
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::DialogPanel[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::p[0]::text-destructive#0",
+			"apps/web/src/components/portal/portal-user-menu.tsx::PortalUserMenu::DropdownMenu[0]/DropdownMenuContent[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#1",
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[1]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
@@ -13778,6 +13792,18 @@
 				"id": "apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::p[0]::text-destructive#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/pending-action/pending-action-approval.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/portal-user-menu.tsx:PortalUserMenu",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/p[0]",
+					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/portal/portal-user-menu.tsx::PortalUserMenu::DropdownMenu[0]/DropdownMenuContent[0]/p[0]::text-destructive#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/portal-user-menu.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -79649,6 +79675,7 @@
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#1",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/ul[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-bell.tsx::PortalNotificationBell::DropdownMenu[0]/DropdownMenuContent[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/portal-user-menu.tsx::PortalUserMenu::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::AddMemberDialog::Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::PersonList::div[0]/ul[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::ReparentPreviewDialog::AlertDialog[0]/AlertDialogContent[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -81233,6 +81260,18 @@
 				"id": "apps/web/src/components/portal/portal-notification-bell.tsx::PortalNotificationBell::DropdownMenu[0]/DropdownMenuContent[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/portal/portal-notification-bell.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/portal-user-menu.tsx:PortalUserMenu",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/span[0]",
+					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/portal/portal-user-menu.tsx::PortalUserMenu::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/portal-user-menu.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -84633,6 +84672,7 @@
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#1",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/ul[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-bell.tsx::PortalNotificationBell::DropdownMenu[0]/DropdownMenuContent[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/portal-user-menu.tsx::PortalUserMenu::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::AddMemberDialog::Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::PersonList::div[0]/ul[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::ReparentPreviewDialog::AlertDialog[0]/AlertDialogContent[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -86217,6 +86257,18 @@
 				"id": "apps/web/src/components/portal/portal-notification-bell.tsx::PortalNotificationBell::DropdownMenu[0]/DropdownMenuContent[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/portal/portal-notification-bell.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/portal-user-menu.tsx:PortalUserMenu",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/span[0]",
+					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/portal/portal-user-menu.tsx::PortalUserMenu::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/portal-user-menu.tsx"
 			},
 			{
 				"backdropLayers": [],

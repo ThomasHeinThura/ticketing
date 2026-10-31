@@ -30,7 +30,11 @@ import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 import { missingRequiredIntakeFields } from "@/lib/intake-validation";
 import { resolveIntakeVisibility } from "@/lib/intake-visibility";
-import { parsePortalCatalogueSearch, routes } from "@/lib/routes";
+import {
+  parsePortalCatalogueSearch,
+  portalProjectSearchMiddlewares,
+  routes,
+} from "@/lib/routes";
 
 type Entry = {
   key: string;
@@ -46,6 +50,7 @@ type Entry = {
 
 export const Route = createFileRoute("/catalogue")({
   validateSearch: parsePortalCatalogueSearch,
+  search: { middlewares: portalProjectSearchMiddlewares },
   component: PortalCatalogue,
 });
 

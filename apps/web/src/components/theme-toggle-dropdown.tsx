@@ -1,12 +1,35 @@
 import { Label, Switch } from "@taskdesk/ui";
 import { MoonIcon, SunIcon } from "lucide-react";
-import { useId } from "react";
+import { useId, useSyncExternalStore } from "react";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
-export function ThemeToggleDropdown() {
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+
+function subscribeToSystemTheme(onChange: () => void) {
+  const query = window.matchMedia?.(DARK_QUERY);
+  query?.addEventListener("change", onChange);
+  return () => query?.removeEventListener("change", onChange);
+}
+
+function systemPrefersDark() {
+  return window.matchMedia?.(DARK_QUERY).matches ?? false;
+}
+
+export function ThemeToggleDropdown({
+  label = "Toggle theme",
+}: {
+  /** Accessible name of the switch; callers pass their own translated text. */
+  label?: string;
+}) {
   const { theme, setTheme } = useUserPreferencesStore();
+  const prefersDark = useSyncExternalStore(
+    subscribeToSystemTheme,
+    systemPrefersDark,
+    () => false,
+  );
   const id = useId();
-  const checked = theme === "light";
+  // "system" shows whichever theme the OS currently resolves to.
+  const checked = theme === "system" ? !prefersDark : theme === "light";
 
   const handleThemeChange = (nextChecked: boolean) => {
     setTheme(nextChecked ? "light" : "dark");
@@ -29,7 +52,7 @@ export function ThemeToggleDropdown() {
         </span>
       </div>
       <Label className="sr-only" htmlFor={id}>
-        Toggle theme
+        {label}
       </Label>
     </div>
   );

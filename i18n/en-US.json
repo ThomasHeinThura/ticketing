@@ -3776,17 +3776,17 @@
 		"navigation": {
 			"title": "Customer portal",
 			"description": "Navigate your {{term_request_other}} and approvals.",
-			"home": "Home",
 			"catalogue": "{{term_request_one}} catalogue",
 			"knowledgeBase": "Knowledge base",
 			"requests": "My {{term_request_other}}",
 			"approvals": "Approvals",
 			"signOut": "Sign out",
 			"signOutFailed": "Could not sign out. Try again.",
-			"breadcrumb": "Breadcrumb",
-			"request": "{{term_request_one}}",
-			"account": "Account",
-			"releases": "Release notes"
+			"dashboard": "Dashboard",
+			"support": "Support",
+			"updates": "Updates",
+			"announcements": "Announcements",
+			"settings": "Settings"
 		},
 		"home": {
 			"title": "How can we help?",
@@ -4081,6 +4081,23 @@
 				"approvalWithdrawn": "An approval request was withdrawn"
 			},
 			"requestReference": "{{term_request_one}} {{ref}}"
+		},
+		"shell": {
+			"getHelp": "Get help",
+			"theme": "Toggle theme",
+			"search": {
+				"label": "Search",
+				"placeholder": "Search for help"
+			},
+			"userMenu": {
+				"label": "Account menu for {{name}}",
+				"unnamed": "Unnamed user",
+				"signingOut": "Signing out…"
+			},
+			"projectSelector": {
+				"label": "Project",
+				"all": "All projects"
+			}
 		}
 	},
 	"instanceUsers": {

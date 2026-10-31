@@ -1,3 +1,4 @@
+import type { SearchMiddleware } from "@tanstack/react-router";
 import { godModeRedirectPath } from "./god-mode-paths";
 import {
   type DashboardSearch,
@@ -813,7 +814,10 @@ export const INTAKE_AGE_FILTERS = ["1d", "3d", "7d", "30d"] as const;
 export type IntakeAgeFilter = (typeof INTAKE_AGE_FILTERS)[number];
 export type RequestTypeEditorSearch = { requestTypeId?: string };
 export type WorkflowSettingsSearch = { workflowId?: string };
-export type PortalCatalogueSearch = { q?: string; key?: string };
+export type PortalCatalogueSearch = PortalProjectSearch & {
+  q?: string;
+  key?: string;
+};
 /**
  * Timesheet (`TC-*`): the week is a Monday (`YYYY-MM-DD`); the current week is never written.
  * `scope=everyone` is the read-only people-by-day view for `time_entry:read_any` holders.
@@ -849,7 +853,10 @@ export type KbArticleSearch = {
   version?: number;
 };
 export type KbEditorSearch = { preview?: boolean };
-export type PortalKbSearch = { q?: string; category?: string };
+export type PortalKbSearch = PortalProjectSearch & {
+  q?: string;
+  category?: string;
+};
 
 function kbText(value: unknown, max = 200) {
   return typeof value === "string" &&
@@ -896,7 +903,11 @@ export function parsePortalKbSearch(raw: unknown): PortalKbSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
   const q = kbText(value.q);
   const category = kbText(value.category);
-  return { ...(q ? { q } : {}), ...(category ? { category } : {}) };
+  return {
+    ...(q ? { q } : {}),
+    ...(category ? { category } : {}),
+    ...parsePortalProjectSearch(raw),
+  };
 }
 function kbQuery(entries: Record<string, string | undefined>) {
   const query = new URLSearchParams();
@@ -960,11 +971,16 @@ function serviceManagementQuery(entries: Record<string, string | undefined>) {
   return suffix ? `?${suffix}` : "";
 }
 
-export type PortalInboxSearch = { filter?: "all" | "unread" | "mentions" };
+export type PortalInboxSearch = PortalProjectSearch & {
+  filter?: "all" | "unread" | "mentions";
+};
 
 export function parsePortalInboxSearch(raw: unknown): PortalInboxSearch {
   const filter = (raw as { filter?: unknown } | null)?.filter;
-  return filter === "unread" || filter === "mentions" ? { filter } : {};
+  return {
+    ...(filter === "unread" || filter === "mentions" ? { filter } : {}),
+    ...parsePortalProjectSearch(raw),
+  };
 }
 
 export type PortalSignInStage = "email" | "password" | "factor" | "otp";
@@ -1072,7 +1088,11 @@ export function parsePortalCatalogueSearch(
     typeof value.key === "string" && value.key.length <= 200
       ? value.key
       : undefined;
-  return { ...(q ? { q } : {}), ...(key ? { key } : {}) };
+  return {
+    ...(q ? { q } : {}),
+    ...(key ? { key } : {}),
+    ...parsePortalProjectSearch(raw),
+  };
 }
 
 export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
@@ -1318,7 +1338,8 @@ export const routes = {
   /** Customer portal home, rooted on its separate origin. */
   portalHome: {
     path: "/" as const,
-    build: () => "/",
+    build: (search: PortalProjectSearch = {}) =>
+      `/${portalProjectQuery(new URLSearchParams(), search)}`,
     parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
   },
   portalSignIn: {
@@ -1338,7 +1359,7 @@ export const routes = {
     path: "/kb" as const,
     build: (search: PortalKbSearch = {}) => {
       const resolved = parsePortalKbSearch(search);
-      return `/kb${kbQuery({ q: resolved.q, category: resolved.category })}`;
+      return `/kb${kbQuery({ q: resolved.q, category: resolved.category, project: resolved.project })}`;
     },
   },
   portalKbArticle: {
@@ -1347,11 +1368,10 @@ export const routes = {
   },
   portalReleases: {
     path: "/releases" as const,
-    build: (search: { cursor?: string } = {}) => {
+    build: (search: PortalProjectSearch & { cursor?: string } = {}) => {
       const { cursor } = parsePortalReleasesSearch(search);
-      return cursor
-        ? `/releases?${new URLSearchParams({ cursor })}`
-        : "/releases";
+      const query = new URLSearchParams(cursor ? { cursor } : {});
+      return `/releases${portalProjectQuery(query, search)}`;
     },
   },
   portalRelease: {
@@ -1366,40 +1386,40 @@ export const routes = {
       const query = new URLSearchParams();
       if (resolved.q) query.set("q", resolved.q);
       if (resolved.key) query.set("key", resolved.key);
-      const suffix = query.toString();
-      return suffix ? `/catalogue?${suffix}` : "/catalogue";
+      return `/catalogue${portalProjectQuery(query, resolved)}`;
     },
   },
   portalInbox: {
     path: "/notifications" as const,
     build: (search: PortalInboxSearch = {}) => {
       const { filter } = parsePortalInboxSearch(search);
-      return filter
-        ? `/notifications?${new URLSearchParams({ filter })}`
-        : "/notifications";
+      const query = new URLSearchParams(filter ? { filter } : {});
+      return `/notifications${portalProjectQuery(query, search)}`;
     },
   },
   portalRequests: {
     path: "/requests" as const,
-    build: (search: { cursor?: string; view?: "backlog" } = {}) => {
+    build: (
+      search: PortalProjectSearch & { cursor?: string; view?: "backlog" } = {},
+    ) => {
       const { cursor, view } = parsePortalRequestsSearch(search);
       const params = new URLSearchParams();
       if (view) params.set("view", view);
       if (cursor) params.set("cursor", cursor);
-      return params.size ? `/requests?${params}` : "/requests";
+      return `/requests${portalProjectQuery(params, search)}`;
     },
   },
   portalAccount: {
     path: "/account" as const,
-    build: () => "/account",
+    build: (search: PortalProjectSearch = {}) =>
+      `/account${portalProjectQuery(new URLSearchParams(), search)}`,
   },
   portalApprovals: {
     path: "/approvals" as const,
-    build: (search: { approval?: string } = {}) => {
+    build: (search: PortalProjectSearch & { approval?: string } = {}) => {
       const { approval } = parsePortalApprovalsSearch(search);
-      return approval
-        ? `/approvals?${new URLSearchParams({ approval })}`
-        : "/approvals";
+      const query = new URLSearchParams(approval ? { approval } : {});
+      return `/approvals${portalProjectQuery(query, search)}`;
     },
   },
   /**
@@ -2104,7 +2124,7 @@ export function parseWorkItemListSearchFromQueryString(
 }
 
 /** Opaque portal request cursors remain URL state; malformed values are discarded. */
-export function parsePortalRequestsSearch(raw: unknown): {
+export function parsePortalRequestsSearch(raw: unknown): PortalProjectSearch & {
   cursor?: string;
   view?: "backlog";
 } {
@@ -2112,6 +2132,7 @@ export function parsePortalRequestsSearch(raw: unknown): {
   const candidate = raw as Record<string, unknown>;
   const cursor = candidate.cursor;
   return {
+    ...parsePortalProjectSearch(raw),
     ...(candidate.view === "backlog" ? { view: "backlog" as const } : {}),
     ...(typeof cursor === "string" &&
     cursor.length > 0 &&
@@ -2122,22 +2143,29 @@ export function parsePortalRequestsSearch(raw: unknown): {
   };
 }
 
-export function parsePortalReleasesSearch(raw: unknown): { cursor?: string } {
-  const { cursor } = parsePortalRequestsSearch(raw);
-  return cursor ? { cursor } : {};
+export function parsePortalReleasesSearch(
+  raw: unknown,
+): PortalProjectSearch & { cursor?: string } {
+  const { cursor, project } = parsePortalRequestsSearch(raw);
+  return { ...(cursor ? { cursor } : {}), ...(project ? { project } : {}) };
 }
 
-export function parsePortalApprovalsSearch(raw: unknown): {
+export function parsePortalApprovalsSearch(
+  raw: unknown,
+): PortalProjectSearch & {
   approval?: string;
 } {
   if (!raw || typeof raw !== "object") return {};
   const approval = (raw as Record<string, unknown>).approval;
-  return typeof approval === "string" &&
+  return {
+    ...(typeof approval === "string" &&
     approval.length > 0 &&
     approval.length <= 256 &&
     /^[A-Za-z0-9_-]+$/u.test(approval)
-    ? { approval }
-    : {};
+      ? { approval }
+      : {}),
+    ...parsePortalProjectSearch(raw),
+  };
 }
 
 export function parseInstanceAuditSearch(raw: unknown): {
@@ -2151,4 +2179,42 @@ export function parseInstanceAuditSearch(raw: unknown): {
     action: typeof value.action === "string" ? value.action.slice(0, 256) : "",
     limit: [25, 50, 100, 200].includes(limit) ? limit : 50,
   };
+}
+
+/**
+ * Portal project scope (`?project=KEY`, S4a). The top-bar project selector writes it; every
+ * signed-in portal route validates it and keeps it across navigation through
+ * `portalProjectSearchMiddlewares`, so the dashboard and request list can filter by it.
+ */
+export type PortalProjectSearch = { project?: string };
+
+export function parsePortalProjectSearch(raw: unknown): PortalProjectSearch {
+  if (!raw || typeof raw !== "object") return {};
+  const project = (raw as Record<string, unknown>).project;
+  return typeof project === "string" && /^[A-Za-z0-9_-]{1,64}$/u.test(project)
+    ? { project }
+    : {};
+}
+
+/**
+ * Route `search.middlewares` for every signed-in portal route: a navigation that does not name
+ * `project` keeps the current one, and `project: undefined` clears it ("All projects"). Sign-in
+ * and invitation routes leave it out, so signing out drops the scope.
+ */
+export const portalProjectSearchMiddlewares: SearchMiddleware<PortalProjectSearch>[] =
+  [
+    ({ search, next }) => {
+      const result = next(search);
+      const { project } = parsePortalProjectSearch(search);
+      return project && !Object.hasOwn(result, "project")
+        ? { ...result, project }
+        : result;
+    },
+  ];
+
+function portalProjectQuery(query: URLSearchParams, search: unknown) {
+  const { project } = parsePortalProjectSearch(search);
+  if (project) query.set("project", project);
+  const suffix = query.toString();
+  return suffix ? `?${suffix}` : "";
 }
