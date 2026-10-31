@@ -10,6 +10,9 @@ function useGetWorkItem({ key }: { key: string | undefined }) {
     queryKey: ["work-items", "detail", key],
     queryFn: () => getWorkItem(key as string),
     enabled: !!key,
+    // The detail page and side pane re-read the item on every mount (the app default is not to),
+    // so opening an item never shows a cached copy that changed while no screen watched it.
+    refetchOnMount: "always",
     refetchInterval: realtimeStatus === "available" ? false : 30_000,
     refetchIntervalInBackground: false,
   });

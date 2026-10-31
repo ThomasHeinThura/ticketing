@@ -970,6 +970,35 @@ describe("work-item list realtime composition", () => {
     expect(detail).not.toHaveBeenCalled();
   });
 
+  it("re-reads a work-item detail once on every mount, even when its cache is seconds old", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnMount: false } },
+    });
+    function Detail() {
+      useGetWorkItem({ key: "W-1" });
+      return null;
+    }
+    const first = render(<Detail />, { wrapper: wrapperFor(client) });
+    await waitFor(() => expect(mocks.getWorkItem).toHaveBeenCalledTimes(1));
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected the detail socket");
+    act(() => socket.open());
+    act(() => socket.frame({ type: "subscribed", topic: "work_item:W-1" }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(mocks.getWorkItem).toHaveBeenCalledTimes(1);
+    first.unmount();
+
+    // Direct navigation back within seconds: exactly one fresh read, not repeated by the socket.
+    render(<Detail />, { wrapper: wrapperFor(client) });
+    await waitFor(() => expect(mocks.getWorkItem).toHaveBeenCalledTimes(2));
+    const returned = MockWebSocket.instances[1];
+    if (!returned) throw new Error("Expected the returning detail socket");
+    act(() => returned.open());
+    act(() => returned.frame({ type: "subscribed", topic: "work_item:W-1" }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(mocks.getWorkItem).toHaveBeenCalledTimes(2);
+  });
+
   it("refreshes on remount a detail that realtime invalidated while the screen was away", async () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false, refetchOnMount: false } },
