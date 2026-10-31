@@ -67,6 +67,8 @@ export function SubmissionQueueTable({
                 variant="link"
                 size="sm"
                 aria-current={selectedRef === row.ref ? "true" : undefined}
+                // The submission sheet returns focus here when it closes.
+                data-submission-ref={row.ref}
                 onClick={() => onOpenSubmission(row.ref)}
                 className="h-auto p-0 font-mono"
               >

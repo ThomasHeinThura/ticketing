@@ -17225,6 +17225,9 @@
 			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/ActionTooltip[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/gantt/gantt-task-bar.tsx::GanttTaskBar::div[0]/div[0]::text-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/Button[0]::text-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/div[0]/h2[0]::text-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet.tsx::SubmissionDetailSheetLoading::div[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
@@ -17629,6 +17632,39 @@
 				"id": "apps/web/src/components/gantt/gantt-task-bar.tsx::GanttTaskBar::div[0]/div[0]::text-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "apps/web/src/components/gantt/gantt-task-bar.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/div[0]/Button[0]>bg-background"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/Button[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/div[0]/div[0]/h2[0]>bg-background"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/div[0]/h2[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheetLoading",
+					"jsx:div[0]/div[0]/Button[0]>bg-background"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet.tsx::SubmissionDetailSheetLoading::div[0]/div[0]/Button[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -19888,6 +19924,9 @@
 			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/ActionTooltip[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/sort-control.tsx::SortControl::div[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/gantt/gantt-task-bar.tsx::GanttTaskBar::div[0]/div[0]::text-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/Button[0]::text-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/div[0]/h2[0]::text-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet.tsx::SubmissionDetailSheetLoading::div[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
@@ -20292,6 +20331,39 @@
 				"id": "apps/web/src/components/gantt/gantt-task-bar.tsx::GanttTaskBar::div[0]/div[0]::text-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "apps/web/src/components/gantt/gantt-task-bar.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/div[0]/Button[0]>bg-background"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/Button[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/div[0]/div[0]/h2[0]>bg-background"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/div[0]/h2[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheetLoading",
+					"jsx:div[0]/div[0]/Button[0]>bg-background"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet.tsx::SubmissionDetailSheetLoading::div[0]/div[0]/Button[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -24981,6 +25053,8 @@
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/Button[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbOptionsPresentation::DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/custom-field/custom-field-value-input.tsx::CustomFieldValueInput::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SectionHeading::h3[0]::text-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/div[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::PersonList::div[0]/ul[0]/li[0]/span[0]::text-foreground#0",
@@ -25160,6 +25234,32 @@
 				"id": "apps/web/src/components/custom-field/custom-field-value-input.tsx::CustomFieldValueInput::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/custom-field/custom-field-value-input.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SectionHeading::h3[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/div[0]/p[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -25615,6 +25715,8 @@
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/Button[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbOptionsPresentation::DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/custom-field/custom-field-value-input.tsx::CustomFieldValueInput::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SectionHeading::h3[0]::text-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/div[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::PersonList::div[0]/ul[0]/li[0]/span[0]::text-foreground#0",
@@ -25794,6 +25896,32 @@
 				"id": "apps/web/src/components/custom-field/custom-field-value-input.tsx::CustomFieldValueInput::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/custom-field/custom-field-value-input.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SectionHeading::h3[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/div[0]/p[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -26553,7 +26681,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/project/members/project-members-settings.tsx",
+		"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx",
 		"backdrop": "--color-sidebar",
 		"foregroundClass": "text-foreground",
 		"backgroundClass": {
@@ -26561,6 +26689,7 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/h3[0]::text-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[1]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[1]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
@@ -26569,6 +26698,17 @@
 			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/section[0]/h3[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/h3[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
 			{
 				"backdropLayers": [],
 				"category": "body",
@@ -26830,7 +26970,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "apps/web/src/components/project/members/project-members-settings.tsx",
+		"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx",
 		"backdrop": "--color-sidebar",
 		"foregroundClass": "text-foreground",
 		"backgroundClass": {
@@ -26838,6 +26978,7 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/h3[0]::text-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[1]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[1]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
@@ -26846,6 +26987,17 @@
 			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/section[0]/h3[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/h3[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
 			{
 				"backdropLayers": [],
 				"category": "body",
@@ -31806,6 +31958,8 @@
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookSecurityPosturePanel::div[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookSecurityPosturePanel::div[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]::text-muted-foreground#0",
 			"apps/web/src/components/intake/queue-panel.tsx::IntakeQueuePanel::div[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet.tsx::SubmissionDetailSheetLoading::div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/intake/submission-queue-table.tsx::SubmissionQueueTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[7]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
@@ -32077,8 +32231,6 @@
 			"apps/web/src/main.tsx::bootstrapApplication::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx::ProjectWorkItemsRoute::div[0]/div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::div[0]/Layout.Content[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::div[0]/Layout.Content[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsIndexRoute::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -34158,6 +34310,28 @@
 				"id": "apps/web/src/components/intake/queue-panel.tsx::IntakeQueuePanel::div[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/intake/queue-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/div[0]/div[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheetLoading",
+					"jsx:div[0]/div[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet.tsx::SubmissionDetailSheetLoading::div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -39349,34 +39523,6 @@
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx::ProjectWorkItemsRoute::div[0]/div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::div[0]/Layout.Content[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::div[0]/Layout.Content[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -42600,6 +42746,8 @@
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookSecurityPosturePanel::div[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookSecurityPosturePanel::div[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]::text-muted-foreground#0",
 			"apps/web/src/components/intake/queue-panel.tsx::IntakeQueuePanel::div[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet.tsx::SubmissionDetailSheetLoading::div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/intake/submission-queue-table.tsx::SubmissionQueueTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[7]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/Button[0]/div[0]::text-muted-foreground#0",
@@ -42871,8 +43019,6 @@
 			"apps/web/src/main.tsx::bootstrapApplication::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated.tsx::SessionRouteError::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx::ProjectWorkItemsRoute::div[0]/div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::div[0]/Layout.Content[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::div[0]/Layout.Content[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/agent/views.tsx::SavedViewsIndexRoute::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -44952,6 +45098,28 @@
 				"id": "apps/web/src/components/intake/queue-panel.tsx::IntakeQueuePanel::div[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/intake/queue-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/div[0]/div[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheetLoading",
+					"jsx:div[0]/div[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet.tsx::SubmissionDetailSheetLoading::div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -50143,34 +50311,6 @@
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx::ProjectWorkItemsRoute::div[0]/div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::div[0]/Layout.Content[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx::IntakeRoute::div[0]/Layout.Content[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -67736,6 +67876,22 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/kb/agent/kb-categories.tsx:RenameDialog",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/kb/agent/kb-categories.tsx:RenameDialog",
@@ -68283,6 +68439,34 @@
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": ["bg-sidebar"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:TriageActionAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/div[0]/TriageActionAlert[0]",
+					"opaque-backdrop:bg-sidebar"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-sidebar"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:TriageActionAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/section[0]/TriageActionAlert[0]",
+					"opaque-backdrop:bg-sidebar"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
 			{
 				"backdropLayers": ["bg-sidebar"],
 				"category": "body",
@@ -72110,6 +72294,22 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/kb/agent/kb-categories.tsx:RenameDialog",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/kb/agent/kb-categories.tsx:RenameDialog",
@@ -72657,6 +72857,34 @@
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": ["bg-sidebar"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:TriageActionAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/div[0]/TriageActionAlert[0]",
+					"opaque-backdrop:bg-sidebar"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-sidebar"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:TriageActionAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/section[0]/TriageActionAlert[0]",
+					"opaque-backdrop:bg-sidebar"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
 			{
 				"backdropLayers": ["bg-sidebar"],
 				"category": "body",
@@ -79603,6 +79831,10 @@
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookRotationDialog::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookRotationDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookRotationDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#1",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuItem[0]::text-muted-foreground#0",
@@ -80662,6 +80894,58 @@
 				"id": "apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookRotationDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/webhook-security-posture-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -84587,6 +84871,10 @@
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookRotationDialog::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookRotationDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookRotationDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#1",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuItem[0]::text-muted-foreground#0",
@@ -85646,6 +85934,58 @@
 				"id": "apps/web/src/components/god-mode/webhook-security-posture-panel.tsx::WebhookRotationDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/webhook-security-posture-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -89859,6 +90199,8 @@
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[2]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[2]/RadioGroup[0]/label[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[2]/RadioGroup[0]/label[1]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-muted-foreground#0",
@@ -90230,6 +90572,28 @@
 				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[2]/RadioGroup[0]/label[1]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/section[0]/div[0]/div[0]/p[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/section[0]/div[0]/div[1]/p[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -91082,6 +91446,8 @@
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[2]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[2]/RadioGroup[0]/label[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[2]/RadioGroup[0]/label[1]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-muted-foreground#0",
@@ -91453,6 +91819,28 @@
 				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::WorkspaceRuleCard::div[0]/div[2]/RadioGroup[0]/label[1]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/section[0]/div[0]/div[0]/p[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
+					"jsx:div[0]/section[0]/div[0]/div[1]/p[0]>bg-sidebar"
+				],
+				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/section[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
 			},
 			{
 				"backdropLayers": [],
