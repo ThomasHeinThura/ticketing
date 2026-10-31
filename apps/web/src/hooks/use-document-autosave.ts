@@ -170,7 +170,9 @@ export function useDocumentAutosave<
         } else {
           failed.current = true;
           retry = isRetryable(error);
-          if (retries.current === 0) optionsRef.current.onError?.(error);
+          // One message per run of retried failures; a final refusal (4xx) is always reported.
+          if (retries.current === 0 || !retry)
+            optionsRef.current.onError?.(error);
         }
       }
     })();
@@ -195,6 +197,8 @@ export function useDocumentAutosave<
 
   const flush = useCallback(async (): Promise<boolean> => {
     clearTimer();
+    // An explicit save (Ctrl/Cmd+S, blur, leave) starts a new run, so its failure is reported.
+    retries.current = 0;
     // A bounded loop: each pass either waits for the save in flight or sends one.
     for (let pass = 0; pass < 8; pass += 1) {
       if (inFlight.current) {

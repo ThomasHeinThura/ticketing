@@ -261,6 +261,30 @@ describe("useDocumentAutosave", () => {
     expect(hook.result.current.status).toBe("saved");
   });
 
+  it("reports a refusal after a retried failure, and an explicit save after the retries ran out", async () => {
+    const { hook, save, type, onError } = setup();
+    save.mockRejectedValueOnce(new HttpError(503, "unavailable"));
+    save.mockRejectedValueOnce(new HttpError(422, "invalid"));
+    type(1);
+    await elapse(DOCUMENT_AUTOSAVE_DELAY_MS);
+    expect(onError).toHaveBeenCalledTimes(1);
+    await elapse(DOCUMENT_AUTOSAVE_RETRY_DELAYS_MS[0]);
+    expect(save).toHaveBeenCalledTimes(2);
+    // The retry's 4xx carries the real reason, so it is shown too.
+    expect(onError).toHaveBeenCalledTimes(2);
+
+    save.mockRejectedValue(new HttpError(503, "unavailable"));
+    type(2);
+    await elapse(DOCUMENT_AUTOSAVE_DELAY_MS);
+    for (const delay of DOCUMENT_AUTOSAVE_RETRY_DELAYS_MS) await elapse(delay);
+    const reported = onError.mock.calls.length;
+    // Ctrl/Cmd+S after the automatic retries ran out still tells the person it failed.
+    await act(async () => {
+      await hook.result.current.flush();
+    });
+    expect(onError).toHaveBeenCalledTimes(reported + 1);
+  });
+
   it("saves on the first retry once the connection is back", async () => {
     const { hook, save, type } = setup();
     save.mockRejectedValueOnce(new TypeError("Failed to fetch"));
