@@ -369,5 +369,102 @@ describe("TaskDesk Hono transport", () => {
     expect(response.status).toBe(200);
     expect(requested).toEqual(["POST /api/portal/submissions"]);
     expect(requested.some((entry) => entry.includes("csrf-token"))).toBe(false);
+    portalFetch.primeCsrfToken();
+    await Promise.resolve();
+    expect(requested.some((entry) => entry.includes("csrf-token"))).toBe(false);
+  });
+
+  it("primes the session token once so the first unsafe request needs no issuer round trip", async () => {
+    const order: string[] = [];
+    let tokenCount = 0;
+    const mutationTokens: string[] = [];
+    const apiFetch = createApiFetch(
+      async (input, init) => {
+        const request = new Request(input, init);
+        if (request.url.endsWith("/me/csrf-token")) {
+          tokenCount += 1;
+          order.push(`token-${tokenCount}`);
+          return tokenResponse(`token-${tokenCount}`);
+        }
+        order.push(`${request.method} ${new URL(request.url).pathname}`);
+        mutationTokens.push(request.headers.get("x-taskdesk-csrf") ?? "none");
+        return Response.json({ ok: true });
+      },
+      { apiBaseUrl },
+    );
+
+    apiFetch.primeCsrfToken();
+    apiFetch.primeCsrfToken();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(tokenCount).toBe(1);
+
+    await apiFetch(`${apiBaseUrl}/work-items/search`, {
+      method: "POST",
+      body: "{}",
+    });
+    // The primed token is used once; later unsafe requests read a fresh one as before.
+    await apiFetch(`${apiBaseUrl}/projects`, { method: "POST", body: "{}" });
+    expect(order).toEqual([
+      "token-1",
+      "POST /api/work-items/search",
+      "token-2",
+      "POST /api/projects",
+    ]);
+    expect(mutationTokens).toEqual(["token-1", "token-2"]);
+    // A prime is only taken once per page load.
+    apiFetch.primeCsrfToken();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(tokenCount).toBe(2);
+  });
+
+  it("falls back to a fresh token when the primed read failed or the primed token has expired", async () => {
+    let tokenCount = 0;
+    const mutationTokens: string[] = [];
+    let primedResponse: () => Response = () =>
+      new Response(null, { status: 503 });
+    const apiFetch = createApiFetch(
+      async (input, init) => {
+        const request = new Request(input, init);
+        if (request.url.endsWith("/me/csrf-token")) {
+          tokenCount += 1;
+          return tokenCount === 1
+            ? primedResponse()
+            : tokenResponse(`token-${tokenCount}`);
+        }
+        mutationTokens.push(request.headers.get("x-taskdesk-csrf") ?? "none");
+        return Response.json({ ok: true });
+      },
+      { apiBaseUrl },
+    );
+    apiFetch.primeCsrfToken();
+    await apiFetch(`${apiBaseUrl}/projects`, { method: "POST", body: "{}" });
+    expect(mutationTokens).toEqual(["token-2"]);
+
+    tokenCount = 0;
+    mutationTokens.length = 0;
+    // A token that is about to expire when the request is sent is not used.
+    primedResponse = () =>
+      Response.json({
+        token: "nearly-expired",
+        expiresAt: new Date(Date.now() + 5_000).toISOString(),
+      });
+    const second = createApiFetch(
+      async (input, init) => {
+        const request = new Request(input, init);
+        if (request.url.endsWith("/me/csrf-token")) {
+          tokenCount += 1;
+          return tokenCount === 1
+            ? primedResponse()
+            : tokenResponse(`token-${tokenCount}`);
+        }
+        mutationTokens.push(request.headers.get("x-taskdesk-csrf") ?? "none");
+        return Response.json({ ok: true });
+      },
+      { apiBaseUrl },
+    );
+    second.primeCsrfToken();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await second(`${apiBaseUrl}/projects`, { method: "POST", body: "{}" });
+    expect(mutationTokens).toEqual(["token-2"]);
   });
 });

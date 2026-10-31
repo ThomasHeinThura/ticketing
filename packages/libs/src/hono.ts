@@ -64,10 +64,20 @@ function requestWithHeaders(
   return new Request(input, { ...init, headers, credentials });
 }
 
+/** A primed token is not sent when it expires within this margin; a fresh one is read instead. */
+const PRIMED_TOKEN_EXPIRY_MARGIN_MS = 30_000;
+
 async function readCsrfToken(
   fetchImpl: typeof fetch,
   endpoint: URL,
 ): Promise<string> {
+  return (await readCsrfTokenWithExpiry(fetchImpl, endpoint)).token;
+}
+
+async function readCsrfTokenWithExpiry(
+  fetchImpl: typeof fetch,
+  endpoint: URL,
+): Promise<{ token: string; expiry: number }> {
   const response = await fetchImpl(endpoint, {
     method: "GET",
     credentials: "include",
@@ -97,7 +107,7 @@ async function readCsrfToken(
   if (!Number.isFinite(expiry) || expiry <= Date.now()) {
     throw new Error("Unable to obtain CSRF token");
   }
-  return payload.token;
+  return { token: payload.token, expiry };
 }
 
 async function csrfFailureMessage(
@@ -126,10 +136,24 @@ async function csrfFailureMessage(
  * TaskDesk headers. Auth bootstrap routes retain Better Auth's own origin
  * protection and do not use the custom API CSRF issuer.
  */
+export type ApiFetch = ((
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>) & {
+  /**
+   * Starts reading the session CSRF token before the first unsafe request needs it (called by
+   * the signed-in agent shell), so that request does not wait one extra round trip for the
+   * issuer. Only the first call per page load reads; the token is used by one request, after
+   * which every unsafe request reads its own token as before. A no-op where the agent token is
+   * disabled (the portal build).
+   */
+  primeCsrfToken: () => void;
+};
+
 export function createApiFetch(
   fetchImpl: typeof fetch = fetch,
   options: ApiFetchOptions = {},
-) {
+): ApiFetch {
   const baseUrlValue = options.apiBaseUrl ?? apiUrl;
   const agentCsrfToken =
     options.agentCsrfToken ?? import.meta.env.MODE !== "portal";
@@ -142,7 +166,33 @@ export function createApiFetch(
     baseUrl.origin,
   );
 
-  return async (input: RequestInfo | URL, init?: RequestInit) => {
+  let primeRequested = false;
+  let primedToken: Promise<{ token: string; expiry: number }> | undefined;
+  const primeCsrfToken = () => {
+    if (!agentCsrfToken || primeRequested) return;
+    primeRequested = true;
+    const read = readCsrfTokenWithExpiry(fetchImpl, csrfEndpoint);
+    // A failed prime is dropped; the request that needs a token reads its own.
+    read.catch(() => {
+      if (primedToken === read) primedToken = undefined;
+    });
+    primedToken = read;
+  };
+  const takeCsrfToken = async () => {
+    const primed = primedToken;
+    primedToken = undefined;
+    if (primed) {
+      try {
+        const { token, expiry } = await primed;
+        if (expiry - PRIMED_TOKEN_EXPIRY_MARGIN_MS > Date.now()) return token;
+      } catch {
+        // Fall through to a fresh read.
+      }
+    }
+    return readCsrfToken(fetchImpl, csrfEndpoint);
+  };
+
+  const apiFetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
     const target = resolvedUrl(input, baseUrl);
     const isFirstPartyApi =
       target?.origin === baseUrl.origin &&
@@ -184,10 +234,7 @@ export function createApiFetch(
 
     // Keep the request body replayable for the single, narrowly-scoped retry.
     const retryBase = request.clone();
-    request.headers.set(
-      "X-TaskDesk-CSRF",
-      await readCsrfToken(fetchImpl, csrfEndpoint),
-    );
+    request.headers.set("X-TaskDesk-CSRF", await takeCsrfToken());
     const response = await fetchImpl(request);
     const failureMessage = await csrfFailureMessage(response);
     if (!failureMessage || !csrfFailureMessages.has(failureMessage)) {
@@ -203,9 +250,15 @@ export function createApiFetch(
       requestWithHeaders(retryBase, undefined, retryHeaders, "include"),
     );
   };
+  return Object.assign(apiFetchImpl, { primeCsrfToken });
 }
 
 export const apiFetch = createApiFetch();
+
+/** Primes the shared client's session CSRF token; see {@link ApiFetch.primeCsrfToken}. */
+export function primeCsrfToken() {
+  apiFetch.primeCsrfToken();
+}
 
 export const client = hc<AppType>(apiUrl, {
   fetch: apiFetch,

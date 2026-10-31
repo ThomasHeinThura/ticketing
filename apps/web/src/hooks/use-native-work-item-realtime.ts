@@ -25,7 +25,7 @@ const CONNECTION_LIMIT_CLOSE_CODE = 1008;
 const CONNECTION_LIMIT_CLOSE_REASON = "connection limit";
 
 /**
- * Whether a connection (re)start should refresh this work-item query. A request the server
+ * Whether a reconnect should refresh this work-item query. A request the server
  * refused as invalid, with no data to keep (a 422 for a filter field that is not available, a
  * 400 for a malformed one), is refused the same way again, so refetching it would only put the
  * screen's error state back to loading. Every other query is refreshed to catch changes missed
@@ -37,6 +37,25 @@ function refreshOnConnect(query: Query) {
     data === undefined &&
     error instanceof HttpError &&
     (error.status === 400 || error.status === 422)
+  );
+}
+
+/**
+ * The first connection follows the page's own reads, so it does not ask them again. A read older
+ * than the connecting poll interval (30 s) was served from cache, for example on returning to a
+ * project, and may have missed changes, so the first connection refreshes it once. A read still
+ * in flight, or one that has not run, is left to its own request.
+ */
+const FIRST_CONNECT_STALE_AFTER_MS = 30_000;
+
+function refreshOnFirstConnect(query: Query) {
+  const { dataUpdatedAt, errorUpdatedAt, fetchStatus } = query.state;
+  const lastRead = Math.max(dataUpdatedAt, errorUpdatedAt);
+  return (
+    lastRead > 0 &&
+    fetchStatus !== "fetching" &&
+    Date.now() - lastRead > FIRST_CONNECT_STALE_AFTER_MS &&
+    refreshOnConnect(query)
   );
 }
 
@@ -69,6 +88,9 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
     }
     const selectedTopics = topicKey.split("\u0000");
     let hasOutage = false;
+    // Set once a socket of this connection has closed: a later open (a reconnect) refreshes what
+    // changed while disconnected; the first open refreshes only reads served from an old cache.
+    let hasDisconnected = false;
     let isDisposed = false;
     let socket: WebSocket | null = null;
     let invalidationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -190,7 +212,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         }, 30_000);
         void queryClient.invalidateQueries({
           queryKey: ["work-items"],
-          predicate: refreshOnConnect,
+          predicate: hasDisconnected ? refreshOnConnect : refreshOnFirstConnect,
         });
       };
 
@@ -251,6 +273,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         stopPing();
         socketRef.current = null;
         if (isDisposed) return;
+        hasDisconnected = true;
         hasOutage = true;
         setStatus("unavailable");
         // The per-person connection limit is terminal for this tab, as for the legacy project

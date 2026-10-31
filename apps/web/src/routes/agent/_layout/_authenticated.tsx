@@ -6,6 +6,7 @@ import {
   redirect,
   useRouter,
 } from "@tanstack/react-router";
+import { primeCsrfToken } from "@taskdesk/libs";
 import { Button } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { ImpersonationBanner } from "@/components/god-mode/impersonation-banner";
@@ -192,6 +193,10 @@ export const Route = createFileRoute("/_layout/_authenticated")({
         },
       });
     }
+    // Signed in: read the session's CSRF token alongside the screen's first reads, so the first
+    // unsafe request (My work's search, a first edit) does not wait one more round trip for it.
+    // Only the first call per page load reads (`@taskdesk/libs`).
+    if (session) primeCsrfToken();
     if (session && factorsRequest) {
       let enrollmentRequired = false;
       try {

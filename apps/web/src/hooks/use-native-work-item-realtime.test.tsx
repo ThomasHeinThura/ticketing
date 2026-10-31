@@ -740,6 +740,7 @@ describe("work-item list realtime composition", () => {
     );
     expect(screen.queryByTestId("realtime-warning")).not.toBeInTheDocument();
     expect(queryInterval(client, "project-1")).toBe(30_000);
+    const listReadsBeforeOpen = mocks.getWorkItems.mock.calls.length;
     act(() => {
       first.open();
     });
@@ -753,9 +754,9 @@ describe("work-item list realtime composition", () => {
       ),
     );
     expect(queryInterval(client, "project-1")).toBe(false);
-    expect(invalidate).toHaveBeenCalledWith(
-      expect.objectContaining({ queryKey: ["work-items"] }),
-    );
+    // The first connection follows the page's own read: it does not refetch the list again.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(mocks.getWorkItems).toHaveBeenCalledTimes(listReadsBeforeOpen);
 
     vi.spyOn(Math, "random").mockReturnValue(0);
     act(() => first.close());
@@ -770,6 +771,10 @@ describe("work-item list realtime composition", () => {
     const recovered = MockWebSocket.instances[1];
     if (!recovered) throw new Error("Expected reconnect work-item list socket");
     act(() => recovered.open());
+    // A reconnect refreshes what may have changed while the socket was down.
+    expect(invalidate).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ["work-items"] }),
+    );
     expect(screen.getByTestId("realtime-state")).toHaveTextContent(
       "unavailable",
     );
@@ -887,7 +892,110 @@ describe("work-item list realtime composition", () => {
     expect(detailQueryInterval(client, "W-1")).toBe(30_000);
   });
 
-  it("keeps a read the server refused with a client error in its error state when the socket opens", async () => {
+  it("does not refetch the page's work-item reads when the socket first opens (one read per screen load)", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const list = vi.fn(async () => ({ version: 1 }));
+    const detail = vi.fn(async () => ({ version: 1 }));
+    function Reads() {
+      useQuery({
+        queryKey: ["work-items", "project-1", "list"],
+        queryFn: list,
+      });
+      useQuery({ queryKey: ["work-items", "detail", "WI-1"], queryFn: detail });
+      useNativeWorkItemRealtime(["project:project-1"]);
+      return null;
+    }
+    render(<Reads />, { wrapper: wrapperFor(client) });
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(1));
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected the native socket");
+    act(() => socket.open());
+    act(() => socket.frame({ type: "subscribed", topic: "project:project-1" }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(list).toHaveBeenCalledTimes(1);
+    expect(detail).toHaveBeenCalledTimes(1);
+
+    // When that socket drops, its replacement refreshes the reads once.
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    act(() => socket.close());
+    await new Promise((resolve) => setTimeout(resolve, 550));
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    act(() => MockWebSocket.instances[1]?.open());
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(2));
+  });
+
+  it("refreshes on first connect only the reads served from a cache older than the poll interval", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnMount: false } },
+    });
+    const now = Date.now();
+    client.setQueryData(
+      ["work-items", "project-1", "list"],
+      { version: 1 },
+      {
+        updatedAt: now - 60_000,
+      },
+    );
+    client.setQueryData(
+      ["work-items", "detail", "WI-1"],
+      { version: 1 },
+      {
+        updatedAt: now - 1_000,
+      },
+    );
+    const list = vi.fn(async () => ({ version: 2 }));
+    const detail = vi.fn(async () => ({ version: 2 }));
+    function Reads() {
+      useQuery({
+        queryKey: ["work-items", "project-1", "list"],
+        queryFn: list,
+      });
+      useQuery({ queryKey: ["work-items", "detail", "WI-1"], queryFn: detail });
+      useNativeWorkItemRealtime(["project:project-1"]);
+      return null;
+    }
+    render(<Reads />, { wrapper: wrapperFor(client) });
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected the native socket");
+    expect(list).not.toHaveBeenCalled();
+    act(() => socket.open());
+    // The minute-old cached list is refreshed once; the second-old detail is not.
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(list).toHaveBeenCalledTimes(1);
+    expect(detail).not.toHaveBeenCalled();
+  });
+
+  it("refreshes a socket that closed before opening once its replacement opens", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const list = vi.fn(async () => ({ version: 1 }));
+    function Reads() {
+      useQuery({
+        queryKey: ["work-items", "project-1", "list"],
+        queryFn: list,
+      });
+      useNativeWorkItemRealtime(["project:project-1"]);
+      return null;
+    }
+    render(<Reads />, { wrapper: wrapperFor(client) });
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected the native socket");
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    act(() => socket.close());
+    await new Promise((resolve) => setTimeout(resolve, 550));
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    act(() => MockWebSocket.instances[1]?.open());
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  });
+
+  it("keeps a read the server refused with a client error in its error state when the socket reconnects", async () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -931,8 +1039,18 @@ describe("work-item list realtime composition", () => {
     const socket = MockWebSocket.instances[0];
     if (!socket) throw new Error("Expected the native socket");
     act(() => socket.open());
+    // The first connection does not refetch the reads the page has just made.
+    expect(unreachable).toHaveBeenCalledTimes(1);
+    expect(loaded).toHaveBeenCalledTimes(1);
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    act(() => socket.close());
+    await new Promise((resolve) => setTimeout(resolve, 550));
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    const reconnected = MockWebSocket.instances[1];
+    if (!reconnected) throw new Error("Expected the reconnected native socket");
+    act(() => reconnected.open());
 
-    // Server failures, missing or denied reads, and loaded reads are refreshed on connect.
+    // Server failures, missing or denied reads, and loaded reads are refreshed on reconnect.
     await waitFor(() => expect(unreachable).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(missing).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(loaded).toHaveBeenCalledTimes(2));
