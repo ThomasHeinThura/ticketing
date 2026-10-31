@@ -2144,7 +2144,17 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       // on-track, at-risk and breached timers rather than a wall of week-old breaches.
       const created =
         slaApplies && !finished
-          ? new Date(now.getTime() - [3, 6, 20, 26, 50][item.n % 5] * 3_600_000)
+          ? new Date(
+              now.getTime() -
+                Math.max(
+                  [3, 6, 20, 26, 50][item.n % 5],
+                  // Never newer than the item's oldest seeded comment.
+                  ...COMMENTS.filter(
+                    (comment) => comment.item === `${project.slug}-${item.n}`,
+                  ).map((comment) => comment.hoursAgo + 1),
+                ) *
+                  3_600_000,
+            )
           : date(Math.min(item.due, 0) - 7 - (item.n % 5));
       const visibility =
         item.visibility ??

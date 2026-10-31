@@ -533,6 +533,21 @@ describe("UAT seed is strictly additive on top of the SIT seed", () => {
     expect(comments.length).toBeGreaterThanOrEqual(11);
     expect(comments.filter((row) => row.personId === null)).toEqual([]);
 
+    // History reads in order: no comment predates its item, no first response predates
+    // arrival, and open SLA timers started within the last few days, not a week back.
+    const timing = await db.execute<{ problem: string }>(
+      sql`SELECT c.id AS problem FROM comment c JOIN work_item w ON w.id = c.work_item_id
+            WHERE c.id LIKE 'uat-%' AND c.created_at < w.created_at
+          UNION ALL
+          SELECT w.id FROM work_item w JOIN state s ON s.id = w.state_id JOIN state_template st ON st.id = s.state_template_id
+            WHERE w.workspace_id = ${UAT_WORKSPACE_ID}
+              AND (w.first_response_at < w.created_at
+                OR (w.sla_started_at IS NOT NULL
+                    AND st."group" NOT IN ('completed', 'cancelled')
+                    AND w.sla_started_at < now() - interval '3 days'))`,
+    );
+    expect(timing.rows).toEqual([]);
+
     const pages = await db
       .select()
       .from(projectPageTable)
