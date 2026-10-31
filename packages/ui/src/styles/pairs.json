@@ -2042,6 +2042,21 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/project-list/projects-page.tsx:renderKindSelect",
+					"jsx:Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/project/default-comment-visibility-setting.tsx:DefaultCommentVisibilitySetting",
 					"jsx:div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -2748,7 +2763,37 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/shared/modals/project-kind-fields.tsx:ProjectKindFields",
+					"jsx:div[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/shared/modals/project-kind-fields.tsx:ProjectKindFields",
+					"jsx:div[0]/div[0]/div[1]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -4600,6 +4645,21 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/project-list/projects-page.tsx:renderKindSelect",
+					"jsx:Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/project/default-comment-visibility-setting.tsx:DefaultCommentVisibilitySetting",
 					"jsx:div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -5306,7 +5366,37 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/shared/modals/project-kind-fields.tsx:ProjectKindFields",
+					"jsx:div[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/shared/modals/project-kind-fields.tsx:ProjectKindFields",
+					"jsx:div[0]/div[0]/div[1]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -12908,8 +12998,10 @@
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#1",
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[1]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]::text-destructive#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/p[0]::text-destructive#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/div[0]::text-destructive#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/p[0]::text-destructive#0",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/div[0]::text-destructive#0",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-destructive#0",
 			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-destructive#0",
 			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-destructive#0",
 			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-destructive#0",
@@ -13202,10 +13294,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/div[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]::text-destructive#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/div[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -13214,12 +13306,34 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[1]/p[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/p[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/p[0]::text-destructive#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/p[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/div[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -13526,8 +13640,10 @@
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#1",
 			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::Dialog[1]/DialogContent[0]/div[0]/div[0]/p[0]::text-destructive#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]::text-destructive#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/p[0]::text-destructive#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/div[0]::text-destructive#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/p[0]::text-destructive#0",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/div[0]::text-destructive#0",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-destructive#0",
 			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[2]/Button[0]::text-destructive#0",
 			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[5]/Button[0]::text-destructive#0",
 			"apps/web/src/components/task/task-description.tsx::TaskDescription::TaskDescriptionPresentation[0]/BubbleMenu[0]/ActionTooltip[6]/Button[0]::text-destructive#0",
@@ -13820,10 +13936,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/div[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]::text-destructive#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/div[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -13832,12 +13948,34 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[1]/p[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/p[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/p[0]::text-destructive#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/p[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/div[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -19178,6 +19316,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/project-list/projects-page.tsx:renderKindSelect",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/project/default-comment-visibility-setting.tsx:DefaultCommentVisibilitySetting",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -19487,6 +19636,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/project-kind-fields.tsx:ProjectKindFields",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -21841,6 +22001,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/project-list/projects-page.tsx:renderKindSelect",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/project/default-comment-visibility-setting.tsx:DefaultCommentVisibilitySetting",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -22150,6 +22321,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/project-kind-fields.tsx:ProjectKindFields",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -24989,10 +25171,11 @@
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::div[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::div[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:text-foreground#0",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/task/relations-section.tsx::RelationsSection::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/task/task-detail-presentation.tsx::TaskTitlePresentation::Textarea[0]::[&_textarea]:text-foreground#0",
 			"apps/web/src/components/task/task-due-date-popover.tsx::TaskDueDatePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
@@ -25261,10 +25444,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -25303,6 +25486,17 @@
 				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -25623,10 +25817,11 @@
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::div[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::div[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:text-foreground#0",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/task/relations-section.tsx::RelationsSection::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/task/task-detail-presentation.tsx::TaskTitlePresentation::Textarea[0]::[&_textarea]:text-foreground#0",
 			"apps/web/src/components/task/task-due-date-popover.tsx::TaskDueDatePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
@@ -25895,10 +26090,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -25937,6 +26132,17 @@
 				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/span[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -41310,6 +41516,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/project-list/projects-page.tsx:renderKindSelect",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/project/default-comment-visibility-setting.tsx:DefaultCommentVisibilitySetting",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -41619,6 +41836,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/project-kind-fields.tsx:ProjectKindFields",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -52183,6 +52411,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/project-list/projects-page.tsx:renderKindSelect",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/project/default-comment-visibility-setting.tsx:DefaultCommentVisibilitySetting",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -52492,6 +52731,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/project-kind-fields.tsx:ProjectKindFields",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -76326,8 +76576,8 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[1]::text-muted-foreground#0"
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -76335,9 +76585,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[0]/span[0]>bg-muted/50"
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]>bg-muted/50"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -76346,9 +76596,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[1]>bg-muted/50"
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[1]>bg-muted/50"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			}
@@ -76412,8 +76662,8 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[1]::text-muted-foreground#0"
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -76421,9 +76671,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[0]/span[0]>bg-muted/50"
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]>bg-muted/50"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -76432,9 +76682,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[1]>bg-muted/50"
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[1]>bg-muted/50"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[1]/div[0]/div[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			}
@@ -79683,15 +79933,18 @@
 			"apps/web/src/components/settings/roles/create-role-dialog.tsx::CreateRoleDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[3]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/teams/teams-list.tsx::CreateTeamDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#2",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#2",
 			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/RadioGroup[0]/Label[0]/span[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/task/relations-section.tsx::RelationsSection::Collapsible[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/relations-section.tsx::RelationsSection::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/relations-section.tsx::RelationsSection::Collapsible[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
@@ -81648,10 +81901,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -81660,10 +81913,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -81672,10 +81925,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -81684,10 +81937,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#2",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#2",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -81750,6 +82003,39 @@
 				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/RadioGroup[0]/Label[0]/span[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -84667,15 +84953,18 @@
 			"apps/web/src/components/settings/roles/create-role-dialog.tsx::CreateRoleDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[3]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/teams/teams-list.tsx::CreateTeamDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#2",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#2",
 			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/RadioGroup[0]/Label[0]/span[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/task/relations-section.tsx::RelationsSection::Collapsible[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/relations-section.tsx::RelationsSection::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/relations-section.tsx::RelationsSection::Collapsible[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
@@ -86632,10 +86921,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -86644,10 +86933,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -86656,10 +86945,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -86668,10 +86957,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#2",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#2",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -86734,6 +87023,39 @@
 				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/RadioGroup[0]/Label[0]/span[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/shared/modals/project-kind-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -98377,7 +98699,7 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -98387,7 +98709,7 @@
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			}
@@ -98407,7 +98729,7 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -98417,7 +98739,7 @@
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			}
@@ -98528,7 +98850,7 @@
 		"occurrenceIds": [
 			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
@@ -98567,13 +98889,13 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -98745,7 +99067,7 @@
 		"occurrenceIds": [
 			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
@@ -98784,13 +99106,13 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},

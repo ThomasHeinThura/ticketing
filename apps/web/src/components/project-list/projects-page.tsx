@@ -29,6 +29,11 @@ import {
   EmptyMedia,
   EmptyTitle,
   Progress,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
   Table,
   TableBody,
@@ -58,6 +63,7 @@ import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
+import { isProjectKind, type ProjectKind } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 
 function SortableProjectRow({
@@ -114,16 +120,29 @@ function SortableProjectRow({
   );
 }
 
+const ALL_KINDS = "all";
+
 export default function ProjectsPage({
   workspaceId,
   recoveryMode = false,
   onRecoveryModeChange,
+  kindFilter: controlledKindFilter,
+  onKindFilterChange,
 }: {
   workspaceId: string;
   recoveryMode?: boolean;
   onRecoveryModeChange?: (showDeleted: boolean) => void;
+  /** Delivery projects or managed services only; URL state on `/agent` (`?kind=`). */
+  kindFilter?: ProjectKind;
+  onKindFilterChange?: (kind: ProjectKind | undefined) => void;
 }) {
   const { t } = useTranslation();
+  // `/agent` keeps the filter in the URL; the legacy dashboard route keeps it in memory.
+  const [localKindFilter, setLocalKindFilter] = useState<ProjectKind>();
+  const kindFilter = onKindFilterChange
+    ? controlledKindFilter
+    : localKindFilter;
+  const setKindFilter = onKindFilterChange ?? setLocalKindFilter;
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const navigate = useNavigate();
   const { data: listedProjects, isLoading } = useGetProjects({
@@ -168,11 +187,55 @@ export default function ProjectsPage({
     }
   }, [projects, droppedOrder]);
 
+  const visibleProjects = useMemo(
+    () =>
+      kindFilter
+        ? orderedProjects?.filter((project) => project.kind === kindFilter)
+        : orderedProjects,
+    [orderedProjects, kindFilter],
+  );
+
   const { canCreateProjects, canUpdateProjects } = useWorkspacePermission();
   const canCreate = canCreateProjects();
   // Matches the API, which gates /project/reorder on `project: ["update"]`
-  // alone — not the create+update+delete bundle.
-  const canReorder = canUpdateProjects();
+  // alone — not the create+update+delete bundle. A filtered list holds only part of the
+  // workspace ordering, so reordering waits until every kind is shown again.
+  const canReorder = canUpdateProjects() && !kindFilter;
+  const kindItems = [
+    { value: ALL_KINDS, label: t("workspace:projects.kindAll") },
+    { value: "project", label: t("workspace:projects.kindProject") },
+    {
+      value: "managed_service",
+      label: t("workspace:projects.kindManagedService"),
+    },
+  ];
+  // The header row does not wrap, so below the desktop breakpoint the filter moves to its
+  // own row above the list.
+  const renderKindSelect = (testId: string, triggerClassName?: string) => (
+    <Select
+      items={kindItems}
+      value={kindFilter ?? ALL_KINDS}
+      onValueChange={(value) =>
+        setKindFilter(isProjectKind(value) ? value : undefined)
+      }
+    >
+      <SelectTrigger
+        size="sm"
+        className={cn("w-auto min-w-32", triggerClassName)}
+        aria-label={t("workspace:projects.kindFilterLabel")}
+        data-testid={testId}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {kindItems.map((item) => (
+          <SelectItem key={item.value} value={item.value}>
+            {item.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 
   const handleRestoreProject = (projectId: string) => {
     restoreProject.mutate(
@@ -472,6 +535,9 @@ export default function ProjectsPage({
         title={t("workspace:projects.pageTitle")}
         headerActions={
           <div className="flex items-center gap-2">
+            <div className="hidden lg:flex">
+              {renderKindSelect("project-kind-filter", "sm:min-h-6 sm:text-xs")}
+            </div>
             <Button
               variant="outline"
               size="xs"
@@ -493,145 +559,184 @@ export default function ProjectsPage({
           </div>
         }
       >
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={() =>
-            document.body.classList.remove("taskdesk-dragging")
-          }
-        >
-          <Table data-testid="g13-projects-content">
-            <TableHeader className="p-4">
-              <TableRow>
-                <TableHead className="text-foreground font-medium">
-                  {t("workspace:projects.title")}
-                </TableHead>
-                <TableHead className="text-foreground font-medium">
-                  {t("workspace:projects.progress")}
-                </TableHead>
-                <TableHead className="text-foreground font-medium">
-                  {t("workspace:projects.dueDate")}
-                </TableHead>
-                <TableHead className="text-foreground font-medium">
-                  {t("workspace:projects.status")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <SortableContext
-                items={orderedProjects?.map((project) => project.id) ?? []}
-                strategy={verticalListSortingStrategy}
+        <div className="flex px-4 py-2 lg:hidden">
+          {renderKindSelect("project-kind-filter-mobile", "w-full sm:w-auto")}
+        </div>
+        {visibleProjects?.length === 0 ? (
+          <Empty className="min-h-[60vh]" data-testid="projects-kind-empty">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <LayoutGrid />
+              </EmptyMedia>
+              <EmptyTitle>
+                {t("workspace:projects.filteredEmptyTitle")}
+              </EmptyTitle>
+              <EmptyDescription>
+                {t("workspace:projects.filteredEmptyDescription")}
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button
+                variant="outline"
+                onClick={() => setKindFilter(undefined)}
               >
-                {orderedProjects?.map((project) => {
-                  if (!project?.id || !project.statistics) return null;
+                {t("workspace:projects.showAllKinds")}
+              </Button>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() =>
+              document.body.classList.remove("taskdesk-dragging")
+            }
+          >
+            <Table data-testid="g13-projects-content">
+              <TableHeader className="p-4">
+                <TableRow>
+                  <TableHead className="text-foreground font-medium">
+                    {t("workspace:projects.title")}
+                  </TableHead>
+                  <TableHead className="text-foreground font-medium">
+                    {t("workspace:projects.progress")}
+                  </TableHead>
+                  <TableHead className="text-foreground font-medium">
+                    {t("workspace:projects.dueDate")}
+                  </TableHead>
+                  <TableHead className="text-foreground font-medium">
+                    {t("workspace:projects.status")}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <SortableContext
+                  items={visibleProjects?.map((project) => project.id) ?? []}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {visibleProjects?.map((project) => {
+                    if (!project?.id || !project.statistics) return null;
 
-                  const IconComponent =
-                    icons[project.icon as keyof typeof icons] || icons.Layout;
+                    const IconComponent =
+                      icons[project.icon as keyof typeof icons] || icons.Layout;
 
-                  const getStatusText = () => {
-                    if (project.statistics.totalTasks === 0)
-                      return t("workspace:projects.projectStatus.notStarted");
-                    if (project.statistics.completionPercentage === 100)
-                      return t("workspace:projects.projectStatus.complete");
-                    return t("workspace:projects.projectStatus.inProgress");
-                  };
+                    const getStatusText = () => {
+                      if (project.statistics.totalTasks === 0)
+                        return t("workspace:projects.projectStatus.notStarted");
+                      if (project.statistics.completionPercentage === 100)
+                        return t("workspace:projects.projectStatus.complete");
+                      return t("workspace:projects.projectStatus.inProgress");
+                    };
 
-                  const getStatusVariant = () => {
-                    if (project.statistics.totalTasks === 0) return "secondary";
-                    if (project.statistics.completionPercentage === 100)
-                      return "default";
-                    return "outline";
-                  };
+                    const getStatusVariant = () => {
+                      if (project.statistics.totalTasks === 0)
+                        return "secondary";
+                      if (project.statistics.completionPercentage === 100)
+                        return "default";
+                      return "outline";
+                    };
 
-                  return (
-                    <SortableProjectRow
-                      key={project.id}
-                      id={project.id}
-                      canReorder={canReorder}
-                      onClick={() => handleProjectClick(project.slug)}
-                    >
-                      <TableCell className="py-3">
-                        <div className="flex items-center gap-3">
-                          <IconComponent className="w-5 h-5 text-muted-foreground" />
-                          <span className="font-medium">{project.name}</span>
-                          {project.parentId &&
-                            projectNameById.has(project.parentId) && (
+                    return (
+                      <SortableProjectRow
+                        key={project.id}
+                        id={project.id}
+                        canReorder={canReorder}
+                        onClick={() => handleProjectClick(project.slug)}
+                      >
+                        <TableCell className="py-3">
+                          <div className="flex items-center gap-3">
+                            <IconComponent className="w-5 h-5 text-muted-foreground" />
+                            <span className="font-medium">{project.name}</span>
+                            {project.kind === "managed_service" ? (
                               <Badge
-                                variant="outline"
-                                data-testid="project-parent-badge"
+                                variant="secondary"
+                                data-testid="project-kind-badge"
                               >
-                                {t("workspace:projects.inParent", {
-                                  name: projectNameById.get(project.parentId),
-                                })}
+                                {t("workspace:projects.managedServiceBadge")}
                               </Badge>
-                            )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2">
-                            <Progress
-                              value={project.statistics.completionPercentage}
-                              className="w-16 h-2"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              {project.statistics.completionPercentage}%
-                            </span>
+                            ) : null}
+                            {project.parentId &&
+                              projectNameById.has(project.parentId) && (
+                                <Badge
+                                  variant="outline"
+                                  data-testid="project-parent-badge"
+                                >
+                                  {t("workspace:projects.inParent", {
+                                    name: projectNameById.get(project.parentId),
+                                  })}
+                                </Badge>
+                              )}
                           </div>
-                          {project.descendantStatistics ? (
-                            <div
-                              className="flex items-center gap-2"
-                              data-testid="project-visible-tree-progress"
-                            >
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
                               <Progress
-                                aria-label={t(
-                                  "workspace:projects.visibleTreeStatistics",
-                                  { defaultValue: "Visible project tree" },
-                                )}
-                                value={
-                                  project.descendantStatistics
-                                    .completionPercentage
-                                }
+                                value={project.statistics.completionPercentage}
                                 className="w-16 h-2"
                               />
-                              <span className="text-xs text-muted-foreground">
-                                {t("workspace:projects.visibleTreeStatistics", {
-                                  defaultValue: "Visible project tree",
-                                })}
-                                {": "}
-                                {
-                                  project.descendantStatistics
-                                    .completionPercentage
-                                }
-                                %{" · "}
-                                {project.descendantStatistics.totalTasks}
+                              <span className="text-sm text-muted-foreground">
+                                {project.statistics.completionPercentage}%
                               </span>
                             </div>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <span className="text-sm text-muted-foreground">
-                          {project.statistics.dueDate
-                            ? formatDateMedium(project.statistics.dueDate)
-                            : t("workspace:projects.noDueDate")}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <Badge variant={getStatusVariant()}>
-                          {getStatusText()}
-                        </Badge>
-                      </TableCell>
-                    </SortableProjectRow>
-                  );
-                })}
-              </SortableContext>
-            </TableBody>
-          </Table>
-        </DndContext>
+                            {project.descendantStatistics ? (
+                              <div
+                                className="flex items-center gap-2"
+                                data-testid="project-visible-tree-progress"
+                              >
+                                <Progress
+                                  aria-label={t(
+                                    "workspace:projects.visibleTreeStatistics",
+                                    { defaultValue: "Visible project tree" },
+                                  )}
+                                  value={
+                                    project.descendantStatistics
+                                      .completionPercentage
+                                  }
+                                  className="w-16 h-2"
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {t(
+                                    "workspace:projects.visibleTreeStatistics",
+                                    {
+                                      defaultValue: "Visible project tree",
+                                    },
+                                  )}
+                                  {": "}
+                                  {
+                                    project.descendantStatistics
+                                      .completionPercentage
+                                  }
+                                  %{" · "}
+                                  {project.descendantStatistics.totalTasks}
+                                </span>
+                              </div>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <span className="text-sm text-muted-foreground">
+                            {project.statistics.dueDate
+                              ? formatDateMedium(project.statistics.dueDate)
+                              : t("workspace:projects.noDueDate")}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <Badge variant={getStatusVariant()}>
+                            {getStatusText()}
+                          </Badge>
+                        </TableCell>
+                      </SortableProjectRow>
+                    );
+                  })}
+                </SortableContext>
+              </TableBody>
+            </Table>
+          </DndContext>
+        )}
         <PageTitle title={t("workspace:projects.pageTitle")} />
       </WorkspaceLayout>
 

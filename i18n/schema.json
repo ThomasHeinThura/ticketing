@@ -557,6 +557,63 @@
 								},
 								"organisationHint": {
 									"type": "string"
+								},
+								"kindLabel": {
+									"type": "string"
+								},
+								"kindDelivery": {
+									"type": "string"
+								},
+								"kindDeliveryHint": {
+									"type": "string"
+								},
+								"kindManaged": {
+									"type": "string"
+								},
+								"kindManagedHint": {
+									"type": "string"
+								},
+								"supportLevelLabel": {
+									"type": "string"
+								},
+								"supportLevelPlaceholder": {
+									"type": "string"
+								},
+								"supportLevelOption": {
+									"type": "string"
+								},
+								"calendarLabel": {
+									"type": "string"
+								},
+								"calendarInherit": {
+									"type": "string"
+								},
+								"calendarInheritNamed": {
+									"type": "string"
+								},
+								"calendarHint": {
+									"type": "string"
+								},
+								"calendarNoDefault": {
+									"type": "string"
+								},
+								"calendarNoneAvailable": {
+									"type": "string"
+								},
+								"calendarsLoading": {
+									"type": "string"
+								},
+								"calendarsError": {
+									"type": "string"
+								},
+								"calendarsRetry": {
+									"type": "string"
+								},
+								"managedServiceIncomplete": {
+									"type": "string"
+								},
+								"calendarInvalid": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -579,7 +636,26 @@
 								"organisationRetry",
 								"organisationEmpty",
 								"organisationNone",
-								"organisationHint"
+								"organisationHint",
+								"kindLabel",
+								"kindDelivery",
+								"kindDeliveryHint",
+								"kindManaged",
+								"kindManagedHint",
+								"supportLevelLabel",
+								"supportLevelPlaceholder",
+								"supportLevelOption",
+								"calendarLabel",
+								"calendarInherit",
+								"calendarInheritNamed",
+								"calendarHint",
+								"calendarNoDefault",
+								"calendarNoneAvailable",
+								"calendarsLoading",
+								"calendarsError",
+								"calendarsRetry",
+								"managedServiceIncomplete",
+								"calendarInvalid"
 							]
 						},
 						"createWorkspace": {
@@ -12034,6 +12110,30 @@
 						},
 						"visibleTreeDueDate": {
 							"type": "string"
+						},
+						"kindFilterLabel": {
+							"type": "string"
+						},
+						"kindAll": {
+							"type": "string"
+						},
+						"kindProject": {
+							"type": "string"
+						},
+						"kindManagedService": {
+							"type": "string"
+						},
+						"managedServiceBadge": {
+							"type": "string"
+						},
+						"filteredEmptyTitle": {
+							"type": "string"
+						},
+						"filteredEmptyDescription": {
+							"type": "string"
+						},
+						"showAllKinds": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12061,7 +12161,15 @@
 						"deletedEmptyTitle",
 						"deletedEmptyDescription",
 						"visibleTreeStatistics",
-						"visibleTreeDueDate"
+						"visibleTreeDueDate",
+						"kindFilterLabel",
+						"kindAll",
+						"kindProject",
+						"kindManagedService",
+						"managedServiceBadge",
+						"filteredEmptyTitle",
+						"filteredEmptyDescription",
+						"showAllKinds"
 					]
 				},
 				"search": {
@@ -29313,9 +29421,6 @@
 								"title": {
 									"type": "string"
 								},
-								"description": {
-									"type": "string"
-								},
 								"new": {
 									"type": "string"
 								},
@@ -29375,11 +29480,16 @@
 								},
 								"openChanges_other": {
 									"type": "string"
+								},
+								"catalogueDescription": {
+									"type": "string"
+								},
+								"createManagedService": {
+									"type": "string"
 								}
 							},
 							"required": [
 								"title",
-								"description",
 								"new",
 								"search",
 								"searchLabel",
@@ -29387,7 +29497,9 @@
 								"noMatch",
 								"emptyTitle",
 								"emptyDescription",
-								"noOwner"
+								"noOwner",
+								"catalogueDescription",
+								"createManagedService"
 							]
 						},
 						"create": {
@@ -29646,6 +29758,9 @@
 										},
 										"remove": {
 											"type": "string"
+										},
+										"openProject": {
+											"type": "string"
 										}
 									},
 									"required": [
@@ -29659,7 +29774,8 @@
 										"target",
 										"choose",
 										"add",
-										"remove"
+										"remove",
+										"openProject"
 									]
 								},
 								"checklist": {

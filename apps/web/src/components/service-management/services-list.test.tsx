@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 
@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
     refetch: vi.fn(),
   },
   status: { data: undefined as unknown },
+  canCreateProjects: true,
+  modalProps: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -43,6 +45,17 @@ vi.mock("@/hooks/queries/service-management", () => ({
   useServices: () => mocks.services,
   isFeatureDisabled: (error: unknown) =>
     error instanceof HttpError && error.status === 409,
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canBindProjectOrganisation: () => mocks.canCreateProjects,
+  }),
+}));
+vi.mock("@/components/shared/modals/create-project-modal", () => ({
+  default: (props: { open: boolean; defaultKind?: string }) => {
+    mocks.modalProps(props);
+    return props.open ? <div data-testid="create-project-modal" /> : null;
+  },
 }));
 vi.mock("@/fetchers/service-management", () => ({
   SUPPORT_LEVELS: ["L1", "L2", "L3"],
@@ -76,7 +89,11 @@ function setup(
   );
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  mocks.canCreateProjects = true;
+  mocks.modalProps.mockClear();
+});
 
 const service = (overrides: Record<string, unknown> = {}) => ({
   id: "s1",
@@ -133,5 +150,33 @@ describe("ServicesList", () => {
     setup({ isError: true, error: new HttpError(500, "boom") });
     expect(screen.getByText("common.loadErrorTitle")).toBeTruthy();
     expect(screen.getByRole("button", { name: /common.retry/u })).toBeTruthy();
+  });
+
+  it("explains that the catalogue is not where customers are supported", () => {
+    setup({ data: [] });
+    expect(screen.getByText("services.list.catalogueDescription")).toBeTruthy();
+  });
+
+  it("opens the create-project modal preset to a managed service (S5)", async () => {
+    setup({ data: [service()] }, { canManageServices: false });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "services.list.createManagedService",
+      }),
+    );
+    expect(await screen.findByTestId("create-project-modal")).toBeTruthy();
+    expect(mocks.modalProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ open: true, defaultKind: "managed_service" }),
+    );
+  });
+
+  it("hides the managed-service action without project:create", () => {
+    mocks.canCreateProjects = false;
+    setup({ data: [service()] });
+    expect(
+      screen.queryByRole("button", {
+        name: "services.list.createManagedService",
+      }),
+    ).toBeNull();
   });
 });
