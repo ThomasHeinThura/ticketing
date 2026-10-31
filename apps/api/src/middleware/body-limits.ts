@@ -259,6 +259,14 @@ export async function apiBodyLimitMiddleware(c: Context, next: Next) {
 
   const raw = c.req.raw;
   const incoming = unreadIncoming(c);
+  // HTTP/1.1: a request with neither Content-Length nor Transfer-Encoding has no body. Leave it
+  // alone, which also keeps methods `Request` refuses to construct (TRACE) working as before.
+  if (
+    incoming &&
+    declared === undefined &&
+    c.req.header("transfer-encoding") === undefined
+  )
+    return next();
   let source: ReadableStream<Uint8Array>;
   if (incoming) source = incomingBody(incoming);
   else {

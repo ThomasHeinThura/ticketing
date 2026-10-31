@@ -69,6 +69,8 @@ function buildApp() {
       key: (JSON.parse(first) as { key: string }).key,
     });
   });
+  // A body-less method Request cannot construct (TRACE) and a body-less DELETE.
+  app.on(["TRACE", "DELETE"], "/api/nobody", (c) => c.json({ ok: true }));
   return app;
 }
 
@@ -130,7 +132,27 @@ function send(path: string, body: Buffer, chunked: boolean) {
   });
 }
 
+/** Sends a request with neither Content-Length nor Transfer-Encoding (no body under HTTP/1.1). */
+function sendBodyless(method: string, path: string) {
+  return new Promise<number>((resolve, reject) => {
+    const req = httpRequest(
+      { host: "127.0.0.1", port, path, method },
+      (res) => {
+        res.resume();
+        res.on("end", () => resolve(res.statusCode ?? 0));
+      },
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
 describe("issue #704: body limit at a real @hono/node-server socket", () => {
+  it("passes requests that carry no body (no length, not chunked) through untouched", async () => {
+    expect(await sendBodyless("TRACE", "/api/nobody")).not.toBe(500);
+    expect(await sendBodyless("DELETE", "/api/nobody")).toBe(200);
+  });
+
   it("never reads the body of a request refused before reading, with a Content-Length", async () => {
     didRead.length = 0;
     const response = await send("/api/guarded", Buffer.alloc(MIB, 97), false);
