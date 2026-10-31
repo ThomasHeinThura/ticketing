@@ -166,6 +166,42 @@ describe("useWorkspacePermission", () => {
     });
   });
 
+  it("reads the active workspace's capabilities once when the shell and a target-scoped caller ask together", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap({ createTasks: true }),
+    });
+
+    const { result } = renderHook(
+      () => ({
+        shell: useWorkspacePermission(),
+        target: useWorkspacePermission("workspace-1"),
+        project: useWorkspacePermission("workspace-1", "project-1"),
+      }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.shell.isCheckingPermissions).toBe(false);
+      expect(result.current.target.isCheckingPermissions).toBe(false);
+      expect(result.current.project.isCheckingPermissions).toBe(false);
+    });
+    // One workspace-wide read is shared; the project-scoped read stays its own request.
+    expect(capabilitiesGet).toHaveBeenCalledTimes(2);
+    expect(capabilitiesGet).toHaveBeenCalledWith({
+      query: { workspaceId: "workspace-1" },
+    });
+    expect(capabilitiesGet).toHaveBeenCalledWith({
+      query: { workspaceId: "workspace-1", projectId: "project-1" },
+    });
+    expect(result.current.target.canCreateTasks()).toBe(true);
+    // A target-scoped caller still reports no active-workspace role or member.
+    expect(result.current.target.role).toBeUndefined();
+    expect(result.current.target.member).toBeUndefined();
+    expect(result.current.target.workspace).toBeUndefined();
+    expect(result.current.shell.role).toBe("member");
+  });
+
   it("keeps target-scoped capabilities bound to the item's workspace", async () => {
     activeWorkspaceId.value = "active-workspace-A";
     capabilitiesGet.mockResolvedValue({
