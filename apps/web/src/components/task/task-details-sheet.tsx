@@ -1,5 +1,12 @@
 import { Sheet, SheetContent } from "@taskdesk/ui";
-import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import {
+  type ComponentProps,
+  lazy,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   TaskDetailsSkeleton,
@@ -41,11 +48,14 @@ export function TaskDetailsSheetFrame({
   onClose,
   children,
   ariaLabel,
+  finalFocus,
 }: {
   itemId: string | undefined;
   onClose: () => void;
   children: (visibleItemId: string) => ReactNode;
   ariaLabel?: string;
+  /** Where focus goes on close when the sheet was opened from URL state, not a trigger. */
+  finalFocus?: ComponentProps<typeof SheetContent>["finalFocus"];
 }) {
   const { t } = useTranslation();
   const [currentItemId, setCurrentItemId] = useState<string | undefined>(
@@ -74,6 +84,7 @@ export function TaskDetailsSheetFrame({
         className="w-full max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl p-0 gap-0 [&>button]:hidden"
         closeLabel={t("common:actions.close")}
         aria-label={ariaLabel}
+        finalFocus={finalFocus}
       >
         {visibleItemId ? children(visibleItemId) : null}
       </SheetContent>

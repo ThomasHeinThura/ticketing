@@ -81,12 +81,26 @@ export function useWorkspacePermission(
   targetProjectId?: string,
 ) {
   const { data: activeWorkspace } = useActiveWorkspace();
-  const { data: activeMember } = useGetActiveWorkspaceUser();
+  const { data: activeMember, isLoading: isActiveMemberLoading } =
+    useGetActiveWorkspaceUser();
   const isTargetScoped = targetWorkspaceId !== undefined;
   const workspaceId = targetWorkspaceId ?? activeWorkspace?.id;
-  const role = isTargetScoped
-    ? undefined
-    : (activeMember?.role as string | undefined);
+  const activeRole = activeMember?.role as string | undefined;
+  const role = isTargetScoped ? undefined : activeRole;
+
+  // A workspace-wide target read (no project) for the active workspace is the same GET as the
+  // active-workspace read, so it shares that cache entry instead of asking twice on one screen.
+  // While the caller's membership is still being read it waits, so the two never race into
+  // separate requests. Any other target, or a project-scoped read, keeps its own entry.
+  const targetsActiveWorkspace =
+    isTargetScoped &&
+    !targetProjectId &&
+    targetWorkspaceId === activeWorkspace?.id;
+  const sharesActiveRead =
+    targetsActiveWorkspace &&
+    !isActiveMemberLoading &&
+    activeRole !== undefined;
+  const awaitsActiveRead = targetsActiveWorkspace && isActiveMemberLoading;
 
   // One query per (workspaceId, role) that replaces all 16 round trips with
   // a single GET /api/capabilities call. Refetches when either changes,
@@ -101,15 +115,19 @@ export function useWorkspacePermission(
     isLoading,
     isFetching,
   } = useQuery({
-    queryKey: isTargetScoped
-      ? [
-          "workspace-capabilities",
-          workspaceId,
-          "work-item-target",
-          ...(targetProjectId ? [targetProjectId] : []),
-        ]
-      : ["workspace-capabilities", workspaceId, role],
-    enabled: Boolean(workspaceId && (isTargetScoped || role)),
+    queryKey: sharesActiveRead
+      ? ["workspace-capabilities", workspaceId, activeRole]
+      : isTargetScoped
+        ? [
+            "workspace-capabilities",
+            workspaceId,
+            "work-item-target",
+            ...(targetProjectId ? [targetProjectId] : []),
+          ]
+        : ["workspace-capabilities", workspaceId, role],
+    enabled: Boolean(
+      workspaceId && (isTargetScoped ? !awaitsActiveRead : role),
+    ),
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<CapabilityMap> => {
       const response = await client.capabilities.$get({

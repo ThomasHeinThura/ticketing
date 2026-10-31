@@ -10,6 +10,12 @@ import {
 } from "./_authenticated";
 
 const getSession = vi.fn();
+const { primeCsrfToken } = vi.hoisted(() => ({ primeCsrfToken: vi.fn() }));
+
+vi.mock("@taskdesk/libs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@taskdesk/libs")>()),
+  primeCsrfToken,
+}));
 
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
@@ -46,6 +52,7 @@ function buildRealLocation(pathname: string, rawSearch: string, hash: string) {
 describe("_authenticated route beforeLoad", () => {
   beforeEach(() => {
     getSession.mockReset();
+    primeCsrfToken.mockReset();
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -71,8 +78,11 @@ describe("_authenticated route beforeLoad", () => {
     } as Parameters<typeof beforeLoad>[0]);
 
     expect(fetch).toHaveBeenCalledTimes(1);
+    expect(primeCsrfToken).not.toHaveBeenCalled();
     resolveSession({ data: {}, error: null });
     await expect(result).resolves.toEqual({ session: {}, sessionError: false });
+    // The signed-in shell primes the session CSRF token alongside its first reads.
+    expect(primeCsrfToken).toHaveBeenCalledTimes(1);
   });
 
   it("retries one factor 401 after session resolution before enforcing enrollment", async () => {
@@ -256,6 +266,8 @@ describe("_authenticated route beforeLoad", () => {
 
       expect(thrown).toBeInstanceOf(Response);
       expect(getSession).toHaveBeenCalledTimes(1);
+      // A signed-out visitor never asks the agent CSRF issuer.
+      expect(primeCsrfToken).not.toHaveBeenCalled();
     });
   });
 });

@@ -70,6 +70,10 @@ describe("P0 host and static isolation", () => {
       join(portalRoot, "assets", "only-portal.js"),
       "PORTAL ASSET MARKER",
     );
+    writeFileSync(
+      join(portalRoot, "assets", "portal-shell-Q1w2E3r4.js"),
+      "PORTAL HASHED ASSET MARKER",
+    );
   });
 
   afterAll(() => {
@@ -110,6 +114,33 @@ describe("P0 host and static isolation", () => {
       expect(head.status).toBe(200);
       expect(await head.text()).toBe("");
     }
+  });
+
+  it("caches the portal's content-hashed assets as immutable and keeps its shell no-store", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    const headers = { host: "portal.localhost:5174" };
+    const asset = await app.request("/assets/portal-shell-Q1w2E3r4.js", {
+      headers,
+    });
+    expect(asset.status).toBe(200);
+    expect(asset.headers.get("cache-control")).toBe(
+      "public, max-age=31536000, immutable",
+    );
+    const unhashed = await app.request("/assets/only-portal.js", { headers });
+    expect(unhashed.status).toBe(200);
+    expect(unhashed.headers.get("cache-control") ?? "").not.toContain(
+      "immutable",
+    );
+    const foreign = await app.request("/assets/portal-shell-Q1w2E3r4.js", {
+      headers: { host: "localhost:5173" },
+    });
+    expect(foreign.status).toBe(404);
+    expect(foreign.headers.get("cache-control") ?? "").not.toContain(
+      "immutable",
+    );
   });
 
   it("serves the portal app with the feature-off marker while feature.customer_portal is off or unreadable (P3-R2-03, P4R2-L1)", async () => {

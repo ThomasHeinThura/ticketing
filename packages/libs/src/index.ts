@@ -1,5 +1,12 @@
 export { resolveApiBaseUrl } from "./api-url";
-export { apiFetch, client, createApiFetch, windowId } from "./hono";
+export type { ApiFetch } from "./hono";
+export {
+  apiFetch,
+  client,
+  createApiFetch,
+  primeCsrfToken,
+  windowId,
+} from "./hono";
 export type {
   ScimAdministrationDto,
   ScimAdministrationRequest,

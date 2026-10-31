@@ -3,19 +3,31 @@
 **Direction (Thomas, 28 Oct 2026):** phases ended after P6. P0–P6 are implemented, independently AI-reviewed and accepted by Thomas (27 Oct, with open lows) and merged to `main` (28 Oct). All further work is one ordered backlog of fixes, bugs and features, worked top to bottom under [AGENTS.md](../AGENTS.md). Original Kaneo (`42bb8011`) stays the interface; real persisted data only; status counts come from the requirement index and evidence, never invented percentages. Progress is shown in the [report](report/report.html) and [status](status.md).
 
 <a id="uat-week-plan-30-oct--6-nov-2026"></a>
-**UAT week plan (Thomas, 30 Oct 2026) overrides the 29 Oct order.** UAT launches on Friday 6 Nov on the Technexus hosts. Every merge runs the release chain in the [handover](handover.md): signed image → local SIT (Docker Desktop) → smoke → Technexus. Whatever is finished deploys first. G11 stays report-only; every other required check must pass.
+**UAT week plan (Thomas, 30 Oct 2026; re-planned 31 Oct after Thomas's UAT feedback).** UAT launches on Friday 6 Nov on the Technexus hosts. Every merge runs the release chain in the [handover](handover.md): signed image → local SIT (Docker Desktop) → smoke → Technexus. Whatever is finished deploys first. G11 stays report-only; every other required check must pass.
 
-| Day | Work |
-| --- | --- |
-| Fri 30 Oct | Prove the chain with `main` (done), fix fresh-install deploy (#993), docs, finish the library Button change |
-| Sat 31 Oct | One-command release smoke suite (persisted journeys: sign-in, work items, board/list, task detail, service desk, portal, KB, settings; owner/member/customer). Extend the native-UI check (library date/checkbox inputs, interactive `title=`) and fix every hit |
-| Sun 1 – Mon 2 Nov | **L-03 settings split** (account, project, workspace menus; God Mode URL and sign-in; old-link redirects) |
-| Tue 3 Nov | UAT blockers: backup/restore rehearsal on a copy; user-reachable L-09 items (#231/#232, #704); lows (KB date timezone, untranslated keys, holiday error) |
-| Wed 4 Nov | **L-04 editor first slice** (slash menu, headings, lists, tables, code, links, autosave) |
-| Thu 5 Nov | UAT readiness: runtime configuration (no seeder on Technexus), identity-provider callback, full browser sweep across roles, widths and themes; L-05 at most half a day |
-| Fri 6 Nov | UAT launch; buffer |
+**Done 30–31 Oct:**
+- **Fresh installs.** Both environments were wiped (backups first) and freshly installed on 31 Oct: local SIT with the SIT seed; Technexus through first-run setup plus the UAT seed (#1008, #1009).
+- **Earlier slices.** L-03 settings split, L-04 editor first slice, #704 body limits, release smoke.
+- **Full audit (31 Oct).** Eight lenses, each high/medium finding independently reproduced: 61 confirmed findings (A-01…A-61). Every code gate passes on `main`.
 
-After launch, as UAT updates: rest of L-04, L-05, L-02, #918/#920, L-06, L-07, L-11 and the full regression suite.
+**Fix order before UAT (Thomas's feedback first):**
+
+| # | Item | Done when |
+| --- | --- | --- |
+| U-1 | Sidebar highlight follows the URL (stale "Saved views" highlight) | Highlight correct on every agent route after navigation and reload |
+| U-2 | Triage opens the submission in a side panel with URL state, not inline under the table | Panel opens from the queue and deep link; keyboard works |
+| U-3 | **Project Overview tab**, first, before Backlog; opening a project lands on it. It is v1-engagement style and serves both delivery projects and managed services. **Content:** health, status, work complete, blocking prerequisites, contract and hour bank, service levels, milestones, objective/scope/success criteria; Prerequisites, Team, Documents and Timeline | Both project kinds show it with real persisted data; old links keep working |
+| U-4 | **Customer portal redesign** modelled on the WSO2 (ServiceNow) support portal. **Content:** project selector, dashboard KPI cards (action required, outstanding, closed 30 d, average response), cases table (my/all, filters), projects list, Project Details (subscription, account manager, service hours), Updates/Announcements, Get Help | Contoso and Fabrikam customers each see only their own data; browser-verified per width and theme |
+| U-5 | Service management explains itself; create a managed service | An admin can create a managed service and reach its Overview |
+| U-6 | Customer sign-in methods settable in God Mode (A-14) | Fresh install lets an instance admin enable customer password/OTP/magic-link sign-in; audited |
+| U-7 | Speed on the small UAT VM | Main screens measured before/after; G11 budgets unchanged |
+| U-8 | **Audit fixes, highs and core-journey mediums.** **High:** A-01 (customer notifications missing in the portal). **Medium:** A-03 (portal replies), A-04 and A-06 (controls offered to roles that cannot use them), A-05 (wrong-portal sign-in), A-07 and A-08 (sharing files with customers), A-09 (inbox click), A-10 (time-tracking override), A-12 and A-17 (raw labels), A-20–A-24 (mobile/tablet layouts) | Each fixed with tests and browser evidence |
+| U-9 | Release, redeploy both environments, rerun the full audit and browser tests | Audit clean of highs/mediums in the touched areas |
+| U-10 | Hand Thomas credentials and a test checklist for final human verification | Thomas signs off |
+
+**Decided 31 Oct (Thomas):** Technexus stays open for self-registration during UAT (A-15 accepted for UAT). There is no email provider for UAT (A-02); testers use seeded passwords.
+
+**After UAT:** God Mode completeness (A-29–A-34: health checks, branding, general settings, session/password policy, storage, config export), remaining lows, rest of L-04, L-05, L-02, #918/#920, L-06, L-07, L-11 and the full regression suite.
 
 ## Linear backlog
 

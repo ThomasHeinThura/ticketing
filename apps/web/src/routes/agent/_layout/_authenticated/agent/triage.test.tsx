@@ -109,7 +109,7 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 const REAL_ENGLISH_KEYS =
-  /^(statusFilter|states\..+|attachmentStates\..+|submissionRegion|submissionFallback|loadingDetails|destinationProject|chooseProject|workItemType|chooseWorkItemType|download|ageSuffix\..+|errors\..+|actorTypes\..+|systemReasons\..+|reference|summary|requestType|organisation|submittedAt)$/u;
+  /^(status|statusFilter|states\..+|attachmentStates\..+|submissionRegion|submissionFallback|loadingDetails|destinationProject|chooseProject|workItemType|chooseWorkItemType|download|ageSuffix\..+|errors\..+|actorTypes\..+|systemReasons\..+|reference|summary|requestType|organisation|submittedAt|convertedWorkItem|claimedAt|defaultFromRequestType|convertHeading)$/u;
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (
@@ -467,30 +467,80 @@ describe("intake triage route", () => {
     mocks.getDuplicateSuggestions.mockResolvedValue({ suggestions: [] });
     renderTriage();
 
+    // The open submission's modal sheet hides the page behind it from the accessibility tree.
+    await screen.findByRole("dialog", { name: "Submission SUB-7" });
     const filter = screen.getByRole("button", {
       name: "Submission status filter",
+      hidden: true,
     });
     expect(filter).toHaveTextContent("Status: New");
-    fireEvent.click(filter);
+    const row = await screen.findByRole("button", {
+      name: /SUB-7/u,
+      hidden: true,
+    });
+    expect(row).toHaveAttribute("aria-current", "true");
+    expect(row.closest("tr")).toHaveAttribute("data-state", "selected");
+    const table = screen.getByRole("table", { name: "title", hidden: true });
     expect(
-      await screen.findByRole("menuitemcheckbox", { name: "New" }),
+      within(table).getByRole("columnheader", {
+        name: "Summary",
+        hidden: true,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getByRole("cell", { name: "A new request", hidden: true }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the open submission when the status filter changes", async () => {
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [],
+      page: { hasMore: false, nextCursor: null },
+    });
+    mocks.search = { state: "new", ref: "SUB-7" };
+    mocks.getSubmission.mockResolvedValue(detail("new", null));
+    mocks.getSubmissionAttachments.mockResolvedValue([]);
+    mocks.getDuplicateSuggestions.mockResolvedValue({ suggestions: [] });
+    renderTriage();
+    await screen.findByRole("dialog", { name: "Submission SUB-7" });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Submission status filter",
+        hidden: true,
+      }),
+    );
+    expect(
+      await screen.findByRole("menuitemcheckbox", {
+        name: "New",
+        hidden: true,
+      }),
     ).toHaveAttribute("aria-checked", "true");
-    const accepted = screen.getByRole("menuitemcheckbox", { name: "Accepted" });
+    const accepted = screen.getByRole("menuitemcheckbox", {
+      name: "Accepted",
+      hidden: true,
+    });
     expect(accepted).toHaveAttribute("aria-checked", "false");
     fireEvent.click(accepted);
     expect(mocks.navigate).toHaveBeenCalledWith({
       search: { state: "accepted", ref: "SUB-7", cursor: undefined },
     });
-    const row = await screen.findByRole("button", { name: /SUB-7/u });
-    expect(row).toHaveAttribute("aria-current", "true");
-    expect(row.closest("tr")).toHaveAttribute("data-state", "selected");
-    const table = screen.getByRole("table", { name: "title" });
+  });
+
+  it("opens the same submission sheet over a saved queue", async () => {
+    mocks.search = { queue: "queue-pair-17", ref: "SUB-7" };
+    mocks.getSubmission.mockReset().mockResolvedValue(detail("new", null));
+    mocks.getSubmissionAttachments.mockResolvedValue([]);
+    mocks.getDuplicateSuggestions.mockResolvedValue({ suggestions: [] });
+    renderTriage();
+    const sheet = await screen.findByRole("dialog", {
+      name: "Submission SUB-7",
+    });
+    expect(screen.getByTestId("saved-queue-panel")).toBeInTheDocument();
+    expect(mocks.queuePanelProps).toMatchObject({ selectedRef: "SUB-7" });
     expect(
-      within(table).getByRole("columnheader", { name: "Summary" }),
+      await within(sheet).findByRole("heading", { name: "Access request" }),
     ).toBeVisible();
-    expect(
-      within(table).getByRole("cell", { name: "A new request" }),
-    ).toBeVisible();
+    expect(mocks.getSubmission).toHaveBeenCalledWith("SUB-7");
   });
 
   it("shows the work item type name instead of its id, and claim feedback with focus", async () => {
@@ -510,7 +560,7 @@ describe("intake triage route", () => {
     renderTriage();
 
     expect(
-      await screen.findByText("Prefilled from request type: Service request"),
+      await screen.findByText("Request type default: Service request"),
     ).toBeVisible();
     expect(screen.queryByText(/type-opaque-id/u)).not.toBeInTheDocument();
 
@@ -541,10 +591,71 @@ describe("intake triage route", () => {
     fireEvent.click(await screen.findByRole("button", { name: "accept" }));
     expect(
       await screen.findByText(
-        "Converted work item: WI-12 · Need account access",
+        "Converted Work item: WI-12 · Need account access",
       ),
     ).toBeVisible();
     expect(screen.queryByText(/raw-work-item-id/u)).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("status")),
+    );
+  });
+
+  it("announces the declined state in the status region and moves focus there after Decline", async () => {
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [],
+      page: { hasMore: false, nextCursor: null },
+    });
+    mocks.search = { state: "new", ref: "SUB-7" };
+    mocks.getSubmission
+      .mockReset()
+      .mockResolvedValueOnce(detail("new", null))
+      .mockResolvedValue(detail("declined", null));
+    mocks.getSubmissionAttachments.mockResolvedValue([]);
+    mocks.getDuplicateSuggestions.mockResolvedValue({ suggestions: [] });
+    mocks.declineSubmission.mockReset().mockResolvedValue({});
+    renderTriage();
+
+    const reason = await screen.findByLabelText("declineReason");
+    expect(screen.getByRole("status")).toHaveTextContent("Status: New");
+    fireEvent.change(reason, { target: { value: "Out of scope" } });
+    const declineButton = screen.getByRole("button", { name: "decline" });
+    declineButton.focus();
+    fireEvent.click(declineButton);
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Status: Declined"),
+    );
+    expect(screen.queryByLabelText("declineReason")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("status")),
+    );
+  });
+
+  it("announces the clarifying state in the status region and moves focus there after a question", async () => {
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [],
+      page: { hasMore: false, nextCursor: null },
+    });
+    mocks.search = { state: "new", ref: "SUB-7" };
+    mocks.getSubmission
+      .mockReset()
+      .mockResolvedValueOnce(detail("new", null))
+      .mockResolvedValue(detail("clarifying", null));
+    mocks.getSubmissionAttachments.mockResolvedValue([]);
+    mocks.getDuplicateSuggestions.mockResolvedValue({ suggestions: [] });
+    mocks.askClarification.mockReset().mockResolvedValue({});
+    renderTriage();
+
+    fireEvent.change(await screen.findByLabelText("clarificationMessage"), {
+      target: { value: "Which account?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "clarify" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Status: Clarifying",
+      ),
+    );
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole("status")),
     );
@@ -567,7 +678,124 @@ describe("intake triage route", () => {
       const wrapper = trigger.closest("div.flex-col") as HTMLElement;
       expect(wrapper.className).toContain("min-w-0");
       expect(wrapper.className).toContain("max-w-full");
+      // The visible label names the picker it sits above.
+      expect(
+        document.querySelector(`label[for="${trigger.id}"]`),
+      ).toHaveTextContent(name);
     }
+    const convert = screen.getByRole("region", {
+      name: "Convert to Work item",
+    });
+    expect(
+      within(convert).getByRole("button", { name: "accept" }),
+    ).toBeVisible();
+    expect(
+      within(convert).getByRole("button", { name: "claim" }),
+    ).toBeVisible();
+  });
+
+  describe("submission sheet", () => {
+    const queueRow = {
+      ref: "SUB-7",
+      summary: "A new request",
+      submission: { state: "new", createdAt: "2026-10-01T00:00:00Z" },
+      requestType: { name: "Access request" },
+      requester: { displayName: "Ada" },
+      organisation: { name: "Northstar" },
+    };
+    function openSheet(ref: string) {
+      mocks.getSubmissions.mockReset().mockResolvedValue({
+        submissions: [queueRow, { ...queueRow, ref: "SUB-8" }],
+        page: { hasMore: false, nextCursor: null },
+      });
+      mocks.search = { state: "new", ref };
+      mocks.getSubmission.mockReset().mockResolvedValue(detail("new", null));
+      mocks.getSubmissionAttachments.mockResolvedValue([]);
+      mocks.getDuplicateSuggestions.mockResolvedValue({ suggestions: [] });
+    }
+
+    it("opens from ?ref= as a labelled side sheet with the reference, request type and state", async () => {
+      openSheet("SUB-7");
+      renderTriage();
+      const sheet = await screen.findByRole("dialog", {
+        name: "Submission SUB-7",
+      });
+      expect(within(sheet).getByText("SUB-7")).toBeVisible();
+      expect(
+        await within(sheet).findByRole("heading", { name: "Access request" }),
+      ).toBeVisible();
+      expect(within(sheet).getByText("New")).toBeVisible();
+    });
+
+    it("clears ?ref= on Escape and on the close button, keeping the rest of the URL", async () => {
+      openSheet("SUB-7");
+      renderTriage();
+      const sheet = await screen.findByRole("dialog", {
+        name: "Submission SUB-7",
+      });
+      fireEvent.keyDown(sheet, { key: "Escape" });
+      await waitFor(() =>
+        expect(mocks.navigate).toHaveBeenCalledWith({
+          search: expect.objectContaining({ state: "new", ref: undefined }),
+        }),
+      );
+      mocks.navigate.mockReset();
+      fireEvent.click(
+        await within(
+          within(sheet).getByTestId("submission-detail-sheet"),
+        ).findByRole("button", { name: "common:actions.close" }),
+      );
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        search: expect.objectContaining({ state: "new", ref: undefined }),
+      });
+    });
+
+    it("returns focus to the submission's row when the sheet closes after a deep link", async () => {
+      openSheet("SUB-7");
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const tree = () => (
+        <QueryClientProvider client={queryClient}>
+          <IntakeRoute />
+        </QueryClientProvider>
+      );
+      const view = render(tree());
+      await screen.findByRole("dialog", { name: "Submission SUB-7" });
+      mocks.search = { state: "new" };
+      view.rerender(tree());
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          screen.getByRole("button", { name: "SUB-7" }),
+        ),
+      );
+    });
+
+    it("swaps the open submission in place when ?ref= changes", async () => {
+      openSheet("SUB-7");
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const tree = () => (
+        <QueryClientProvider client={queryClient}>
+          <IntakeRoute />
+        </QueryClientProvider>
+      );
+      const view = render(tree());
+      await screen.findByRole("dialog", { name: "Submission SUB-7" });
+      mocks.search = { state: "new", ref: "SUB-8" };
+      view.rerender(tree());
+      const sheet = await screen.findByRole("dialog", {
+        name: "Submission SUB-8",
+      });
+      expect(await within(sheet).findByText("SUB-8")).toBeVisible();
+      await waitFor(() =>
+        expect(mocks.getSubmission).toHaveBeenCalledWith("SUB-8"),
+      );
+    });
   });
 
   describe("P2R1 review fixes", () => {
@@ -683,6 +911,65 @@ describe("intake triage route", () => {
         ),
       ).toBeVisible();
       expect(mocks.acceptSubmission).not.toHaveBeenCalled();
+    });
+
+    it("S2: shows an Accept error inside the convert footer, next to the buttons, not in the scrolled body", async () => {
+      openDetail("SUB-7");
+      mocks.getSubmission.mockReset().mockResolvedValue({
+        ...detail("new", null),
+        version: { formSchema: { fields: [] } },
+      });
+      renderTriage();
+      fireEvent.click(await screen.findByRole("button", { name: "accept" }));
+      const footer = screen.getByRole("region", {
+        name: "Convert to Work item",
+      });
+      const alert = await within(footer).findByRole("alert");
+      expect(alert).toHaveTextContent(
+        "Choose a destination project and confirm the work item type before accepting.",
+      );
+      // The alert precedes the buttons in the footer and appears only once.
+      expect(
+        alert.compareDocumentPosition(
+          within(footer).getByRole("button", { name: "accept" }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(screen.getAllByRole("alert")).toHaveLength(1);
+    });
+
+    it("S2: keeps a lost race's error and the winner's link after the refresh closes the submission", async () => {
+      openDetail("SUB-7");
+      mocks.getSubmission
+        .mockReset()
+        .mockResolvedValueOnce(detail("new", null))
+        .mockResolvedValue(detail("accepted", null, "wi_1"));
+      mocks.acceptSubmission.mockReset().mockRejectedValue(
+        new Error(
+          JSON.stringify({
+            error: "submission_already_converted",
+            message: "Submission is no longer open",
+            workItem: { id: "wi_1", key: "ACME-9" },
+          }),
+        ),
+      );
+      renderTriage();
+      fireEvent.click(await screen.findByRole("button", { name: "accept" }));
+      // The refreshed detail is accepted, so the convert controls go away.
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("button", { name: "accept" }),
+        ).not.toBeInTheDocument(),
+      );
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(
+        /^Another triager already accepted this/u,
+      );
+      fireEvent.click(
+        within(alert).getByRole("button", { name: "Open ACME-9" }),
+      );
+      expect(mocks.navigate).toHaveBeenCalledWith(
+        expect.objectContaining({ params: { key: "ACME-9" } }),
+      );
     });
 
     it("P2R1-05 / P2R1-13: shows translated actor types and the coded system message", async () => {
