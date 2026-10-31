@@ -131,6 +131,62 @@ describe("useUserWebSocket inbox refresh", () => {
     expect(inbox).toHaveBeenCalledTimes(1);
   });
 
+  it("refreshes on first connect an inbox read before this connection started, even under 30 s old", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnMount: false } },
+    });
+    const inbox = vi.fn(async () => ({ items: [] }));
+    function Inbox() {
+      useQuery({ queryKey: ["notifications", "inbox"], queryFn: inbox });
+      useUserWebSocket();
+      return null;
+    }
+    const first = render(<Inbox />, { wrapper: wrapperFor(client) });
+    await waitFor(() => expect(inbox).toHaveBeenCalledTimes(1));
+    act(() => MockWebSocket.instances[0]?.open());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(inbox).toHaveBeenCalledTimes(1);
+    first.unmount();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    render(<Inbox />, { wrapper: wrapperFor(client) });
+    const returned = MockWebSocket.instances[1];
+    if (!returned) throw new Error("Expected the remounted user socket");
+    act(() => returned.open());
+    await waitFor(() => expect(inbox).toHaveBeenCalledTimes(2));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(inbox).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes on first connect an inbox invalidated after this connection started", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnMount: false } },
+    });
+    const inbox = vi.fn(async () => ({ items: [] }));
+    function Socket() {
+      useUserWebSocket();
+      return null;
+    }
+    function Inbox() {
+      useQuery({ queryKey: ["notifications", "inbox"], queryFn: inbox });
+      return null;
+    }
+    const view = render(<Socket />, { wrapper: wrapperFor(client) });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    // A fresh entry that a change marked as invalidated while no screen read it.
+    client.setQueryData(["notifications", "inbox"], { items: [] });
+    await client.invalidateQueries({ queryKey: ["notifications"] });
+    view.rerender(
+      <>
+        <Socket />
+        <Inbox />
+      </>,
+    );
+    expect(inbox).not.toHaveBeenCalled();
+    act(() => MockWebSocket.instances[0]?.open());
+    await waitFor(() => expect(inbox).toHaveBeenCalledTimes(1));
+  });
+
   it("refreshes the inbox when a socket that never opened is replaced", async () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },

@@ -1,4 +1,8 @@
-import { type Query, useQueryClient } from "@tanstack/react-query";
+import {
+  type Query,
+  type QueryClient,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { getApiUrl, toWebSocketBase } from "@/fetchers/get-api-url";
 import { authClient } from "@/lib/auth-client";
@@ -41,21 +45,50 @@ function refreshOnConnect(query: Query) {
 }
 
 /**
- * The first connection follows the page's own reads, so it does not ask them again. A read older
- * than the connecting poll interval (30 s) was served from cache, for example on returning to a
- * project, and may have missed changes, so the first connection refreshes it once. A read still
- * in flight, or one that has not run, is left to its own request.
+ * A read older than the connecting poll interval (30 s) is refreshed on a first connection even
+ * when no earlier connection covered its topic, for example a read made on a screen without
+ * realtime.
  */
 const FIRST_CONNECT_STALE_AFTER_MS = 30_000;
 
-function refreshOnFirstConnect(query: Query) {
-  const { dataUpdatedAt, errorUpdatedAt, fetchStatus } = query.state;
+/**
+ * When each topic last lost its last open connection, per query client. Changes to a topic are
+ * missed from that moment until a new connection subscribes, so reads made before it may be
+ * stale; reads made after it (this visit's own reads, including the route's prefetch) are not.
+ */
+type TopicCoverage = {
+  open: Map<string, number>;
+  endedAt: Map<string, number>;
+};
+const topicCoverageByClient = new WeakMap<QueryClient, TopicCoverage>();
+
+function topicCoverage(queryClient: QueryClient) {
+  let coverage = topicCoverageByClient.get(queryClient);
+  if (!coverage) {
+    coverage = { open: new Map(), endedAt: new Map() };
+    topicCoverageByClient.set(queryClient, coverage);
+  }
+  return coverage;
+}
+
+/**
+ * The first connection follows the page's own reads, so it does not ask them again. It refreshes
+ * once a read that realtime marked as changed while the screen was away (`isInvalidated`), a read
+ * made before one of its topics last lost its connection (returning to a project or item, even
+ * within seconds), and a read older than 30 s. A read still in flight is left to its own request,
+ * and one that has not run is left to the screen.
+ */
+function refreshOnFirstConnect(query: Query, coverageEndedAt: number) {
+  const { dataUpdatedAt, errorUpdatedAt, fetchStatus, isInvalidated, status } =
+    query.state;
+  if (fetchStatus === "fetching" || !refreshOnConnect(query)) return false;
+  // A failed read is always flagged invalidated by TanStack Query, so for it only its age counts.
+  if (isInvalidated && status !== "error") return true;
   const lastRead = Math.max(dataUpdatedAt, errorUpdatedAt);
   return (
     lastRead > 0 &&
-    fetchStatus !== "fetching" &&
-    Date.now() - lastRead > FIRST_CONNECT_STALE_AFTER_MS &&
-    refreshOnConnect(query)
+    (lastRead < coverageEndedAt ||
+      Date.now() - lastRead > FIRST_CONNECT_STALE_AFTER_MS)
   );
 }
 
@@ -87,6 +120,17 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       return;
     }
     const selectedTopics = topicKey.split("\u0000");
+    const coverage = topicCoverage(queryClient);
+    // The latest moment one of these topics had no open connection before this one.
+    const coverageEndedAt = Math.max(
+      0,
+      ...selectedTopics.map((topic) => coverage.endedAt.get(topic) ?? 0),
+    );
+    for (const topic of selectedTopics) {
+      coverage.open.set(topic, (coverage.open.get(topic) ?? 0) + 1);
+    }
+    const firstConnectPredicate = (query: Query) =>
+      refreshOnFirstConnect(query, coverageEndedAt);
     let hasOutage = false;
     // Set once a socket of this connection has closed: a later open (a reconnect) refreshes what
     // changed while disconnected; the first open refreshes only reads served from an old cache.
@@ -212,7 +256,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         }, 30_000);
         void queryClient.invalidateQueries({
           queryKey: ["work-items"],
-          predicate: hasDisconnected ? refreshOnConnect : refreshOnFirstConnect,
+          predicate: hasDisconnected ? refreshOnConnect : firstConnectPredicate,
         });
       };
 
@@ -229,6 +273,14 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
           if (unacknowledgedTopics.size === 0) {
             hasOutage = false;
             setStatus("available");
+            // A read that mounted between the open and the acknowledgement with a stale or
+            // invalidated cache is refreshed once; the page's fresh reads are not asked again.
+            if (!hasDisconnected) {
+              void queryClient.invalidateQueries({
+                queryKey: ["work-items"],
+                predicate: firstConnectPredicate,
+              });
+            }
           }
           return;
         }
@@ -294,6 +346,16 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
     connect();
     return () => {
       isDisposed = true;
+      const disconnectedAt = Date.now();
+      for (const topic of selectedTopics) {
+        const remaining = (coverage.open.get(topic) ?? 1) - 1;
+        if (remaining > 0) {
+          coverage.open.set(topic, remaining);
+        } else {
+          coverage.open.delete(topic);
+          coverage.endedAt.set(topic, disconnectedAt);
+        }
+      }
       stopPing();
       if (invalidationTimer) clearTimeout(invalidationTimer);
       invalidationTimer = null;

@@ -417,6 +417,38 @@ describe("TaskDesk Hono transport", () => {
     expect(tokenCount).toBe(2);
   });
 
+  it("retries once with a fresh token when the server rejects a primed token from a previous session", async () => {
+    let tokenCount = 0;
+    const mutationTokens: string[] = [];
+    const apiFetch = createApiFetch(
+      async (input, init) => {
+        const request = new Request(input, init);
+        if (request.url.endsWith("/me/csrf-token")) {
+          tokenCount += 1;
+          return tokenResponse(`token-${tokenCount}`);
+        }
+        const token = request.headers.get("x-taskdesk-csrf") ?? "none";
+        mutationTokens.push(token);
+        // The primed token belonged to the session before a sign-in change.
+        return token === "token-1"
+          ? Response.json({ message: "csrf_token_mismatch" }, { status: 403 })
+          : Response.json({ ok: true });
+      },
+      { apiBaseUrl },
+    );
+
+    apiFetch.primeCsrfToken();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const response = await apiFetch(`${apiBaseUrl}/projects`, {
+      method: "POST",
+      body: "{}",
+    });
+
+    expect(response.ok).toBe(true);
+    expect(mutationTokens).toEqual(["token-1", "token-2"]);
+    expect(tokenCount).toBe(2);
+  });
+
   it("falls back to a fresh token when the primed read failed or the primed token has expired", async () => {
     let tokenCount = 0;
     const mutationTokens: string[] = [];

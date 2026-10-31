@@ -12,21 +12,20 @@ export function getUserWsUrl() {
 const MAX_RETRIES = 5;
 const BASE_DELAY = 1000;
 const WS_PING_INTERVAL_MS = 30_000;
-/** A notification read older than this was served from cache and is refreshed on first connect. */
-const FIRST_CONNECT_STALE_AFTER_MS = 30_000;
-
 /**
- * The first connection follows the page's own inbox read, so it does not ask it again; only a
- * read served from an older cache (not in flight, not yet run) is refreshed once.
+ * The first connection follows the page's own inbox read, so it does not ask it again. It
+ * refreshes once a read that realtime marked as changed (`isInvalidated`) or one made before this
+ * connection started (served from cache, for example after the shell remounts). A read in flight,
+ * or one that has not run, is left to its own request.
  */
-function refreshOnFirstConnect(query: Query) {
-  const { dataUpdatedAt, errorUpdatedAt, fetchStatus } = query.state;
+function refreshOnFirstConnect(query: Query, connectionStartedAt: number) {
+  const { dataUpdatedAt, errorUpdatedAt, fetchStatus, isInvalidated, status } =
+    query.state;
+  if (fetchStatus === "fetching") return false;
+  // A failed read is always flagged invalidated by TanStack Query, so for it only its age counts.
+  if (isInvalidated && status !== "error") return true;
   const lastRead = Math.max(dataUpdatedAt, errorUpdatedAt);
-  return (
-    lastRead > 0 &&
-    fetchStatus !== "fetching" &&
-    Date.now() - lastRead > FIRST_CONNECT_STALE_AFTER_MS
-  );
+  return lastRead > 0 && lastRead < connectionStartedAt;
 }
 
 /**
@@ -46,6 +45,7 @@ export function useUserWebSocket() {
     if (!session?.user?.id) return;
 
     retriesRef.current = 0;
+    const connectionStartedAt = Date.now();
     // Set once a socket has closed: a reconnect refreshes notifications missed while
     // disconnected; the first open refreshes only an inbox served from an old cache.
     let hasDisconnected = false;
@@ -67,7 +67,12 @@ export function useUserWebSocket() {
         // Recover persisted notifications missed while this socket was disconnected.
         void queryClient.invalidateQueries({
           queryKey: ["notifications"],
-          ...(hasDisconnected ? {} : { predicate: refreshOnFirstConnect }),
+          ...(hasDisconnected
+            ? {}
+            : {
+                predicate: (query: Query) =>
+                  refreshOnFirstConnect(query, connectionStartedAt),
+              }),
         });
         clearPing();
         pingIntervalRef.current = setInterval(() => {
