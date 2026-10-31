@@ -9,7 +9,8 @@
 - **Open defects found by the 30 Oct audit:** the native-UI check misses library `<Input type="date|checkbox">` and interactive `title=` (portal request checkboxes still native); about 42 interactive `title=` tooltips; KB review date one day early west of UTC (`kb-badges.tsx`); 11 new strings English in all 18 locales; the generated report is still the 28 Oct one.
 - **Failing (report-only):** G11 on #992: work-list LCP 2948 ms (< 2500), list → detail 511.6 ms (< 300), assignment 201.2 ms (< 200), drag p95 33.4 ms (< 20). Budgets unchanged.
 - **Not yet verified:** signed-in journeys on Technexus, the full browser sweep across roles, widths and themes, and backup/restore rehearsal.
-- **Next:** release smoke suite and the UI-check/tooltip fixes (31 Oct), settings split L-03 (1–2 Nov), UAT blockers (3 Nov), editor first slice (4 Nov), UAT readiness (5 Nov), launch (6 Nov).
+- **L-03 settings split delivered:** #1000 (registration), #1001 (menus), #1002 (Kaneo URLs and old-link redirects), #1003 (God Mode at `/god-mode` with its own sign-in, option A), deployed through the release chain. Follow-ups: God Mode Observability menu entry and `Back to project` terminology in all locales. Open lows only, none blocking.
+- **Next:** release smoke suite and the UI-check/tooltip fixes (31 Oct), UAT blockers (3 Nov), editor first slice (4 Nov), UAT readiness (5 Nov), launch (6 Nov).
 
 ## Dated evidence and execution history
 

@@ -2028,6 +2028,7 @@
 			"backToBoard": "Назад до дошки",
 			"savedViews": "Saved views",
 			"godMode": "God Mode",
+			"observability": "Спостережуваність",
 			"inbox": "Inbox",
 			"myWork": "My work",
 			"search": "Search",
@@ -2093,7 +2094,7 @@
 			"projectsTitle": "{{term_project_other}}",
 			"settingsTitle": "Налаштування",
 			"backToWorkspace": "Повернутися до робочого простору",
-			"backToProject": "Повернутися до проєкту",
+			"backToProject": "Повернутися до розділу «{{term_project_one}}»",
 			"settingsWorkspaceTab": "Робочий простір",
 			"projectActions": "Actions for {{name}}"
 		},

@@ -13,6 +13,7 @@ import {
   Bot,
   FileClock,
   FileInput,
+  Gauge,
   HardDrive,
   KeyRound,
   Plug,
@@ -36,6 +37,11 @@ export function InstanceSettingsFrame({ children }: { children: ReactNode }) {
       icon: Activity,
       // The landing page: its path is the prefix of every other God Mode page.
       exact: true,
+    },
+    {
+      title: t("navigation:sidebar.observability"),
+      path: routes.godModeObservability.path,
+      icon: Gauge,
     },
     {
       title: t("godModeSettings:title"),
