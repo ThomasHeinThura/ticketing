@@ -33,10 +33,10 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
 | Intake queue and submission detail | `/agent/triage?state=new&ref={ref}` | route | P2 | 🟡 |
 | Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | ⬜ |
-| Services list | `/agent/service-management/services` | route | P5 | 🟡 |
-| Service detail | `/agent/service-management/services/{id}` | route | P5 | 🟡 |
-| Change calendar | `/agent/service-management/changes` | route | P5 | 🟡 |
-| Releases | `/agent/service-management/releases` | route | P5 | 🟡 |
+| Service catalogue — services list (D8: named "Service catalogue"; URL unchanged) | `/agent/service-management/services` | route | P5 | 🟡 |
+| Service catalogue — service detail | `/agent/service-management/services/{id}` | route | P5 | 🟡 |
+| Service catalogue — change calendar | `/agent/service-management/changes` | route | P5 | 🟡 |
+| Service catalogue — releases | `/agent/service-management/releases` | route | P5 | 🟡 |
 | Knowledge base list | `/agent/kb` | route | P5 | 🟡 |
 | Article view | `/agent/kb/{id}` | route | P5 | 🟡 |
 | Article editor | `/agent/kb/{id}/edit` | route | P5 | 🟡 |

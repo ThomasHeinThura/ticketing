@@ -189,7 +189,7 @@ Clone of Lead. Can triage and assign, cannot manage services.
 │ [x] Assign          Assign to anyone on the roster               │
 │ [ ] Delete          Soft-delete                                  │
 └──────────────────────────────────────────────────────────────────┘
-┌─ Service management ─────────────────────────────────────────────┐
+┌─ Service catalogue ──────────────────────────────────────────────┐
 │ [x] Read            See services                                 │
 │ [ ] Manage          Manage services, dependencies and service    │
 │                     state                             ⓘ disabled │
