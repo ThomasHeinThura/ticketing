@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query";
 import {
   defaultParseSearch,
   defaultStringifySearch,
@@ -47,6 +48,7 @@ describe("report export page route (P5-R3-01)", () => {
           href: pathname,
           state: {},
         },
+        context: { queryClient: new QueryClient() },
       } as unknown as Parameters<typeof beforeLoad>[0]);
     } catch (error) {
       thrown = error;

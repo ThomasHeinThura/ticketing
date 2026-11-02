@@ -16,7 +16,10 @@
 			"tryAgain": "Try Again",
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
-			"save": "Save"
+			"save": "Save",
+			"previous": "Previous",
+			"next": "Next",
+			"refresh": "Refresh"
 		},
 		"a11y": {
 			"toggleSidebar": "사이드바 토글",
@@ -220,7 +223,12 @@
 				"workspace": "Workspace"
 			},
 			"loadFailed": "An error occurred loading the audit log.",
-			"rows": "{{count}} rows"
+			"rows": "{{count}} rows",
+			"description": "Immutable trail of instance-wide administrative, security, and lifecycle events.",
+			"filterAction": "Filter by action…",
+			"limit": "Row limit",
+			"emptyTitle": "No audit events found",
+			"emptyDescription": "No matching actions recorded in the selected window."
 		},
 		"picker": {
 			"noResults": "No matching options",
@@ -228,7 +236,11 @@
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
 		"invalidDate": "YYYY-MM-DD 형식으로 올바른 날짜를 입력하세요.",
-		"clearDate": "날짜 지우기"
+		"clearDate": "날짜 지우기",
+		"retry": "Retry",
+		"navigation": {
+			"auditLog": "Audit log"
+		}
 	},
 	"auth": {
 		"signIn": {
@@ -763,7 +775,10 @@
 				"writesDescription": "Keys are read-only unless you choose otherwise. Pick exactly what this key may change.",
 				"writesLabel": "Allow changes",
 				"writesWarning": "Ticket text is written by customers. An AI agent holding a key that can change work can be talked into doing so by a hostile ticket. Grant only what the integration needs; deletions always need your approval in TaskDesk.",
-				"writesWarningTitle": "Write access carries a risk"
+				"writesWarningTitle": "Write access carries a risk",
+				"capabilityGroups": {
+					"Instance": "Instance"
+				}
 			}
 		},
 		"workspaceGeneral": {
@@ -2049,7 +2064,7 @@
 			"workItem": "{{term_work_item_one}}",
 			"pendingActions": "Pending actions",
 			"knowledgeBase": "Knowledge base",
-			"serviceManagement": "Service management",
+			"serviceManagement": "Service catalogue",
 			"timesheet": "Timesheet",
 			"dashboard": "Dashboard",
 			"reports": "Reports"
@@ -2063,7 +2078,8 @@
 			"deleteConfirmTitle": "프로젝트를 삭제하시겠습니까?",
 			"deleteConfirmDescription": "프로젝트와 모든 데이터가 영구적으로 제거됩니다. 이 작업은 취소할 수 없습니다.",
 			"deletedToast": "프로젝트가 삭제되었습니다",
-			"deleteProject": "{{term_project_other}} 삭제"
+			"deleteProject": "{{term_project_other}} 삭제",
+			"backlog": "Backlog"
 		},
 		"search": {
 			"inputPlaceholder": "{{term_work_item_other}}, {{term_project_other}}, 댓글 검색...",
@@ -2678,7 +2694,8 @@
 				"dueThisWeek": "이번 주 마감",
 				"dueNextWeek": "다음 주 마감",
 				"noDueDate": "마감일 없음"
-			}
+			},
+			"title": "Backlog"
 		},
 		"sort": {
 			"label": "정렬",
@@ -2944,7 +2961,9 @@
 			"kindManagedService": "Managed services",
 			"kindProject": "Delivery {{term_project_other}}",
 			"managedServiceBadge": "Managed service",
-			"showAllKinds": "Show all kinds"
+			"showAllKinds": "Show all kinds",
+			"actions": "Actions",
+			"archived": "Archived"
 		},
 		"search": {
 			"pageTitle": "검색",
@@ -3001,7 +3020,8 @@
 			"linkCopied": "초대 링크가 복사되었습니다",
 			"copyFailed": "자동으로 복사하지 못했습니다. 링크를 선택한 후 Ctrl+C를 누르세요.",
 			"pendingBadge": "대기 중",
-			"expires": "{{date}} 만료"
+			"expires": "{{date}} 만료",
+			"expiredBadge": "expired"
 		},
 		"inviteModal": {
 			"title": "팀 멤버 초대",
@@ -3271,7 +3291,8 @@
 			"time": {
 				"heading": "Time"
 			},
-			"resizeProperties": "Resize properties panel"
+			"resizeProperties": "Resize properties panel",
+			"editField": "Edit {{name}}"
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -3335,7 +3356,14 @@
 			"resizeColumn": "Resize {{column}} column",
 			"resizingWidths": "Saving column widths…",
 			"sortColumnAria": "{{column}}, {{direction}}, sort priority {{priority}}",
-			"widthSaveFailed": "Column widths could not be saved. Try resizing again."
+			"widthSaveFailed": "Column widths could not be saved. Try resizing again.",
+			"columns": {
+				"key": "Key",
+				"title": "Title",
+				"priority": "Priority",
+				"assignee": "Assignee"
+			},
+			"columnUnavailable": "Unavailable"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3497,7 +3525,8 @@
 			"combinedDescendants": "Include child projects",
 			"combinedScope": "Visible work from this project and its children.",
 			"crossProjectRankDenied": "Reorder within the same project.",
-			"combinedStateGroupingRequired": "Combined projects requires Status grouping."
+			"combinedStateGroupingRequired": "Combined projects requires Status grouping.",
+			"rankForbidden": "You don't have permission to change the order here."
 		},
 		"bulk": {
 			"assign": "Assign selected",
@@ -3788,9 +3817,25 @@
 				"start_date": "Start date",
 				"stateId": "State",
 				"template": "Template",
-				"title": "Title"
+				"title": "Title",
+				"dueDate": "Due date",
+				"startDate": "Start date",
+				"deleted_at": "Deleted on"
 			},
-			"noValue": "None"
+			"noValue": "None",
+			"unassigned": "Unassigned"
+		},
+		"priority": {
+			"urgent": "Urgent",
+			"high": "High",
+			"medium": "Medium",
+			"low": "Low",
+			"no-priority": "우선순위 없음"
+		},
+		"backlog": {
+			"emptyTitle": "No backlog items",
+			"emptyDescription": "Items in backlog or unstarted states appear here for manual ranking.",
+			"rankColumn": "Order"
 		}
 	},
 	"portal": {
@@ -5037,7 +5082,9 @@
 		"addSort": "Add sort",
 		"removeSort": "Remove sort priority {{priority}}",
 		"openIntakeQueue": "Open intake queue",
-		"pairedQueueDescription": "This view is part of a saved intake queue."
+		"pairedQueueDescription": "This view is part of a saved intake queue.",
+		"emptySubmissionsTitle": "No matching submissions",
+		"emptySubmissionsDescription": "No submissions match this saved view."
 	},
 	"identityConnections": {
 		"common": {
@@ -5621,7 +5668,9 @@
 		"enabledSwitch": "Enabled",
 		"system": "System",
 		"forbidden": "You need the settings permission for this level to view or change its features.",
-		"forbiddenTitle": "No access to feature settings"
+		"forbiddenTitle": "No access to feature settings",
+		"stateOn": "On",
+		"stateOff": "Off"
 	},
 	"godModeHealth": {
 		"checkedAt": "Checked {{when}}",
@@ -5650,7 +5699,8 @@
 			"rekeyComplete": "Rekey complete",
 			"safeToRemovePreviousKey": "Safe to remove the previous key",
 			"secretsPendingRekey": "Secrets awaiting rekey",
-			"secretsTotal": "Secrets stored"
+			"secretsTotal": "Secrets stored",
+			"expiredInvitationDeliveryEnvelopes": "Expired invitation deliveries"
 		},
 		"loadFailed": "The health checks could not be loaded.",
 		"no": "no",
@@ -7195,7 +7245,7 @@
 		},
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
-			"title": "{{term_service_one}} management is off"
+			"title": "{{term_service_one}} catalogue is off"
 		},
 		"freezes": {
 			"affected_other": "{{count}} planned {{term_change_other}} now fall inside this freeze and cannot be approved without an override.",
@@ -7225,7 +7275,7 @@
 			"changes": "{{term_change_one}} calendar",
 			"releases": "Releases",
 			"services": "{{term_service_other}}",
-			"title": "Service management",
+			"title": "Service catalogue",
 			"announcements": "Announcements"
 		},
 		"override": {
@@ -8808,7 +8858,9 @@
 		"purgeSubmitting": "Requesting…",
 		"purgeRequestFailedTitle": "Purge request unavailable",
 		"purgeRequestFailed": "The hard-purge request could not be created. Reload and try again.",
-		"purgeConflict": "This organisation is not currently eligible for purge. Review its legal hold and dependencies, then reload."
+		"purgeConflict": "This organisation is not currently eligible for purge. Review its legal hold and dependencies, then reload.",
+		"unknownDate": "unknown",
+		"restoreOperationUnavailable": "The deletion record is unavailable. Reload the directory."
 	},
 	"godModePlugins": {
 		"checkedAt": "Updated {{when}}",
@@ -9362,7 +9414,8 @@
 				"missing_title": "Items without a title: {{total}}",
 				"unreadable_item": "Items the source listed but did not return: {{total}}"
 			}
-		}
+		},
+		"rejectionCodesColumn": "Rejection codes"
 	},
 	"projectOverview": {
 		"attention": {

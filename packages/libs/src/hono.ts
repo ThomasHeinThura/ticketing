@@ -130,6 +130,66 @@ async function csrfFailureMessage(
   return undefined;
 }
 
+/** The API's refusal for an agent session whose required sign-in factor is missing. */
+export const FACTOR_ENROLLMENT_REQUIRED = "mfa_enrollment_required";
+
+const factorEnrollmentListeners = new Set<() => void>();
+
+/**
+ * Calls `listener` whenever a first-party API response refuses the session with
+ * `403 mfa_enrollment_required`. The agent shell uses it to drop its cached factor answer and
+ * re-run its route checks, which then lead to enrolment; the portal build never subscribes.
+ * Returns the unsubscribe function.
+ */
+export function onFactorEnrollmentRequired(listener: () => void): () => void {
+  factorEnrollmentListeners.add(listener);
+  return () => {
+    factorEnrollmentListeners.delete(listener);
+  };
+}
+
+/** The refusal message of a 403: a JSON `{message}` body or a plain-text body. */
+async function refusalMessage(response: Response): Promise<string | undefined> {
+  let text: string;
+  try {
+    text = await response.clone().text();
+  } catch {
+    return undefined;
+  }
+  try {
+    const payload: unknown = JSON.parse(text);
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "message" in payload &&
+      typeof payload.message === "string"
+    ) {
+      return payload.message.trim();
+    }
+  } catch {
+    // Not JSON: Hono's HTTPException answers with the plain message.
+  }
+  return text.trim();
+}
+
+/** Notifies the listeners, without delaying the caller, when `response` is that refusal. */
+function watchFactorEnrollment(response: Response): Response {
+  if (response.status !== 403 || factorEnrollmentListeners.size === 0) {
+    return response;
+  }
+  void refusalMessage(response).then((message) => {
+    if (message !== FACTOR_ENROLLMENT_REQUIRED) return;
+    for (const listener of [...factorEnrollmentListeners]) {
+      try {
+        listener();
+      } catch {
+        // One listener's failure must not stop the others or the caller.
+      }
+    }
+  });
+  return response;
+}
+
 /**
  * Add TaskDesk's common request headers and session-bound CSRF protection to
  * first-party API calls. Foreign origins receive no ambient credentials or
@@ -230,7 +290,7 @@ export function createApiFetch(
       ? { ...init, redirect: "error" as const }
       : init;
     const request = requestWithHeaders(input, requestInit, headers, "include");
-    if (!needsCsrf) return fetchImpl(request);
+    if (!needsCsrf) return watchFactorEnrollment(await fetchImpl(request));
 
     // Keep the request body replayable for the single, narrowly-scoped retry.
     const retryBase = request.clone();
@@ -238,7 +298,7 @@ export function createApiFetch(
     const response = await fetchImpl(request);
     const failureMessage = await csrfFailureMessage(response);
     if (!failureMessage || !csrfFailureMessages.has(failureMessage)) {
-      return response;
+      return watchFactorEnrollment(response);
     }
 
     const retryHeaders = new Headers(retryBase.headers);
@@ -246,8 +306,10 @@ export function createApiFetch(
       "X-TaskDesk-CSRF",
       await readCsrfToken(fetchImpl, csrfEndpoint),
     );
-    return fetchImpl(
-      requestWithHeaders(retryBase, undefined, retryHeaders, "include"),
+    return watchFactorEnrollment(
+      await fetchImpl(
+        requestWithHeaders(retryBase, undefined, retryHeaders, "include"),
+      ),
     );
   };
   return Object.assign(apiFetchImpl, { primeCsrfToken });

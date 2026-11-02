@@ -16,7 +16,10 @@
 			"tryAgain": "Try Again",
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
-			"save": "Save"
+			"save": "Save",
+			"previous": "Previous",
+			"next": "Next",
+			"refresh": "Refresh"
 		},
 		"a11y": {
 			"toggleSidebar": "Przełącz pasek boczny",
@@ -220,7 +223,12 @@
 				"workspace": "Workspace"
 			},
 			"loadFailed": "An error occurred loading the audit log.",
-			"rows": "{{count}} rows"
+			"rows": "{{count}} rows",
+			"description": "Immutable trail of instance-wide administrative, security, and lifecycle events.",
+			"filterAction": "Filter by action…",
+			"limit": "Row limit",
+			"emptyTitle": "No audit events found",
+			"emptyDescription": "No matching actions recorded in the selected window."
 		},
 		"picker": {
 			"noResults": "No matching options",
@@ -228,7 +236,11 @@
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
 		"invalidDate": "Wpisz prawidłową datę w formacie YYYY-MM-DD.",
-		"clearDate": "Wyczyść datę"
+		"clearDate": "Wyczyść datę",
+		"retry": "Retry",
+		"navigation": {
+			"auditLog": "Audit log"
+		}
 	},
 	"auth": {
 		"signIn": {
@@ -530,7 +542,7 @@
 			"workItem": "{{term_work_item_one}}",
 			"pendingActions": "Pending actions",
 			"knowledgeBase": "Knowledge base",
-			"serviceManagement": "Service management",
+			"serviceManagement": "Service catalogue",
 			"timesheet": "Timesheet",
 			"dashboard": "Dashboard",
 			"reports": "Reports"
@@ -544,7 +556,8 @@
 			"deleteConfirmTitle": "Usunąć {{term_project_one}}?",
 			"deleteConfirmDescription": "Spowoduje to trwałe usunięcie projektu i wszystkich jego danych. Nie można tego cofnąć.",
 			"deletedToast": "{{term_project_one}} usunięty",
-			"deleteProject": "Usuń {{term_project_one}}"
+			"deleteProject": "Usuń {{term_project_one}}",
+			"backlog": "Backlog"
 		},
 		"search": {
 			"inputPlaceholder": "Szukaj {{term_work_item_other}}, projektów i komentarzy...",
@@ -764,7 +777,9 @@
 			"kindManagedService": "Managed services",
 			"kindProject": "Delivery {{term_project_other}}",
 			"managedServiceBadge": "Managed service",
-			"showAllKinds": "Show all kinds"
+			"showAllKinds": "Show all kinds",
+			"actions": "Actions",
+			"archived": "Archived"
 		},
 		"search": {
 			"pageTitle": "Szukaj",
@@ -824,7 +839,8 @@
 			"linkLabel": "Link zaproszenia",
 			"copyLink": "Skopiuj link",
 			"linkCopied": "Link zaproszenia skopiowany",
-			"copyFailed": "Nie udało się skopiować automatycznie. Zaznacz link i naciśnij Ctrl+C."
+			"copyFailed": "Nie udało się skopiować automatycznie. Zaznacz link i naciśnij Ctrl+C.",
+			"expiredBadge": "expired"
 		},
 		"inviteModal": {
 			"title": "Zaproś członka zespołu",
@@ -1151,7 +1167,10 @@
 				"writesDescription": "Keys are read-only unless you choose otherwise. Pick exactly what this key may change.",
 				"writesLabel": "Allow changes",
 				"writesWarning": "Ticket text is written by customers. An AI agent holding a key that can change work can be talked into doing so by a hostile ticket. Grant only what the integration needs; deletions always need your approval in TaskDesk.",
-				"writesWarningTitle": "Write access carries a risk"
+				"writesWarningTitle": "Write access carries a risk",
+				"capabilityGroups": {
+					"Instance": "Instance"
+				}
 			},
 			"createdModal": {
 				"alertDescription": "Skopiuj ten klucz teraz. Nie będzie można go ponownie wyświetlić.",
@@ -2690,7 +2709,8 @@
 			"sections": {
 				"archived": "Zarchiwizowane",
 				"planned": "Zaplanowane"
-			}
+			},
+			"title": "Backlog"
 		},
 		"boardFilters": {
 			"allAssignees": "Wszystkie przypisane osoby",
@@ -3304,7 +3324,8 @@
 			"time": {
 				"heading": "Time"
 			},
-			"resizeProperties": "Resize properties panel"
+			"resizeProperties": "Resize properties panel",
+			"editField": "Edit {{name}}"
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -3368,7 +3389,14 @@
 			"resizeColumn": "Resize {{column}} column",
 			"resizingWidths": "Saving column widths…",
 			"sortColumnAria": "{{column}}, {{direction}}, sort priority {{priority}}",
-			"widthSaveFailed": "Column widths could not be saved. Try resizing again."
+			"widthSaveFailed": "Column widths could not be saved. Try resizing again.",
+			"columns": {
+				"key": "Key",
+				"title": "Title",
+				"priority": "Priority",
+				"assignee": "Assignee"
+			},
+			"columnUnavailable": "Unavailable"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3530,7 +3558,8 @@
 			"combinedDescendants": "Include child projects",
 			"combinedScope": "Visible work from this project and its children.",
 			"crossProjectRankDenied": "Reorder within the same project.",
-			"combinedStateGroupingRequired": "Combined projects requires Status grouping."
+			"combinedStateGroupingRequired": "Combined projects requires Status grouping.",
+			"rankForbidden": "You don't have permission to change the order here."
 		},
 		"bulk": {
 			"assign": "Assign selected",
@@ -3830,9 +3859,25 @@
 				"start_date": "Start date",
 				"stateId": "State",
 				"template": "Template",
-				"title": "Title"
+				"title": "Title",
+				"dueDate": "Due date",
+				"startDate": "Start date",
+				"deleted_at": "Deleted on"
 			},
-			"noValue": "None"
+			"noValue": "None",
+			"unassigned": "Unassigned"
+		},
+		"priority": {
+			"urgent": "Urgent",
+			"high": "High",
+			"medium": "Medium",
+			"low": "Low",
+			"no-priority": "Brak priorytetu"
+		},
+		"backlog": {
+			"emptyTitle": "No backlog items",
+			"emptyDescription": "Items in backlog or unstarted states appear here for manual ranking.",
+			"rankColumn": "Order"
 		}
 	},
 	"portal": {
@@ -5103,7 +5148,9 @@
 		"addSort": "Add sort",
 		"removeSort": "Remove sort priority {{priority}}",
 		"openIntakeQueue": "Open intake queue",
-		"pairedQueueDescription": "This view is part of a saved intake queue."
+		"pairedQueueDescription": "This view is part of a saved intake queue.",
+		"emptySubmissionsTitle": "No matching submissions",
+		"emptySubmissionsDescription": "No submissions match this saved view."
 	},
 	"identityConnections": {
 		"common": {
@@ -5687,7 +5734,9 @@
 		"enabledSwitch": "Enabled",
 		"system": "System",
 		"forbidden": "You need the settings permission for this level to view or change its features.",
-		"forbiddenTitle": "No access to feature settings"
+		"forbiddenTitle": "No access to feature settings",
+		"stateOn": "On",
+		"stateOff": "Off"
 	},
 	"godModeHealth": {
 		"checkedAt": "Checked {{when}}",
@@ -5716,7 +5765,8 @@
 			"rekeyComplete": "Rekey complete",
 			"safeToRemovePreviousKey": "Safe to remove the previous key",
 			"secretsPendingRekey": "Secrets awaiting rekey",
-			"secretsTotal": "Secrets stored"
+			"secretsTotal": "Secrets stored",
+			"expiredInvitationDeliveryEnvelopes": "Expired invitation deliveries"
 		},
 		"loadFailed": "The health checks could not be loaded.",
 		"no": "no",
@@ -7327,7 +7377,7 @@
 		},
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
-			"title": "{{term_service_one}} management is off"
+			"title": "{{term_service_one}} catalogue is off"
 		},
 		"freezes": {
 			"affected_few": "{{count}} planned {{term_change_other}} now fall inside this freeze and cannot be approved without an override.",
@@ -7360,7 +7410,7 @@
 			"changes": "{{term_change_one}} calendar",
 			"releases": "Releases",
 			"services": "{{term_service_other}}",
-			"title": "Service management",
+			"title": "Service catalogue",
 			"announcements": "Announcements"
 		},
 		"override": {
@@ -9003,7 +9053,9 @@
 		"purgeSubmitting": "Requesting…",
 		"purgeRequestFailedTitle": "Purge request unavailable",
 		"purgeRequestFailed": "The hard-purge request could not be created. Reload and try again.",
-		"purgeConflict": "This organisation is not currently eligible for purge. Review its legal hold and dependencies, then reload."
+		"purgeConflict": "This organisation is not currently eligible for purge. Review its legal hold and dependencies, then reload.",
+		"unknownDate": "unknown",
+		"restoreOperationUnavailable": "The deletion record is unavailable. Reload the directory."
 	},
 	"godModePlugins": {
 		"checkedAt": "Updated {{when}}",
@@ -9611,7 +9663,8 @@
 				"missing_title": "Items without a title: {{total}}",
 				"unreadable_item": "Items the source listed but did not return: {{total}}"
 			}
-		}
+		},
+		"rejectionCodesColumn": "Rejection codes"
 	},
 	"projectOverview": {
 		"attention": {
