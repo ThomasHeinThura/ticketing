@@ -82,29 +82,41 @@ describe("portal feature-off state (P3-R2-03, P4R2-L1)", () => {
     expect(auth.getSession).not.toHaveBeenCalled();
   });
 
+  const portalUser = {
+    name: "Ada Customer",
+    email: "ada@example.test",
+    image: null,
+  };
+
   it("after an in-app sign-in the root asks for the organisation's portal state (no reload needed)", async () => {
     const beforeLoad = PortalRootRoute.options.beforeLoad as unknown as (args: {
       location: { pathname: string };
     }) => Promise<unknown>;
     auth.getSession.mockResolvedValue({
-      data: { session: { id: "s1" }, user: { id: "u1" } },
+      data: {
+        session: { id: "s1" },
+        user: { id: "u1", name: "Ada Customer", email: "ada@example.test" },
+      },
       error: null,
     });
     portalState.get.mockResolvedValue("off");
     expect(await beforeLoad({ location: { pathname: "/catalogue" } })).toEqual({
       portalUserId: "u1",
+      portalUser,
       portalState: "disabled",
     });
     queryClient.clear();
     portalState.get.mockResolvedValue("unavailable");
     expect(await beforeLoad({ location: { pathname: "/catalogue" } })).toEqual({
       portalUserId: "u1",
+      portalUser,
       portalState: "unavailable",
     });
     queryClient.clear();
     portalState.get.mockResolvedValue("on");
     expect(await beforeLoad({ location: { pathname: "/catalogue" } })).toEqual({
       portalUserId: "u1",
+      portalUser,
       portalState: null,
     });
     // A failed read leaves the pages to their own states rather than blocking the portal.
@@ -112,6 +124,7 @@ describe("portal feature-off state (P3-R2-03, P4R2-L1)", () => {
     portalState.get.mockRejectedValue(new Error("network"));
     expect(await beforeLoad({ location: { pathname: "/catalogue" } })).toEqual({
       portalUserId: "u1",
+      portalUser,
       portalState: null,
     });
   });

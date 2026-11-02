@@ -2,7 +2,9 @@ import { Button } from "@taskdesk/ui";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
-import ProjectLayoutControls from "./project-layout-controls";
+import ProjectLayoutControls, {
+  projectViewFromPath,
+} from "./project-layout-controls";
 
 const permissionState = vi.hoisted(() => ({
   checking: true,
@@ -163,9 +165,9 @@ describe("ProjectLayoutControls permissions", () => {
       // A focused tab must be revealed immediately, even before it becomes
       // the current route; native focus scrolling left Gantt clipped at 768px.
       reveal.mockClear();
-      const gantt = screen.getByRole("button", { name: "Gantt" });
-      fireEvent.focus(gantt);
-      expect(reveal.mock.contexts).toEqual([gantt]);
+      const timeline = screen.getByRole("button", { name: "Timeline" });
+      fireEvent.focus(timeline);
+      expect(reveal.mock.contexts).toEqual([timeline]);
       expect(reveal).toHaveBeenCalledWith({
         block: "nearest",
         inline: "nearest",
@@ -235,7 +237,7 @@ describe("ProjectLayoutControls permissions", () => {
     expect(screen.getByRole("button", { name: "Pages" })).toBeInTheDocument();
   });
 
-  it("hides Calendar and Gantt while feature.calendar / feature.timeline are off (P4R1-M2)", () => {
+  it("hides Calendar and Timeline while feature.calendar / feature.timeline are off (P4R1-M2)", () => {
     featureState.calendar = false;
     featureState.timeline = false;
     const { rerender } = render(
@@ -246,7 +248,7 @@ describe("ProjectLayoutControls permissions", () => {
         name: translate("navigation:projectViews.calendar"),
       }),
     ).toBeNull();
-    expect(screen.queryByRole("button", { name: "Gantt" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Timeline" })).toBeNull();
 
     featureState.calendar = true;
     featureState.timeline = true;
@@ -256,7 +258,9 @@ describe("ProjectLayoutControls permissions", () => {
         name: translate("navigation:projectViews.calendar"),
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Gantt" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Timeline" }),
+    ).toBeInTheDocument();
   });
 
   it("preserves work-view navigation state and routes project switches by the active view", () => {
@@ -291,5 +295,56 @@ describe("ProjectLayoutControls permissions", () => {
       to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
       params: { workspaceId: "workspace-1", projectId: "project-2" },
     });
+  });
+
+  it("places Overview first, before Backlog, and adds the Overview tabs", () => {
+    featureState.pages = true;
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+    const names = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent)
+      .filter((name) => name !== "Switch project");
+    expect(names.slice(0, 3)).toEqual(["Overview", "Backlog", "Work items"]);
+    expect(names.slice(-3)).toEqual(["Prerequisites", "Team", "Documents"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/agent/projects/ENG",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Team" }));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/agent/projects/ENG/team",
+    });
+  });
+
+  it("marks Overview current on the bare project URL and keeps the view on project switch", () => {
+    routerState.pathname = "/agent/projects/ENG";
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+    expect(screen.getByRole("button", { name: "Overview" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    fireEvent.click(screen.getByTestId("switch-project"));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/agent/projects/OPS",
+    });
+  });
+
+  it("derives the view from old and new project URLs", () => {
+    expect(projectViewFromPath("/agent/projects/ENG")).toBe("overview");
+    expect(projectViewFromPath("/agent/projects/ENG/")).toBe("overview");
+    expect(projectViewFromPath("/agent/projects/ENG/prerequisites")).toBe(
+      "prerequisites",
+    );
+    expect(projectViewFromPath("/agent/projects/ENG/team")).toBe("team");
+    expect(projectViewFromPath("/agent/projects/ENG/documents")).toBe(
+      "documents",
+    );
+    expect(projectViewFromPath("/agent/projects/ENG/work")).toBe("board");
+    expect(projectViewFromPath("/agent/projects/ENG/backlog")).toBe("backlog");
+    expect(projectViewFromPath("/agent/projects/ENG/pages/p1")).toBe("pages");
+    expect(projectViewFromPath("/dashboard/workspace/w/project/p/gantt")).toBe(
+      "gantt",
+    );
   });
 });

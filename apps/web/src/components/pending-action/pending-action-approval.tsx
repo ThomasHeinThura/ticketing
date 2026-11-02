@@ -83,6 +83,8 @@ const REGISTERED_DELETION_QUERY_KEYS = [
   "agile",
   "reports",
   "pages",
+  // S3 Overview: milestones, prerequisites and document links (all registered deletions).
+  "project-overview",
 ] as const;
 
 /** The Kaneo task page: `/dashboard/workspace/:workspaceId/project/:projectId/task/:taskId`. */

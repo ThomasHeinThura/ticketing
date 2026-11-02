@@ -1,9 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PortalNotificationInbox } from "@/components/portal/portal-notification-inbox";
-import { parsePortalInboxSearch, routes } from "@/lib/routes";
+import {
+  parsePortalInboxSearch,
+  portalProjectSearchMiddlewares,
+  routes,
+} from "@/lib/routes";
 
 export const Route = createFileRoute("/notifications")({
   validateSearch: parsePortalInboxSearch,
+  search: { middlewares: portalProjectSearchMiddlewares },
   component: PortalNotificationsPage,
 });
 

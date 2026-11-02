@@ -108,7 +108,7 @@ const SESSION = {
   },
 };
 
-const PROJECT = {
+export const PROJECT = {
   id: PROJECT_ID,
   workspaceId: WORKSPACE_ID,
   slug: "WLP",

@@ -29,10 +29,14 @@ import {
 } from "@/fetchers/approval/portal-approvals";
 import { HttpError } from "@/lib/http-error";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { parsePortalApprovalsSearch } from "@/lib/routes";
+import {
+  parsePortalApprovalsSearch,
+  portalProjectSearchMiddlewares,
+} from "@/lib/routes";
 
 export const Route = createFileRoute("/approvals")({
   validateSearch: parsePortalApprovalsSearch,
+  search: { middlewares: portalProjectSearchMiddlewares },
   component: PortalApprovals,
 });
 function PortalApprovals() {
