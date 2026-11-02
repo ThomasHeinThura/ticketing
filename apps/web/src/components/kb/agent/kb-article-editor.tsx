@@ -352,7 +352,11 @@ function Editor({
             </Button>
           </div>
         </div>
-        <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
+        {/* minmax(0,1fr): a long Owner or category name must not widen the column past a phone screen. */}
+        <div
+          className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]"
+          data-testid="kb-article-editor-layout"
+        >
           <div className="min-w-0 space-y-4">
             {preview ? (
               <Card>
@@ -416,7 +420,7 @@ function Editor({
               </Field>
             </div>
           </div>
-          <Card>
+          <Card className="min-w-0">
             <CardHeader>
               <CardTitle>{t("kb:editor.settingsTitle")}</CardTitle>
             </CardHeader>

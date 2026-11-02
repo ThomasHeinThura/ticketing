@@ -208,6 +208,14 @@ export function KbCategories({
                 </Label>
                 <Select
                   value={parent}
+                  // Labels for the trigger; without them the Select shows the category id.
+                  items={[
+                    { value: ROOT, label: t("kb:categories.topLevel") },
+                    ...rows.map(({ category }) => ({
+                      value: category.id,
+                      label: category.name,
+                    })),
+                  ]}
                   onValueChange={(value) => setParent(value ?? ROOT)}
                 >
                   <SelectTrigger id="kb-category-parent" className="w-48">

@@ -10,7 +10,12 @@
 				"workspace": "Workspace"
 			},
 			"rows": "{{count}} rows",
-			"loadFailed": "An error occurred loading the audit log."
+			"loadFailed": "An error occurred loading the audit log.",
+			"description": "Immutable trail of instance-wide administrative, security, and lifecycle events.",
+			"filterAction": "Filter by action…",
+			"limit": "Row limit",
+			"emptyTitle": "No audit events found",
+			"emptyDescription": "No matching actions recorded in the selected window."
 		},
 		"picker": {
 			"search": "Search options",
@@ -31,7 +36,10 @@
 			"tryAgain": "Try Again",
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
-			"save": "Save"
+			"save": "Save",
+			"previous": "Previous",
+			"next": "Next",
+			"refresh": "Refresh"
 		},
 		"a11y": {
 			"toggleSidebar": "Toggle sidebar",
@@ -228,7 +236,11 @@
 		},
 		"dateEntry": "{{label}} (YYYY-MM-DD)",
 		"invalidDate": "Enter a valid date as YYYY-MM-DD.",
-		"clearDate": "Clear date"
+		"clearDate": "Clear date",
+		"retry": "Retry",
+		"navigation": {
+			"auditLog": "Audit log"
+		}
 	},
 	"auth": {
 		"signIn": {
@@ -761,7 +773,10 @@
 				"writesLabel": "Allow changes",
 				"writesDescription": "Keys are read-only unless you choose otherwise. Pick exactly what this key may change.",
 				"writesWarningTitle": "Write access carries a risk",
-				"writesWarning": "Ticket text is written by customers. An AI agent holding a key that can change work can be talked into doing so by a hostile ticket. Grant only what the integration needs; deletions always need your approval in TaskDesk."
+				"writesWarning": "Ticket text is written by customers. An AI agent holding a key that can change work can be talked into doing so by a hostile ticket. Grant only what the integration needs; deletions always need your approval in TaskDesk.",
+				"capabilityGroups": {
+					"Instance": "Instance"
+				}
 			}
 		},
 		"workspaceGeneral": {
@@ -2060,7 +2075,8 @@
 			"deleteConfirmTitle": "Delete {{term_project_one}}?",
 			"deleteConfirmDescription": "This creates a pending action. The {{term_project_one}} is hidden only after you approve it on the next screen, and it becomes eligible for permanent deletion after 30 days.",
 			"deletedToast": "{{term_project_one}} deleted",
-			"deleteProject": "Delete {{term_project_one}}"
+			"deleteProject": "Delete {{term_project_one}}",
+			"backlog": "Backlog"
 		},
 		"search": {
 			"inputPlaceholder": "Search {{term_work_item_other}}, views, {{term_project_other}}, people...",
@@ -2679,7 +2695,8 @@
 				"dueThisWeek": "Due this week",
 				"dueNextWeek": "Due next week",
 				"noDueDate": "No due date"
-			}
+			},
+			"title": "Backlog"
 		},
 		"sort": {
 			"label": "Sort",
@@ -2946,7 +2963,9 @@
 			"managedServiceBadge": "Managed service",
 			"filteredEmptyTitle": "No {{term_project_other}} of this kind",
 			"filteredEmptyDescription": "Choose another kind to see more {{term_project_other}}.",
-			"showAllKinds": "Show all kinds"
+			"showAllKinds": "Show all kinds",
+			"actions": "Actions",
+			"archived": "Archived"
 		},
 		"search": {
 			"pageTitle": "Search",
@@ -3004,7 +3023,8 @@
 			"linkLabel": "Invitation link",
 			"copyLink": "Copy link",
 			"linkCopied": "Invitation link copied",
-			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C."
+			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
+			"expiredBadge": "expired"
 		},
 		"inviteModal": {
 			"title": "Invite Team Member",
@@ -3194,7 +3214,14 @@
 			"customFieldPersonUnavailable": "Unavailable person",
 			"sortColumnAria": "{{column}}, {{direction}}, sort priority {{priority}}",
 			"cursorChanged": "The list changed. Reload to continue.",
-			"reload": "Reload"
+			"reload": "Reload",
+			"columns": {
+				"key": "Key",
+				"title": "Title",
+				"priority": "Priority",
+				"assignee": "Assignee"
+			},
+			"columnUnavailable": "Unavailable"
 		},
 		"create": {
 			"trigger": "Create {{term_work_item_one}}",
@@ -3412,7 +3439,8 @@
 			"time": {
 				"heading": "Time"
 			},
-			"resizeProperties": "Resize properties panel"
+			"resizeProperties": "Resize properties panel",
+			"editField": "Edit {{name}}"
 		},
 		"journey": {
 			"editHeading": "Edit",
@@ -3524,7 +3552,8 @@
 			"combinedDescendants": "Include child projects",
 			"combinedScope": "Visible work from this project and its children.",
 			"crossProjectRankDenied": "Reorder within the same project.",
-			"combinedStateGroupingRequired": "Combined projects requires Status grouping."
+			"combinedStateGroupingRequired": "Combined projects requires Status grouping.",
+			"rankForbidden": "You don't have permission to change the order here."
 		},
 		"bulk": {
 			"toolbarLabel": "Bulk actions",
@@ -3795,8 +3824,24 @@
 				"archived_at": "Archived on",
 				"key": "Key",
 				"template": "Template",
-				"checklist": "Checklist"
-			}
+				"checklist": "Checklist",
+				"dueDate": "Due date",
+				"startDate": "Start date",
+				"deleted_at": "Deleted on"
+			},
+			"unassigned": "Unassigned"
+		},
+		"priority": {
+			"urgent": "Urgent",
+			"high": "High",
+			"medium": "Medium",
+			"low": "Low",
+			"no-priority": "No priority"
+		},
+		"backlog": {
+			"emptyTitle": "No backlog items",
+			"emptyDescription": "Items in backlog or unstarted states appear here for manual ranking.",
+			"rankColumn": "Order"
 		}
 	},
 	"portal": {
@@ -5613,7 +5658,9 @@
 		"addSort": "Add sort",
 		"removeSort": "Remove sort priority {{priority}}",
 		"openIntakeQueue": "Open intake queue",
-		"pairedQueueDescription": "This view is part of a saved intake queue."
+		"pairedQueueDescription": "This view is part of a saved intake queue.",
+		"emptySubmissionsTitle": "No matching submissions",
+		"emptySubmissionsDescription": "No submissions match this saved view."
 	},
 	"identityConnections": {
 		"common": {
@@ -6163,7 +6210,9 @@
 			"projectTitle": "Features"
 		},
 		"forbiddenTitle": "No access to feature settings",
-		"forbidden": "You need the settings permission for this level to view or change its features."
+		"forbidden": "You need the settings permission for this level to view or change its features.",
+		"stateOn": "On",
+		"stateOff": "Off"
 	},
 	"godModeSettings": {
 		"title": "General",
@@ -6325,7 +6374,8 @@
 			"outboxDead": "Dead events",
 			"outboxPending": "Pending events",
 			"deliveriesDead": "Dead deliveries",
-			"deliveriesPending": "Pending deliveries"
+			"deliveriesPending": "Pending deliveries",
+			"expiredInvitationDeliveryEnvelopes": "Expired invitation deliveries"
 		},
 		"rotateSecrets": {
 			"action": "Rotate secrets",
@@ -8811,7 +8861,9 @@
 		"purgeSubmitting": "Requesting…",
 		"purgeRequestFailedTitle": "Purge request unavailable",
 		"purgeRequestFailed": "The hard-purge request could not be created. Reload and try again.",
-		"purgeConflict": "This organisation is not currently eligible for purge. Review its legal hold and dependencies, then reload."
+		"purgeConflict": "This organisation is not currently eligible for purge. Review its legal hold and dependencies, then reload.",
+		"unknownDate": "unknown",
+		"restoreOperationUnavailable": "The deletion record is unavailable. Reload the directory."
 	},
 	"term": {
 		"agent": {
@@ -9290,6 +9342,7 @@
 				"errorTitle": "Could not load losses",
 				"errorDescription": "Try again."
 			}
-		}
+		},
+		"rejectionCodesColumn": "Rejection codes"
 	}
 }
