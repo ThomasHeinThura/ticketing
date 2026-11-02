@@ -59,7 +59,7 @@ async function passwordSignIn(door: Door, email: string, password: string) {
 }
 
 async function withPassword(userId: string) {
-  const password = `pw-${randomUUID()}`;
+  const password = randomUUID();
   await db.insert(schema.accountTable).values({
     id: `${userId}-credential`,
     accountId: userId,
