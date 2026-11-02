@@ -537,6 +537,30 @@ export const instancePolicies = {
     elevated: true,
     sessionOnly: true,
   },
+  "GET /api/instance/auth/local-methods": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide local sign-in methods have no tenant resource",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only stored and effective local sign-in method flags; no configuration values or secrets",
+    sessionOnly: true,
+  },
+  "PUT /api/instance/auth/local-methods": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide local sign-in methods have no tenant resource",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
   "GET /api/instance/local-factor-policy": {
     capability: "instance:admin",
     scope: "instance",

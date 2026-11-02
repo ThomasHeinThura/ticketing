@@ -13,7 +13,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | My work | `/agent/my-work` | route | P1 | 🟡 |
 | Global search results | `/agent/search` | route | P1 | 🟡 |
 | Not found (agent origin) | `*` | route | P0 | ⬜ |
-| Project overview | `/agent/projects/{key}` | route | P1 | 🟡 |
+| Project overview (summary, status, contract and hour bank, service levels, milestones) | `/agent/projects/{key}` | route | P1 | 🟡 |
 | Work — board | `/agent/projects/{key}/work?layout=board` | route | P1 | 🟡 |
 | Work — list | `/agent/projects/{key}/work?layout=list` | route | P1 | 🟡 |
 | Work — table | `/agent/projects/{key}/work?layout=table` | route | P1 | 🟡 |
@@ -26,8 +26,10 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Module detail | `/agent/projects/{key}/modules/{moduleId}` | route | P5 | 🟡 |
 | Pages | `/agent/projects/{key}/pages` | route | P5 | 🟡 |
 | Page view and editor | `/agent/projects/{key}/pages/{pageId}` | route | P5 | 🟡 |
-| Milestones & prerequisites | `/agent/projects/{key}/plan` | route | P2 | ⬜ |
-| Stakeholders | `/agent/projects/{key}/stakeholders` | route | P2 | ⬜ |
+| Prerequisites (milestones are on the overview) | `/agent/projects/{key}/prerequisites` | route | P2 | 🟡 |
+| Team (stakeholders and roster) | `/agent/projects/{key}/team` | route | P2 | 🟡 |
+| Documents (document links, link to Pages) | `/agent/projects/{key}/documents` | route | P2 | 🟡 |
+| Timeline (opens the Kaneo Gantt, `feature.timeline`) | `/agent/projects/{key}/timeline` | route | P5 | 🟡 |
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
 | Intake queue and submission detail | `/agent/triage?state=new&ref={ref}` | route | P2 | 🟡 |
 | Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | ⬜ |
@@ -140,7 +142,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **148** (132 routes + 16 overlays, dialogs and sections) |
+| **Total** | **150** (134 routes + 16 overlays, dialogs and sections) |
 
 ## Overlays, dialogs and embedded sections
 

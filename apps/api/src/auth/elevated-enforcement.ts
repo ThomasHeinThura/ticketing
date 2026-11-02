@@ -198,6 +198,12 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
     handler: "identity/connection-admin.ts",
     consumer: "consumeIdentityConnectionProof",
   },
+  "PUT /api/instance/auth/local-methods": {
+    kind: "operation",
+    operation: "auth_local_methods_update",
+    handler: "instance/auth-local-methods.ts",
+    consumer: "runWithStepUp",
+  },
   "PATCH /api/instance/identity-connections/{id}": {
     kind: "operation",
     operation: "identity_connection_configure",

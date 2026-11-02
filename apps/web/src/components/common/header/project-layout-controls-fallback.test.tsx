@@ -16,12 +16,18 @@ describe("ProjectLayoutControlsFallback", () => {
       <ProjectLayoutControlsFallback
         projectName="ENG"
         showViewSwitcher
-        viewLabels={["Backlog", "Work items", "Calendar", "Gantt"]}
+        viewLabels={[
+          "Overview",
+          "Backlog",
+          "Work items",
+          "Calendar",
+          "Timeline",
+        ]}
       />,
     );
 
     const fallback = screen.getByRole("status", {
-      name: `${translate("common:empty.loading")} ${translate("navigation:projectViews.selectProject")}: ENG. Backlog. ${translate("navigation:projectViews.workItems")}. Calendar. Gantt`,
+      name: `${translate("common:empty.loading")} ${translate("navigation:projectViews.selectProject")}: ENG. Overview. Backlog. ${translate("navigation:projectViews.workItems")}. Calendar. Timeline`,
     });
     expect(fallback).toHaveClass("min-w-0", "flex-1");
     expect(fallback.querySelector(".overflow-hidden")).toBeInTheDocument();
@@ -33,7 +39,13 @@ describe("ProjectLayoutControlsFallback", () => {
       <ProjectLayoutControlsFallback
         projectName="ENG"
         showViewSwitcher={false}
-        viewLabels={["Backlog", "Work items", "Calendar", "Gantt"]}
+        viewLabels={[
+          "Overview",
+          "Backlog",
+          "Work items",
+          "Calendar",
+          "Timeline",
+        ]}
       />,
     );
 

@@ -1345,13 +1345,21 @@
 						},
 						"sendVerificationCode": {
 							"type": "string"
+						},
+						"usePassword": {
+							"type": "string"
+						},
+						"useEmailCode": {
+							"type": "string"
 						}
 					},
 					"required": [
 						"sendFailed",
 						"codeSent",
 						"sending",
-						"sendVerificationCode"
+						"sendVerificationCode",
+						"usePassword",
+						"useEmailCode"
 					]
 				},
 				"signInForm": {
@@ -15798,9 +15806,6 @@
 						"description": {
 							"type": "string"
 						},
-						"home": {
-							"type": "string"
-						},
 						"catalogue": {
 							"type": "string"
 						},
@@ -15819,33 +15824,36 @@
 						"signOutFailed": {
 							"type": "string"
 						},
-						"breadcrumb": {
+						"dashboard": {
 							"type": "string"
 						},
-						"request": {
+						"support": {
 							"type": "string"
 						},
-						"account": {
+						"updates": {
 							"type": "string"
 						},
-						"releases": {
+						"announcements": {
+							"type": "string"
+						},
+						"settings": {
 							"type": "string"
 						}
 					},
 					"required": [
 						"title",
 						"description",
-						"home",
 						"catalogue",
 						"knowledgeBase",
 						"requests",
 						"approvals",
 						"signOut",
 						"signOutFailed",
-						"breadcrumb",
-						"request",
-						"account",
-						"releases"
+						"dashboard",
+						"support",
+						"updates",
+						"announcements",
+						"settings"
 					]
 				},
 				"home": {
@@ -16970,6 +16978,67 @@
 						"events",
 						"requestReference"
 					]
+				},
+				"shell": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"getHelp": {
+							"type": "string"
+						},
+						"theme": {
+							"type": "string"
+						},
+						"search": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"placeholder": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "placeholder"]
+						},
+						"userMenu": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"unnamed": {
+									"type": "string"
+								},
+								"signingOut": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "unnamed", "signingOut"]
+						},
+						"projectSelector": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"all": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "all"]
+						}
+					},
+					"required": [
+						"getHelp",
+						"theme",
+						"search",
+						"userMenu",
+						"projectSelector"
+					]
 				}
 			},
 			"required": [
@@ -16986,7 +17055,8 @@
 				"request",
 				"account",
 				"releases",
-				"notifications"
+				"notifications",
+				"shell"
 			]
 		},
 		"instanceUsers": {
@@ -24831,6 +24901,142 @@
 						"loadFailed",
 						"customerVisibility"
 					]
+				},
+				"signInMethods": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						},
+						"staff": {
+							"type": "string"
+						},
+						"customers": {
+							"type": "string"
+						},
+						"password": {
+							"type": "string"
+						},
+						"passwordDescription": {
+							"type": "string"
+						},
+						"magicLink": {
+							"type": "string"
+						},
+						"magicLinkDescription": {
+							"type": "string"
+						},
+						"emailOtp": {
+							"type": "string"
+						},
+						"emailOtpDescription": {
+							"type": "string"
+						},
+						"switchLabel": {
+							"type": "string"
+						},
+						"staffPasswordLocked": {
+							"type": "string"
+						},
+						"emailProviderNotice": {
+							"type": "string"
+						},
+						"emailProviderMissingTitle": {
+							"type": "string"
+						},
+						"emailProviderMissing": {
+							"type": "string"
+						},
+						"emailProviderLink": {
+							"type": "string"
+						},
+						"emailOtpEnvironmentDisabled": {
+							"type": "string"
+						},
+						"customersNone": {
+							"type": "string"
+						},
+						"reset": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"confirmTitle": {
+							"type": "string"
+						},
+						"confirmDescription": {
+							"type": "string"
+						},
+						"changeOn": {
+							"type": "string"
+						},
+						"changeOff": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"confirm": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"loading",
+						"unavailable",
+						"loadFailed",
+						"method",
+						"staff",
+						"customers",
+						"password",
+						"passwordDescription",
+						"magicLink",
+						"magicLinkDescription",
+						"emailOtp",
+						"emailOtpDescription",
+						"switchLabel",
+						"staffPasswordLocked",
+						"emailProviderNotice",
+						"emailProviderMissingTitle",
+						"emailProviderMissing",
+						"emailProviderLink",
+						"emailOtpEnvironmentDisabled",
+						"customersNone",
+						"reset",
+						"save",
+						"saved",
+						"confirmTitle",
+						"confirmDescription",
+						"changeOn",
+						"changeOff",
+						"cancel",
+						"confirm",
+						"failed"
+					]
 				}
 			},
 			"required": [
@@ -24842,7 +25048,8 @@
 				"editor",
 				"events",
 				"scim",
-				"organisation"
+				"organisation",
+				"signInMethods"
 			]
 		},
 		"notificationProvider": {
