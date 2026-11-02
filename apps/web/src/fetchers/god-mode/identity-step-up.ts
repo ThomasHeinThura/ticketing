@@ -6,6 +6,7 @@ import type {
   ScimAdminRequest,
 } from "./identity-connections";
 import type { StepUpMethod } from "./instance-users";
+import type { LocalAuthMethodsRequest } from "./local-auth-methods";
 
 /**
  * The only operations this screen binds, exactly as the accepted API defines them. The proof is
@@ -72,6 +73,9 @@ export type IdentityOperationBinding =
   | {
       operation: "secrets_rotate";
     }
+  | ({
+      operation: "auth_local_methods_update";
+    } & LocalAuthMethodsRequest)
   | {
       operation: "webhook_rotate_all";
       replacementSetDigest: string;

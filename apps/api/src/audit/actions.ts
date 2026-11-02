@@ -51,6 +51,9 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // `owner_team_id` or `parent_id` changed (rbac.md#reach).
   "project.reach_changed",
   "project.restored",
+  // Overview (0213): the summary fields and lifecycle status; the contract and hour bank.
+  "project.summary_updated",
+  "project_contract.set",
   "sla_policy.created",
   "sla_policy.updated",
   "sla_policy.published",

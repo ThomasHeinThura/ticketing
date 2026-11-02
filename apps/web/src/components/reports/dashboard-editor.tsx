@@ -495,7 +495,7 @@ function EditorBody({
   const message = useRuleMessage();
   const openPending = useOpenPendingAction();
   const { user } = useAuth();
-  const wide = useWideGrid();
+  const { wide, measureRef } = useWideGrid();
   const catalogue = useReportCatalogue(workspaceId);
   const views = useQuery({
     queryKey: savedViewKeys.list(workspaceId, user?.id),
@@ -767,7 +767,11 @@ function EditorBody({
           onDragEnd={editable ? onDragEnd : undefined}
         >
           <div ref={gridRef}>
-            <DashboardGrid wide={wide} data-testid="editor-grid">
+            <DashboardGrid
+              wide={wide}
+              measureRef={measureRef}
+              data-testid="editor-grid"
+            >
               {ordered.map((widget) => {
                 const title = titleOf(widget);
                 const card = (

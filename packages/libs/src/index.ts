@@ -4,6 +4,8 @@ export {
   apiFetch,
   client,
   createApiFetch,
+  FACTOR_ENROLLMENT_REQUIRED,
+  onFactorEnrollmentRequired,
   primeCsrfToken,
   windowId,
 } from "./hono";

@@ -67,9 +67,32 @@
 						},
 						"loadFailed": {
 							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"filterAction": {
+							"type": "string"
+						},
+						"limit": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
 						}
 					},
-					"required": ["columns", "loadFailed"]
+					"required": [
+						"columns",
+						"loadFailed",
+						"description",
+						"filterAction",
+						"limit",
+						"emptyTitle",
+						"emptyDescription"
+					]
 				},
 				"picker": {
 					"type": "object",
@@ -132,6 +155,15 @@
 						},
 						"save": {
 							"type": "string"
+						},
+						"previous": {
+							"type": "string"
+						},
+						"next": {
+							"type": "string"
+						},
+						"refresh": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -149,7 +181,10 @@
 						"tryAgain",
 						"markRead",
 						"markUnread",
-						"save"
+						"save",
+						"previous",
+						"next",
+						"refresh"
 					]
 				},
 				"a11y": {
@@ -911,6 +946,19 @@
 				},
 				"clearDate": {
 					"type": "string"
+				},
+				"retry": {
+					"type": "string"
+				},
+				"navigation": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"auditLog": {
+							"type": "string"
+						}
+					},
+					"required": ["auditLog"]
 				}
 			},
 			"required": [
@@ -931,7 +979,9 @@
 				"pendingDeletion",
 				"dateEntry",
 				"invalidDate",
-				"clearDate"
+				"clearDate",
+				"retry",
+				"navigation"
 			]
 		},
 		"auth": {
@@ -1295,13 +1345,21 @@
 						},
 						"sendVerificationCode": {
 							"type": "string"
+						},
+						"usePassword": {
+							"type": "string"
+						},
+						"useEmailCode": {
+							"type": "string"
 						}
 					},
 					"required": [
 						"sendFailed",
 						"codeSent",
 						"sending",
-						"sendVerificationCode"
+						"sendVerificationCode",
+						"usePassword",
+						"useEmailCode"
 					]
 				},
 				"signInForm": {
@@ -3028,6 +3086,16 @@
 								},
 								"writesWarning": {
 									"type": "string"
+								},
+								"capabilityGroups": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"Instance": {
+											"type": "string"
+										}
+									},
+									"required": ["Instance"]
 								}
 							},
 							"required": [
@@ -3056,7 +3124,8 @@
 								"writesLabel",
 								"writesDescription",
 								"writesWarningTitle",
-								"writesWarning"
+								"writesWarning",
+								"capabilityGroups"
 							]
 						}
 					},
@@ -8352,6 +8421,9 @@
 						},
 						"deleteProject": {
 							"type": "string"
+						},
+						"backlog": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8363,7 +8435,8 @@
 						"deleteConfirmTitle",
 						"deleteConfirmDescription",
 						"deletedToast",
-						"deleteProject"
+						"deleteProject",
+						"backlog"
 					]
 				},
 				"search": {
@@ -10891,6 +10964,9 @@
 								"dueNextWeek",
 								"noDueDate"
 							]
+						},
+						"title": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -10904,7 +10980,8 @@
 						"addFilter",
 						"sections",
 						"noTasksInSection",
-						"filters"
+						"filters",
+						"title"
 					]
 				},
 				"sort": {
@@ -12134,6 +12211,12 @@
 						},
 						"showAllKinds": {
 							"type": "string"
+						},
+						"actions": {
+							"type": "string"
+						},
+						"archived": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12169,7 +12252,9 @@
 						"managedServiceBadge",
 						"filteredEmptyTitle",
 						"filteredEmptyDescription",
-						"showAllKinds"
+						"showAllKinds",
+						"actions",
+						"archived"
 					]
 				},
 				"search": {
@@ -12393,6 +12478,9 @@
 						},
 						"copyFailed": {
 							"type": "string"
+						},
+						"expiredBadge": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12401,7 +12489,8 @@
 						"linkLabel",
 						"copyLink",
 						"linkCopied",
-						"copyFailed"
+						"copyFailed",
+						"expiredBadge"
 					]
 				},
 				"inviteModal": {
@@ -13118,6 +13207,28 @@
 						},
 						"reload": {
 							"type": "string"
+						},
+						"columns": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"key": {
+									"type": "string"
+								},
+								"title": {
+									"type": "string"
+								},
+								"priority": {
+									"type": "string"
+								},
+								"assignee": {
+									"type": "string"
+								}
+							},
+							"required": ["key", "title", "priority", "assignee"]
+						},
+						"columnUnavailable": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -13177,7 +13288,9 @@
 						"customFieldPersonUnavailable",
 						"sortColumnAria",
 						"cursorChanged",
-						"reload"
+						"reload",
+						"columns",
+						"columnUnavailable"
 					]
 				},
 				"create": {
@@ -14028,6 +14141,9 @@
 						},
 						"resizeProperties": {
 							"type": "string"
+						},
+						"editField": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -14064,7 +14180,8 @@
 						"attachments",
 						"change",
 						"time",
-						"resizeProperties"
+						"resizeProperties",
+						"editField"
 					]
 				},
 				"journey": {
@@ -14465,6 +14582,9 @@
 						},
 						"combinedStateGroupingRequired": {
 							"type": "string"
+						},
+						"rankForbidden": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -14513,7 +14633,8 @@
 						"combinedDescendants",
 						"combinedScope",
 						"crossProjectRankDenied",
-						"combinedStateGroupingRequired"
+						"combinedStateGroupingRequired",
+						"rankForbidden"
 					]
 				},
 				"bulk": {
@@ -15555,6 +15676,15 @@
 								},
 								"checklist": {
 									"type": "string"
+								},
+								"dueDate": {
+									"type": "string"
+								},
+								"startDate": {
+									"type": "string"
+								},
+								"deleted_at": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -15572,8 +15702,14 @@
 								"archived_at",
 								"key",
 								"template",
-								"checklist"
+								"checklist",
+								"dueDate",
+								"startDate",
+								"deleted_at"
 							]
+						},
+						"unassigned": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -15589,8 +15725,47 @@
 						"emptyValue",
 						"noValue",
 						"actions",
-						"fields"
+						"fields",
+						"unassigned"
 					]
+				},
+				"priority": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"urgent": {
+							"type": "string"
+						},
+						"high": {
+							"type": "string"
+						},
+						"medium": {
+							"type": "string"
+						},
+						"low": {
+							"type": "string"
+						},
+						"no-priority": {
+							"type": "string"
+						}
+					},
+					"required": ["urgent", "high", "medium", "low", "no-priority"]
+				},
+				"backlog": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"rankColumn": {
+							"type": "string"
+						}
+					},
+					"required": ["emptyTitle", "emptyDescription", "rankColumn"]
 				}
 			},
 			"required": [
@@ -15612,7 +15787,9 @@
 				"openChildren",
 				"sla",
 				"move",
-				"auditHistory"
+				"auditHistory",
+				"priority",
+				"backlog"
 			]
 		},
 		"portal": {
@@ -23374,6 +23551,12 @@
 				},
 				"pairedQueueDescription": {
 					"type": "string"
+				},
+				"emptySubmissionsTitle": {
+					"type": "string"
+				},
+				"emptySubmissionsDescription": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -23436,7 +23619,9 @@
 				"addSort",
 				"removeSort",
 				"openIntakeQueue",
-				"pairedQueueDescription"
+				"pairedQueueDescription",
+				"emptySubmissionsTitle",
+				"emptySubmissionsDescription"
 			]
 		},
 		"identityConnections": {
@@ -24716,6 +24901,142 @@
 						"loadFailed",
 						"customerVisibility"
 					]
+				},
+				"signInMethods": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						},
+						"staff": {
+							"type": "string"
+						},
+						"customers": {
+							"type": "string"
+						},
+						"password": {
+							"type": "string"
+						},
+						"passwordDescription": {
+							"type": "string"
+						},
+						"magicLink": {
+							"type": "string"
+						},
+						"magicLinkDescription": {
+							"type": "string"
+						},
+						"emailOtp": {
+							"type": "string"
+						},
+						"emailOtpDescription": {
+							"type": "string"
+						},
+						"switchLabel": {
+							"type": "string"
+						},
+						"staffPasswordLocked": {
+							"type": "string"
+						},
+						"emailProviderNotice": {
+							"type": "string"
+						},
+						"emailProviderMissingTitle": {
+							"type": "string"
+						},
+						"emailProviderMissing": {
+							"type": "string"
+						},
+						"emailProviderLink": {
+							"type": "string"
+						},
+						"emailOtpEnvironmentDisabled": {
+							"type": "string"
+						},
+						"customersNone": {
+							"type": "string"
+						},
+						"reset": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"confirmTitle": {
+							"type": "string"
+						},
+						"confirmDescription": {
+							"type": "string"
+						},
+						"changeOn": {
+							"type": "string"
+						},
+						"changeOff": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"confirm": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"loading",
+						"unavailable",
+						"loadFailed",
+						"method",
+						"staff",
+						"customers",
+						"password",
+						"passwordDescription",
+						"magicLink",
+						"magicLinkDescription",
+						"emailOtp",
+						"emailOtpDescription",
+						"switchLabel",
+						"staffPasswordLocked",
+						"emailProviderNotice",
+						"emailProviderMissingTitle",
+						"emailProviderMissing",
+						"emailProviderLink",
+						"emailOtpEnvironmentDisabled",
+						"customersNone",
+						"reset",
+						"save",
+						"saved",
+						"confirmTitle",
+						"confirmDescription",
+						"changeOn",
+						"changeOff",
+						"cancel",
+						"confirm",
+						"failed"
+					]
 				}
 			},
 			"required": [
@@ -24727,7 +25048,8 @@
 				"editor",
 				"events",
 				"scim",
-				"organisation"
+				"organisation",
+				"signInMethods"
 			]
 		},
 		"notificationProvider": {
@@ -25547,6 +25869,12 @@
 				},
 				"forbidden": {
 					"type": "string"
+				},
+				"stateOn": {
+					"type": "string"
+				},
+				"stateOff": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -25574,7 +25902,9 @@
 				"flags",
 				"page",
 				"forbiddenTitle",
-				"forbidden"
+				"forbidden",
+				"stateOn",
+				"stateOff"
 			]
 		},
 		"godModeSettings": {
@@ -26134,6 +26464,9 @@
 						},
 						"deliveriesPending": {
 							"type": "string"
+						},
+						"expiredInvitationDeliveryEnvelopes": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -26147,7 +26480,8 @@
 						"outboxDead",
 						"outboxPending",
 						"deliveriesDead",
-						"deliveriesPending"
+						"deliveriesPending",
+						"expiredInvitationDeliveryEnvelopes"
 					]
 				},
 				"rotateSecrets": {
@@ -36221,6 +36555,12 @@
 				},
 				"purgeConflict": {
 					"type": "string"
+				},
+				"unknownDate": {
+					"type": "string"
+				},
+				"restoreOperationUnavailable": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -36333,7 +36673,9 @@
 				"purgeSubmitting",
 				"purgeRequestFailedTitle",
 				"purgeRequestFailed",
-				"purgeConflict"
+				"purgeConflict",
+				"unknownDate",
+				"restoreOperationUnavailable"
 			]
 		},
 		"term": {
@@ -38527,6 +38869,9 @@
 						"reconcile",
 						"losses"
 					]
+				},
+				"rejectionCodesColumn": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -38606,7 +38951,8 @@
 				"states",
 				"counts",
 				"logCodes",
-				"wizard"
+				"wizard",
+				"rejectionCodesColumn"
 			]
 		}
 	},

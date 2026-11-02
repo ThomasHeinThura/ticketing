@@ -12,16 +12,17 @@ import { useTranslation } from "react-i18next";
 import { ImpersonationBanner } from "@/components/god-mode/impersonation-banner";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { authClient } from "@/lib/auth-client";
+import {
+  factorsPassed,
+  peekAgentSession,
+  rememberFactorsPassed,
+  resolveAgentSession,
+  type SessionData,
+} from "@/lib/agent-session";
 import { isGodModePath } from "@/lib/god-mode-paths";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 
-/**
- * Backoff between get-session retries when the check is rate limited (429) or
- * the API is transiently failing (5xx / network). The total wait is bounded to
- * the sum of these delays; there is no unbounded retry loop.
- */
-export const SESSION_RETRY_DELAYS_MS = [250, 750, 1500] as const;
+export { SESSION_RETRY_DELAYS_MS } from "@/lib/agent-session";
 
 /** Raised when get-session is still failing transiently after every retry. */
 export class SessionUnavailableError extends Error {
@@ -31,47 +32,11 @@ export class SessionUnavailableError extends Error {
   }
 }
 
-// A 429/408/5xx or a network-level failure (no HTTP status) says nothing about
-// whether the user is signed in, so it must never be treated as "signed out".
-function isTransientSessionFailure(error: { status?: number }): boolean {
-  const status = error.status;
-  return (
-    status === undefined ||
-    status === 0 ||
-    status === 408 ||
-    status === 429 ||
-    status >= 500
-  );
-}
-
-type SessionData = Awaited<ReturnType<typeof authClient.getSession>>["data"];
-
-type SessionLookup =
-  | { kind: "resolved"; session: SessionData }
-  | { kind: "threw" }
-  | { kind: "transient" };
-
-async function lookupSession(): Promise<SessionLookup> {
-  let last: SessionLookup = { kind: "transient" };
-  for (let attempt = 0; attempt <= SESSION_RETRY_DELAYS_MS.length; attempt++) {
-    if (attempt > 0) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, SESSION_RETRY_DELAYS_MS[attempt - 1]),
-      );
-    }
-    try {
-      const { data, error } = await authClient.getSession();
-      if (!error || !isTransientSessionFailure(error)) {
-        // 200 (data may be null = signed out) or a definitive 4xx such as 401.
-        return { kind: "resolved", session: data };
-      }
-      last = { kind: "transient" };
-    } catch (error) {
-      if (import.meta.env.DEV) console.warn("getSession failed", error);
-      last = { kind: "threw" };
-    }
-  }
-  return last;
+function readFactorStatus(): Promise<Response | null> {
+  return fetch(getApiUrl("me/security/factors"), {
+    credentials: "include",
+    cache: "no-store",
+  }).catch(() => null);
 }
 
 function SessionRouteError({ error }: ErrorComponentProps) {
@@ -142,23 +107,29 @@ function AuthenticatedShell() {
 export const Route = createFileRoute("/_layout/_authenticated")({
   component: AuthenticatedShell,
   errorComponent: SessionRouteError,
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async ({ location, context }) => {
+    const { queryClient } = context;
     const checkFactors =
       location.pathname !== "/dashboard/settings/account/security";
     let factorsRequest: Promise<Response | null> | null = null;
-    if (checkFactors) {
+    // D9: a session identity that already passed the factor check is not asked again on each
+    // navigation. A new session (sign-in, rotation, another user) is asked once more, and a
+    // "required but not enrolled" answer is never remembered. The API still refuses every
+    // request from a session that must enrol (`mfa_enrollment_required`); that refusal drops
+    // the kept answer and re-runs this check (`recoverFactorEnrollment`).
+    if (
+      checkFactors &&
+      !factorsPassed(queryClient, peekAgentSession(queryClient))
+    ) {
       // Start the independent enforcement read alongside session refresh. Its
       // result is consumed only after session resolution, so redirect
       // precedence remains unchanged for logged-out users.
-      factorsRequest = fetch(getApiUrl("me/security/factors"), {
-        credentials: "include",
-        cache: "no-store",
-      }).catch(() => null);
+      factorsRequest = readFactorStatus();
     }
 
     let session: SessionData = null;
     let sessionError = false;
-    const lookup = await lookupSession();
+    const lookup = await resolveAgentSession(queryClient);
     if (lookup.kind === "resolved") {
       session = lookup.session;
     } else if (lookup.kind === "threw") {
@@ -205,10 +176,7 @@ export const Route = createFileRoute("/_layout/_authenticated")({
         // request was sent. Retry once with the now-current cookie before
         // deciding whether enrollment is required.
         if (response?.status === 401) {
-          response = await fetch(getApiUrl("me/security/factors"), {
-            credentials: "include",
-            cache: "no-store",
-          }).catch(() => null);
+          response = await readFactorStatus();
         }
         if (response?.ok) {
           const factor = (await response.json()) as {
@@ -217,6 +185,8 @@ export const Route = createFileRoute("/_layout/_authenticated")({
           };
           if (factor.required && !factor.enabled) {
             enrollmentRequired = true;
+          } else {
+            rememberFactorsPassed(queryClient, session);
           }
         }
       } catch {

@@ -1425,7 +1425,7 @@ then the project list, then settings at the bottom.
 │  Views                     │   saved views, personal and team
 │  Reports                   │
 │  Knowledge base            │
-│  Service management        │   services · changes · releases
+│  Service catalogue         │   services · changes · releases
 │  Timesheet                 │
 │                            │
 ├────────────────────────────┤

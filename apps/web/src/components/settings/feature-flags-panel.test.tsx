@@ -188,11 +188,22 @@ describe("FeatureFlagsPanel", () => {
     expect(screen.getByText("lastChanged:system")).toBeTruthy();
   });
 
-  it("labels the enabled switch as well as the lock switch", () => {
-    mocks.rows = [row({ key: "feature.sla" })];
+  it("names each switch by its feature and shows its real state (A-37)", () => {
+    mocks.rows = [
+      row({ key: "feature.sla", enabled: false }),
+      row({ key: "feature.kb", enabled: true }),
+    ];
     render(<FeatureFlagsPanel target={{ level: "instance" }} />);
-    expect(screen.getByText("enabledSwitch")).toBeTruthy();
-    expect(screen.getByText("lock")).toBeTruthy();
+    const sla = screen.getByRole("switch", { name: "flags.feature.sla.name" });
+    expect(sla.getAttribute("aria-checked")).toBe("false");
+    const kb = screen.getByRole("switch", { name: "flags.feature.kb.name" });
+    expect(kb.getAttribute("aria-checked")).toBe("true");
+    expect(
+      screen.getByRole("switch", { name: "lock flags.feature.sla.name" }),
+    ).toBeTruthy();
+    expect(screen.getAllByText("stateOff")).toHaveLength(1);
+    expect(screen.getAllByText("stateOn")).toHaveLength(1);
+    expect(screen.queryByText("enabledSwitch")).toBeNull();
   });
 
   it("says access is missing on a 403 instead of a generic load failure (M9)", () => {

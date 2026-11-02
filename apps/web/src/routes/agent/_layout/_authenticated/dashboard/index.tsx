@@ -2,13 +2,12 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { getPendingInvitations } from "@/fetchers/invitation/get-pending-invitations";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import getWorkspaces from "@/fetchers/workspace/get-workspaces";
-import { authClient } from "@/lib/auth-client";
 import { handleUnauthorized, isUnauthorizedError } from "@/lib/http-error";
 import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 import type Workspace from "@/types/workspace";
 
 export const Route = createFileRoute("/_layout/_authenticated/dashboard/")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ context }) => {
     let workspaces: Workspace[];
     let invitations: Awaited<ReturnType<typeof getPendingInvitations>>;
     try {
@@ -26,8 +25,9 @@ export const Route = createFileRoute("/_layout/_authenticated/dashboard/")({
       throw redirect({ to: "/invitations" });
     }
 
-    const session = await authClient.getSession();
-    const activeWorkspaceId = getActiveOrganizationId(session?.data);
+    // The protected layout already resolved the session (S7b); a workspace switch clears that
+    // cached session through the session signal, so its active workspace is current.
+    const activeWorkspaceId = getActiveOrganizationId(context.session);
 
     if (workspaces && workspaces.length > 0) {
       if (

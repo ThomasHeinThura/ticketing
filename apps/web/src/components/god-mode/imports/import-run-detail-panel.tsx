@@ -293,7 +293,7 @@ function McpImportRunDetail({
                         <TableHead>{t("chunkId")}</TableHead>
                         <TableHead>{t("state")}</TableHead>
                         <TableHead>{t("recordCount")}</TableHead>
-                        <TableHead>{t("rejectionCodes")}</TableHead>
+                        <TableHead>{t("rejectionCodesColumn")}</TableHead>
                         <TableHead>{t("createdAt")}</TableHead>
                         <TableHead>{t("committedAt")}</TableHead>
                       </TableRow>

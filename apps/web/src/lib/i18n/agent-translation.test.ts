@@ -195,6 +195,14 @@ describe("agent terminology translation", () => {
     expect(instance.t("serviceManagement:nav.changes")).toBe(
       "Release calendar",
     );
+    // D8 (31 Oct): the section is named "Service catalogue"; its URL stays /agent/service-management.
+    expect(instance.t("navigation:sidebar.serviceManagement")).toBe(
+      "Service catalogue",
+    );
+    expect(instance.t("serviceManagement:nav.title")).toBe("Service catalogue");
+    expect(instance.t("serviceManagement:disabled.title")).toBe(
+      "Offering catalogue is off",
+    );
   });
 
   it("uses the shipped noun in title while the renamed visible label stays accessible", async () => {
