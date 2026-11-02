@@ -3833,7 +3833,9 @@
 			"title": "How can we help?",
 			"description": "Raise a {{term_request_one}}, track progress or review an approval.",
 			"recent": "Recent {{term_request_other}}",
-			"allRequests": "View all {{term_request_other}}"
+			"allRequests": "View all {{term_request_other}}",
+			"dashboardDescription": "Your organisation’s support at a glance.",
+			"dashboardTitle": "Dashboard"
 		},
 		"requests": {
 			"title": "My {{term_request_other}}",
@@ -4140,6 +4142,72 @@
 				"signingOut": "Signing out…",
 				"unnamed": "Unnamed user"
 			}
+		},
+		"cases": {
+			"columns": {
+				"assignedTo": "Assigned to",
+				"created": "Created",
+				"createdBy": "Created by",
+				"details": "Details",
+				"project": "Project",
+				"severity": "Severity",
+				"status": "Status",
+				"updated": "Updated"
+			},
+			"emptyDescription": "Nothing matches these filters.",
+			"emptyNoneDescription": "{{term_request_other}} you raise appear here.",
+			"emptyNoneTitle": "No {{term_request_other}} yet",
+			"emptyTitle": "No {{term_request_other}} here",
+			"export": "Export CSV",
+			"exportHint": "Exports up to 5,000 {{term_request_other}} with the current filters.",
+			"filters": {
+				"clear": "Clear filters",
+				"clearDates": "Clear dates",
+				"created": "Created",
+				"from": "From",
+				"on": "On",
+				"search": "Search {{term_request_other}}",
+				"searchPlaceholder": "Search by reference, title or type",
+				"to": "To",
+				"anyDate": "Any date"
+			},
+			"firstPage": "First page",
+			"kpi": {
+				"actionRequired": "Action required",
+				"actionRequiredCases": "{{cases}} need information",
+				"actionRequiredApprovals": "{{approvals}} to approve",
+				"averageResponse": "Average first response",
+				"averageResponseHint": "Last 30 days",
+				"closed": "Closed",
+				"closedHint": "In the last 30 days",
+				"loadFailed": "Could not load the dashboard figures.",
+				"outstanding": "Outstanding",
+				"outstandingHint": "Received, in progress or waiting for you"
+			},
+			"listDescription": "Every {{term_request_one}} you raised or can see in your organisation. Search, filter and export.",
+			"listTitle": "Support {{term_request_other}}",
+			"loadFailed": "Could not load {{term_request_other}}. Try again.",
+			"nextPage": "Next page",
+			"notSet": "Not set",
+			"outstandingDescription": "Open {{term_request_other}} that are received, in progress, or waiting for you.",
+			"outstandingTitle": "Outstanding {{term_request_other}}",
+			"pagination": "{{term_request_one}} pages",
+			"raisedByTeam": "Raised by our team for you",
+			"scope": {
+				"all": "All {{term_request_other}}",
+				"label": "Whose {{term_request_other}}",
+				"mine": "My {{term_request_other}}"
+			},
+			"sort": {
+				"created_asc": "Oldest first",
+				"created_desc": "Newest first",
+				"label": "Sort by",
+				"updated_asc": "Least recently updated",
+				"updated_desc": "Recently updated"
+			},
+			"summary": "Showing {{shown}} of {{total}}",
+			"viewAll": "View all {{term_request_other}}",
+			"yourTeam": "Your team"
 		}
 	},
 	"instanceUsers": {

@@ -1,7 +1,6 @@
 import {
   useInfiniteQuery,
   useMutation,
-  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -16,6 +15,8 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  Frame,
+  FramePanel,
   Skeleton,
   Table,
   TableBody,
@@ -24,23 +25,35 @@ import {
   TableHeader,
   TableRow,
 } from "@taskdesk/ui";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Download } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { PortalRequestState } from "@/components/portal/portal-request-state";
-import { PortalSlaStatus } from "@/components/portal/portal-sla-status";
-import { getPortalSubmissions } from "@/fetchers/intake";
+import {
+  type PortalCaseFilterPatch,
+  PortalCaseFilters,
+} from "@/components/portal/cases/portal-case-filters";
+import { PortalCaseTable } from "@/components/portal/cases/portal-case-table";
+import {
+  type PortalCaseQuery,
+  portalCaseExportUrl,
+} from "@/fetchers/portal/cases";
 import {
   getPortalBacklog,
   type PortalBacklogItem,
   rankPortalBacklogItem,
 } from "@/fetchers/portal-backlog";
+import { usePortalCases } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { readPortalSla } from "@/lib/portal-request";
 import {
+  type PortalRequestsSearch,
   parsePortalRequestsSearch,
   portalProjectSearchMiddlewares,
   routes,
 } from "@/lib/routes";
+
+/** Cases per page on the full list. */
+const PAGE_SIZE = 25;
+/** The server's CSV row cap (`PORTAL_CASE_EXPORT_CAP`); a larger result is cut short. */
+const PORTAL_EXPORT_CAP = 5000;
 
 export const Route = createFileRoute("/requests")({
   validateSearch: parsePortalRequestsSearch,
@@ -56,11 +69,31 @@ function PortalRequestsPage() {
   const backlogMode = view === "backlog";
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
-  const query = useQuery({
-    queryKey: ["portal", portalUserId, "submissions", cursor],
-    queryFn: () => getPortalSubmissions({ cursor }),
+  const caseQuery: PortalCaseQuery = {
+    scope: search.scope ?? "mine",
+    ...(search.status ? { status: search.status } : {}),
+    ...(search.priority ? { priority: search.priority } : {}),
+    ...(search.project ? { project: search.project } : {}),
+    ...(search.q ? { q: search.q } : {}),
+    ...(search.from ? { from: search.from } : {}),
+    ...(search.to ? { to: search.to } : {}),
+    ...(search.sort ? { sort: search.sort } : {}),
+    ...(cursor ? { cursor } : {}),
+    limit: PAGE_SIZE,
+  };
+  const query = usePortalCases(portalUserId, caseQuery, {
     enabled: !backlogMode,
   });
+  // A filter change starts again at the first page.
+  const updateFilters = (patch: PortalCaseFilterPatch) =>
+    void navigate({
+      search: (previous: PortalRequestsSearch) => ({
+        ...previous,
+        ...patch,
+        cursor: undefined,
+      }),
+      replace: true,
+    });
   const backlogQuery = useInfiniteQuery({
     queryKey: ["portal", portalUserId, "backlog"],
     queryFn: ({ pageParam }) => getPortalBacklog(pageParam),
@@ -121,7 +154,15 @@ function PortalRequestsPage() {
     rankMutation.isPending,
   ]);
 
-  const submissions = query.data?.submissions ?? [];
+  const cases = query.data?.cases ?? [];
+  const filtered = Boolean(
+    search.status ||
+      search.priority ||
+      search.q ||
+      search.from ||
+      search.to ||
+      search.scope,
+  );
   const backlogItems =
     backlogQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const backlogGroups = useMemo(() => {
@@ -173,44 +214,61 @@ function PortalRequestsPage() {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-semibold">
-            {backlogMode
-              ? t("requests.backlog", { defaultValue: "Backlog" })
-              : t("requests.title", { defaultValue: "My requests" })}
+          <h1 className="font-semibold text-xl">
+            {backlogMode ? t("requests.backlog") : t("cases.listTitle")}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {backlogMode
-              ? t("requests.backlogDescription", {
-                  defaultValue:
-                    "Accepted requests in your organisation’s backlog. Use the arrow controls to change their order.",
-                })
-              : t("requests.description", {
-                  defaultValue:
-                    "Track requests you submitted or can view across your organisation.",
-                })}
+              ? t("requests.backlogDescription")
+              : t("cases.listDescription")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant={backlogMode ? "outline" : "secondary"}
-            onClick={() => void navigate({ search: {} })}
+            onClick={() =>
+              void navigate({
+                search: (previous: PortalRequestsSearch) => ({
+                  project: previous.project,
+                }),
+              })
+            }
           >
-            {t("requests.showRequests", { defaultValue: "My requests" })}
+            {t("cases.listTitle")}
           </Button>
           <Button
             variant={backlogMode ? "secondary" : "outline"}
-            onClick={() => void navigate({ search: { view: "backlog" } })}
+            onClick={() =>
+              void navigate({
+                search: (previous: PortalRequestsSearch) => ({
+                  project: previous.project,
+                  view: "backlog",
+                }),
+              })
+            }
           >
-            {t("requests.backlog", { defaultValue: "Backlog" })}
+            {t("requests.backlog")}
           </Button>
+          {backlogMode ? null : (
+            <Button
+              variant="outline"
+              render={<a href={portalCaseExportUrl(caseQuery)} download />}
+            >
+              <Download className="size-4" aria-hidden="true" />
+              {t("cases.export")}
+            </Button>
+          )}
           <Button render={<Link to={routes.portalCatalogue.path} />}>
-            {t("requests.newRequest", { defaultValue: "New request" })}
+            {t("requests.newRequest")}
           </Button>
         </div>
       </header>
+      {backlogMode ? null : (
+        <PortalCaseFilters filters={search} onChange={updateFilters} full />
+      )}
 
       {(backlogMode ? backlogQuery.isError : query.isError) ? (
         <Alert variant="error">
@@ -378,128 +436,92 @@ function PortalRequestsPage() {
             </div>
           </>
         )
-      ) : query.isLoading ? (
-        <Card>
-          <CardContent className="flex flex-col gap-3 p-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-        </Card>
-      ) : submissions.length === 0 ? (
-        <Card>
-          <CardContent className="p-8">
+      ) : !query.data ? (
+        <Skeleton className="h-64 w-full rounded-xl" />
+      ) : cases.length === 0 ? (
+        <Frame>
+          <FramePanel className="p-8">
             <Empty>
               <EmptyHeader>
                 <EmptyTitle>
-                  {t("requests.emptyTitle", {
-                    defaultValue: "No requests found",
-                  })}
+                  {filtered ? t("cases.emptyTitle") : t("cases.emptyNoneTitle")}
                 </EmptyTitle>
                 <EmptyDescription>
-                  {t("requests.emptyDescription", {
-                    defaultValue:
-                      "You haven't submitted any service requests yet.",
-                  })}
+                  {filtered
+                    ? t("cases.emptyDescription")
+                    : t("cases.emptyNoneDescription")}
                 </EmptyDescription>
               </EmptyHeader>
-              <div className="mt-4 flex justify-center">
-                <Button
-                  variant="outline"
-                  render={<Link to={routes.portalCatalogue.path} />}
-                >
-                  {t("requests.browseCatalogue", {
-                    defaultValue: "Browse request catalogue",
-                  })}
-                </Button>
-              </div>
+              {filtered ? null : (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    render={<Link to={routes.portalCatalogue.path} />}
+                  >
+                    {t("requests.browseCatalogue")}
+                  </Button>
+                </div>
+              )}
             </Empty>
-          </CardContent>
-        </Card>
+          </FramePanel>
+        </Frame>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("requests.reference")}</TableHead>
-                <TableHead>{t("requests.type")}</TableHead>
-                <TableHead>{t("requests.status")}</TableHead>
-                <TableHead>{t("requests.due")}</TableHead>
-                <TableHead>{t("requests.visibility")}</TableHead>
-                <TableHead>{t("requests.submitted")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {submissions.map((sub) => (
-                <TableRow key={sub.ref}>
-                  <TableCell className="font-medium">
-                    <Link
-                      to={routes.portalSubmission.path}
-                      params={{ ref: sub.ref }}
-                      className="text-primary hover:underline"
-                    >
-                      {sub.ref}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{sub.requestTypeName}</TableCell>
-                  <TableCell>
-                    <PortalRequestState
-                      state={sub.state}
-                      customerStatus={
-                        (sub as { customerStatus?: string }).customerStatus
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <PortalSlaStatus
-                      sla={readPortalSla((sub as { sla?: unknown }).sla)}
-                    />
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {sub.customerVisibility === "organisation"
-                      ? t("intake.visibilityOrganisation", {
-                          defaultValue: "Organisation",
-                        })
-                      : t("intake.visibilityPrivate", {
-                          defaultValue: "Private",
-                        })}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                    {new Date(sub.createdAt).toLocaleDateString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <PortalCaseTable
+          cases={cases}
+          columns={["project", "created"]}
+          caption={t("cases.listTitle")}
+        />
       )}
       {!backlogMode ? (
         <nav
-          aria-label={t("requests.pagination")}
-          className="flex items-center justify-between gap-2"
+          aria-label={t("cases.pagination")}
+          className="flex flex-wrap items-center justify-between gap-2"
         >
-          {cursor ? (
-            <Button
-              variant="outline"
-              onClick={() => void navigate({ search: {} })}
-            >
-              {t("requests.latest")}
-            </Button>
-          ) : (
-            <span />
-          )}
-          {query.data?.page.hasMore && query.data.page.nextCursor ? (
-            <Button
-              variant="outline"
-              onClick={() =>
-                void navigate({
-                  search: { cursor: query.data?.page.nextCursor ?? undefined },
+          <span className="text-muted-foreground text-xs" aria-live="polite">
+            {query.data
+              ? t("cases.summary", {
+                  shown: cases.length,
+                  total: query.data.meta.total,
                 })
-              }
-            >
-              {t("requests.older")}
-            </Button>
-          ) : null}
+              : null}
+            {query.data && query.data.meta.total > PORTAL_EXPORT_CAP
+              ? ` · ${t("cases.exportHint")}`
+              : null}
+          </span>
+          <div className="flex items-center gap-2">
+            {cursor ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  void navigate({
+                    search: (previous: PortalRequestsSearch) => ({
+                      ...previous,
+                      cursor: undefined,
+                    }),
+                  })
+                }
+              >
+                {t("cases.firstPage")}
+              </Button>
+            ) : null}
+            {query.data?.page.hasMore && query.data.page.nextCursor ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  void navigate({
+                    search: (previous: PortalRequestsSearch) => ({
+                      ...previous,
+                      cursor: query.data?.page.nextCursor ?? undefined,
+                    }),
+                  })
+                }
+              >
+                {t("cases.nextPage")}
+              </Button>
+            ) : null}
+          </div>
         </nav>
       ) : backlogQuery.hasNextPage ? (
         <nav

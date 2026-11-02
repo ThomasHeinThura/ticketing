@@ -2,6 +2,7 @@ import { resolveFeatureFlag } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { countPortalPendingApprovals } from "../approval";
 import db, { schema } from "../database";
 import { getActiveStaffPerson } from "../instance/users/repository";
 import {
@@ -49,6 +50,21 @@ import {
   rankPortalBacklogBodySchema,
   rankPortalBacklogResponseSchema,
 } from "./portal-backlog";
+import {
+  exportPortalCases,
+  listPortalCases,
+  organisationProjectIds,
+  PORTAL_CASE_EXPORT_CAP,
+  type PortalHome,
+  portalCaseFilterSchema,
+  portalCaseListQuerySchema,
+  portalCasePageSchema,
+  portalHomeCounts,
+  portalHomeQuerySchema,
+  portalHomeSchema,
+  portalMe,
+  portalMeSchema,
+} from "./portal-cases";
 import { PORTAL_CUSTOMER_STATUSES } from "./portal-status";
 import {
   acceptSubmission,
@@ -1010,6 +1026,82 @@ const portalListRoute = createRoute({
     200: jsonResponse("Submissions", portalSubmissionListResponseSchema),
   },
 });
+/**
+ * S4b query strings as the route sees them; `portalCaseListQuerySchema` parses the lists and
+ * enums in the handler so a malformed value answers 400 rather than reaching SQL.
+ */
+const portalCaseRouteQuery = z.object({
+  scope: z.string().max(10).optional(),
+  status: z.string().max(200).optional(),
+  priority: z.string().max(200).optional(),
+  project: z.string().max(64).optional(),
+  from: z.string().max(10).optional(),
+  to: z.string().max(10).optional(),
+  q: z.string().max(200).optional(),
+  sort: z.string().max(20).optional(),
+  cursor: z.string().max(2048).optional(),
+  limit: z.string().max(3).optional(),
+});
+function parsePortalCaseQuery<T extends z.ZodType>(schema: T, raw: unknown) {
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success)
+    throw new HTTPException(400, { message: "Invalid case filter" });
+  return parsed.data as z.infer<T>;
+}
+const portalMeRoute = createRoute({
+  method: "get",
+  operationId: "getPortalMe",
+  path: "/portal/me",
+  tags: ["Portal account"],
+  summary: "The signed-in customer's own profile",
+  middleware: [portalOrganisation] as const,
+  responses: {
+    200: jsonResponse("Own profile", portalMeSchema),
+    404: errorResponse("Portal account not found"),
+  },
+});
+const portalHomeRoute = createRoute({
+  method: "get",
+  operationId: "getPortalHome",
+  path: "/portal/home",
+  tags: ["Portal submissions"],
+  summary: "Dashboard figures for the customer's organisation",
+  middleware: [portalOrganisation] as const,
+  request: { query: z.object({ project: z.string().max(64).optional() }) },
+  responses: {
+    200: jsonResponse("Dashboard figures", portalHomeSchema),
+    400: errorResponse("Invalid project"),
+  },
+});
+const portalCaseListRoute = createRoute({
+  method: "get",
+  operationId: "listPortalRequests",
+  path: "/portal/requests",
+  tags: ["Portal submissions"],
+  summary: "List the cases the customer can read, filtered, sorted and paged",
+  middleware: [portalOrganisation] as const,
+  request: { query: portalCaseRouteQuery },
+  responses: {
+    200: jsonResponse("Cases", portalCasePageSchema),
+    400: errorResponse("Invalid filter or cursor"),
+  },
+});
+const portalCaseExportRoute = createRoute({
+  method: "get",
+  operationId: "exportPortalRequests",
+  path: "/portal/requests/export.csv",
+  tags: ["Portal submissions"],
+  summary: "Export the filtered cases as CSV",
+  middleware: [portalOrganisation] as const,
+  request: { query: portalCaseRouteQuery.omit({ cursor: true, limit: true }) },
+  responses: {
+    200: {
+      description: `Streamed CSV, at most ${PORTAL_CASE_EXPORT_CAP} rows`,
+      content: { "text/csv": { schema: z.string() } },
+    },
+    400: errorResponse("Invalid filter"),
+  },
+});
 const portalDetailRoute = createRoute({
   method: "get",
   operationId: "getOwnPortalSubmission",
@@ -1548,6 +1640,68 @@ async function portalProjection(
   };
 }
 
+// S4b: the customer's profile, dashboard figures, case list and CSV export.
+const portalCasesRouter = apiRouter<IntakeVariables>()
+  .openapi(portalMeRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    return c.json(await portalMe(identity.personId), 200);
+  })
+  .openapi(portalHomeRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    const { project } = parsePortalCaseQuery(
+      portalHomeQuerySchema,
+      c.req.valid("query"),
+    );
+    const [counts, approvals] = await Promise.all([
+      portalHomeCounts(identity.personId, project),
+      project
+        ? organisationProjectIds(identity.organisationId, project).then(
+            (projectIds) =>
+              countPortalPendingApprovals(c.get("userId"), projectIds),
+          )
+        : countPortalPendingApprovals(c.get("userId")),
+    ]);
+    const { needMoreInfo, ...figures } = counts;
+    const home: PortalHome = {
+      actionRequired: {
+        total: needMoreInfo + approvals,
+        cases: needMoreInfo,
+        approvals,
+      },
+      ...figures,
+    };
+    return c.json(home, 200);
+  })
+  .openapi(portalCaseListRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    const query = parsePortalCaseQuery(
+      portalCaseListQuerySchema,
+      c.req.valid("query"),
+    );
+    return c.json(await listPortalCases(identity.personId, query), 200);
+  })
+  .openapi(portalCaseExportRoute, async (c) => {
+    const identity = await portalIdentity(c.get("userId"));
+    const filters = parsePortalCaseQuery(
+      portalCaseFilterSchema,
+      c.req.valid("query"),
+    );
+    const { stream, truncated, total } = await exportPortalCases(
+      identity.personId,
+      filters,
+    );
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": 'attachment; filename="requests.csv"',
+        "cache-control": "no-store",
+        "x-export-total": String(total),
+        "x-export-truncated": truncated ? "true" : "false",
+      },
+    });
+  });
+
 const portalDetailRouter = apiRouter<IntakeVariables>().openapi(
   portalDetailRoute,
   async (c) =>
@@ -1627,6 +1781,7 @@ const router = requestTypeRouter
   .route("/", intakeSubmissionRouter)
   .route("/", triageActionRouter)
   .route("/", portalSubmissionRouter)
+  .route("/", portalCasesRouter)
   .route("/", portalBacklogRouter)
   .route("/", portalDetailRouter)
   .route("/", portalMessageRouter)

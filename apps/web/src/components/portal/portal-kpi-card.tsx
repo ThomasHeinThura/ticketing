@@ -26,18 +26,21 @@ export function PortalKpiCard({
   icon: Icon,
   tone = "neutral",
   to,
+  search,
 }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
   icon: LucideIcon;
   tone?: PortalKpiTone;
-  /** A registered portal path built with `routes.*`. */
+  /** A registered portal path (`routes.*.path`). */
   to?: string;
+  /** Its search params, validated by the target route's parser. */
+  search?: Record<string, string | undefined>;
 }) {
   return (
     <Card
-      render={to ? <Link to={to} /> : undefined}
+      render={to ? <Link to={to} search={search} /> : undefined}
       className={cn(
         "flex-row items-start gap-3 p-4",
         to &&
@@ -59,8 +62,11 @@ export function PortalKpiCard({
         <span className="font-semibold text-2xl text-foreground tabular-nums leading-tight">
           {value}
         </span>
+        {/* The hint wraps: it explains the figure and must not be cut off in a narrow card. */}
         {hint ? (
-          <span className="truncate text-muted-foreground text-xs">{hint}</span>
+          <span className="break-words text-muted-foreground text-xs">
+            {hint}
+          </span>
         ) : null}
       </span>
     </Card>

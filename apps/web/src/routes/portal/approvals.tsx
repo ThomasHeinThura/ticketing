@@ -27,6 +27,7 @@ import {
   decidePortalApproval,
   getPortalApprovals,
 } from "@/fetchers/approval/portal-approvals";
+import { invalidatePortalCaseViews } from "@/hooks/queries/portal/use-portal-cases";
 import { HttpError } from "@/lib/http-error";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
@@ -58,10 +59,14 @@ function PortalApprovals() {
       setAnnouncement(t("approvals.recorded"));
       await navigate({ search: {} });
     },
+    // A decision changes the dashboard's "Action required" figure as well as this list.
     onSettled: () =>
-      queryClient.invalidateQueries({
-        queryKey: ["portal", portalUserId, "approvals"],
-      }),
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["portal", portalUserId, "approvals"],
+        }),
+        invalidatePortalCaseViews(queryClient, portalUserId),
+      ]),
   });
   const selected = query.data?.approvals.find(
     (approval) => approval.id === selectedId,

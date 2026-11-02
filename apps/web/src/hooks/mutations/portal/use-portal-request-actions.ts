@@ -4,11 +4,12 @@ import {
   ratePortalSubmission,
   reopenPortalSubmission,
 } from "@/fetchers/portal-request-actions";
+import { invalidatePortalCaseViews } from "@/hooks/queries/portal/use-portal-cases";
 
 /**
  * The customer's request actions (CP-7, CP-8, CP-9). Each answers with the updated submission
- * projection, which replaces the cached detail at once and is then re-read; the list and home rows are refetched
- * because their status and due time change with it.
+ * projection, which replaces the cached detail at once and is then re-read; the dashboard figures and
+ * case lists are refreshed because their counts, status and due time change with it.
  */
 export function usePortalRequestActions(portalUserId: string, ref: string) {
   const queryClient = useQueryClient();
@@ -17,12 +18,7 @@ export function usePortalRequestActions(portalUserId: string, ref: string) {
     if (updated && typeof updated === "object")
       queryClient.setQueryData(detailKey, updated);
     void queryClient.invalidateQueries({ queryKey: detailKey });
-    void queryClient.invalidateQueries({
-      queryKey: ["portal", portalUserId, "submissions"],
-    });
-    void queryClient.invalidateQueries({
-      queryKey: ["portal", portalUserId, "recent-submissions"],
-    });
+    void invalidatePortalCaseViews(queryClient, portalUserId);
   };
   const escalate = useMutation({
     mutationFn: (priority: string) =>

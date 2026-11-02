@@ -3819,7 +3819,9 @@
 			"title": "How can we help?",
 			"description": "Raise a {{term_request_one}}, track progress or review an approval.",
 			"recent": "Recent {{term_request_other}}",
-			"allRequests": "View all {{term_request_other}}"
+			"allRequests": "View all {{term_request_other}}",
+			"dashboardTitle": "Dashboard",
+			"dashboardDescription": "Your organisation’s support at a glance."
 		},
 		"requests": {
 			"title": "My {{term_request_other}}",
@@ -4124,6 +4126,72 @@
 			"projectSelector": {
 				"label": "Project",
 				"all": "All projects"
+			}
+		},
+		"cases": {
+			"outstandingTitle": "Outstanding {{term_request_other}}",
+			"outstandingDescription": "Open {{term_request_other}} that are received, in progress, or waiting for you.",
+			"viewAll": "View all {{term_request_other}}",
+			"listTitle": "Support {{term_request_other}}",
+			"listDescription": "Every {{term_request_one}} you raised or can see in your organisation. Search, filter and export.",
+			"export": "Export CSV",
+			"exportHint": "Exports up to 5,000 {{term_request_other}} with the current filters.",
+			"loadFailed": "Could not load {{term_request_other}}. Try again.",
+			"emptyTitle": "No {{term_request_other}} here",
+			"emptyDescription": "Nothing matches these filters.",
+			"emptyNoneTitle": "No {{term_request_other}} yet",
+			"emptyNoneDescription": "{{term_request_other}} you raise appear here.",
+			"yourTeam": "Your team",
+			"notSet": "Not set",
+			"raisedByTeam": "Raised by our team for you",
+			"summary": "Showing {{shown}} of {{total}}",
+			"nextPage": "Next page",
+			"firstPage": "First page",
+			"pagination": "{{term_request_one}} pages",
+			"scope": {
+				"label": "Whose {{term_request_other}}",
+				"mine": "My {{term_request_other}}",
+				"all": "All {{term_request_other}}"
+			},
+			"columns": {
+				"updated": "Updated",
+				"details": "Details",
+				"project": "Project",
+				"severity": "Severity",
+				"status": "Status",
+				"createdBy": "Created by",
+				"assignedTo": "Assigned to",
+				"created": "Created"
+			},
+			"filters": {
+				"created": "Created",
+				"on": "On",
+				"from": "From",
+				"to": "To",
+				"clearDates": "Clear dates",
+				"clear": "Clear filters",
+				"search": "Search {{term_request_other}}",
+				"searchPlaceholder": "Search by reference, title or type",
+				"anyDate": "Any date"
+			},
+			"sort": {
+				"label": "Sort by",
+				"updated_desc": "Recently updated",
+				"updated_asc": "Least recently updated",
+				"created_desc": "Newest first",
+				"created_asc": "Oldest first"
+			},
+			"kpi": {
+				"loadFailed": "Could not load the dashboard figures.",
+				"actionRequired": "Action required",
+				"actionRequiredCases": "{{cases}} need information",
+				"actionRequiredApprovals": "{{approvals}} to approve",
+				"outstanding": "Outstanding",
+				"outstandingHint": "Received, in progress or waiting for you",
+				"closed": "Closed",
+				"closedHint": "In the last 30 days",
+				"averageResponse": "Average first response",
+				"averageResponseHint": "Last 30 days"
 			}
 		}
 	},

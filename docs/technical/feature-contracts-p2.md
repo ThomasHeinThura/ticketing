@@ -475,6 +475,8 @@ an event once, and for list filtering. It is never the answer to "what is the st
   instant in the viewer's timezone, and the calendar's name.
 - `SLA-20` Colour is never the only signal — see [accessibility](#pending-02-designaccessibility).
 - `SLA-21` Customers see their own SLA state and due time, never the policy internals.
+  The portal home may add one aggregate average first-response time over the last 30 days
+  (D4, Thomas, 31 Oct 2026; see `CP-6` in [feature-contracts-p3.md](feature-contracts-p3.md)).
 
 <a id="sla-permissions"></a>
 ### Permissions

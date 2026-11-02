@@ -751,7 +751,57 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       await expect(returnPage).toHaveURL(submissionUrl);
       await expect(returnPage.getByText("Need account access")).toBeVisible();
     });
+    await runPhase(phaseJournal, "requester-cases-list", async () => {
+      // S4b: the accepted request is in the customer's case list with its customer status,
+      // "Your team" in place of an assignee, and a CSV export for the same filters.
+      const listResponse = apiResponse(
+        returnPage,
+        "GET",
+        "/api/portal/requests",
+        portalOrigin.origin,
+      );
+      await returnPage.goto(new URL("/requests", portal).toString());
+      const listed = await listResponse;
+      expect(listed.status()).toBe(200);
+      const page = (await listed.json()) as {
+        cases: Array<Record<string, unknown>>;
+      };
+      expect(page.cases.map((row) => row.ref)).toContain(ref);
+      for (const row of page.cases) expect(row).not.toHaveProperty("assignee");
+      await expect(
+        returnPage.getByRole("link", { name: ref, exact: true }),
+      ).toBeVisible();
+      await expect(returnPage.getByText("Your team").first()).toBeVisible();
+      const exportHref = await returnPage
+        .getByRole("link", { name: "Export CSV", exact: true })
+        .getAttribute("href");
+      expect(exportHref).toContain(
+        "/api/portal/requests/export.csv?scope=mine",
+      );
+      const csv = await returnPage.request.get(
+        new URL(exportHref ?? "", portal).toString(),
+      );
+      expect(csv.status()).toBe(200);
+      expect(await csv.text()).toContain(ref);
+    });
+    await runPhase(phaseJournal, "requester-dashboard", async () => {
+      const homeResponse = apiResponse(
+        returnPage,
+        "GET",
+        "/api/portal/home",
+        portalOrigin.origin,
+      );
+      await returnPage.goto(new URL("/", portal).toString());
+      expect((await homeResponse).status()).toBe(200);
+      await expect(
+        returnPage.getByText("Outstanding", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        returnPage.getByRole("link", { name: ref, exact: true }),
+      ).toBeVisible();
+    });
     await runPhase(phaseJournal, "requester-downloads-attachment", async () => {
+      await returnPage.goto(submissionUrl);
       // The finalized object key (…/attachment/<id>/final/<token>-evidence.png) must be
       // admitted on the portal host, and the saved file must carry the real name/bytes.
       const downloadPromise = returnPage.waitForEvent("download");
@@ -793,6 +843,24 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         outsiderPage.getByText("Need account access", { exact: true }),
       ).toHaveCount(0);
       await expect(outsiderPage.getByText(/evidence\.png/i)).toHaveCount(0);
+    });
+    await runPhase(phaseJournal, "outsider-cases-list", async () => {
+      const listResponse = apiResponse(
+        outsiderPage,
+        "GET",
+        "/api/portal/requests",
+        portalOrigin.origin,
+      );
+      await outsiderPage.goto(
+        new URL("/requests?scope=all", portal).toString(),
+      );
+      const listed = await listResponse;
+      expect(listed.status()).toBe(200);
+      const page = (await listed.json()) as { cases: Array<{ ref: string }> };
+      expect(page.cases.map((row) => row.ref)).not.toContain(ref);
+      await expect(
+        outsiderPage.getByRole("link", { name: ref, exact: true }),
+      ).toHaveCount(0);
     });
   } finally {
     await Promise.allSettled([

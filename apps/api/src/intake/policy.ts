@@ -90,6 +90,24 @@ export const intakePolicies = {
     portal: "customer",
     predicate: "own_organisation",
   },
+  // S4b. The contract lists `GET /api/portal/me` as `self`, which is not a `PortalPredicate`;
+  // it is served under the customer's own organisation and reads only the caller's own row.
+  "GET /api/portal/me": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
+  "GET /api/portal/home": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
+  "GET /api/portal/requests": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
+  "GET /api/portal/requests/export.csv": {
+    portal: "customer",
+    predicate: "own_organisation",
+  },
   "GET /api/portal/requests/backlog": {
     portal: "customer",
     predicate: "own_organisation",

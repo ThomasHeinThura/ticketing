@@ -53911,6 +53911,602 @@
         }
       }
     },
+    "/portal/me": {
+      "get": {
+        "operationId": "getPortalMe",
+        "tags": [
+          "Portal account"
+        ],
+        "summary": "The signed-in customer's own profile",
+        "responses": {
+          "200": {
+            "description": "Own profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "image": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "jobTitle": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "organisation": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "email",
+                    "image",
+                    "jobTitle",
+                    "organisation"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Portal account not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/home": {
+      "get": {
+        "operationId": "getPortalHome",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Dashboard figures for the customer's organisation",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "required": false,
+            "name": "project",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard figures",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "actionRequired": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "cases": {
+                          "type": "integer"
+                        },
+                        "approvals": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "cases",
+                        "approvals"
+                      ]
+                    },
+                    "outstanding": {
+                      "type": "integer"
+                    },
+                    "closedLast30Days": {
+                      "type": "integer"
+                    },
+                    "averageFirstResponse": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "seconds": {
+                          "type": "integer"
+                        },
+                        "sampleSize": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "seconds",
+                        "sampleSize"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "actionRequired",
+                    "outstanding",
+                    "closedLast30Days",
+                    "averageFirstResponse"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid project",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
+    "/portal/requests": {
+      "get": {
+        "operationId": "listPortalRequests",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "List the cases the customer can read, filtered, sorted and paged",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 10
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "priority",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "required": false,
+            "name": "project",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 10
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 10
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 3
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cases",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cases": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ref": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "submission",
+                              "direct"
+                            ]
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "requestTypeName": {
+                            "type": "string"
+                          },
+                          "priority": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "low",
+                              "medium",
+                              "high",
+                              "urgent",
+                              null
+                            ]
+                          },
+                          "customerStatus": {
+                            "type": "string",
+                            "enum": [
+                              "received",
+                              "need_more_info",
+                              "in_progress",
+                              "resolved",
+                              "declined",
+                              "closed",
+                              "withdrawn"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "project": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "name"
+                            ]
+                          },
+                          "createdBy": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isYou": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "isYou"
+                            ]
+                          },
+                          "isRequester": {
+                            "type": "boolean"
+                          },
+                          "customerVisibility": {
+                            "type": "string",
+                            "enum": [
+                              "private",
+                              "organisation"
+                            ]
+                          },
+                          "sla": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "on_track",
+                                  "at_risk",
+                                  "breached",
+                                  "met",
+                                  "missed"
+                                ]
+                              },
+                              "dueAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              },
+                              "metric": {
+                                "type": "string",
+                                "enum": [
+                                  "first_response",
+                                  "resolution"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "state",
+                              "dueAt",
+                              "metric"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "ref",
+                          "source",
+                          "title",
+                          "requestTypeName",
+                          "priority",
+                          "customerStatus",
+                          "createdAt",
+                          "updatedAt",
+                          "project",
+                          "createdBy",
+                          "isRequester",
+                          "customerVisibility",
+                          "sla"
+                        ]
+                      }
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "nextCursor",
+                        "hasMore"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "total"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "cases",
+                    "page",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter or cursor",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
+    "/portal/requests/export.csv": {
+      "get": {
+        "operationId": "exportPortalRequests",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Export the filtered cases as CSV",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 10
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "priority",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "required": false,
+            "name": "project",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 10
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 10
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Streamed CSV, at most 5000 rows",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
     "/portal/requests/backlog": {
       "get": {
         "operationId": "listPortalOrganisationBacklog",

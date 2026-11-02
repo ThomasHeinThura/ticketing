@@ -33,4 +33,28 @@ describe("CP-5 portal customer status", () => {
       "resolved",
     );
   });
+
+  it("shows an open waiting_customer pause as need_more_info, but never over a closed item", () => {
+    const waiting = (stateGroup: string, resolved = false) => ({
+      ...item(stateGroup, resolved),
+      waitingOnCustomer: true,
+    });
+    expect(portalCustomerStatus("accepted", waiting("started"))).toBe(
+      "need_more_info",
+    );
+    expect(portalCustomerStatus("duplicate", waiting("backlog"))).toBe(
+      "need_more_info",
+    );
+    expect(portalCustomerStatus("accepted", waiting("started", true))).toBe(
+      "resolved",
+    );
+    expect(portalCustomerStatus("accepted", waiting("completed"))).toBe(
+      "resolved",
+    );
+    expect(portalCustomerStatus("accepted", waiting("cancelled"))).toBe(
+      "closed",
+    );
+    // A pause never changes a submission that is not yet accepted.
+    expect(portalCustomerStatus("new", waiting("started"))).toBe("received");
+  });
 });

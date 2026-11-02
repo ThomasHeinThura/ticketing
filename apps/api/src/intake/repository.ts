@@ -95,6 +95,7 @@ import {
   type PortalStatusWorkItem,
   portalCustomerStatus,
 } from "./portal-status";
+import { workItemsWaitingOnCustomer } from "./portal-waiting";
 
 type RequestTypeInput = {
   workspaceId: string;
@@ -2004,7 +2005,13 @@ export async function findPortalSubmission(
         typeId: itemTypeId,
       });
       resolvedAt = itemResolvedAt;
-      statusFacts = { resolvedAt: itemResolvedAt, stateGroup };
+      statusFacts = {
+        resolvedAt: itemResolvedAt,
+        stateGroup,
+        waitingOnCustomer: (await workItemsWaitingOnCustomer([itemId])).has(
+          itemId,
+        ),
+      };
       workItem = {
         ...visible,
         description: extractDocumentText(item.description),
@@ -2460,10 +2467,12 @@ export async function listOwnSubmissions(
         eq(schema.stateTemplateTable.id, schema.stateTable.stateTemplateId),
       )
       .where(inArray(schema.workItemTable.id, itemIds));
+    const waiting = await workItemsWaitingOnCustomer(itemIds);
     for (const fact of facts)
       statusFacts.set(fact.id, {
         resolvedAt: fact.resolvedAt,
         stateGroup: fact.stateGroup,
+        waitingOnCustomer: waiting.has(fact.id),
       });
   }
   return {

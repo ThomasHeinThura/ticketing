@@ -955,6 +955,7 @@ async function customerPortalDocumentState(
 const PORTAL_FEATURE_DATA_PREFIXES = [
   "/api/portal/approvals",
   "/api/portal/catalogue",
+  "/api/portal/home",
   "/api/portal/kb",
   "/api/portal/releases",
   "/api/portal/requests",

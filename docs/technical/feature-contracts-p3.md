@@ -106,6 +106,11 @@ misconfigured away through the role editor.
   approval decision (`AP-17`), and the project's designated key contacts. The rule is
   precise: *assignee hidden; public actors named.* A test asserts `assignee` is absent
   from every portal response schema.
+  **Customer colleagues (D5, Thomas, 31 Oct 2026):** CP-4 does not hide customers from each
+  other. A portal case row names its requester to a reader in the same customer organisation
+  (`createdBy.name`, the person's display name or user name) and marks the caller's own case
+  with `createdBy.isYou`; a requester outside that organisation, or not a customer, is never
+  named (`name: null`). Staff are still named only where they act publicly.
 - `CP-5` Terminology is customer-facing throughout: "request", not "work item";
   "In progress", not a state group name; "your team", not "assignee". The default English
   nouns are exactly the [terminology overlay](#pending-01-architectureadr0012-terminology-overlay)'s
@@ -113,6 +118,12 @@ misconfigured away through the role editor.
   changes the portal too, with no separate configuration.
 - `CP-6` SLA is shown as a due time and a plain-language state — "Response due by 2pm
   today" — never as a percentage or a policy name.
+  **Average first response (D4, Thomas, 31 Oct 2026):** the portal home may also show one
+  aggregate duration, `averageFirstResponse { seconds, sampleSize }`: the mean time from SLA
+  start (or creation) to first response of the caller's readable requests first answered in
+  the last 30 days, counted only in projects where `feature.sla` is on, and `null` when there
+  is no such request. It is an aggregate over the caller's readable requests, never a
+  per-request percentage or a policy name.
 - `CP-7` Any strictly increasing priority change is permitted; any decrease is refused with
   403 (`portal-cannot-deescalate.spec.ts`). Escalating priority writes an activity entry and
   notifies the team. De-escalation is not offered by the UI and is refused by the API
@@ -157,6 +168,13 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   legal, personal data, access requests, security-sensitive workflows — should. A colleague
   outside the allowed scope receives the **same constant-shape 404** as a user from another
   organisation ([rbac.md](permissions.md#reach)). Attachments stay requester-only: an organisation colleague or participant reads the request, its public messages and status but not its files, and the portal projection carries `canViewAttachments`/`canUpload` (true only for the requester) so the UI hides them instead of erroring.
+  **Requests raised by staff (D6, Thomas, 31 Oct 2026):** a work item with no submission from
+  its requester, whose requester is a customer of the caller's organisation, in a live,
+  unarchived project of that organisation with the customer portal on, is part of the
+  customer's case list and home counts. The same rule applies: the requester, a participant, or
+  any colleague when the item is `organisation`-visible. Such a row has `source: "direct"` and
+  its work item key as `ref`. **Known gap:** a direct row has no portal detail page yet, so it
+  is listed but cannot be opened or answered in the portal.
 - `CP-17` **Organisation SSO.** A customer organisation may have its own identity
   connection — Microsoft Entra first — bound to that organisation and to the customer
   portal only ([identity-provisioning.md](feature-contracts-p3.md#identity-provisioning) `IP-1`, `IP-2`). Its
@@ -265,6 +283,7 @@ One row per portal action, each a [RBAC](permissions.md) policy kind 3
 | Resolve own notification email-link handoff (`NO-2`) | `self` | `GET /api/portal/notification-preferences/email-link-handoff` |
 | View home dashboard | `own_organisation` | `GET /api/portal/home` |
 | List own organisation's requests | `own_organisation` | `GET /api/portal/requests` |
+| Export the listed requests as CSV | `own_organisation` | `GET /api/portal/requests/export.csv` |
 | View one request | `own_request` | `GET /api/portal/requests/{ref}` |
 | Comment on a request | `own_request` | `POST /api/portal/requests/{ref}/comments` |
 | Presign an attachment upload | `own_request` | `POST /api/portal/requests/{ref}/attachments/presign` |
@@ -304,6 +323,7 @@ person row. Nothing here is "(portal session)" — that is authentication, not a
 GET  /api/portal/me                                        self
 GET  /api/portal/home                                      own_organisation
 GET  /api/portal/requests                                  own_organisation (filtered by visibility)
+GET  /api/portal/requests/export.csv                       own_organisation (same rows as the list)
 GET  /api/portal/requests/{ref}                            own_request
 POST /api/portal/requests/{ref}/comments                   own_request
 POST /api/portal/requests/{ref}/attachments/presign        own_request
@@ -359,6 +379,32 @@ PATCH /api/portal/account
 
 Every one of these is reviewed as a set, because the whole surface is small enough to hold
 in your head — which is the point of not reusing the agent handlers.
+
+**Case list, export and home (S4b, from the portal plan Thomas approved with D1–D9 on 31 Oct
+2026).**
+
+- `GET /api/portal/requests` takes `scope` (`mine` = the caller is the requester; `all`),
+  `status`, `priority` (comma-separated), `project` (key), `from`, `to` (`YYYY-MM-DD`), `q`,
+  `sort` (`updated_desc`, `updated_asc`, `created_desc`, `created_asc`), `cursor` and `limit`
+  (default 25, at most 100), and answers `{ cases, page: { nextCursor, hasMore },
+  meta: { total } }`. A row is `ref`, `source` (`submission` or `direct`, see `CP-16`),
+  `title`, `requestTypeName`, `priority`, `customerStatus`, `createdAt`, `updatedAt`,
+  `project { key, name } | null`, `createdBy { name, isYou }` (D5, `CP-4`), `isRequester`,
+  `customerVisibility` and `sla { state, dueAt, metric } | null`. No row carries an assignee,
+  claimer, comment or internal field (`CP-3`, `CP-4`).
+- `GET /api/portal/requests/export.csv` takes the same filters (no `cursor` or `limit`) and
+  streams the same rows in the same order as RFC 4180 CSV with formula-leading cells
+  neutralised: columns Reference, Title, Request type, Severity, Status, Project, Created by,
+  Created, Updated. At most 5,000 rows; headers `x-export-total` and `x-export-truncated` say
+  when the file was cut short. Served `no-store` as `requests.csv`.
+- `GET /api/portal/home` takes `project` and answers `actionRequired { total, cases,
+  approvals }`, `outstanding`, `closedLast30Days` and `averageFirstResponse` (D4, `CP-6`), all
+  over the same readable set as the list. `actionRequired.cases` counts the readable cases that
+  need more information (a clarifying submission or an open `waiting_customer` pause on its
+  item), exactly the rows of `GET /api/portal/requests?scope=all&status=need_more_info` with
+  the same `project`. Only the requester may reply (`own_submission`), so a colleague's counted
+  case is read-only to the caller. `actionRequired.approvals` counts pending approvals
+  addressed to the caller.
 
 <a id="customer-portal-edge-cases"></a>
 ### Edge cases
