@@ -22,6 +22,8 @@ import {
   COST_TRACKING_FEATURE_KEY,
   TIME_TRACKING_FEATURE_KEY,
   trackingFeatureEnabled,
+  trackingFeatureReachable,
+  trackingProjectInWorkspace,
 } from "./feature";
 import { getEntry, getEntryScope } from "./repository";
 
@@ -66,15 +68,32 @@ export async function holds(c: Context, capability: Capability) {
   }
 }
 
-/** `feature.time_tracking` must be on for the request's workspace (409 otherwise). */
+/**
+ * `feature.time_tracking` must be on where the request lands (409 `feature_disabled` otherwise).
+ * A request bound to one project (an entry row, or a `workItemId`, `projectId`, `cycleId` or
+ * `moduleId` query) is decided at that project, so a project override counts both ways (A-10).
+ * Anything workspace-wide needs
+ * tracking on for the workspace or for at least one of its projects; the writes behind it check
+ * their own project again.
+ */
 export async function requireTimeTracking(c: Context, next: Next) {
-  if (
-    !(await trackingFeatureEnabled(
-      TIME_TRACKING_FEATURE_KEY,
-      c.get("workspaceId") as string,
-    ))
-  )
-    throw new HTTPException(409, { message: "feature_disabled" });
+  const workspaceId = c.get("workspaceId") as string;
+  const projectId =
+    (c.get("timeEntryProjectId") as string | undefined) ??
+    (await trackingProjectInWorkspace(workspaceId, {
+      workItemId: c.req.query("workItemId"),
+      projectId: c.req.query("projectId"),
+      cycleId: c.req.query("cycleId"),
+      moduleId: c.req.query("moduleId"),
+    }));
+  const enabled = projectId
+    ? await trackingFeatureEnabled(
+        TIME_TRACKING_FEATURE_KEY,
+        workspaceId,
+        projectId,
+      )
+    : await trackingFeatureReachable(TIME_TRACKING_FEATURE_KEY, workspaceId);
+  if (!enabled) throw new HTTPException(409, { message: "feature_disabled" });
   await next();
 }
 
@@ -148,6 +167,7 @@ export async function entryReach(c: Context, next: Next) {
   c.set("workspaceIdSource", "row");
   c.set("policyRowFacts", { personId: row.personId });
   c.set("timeEntryOwnerId", row.personId);
+  c.set("timeEntryProjectId", row.projectId);
   await next();
 }
 

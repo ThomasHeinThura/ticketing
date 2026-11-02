@@ -23,8 +23,9 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   exportTasks?: boolean;
   setPriorityTasks?: boolean;
   // Strict project:create (owner/admin/manager) -- the server rule for listing customer
-  // organisations and binding a project to one. Never inferred from `createProjects`, which
-  // follows the broader legacy statement (members hold it).
+  // organisations and binding a project to one. Since A-06 the server also reports
+  // `createProjects` from this same strict check, so the create entry point follows what the
+  // route accepts. The label flags still follow the legacy statement the label routes enforce.
   bindProjectOrganisation?: boolean;
   // Strict project:manage_settings (owner/admin/manager) -- gates project-level settings such
   // as CA-2's default comment visibility. Never inferred from `manageProjects`/`updateProjects`,

@@ -149,6 +149,10 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     logTime,
     bindProjectOrganisation,
     manageLabels,
+    // A-06: `POST /api/project` enforces the strict project:create, which the legacy statement
+    // (held by members) overstates, so createProjects follows that check. The label flags stay on
+    // the legacy statement because the label routes still gate on it (members are accepted).
+    createProjects: bindProjectOrganisation,
     createAttachments: agentOnly(createAttachments),
   } as CapabilityMap;
 }

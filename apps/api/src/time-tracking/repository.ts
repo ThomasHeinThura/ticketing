@@ -567,9 +567,12 @@ export async function listEntries(
     workItemId?: string;
     projectId?: string;
     needsReview?: boolean;
+    /** Keep only rows of these projects (A-10: projects with time tracking on). */
+    projectIds?: readonly string[];
   },
   executor: Executor = db,
 ): Promise<EntryRow[]> {
+  if (filter.projectIds?.length === 0) return [];
   return selectEntries(identity, executor)
     .where(
       and(
@@ -587,6 +590,9 @@ export async function listEntries(
           ? eq(timeEntryTable.projectId, filter.projectId)
           : undefined,
         filter.needsReview ? eq(timeEntryTable.needsReview, true) : undefined,
+        filter.projectIds
+          ? inArray(timeEntryTable.projectId, [...filter.projectIds])
+          : undefined,
       ),
     )
     .orderBy(

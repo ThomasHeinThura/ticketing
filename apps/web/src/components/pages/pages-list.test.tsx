@@ -112,6 +112,15 @@ describe("PagesList", () => {
     expect(await screen.findByTestId("pages-empty")).toBeTruthy();
   });
 
+  it("shows the Pages feature-off state, not 'project not found', when Pages is off (A-11)", async () => {
+    const { PagesDisabledError } = await import("@/fetchers/pages");
+    mocks.getPages.mockRejectedValue(new PagesDisabledError());
+    renderList();
+    expect(await screen.findByTestId("feature-off-pages")).toBeTruthy();
+    expect(screen.queryByText("list.notFound")).toBeNull();
+    expect(mocks.getPages).toHaveBeenCalledTimes(1);
+  });
+
   it("shows one not-found message for a project the caller cannot reach", async () => {
     mocks.getPages.mockRejectedValue(new HttpError(404, "Not found"));
     renderList();

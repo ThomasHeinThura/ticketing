@@ -1882,6 +1882,26 @@
 						"toast",
 						"validation"
 					]
+				},
+				"wrongPortal": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"useCustomerPortal": {
+							"type": "string"
+						},
+						"useAgentSignIn": {
+							"type": "string"
+						},
+						"customerPortalUnavailable": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"useCustomerPortal",
+						"useAgentSignIn",
+						"customerPortalUnavailable"
+					]
 				}
 			},
 			"required": [
@@ -1899,7 +1919,8 @@
 				"accountSecurity",
 				"invitation",
 				"onboarding",
-				"profileSetup"
+				"profileSetup",
+				"wrongPortal"
 			]
 		},
 		"settings": {
@@ -4114,6 +4135,12 @@
 						"importExportTasksDescription": {
 							"type": "string"
 						},
+						"exportWorkItems": {
+							"type": "string"
+						},
+						"exportWorkItemsDescription": {
+							"type": "string"
+						},
 						"keyRenamePending": {
 							"type": "string"
 						},
@@ -4354,6 +4381,8 @@
 						"engagement",
 						"importExportTasks",
 						"importExportTasksDescription",
+						"exportWorkItems",
+						"exportWorkItemsDescription",
 						"keyRenamePending",
 						"keyRenameAction",
 						"keyRenameCancel",
@@ -19024,6 +19053,15 @@
 						"form_version_unavailable",
 						"openWinner"
 					]
+				},
+				"noAccessTitle": {
+					"type": "string"
+				},
+				"noAccessDescription": {
+					"type": "string"
+				},
+				"loadError": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -19078,7 +19116,10 @@
 				"ageSuffix",
 				"actorTypes",
 				"systemReasons",
-				"errors"
+				"errors",
+				"noAccessTitle",
+				"noAccessDescription",
+				"loadError"
 			]
 		},
 		"requestTypes": {
@@ -27091,6 +27132,19 @@
 								}
 							},
 							"required": ["title", "description"]
+						},
+						"pages": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description"]
 						}
 					},
 					"required": [
@@ -27099,7 +27153,8 @@
 						"estimates",
 						"calendar",
 						"timeline",
-						"sla"
+						"sla",
+						"pages"
 					]
 				},
 				"cycles": {
@@ -31378,9 +31433,19 @@
 						},
 						"total": {
 							"type": "string"
+						},
+						"featureOff": {
+							"type": "string"
 						}
 					},
-					"required": ["add", "empty", "everyone", "loadError", "total"]
+					"required": [
+						"add",
+						"empty",
+						"everyone",
+						"loadError",
+						"total",
+						"featureOff"
+					]
 				},
 				"settings": {
 					"type": "object",

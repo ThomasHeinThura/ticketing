@@ -3,12 +3,19 @@ import { useTranslation } from "react-i18next";
 
 /**
  * The standard empty state when a feature is switched off (404 from the API): the agile project
- * features, the Kaneo Calendar/Gantt views, and the workspace SLA settings (`sla`).
+ * features, the Kaneo Calendar/Gantt views, project Pages, and the workspace SLA settings (`sla`).
  */
 export function FeatureOff({
   feature,
 }: {
-  feature: "cycles" | "modules" | "estimates" | "calendar" | "timeline" | "sla";
+  feature:
+    | "cycles"
+    | "modules"
+    | "estimates"
+    | "calendar"
+    | "timeline"
+    | "sla"
+    | "pages";
 }) {
   const { t } = useTranslation("agile");
   return (

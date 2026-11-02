@@ -25,6 +25,7 @@ import {
   assertTrackingEnabledForProject,
   COST_TRACKING_FEATURE_KEY,
   TIME_TRACKING_FEATURE_KEY,
+  trackingProjectsInWorkspace,
 } from "./feature";
 import {
   actorOf,
@@ -584,6 +585,12 @@ const router = apiRouter<Vars>()
       workItemId: query.workItemId,
       projectId: query.projectId,
       needsReview: query.needsReview,
+      // A-10: the middleware decides a project-bound list at its project; a list that names no
+      // project still must not show rows of projects whose time tracking is off.
+      projectIds: await trackingProjectsInWorkspace(
+        TIME_TRACKING_FEATURE_KEY,
+        query.workspaceId,
+      ),
     });
     const showRates = await rateVisibility(c, rows);
     const clock = await callerClock(db, identity.personId);

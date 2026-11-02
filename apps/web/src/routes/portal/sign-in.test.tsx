@@ -224,6 +224,108 @@ describe("portal sign-in", () => {
     expect(screen.queryByText("provider disabled")).toBeNull();
   });
 
+  it.each([
+    ["USE_AGENT_SIGN_IN", "auth:wrongPortal.useAgentSignIn"],
+    [
+      "CUSTOMER_PORTAL_UNAVAILABLE",
+      "auth:wrongPortal.customerPortalUnavailable",
+    ],
+  ])(
+    "explains a %s password refusal and does not sign in",
+    async (code, message) => {
+      window.sessionStorage.setItem(
+        "taskdesk:portal-sign-in-email",
+        "staff@example.test",
+      );
+      mocks.search = {
+        stage: "password",
+        factor: "totp",
+        invitationId: undefined,
+      };
+      mocks.signIn.mockResolvedValue({ error: { status: 403, code } });
+      renderSignIn();
+      fireEvent.change(await screen.findByLabelText("auth:forms.password"), {
+        target: { value: "valid-password" },
+      });
+      fireEvent.submit(
+        screen
+          .getByLabelText("auth:forms.password")
+          .closest("form") as HTMLFormElement,
+      );
+
+      expect(await screen.findByText(message)).toBeVisible();
+      expect(screen.queryByText("auth:signInForm.failedSignIn")).toBeNull();
+      expect(mocks.getSession).not.toHaveBeenCalled();
+      expect(mocks.navigate).not.toHaveBeenCalledWith({ to: "/catalogue" });
+    },
+  );
+
+  it("explains a refusal after the second factor", async () => {
+    window.sessionStorage.setItem(
+      "taskdesk:portal-sign-in-email",
+      "staff@example.test",
+    );
+    mocks.search = {
+      stage: "factor",
+      factor: "totp",
+      invitationId: undefined,
+    };
+    mocks.verifyTotp.mockResolvedValue({
+      error: { status: 403, code: "USE_AGENT_SIGN_IN" },
+    });
+    renderSignIn();
+    fireEvent.change(
+      await screen.findByLabelText("auth:twoFactor.authenticatorCode"),
+      { target: { value: "123456" } },
+    );
+    fireEvent.submit(
+      screen
+        .getByLabelText("auth:twoFactor.authenticatorCode")
+        .closest("form") as HTMLFormElement,
+    );
+
+    expect(
+      await screen.findByText("auth:wrongPortal.useAgentSignIn"),
+    ).toBeVisible();
+    expect(screen.queryByText("auth:twoFactor.error")).toBeNull();
+    expect(mocks.getSession).not.toHaveBeenCalled();
+  });
+
+  it("explains a refusal after an email code", async () => {
+    window.sessionStorage.setItem(
+      "taskdesk:portal-sign-in-email",
+      "customer@example.test",
+    );
+    mocks.authMethods.mockResolvedValue({
+      password: false,
+      magicLink: false,
+      emailOtp: true,
+    });
+    mocks.search = {
+      stage: "otp",
+      factor: "totp",
+      invitationId: undefined,
+    };
+    mocks.emailOtpSignIn.mockResolvedValue({
+      error: { status: 403, code: "CUSTOMER_PORTAL_UNAVAILABLE" },
+    });
+    renderSignIn();
+    fireEvent.change(
+      await screen.findByLabelText("auth:forms.verificationCode"),
+      { target: { value: "123456" } },
+    );
+    fireEvent.submit(
+      screen
+        .getByLabelText("auth:forms.verificationCode")
+        .closest("form") as HTMLFormElement,
+    );
+
+    expect(
+      await screen.findByText("auth:wrongPortal.customerPortalUnavailable"),
+    ).toBeVisible();
+    expect(mocks.getSession).not.toHaveBeenCalled();
+  });
+
   it("restores the password stage after reload without putting the email in the URL", async () => {
     window.sessionStorage.setItem(
       "taskdesk:portal-sign-in-email",

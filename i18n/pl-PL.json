@@ -470,6 +470,11 @@
 			"title": "Zaloguj się do God Mode",
 			"subtitle": "Administratorzy instancji logują się hasłem i kodem z aplikacji uwierzytelniającej. Logowanie jednokrotne nie jest tu dostępne.",
 			"passwordDisabled": "Logowanie hasłem jest wyłączone w tej instancji, więc nie można otworzyć God Mode z tej strony. Poproś operatora o włączenie logowania lokalnego."
+		},
+		"wrongPortal": {
+			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
+			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
+			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
 		}
 	},
 	"navigation": {
@@ -1671,6 +1676,8 @@
 			"iconLabel": "Ikona",
 			"importExportTasks": "Importuj/Eksportuj",
 			"importExportTasksDescription": "Importuj i eksportuj {{term_work_item_other}}.",
+			"exportWorkItems": "Export",
+			"exportWorkItemsDescription": "Download the {{term_work_item_other}} in this {{term_project_one}} as a CSV file.",
 			"keyHint": "Używane w identyfikatorach {{term_work_item_other}} (np. {{slug}}-123)",
 			"keyLabel": "Klucz",
 			"keyPlaceholder": "PRO",
@@ -4613,7 +4620,10 @@
 		"summary": "Summary",
 		"systemReasons": {
 			"clarification_window_expired": "Closed automatically: no reply within {{days}} days of the clarification request."
-		}
+		},
+		"loadError": "The {{term_submission_other}} could not be loaded.",
+		"noAccessDescription": "Triage needs the intake triage permission. Ask a workspace admin if you need it.",
+		"noAccessTitle": "You cannot triage {{term_submission_other}}"
 	},
 	"requestTypes": {
 		"addField": "Add field",
@@ -6797,6 +6807,10 @@
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
 				"title": "SLAs are off for this workspace"
+			},
+			"pages": {
+				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
+				"title": "Pages are off for this {{term_project_one}}"
 			}
 		},
 		"modules": {
@@ -7643,7 +7657,8 @@
 			"empty": "No time logged on this item.",
 			"everyone": "Everyone",
 			"loadError": "Could not load the time on this item.",
-			"total": "Total"
+			"total": "Total",
+			"featureOff": "Time tracking is off for this {{term_project_one}}."
 		},
 		"timer": {
 			"cappedNotice": "The timer ran past 12 hours, so only 12 hours were recorded. Edit the entry to what actually happened.",

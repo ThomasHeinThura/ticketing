@@ -77,7 +77,9 @@ export function NavMain() {
   // `feature.time_tracking` off: the Timesheet entry is gone (P5 time and cost).
   // The time APIs need time_entry:create (the built-in Viewer role lacks it), so the entry also
   // follows the strict `logTime` capability.
-  const { canLogTime } = useWorkspacePermission();
+  const { canLogTime, canTriageIntake } = useWorkspacePermission();
+  // Triage needs intake:triage (permissions.md); members and viewers would only meet a 403 (A-04).
+  const triageOn = canTriageIntake();
   const timeTrackingOn = features.isOn("feature.time_tracking") && canLogTime();
   // `feature.reports` off: the Reports and Dashboard entries are gone (P5 reports).
   const reportsOn = features.isOn("feature.reports");
@@ -118,12 +120,16 @@ export function NavMain() {
       isActive: path === routes.agentMyWork.path,
       badge: null,
     },
-    {
-      title: t("navigation:sidebar.triage"),
-      url: routes.intakeQueue.path,
-      isActive: path.startsWith(routes.intakeQueue.path),
-      badge: null,
-    },
+    ...(triageOn
+      ? [
+          {
+            title: t("navigation:sidebar.triage"),
+            url: routes.intakeQueue.path,
+            isActive: path.startsWith(routes.intakeQueue.path),
+            badge: null,
+          },
+        ]
+      : []),
     {
       title: t("navigation:sidebar.projects"),
       url: routes.agentHome.path,
