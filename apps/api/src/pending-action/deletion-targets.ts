@@ -18,6 +18,7 @@ import {
   cycleDeletionTarget,
   moduleDeletionTarget,
 } from "../agile/deletion-target";
+import { announcementDeletionTarget } from "../announcement/deletion-target";
 import { clientIpForContext } from "../api-key/enforce";
 import { personalKeyDeletionTarget } from "../api-key/personal-key-deletion-target";
 import { serviceKeyDeletionTarget } from "../api-key/service-key-deletion-target";
@@ -1214,6 +1215,7 @@ export function registeredDeletionTargets(): readonly RuntimeRegisteredDeletionT
       customFieldDeletionTarget,
       teamDeletionTarget,
       serviceDeletionTarget,
+      announcementDeletionTarget,
       kbCategoryDeletionTarget,
       requestTypeDeletionTarget,
       timeEntryDeletionTarget,

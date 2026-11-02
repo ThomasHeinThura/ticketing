@@ -152,6 +152,12 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "release.published",
   "release.notes_updated",
   "release.checklist_toggled",
+  // D7 customer announcements (feature-contracts-p5.md "Announcements").
+  "announcement.created",
+  "announcement.updated",
+  "announcement.published",
+  "announcement.unpublished",
+  "announcement.deleted",
   // CH-2: the opt-in CAB workflow template was applied to a workspace.
   "workflow.cab_template_applied",
   // P5 knowledge base (KB-3, KB-4): article lifecycle, categories and the review-step setting.

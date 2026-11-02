@@ -13,6 +13,9 @@
 export const PORTAL_CLIENT_ROUTE_PATTERNS: readonly string[] = [
   "/",
   "/account",
+  // D7: announcements; release notes stay at /releases as its second tab.
+  "/announcements",
+  "/announcements/$id",
   "/notifications",
   "/catalogue",
   // CP-24: the accept-invitation page. The credential rides in the fragment, never the path.

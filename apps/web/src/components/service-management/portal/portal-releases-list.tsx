@@ -15,6 +15,7 @@ import {
   Skeleton,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { PortalAnnouncementsTabs } from "@/components/portal/announcements/portal-announcements-tabs";
 import { getPortalReleases } from "@/fetchers/portal/releases";
 import { formatDateMedium } from "@/lib/format";
 import { routes } from "@/lib/routes";
@@ -45,6 +46,7 @@ export function PortalReleasesList({
           {t("portal:releases.description")}
         </p>
       </header>
+      <PortalAnnouncementsTabs />
       {releases.isPending ? (
         <div
           role="status"
