@@ -14,6 +14,7 @@ import { DeferredUserPreferencesSync } from "./components/providers/deferred-use
 import { ThemeProvider } from "./components/providers/theme-provider";
 import { UserPreferencesEffects } from "./components/providers/user-preferences-effects";
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
+import { followAgentSession } from "./lib/agent-session";
 import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
 import { initializeNotificationPreferenceHandoff } from "./lib/notification-preference-handoff";
@@ -65,6 +66,12 @@ function bootstrapApplication() {
       user: null,
       queryClient,
     },
+  });
+
+  // The route checks use the session kept in the query client (S7b). Better Auth's session
+  // store seeds it, and a sign-out, revoked session or identity change re-runs the checks.
+  followAgentSession(queryClient, () => {
+    void router.invalidate();
   });
 
   // The project work route is the agent's primary seeded list surface. TanStack's
