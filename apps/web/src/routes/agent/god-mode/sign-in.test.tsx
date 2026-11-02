@@ -88,13 +88,24 @@ vi.mock("react-i18next", async (importOriginal) => ({
 type BorrowedBeforeLoad = (context: {
   location: ParsedLocation;
   search: unknown;
+  context: { queryClient: QueryClient };
 }) => unknown;
 
-/** Runs a real route's `beforeLoad` inside this test tree, whose root has no app context. */
+/** The app's query client, which keeps the agent session (S7b); fresh for each test. */
+let appQueryClient = new QueryClient();
+
+/**
+ * Runs a real route's `beforeLoad` inside this test tree, whose root has no app context. The
+ * protected layout reads the session through the app's query client, so it is passed as the
+ * router context would.
+ */
 function borrowBeforeLoad(beforeLoad: unknown) {
   if (typeof beforeLoad !== "function") throw new Error("missing beforeLoad");
   return (context: { location: ParsedLocation; search: unknown }) =>
-    (beforeLoad as BorrowedBeforeLoad)(context);
+    (beforeLoad as BorrowedBeforeLoad)({
+      ...context,
+      context: { queryClient: appQueryClient },
+    });
 }
 
 function createTree() {
@@ -190,6 +201,7 @@ function currentHref(router: Awaited<ReturnType<typeof open>>) {
 }
 
 beforeEach(() => {
+  appQueryClient = new QueryClient();
   mocks.session = null;
   mocks.isAdmin = false;
   mocks.factors = { required: false, enabled: false };
