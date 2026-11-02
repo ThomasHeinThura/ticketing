@@ -620,8 +620,29 @@ export const projectTable = pgTable(
     purgeAfter: timestamp("purge_after", { mode: "date" }),
     lastTaskNumber: integer("last_task_number").notNull().default(0),
     position: integer("position").notNull().default(0),
+    // 0213 (feature-contracts-p1 "Engagement structure"): the project summary shown on the
+    // Overview. Free text, nullable. `statusNoteAt` is stamped by the server whenever
+    // `statusNote` changes (PATCH /api/project/{id}/summary), never by a client.
+    objective: text("objective"),
+    inScope: text("in_scope"),
+    outOfScope: text("out_of_scope"),
+    successCriteria: text("success_criteria"),
+    statusNote: text("status_note"),
+    statusNoteAt: timestamp("status_note_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    // 0213, decision D1 (Thomas, 31 Oct 2026): lifecycle status, information only. It does not
+    // archive, freeze or hide the project; `archived_at`/`deleted_at` keep those meanings.
+    status: text("status").notNull().default("active"),
   },
   (table) => [
+    check(
+      "project_status_allowed",
+      sql.raw(
+        "status = ANY (ARRAY['planning'::text, 'active'::text, 'on_hold'::text, 'closed'::text])",
+      ),
+    ),
     check(
       "project_sla_policy_mode_allowed",
       sql`${table.slaPolicyMode} IN ('inherit', 'override')`,
@@ -1087,6 +1108,57 @@ export const documentLinkTable = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },
   (table) => [index("document_link_projectId_idx").on(table.projectId)],
+);
+
+/**
+ * 0213, decision D2 (Thomas, 31 Oct 2026): the project's contract and hour bank, at most one per
+ * project (the primary key is the project), deleted with the project. Written only by
+ * `PUT /api/project/{id}/contract` (`project:manage_settings`, audited as `project_contract.set`).
+ * Hours used are never stored: they are the billable `time_entry` minutes on the project dated
+ * inside `[start_date, end_date]`, summed at read time.
+ */
+export const projectContractTable = pgTable(
+  "project_contract",
+  {
+    projectId: text("project_id")
+      .primaryKey()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    startDate: date("start_date", { mode: "string" }).notNull(),
+    endDate: date("end_date", { mode: "string" }).notNull(),
+    contractedMinutes: integer("contracted_minutes").notNull(),
+    coverage: text("coverage").notNull(),
+    kickoffStatus: text("kickoff_status").notNull().default("pending"),
+    kickoffDate: date("kickoff_date", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  () => [
+    check("project_contract_dates_ordered", sql.raw("end_date >= start_date")),
+    check(
+      "project_contract_minutes_allowed",
+      sql.raw("(contracted_minutes > 0) AND (contracted_minutes <= 60000000)"),
+    ),
+    check(
+      "project_contract_coverage_allowed",
+      sql.raw(
+        "coverage = ANY (ARRAY['9x5'::text, '12x5'::text, '24x7'::text])",
+      ),
+    ),
+    check(
+      "project_contract_kickoff_status_allowed",
+      sql.raw(
+        "kickoff_status = ANY (ARRAY['pending'::text, 'scheduled'::text, 'completed'::text])",
+      ),
+    ),
+  ],
 );
 
 export const workflowRuleTable = pgTable(
@@ -6322,7 +6394,7 @@ export const stepUpConfirmationTable = pgTable(
     check(
       "step_up_operation_route",
       sql.raw(
-        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text)) OR ((operation_key = 'instance_admin_suspend'::text) AND (route_key = 'POST /api/instance/users/{id}/suspend'::text)) OR ((operation_key = 'impersonation_start'::text) AND (route_key = 'POST /api/instance/users/{id}/impersonate'::text)) OR ((operation_key = 'secrets_rotate'::text) AND (route_key = 'POST /api/instance/plugins/rotate-secrets'::text)) OR ((operation_key = 'organisation_restore'::text) AND (route_key = 'POST /api/instance/organisations/{id}/restore'::text)) OR ((operation_key = 'webhook_create'::text) AND (route_key = 'POST /api/webhooks'::text)) OR ((operation_key = 'webhook_update_url'::text) AND (route_key = 'PATCH /api/webhooks/{id}'::text)) OR ((operation_key = 'webhook_rotate_secret'::text) AND (route_key = 'POST /api/webhooks/{id}/rotate-secret'::text)) OR ((operation_key = 'webhook_rotate_all'::text) AND (route_key = 'POST /api/instance/webhooks/rotate-secrets'::text)) OR ((operation_key = 'workspace_role_create'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/roles'::text)) OR ((operation_key = 'workspace_role_update'::text) AND (route_key = 'PATCH /api/workspace/{workspaceId}/roles/{roleId}'::text)) OR ((operation_key = 'service_key_create'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys'::text)) OR ((operation_key = 'service_key_reattest'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys/{keyId}/re-attest'::text)) OR ((operation_key = 'workspace_ownership_transfer'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/transfer-ownership'::text)) OR ((operation_key = 'change_freeze_override'::text) AND (route_key = 'POST /api/work-items/{key}/change/override-freeze'::text)) OR ((operation_key = 'audit_export'::text) AND (route_key = 'POST /api/instance/audit/export'::text))",
+        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text)) OR ((operation_key = 'instance_admin_suspend'::text) AND (route_key = 'POST /api/instance/users/{id}/suspend'::text)) OR ((operation_key = 'impersonation_start'::text) AND (route_key = 'POST /api/instance/users/{id}/impersonate'::text)) OR ((operation_key = 'secrets_rotate'::text) AND (route_key = 'POST /api/instance/plugins/rotate-secrets'::text)) OR ((operation_key = 'organisation_restore'::text) AND (route_key = 'POST /api/instance/organisations/{id}/restore'::text)) OR ((operation_key = 'webhook_create'::text) AND (route_key = 'POST /api/webhooks'::text)) OR ((operation_key = 'webhook_update_url'::text) AND (route_key = 'PATCH /api/webhooks/{id}'::text)) OR ((operation_key = 'webhook_rotate_secret'::text) AND (route_key = 'POST /api/webhooks/{id}/rotate-secret'::text)) OR ((operation_key = 'webhook_rotate_all'::text) AND (route_key = 'POST /api/instance/webhooks/rotate-secrets'::text)) OR ((operation_key = 'workspace_role_create'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/roles'::text)) OR ((operation_key = 'workspace_role_update'::text) AND (route_key = 'PATCH /api/workspace/{workspaceId}/roles/{roleId}'::text)) OR ((operation_key = 'service_key_create'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys'::text)) OR ((operation_key = 'service_key_reattest'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys/{keyId}/re-attest'::text)) OR ((operation_key = 'workspace_ownership_transfer'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/transfer-ownership'::text)) OR ((operation_key = 'change_freeze_override'::text) AND (route_key = 'POST /api/work-items/{key}/change/override-freeze'::text)) OR ((operation_key = 'audit_export'::text) AND (route_key = 'POST /api/instance/audit/export'::text)) OR ((operation_key = 'auth_local_methods_update'::text) AND (route_key = 'PUT /api/instance/auth/local-methods'::text))",
       ),
     ),
     check(

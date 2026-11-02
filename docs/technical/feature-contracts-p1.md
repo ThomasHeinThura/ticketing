@@ -794,7 +794,15 @@ work around the tool.
 Present on both kinds, more used on projects.
 
 **Summary** — objective, in scope, out of scope, success criteria, health (RAG, set by a
-person not computed), status note with a timestamp.
+person not computed), status note with a timestamp. A lifecycle **status** —
+planning, active, on hold, closed — sits beside health (owner decision D1, 31 Oct 2026). It
+is information only: archiving and deletion keep their own meaning.
+
+**Contract and hour bank** (owner decision D2, 31 Oct 2026) — at most one per project:
+start, end, contracted hours, coverage (9x5, 12x5, 24x7), kickoff status (pending,
+scheduled, completed) and kickoff date. Hours used are the billable time entries on the
+project dated inside the period. The derived state is, in order: expired (after the end
+date), kickoff pending, expiring (30 days or fewer left), active.
 
 **Milestones** — name, date, reached. The current milestone is derived as the first not
 yet reached.
@@ -900,6 +908,10 @@ POST   /api/projects/{projectId}/document-links               project:update
 DELETE /api/projects/{projectId}/document-links/{id}          project:update  — no PATCH: a link is add-or-remove only; editing its url or title is remove-then-re-add
 GET    /api/projects/{projectId}/health                       project:read
 PATCH  /api/projects/{projectId}/health                       project:update
+GET    /api/project/{id}/overview                             project:read            — derived counts, current/overdue milestones, facts, effective SLA targets (0213)
+PATCH  /api/project/{id}/summary                              project:update          — summary fields and lifecycle status; audited project.summary_updated
+GET    /api/project/{id}/contract                             project:read            — contract, derived state, aggregate hour bank (D3); the last five billable entries (date, minutes, item only) only with time_entry:read_any, else [] and recentEntriesVisible=false
+PUT    /api/project/{id}/contract                             project:manage_settings — upsert; audited project_contract.set; returns the GET shape under the same time_entry:read_any rule
 ```
 
 <a id="projects-and-engagements-edge-cases"></a>

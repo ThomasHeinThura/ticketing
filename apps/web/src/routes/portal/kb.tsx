@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PortalKbBrowse } from "@/components/kb/portal/portal-kb-browse";
-import { parsePortalKbSearch } from "@/lib/routes";
+import {
+  parsePortalKbSearch,
+  portalProjectSearchMiddlewares,
+} from "@/lib/routes";
 
 /** `docs/screens.md` portal "Knowledge base" (P5, `KB-*`): search and browse by category. */
 export const Route = createFileRoute("/kb")({
   validateSearch: parsePortalKbSearch,
+  search: { middlewares: portalProjectSearchMiddlewares },
   component: PortalKb,
 });
 

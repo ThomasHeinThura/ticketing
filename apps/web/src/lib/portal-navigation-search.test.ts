@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   parseInstanceAuditSearch,
   parsePortalApprovalsSearch,
+  parsePortalCatalogueSearch,
+  parsePortalInboxSearch,
+  parsePortalKbSearch,
+  parsePortalProjectSearch,
   parsePortalReleasesSearch,
   parsePortalRequestsSearch,
   routes,
@@ -53,6 +57,56 @@ describe("portal and audit URL state", () => {
     ])
       expect(parsePortalRequestsSearch({ cursor })).toEqual({});
     expect(parsePortalApprovalsSearch({ approval: "../admin" })).toEqual({});
+  });
+  it("keeps a well-formed project scope and drops anything else", () => {
+    expect(parsePortalProjectSearch({ project: "ACME-1" })).toEqual({
+      project: "ACME-1",
+    });
+    for (const project of ["", "../x", "a".repeat(65), ["ACME"], 7])
+      expect(parsePortalProjectSearch({ project })).toEqual({});
+    expect(parsePortalProjectSearch(null)).toEqual({});
+  });
+  it("registers the project scope on every portal list and its links", () => {
+    const query = (href: string) =>
+      Object.fromEntries(new URL(href, "https://portal.invalid").searchParams);
+    for (const [href, parse] of [
+      [
+        routes.portalRequests.build({ view: "backlog", project: "ACME" }),
+        parsePortalRequestsSearch,
+      ],
+      [
+        routes.portalApprovals.build({ approval: "a-1", project: "ACME" }),
+        parsePortalApprovalsSearch,
+      ],
+      [
+        routes.portalReleases.build({ cursor: "c_1", project: "ACME" }),
+        parsePortalReleasesSearch,
+      ],
+      [
+        routes.portalCatalogue.build({ q: "vpn", project: "ACME" }),
+        parsePortalCatalogueSearch,
+      ],
+      [
+        routes.portalKb.build({ q: "vpn", project: "ACME" }),
+        parsePortalKbSearch,
+      ],
+      [
+        routes.portalInbox.build({ filter: "unread", project: "ACME" }),
+        parsePortalInboxSearch,
+      ],
+      [routes.portalHome.build({ project: "ACME" }), parsePortalProjectSearch],
+      [
+        routes.portalAccount.build({ project: "ACME" }),
+        parsePortalProjectSearch,
+      ],
+    ] as const)
+      expect(parse(query(href)), href).toMatchObject({ project: "ACME" });
+    expect(routes.portalHome.build()).toBe("/");
+    expect(routes.portalHome.build({ project: "../x" })).toBe("/");
+    expect(routes.portalRequests.build({ project: "ACME" })).toBe(
+      "/requests?project=ACME",
+    );
+    expect(parsePortalRequestsSearch({ project: "a b" })).toEqual({});
   });
   it("restores audit filters and bounds unsupported limits", () => {
     expect(

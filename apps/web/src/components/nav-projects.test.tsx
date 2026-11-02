@@ -201,13 +201,12 @@ vi.mock("./shared/modals/create-project-modal", () => ({
 }));
 
 describe("NavProjects drag-and-drop setup", () => {
-  it("navigates to the v2 /agent/projects/$projectKey/work route when a project is clicked", () => {
+  it("opens the project's Overview (/agent/projects/$projectKey) when a project is clicked", () => {
     render(<NavProjects />);
     screen.getByText("Visible Project").click();
     expect(mocks.navigate).toHaveBeenCalledWith({
-      to: "/agent/projects/$projectKey/work",
+      to: "/agent/projects/$projectKey",
       params: { projectKey: "VIS" },
-      search: { layout: "board", sort: "position", dir: "asc" },
     });
   });
 

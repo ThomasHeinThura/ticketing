@@ -79,6 +79,19 @@ describe("portal theme (#679)", () => {
     expect(document.documentElement).toHaveClass("dark");
   });
 
+  it("lets a visitor who started on the OS theme pick one from the toggle", () => {
+    prefersDark = false;
+    // The store's in-memory default, with nothing persisted yet.
+    useUserPreferencesStore.setState({ theme: "dark" });
+    localStorage.clear();
+    render(<PortalApplicationProviders>{null}</PortalApplicationProviders>);
+    expect(document.documentElement).toHaveClass("light");
+    expect(useUserPreferencesStore.getState().theme).toBe("system");
+    act(() => useUserPreferencesStore.getState().setTheme("dark"));
+    expect(document.documentElement).toHaveClass("dark");
+    expect(document.documentElement).not.toHaveClass("light");
+  });
+
   it("honours a stored theme preference over the OS preference", () => {
     localStorage.setItem(
       "user-preferences",

@@ -109,6 +109,24 @@ const WRITES: Case[] = [
       }),
   },
   {
+    matrixKey: "PATCH /api/project/{id}/summary",
+    call: (app, _w, i) =>
+      json(app, "PATCH", `/api/project/${i.projectId}/summary`, {
+        status: "on_hold",
+      }),
+  },
+  {
+    matrixKey: "PUT /api/project/{id}/contract",
+    call: (app, _w, i) =>
+      json(app, "PUT", `/api/project/${i.projectId}/contract`, {
+        startDate: "2026-01-01",
+        endDate: "2026-12-31",
+        contractedMinutes: 600,
+        coverage: "9x5",
+        kickoffStatus: "pending",
+      }),
+  },
+  {
     matrixKey: "DELETE /api/project/{id}",
     successStatus: 202,
     apiKeyRefused: true,
@@ -468,6 +486,14 @@ const READS: Case[] = [
   {
     matrixKey: "GET /api/project/{id}/health",
     call: (a, _w, i) => json(a, "GET", `/api/project/${i.projectId}/health`),
+  },
+  {
+    matrixKey: "GET /api/project/{id}/overview",
+    call: (a, _w, i) => json(a, "GET", `/api/project/${i.projectId}/overview`),
+  },
+  {
+    matrixKey: "GET /api/project/{id}/contract",
+    call: (a, _w, i) => json(a, "GET", `/api/project/${i.projectId}/contract`),
   },
   {
     matrixKey: "GET /api/project/{id}/milestones",

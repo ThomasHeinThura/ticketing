@@ -16,9 +16,17 @@ import { PortalOrientation } from "@/components/portal/portal-orientation";
 import { PortalRequestState } from "@/components/portal/portal-request-state";
 import { getPortalSubmissions } from "@/fetchers/intake";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { routes } from "@/lib/routes";
+import {
+  parsePortalProjectSearch,
+  portalProjectSearchMiddlewares,
+  routes,
+} from "@/lib/routes";
 
-export const Route = createFileRoute("/")({ component: PortalHome });
+export const Route = createFileRoute("/")({
+  validateSearch: parsePortalProjectSearch,
+  search: { middlewares: portalProjectSearchMiddlewares },
+  component: PortalHome,
+});
 function PortalHome() {
   const { t } = usePortalTranslation("portal");
   const { portalUserId } = Route.useRouteContext();

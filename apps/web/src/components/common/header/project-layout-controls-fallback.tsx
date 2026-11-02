@@ -46,7 +46,7 @@ export default function ProjectLayoutControlsFallback({
             {viewLabels.map((label, index) => (
               <Skeleton
                 key={label}
-                className={index === 1 ? "h-6 w-24" : "h-6 w-16"}
+                className={index === 2 ? "h-6 w-24" : "h-6 w-16"}
               />
             ))}
           </div>

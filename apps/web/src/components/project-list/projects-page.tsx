@@ -303,13 +303,12 @@ export default function ProjectsPage({
     },
   });
 
-  // v2 work items live behind /agent/projects/{key}/work, the same target as the
-  // sidebar's project links (nav-projects.tsx); the legacy board reads the old task table.
+  // S3: a project opens on its Overview (/agent/projects/{key}), the same target as the
+  // sidebar's project links (nav-projects.tsx); its work view is the Work items tab.
   const handleProjectClick = (projectKey: string) => {
     navigate({
-      to: "/agent/projects/$projectKey/work",
+      to: "/agent/projects/$projectKey",
       params: { projectKey },
-      search: { layout: "board", sort: "position", dir: "asc" },
     });
   };
 
