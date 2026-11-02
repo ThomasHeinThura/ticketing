@@ -23,7 +23,14 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { shortcuts } from "@/constants/shortcuts";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
@@ -45,9 +52,28 @@ import {
 type SearchCommandMenuProps = {
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** Where focus goes when the menu closes; the shortcut records the element it was opened from. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 };
 
-function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
+/** The element that had focus before the menu opened, so closing can put it back. */
+export function focusedElement(): HTMLElement | null {
+  const active =
+    typeof document === "undefined" ? null : document.activeElement;
+  return active instanceof HTMLElement && active !== document.body
+    ? active
+    : null;
+}
+
+function SearchCommandMenu({
+  open,
+  setOpen,
+  returnFocusRef,
+}: SearchCommandMenuProps) {
+  const ownReturnFocusRef = useRef<HTMLElement | null>(null);
+  const restoreFocusTo = returnFocusRef ?? ownReturnFocusRef;
+  // Choosing a result moves to another page; focus then belongs to that page, not the trigger.
+  const navigatedRef = useRef(false);
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const { data: workspace } = useActiveWorkspace();
@@ -68,6 +94,9 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
   useRegisterShortcuts({
     shortcuts: {
       [shortcuts.search.prefix]: () => {
+        // Keep the caller's fallback (its trigger) when nothing had focus.
+        if (!open)
+          restoreFocusTo.current = focusedElement() ?? restoreFocusTo.current;
         setOpen(true);
       },
     },
@@ -97,6 +126,7 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
         href: entry.href,
       });
     }
+    navigatedRef.current = true;
     setOpen(false);
     setQuery("");
     navigate({ to: entry.href as never });
@@ -132,7 +162,18 @@ function SearchCommandMenu({ open, setOpen }: SearchCommandMenuProps) {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandDialogPopup instant>
+      <CommandDialogPopup
+        instant
+        // A menu opened from state has no trigger to return to; put focus back where it was.
+        finalFocus={() => {
+          if (navigatedRef.current) {
+            navigatedRef.current = false;
+            return false;
+          }
+          const target = restoreFocusTo.current;
+          return target?.isConnected ? target : true;
+        }}
+      >
         <Command items={groupedItems} filter={null}>
           <CommandInput
             placeholder={t("navigation:search.inputPlaceholder")}

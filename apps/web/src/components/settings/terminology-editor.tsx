@@ -43,6 +43,18 @@ function initialForms(categories: readonly string[]): TerminologyForms {
   return Object.fromEntries(categories.map((category) => [category, ""]));
 }
 
+/** A locale as its own language name with the code, e.g. "Deutsch (de-DE)". */
+function localeLabel(locale: string): string {
+  try {
+    const language = new Intl.DisplayNames([locale], { type: "language" }).of(
+      new Intl.Locale(locale).language,
+    );
+    return language ? `${language} (${locale})` : locale;
+  } catch {
+    return locale;
+  }
+}
+
 export function sampleCountForCategory(locale: string, category: string) {
   const rules = new Intl.PluralRules(locale);
   const preferredCounts = [
@@ -224,6 +236,13 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
             </Label>
             <Select
               value={audience}
+              // Labels for the trigger; without them the Select shows the audience code.
+              items={(["both", "agent", "customer"] as const).map((value) => ({
+                value,
+                label: t(`terminology.audiences.${value}`, {
+                  defaultValue: value,
+                }),
+              }))}
               onValueChange={(value) =>
                 value && setAudience(value as TerminologyAudience)
               }
@@ -248,6 +267,11 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
             </Label>
             <Select
               value={termKey}
+              // Labels for the trigger; without them the Select shows the term key.
+              items={TERMINOLOGY_TERM_KEYS.map((key) => ({
+                value: key,
+                label: displayTerm(key),
+              }))}
               onValueChange={(value) =>
                 value && setTermKey(value as TerminologyTermKey)
               }
@@ -270,6 +294,10 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
             </Label>
             <Select
               value={locale}
+              items={supportedLocales.map((value) => ({
+                value,
+                label: localeLabel(value),
+              }))}
               onValueChange={(value) => value && setLocale(value)}
             >
               <SelectTrigger id="terminology-locale">
@@ -278,7 +306,7 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
               <SelectContent>
                 {supportedLocales.map((value) => (
                   <SelectItem key={value} value={value}>
-                    {value}
+                    {localeLabel(value)}
                   </SelectItem>
                 ))}
               </SelectContent>

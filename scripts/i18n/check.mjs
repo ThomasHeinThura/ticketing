@@ -1,3 +1,4 @@
+import { findMissingLiteralKeys } from "./literal-keys.mjs";
 import {
   defaultLocale,
   flattenLocale,
@@ -5,6 +6,7 @@ import {
   getValueAtKey,
   loadLocales,
   PLURAL_CATEGORIES,
+  repoRoot,
   setValueAtKey,
   writeJson,
 } from "./shared.mjs";
@@ -218,6 +220,20 @@ for (const locale of filteredLocales) {
       "  Added missing keys, using the locale's own plural wording where it had one.",
     );
   }
+}
+
+// A key the code asks for but en-US lacks renders as the raw key, or as English everywhere when
+// the call carries a defaultValue. Not fixable by --fix: the English wording has to be written.
+const missingLiteralKeys = await findMissingLiteralKeys(
+  repoRoot,
+  reference.data,
+);
+if (missingLiteralKeys.length > 0) {
+  hasIssues = true;
+  console.log(
+    `${defaultLocale}: keys used in apps/web but missing from ${defaultLocale}.json:`,
+  );
+  for (const problem of missingLiteralKeys) console.log(`    - ${problem}`);
 }
 
 try {

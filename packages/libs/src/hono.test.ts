@@ -1,7 +1,12 @@
 import type { AppType } from "@taskdesk/api";
 import { hc } from "hono/client";
-import { describe, expect, it } from "vitest";
-import { createApiFetch, windowId } from "./hono";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createApiFetch,
+  FACTOR_ENROLLMENT_REQUIRED,
+  onFactorEnrollmentRequired,
+  windowId,
+} from "./hono";
 
 const apiBaseUrl = "http://taskdesk.test/api";
 const expiresAt = () => new Date(Date.now() + 5 * 60_000).toISOString();
@@ -498,5 +503,73 @@ describe("TaskDesk Hono transport", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await second(`${apiBaseUrl}/projects`, { method: "POST", body: "{}" });
     expect(mutationTokens).toEqual(["token-2"]);
+  });
+});
+
+describe("factor enrolment refusal", () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  async function call(
+    response: () => Response,
+    init?: RequestInit,
+    url = `${apiBaseUrl}/v1/task/t1`,
+  ) {
+    const apiFetch = createApiFetch(
+      async (input) =>
+        new Request(input).url === `${apiBaseUrl}/me/csrf-token`
+          ? tokenResponse()
+          : response(),
+      { apiBaseUrl },
+    );
+    return apiFetch(url, init);
+  }
+
+  it("notifies on a plain-text or JSON 403 mfa_enrollment_required, for reads and writes, and leaves the body readable", async () => {
+    const listener = vi.fn();
+    const stop = onFactorEnrollmentRequired(listener);
+    try {
+      const plain = await call(
+        () => new Response(FACTOR_ENROLLMENT_REQUIRED, { status: 403 }),
+      );
+      expect(await plain.text()).toBe(FACTOR_ENROLLMENT_REQUIRED);
+      const json = await call(
+        () =>
+          Response.json(
+            { message: FACTOR_ENROLLMENT_REQUIRED },
+            { status: 403 },
+          ),
+        { method: "POST", body: "{}" },
+      );
+      expect(await json.json()).toEqual({
+        message: FACTOR_ENROLLMENT_REQUIRED,
+      });
+      await flush();
+      expect(listener).toHaveBeenCalledTimes(2);
+    } finally {
+      stop();
+    }
+  });
+
+  it("does not notify for other refusals, other statuses, foreign origins or after unsubscribing", async () => {
+    const listener = vi.fn();
+    const stop = onFactorEnrollmentRequired(listener);
+    for (const body of [
+      "step_up_required",
+      "step_up_expired",
+      "Forbidden",
+      "",
+    ]) {
+      await call(() => new Response(body, { status: 403 }));
+    }
+    await call(() => new Response(FACTOR_ENROLLMENT_REQUIRED, { status: 401 }));
+    await call(
+      () => new Response(FACTOR_ENROLLMENT_REQUIRED, { status: 403 }),
+      undefined,
+      "https://elsewhere.test/api/v1/task/t1",
+    );
+    stop();
+    await call(() => new Response(FACTOR_ENROLLMENT_REQUIRED, { status: 403 }));
+    await flush();
+    expect(listener).not.toHaveBeenCalled();
   });
 });

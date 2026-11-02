@@ -36,6 +36,7 @@
     "users-primary-journey.spec.ts",
     "service-operations-primary-journey.spec.ts",
     "intake-primary-journey.spec.ts",
+    "session-cache-security-journey.spec.ts",
     "../api/mfa-csrf-app-fixture.test.ts"
   ]
 }
