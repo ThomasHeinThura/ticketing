@@ -31,6 +31,9 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
 }));
+vi.mock("@/components/god-mode/local-sign-in-methods-card", () => ({
+  LocalSignInMethodsCard: () => <div data-testid="local-sign-in-methods" />,
+}));
 vi.mock("@/hooks/use-instance-admin-signal", () => ({
   useInstanceAdminSignal: () => mocks.admin,
 }));

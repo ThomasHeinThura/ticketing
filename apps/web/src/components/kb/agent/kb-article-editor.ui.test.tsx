@@ -272,6 +272,19 @@ async function afterAutosaveDelay() {
   });
 }
 
+describe("KB article editor layout (A-20)", () => {
+  it("lets the columns shrink to a phone screen instead of growing to the widest select", () => {
+    renderArticleEditor();
+    const layout = screen.getByTestId("kb-article-editor-layout");
+    // An auto column takes the long Owner name's width; minmax(0,1fr) keeps it to the screen.
+    expect(layout.className).toContain("grid-cols-[minmax(0,1fr)]");
+    expect(layout.className).toContain("lg:grid-cols-[minmax(0,1fr)_18rem]");
+    for (const column of Array.from(layout.children)) {
+      expect(column.className).toContain("min-w-0");
+    }
+  });
+});
+
 describe("KB article editor autosave", () => {
   it("edits inline with no Save button and the reference hint below the editor box", () => {
     renderArticleEditor();

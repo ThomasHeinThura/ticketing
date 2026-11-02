@@ -191,19 +191,74 @@ describe("relation activity descriptions", () => {
   it("preserves other field rendering and grouped verb prefixes", () => {
     expect(
       activityChangeDescription(change("low", "high", "priority"), translate),
-    ).toBe("priority: low → high");
+    ).toBe("Priority: Low → High");
     expect(
       activityChangeDescription(
         change({ value: 1 }, null, "estimate"),
         translate,
       ),
-    ).toBe('estimate: {"value":1} → —');
+    ).toBe('Estimate: {"value":1} → —');
     expect(
       activityChangeDescription(change(null, "done", null), translate, true),
     ).toBe("Updated: — → done");
     expect(
       activityChangeDescription(change(null, "done", null), translate),
     ).toBe("— → done");
+  });
+});
+
+describe("field labels and values (A-40)", () => {
+  function change(oldValue: unknown, newValue: unknown, field: string) {
+    return { field, verb: "updated", oldValue, newValue };
+  }
+  it("labels the field and shows a due date as a calendar date, not ISO", () => {
+    // Stored as midnight UTC; west of Greenwich a local-time format would read Oct 14.
+    expect(
+      activityChangeDescription(
+        change(null, "2026-10-15T00:00:00.000Z", "due_date"),
+        translate,
+      ),
+    ).toBe("Due date: — → Oct 15, 2026");
+    expect(
+      activityChangeDescription(
+        change("2026-10-01T00:00:00.000Z", null, "start_date"),
+        translate,
+      ),
+    ).toBe("Start date: Oct 1, 2026 → —");
+  });
+
+  it("names people by id when names are known, and labels unknown fields as words", () => {
+    const names = new Map([["user-1", "Ada Lovelace"]]);
+    expect(
+      activityChangeDescription(
+        change(null, "user-1", "assignee"),
+        translate,
+        false,
+        (id) => names.get(id) ?? "Unknown",
+      ),
+    ).toBe("Assignee: — → Ada Lovelace");
+    expect(
+      activityChangeDescription(change("a", "b", "watcher"), translate),
+    ).toBe("Watcher: a → b");
+  });
+
+  it("never prints parent, template or project ids", () => {
+    expect(
+      activityChangeDescription(
+        change(null, "c3l4uvh78l4vry31", "parent"),
+        translate,
+      ),
+    ).toBe("Parent: — → Unavailable");
+    expect(
+      activityChangeDescription(
+        change(
+          { projectId: "p-old-id", key: "HELP-4" },
+          { projectId: "p-new-id", key: "OPS-9" },
+          "project",
+        ),
+        translate,
+      ),
+    ).toBe("Project: HELP-4 → OPS-9");
   });
 });
 

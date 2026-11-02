@@ -1,5 +1,5 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   Collapsible,
   CollapsiblePanel,
@@ -45,6 +45,12 @@ export function NavMain() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
   const navigate = useNavigate();
+  const router = useRouter();
+  // Hover or keyboard focus starts loading the destination's code and route checks before the
+  // click (S7b). The route checks reuse the cached session, so this sends no extra session read.
+  const preload = (to: string, params?: Record<string, string>) => {
+    void router.preloadRoute({ to, params } as never).catch(() => {});
+  };
   // The highlight follows the router. `window.location` read during render goes stale, because
   // a navigation does not re-render the sidebar. Selecting only the path skips search changes.
   const path = useLocation({ select: (location) => location.pathname });
@@ -228,6 +234,8 @@ export function NavMain() {
                       size="default"
                       className="h-8 ps-3.5 text-sm hover:bg-transparent hover:text-sidebar-accent-foreground active:bg-transparent"
                       onClick={() => navigate({ to: item.url })}
+                      onMouseEnter={() => preload(item.url)}
+                      onFocus={() => preload(item.url)}
                     >
                       <span>{item.title}</span>
                       {item.badge !== null && (
@@ -251,6 +259,12 @@ export function NavMain() {
                             }
                             size="default"
                             className="h-8 ps-6 text-sm hover:bg-transparent hover:text-sidebar-accent-foreground active:bg-transparent"
+                            onMouseEnter={() =>
+                              preload(routes.savedView.path, { id: view.id })
+                            }
+                            onFocus={() =>
+                              preload(routes.savedView.path, { id: view.id })
+                            }
                             onClick={() =>
                               // The screen replaces a bare URL with the view's definition.
                               navigate({

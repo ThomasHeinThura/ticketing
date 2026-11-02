@@ -39,7 +39,7 @@ vi.mock("@/fetchers/pages", async (importOriginal) => ({
 }));
 
 import { HttpError } from "@/lib/http-error";
-import { PagesList } from "./pages-list";
+import { CreatePageDialog, PagesList } from "./pages-list";
 
 function page(id: string, parentId: string | null, title: string) {
   return {
@@ -178,5 +178,35 @@ describe("PagesList", () => {
       expect(mocks.undeletePage).toHaveBeenCalledWith("HELP", "parent"),
     );
     expect(mocks.success).toHaveBeenCalledWith("list.restored");
+  });
+});
+
+describe("CreatePageDialog parent picker (A-17)", () => {
+  function renderDialog(initialParentId: string | null) {
+    return render(
+      <QueryClientProvider client={new QueryClient()}>
+        <CreatePageDialog
+          projectKey="HELP"
+          pages={[page("pg-alpha-id", null, "Alpha")]}
+          initialParentId={initialParentId}
+          onClose={vi.fn()}
+          finalFocus={() => false}
+        />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("shows the top-level label, not the sentinel value", () => {
+    renderDialog(null);
+    const trigger = screen.getByRole("combobox");
+    expect(trigger.textContent).toContain("fields.topLevel");
+    expect(trigger.textContent).not.toContain("none");
+  });
+
+  it("shows the chosen parent's title, not its id", () => {
+    renderDialog("pg-alpha-id");
+    const trigger = screen.getByRole("combobox");
+    expect(trigger.textContent).toContain("Alpha");
+    expect(trigger.textContent).not.toContain("pg-alpha-id");
   });
 });

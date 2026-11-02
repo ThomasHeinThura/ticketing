@@ -46,6 +46,7 @@ import useUpdateWorkItemComment from "@/hooks/mutations/work-item/use-update-wor
 import useGetWorkItemActivity from "@/hooks/queries/work-item/use-get-work-item-activity";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { auditFieldLabel, recordedDateLabel } from "@/lib/audit-history-format";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
 import {
   useWorkItemFileIntake,
@@ -144,13 +145,52 @@ function customFieldLabel(row: { field?: string | null; payload?: unknown }) {
   return typeof name === "string" && name.trim() ? name.trim() : undefined;
 }
 
+type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+/**
+ * One recorded value as text: dates localized, priority by its label, a person id by name
+ * (when `personName` is given), anything else as before.
+ */
+function activityValueText(
+  field: string | null | undefined,
+  value: unknown,
+  t: Translate,
+  personName?: (id: string) => string,
+): string {
+  if (value === null || value === undefined) return "—";
+  if (field) {
+    const date = recordedDateLabel(field, value);
+    if (date) return date;
+    if (field === "priority" && typeof value === "string")
+      return t(`tasks:priority.${value}`, { defaultValue: value });
+    if (
+      (field === "assignee" || field === "assigneeId") &&
+      typeof value === "string" &&
+      personName
+    )
+      return personName(value);
+    // A move records the item's key on each side, which people know; never the project id.
+    if (field === "project") {
+      const key = (value as { key?: unknown } | null)?.key;
+      return typeof key === "string" && key
+        ? key
+        : t("workItems:detail.unavailable");
+    }
+    // Parent and template rows carry ids only, never shown as-is (as in the audit history).
+    if (field === "parent" || field === "template")
+      return t("workItems:detail.unavailable");
+  }
+  return jsonText(value);
+}
+
 /** Relation activity carries type/direction only; never render arbitrary endpoint data. */
 export function activityChangeDescription(
   row: Pick<WorkItemActivityRow, "field" | "verb" | "oldValue" | "newValue"> & {
     payload?: unknown;
   },
-  t: (key: string) => string,
+  t: Translate,
   includeVerb = false,
+  personName?: (id: string) => string,
 ): string {
   if (row.field === "description")
     return t("activity:timeline.descriptionUpdated");
@@ -167,9 +207,13 @@ export function activityChangeDescription(
   if (row.field !== "relation") {
     const label =
       customFieldLabel(row) ??
-      row.field ??
+      (row.field ? auditFieldLabel(row.field, t) : undefined) ??
       (includeVerb ? activityVerbLabel(row.verb, t) : undefined);
-    return `${label ? `${label}: ` : ""}${jsonText(row.oldValue)} → ${jsonText(row.newValue)}`;
+    // A custom field's values are its own; only native fields get the field formatters.
+    const field = row.field === "custom_field" ? null : row.field;
+    const from = activityValueText(field, row.oldValue, t, personName);
+    const to = activityValueText(field, row.newValue, t, personName);
+    return `${label ? `${label}: ` : ""}${from} → ${to}`;
   }
   const relationLabel = (value: unknown): string => {
     if (value === null || value === undefined) return "—";
@@ -704,7 +748,12 @@ function WorkItemActivity({
               </TimelineItem>
             );
           }
-          const description = activityChangeDescription(row, t);
+          const description = activityChangeDescription(
+            row,
+            t,
+            false,
+            displayPersonName,
+          );
           const icon =
             row.verb === REOPEN_REQUESTED_VERB ? (
               <TriangleAlert className="size-4" />
@@ -784,7 +833,12 @@ function WorkItemActivity({
                     <ul className="mt-2 list-inside list-disc text-xs">
                       {group.map((entry) => (
                         <li key={entry.id}>
-                          {activityChangeDescription(entry, t, true)}
+                          {activityChangeDescription(
+                            entry,
+                            t,
+                            true,
+                            displayPersonName,
+                          )}
                         </li>
                       ))}
                     </ul>

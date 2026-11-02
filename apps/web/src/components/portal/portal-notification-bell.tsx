@@ -12,6 +12,7 @@ import { getPortalNotifications } from "@/fetchers/portal-notifications";
 import { usePortalNotificationWebSocket } from "@/hooks/use-portal-notification-websocket";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { portalNotificationQueryKey } from "@/lib/portal-notification-query-keys";
+import { routes } from "@/lib/routes";
 
 export default function PortalNotificationBell() {
   usePortalNotificationWebSocket();
@@ -44,7 +45,7 @@ export default function PortalNotificationBell() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuItem
-          onClick={() => void navigate({ to: "/notifications" })}
+          onClick={() => void navigate({ to: routes.portalInbox.path })}
         >
           {t("notifications.inbox")}
         </DropdownMenuItem>

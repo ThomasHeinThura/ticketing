@@ -112,6 +112,14 @@ export function CreatePageDialog({
             <Label htmlFor="page-parent">{t("fields.parent")}</Label>
             <Select
               value={parentId ?? TOP_LEVEL}
+              // Labels for the trigger; without them the Select shows the page id.
+              items={[
+                { value: TOP_LEVEL, label: t("fields.topLevel") },
+                ...rows.map(({ page, depth }) => ({
+                  value: page.id,
+                  label: `${"– ".repeat(depth)}${page.title}`,
+                })),
+              ]}
               onValueChange={(value) =>
                 setParentId(value && value !== TOP_LEVEL ? value : null)
               }
