@@ -17501,7 +17501,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/project/tasks-import-export.tsx",
+		"usage": "apps/web/src/components/team/delete-team-member-modal.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-foreground",
 		"backgroundClass": {
@@ -17509,24 +17509,9 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0"
 		],
 		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]",
-					"opaque-backdrop:bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
 			{
 				"backdropLayers": ["bg-card"],
 				"category": "body",
@@ -17681,42 +17666,6 @@
 			"bg-muted/20",
 			"bg-background"
 		]
-	},
-	{
-		"fg": "--color-foreground",
-		"bg": "--color-accent",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "apps/web/src/components/project/tasks-import-export.tsx",
-		"backdrop": "--color-card",
-		"foregroundClass": "text-foreground",
-		"backgroundClass": {
-			"dark": "hover:bg-accent"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]::text-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-muted/60", "bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]",
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]",
-					"opaque-backdrop:bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			}
-		],
-		"backdropLayers": ["bg-muted/60", "bg-card"]
 	},
 	{
 		"fg": "--color-foreground",
@@ -17881,7 +17830,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "apps/web/src/components/project/tasks-import-export.tsx",
+		"usage": "apps/web/src/components/team/delete-team-member-modal.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-foreground",
 		"backgroundClass": {
@@ -17889,24 +17838,9 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0"
 		],
 		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]",
-					"opaque-backdrop:bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
 			{
 				"backdropLayers": ["bg-card"],
 				"category": "body",
@@ -18061,42 +17995,6 @@
 			"bg-muted/20",
 			"bg-background"
 		]
-	},
-	{
-		"fg": "--color-foreground",
-		"bg": "--color-accent",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["light"],
-		"usage": "apps/web/src/components/project/tasks-import-export.tsx",
-		"backdrop": "--color-card",
-		"foregroundClass": "text-foreground",
-		"backgroundClass": {
-			"light": "hover:bg-accent"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]::text-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-muted/60", "bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]",
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]",
-					"opaque-backdrop:bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			}
-		],
-		"backdropLayers": ["bg-muted/60", "bg-card"]
 	},
 	{
 		"fg": "--color-foreground",
@@ -24164,9 +24062,6 @@
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/div[1]/h1[0]::text-foreground#0",
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/Card[0]/div[0]/CheckCircle2[0]::text-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]::text-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]::text-foreground#0",
@@ -24427,39 +24322,6 @@
 				"id": "apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/Card[0]/div[0]/CheckCircle2[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project/overview/prerequisites-page.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "same-element",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "same-element",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -24666,9 +24528,6 @@
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/div[1]/h1[0]::text-foreground#0",
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/Card[0]/div[0]/CheckCircle2[0]::text-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]::text-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]::text-foreground#0",
@@ -24929,39 +24788,6 @@
 				"id": "apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/Card[0]/div[0]/CheckCircle2[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project/overview/prerequisites-page.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "same-element",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "same-element",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -25738,29 +25564,17 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/project/tasks-import-export.tsx",
+		"usage": "apps/web/src/components/team/delete-team-member-modal.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-foreground",
 		"backgroundClass": {
 			"dark": "bg-muted"
 		},
-		"surfaceContext": "nearest-opaque-ancestor",
+		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/pre[0]::text-foreground#0",
 			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0"
 		],
 		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/pre[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/pre[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
 			{
 				"backdropLayers": ["bg-card"],
 				"category": "body",
@@ -26078,29 +25892,17 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "apps/web/src/components/project/tasks-import-export.tsx",
+		"usage": "apps/web/src/components/team/delete-team-member-modal.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-foreground",
 		"backgroundClass": {
 			"light": "bg-muted"
 		},
-		"surfaceContext": "nearest-opaque-ancestor",
+		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/pre[0]::text-foreground#0",
 			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0"
 		],
 		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/pre[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/pre[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
 			{
 				"backdropLayers": ["bg-card"],
 				"category": "body",
@@ -55937,9 +55739,6 @@
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/Panel[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/Panel[1]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/Panel[1]/ul[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::EditorBody::div[0]/DndContext[0]/div[0]/DashboardGrid[0]/DraggableWidget[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-widget.tsx::DashboardWidgetCard::Card[0]/CardContent[0]/ScrollArea[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-chart.tsx::ReportChart::figure[0]/figcaption[0]::text-muted-foreground#0",
@@ -58076,39 +57875,6 @@
 				"id": "apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/Panel[1]/ul[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project/overview/team-page.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -61146,9 +60912,6 @@
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/Panel[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/Panel[1]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/Panel[1]/ul[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::EditorBody::div[0]/DndContext[0]/div[0]/DashboardGrid[0]/DraggableWidget[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-widget.tsx::DashboardWidgetCard::Card[0]/CardContent[0]/ScrollArea[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-chart.tsx::ReportChart::figure[0]/figcaption[0]::text-muted-foreground#0",
@@ -63285,39 +63048,6 @@
 				"id": "apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/Panel[1]/ul[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project/overview/team-page.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]>bg-card"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -76979,6 +76709,38 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/webhook/delivery-history.tsx:DeliveryHistory",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/webhooks/$id/deliveries.tsx:/_layout/_authenticated/dashboard/settings/workspace/webhooks/$id/deliveries",
@@ -77346,6 +77108,22 @@
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/project/overview/team-page.tsx:StakeholderDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
+					"opaque-backdrop:bg-popover"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -78145,6 +77923,38 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:/_layout/_authenticated/agent/work-items/$key",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
+					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/webhook/delivery-history.tsx:DeliveryHistory",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/webhooks/$id/deliveries.tsx:/_layout/_authenticated/dashboard/settings/workspace/webhooks/$id/deliveries",
@@ -78512,6 +78322,22 @@
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/project/overview/team-page.tsx:StakeholderDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
+					"opaque-backdrop:bg-popover"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -80293,49 +80119,6 @@
 		"bg": "--color-muted",
 		"category": "body",
 		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "apps/web/src/components/project/tasks-import-export.tsx",
-		"backdrop": "--color-card",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"dark": "bg-muted/60"
-		},
-		"surfaceContext": "nearest-opaque-ancestor",
-		"occurrenceIds": [
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]>bg-muted/60"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]>bg-muted/60"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			}
-		],
-		"backdropLayers": ["bg-card"]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-muted",
-		"category": "body",
-		"minRatio": 4.5,
 		"themes": ["light"],
 		"usage": "apps/web/src/lib/column.tsx",
 		"backdrop": "--color-background",
@@ -80478,49 +80261,6 @@
 			}
 		],
 		"backdropLayers": ["bg-accent/35", "bg-muted/20", "bg-background"]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-muted",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["light"],
-		"usage": "apps/web/src/components/project/tasks-import-export.tsx",
-		"backdrop": "--color-card",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"light": "bg-muted/60"
-		},
-		"surfaceContext": "nearest-opaque-ancestor",
-		"occurrenceIds": [
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]>bg-muted/60"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]>bg-muted/60"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Upload[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			}
-		],
-		"backdropLayers": ["bg-card"]
 	},
 	{
 		"fg": "--color-muted-foreground",
@@ -81143,10 +80883,10 @@
 	{
 		"fg": "--color-muted-foreground",
 		"bg": "--color-muted",
-		"category": "body",
-		"minRatio": 4.5,
+		"category": "non-text",
+		"minRatio": 3,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/project/tasks-import-export.tsx",
+		"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-muted-foreground",
 		"backgroundClass": {
@@ -81154,21 +80894,9 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/div[0]/div[0]/Building2[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/p[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
 			{
 				"backdropLayers": ["bg-card"],
 				"category": "non-text",
@@ -82158,10 +81886,10 @@
 	{
 		"fg": "--color-muted-foreground",
 		"bg": "--color-muted",
-		"category": "body",
-		"minRatio": 4.5,
+		"category": "non-text",
+		"minRatio": 3,
 		"themes": ["light"],
-		"usage": "apps/web/src/components/project/tasks-import-export.tsx",
+		"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-muted-foreground",
 		"backgroundClass": {
@@ -82169,21 +81897,9 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/div[0]/div[0]/Building2[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
-					"jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/p[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/tasks-import-export.tsx"
-			},
 			{
 				"backdropLayers": ["bg-card"],
 				"category": "non-text",
@@ -93962,7 +93678,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[2]/div[1]/div[4]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[1]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -94782,9 +94498,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
-					"jsx:div[0]/div[1]/div[1]/div[1]/div[0]/p[1]>bg-sidebar"
+					"jsx:div[0]/div[1]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[1]/div[0]/p[1]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -95209,7 +94925,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[2]/div[1]/div[4]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[1]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -96029,9 +95745,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
-					"jsx:div[0]/div[1]/div[1]/div[1]/div[0]/p[1]>bg-sidebar"
+					"jsx:div[0]/div[1]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[1]/div[0]/p[1]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
