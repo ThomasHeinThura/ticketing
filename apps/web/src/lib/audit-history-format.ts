@@ -1,4 +1,4 @@
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 
 /**
  * AU-8/AU-9 display helpers: readable labels for the audit disclosure. The audit routes carry
@@ -66,6 +66,34 @@ export function richTextToPlain(value: string): string | null {
   return null;
 }
 
+/** Calendar dates: stored as midnight UTC, so shown in UTC or they slip a day west of Greenwich. */
+const DATE_ONLY_FIELDS = new Set([
+  "due_date",
+  "dueDate",
+  "start_date",
+  "startDate",
+]);
+/** Instants: shown in the reader's own time zone. */
+const INSTANT_FIELDS = new Set(["archived_at", "deleted_at"]);
+
+/**
+ * A recorded date field as a localized date (calendar dates) or date and time (instants), in
+ * the active language; null for any other field or a value that is not a date.
+ */
+export function recordedDateLabel(
+  field: string,
+  value: unknown,
+): string | null {
+  if (typeof value !== "string") return null;
+  const dateOnly = DATE_ONLY_FIELDS.has(field);
+  if (!dateOnly && !INSTANT_FIELDS.has(field)) return null;
+  const time = Date.parse(value);
+  if (Number.isNaN(time)) return null;
+  return dateOnly
+    ? formatDate(time, { dateStyle: "medium", timeZone: "UTC" })
+    : formatDateTime(time);
+}
+
 export type AuditValueLookups = {
   states: ReadonlyMap<string, string>;
   people: ReadonlyMap<string, string>;
@@ -101,14 +129,8 @@ export function auditValueLabel(
     const plain = richTextToPlain(value) ?? value;
     return plain.trim() ? truncate(plain) : lookups.empty;
   }
-  if (
-    field === "due_date" ||
-    field === "start_date" ||
-    field === "archived_at"
-  ) {
-    const time = Date.parse(value);
-    if (!Number.isNaN(time)) return formatDate(time);
-  }
+  const date = recordedDateLabel(field, value);
+  if (date) return date;
   if (field === "project" || field === "parent" || field === "template")
     return lookups.unknown;
   return truncate(value);

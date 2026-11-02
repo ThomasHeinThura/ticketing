@@ -1,11 +1,16 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ChangeEventHandler, PropsWithChildren } from "react";
+import {
+  type ChangeEventHandler,
+  type PropsWithChildren,
+  useState,
+} from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
 import SearchCommandMenu from "./index";
 
 const mocks = vi.hoisted(() => ({
   search: vi.fn((_params: { q: string }) => ({ data: undefined })),
+  finalFocus: { current: null as null | (() => unknown) },
 }));
 
 /**
@@ -48,7 +53,13 @@ vi.mock("@taskdesk/ui", async () => {
       children,
     }: PropsWithChildren<{ open: boolean }>) =>
       open ? <div data-testid="search-command-dialog">{children}</div> : null,
-    CommandDialogPopup: Null,
+    CommandDialogPopup: ({
+      children,
+      finalFocus,
+    }: PropsWithChildren<{ finalFocus?: () => unknown }>) => {
+      mocks.finalFocus.current = finalFocus ?? null;
+      return <>{children}</>;
+    },
     CommandEmpty: Null,
     CommandGroup: Null,
     CommandGroupLabel: Null,
@@ -104,5 +115,44 @@ describe("SearchCommandMenu (#407)", () => {
     );
     expect(screen.getByTestId("search-command-dialog")).toBeInTheDocument();
     expect(() => unmount()).not.toThrow();
+  });
+});
+
+describe("SearchCommandMenu focus return (A-25)", () => {
+  it("returns focus to the element the caller recorded, the sidebar Search button", () => {
+    const button = document.createElement("button");
+    document.body.append(button);
+    render(
+      <KeyboardShortcutsProvider>
+        <SearchCommandMenu
+          open
+          setOpen={vi.fn()}
+          returnFocusRef={{ current: button }}
+        />
+      </KeyboardShortcutsProvider>,
+    );
+    expect(mocks.finalFocus.current?.()).toBe(button);
+    button.remove();
+    // A trigger that left the page falls back to Base UI's default.
+    expect(mocks.finalFocus.current?.()).toBe(true);
+  });
+
+  it("records what had focus when the shortcut opened it", () => {
+    const origin = document.createElement("button");
+    document.body.append(origin);
+    origin.focus();
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return <SearchCommandMenu open={open} setOpen={setOpen} />;
+    }
+    render(
+      <KeyboardShortcutsProvider>
+        <Harness />
+      </KeyboardShortcutsProvider>,
+    );
+    fireEvent.keyDown(document, { key: "/" });
+    expect(screen.getByTestId("search-command-dialog")).toBeInTheDocument();
+    expect(mocks.finalFocus.current?.()).toBe(origin);
+    origin.remove();
   });
 });
