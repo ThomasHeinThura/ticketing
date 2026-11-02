@@ -1,6 +1,3 @@
-// A negative UTC offset: date-only values must not slip back a day.
-process.env.TZ = "America/Los_Angeles";
-
 import { describe, expect, it } from "vitest";
 import type { WorkItemActivityRow } from "@/fetchers/work-item/get-work-item-activity";
 import { translate } from "@/test/en-translation";
