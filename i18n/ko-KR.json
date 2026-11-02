@@ -2041,7 +2041,7 @@
 			"workItem": "{{term_work_item_one}}",
 			"pendingActions": "Pending actions",
 			"knowledgeBase": "Knowledge base",
-			"serviceManagement": "Service management",
+			"serviceManagement": "Service catalogue",
 			"timesheet": "Timesheet",
 			"dashboard": "Dashboard",
 			"reports": "Reports"
@@ -7108,7 +7108,7 @@
 		},
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
-			"title": "{{term_service_one}} management is off"
+			"title": "{{term_service_one}} catalogue is off"
 		},
 		"freezes": {
 			"affected_other": "{{count}} planned {{term_change_other}} now fall inside this freeze and cannot be approved without an override.",
@@ -7138,7 +7138,7 @@
 			"changes": "{{term_change_one}} calendar",
 			"releases": "Releases",
 			"services": "{{term_service_other}}",
-			"title": "Service management"
+			"title": "Service catalogue"
 		},
 		"override": {
 			"description": "Approving {{key}} during a freeze needs a reason and a fresh verification. The override is audited prominently.",

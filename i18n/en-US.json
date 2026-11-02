@@ -2046,7 +2046,7 @@
 			"observability": "Observability",
 			"pendingActions": "Pending actions",
 			"knowledgeBase": "Knowledge base",
-			"serviceManagement": "Service management",
+			"serviceManagement": "Service catalogue",
 			"timesheet": "Timesheet",
 			"reports": "Reports",
 			"dashboard": "Dashboard"
@@ -7066,13 +7066,13 @@
 	},
 	"serviceManagement": {
 		"nav": {
-			"title": "Service management",
+			"title": "Service catalogue",
 			"services": "{{term_service_other}}",
 			"changes": "{{term_change_one}} calendar",
 			"releases": "Releases"
 		},
 		"disabled": {
-			"title": "{{term_service_one}} management is off",
+			"title": "{{term_service_one}} catalogue is off",
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches."
 		},
 		"common": {
