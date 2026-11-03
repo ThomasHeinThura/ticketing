@@ -26,6 +26,7 @@ export const PROJECT_WRITE_ROUTE_KEYS = [
   "PATCH /api/project/{id}/stakeholders/{stakeholderId}",
   "POST /api/project/{id}/stakeholders/{stakeholderId}/stand-down",
   "POST /api/project/{id}/document-links",
+  "PATCH /api/project/{id}/document-links/{documentLinkId}",
   "DELETE /api/project/{id}/document-links/{documentLinkId}",
   "POST /api/projects/{projectId}/work-items",
   "PATCH /api/projects/{projectId}/ownership",

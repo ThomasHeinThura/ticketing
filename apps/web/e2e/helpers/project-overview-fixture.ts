@@ -83,6 +83,19 @@ export async function installProjectOverviewFixture(
         updatedAt: "2026-10-01T00:00:00.000Z",
       },
     ],
+    documentLinks: [
+      {
+        id: "d1",
+        projectId,
+        url: "https://docs.example.test/sow",
+        title: "Statement of work",
+        kind: "sow",
+        description: "Signed scope and fees" as string | null,
+        customerVisible: true,
+        createdAt: "2026-10-01T00:00:00.000Z",
+        updatedAt: "2026-10-01T00:00:00.000Z",
+      },
+    ],
   };
   let nextId = 1;
   const overview = () => ({
@@ -266,16 +279,31 @@ export async function installProjectOverviewFixture(
       return json(row);
     }
     if (tail === "/document-links" && method === "GET")
-      return json([
-        {
-          id: "d1",
-          projectId,
-          url: "https://docs.example.test/sow",
-          title: "Statement of work",
-          customerVisible: true,
-          createdAt: "2026-10-01T00:00:00.000Z",
-        },
-      ]);
+      return json(state.documentLinks);
+    if (tail === "/document-links" && method === "POST") {
+      const body = request.postDataJSON() as Record<string, unknown>;
+      const row = {
+        ...state.documentLinks[0],
+        kind: "other",
+        description: null,
+        customerVisible: false,
+        ...body,
+        id: `d-new-${nextId++}`,
+        createdAt: "2026-11-01T10:00:00.000Z",
+        updatedAt: "2026-11-01T10:00:00.000Z",
+      } as (typeof state.documentLinks)[number];
+      state.documentLinks.push(row);
+      return json(row);
+    }
+    const documentLink = /^\/document-links\/([^/]+)$/u.exec(tail);
+    if (documentLink && method === "PATCH") {
+      const row = state.documentLinks.find((d) => d.id === documentLink[1]);
+      if (!row) return json({ message: "Not found" }, 404);
+      Object.assign(row, request.postDataJSON(), {
+        updatedAt: "2026-11-01T11:00:00.000Z",
+      });
+      return json(row);
+    }
     if (tail === "/archive" && method === "PUT")
       return json({
         ...options.project,

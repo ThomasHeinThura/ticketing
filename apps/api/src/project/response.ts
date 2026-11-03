@@ -236,8 +236,11 @@ export const documentLinkSchema = z
     projectId: z.string(),
     url: z.string(),
     title: z.string(),
+    kind: z.enum(["contract", "sow", "design", "handover", "other"]),
+    description: z.string().nullable(),
     customerVisible: z.boolean(),
     createdAt: responseTimestamp,
+    updatedAt: responseTimestamp,
   })
   .openapi("DocumentLink");
 

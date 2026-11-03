@@ -1284,10 +1284,30 @@
           "title": {
             "type": "string"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "contract",
+              "sow",
+              "design",
+              "handover",
+              "other"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "customerVisible": {
             "type": "boolean"
           },
           "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
             "type": "string",
             "format": "date-time"
           }
@@ -1297,8 +1317,11 @@
           "projectId",
           "url",
           "title",
+          "kind",
+          "description",
           "customerVisible",
-          "createdAt"
+          "createdAt",
+          "updatedAt"
         ]
       },
       "ProjectOverview": {
@@ -7831,15 +7854,33 @@
                 },
                 "url": {
                   "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "contract",
+                    "sow",
+                    "design",
+                    "handover",
+                    "other"
+                  ]
+                },
+                "description": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
                 "id",
                 "title",
-                "url"
+                "url",
+                "kind",
+                "description"
               ]
             },
-            "description": "Customer-visible document links only."
+            "description": "Customer-visible Documents entries only (staff-only entries and Pages never appear)."
           },
           "contacts": {
             "type": "array",
@@ -12361,7 +12402,7 @@
           "Projects"
         ],
         "summary": "Add a document link",
-        "description": "A link, never a copy. No PATCH: editing url or title is remove-then-re-add.",
+        "description": "Adds an entry to the project's Documents register: a link, never a copy, with a type (contract, sow, design, handover or other) and an optional description. Customer visibility is off by default. Audited as document_link.created.",
         "parameters": [
           {
             "schema": {
@@ -12387,6 +12428,23 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 200
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "contract",
+                      "sow",
+                      "design",
+                      "handover",
+                      "other"
+                    ]
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2000
                   },
                   "customerVisible": {
                     "type": "boolean"
@@ -12448,6 +12506,119 @@
       }
     },
     "/project/{id}/document-links/{documentLinkId}": {
+      "patch": {
+        "operationId": "updateDocumentLink",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Edit a document link",
+        "description": "Edits the title, address, type, description or customer visibility of one Documents entry of this project. Audited as document_link.updated.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "documentLinkId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "maxLength": 2048
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "contract",
+                      "sow",
+                      "design",
+                      "handover",
+                      "other"
+                    ]
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2000
+                  },
+                  "customerVisible": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The edited document link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentLink"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or document link not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "operationId": "deleteDocumentLink",
         "tags": [

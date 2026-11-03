@@ -17883,9 +17883,37 @@
 										},
 										"opensInNewTab": {
 											"type": "string"
+										},
+										"kinds": {
+											"type": "object",
+											"additionalProperties": false,
+											"properties": {
+												"contract": {
+													"type": "string"
+												},
+												"sow": {
+													"type": "string"
+												},
+												"design": {
+													"type": "string"
+												},
+												"handover": {
+													"type": "string"
+												},
+												"other": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"contract",
+												"sow",
+												"design",
+												"handover",
+												"other"
+											]
 										}
 									},
-									"required": ["title", "none", "opensInNewTab"]
+									"required": ["title", "none", "opensInNewTab", "kinds"]
 								}
 							},
 							"required": [
@@ -33484,6 +33512,22 @@
 						"failed",
 						"hasChildren"
 					]
+				},
+				"share": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"staffOnly": {
+							"type": "string"
+						},
+						"staffOnlyHint": {
+							"type": "string"
+						},
+						"addToDocuments": {
+							"type": "string"
+						}
+					},
+					"required": ["staffOnly", "staffOnlyHint", "addToDocuments"]
 				}
 			},
 			"required": [
@@ -33495,7 +33539,8 @@
 				"editor",
 				"history",
 				"conflict",
-				"delete"
+				"delete",
+				"share"
 			]
 		},
 		"projectOverview": {
@@ -34552,6 +34597,9 @@
 						"addTitle": {
 							"type": "string"
 						},
+						"editTitle": {
+							"type": "string"
+						},
 						"addDescription": {
 							"type": "string"
 						},
@@ -34561,8 +34609,39 @@
 						"fieldUrl": {
 							"type": "string"
 						},
+						"urlHint": {
+							"type": "string"
+						},
 						"urlInvalid": {
 							"type": "string"
+						},
+						"fieldKind": {
+							"type": "string"
+						},
+						"fieldDescription": {
+							"type": "string"
+						},
+						"kinds": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"contract": {
+									"type": "string"
+								},
+								"sow": {
+									"type": "string"
+								},
+								"design": {
+									"type": "string"
+								},
+								"handover": {
+									"type": "string"
+								},
+								"other": {
+									"type": "string"
+								}
+							},
+							"required": ["contract", "sow", "design", "handover", "other"]
 						},
 						"fieldCustomerVisible": {
 							"type": "string"
@@ -34576,13 +34655,22 @@
 						"staffOnly": {
 							"type": "string"
 						},
+						"opensInNewTab": {
+							"type": "string"
+						},
 						"saved": {
+							"type": "string"
+						},
+						"updated": {
 							"type": "string"
 						},
 						"loadFailed": {
 							"type": "string"
 						},
-						"empty": {
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
 							"type": "string"
 						},
 						"pages": {
@@ -34593,6 +34681,9 @@
 						},
 						"openPages": {
 							"type": "string"
+						},
+						"pageStaffOnly": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -34602,20 +34693,29 @@
 						"links",
 						"add",
 						"addTitle",
+						"editTitle",
 						"addDescription",
 						"fieldTitle",
 						"fieldUrl",
+						"urlHint",
 						"urlInvalid",
+						"fieldKind",
+						"fieldDescription",
+						"kinds",
 						"fieldCustomerVisible",
 						"customerVisibleHint",
 						"customerVisible",
 						"staffOnly",
+						"opensInNewTab",
 						"saved",
+						"updated",
 						"loadFailed",
-						"empty",
+						"emptyTitle",
+						"emptyDescription",
 						"pages",
 						"pagesDescription",
-						"openPages"
+						"openPages",
+						"pageStaffOnly"
 					]
 				},
 				"common": {

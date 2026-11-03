@@ -111,8 +111,20 @@ const detail = (
     },
   ],
   documents: [
-    { id: "d1", title: "Statement of work", url: "https://docs.example/sow" },
-    { id: "d2", title: "Script link", url: "javascript:alert(1)" },
+    {
+      id: "d1",
+      title: "Statement of work",
+      url: "https://docs.example/sow",
+      kind: "sow",
+      description: "Scope and fees",
+    },
+    {
+      id: "d2",
+      title: "Script link",
+      url: "javascript:alert(1)",
+      kind: "other",
+      description: null,
+    },
   ],
   contacts: [
     {
@@ -379,6 +391,11 @@ describe("PortalProjectDetails", () => {
     expect(document).toHaveAttribute("target", "_blank");
     expect(document).toHaveAttribute("rel", "noopener noreferrer");
     expect(screen.getByText("Script link").closest("a")).toBeNull();
+    // U-15: each entry shows its type and description.
+    expect(
+      screen.getByText("projects.detail.documents.kinds.sow"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Scope and fees")).toBeInTheDocument();
   });
 
   it("states an overdrawn allocation and a missing contract", async () => {
