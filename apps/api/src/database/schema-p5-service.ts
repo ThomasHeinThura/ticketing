@@ -22,6 +22,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import {
+  organisationTable,
   projectTable,
   serviceCalendarTable,
   teamTable,
@@ -402,5 +403,137 @@ export const changeFreezeTable = pgTable(
       "change_freeze_range_check",
       sql`${table.endsAt} > ${table.startsAt}`,
     ),
+  ],
+);
+
+export const ANNOUNCEMENT_SEVERITIES = [
+  "info",
+  "maintenance",
+  "incident",
+] as const;
+export type AnnouncementSeverity = (typeof ANNOUNCEMENT_SEVERITIES)[number];
+export const ANNOUNCEMENT_AUDIENCES = [
+  "workspace",
+  "organisations",
+  "projects",
+] as const;
+export type AnnouncementAudience = (typeof ANNOUNCEMENT_AUDIENCES)[number];
+
+/**
+ * D7 (approved 31 Oct 2026): a staff-written notice customers read in the portal. A draft has
+ * `published_at` null. The portal shows a published, live row while `starts_at <= now` and
+ * (`ends_at` is null or later than now), to the customer organisations its audience names:
+ * `workspace` = every organisation with a live project in the workspace, `organisations` = the
+ * listed ones, `projects` = the organisations of the listed projects. Mirrors
+ * apps/api/drizzle/0215_announcements.sql.
+ */
+export const announcementTable = pgTable(
+  "announcement",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    title: text("title").notNull(),
+    body: text("body").notNull().default(""),
+    severity: text("severity").$type<AnnouncementSeverity>().notNull(),
+    audience: text("audience").$type<AnnouncementAudience>().notNull(),
+    startsAt: timestamp("starts_at", tz).notNull(),
+    endsAt: timestamp("ends_at", tz),
+    publishedAt: timestamp("published_at", tz),
+    createdBy: text("created_by").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    updatedBy: text("updated_by").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", tz).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", tz).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", tz),
+  },
+  (table) => [
+    unique("announcement_workspace_id_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    index("announcement_workspace_starts_idx").on(
+      table.workspaceId,
+      table.startsAt,
+      table.id,
+    ),
+    check(
+      "announcement_severity_check",
+      sql`${table.severity} IN ('info', 'maintenance', 'incident')`,
+    ),
+    check(
+      "announcement_audience_check",
+      sql`${table.audience} IN ('workspace', 'organisations', 'projects')`,
+    ),
+    check(
+      "announcement_title_check",
+      sql`char_length(${table.title}) BETWEEN 1 AND 200`,
+    ),
+    check("announcement_body_check", sql`char_length(${table.body}) <= 20000`),
+    check(
+      "announcement_window_check",
+      sql`${table.endsAt} IS NULL OR ${table.endsAt} > ${table.startsAt}`,
+    ),
+  ],
+);
+
+/** Audience `organisations`: the customer organisations an announcement addresses. */
+export const announcementOrganisationTable = pgTable(
+  "announcement_organisation",
+  {
+    workspaceId: text("workspace_id").notNull(),
+    announcementId: text("announcement_id").notNull(),
+    organisationId: text("organisation_id")
+      .notNull()
+      .references(() => organisationTable.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({
+      name: "announcement_organisation_pk",
+      columns: [table.announcementId, table.organisationId],
+    }),
+    foreignKey({
+      name: "announcement_organisation_announcement_fk",
+      columns: [table.workspaceId, table.announcementId],
+      foreignColumns: [announcementTable.workspaceId, announcementTable.id],
+    }).onDelete("cascade"),
+    index("announcement_organisation_org_idx").on(table.organisationId),
+  ],
+);
+
+/** Audience `projects`: the projects whose customer organisations an announcement addresses. */
+export const announcementProjectTable = pgTable(
+  "announcement_project",
+  {
+    workspaceId: text("workspace_id").notNull(),
+    announcementId: text("announcement_id").notNull(),
+    projectId: text("project_id").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "announcement_project_pk",
+      columns: [table.announcementId, table.projectId],
+    }),
+    foreignKey({
+      name: "announcement_project_announcement_fk",
+      columns: [table.workspaceId, table.announcementId],
+      foreignColumns: [announcementTable.workspaceId, announcementTable.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "announcement_project_project_fk",
+      columns: [table.workspaceId, table.projectId],
+      foreignColumns: [projectTable.workspaceId, projectTable.id],
+    }).onDelete("cascade"),
+    index("announcement_project_project_idx").on(table.projectId),
   ],
 );

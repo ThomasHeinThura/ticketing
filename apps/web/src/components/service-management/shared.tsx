@@ -157,9 +157,10 @@ const SECTIONS = [
   { key: "services", route: routes.serviceManagementServices },
   { key: "changes", route: routes.serviceManagementChanges },
   { key: "releases", route: routes.serviceManagementReleases },
+  { key: "announcements", route: routes.serviceManagementAnnouncements },
 ] as const;
 
-/** The three service-management screens, as links so each keeps its own URL. */
+/** The service-management screens, as links so each keeps its own URL. */
 export function SectionNav({
   active,
 }: {

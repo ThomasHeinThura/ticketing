@@ -145,19 +145,93 @@ async function formatApproval(
  * workspace. Reach is deliberately not a filter: a named approver who lost reach still sees
  * the pending approval, flagged `approverReachLost`, per the approvals edge-case table.
  */
-async function formatReachableApprovals(
+/** The rows whose target still loads in the approval's own workspace, with that target. */
+async function reachableApprovalRows(
   rows: Awaited<ReturnType<typeof listApprovalsForPerson>>,
   viewer: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
 ) {
-  const formatted = await Promise.all(
+  const loaded = await Promise.all(
     rows.map(async (row) => {
       const target = await loadApprovalTargetByApprovalId(row.id, viewer);
       if (!target) return null;
       if (target.workspaceId !== row.workspaceId) return null;
-      return formatApproval(row, viewer, target);
+      return { row, target };
     }),
   );
-  return formatted.filter((row) => row !== null);
+  return loaded.filter((entry) => entry !== null);
+}
+
+async function formatReachableApprovals(
+  rows: Awaited<ReturnType<typeof listApprovalsForPerson>>,
+  viewer: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
+) {
+  return Promise.all(
+    (await reachableApprovalRows(rows, viewer)).map(({ row, target }) =>
+      formatApproval(row, viewer, target),
+    ),
+  );
+}
+
+/**
+ * `GET /api/portal/approvals`: the pending customer approvals addressed to a customer.
+ * P4R2-M2: approvals on a project with the customer portal off are not listed.
+ */
+async function listPortalApprovals(
+  identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
+  projectIds?: ReadonlySet<string>,
+) {
+  return formatReachableApprovals(
+    await portalApprovalCandidates(identity, projectIds),
+    identity,
+  );
+}
+
+/** Pending customer approvals addressed to the caller on a project with the portal on. */
+async function portalApprovalCandidates(
+  identity: Awaited<ReturnType<typeof resolveApprovalIdentity>>,
+  projectIds?: ReadonlySet<string>,
+) {
+  const rows = await listApprovalsForPerson(identity, {
+    addressedOnly: true,
+    pendingOnly: true,
+  });
+  const portalScope = await customerPortalScope();
+  return rows.filter(
+    (row) =>
+      row.kind === "customer" &&
+      customerPortalOnFor(portalScope, row.workspaceId, row.projectId) &&
+      (!projectIds || projectIds.has(row.projectId)),
+  );
+}
+
+/**
+ * One project id per row `GET /api/portal/approvals` lists (same filters and reach check as
+ * {@link listPortalApprovals}), so S4c's per-project counts add the same approvals as
+ * `GET /api/portal/home?project=KEY`.
+ */
+export async function portalPendingApprovalProjectIds(
+  userId: string,
+): Promise<string[]> {
+  const identity = await resolveApprovalIdentity(userId);
+  if (identity.side !== "customer") return [];
+  const reachable = await reachableApprovalRows(
+    await portalApprovalCandidates(identity),
+    identity,
+  );
+  return reachable.map(({ row }) => row.projectId);
+}
+
+/**
+ * The portal home's approval count: exactly the rows `GET /api/portal/approvals` lists, so the
+ * dashboard figure matches the page it links to; `projectIds` narrows it to a `?project=` scope.
+ */
+export async function countPortalPendingApprovals(
+  userId: string,
+  projectIds?: ReadonlySet<string>,
+): Promise<number> {
+  const identity = await resolveApprovalIdentity(userId);
+  if (identity.side !== "customer") return 0;
+  return (await listPortalApprovals(identity, projectIds)).length;
 }
 
 async function withdrawApprovalForIdentity(input: {
@@ -678,20 +752,7 @@ function approvalRouter() {
         throw new HTTPException(403, {
           message: "Customer portal identity required",
         });
-      const rows = await listApprovalsForPerson(identity, {
-        addressedOnly: true,
-        pendingOnly: true,
-      });
-      // P4R2-M2: approvals on a project with the customer portal off are not listed.
-      const portalScope = await customerPortalScope();
-      const approvals = await formatReachableApprovals(
-        rows.filter(
-          (row) =>
-            row.kind === "customer" &&
-            customerPortalOnFor(portalScope, row.workspaceId, row.projectId),
-        ),
-        identity,
-      );
+      const approvals = await listPortalApprovals(identity);
       return c.json({ approvals }, 200);
     })
     .openapi(decidePortalApprovalRoute, async (c) => {

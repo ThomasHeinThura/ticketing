@@ -1348,11 +1348,16 @@ export const routes = {
     build: (params: { id: string }) =>
       `/agent/service-management/releases/${encodeURIComponent(params.id)}`,
   },
+  /** D7 customer announcements: drafts, schedule, audience and publication. */
+  serviceManagementAnnouncements: {
+    path: "/agent/service-management/announcements" as const,
+    build: () => "/agent/service-management/announcements",
+  },
   /** Customer portal home, rooted on its separate origin. */
   portalHome: {
     path: "/" as const,
-    build: (search: PortalProjectSearch = {}) =>
-      `/${portalProjectQuery(new URLSearchParams(), search)}`,
+    build: (search: PortalHomeSearch = {}) =>
+      `/${portalProjectQuery(portalCaseFilterQuery(parsePortalHomeSearch(search)), search)}`,
     parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
   },
   portalSignIn: {
@@ -1392,6 +1397,20 @@ export const routes = {
     build: (params: { id: string }) =>
       `/releases/${encodeURIComponent(params.id)}`,
   },
+  /** D7: announcements addressed to the customer's organisation. */
+  portalAnnouncements: {
+    path: "/announcements" as const,
+    build: (search: PortalProjectSearch & { cursor?: string } = {}) => {
+      const { cursor } = parsePortalAnnouncementsSearch(search);
+      const query = new URLSearchParams(cursor ? { cursor } : {});
+      return `/announcements${portalProjectQuery(query, search)}`;
+    },
+  },
+  portalAnnouncement: {
+    path: "/announcements/$id" as const,
+    build: (params: { id: string }) =>
+      `/announcements/${encodeURIComponent(params.id)}`,
+  },
   portalCatalogue: {
     path: "/catalogue" as const,
     build: (search: PortalCatalogueSearch = {}) => {
@@ -1412,13 +1431,13 @@ export const routes = {
   },
   portalRequests: {
     path: "/requests" as const,
-    build: (
-      search: PortalProjectSearch & { cursor?: string; view?: "backlog" } = {},
-    ) => {
-      const { cursor, view } = parsePortalRequestsSearch(search);
+    build: (search: PortalRequestsSearch = {}) => {
+      const resolved = parsePortalRequestsSearch(search);
       const params = new URLSearchParams();
-      if (view) params.set("view", view);
-      if (cursor) params.set("cursor", cursor);
+      if (resolved.view) params.set("view", resolved.view);
+      for (const [key, value] of portalCaseFilterQuery(resolved))
+        params.set(key, value);
+      if (resolved.cursor) params.set("cursor", resolved.cursor);
       return `/requests${portalProjectQuery(params, search)}`;
     },
   },
@@ -1448,6 +1467,23 @@ export const routes = {
     path: "/submissions/$ref" as const,
     build: (params: { ref: string }) =>
       `/submissions/${encodeURIComponent(params.ref)}`,
+  },
+  /** S4c: the organisation's projects (`docs/screens.md` "Projects list"). */
+  portalProjects: {
+    path: "/projects" as const,
+    build: (search: PortalProjectsSearch = {}) => {
+      const { tab, q } = parsePortalProjectsSearch(search);
+      const query = new URLSearchParams();
+      if (tab) query.set("tab", tab);
+      if (q) query.set("q", q);
+      return `/projects${portalProjectQuery(query, search)}`;
+    },
+  },
+  /** S4c: one project's details (`docs/screens.md` "Project detail"). */
+  portalProject: {
+    path: "/projects/$projectKey" as const,
+    build: (params: { projectKey: string }, search: PortalProjectSearch = {}) =>
+      `/projects/${encodeURIComponent(params.projectKey)}${portalProjectQuery(new URLSearchParams(), search)}`,
   },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {
@@ -2164,16 +2200,14 @@ export function parseWorkItemListSearchFromQueryString(
 }
 
 /** Opaque portal request cursors remain URL state; malformed values are discarded. */
-export function parsePortalRequestsSearch(raw: unknown): PortalProjectSearch & {
-  cursor?: string;
-  view?: "backlog";
-} {
+export function parsePortalRequestsSearch(raw: unknown): PortalRequestsSearch {
   if (!raw || typeof raw !== "object") return {};
   const candidate = raw as Record<string, unknown>;
   const cursor = candidate.cursor;
   return {
     ...parsePortalProjectSearch(raw),
     ...(candidate.view === "backlog" ? { view: "backlog" as const } : {}),
+    ...parsePortalCaseFilterSearch(raw),
     ...(typeof cursor === "string" &&
     cursor.length > 0 &&
     cursor.length <= 2048 &&
@@ -2188,6 +2222,13 @@ export function parsePortalReleasesSearch(
 ): PortalProjectSearch & { cursor?: string } {
   const { cursor, project } = parsePortalRequestsSearch(raw);
   return { ...(cursor ? { cursor } : {}), ...(project ? { project } : {}) };
+}
+
+/** D7 announcements list: the same cursor and project scope as release notes. */
+export function parsePortalAnnouncementsSearch(
+  raw: unknown,
+): PortalProjectSearch & { cursor?: string } {
+  return parsePortalReleasesSearch(raw);
 }
 
 export function parsePortalApprovalsSearch(
@@ -2252,9 +2293,154 @@ export const portalProjectSearchMiddlewares: SearchMiddleware<PortalProjectSearc
     },
   ];
 
+/** S4c projects list: `tab` narrows by kind (absent = all), `q` searches key and name. */
+export type PortalProjectsSearch = PortalProjectSearch & {
+  tab?: "projects" | "services";
+  q?: string;
+};
+
+export function parsePortalProjectsSearch(raw: unknown): PortalProjectsSearch {
+  if (!raw || typeof raw !== "object") return {};
+  const candidate = raw as Record<string, unknown>;
+  const tab = candidate.tab;
+  const q = typeof candidate.q === "string" ? candidate.q.trim() : "";
+  return {
+    ...(tab === "projects" || tab === "services" ? { tab } : {}),
+    ...(q && q.length <= 200 ? { q } : {}),
+    ...parsePortalProjectSearch(raw),
+  };
+}
+
 function portalProjectQuery(query: URLSearchParams, search: unknown) {
   const { project } = parsePortalProjectSearch(search);
   if (project) query.set("project", project);
   const suffix = query.toString();
   return suffix ? `?${suffix}` : "";
+}
+
+// --- S4b: portal cases (dashboard and request list filters) -------------------------------------
+
+/** Customer statuses a case filter accepts, in display order (`CP-5`). */
+export const PORTAL_CASE_STATUSES = [
+  "received",
+  "need_more_info",
+  "in_progress",
+  "resolved",
+  "closed",
+  "declined",
+  "withdrawn",
+] as const;
+export type PortalCaseStatus = (typeof PORTAL_CASE_STATUSES)[number];
+/** The statuses the dashboard counts as outstanding. */
+export const PORTAL_OUTSTANDING_STATUSES = [
+  "received",
+  "need_more_info",
+  "in_progress",
+] as const satisfies readonly PortalCaseStatus[];
+/** Request priority, labelled "Severity" in the portal. */
+export const PORTAL_CASE_PRIORITIES = [
+  "low",
+  "medium",
+  "high",
+  "urgent",
+] as const;
+export type PortalCasePriority = (typeof PORTAL_CASE_PRIORITIES)[number];
+export const PORTAL_CASE_SORTS = [
+  "updated_desc",
+  "updated_asc",
+  "created_desc",
+  "created_asc",
+] as const;
+export type PortalCaseSort = (typeof PORTAL_CASE_SORTS)[number];
+
+/**
+ * Case filters in the URL. `scope` defaults to `mine` and is written only as `all`; `status`
+ * and `priority` are comma lists in a fixed order; dates are `YYYY-MM-DD`.
+ */
+export type PortalCaseFilterSearch = {
+  scope?: "all";
+  status?: string;
+  priority?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+  sort?: Exclude<PortalCaseSort, "updated_desc">;
+};
+
+export type PortalHomeSearch = PortalProjectSearch &
+  Pick<PortalCaseFilterSearch, "scope" | "status" | "priority">;
+
+export type PortalRequestsSearch = PortalProjectSearch &
+  PortalCaseFilterSearch & {
+    cursor?: string;
+    view?: "backlog";
+  };
+
+function canonicalList(value: unknown, allowed: readonly string[]) {
+  if (typeof value !== "string" || value.length > 200) return undefined;
+  const parts = new Set(value.split(","));
+  const kept = allowed.filter((item) => parts.has(item));
+  return kept.length ? kept.join(",") : undefined;
+}
+
+function isoDay(value: unknown) {
+  return typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/u.test(value) &&
+    !Number.isNaN(Date.parse(`${value}T00:00:00Z`))
+    ? value
+    : undefined;
+}
+
+export function parsePortalCaseFilterSearch(
+  raw: unknown,
+): PortalCaseFilterSearch {
+  if (!raw || typeof raw !== "object") return {};
+  const candidate = raw as Record<string, unknown>;
+  const status = canonicalList(candidate.status, PORTAL_CASE_STATUSES);
+  const priority = canonicalList(candidate.priority, PORTAL_CASE_PRIORITIES);
+  const q =
+    typeof candidate.q === "string" ? candidate.q.trim().slice(0, 200) : "";
+  const from = isoDay(candidate.from);
+  const to = isoDay(candidate.to);
+  const sort = (PORTAL_CASE_SORTS as readonly unknown[]).includes(
+    candidate.sort,
+  )
+    ? (candidate.sort as PortalCaseSort)
+    : undefined;
+  return {
+    ...(candidate.scope === "all" ? { scope: "all" as const } : {}),
+    ...(status ? { status } : {}),
+    ...(priority ? { priority } : {}),
+    ...(q ? { q } : {}),
+    ...(from ? { from } : {}),
+    ...(to ? { to } : {}),
+    ...(sort && sort !== "updated_desc" ? { sort } : {}),
+  };
+}
+
+export function parsePortalHomeSearch(raw: unknown): PortalHomeSearch {
+  const { scope, status, priority } = parsePortalCaseFilterSearch(raw);
+  return {
+    ...parsePortalProjectSearch(raw),
+    ...(scope ? { scope } : {}),
+    ...(status ? { status } : {}),
+    ...(priority ? { priority } : {}),
+  };
+}
+
+function portalCaseFilterQuery(search: PortalCaseFilterSearch) {
+  const query = new URLSearchParams();
+  for (const key of [
+    "scope",
+    "status",
+    "priority",
+    "q",
+    "from",
+    "to",
+    "sort",
+  ] as const) {
+    const value = search[key];
+    if (value) query.set(key, value);
+  }
+  return query;
 }

@@ -11,17 +11,21 @@
 import { Route as rootRouteImport } from './routes/portal/__root'
 import { Route as IndexRouteImport } from './routes/portal/index'
 import { Route as AccountRouteImport } from './routes/portal/account'
+import { Route as AnnouncementsRouteImport } from './routes/portal/announcements'
 import { Route as ApprovalsRouteImport } from './routes/portal/approvals'
 import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
 import { Route as KbRouteImport } from './routes/portal/kb'
 import { Route as NotificationsRouteImport } from './routes/portal/notifications'
+import { Route as ProjectsRouteImport } from './routes/portal/projects'
 import { Route as ReleasesRouteImport } from './routes/portal/releases'
 import { Route as RequestsRouteImport } from './routes/portal/requests'
 import { Route as SignInRouteImport } from './routes/portal/sign-in'
+import { Route as AnnouncementsIdRouteImport } from './routes/portal/announcements_.$id'
 import { Route as InviteIdRouteImport } from './routes/portal/invite/$id'
 import { Route as KbIdRouteImport } from './routes/portal/kb_.$id'
 import { Route as PortalRequestsRouteImport } from './routes/portal/portal/requests'
 import { Route as PortalSignInRouteImport } from './routes/portal/portal/sign-in'
+import { Route as ProjectsProjectKeyRouteImport } from './routes/portal/projects_.$projectKey'
 import { Route as ReleasesIdRouteImport } from './routes/portal/releases_.$id'
 import { Route as SubmissionsRefRouteImport } from './routes/portal/submissions/$ref'
 
@@ -33,6 +37,11 @@ const IndexRoute = IndexRouteImport.update({
 const AccountRoute = AccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnnouncementsRoute = AnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApprovalsRoute = ApprovalsRouteImport.update({
@@ -55,6 +64,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReleasesRoute = ReleasesRouteImport.update({
   id: '/releases',
   path: '/releases',
@@ -68,6 +82,11 @@ const RequestsRoute = RequestsRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnnouncementsIdRoute = AnnouncementsIdRouteImport.update({
+  id: '/announcements_/$id',
+  path: '/announcements/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InviteIdRoute = InviteIdRouteImport.update({
@@ -90,6 +109,11 @@ const PortalSignInRoute = PortalSignInRouteImport.update({
   path: '/portal/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsProjectKeyRoute = ProjectsProjectKeyRouteImport.update({
+  id: '/projects_/$projectKey',
+  path: '/projects/$projectKey',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReleasesIdRoute = ReleasesIdRouteImport.update({
   id: '/releases_/$id',
   path: '/releases/$id',
@@ -104,34 +128,42 @@ const SubmissionsRefRoute = SubmissionsRefRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/announcements': typeof AnnouncementsRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
   '/notifications': typeof NotificationsRoute
+  '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/announcements/$id': typeof AnnouncementsIdRoute
   '/invite/$id': typeof InviteIdRoute
   '/kb/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
+  '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/releases/$id': typeof ReleasesIdRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/announcements': typeof AnnouncementsRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
   '/notifications': typeof NotificationsRoute
+  '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/announcements/$id': typeof AnnouncementsIdRoute
   '/invite/$id': typeof InviteIdRoute
   '/kb/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
+  '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/releases/$id': typeof ReleasesIdRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
@@ -139,17 +171,21 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/announcements': typeof AnnouncementsRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
   '/notifications': typeof NotificationsRoute
+  '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/announcements_/$id': typeof AnnouncementsIdRoute
   '/invite/$id': typeof InviteIdRoute
   '/kb_/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
+  '/projects_/$projectKey': typeof ProjectsProjectKeyRoute
   '/releases_/$id': typeof ReleasesIdRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
@@ -158,51 +194,63 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/announcements'
     | '/approvals'
     | '/catalogue'
     | '/kb'
     | '/notifications'
+    | '/projects'
     | '/releases'
     | '/requests'
     | '/sign-in'
+    | '/announcements/$id'
     | '/invite/$id'
     | '/kb/$id'
     | '/portal/requests'
     | '/portal/sign-in'
+    | '/projects/$projectKey'
     | '/releases/$id'
     | '/submissions/$ref'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/account'
+    | '/announcements'
     | '/approvals'
     | '/catalogue'
     | '/kb'
     | '/notifications'
+    | '/projects'
     | '/releases'
     | '/requests'
     | '/sign-in'
+    | '/announcements/$id'
     | '/invite/$id'
     | '/kb/$id'
     | '/portal/requests'
     | '/portal/sign-in'
+    | '/projects/$projectKey'
     | '/releases/$id'
     | '/submissions/$ref'
   id:
     | '__root__'
     | '/'
     | '/account'
+    | '/announcements'
     | '/approvals'
     | '/catalogue'
     | '/kb'
     | '/notifications'
+    | '/projects'
     | '/releases'
     | '/requests'
     | '/sign-in'
+    | '/announcements_/$id'
     | '/invite/$id'
     | '/kb_/$id'
     | '/portal/requests'
     | '/portal/sign-in'
+    | '/projects_/$projectKey'
     | '/releases_/$id'
     | '/submissions/$ref'
   fileRoutesById: FileRoutesById
@@ -210,17 +258,21 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  AnnouncementsRoute: typeof AnnouncementsRoute
   ApprovalsRoute: typeof ApprovalsRoute
   CatalogueRoute: typeof CatalogueRoute
   KbRoute: typeof KbRoute
   NotificationsRoute: typeof NotificationsRoute
+  ProjectsRoute: typeof ProjectsRoute
   ReleasesRoute: typeof ReleasesRoute
   RequestsRoute: typeof RequestsRoute
   SignInRoute: typeof SignInRoute
+  AnnouncementsIdRoute: typeof AnnouncementsIdRoute
   InviteIdRoute: typeof InviteIdRoute
   KbIdRoute: typeof KbIdRoute
   PortalRequestsRoute: typeof PortalRequestsRoute
   PortalSignInRoute: typeof PortalSignInRoute
+  ProjectsProjectKeyRoute: typeof ProjectsProjectKeyRoute
   ReleasesIdRoute: typeof ReleasesIdRoute
   SubmissionsRefRoute: typeof SubmissionsRefRoute
 }
@@ -239,6 +291,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/account'
       preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/announcements': {
+      id: '/announcements'
+      path: '/announcements'
+      fullPath: '/announcements'
+      preLoaderRoute: typeof AnnouncementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/approvals': {
@@ -269,6 +328,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/releases': {
       id: '/releases'
       path: '/releases'
@@ -288,6 +354,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/announcements_/$id': {
+      id: '/announcements_/$id'
+      path: '/announcements/$id'
+      fullPath: '/announcements/$id'
+      preLoaderRoute: typeof AnnouncementsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invite/$id': {
@@ -318,6 +391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalSignInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects_/$projectKey': {
+      id: '/projects_/$projectKey'
+      path: '/projects/$projectKey'
+      fullPath: '/projects/$projectKey'
+      preLoaderRoute: typeof ProjectsProjectKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/releases_/$id': {
       id: '/releases_/$id'
       path: '/releases/$id'
@@ -338,17 +418,21 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  AnnouncementsRoute: AnnouncementsRoute,
   ApprovalsRoute: ApprovalsRoute,
   CatalogueRoute: CatalogueRoute,
   KbRoute: KbRoute,
   NotificationsRoute: NotificationsRoute,
+  ProjectsRoute: ProjectsRoute,
   ReleasesRoute: ReleasesRoute,
   RequestsRoute: RequestsRoute,
   SignInRoute: SignInRoute,
+  AnnouncementsIdRoute: AnnouncementsIdRoute,
   InviteIdRoute: InviteIdRoute,
   KbIdRoute: KbIdRoute,
   PortalRequestsRoute: PortalRequestsRoute,
   PortalSignInRoute: PortalSignInRoute,
+  ProjectsProjectKeyRoute: ProjectsProjectKeyRoute,
   ReleasesIdRoute: ReleasesIdRoute,
   SubmissionsRefRoute: SubmissionsRefRoute,
 }

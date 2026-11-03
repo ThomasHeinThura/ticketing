@@ -13,6 +13,9 @@
 export const PORTAL_CLIENT_ROUTE_PATTERNS: readonly string[] = [
   "/",
   "/account",
+  // D7: announcements; release notes stay at /releases as its second tab.
+  "/announcements",
+  "/announcements/$id",
   "/notifications",
   "/catalogue",
   // CP-24: the accept-invitation page. The credential rides in the fragment, never the path.
@@ -22,6 +25,9 @@ export const PORTAL_CLIENT_ROUTE_PATTERNS: readonly string[] = [
   "/releases",
   "/releases/$id",
   "/approvals",
+  // S4c: the organisation's projects and one project's details.
+  "/projects",
+  "/projects/$projectKey",
   // Redirects to /requests on the client; kept because customers bookmark it.
   "/portal/requests",
   // Redirects to /sign-in on the client; kept because customers already have the link.

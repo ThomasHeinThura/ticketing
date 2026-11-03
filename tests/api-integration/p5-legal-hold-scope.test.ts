@@ -33,6 +33,7 @@ import {
 } from "../../apps/api/src/database/schema-p5-pages";
 import { dashboardTable } from "../../apps/api/src/database/schema-p5-reports";
 import {
+  announcementTable,
   changeFreezeTable,
   releaseTable,
   serviceTable,
@@ -499,6 +500,34 @@ const cases: Case[] = [
         serviceId: svc.id,
         name: "R1",
         createdBy: by.userId,
+      });
+    },
+  },
+  {
+    name: "announcement.created_by (a user id)",
+    scope: "workspace",
+    seed: async (t, by) => {
+      await db.insert(announcementTable).values({
+        workspaceId: t.workspaceId,
+        title: "Planned maintenance",
+        severity: "info",
+        audience: "workspace",
+        startsAt: new Date("2026-12-01T00:00:00Z"),
+        createdBy: by.userId,
+      });
+    },
+  },
+  {
+    name: "announcement.updated_by (a user id)",
+    scope: "workspace",
+    seed: async (t, by) => {
+      await db.insert(announcementTable).values({
+        workspaceId: t.workspaceId,
+        title: "Planned maintenance",
+        severity: "info",
+        audience: "workspace",
+        startsAt: new Date("2026-12-01T00:00:00Z"),
+        updatedBy: by.userId,
       });
     },
   },

@@ -1231,6 +1231,21 @@
 				"chain": [
 					"packages/ui/src/components/menu-content.tsx:MenuCheckboxItem",
 					"jsx:MenuPrimitive.CheckboxItem[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/portal/cases/portal-case-filters.tsx:FilterMenu",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuCheckboxItem[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuCheckboxItem::MenuPrimitive.CheckboxItem[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/menu-content.tsx:MenuCheckboxItem",
+					"jsx:MenuPrimitive.CheckboxItem[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
 					"jsx:div[0]/Layout.Header[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuCheckboxItem[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
@@ -1474,6 +1489,21 @@
 					"jsx:MenuPrimitive.RadioItem[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
 					"jsx:section[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuRadioGroup[0]/DropdownMenuRadioItem[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuRadioItem::MenuPrimitive.RadioItem[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/menu-content.tsx:MenuRadioItem",
+					"jsx:MenuPrimitive.RadioItem[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/portal/cases/portal-case-filters.tsx:PortalCaseFilters",
+					"jsx:div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuRadioGroup[0]/DropdownMenuRadioItem[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -3954,6 +3984,21 @@
 				"chain": [
 					"packages/ui/src/components/menu-content.tsx:MenuCheckboxItem",
 					"jsx:MenuPrimitive.CheckboxItem[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/portal/cases/portal-case-filters.tsx:FilterMenu",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuCheckboxItem[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuCheckboxItem::MenuPrimitive.CheckboxItem[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/menu-content.tsx:MenuCheckboxItem",
+					"jsx:MenuPrimitive.CheckboxItem[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:IntakeRoute",
 					"jsx:div[0]/Layout.Header[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuCheckboxItem[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
@@ -4197,6 +4242,21 @@
 					"jsx:MenuPrimitive.RadioItem[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/activity/comment-editor.tsx:CommentEditor",
 					"jsx:section[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuRadioGroup[0]/DropdownMenuRadioItem[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuRadioItem::MenuPrimitive.RadioItem[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/menu-content.tsx:MenuRadioItem",
+					"jsx:MenuPrimitive.RadioItem[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/portal/cases/portal-case-filters.tsx:PortalCaseFilters",
+					"jsx:div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuRadioGroup[0]/DropdownMenuRadioItem[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -9043,7 +9103,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/project/overview/contract-panel.tsx",
+		"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-destructive-foreground",
 		"backgroundClass": {
@@ -9051,6 +9111,7 @@
 		},
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[1]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/milestones-panel.tsx::MilestonesPanel::Panel[0]/p[0]::text-destructive-foreground#0",
@@ -9066,6 +9127,18 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]::text-destructive-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:HoursCard",
+					"jsx:Section[0]/span[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/span[0]::text-destructive-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
 			{
 				"backdropLayers": [],
 				"category": "body",
@@ -9239,7 +9312,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "apps/web/src/components/project/overview/contract-panel.tsx",
+		"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-destructive-foreground",
 		"backgroundClass": {
@@ -9247,6 +9320,7 @@
 		},
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[1]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/milestones-panel.tsx::MilestonesPanel::Panel[0]/p[0]::text-destructive-foreground#0",
@@ -9262,6 +9336,18 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/p[0]::text-destructive-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:HoursCard",
+					"jsx:Section[0]/span[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/span[0]::text-destructive-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
 			{
 				"backdropLayers": [],
 				"category": "body",
@@ -9813,6 +9899,7 @@
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractDialog::Dialog[0]/DialogContent[0]/DialogPanel[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/documents-page.tsx::DocumentLinkDialog::Dialog[0]/DialogContent[0]/DialogPanel[0]/div[1]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/reports/report-drill.tsx::DrillItemsDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-destructive-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/service-management/freeze-dialog.tsx::FreezeDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/create-work-item-label-picker.tsx::CreateWorkItemLabelPicker::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive-foreground#0",
@@ -9942,6 +10029,18 @@
 				"id": "apps/web/src/components/reports/report-drill.tsx::DrillItemsDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-destructive-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/reports/report-drill.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementDialog",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -10115,6 +10214,7 @@
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractDialog::Dialog[0]/DialogContent[0]/DialogPanel[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/documents-page.tsx::DocumentLinkDialog::Dialog[0]/DialogContent[0]/DialogPanel[0]/div[1]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/reports/report-drill.tsx::DrillItemsDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-destructive-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/service-management/freeze-dialog.tsx::FreezeDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/create-work-item-label-picker.tsx::CreateWorkItemLabelPicker::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive-foreground#0",
@@ -10244,6 +10344,18 @@
 				"id": "apps/web/src/components/reports/report-drill.tsx::DrillItemsDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-destructive-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/reports/report-drill.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementDialog",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -15868,6 +15980,48 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/roles/role-detail.tsx:RoleWorkspace",
 					"jsx:Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -16121,6 +16275,48 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
@@ -18158,6 +18354,8 @@
 			"apps/web/src/components/intake/submission-detail-sheet.tsx::SubmissionDetailSheetLoading::div[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[1]::text-foreground#0",
+			"apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[1]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#0",
@@ -18618,6 +18816,50 @@
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[1]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[1]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[1]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[1]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -20890,6 +21132,8 @@
 			"apps/web/src/components/intake/submission-detail-sheet.tsx::SubmissionDetailSheetLoading::div[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCard::Fieldset[0]/div[0]::text-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[1]::text-foreground#0",
+			"apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[1]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#0",
@@ -20979,6 +21223,7 @@
 			"packages/ui/src/components/number-field.tsx::NumberFieldGroup::NumberFieldPrimitive.Group[0]::text-foreground#0",
 			"packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
 			"packages/ui/src/components/separator.stories.tsx::<module>::div[0]::text-foreground#0",
+			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 			"packages/ui/src/components/textarea.tsx::Textarea::span[0]::text-foreground#0"
 		],
 		"occurrences": [
@@ -21350,6 +21595,50 @@
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[1]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[1]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[1]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[1]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -23415,6 +23704,48 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"packages/ui/src/components/textarea.tsx:Textarea",
 					"jsx:span[0]>bg-background"
 				],
@@ -25334,6 +25665,48 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/roles/role-detail.tsx:RoleWorkspace",
 					"jsx:Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -25652,6 +26025,48 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
@@ -29940,6 +30355,19 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"packages/ui/src/components/tabs.tsx:TabsList",
+					"jsx:TabsPrimitive.List[0]>*:data-[slot=tabs-tab]:hover:bg-accent",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/imports/wizard/import-wizard.tsx:ImportWizard",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -29948,6 +30376,48 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
@@ -30273,6 +30743,19 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"packages/ui/src/components/tabs.tsx:TabsList",
+					"jsx:TabsPrimitive.List[0]>*:data-[slot=tabs-tab]:hover:bg-accent",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/imports/wizard/import-wizard.tsx:ImportWizard",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -30281,6 +30764,48 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
@@ -33288,8 +33813,27 @@
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#1",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/ul[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseSeverity::span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#1",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[2]/span[0]/time[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
+			"apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#1",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::InformationCard::span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::main[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]::text-muted-foreground#0",
@@ -33614,11 +34158,11 @@
 			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#1",
 			"apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/nav[0]/span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/accordion.tsx::AccordionPanel::AccordionPrimitive.Panel[0]::text-muted-foreground#0",
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 			"packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
@@ -36271,6 +36815,270 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/portal/announcements_.$id.tsx:/announcements_/$id",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/announcements.tsx:/announcements",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseSeverity::span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseSeverity::span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[2]/span[0]/time[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[2]/span[0]/time[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/notifications.tsx:/notifications",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
@@ -36288,6 +37096,72 @@
 				"id": "apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/portal-notification-inbox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::InformationCard::span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::main[0]/section[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -42172,7 +43046,18 @@
 					"apps/web/src/routes/portal/index.tsx:/",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "route-layout-body",
+				"usage": "apps/web/src/routes/portal/index.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[1]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/index.tsx"
 			},
@@ -42194,29 +43079,18 @@
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/portal/requests.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/portal/requests.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
 				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "route-layout-body",
+				"usage": "apps/web/src/routes/portal/requests.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/nav[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -42364,6 +43238,17 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/announcements_.$id.tsx:/announcements_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -43855,6 +44740,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/portal/kb_.$id.tsx:/kb_/$id",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
@@ -44103,8 +44999,27 @@
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#1",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/ul[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseSeverity::span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#1",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[2]/span[0]/time[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
+			"apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#1",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::InformationCard::span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::main[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]::text-muted-foreground#0",
@@ -44429,11 +45344,11 @@
 			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::main[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#1",
 			"apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/nav[0]/span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/accordion.tsx::AccordionPanel::AccordionPrimitive.Panel[0]::text-muted-foreground#0",
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 			"packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
@@ -44445,6 +45360,7 @@
 			"packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableCaption::caption[0]::text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
@@ -47086,6 +48002,270 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/portal/announcements_.$id.tsx:/announcements_/$id",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/announcements.tsx:/announcements",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseSeverity::span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseSeverity::span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[2]/span[0]/time[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[2]/span[0]/time[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/portal-kpi-card.tsx::PortalKpiCard::Card[0]/span[1]/span[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/portal-kpi-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/notifications.tsx:/notifications",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
@@ -47103,6 +48283,72 @@
 				"id": "apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/portal-notification-inbox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::InformationCard::span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::main[0]/section[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -52987,7 +54233,18 @@
 					"apps/web/src/routes/portal/index.tsx:/",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "route-layout-body",
+				"usage": "apps/web/src/routes/portal/index.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/routes/portal/index.tsx::PortalHome::main[0]/section[1]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/index.tsx"
 			},
@@ -53009,29 +54266,18 @@
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/portal/requests.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/portal/requests.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
 				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "route-layout-body",
+				"usage": "apps/web/src/routes/portal/requests.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/nav[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -53258,6 +54504,17 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/announcements_.$id.tsx:/announcements_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -54759,12 +56016,65 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -55699,7 +57009,23 @@
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#3",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#4",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#5",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationCard::li[0]/Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::ContactsCard::Section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::Fact::div[0]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/div[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::InformationCard::Section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/Icon[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::SubscriptionCard::Section[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::SubscriptionCard::Section[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::SummaryCard::Section[0]/dl[0]/div[0]/dd[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[0]/dd[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[1]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
@@ -55768,6 +57094,7 @@
 			"apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/DndContext[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChangesCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChecklistCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
@@ -57404,6 +58731,18 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx:PortalAnnouncementDetail",
+					"jsx:main[0]/Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationCard",
 					"jsx:li[0]/Card[0]/CardPanel[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
@@ -57411,6 +58750,250 @@
 				"id": "apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationCard::li[0]/Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/portal/portal-notification-inbox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:ContactsCard",
+					"jsx:Section[0]/ul[0]/li[0]/span[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::ContactsCard::Section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:InformationCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Fact::div[0]/dt[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:HoursCard",
+					"jsx:Section[0]/div[0]/span[1]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:HoursCard",
+					"jsx:Section[0]/span[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:InformationCard",
+					"jsx:Section[0]/p[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::InformationCard::Section[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:MilestonesCard",
+					"jsx:Section[0]/ol[0]/li[0]/Icon[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/Icon[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:MilestonesCard",
+					"jsx:Section[0]/ol[0]/li[0]/span[0]/span[1]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:ContactsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:DocumentsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:HoursCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:MilestonesCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:PrerequisitesCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:SubscriptionCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:SummaryCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:PrerequisitesCard",
+					"jsx:Section[0]/ul[0]/li[0]/span[0]/span[1]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:SubscriptionCard",
+					"jsx:Section[0]/div[0]/div[0]/span[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::SubscriptionCard::Section[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:SubscriptionCard",
+					"jsx:Section[0]/div[0]/div[1]/span[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::SubscriptionCard::Section[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:SummaryCard",
+					"jsx:Section[0]/dl[0]/div[0]/dd[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::SummaryCard::Section[0]/dl[0]/div[0]/dd[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-cards.tsx:ProjectCard",
+					"jsx:Card[0]/CardPanel[0]/dl[0]/div[0]/dd[0]/span[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[0]/dd[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-cards.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-cards.tsx:ProjectCard",
+					"jsx:Card[0]/CardPanel[0]/dl[0]/div[0]/dt[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-cards.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-cards.tsx:ProjectCard",
+					"jsx:Card[0]/CardPanel[0]/dl[0]/div[1]/dt[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[1]/dt[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-cards.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -58223,6 +59806,18 @@
 				"id": "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-calendar/window-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementCard",
+					"jsx:Card[0]/CardPanel[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -60044,7 +61639,29 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationInbox",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -60484,6 +62101,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/portal/index.tsx:PortalHome",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -60872,7 +62500,23 @@
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#3",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#4",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#5",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationCard::li[0]/Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::ContactsCard::Section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::Fact::div[0]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/div[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::InformationCard::Section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/Icon[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::SubscriptionCard::Section[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::SubscriptionCard::Section[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::SummaryCard::Section[0]/dl[0]/div[0]/dd[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[0]/dd[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[1]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
@@ -60941,6 +62585,7 @@
 			"apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/DndContext[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChangesCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChecklistCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
@@ -62577,6 +64222,18 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx:PortalAnnouncementDetail",
+					"jsx:main[0]/Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationCard",
 					"jsx:li[0]/Card[0]/CardPanel[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
@@ -62584,6 +64241,250 @@
 				"id": "apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationCard::li[0]/Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/portal/portal-notification-inbox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:ContactsCard",
+					"jsx:Section[0]/ul[0]/li[0]/span[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::ContactsCard::Section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:InformationCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Fact::div[0]/dt[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:HoursCard",
+					"jsx:Section[0]/div[0]/span[1]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:HoursCard",
+					"jsx:Section[0]/span[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:InformationCard",
+					"jsx:Section[0]/p[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::InformationCard::Section[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:MilestonesCard",
+					"jsx:Section[0]/ol[0]/li[0]/Icon[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/Icon[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:MilestonesCard",
+					"jsx:Section[0]/ol[0]/li[0]/span[0]/span[1]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:ContactsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:DocumentsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:HoursCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:MilestonesCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:PrerequisitesCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:SubscriptionCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:SummaryCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::Muted::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:PrerequisitesCard",
+					"jsx:Section[0]/ul[0]/li[0]/span[0]/span[1]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:SubscriptionCard",
+					"jsx:Section[0]/div[0]/div[0]/span[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::SubscriptionCard::Section[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:SubscriptionCard",
+					"jsx:Section[0]/div[0]/div[1]/span[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::SubscriptionCard::Section[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:SummaryCard",
+					"jsx:Section[0]/dl[0]/div[0]/dd[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::SummaryCard::Section[0]/dl[0]/div[0]/dd[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-cards.tsx:ProjectCard",
+					"jsx:Card[0]/CardPanel[0]/dl[0]/div[0]/dd[0]/span[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[0]/dd[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-cards.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-cards.tsx:ProjectCard",
+					"jsx:Card[0]/CardPanel[0]/dl[0]/div[0]/dt[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-cards.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-cards.tsx:ProjectCard",
+					"jsx:Card[0]/CardPanel[0]/dl[0]/div[1]/dt[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-projects-cards.tsx::ProjectCard::Card[0]/CardPanel[0]/dl[0]/div[1]/dt[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-projects-cards.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -63396,6 +65297,18 @@
 				"id": "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-calendar/window-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementCard",
+					"jsx:Card[0]/CardPanel[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -65277,7 +67190,29 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationInbox",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -65707,6 +67642,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:IdentityConnectionsRoute",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:PortalHome",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -67834,9 +69780,61 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/announcements.tsx:/announcements",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationInbox",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/portal/notifications.tsx:/notifications",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:PortalProjectDetails",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-cards.tsx:PortalProjectsCards",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -72423,9 +74421,61 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/announcements.tsx:/announcements",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationInbox",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/portal/notifications.tsx:/notifications",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:PortalProjectDetails",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-cards.tsx:PortalProjectsCards",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -80638,6 +82688,19 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"packages/ui/src/components/tabs.tsx:TabsList",
+					"jsx:TabsPrimitive.List[0]>bg-muted",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/imports/wizard/import-wizard.tsx:ImportWizard",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -80646,6 +82709,48 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
@@ -81641,6 +83746,19 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"packages/ui/src/components/tabs.tsx:TabsList",
+					"jsx:TabsPrimitive.List[0]>bg-muted",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/imports/wizard/import-wizard.tsx:ImportWizard",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -81649,6 +83767,48 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
+					"jsx:main[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
@@ -82796,6 +84956,7 @@
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/Icon[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCounts::dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ServiceReference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::WorkItemChangeSection::p[0]::text-muted-foreground#0",
@@ -84657,6 +86818,18 @@
 				"id": "apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/service-calendar/time-field.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementDialog",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -87816,6 +89989,30 @@
 				"chain": [
 					"apps/web/src/components/intake/triage-filter-menu.tsx:TriageFilterMenu",
 					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/DropdownMenuLabel[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/cases/portal-case-filters.tsx:FilterMenu",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/DropdownMenuLabel[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/cases/portal-case-filters.tsx:PortalCaseFilters",
+					"jsx:div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/DropdownMenuLabel[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children"
 				],
 				"id": "packages/ui/src/components/menu-content.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
@@ -88099,6 +90296,7 @@
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/Icon[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCounts::dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ServiceReference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::WorkItemChangeSection::p[0]::text-muted-foreground#0",
@@ -89960,6 +92158,18 @@
 				"id": "apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/service-calendar/time-field.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementDialog",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -93155,6 +95365,30 @@
 				"chain": [
 					"apps/web/src/components/intake/triage-filter-menu.tsx:TriageFilterMenu",
 					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/DropdownMenuLabel[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/cases/portal-case-filters.tsx:FilterMenu",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/DropdownMenuLabel[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/cases/portal-case-filters.tsx:PortalCaseFilters",
+					"jsx:div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/DropdownMenuLabel[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children"
 				],
 				"id": "packages/ui/src/components/menu-content.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
@@ -99886,22 +102120,44 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/shared/modals/create-task-presentation.tsx",
+		"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx",
 		"backdrop": "--color-background",
 		"foregroundClass": "text-primary",
 		"backgroundClass": {
 			"dark": "bg-background"
 		},
-		"surfaceContext": "same-element",
+		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/Link[0]::text-primary#0",
 			"apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskFooter::DialogFooter[0]/div[0]/label[0]/Checkbox[0]::text-primary#0",
 			"apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::div[0]/a[0]::text-primary#0",
 			"apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/Loader2[0]::text-primary#0",
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
 			"packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/Link[0]::text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/Link[0]::text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
 			{
 				"backdropLayers": [],
 				"category": "body",
@@ -100006,17 +102262,6 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/portal/requests.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -100039,22 +102284,44 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "apps/web/src/components/shared/modals/create-task-presentation.tsx",
+		"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx",
 		"backdrop": "--color-background",
 		"foregroundClass": "text-primary",
 		"backgroundClass": {
 			"light": "bg-background"
 		},
-		"surfaceContext": "same-element",
+		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
+			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/Link[0]::text-primary#0",
 			"apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskFooter::DialogFooter[0]/div[0]/label[0]/Checkbox[0]::text-primary#0",
 			"apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::div[0]/a[0]::text-primary#0",
 			"apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/Loader2[0]::text-primary#0",
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
 			"packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/Link[0]::text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/Link[0]::text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
 			{
 				"backdropLayers": [],
 				"category": "body",
@@ -100159,17 +102426,6 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/portal/requests.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::main[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -100269,6 +102525,8 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]/Link[0]::hover:text-primary#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::ContactsCard::Section[0]/ul[0]/li[0]/a[0]::text-primary#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::DocumentsCard::Section[0]/ul[0]/li[0]/a[0]::text-primary#0",
 			"packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0"
 		],
 		"occurrences": [
@@ -100293,6 +102551,30 @@
 				"id": "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]/Link[0]::hover:text-primary#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/auth/toggle.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:ContactsCard",
+					"jsx:Section[0]/ul[0]/li[0]/a[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::ContactsCard::Section[0]/ul[0]/li[0]/a[0]::text-primary#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:DocumentsCard",
+					"jsx:Section[0]/ul[0]/li[0]/a[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::DocumentsCard::Section[0]/ul[0]/li[0]/a[0]::text-primary#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -100529,7 +102811,29 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationInbox",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -100959,6 +103263,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:IdentityConnectionsRoute",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:PortalHome",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -101004,6 +103319,8 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]/Link[0]::hover:text-primary#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::ContactsCard::Section[0]/ul[0]/li[0]/a[0]::text-primary#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::DocumentsCard::Section[0]/ul[0]/li[0]/a[0]::text-primary#0",
 			"packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0"
 		],
 		"occurrences": [
@@ -101028,6 +103345,30 @@
 				"id": "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]/Link[0]::hover:text-primary#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/auth/toggle.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:ContactsCard",
+					"jsx:Section[0]/ul[0]/li[0]/a[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::ContactsCard::Section[0]/ul[0]/li[0]/a[0]::text-primary#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:DocumentsCard",
+					"jsx:Section[0]/ul[0]/li[0]/a[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::DocumentsCard::Section[0]/ul[0]/li[0]/a[0]::text-primary#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -101264,7 +103605,29 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationInbox",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -101694,6 +104057,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:IdentityConnectionsRoute",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/index.tsx:PortalHome",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -103886,6 +106260,94 @@
 	},
 	{
 		"fg": "--color-success-foreground",
+		"bg": "--color-card",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx",
+		"backdrop": "--color-card",
+		"foregroundClass": "text-success-foreground",
+		"backgroundClass": {
+			"dark": "bg-card"
+		},
+		"surfaceContext": "imported-opaque-wrapper",
+		"occurrenceIds": [
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/Icon[0]::text-success-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/CircleCheck[0]::text-success-foreground#0"
+		],
+		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:MilestonesCard",
+					"jsx:Section[0]/ol[0]/li[0]/Icon[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/Icon[0]::text-success-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:PrerequisitesCard",
+					"jsx:Section[0]/ul[0]/li[0]/CircleCheck[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/CircleCheck[0]::text-success-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			}
+		]
+	},
+	{
+		"fg": "--color-success-foreground",
+		"bg": "--color-card",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx",
+		"backdrop": "--color-card",
+		"foregroundClass": "text-success-foreground",
+		"backgroundClass": {
+			"light": "bg-card"
+		},
+		"surfaceContext": "imported-opaque-wrapper",
+		"occurrenceIds": [
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/Icon[0]::text-success-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/CircleCheck[0]::text-success-foreground#0"
+		],
+		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:MilestonesCard",
+					"jsx:Section[0]/ol[0]/li[0]/Icon[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::MilestonesCard::Section[0]/ol[0]/li[0]/Icon[0]::text-success-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:PrerequisitesCard",
+					"jsx:Section[0]/ul[0]/li[0]/CircleCheck[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/CircleCheck[0]::text-success-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			}
+		]
+	},
+	{
+		"fg": "--color-success-foreground",
 		"bg": "--color-muted",
 		"category": "non-text",
 		"minRatio": 3,
@@ -106076,7 +108538,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/project/overview/project-overview-page.tsx",
+		"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-warning-foreground",
 		"backgroundClass": {
@@ -106084,11 +108546,24 @@
 		},
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/CircleAlert[0]::text-warning-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/div[0]/Kpi[3]/span[0]::text-warning-foreground#0",
 			"apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-warning-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:PrerequisitesCard",
+					"jsx:Section[0]/ul[0]/li[0]/CircleAlert[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/CircleAlert[0]::text-warning-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
 			{
 				"backdropLayers": [],
 				"category": "body",
@@ -106184,7 +108659,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "apps/web/src/components/project/overview/project-overview-page.tsx",
+		"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-warning-foreground",
 		"backgroundClass": {
@@ -106192,11 +108667,24 @@
 		},
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/CircleAlert[0]::text-warning-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/div[0]/Kpi[3]/span[0]::text-warning-foreground#0",
 			"apps/web/src/components/service-calendar/coverage-preview-card.tsx::CoveragePreviewCard::Card[0]/CardContent[0]/div[0]/p[0]::text-warning-foreground#0",
 			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/portal/projects/portal-project-details.tsx:PrerequisitesCard",
+					"jsx:Section[0]/ul[0]/li[0]/CircleAlert[0]",
+					"Section->apps/web/src/components/portal/projects/portal-project-details.tsx:Section>bg-card"
+				],
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PrerequisitesCard::Section[0]/ul[0]/li[0]/CircleAlert[0]::text-warning-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
+			},
 			{
 				"backdropLayers": [],
 				"category": "body",

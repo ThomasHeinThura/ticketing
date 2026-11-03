@@ -468,6 +468,13 @@
 		"screenshot": "releases.png"
 	},
 	{
+		"name": "announcements",
+		"inventoryRoute": "/agent/service-management/announcements",
+		"applicationRoute": "/agent/service-management/announcements",
+		"test": "service-management announcements screen @visual",
+		"screenshot": "announcements.png"
+	},
+	{
 		"name": "kb",
 		"inventoryRoute": "/agent/kb",
 		"applicationRoute": "/agent/kb",
@@ -743,12 +750,44 @@
 		"screenshot": "portal-kb.png"
 	},
 	{
+		"name": "portal-projects",
+		"inventoryRoute": "/projects",
+		"applicationRoute": "/projects",
+		"origin": "portal",
+		"test": "portal projects screen @visual",
+		"screenshot": "portal-projects.png"
+	},
+	{
+		"name": "portal-project-detail",
+		"inventoryRoute": "/projects/{key}",
+		"applicationRoute": "/projects/$projectKey",
+		"origin": "portal",
+		"test": "portal project detail screen @visual",
+		"screenshot": "portal-project-detail.png"
+	},
+	{
 		"name": "portal-kb-article",
 		"inventoryRoute": "/kb/{id}",
 		"applicationRoute": "/kb/$id",
 		"origin": "portal",
 		"test": "portal knowledge base article screen @visual",
 		"screenshot": "portal-kb-article.png"
+	},
+	{
+		"name": "portal-announcements",
+		"inventoryRoute": "/announcements",
+		"applicationRoute": "/announcements",
+		"origin": "portal",
+		"test": "portal announcements screen @visual",
+		"screenshot": "portal-announcements.png"
+	},
+	{
+		"name": "portal-announcement",
+		"inventoryRoute": "/announcements/{id}",
+		"applicationRoute": "/announcements/$id",
+		"origin": "portal",
+		"test": "portal announcement detail screen @visual",
+		"screenshot": "portal-announcement.png"
 	},
 	{
 		"name": "portal-notifications",

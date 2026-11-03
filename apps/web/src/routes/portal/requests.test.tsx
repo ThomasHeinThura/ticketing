@@ -1,3 +1,4 @@
+import { expectNoA11yViolations } from "@taskdesk/ui/test/a11y";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -7,14 +8,37 @@ const rankBacklog = vi.hoisted(() => vi.fn());
 const fakeSubmissionsQuery = vi.hoisted(() => ({
   data: {
     page: { hasMore: true, nextCursor: "older-50" },
-    submissions: [
+    meta: { total: 30 },
+    cases: [
       {
-        ref: "REQ-101",
+        ref: "SUB-101",
+        source: "submission",
+        title: "Replace my laptop",
         requestTypeName: "Laptop Request",
-        state: "submitted",
+        priority: "high",
         customerStatus: "resolved",
-        customerVisibility: "organisation",
         createdAt: "2026-10-21T12:00:00.000Z",
+        updatedAt: "2026-10-22T12:00:00.000Z",
+        project: { key: "CCY", name: "Customer Work" },
+        createdBy: { name: null, isYou: true },
+        isRequester: true,
+        customerVisibility: "organisation",
+        sla: null,
+      },
+      {
+        ref: "CCY-9",
+        source: "direct",
+        title: "Raised by staff",
+        requestTypeName: "Task",
+        priority: null,
+        customerStatus: "need_more_info",
+        createdAt: "2026-10-20T12:00:00.000Z",
+        updatedAt: "2026-10-20T12:00:00.000Z",
+        project: null,
+        createdBy: { name: "Bob Colleague", isYou: false },
+        isRequester: false,
+        customerVisibility: "organisation",
+        sla: null,
       },
     ],
   },
@@ -57,8 +81,12 @@ const fakeBacklogQuery = vi.hoisted(() => ({
 }));
 const initialBacklogItems = [...fakeBacklogQuery.items];
 
-vi.mock("@/fetchers/intake", () => ({
-  getPortalSubmissions: () => fakeSubmissionsQuery.data,
+vi.mock("@/fetchers/portal/cases", () => ({
+  getPortalCases: () => fakeSubmissionsQuery.data,
+  portalCaseExportUrl: (query: Record<string, unknown>) =>
+    `/api/portal/requests/export.csv?${new URLSearchParams(
+      Object.entries(query).map(([key, value]) => [key, String(value)]),
+    )}`,
 }));
 vi.mock("@/fetchers/portal-backlog", () => ({
   getPortalBacklog: () => fakeBacklogQuery,
@@ -68,6 +96,7 @@ vi.mock("@/fetchers/portal-backlog", () => ({
 vi.mock("@tanstack/react-query", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
   return {
+    keepPreviousData: (value: unknown) => value,
     useQuery: () => fakeSubmissionsQuery,
     useInfiniteQuery: () => ({
       data: { pages: [fakeBacklogQuery] },
@@ -142,23 +171,54 @@ describe("PortalRequestsPage", () => {
     fakeBacklogQuery.items = [...initialBacklogItems];
   });
 
-  it("renders submission rows for the customer", () => {
+  it("renders the customer's cases with severity, status and 'Your team'", () => {
     const Component = Route as unknown as React.ComponentType;
     render(<Component />);
 
-    expect(screen.getByRole("heading", { name: "My requests" })).toBeTruthy();
-    expect(screen.getByText("REQ-101")).toBeTruthy();
-    expect(screen.getByText("Laptop Request")).toBeTruthy();
-    expect(screen.getByText("request.status.resolved")).toBeTruthy();
-    expect(screen.queryByText("submitted")).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "cases.listTitle" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "SUB-101" })).toHaveAttribute(
+      "href",
+      "/submissions/$ref",
+    );
+    expect(screen.getByText("Replace my laptop")).toBeTruthy();
+    // Each badge renders twice: in its column and, for narrow frames, under the title.
+    expect(screen.getAllByText("request.priority.value.high")).toHaveLength(2);
+    expect(screen.getAllByText("request.status.resolved")).toHaveLength(2);
+    expect(screen.getByText("request.author.you")).toBeTruthy();
+    expect(screen.getByText("Bob Colleague")).toBeTruthy();
+    expect(screen.getAllByText("cases.yourTeam")).toHaveLength(2);
+    // D6: a request raised by staff has no portal page, so its reference is not a link.
+    expect(screen.getByText("CCY-9").closest("a")).toBeNull();
+    expect(screen.getByText("cases.raisedByTeam")).toBeTruthy();
+    expect(screen.queryByText(/assignee/i)).toBeNull();
   });
-  it("follows the server cursor for requests beyond the first page", () => {
+
+  it("has no serious or critical axe violations (G4)", async () => {
+    const Component = Route as unknown as React.ComponentType;
+    const { container } = render(<Component />);
+    await expectNoA11yViolations(container, { impact: "serious-or-critical" });
+  });
+
+  it("exports with the current filters and follows the server cursor", () => {
     const Component = Route as unknown as React.ComponentType;
     render(<Component />);
-    fireEvent.click(screen.getByRole("button", { name: "requests.older" }));
-    expect(navigate).toHaveBeenCalledWith({ search: { cursor: "older-50" } });
     expect(
-      screen.getByRole("link", { name: "New request" }).querySelector("button"),
+      screen.getByRole("link", { name: "cases.export" }).getAttribute("href"),
+    ).toContain("/api/portal/requests/export.csv?scope=mine");
+    fireEvent.click(screen.getByRole("button", { name: "cases.nextPage" }));
+    const call = navigate.mock.calls.at(-1)?.[0] as {
+      search: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(call.search({ scope: "all" })).toEqual({
+      scope: "all",
+      cursor: "older-50",
+    });
+    expect(
+      screen
+        .getByRole("link", { name: "requests.newRequest" })
+        .querySelector("button"),
     ).toBeNull();
   });
 
@@ -167,11 +227,13 @@ describe("PortalRequestsPage", () => {
     const Component = Route as unknown as React.ComponentType;
     render(<Component />);
 
-    expect(screen.getByRole("heading", { name: "Backlog" })).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "requests.backlog" }),
+    ).toBeTruthy();
     expect(screen.getByText("CCY-1")).toBeTruthy();
     expect(screen.getByText("First accepted request")).toBeTruthy();
     expect(screen.getByText("CCY-2")).toBeTruthy();
-    expect(screen.queryByText("REQ-101")).toBeNull();
+    expect(screen.queryByText("SUB-101")).toBeNull();
   });
 
   it("ranks within the visible concrete backlog group with keyboard-accessible controls", async () => {

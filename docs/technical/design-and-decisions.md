@@ -3495,6 +3495,46 @@ Thomas approved the execution plan and the specific canonical ownership/feature-
 
 This updates the earlier P5 compatibility choice only for the approved authorization and feature-gate behavior; it does not authorize broader read access, new owner predicates, a new security model, threshold/calibration changes, main merges or public deployment. Those remain separate approval boundaries.
 
+## Portal cases owner decisions — 31 October 2026
+
+Thomas approved D1–D9 for the customer portal redesign on 31 October 2026. D4–D6 change or read retained portal contracts and are recorded here; the contract text is in [feature-contracts-p3.md](feature-contracts-p3.md) (`CP-4`, `CP-6`, `CP-16` and the case list section of the portal API).
+
+| Decision | Governs | Outcome |
+| --- | --- | --- |
+| D4 | `CP-6`, `SLA-21` | The portal home shows an average first-response time: requests first answered in the last 30 days, only in projects with `feature.sla` on, hidden when there is none. |
+| D5 | `CP-4` | A portal case row names a same-organisation customer colleague who raised it ("Created by"); the caller's own case shows as "You". The assignee stays hidden. |
+| D6 | `CP-16`, `own_request` | Requests raised by staff for a customer (work items without the requester's submission) appear in the portal case list and home counts as `direct` rows, under the same requester, participant and organisation-visibility rule. |
+
+**Action required** follows the approved plan: readable cases that need more information plus approvals addressed to the caller. The figure equals the `scope=all&status=need_more_info` list the card opens.
+
+**Known gap:** a `direct` row has no portal detail page yet. It is listed and counted as action required when it waits on the customer, but it cannot be opened or answered in the portal.
+
+## Customer organisation, projects and documents — 3 November 2026
+
+Thomas's direction after UAT testing on 3 November 2026.
+
+**Tenancy and scope**
+- **The customer portal belongs to a customer organisation.** Each organisation has a few portal users (customers, typically five to seven) who open tickets, follow them and see their status.
+- **Each organisation has at least one engagement.** It may have several delivery projects and several managed services.
+- **Status dashboards belong to the engagement, not the organisation.**
+  - **Portal:** the Dashboard is the organisation's entry point. It shows the organisation's cases across all its engagements, plus one card per engagement. Each engagement's own status page lives at Project Details: health, status, KPIs and cases scoped to that engagement, subscription period, hours used and remaining, milestones, contacts and shared documents.
+  - **Agent app:** the engagement's Overview tab is the staff equivalent.
+- **Company members (staff) work tickets in the same engagements.** They raise tickets for a customer, update and resolve them. Their billable time counts against the engagement's hour bank, and progress feeds the engagement's status. A ticket staff raise for a customer appears in that customer's portal (decision D6). The customer must be able to open it and reply, which closes the D6 "known gap" above.
+
+**Reports.** Every report and dashboard chart must fit its container at every width. Wide content scrolls inside its own frame, never the page. Labels and captions must not be cut off.
+
+**Pages and Documents are different. This follows v1, where Documents linked into SharePoint and never held copies.**
+
+| | Pages | Documents |
+| --- | --- | --- |
+| What it is | Long-form text written inside TaskDesk: runbooks, onboarding guides, meeting notes, release notes | A register of the engagement's official artefacts: contract, statement of work, designs, handover packs. Each entry is a link to where the file lives (SharePoint, a drive) or an uploaded attachment. |
+| Who sees it | Staff only | Staff. Entries marked customer-visible also appear on the portal's Project Details. |
+| User journey | The team writes and maintains how they run the service | The manager records what was agreed and delivered, and shares the customer-visible ones |
+
+A page can be shared with the customer only by adding it to Documents as a customer-visible entry. Pages themselves never appear in the portal.
+
+**UI.** Kaneo stays the visual base. Screens added for UAT (Overview, portal) are adjusted to Kaneo's spacing, typography and tab behaviour. Where the project tab strip overflows, it scrolls and keeps the active tab visible.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.

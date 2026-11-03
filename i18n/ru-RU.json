@@ -3963,7 +3963,9 @@
 			"title": "How can we help?",
 			"description": "Raise a {{term_request_one}}, track progress or review an approval.",
 			"recent": "Recent {{term_request_other}}",
-			"allRequests": "View all {{term_request_other}}"
+			"allRequests": "View all {{term_request_other}}",
+			"dashboardDescription": "Your organisation’s support at a glance.",
+			"dashboardTitle": "Dashboard"
 		},
 		"requests": {
 			"title": "My {{term_request_other}}",
@@ -4271,6 +4273,227 @@
 				"signingOut": "Signing out…",
 				"unnamed": "Unnamed user"
 			}
+		},
+		"announcements": {
+			"backToList": "Back to announcements",
+			"banner": {
+				"dismiss": "Dismiss {{title}}"
+			},
+			"description": "Maintenance, releases and incidents for the services your organisation uses.",
+			"emptyDescription": "There are no current announcements for your organisation.",
+			"emptyTitle": "No announcements right now",
+			"loadFailed": "Could not load announcements. Try again.",
+			"loading": "Loading announcements…",
+			"loadMore": "Load more",
+			"noBody": "No further details were published.",
+			"severity": {
+				"incident": "Incident",
+				"info": "Information",
+				"maintenance": "Planned maintenance"
+			},
+			"since": "Since {{start}}",
+			"tabs": {
+				"announcements": "Announcements",
+				"label": "Announcements and release notes",
+				"releaseNotes": "Release notes"
+			},
+			"title": "Announcements",
+			"unavailable": "This announcement is unavailable.",
+			"window": "{{start}} – {{end}}"
+		},
+		"cases": {
+			"columns": {
+				"assignedTo": "Assigned to",
+				"created": "Created",
+				"createdBy": "Created by",
+				"details": "Details",
+				"project": "Project",
+				"severity": "Severity",
+				"status": "Status",
+				"updated": "Updated"
+			},
+			"emptyDescription": "Nothing matches these filters.",
+			"emptyNoneDescription": "{{term_request_other}} you raise appear here.",
+			"emptyNoneTitle": "No {{term_request_other}} yet",
+			"emptyTitle": "No {{term_request_other}} here",
+			"export": "Export CSV",
+			"exportHint": "Exports up to 5,000 {{term_request_other}} with the current filters.",
+			"filters": {
+				"clear": "Clear filters",
+				"clearDates": "Clear dates",
+				"created": "Created",
+				"from": "From",
+				"on": "On",
+				"search": "Search {{term_request_other}}",
+				"searchPlaceholder": "Search by reference, title or type",
+				"to": "To",
+				"anyDate": "Any date"
+			},
+			"firstPage": "First page",
+			"kpi": {
+				"actionRequired": "Action required",
+				"actionRequiredCases": "{{cases}} need information",
+				"actionRequiredApprovals": "{{approvals}} to approve",
+				"averageResponse": "Average first response",
+				"averageResponseHint": "Last 30 days",
+				"closed": "Closed",
+				"closedHint": "In the last 30 days",
+				"loadFailed": "Could not load the dashboard figures.",
+				"outstanding": "Outstanding",
+				"outstandingHint": "Received, in progress or waiting for you"
+			},
+			"listDescription": "Every {{term_request_one}} you raised or can see in your organisation. Search, filter and export.",
+			"listTitle": "Support {{term_request_other}}",
+			"loadFailed": "Could not load {{term_request_other}}. Try again.",
+			"nextPage": "Next page",
+			"notSet": "Not set",
+			"outstandingDescription": "Open {{term_request_other}} that are received, in progress, or waiting for you.",
+			"outstandingTitle": "Outstanding {{term_request_other}}",
+			"pagination": "{{term_request_one}} pages",
+			"raisedByTeam": "Raised by our team for you",
+			"scope": {
+				"all": "All {{term_request_other}}",
+				"label": "Whose {{term_request_other}}",
+				"mine": "My {{term_request_other}}"
+			},
+			"sort": {
+				"created_asc": "Oldest first",
+				"created_desc": "Newest first",
+				"label": "Sort by",
+				"updated_asc": "Least recently updated",
+				"updated_desc": "Recently updated"
+			},
+			"summary": "Showing {{shown}} of {{total}}",
+			"viewAll": "View all {{term_request_other}}",
+			"yourTeam": "Your team"
+		},
+		"projects": {
+			"columns": {
+				"actionRequired": "Action required",
+				"key": "Key",
+				"name": "Name",
+				"outstanding": "Outstanding",
+				"status": "Status",
+				"type": "Type"
+			},
+			"description": "Your organisation's projects and managed services.",
+			"detail": {
+				"back": "All projects",
+				"contacts": {
+					"emailLabel": "Email {{name}}",
+					"manager": "Account manager",
+					"none": "No contacts are listed yet.",
+					"title": "Contact information",
+					"unnamed": "Your team"
+				},
+				"documents": {
+					"none": "No documents are shared yet.",
+					"opensInNewTab": "opens in a new tab",
+					"title": "Documents"
+				},
+				"hours": {
+					"none": "No service hours are allocated to this project.",
+					"overdrawn": "{{hours}} hours over the allocation",
+					"percentUsed": "{{percent}}% used",
+					"progressLabel": "Service hours used",
+					"remaining": "{{hours}} hours remaining",
+					"title": "Service hours allocation",
+					"usedOf": "{{used}} of {{total}} hours used"
+				},
+				"information": {
+					"createdOn": "Created on",
+					"goLive": "Go-live date",
+					"key": "Key",
+					"live": "Live",
+					"name": "Project name",
+					"notSet": "Not set",
+					"serviceHours": "Service calendar",
+					"supportTier": "Support tier",
+					"title": "Project information"
+				},
+				"loadFailed": "The project could not be loaded.",
+				"milestones": {
+					"none": "No milestones yet.",
+					"planned": "Planned",
+					"reached": "Reached",
+					"title": "Milestones"
+				},
+				"notFound": {
+					"description": "This project does not exist or is not shared with your organisation.",
+					"title": "Project not found"
+				},
+				"prerequisites": {
+					"description": "Items the team is waiting on before work can continue.",
+					"done": "Done",
+					"due": "Due {{date}}",
+					"none": "Nothing is waiting on you.",
+					"open": "Open",
+					"title": "What we need from you"
+				},
+				"subscription": {
+					"end": "End",
+					"ended": "Ended on {{date}}",
+					"none": "No subscription period is recorded for this project.",
+					"progressLabel": "Subscription period elapsed",
+					"remaining_few": "{{count}} days remaining",
+					"remaining_many": "{{count}} days remaining",
+					"remaining_one": "{{count}} day remaining",
+					"remaining_other": "{{count}} days remaining",
+					"start": "Start",
+					"title": "Subscription period",
+					"upcoming": "Starts on {{date}}"
+				},
+				"summary": {
+					"inScope": "In scope",
+					"none": "No summary has been written yet.",
+					"objective": "Objective",
+					"outOfScope": "Out of scope",
+					"successCriteria": "Success criteria",
+					"title": "About this project"
+				}
+			},
+			"empty": {
+				"description": "Projects your team runs for your organisation appear here.",
+				"title": "No projects yet"
+			},
+			"health": {
+				"amber": "At risk",
+				"green": "On track",
+				"label": "Health",
+				"red": "Off track"
+			},
+			"kind": {
+				"managed_service": "Managed service",
+				"project": "Project"
+			},
+			"loadFailed": "Projects could not be loaded.",
+			"navigation": "Project details",
+			"noMatches": {
+				"description": "Try another search or type.",
+				"title": "No matching projects"
+			},
+			"search": {
+				"clear": "Clear search",
+				"label": "Search projects",
+				"placeholder": "Search by key or name"
+			},
+			"status": {
+				"active": "Active",
+				"closed": "Closed",
+				"on_hold": "On hold",
+				"planning": "Planning"
+			},
+			"tabs": {
+				"all": "All",
+				"label": "Filter by type",
+				"projects": "Projects",
+				"services": "Managed services"
+			},
+			"title": "Projects",
+			"dashboard": {
+				"title": "Your projects",
+				"viewAll": "View all projects"
+			}
 		}
 	},
 	"instanceUsers": {
@@ -4529,7 +4752,8 @@
 				"webhook": "Delete webhook",
 				"organisation": "Delete organisation",
 				"identity_connection": "Delete identity connection",
-				"request_type": "Delete {{term_request_one}} type"
+				"request_type": "Delete {{term_request_one}} type",
+				"announcement": "Delete announcement"
 			},
 			"confirmName": "Type the exact name to confirm",
 			"hidden": "This request is no longer available for confirmation.",
@@ -7452,7 +7676,8 @@
 			"changes": "{{term_change_one}} calendar",
 			"releases": "Releases",
 			"services": "{{term_service_other}}",
-			"title": "Service catalogue"
+			"title": "Service catalogue",
+			"announcements": "Announcements"
 		},
 		"override": {
 			"description": "Approving {{key}} during a freeze needs a reason and a fresh verification. The override is audited prominently.",
@@ -7697,6 +7922,67 @@
 			"L1": "L1 support",
 			"L2": "L2 support",
 			"L3": "L3 support"
+		},
+		"announcements": {
+			"actions": {
+				"delete": "Delete {{title}}",
+				"edit": "Edit {{title}}",
+				"publish": "Publish",
+				"unpublish": "Unpublish"
+			},
+			"audience": {
+				"organisations": "Specific customer organisations",
+				"projects": "Customers of specific projects",
+				"workspace": "All customers in this workspace"
+			},
+			"create": {
+				"description": "Write the notice, choose who sees it and when. Publish it from the list when it is ready.",
+				"submit": "Save draft",
+				"title": "New announcement"
+			},
+			"edit": {
+				"title": "Edit announcement"
+			},
+			"fields": {
+				"audience": "Audience",
+				"body": "Message",
+				"endsAt": "Show until",
+				"noEnd": "No end",
+				"noTargets": "No customer organisations have a live project in this workspace.",
+				"workspaceNeedsReach": "Addressing all customers needs access to every customer project in this workspace.",
+				"publishNeedsReach": "Publishing this announcement needs access to every customer it addresses.",
+				"publishedNeedsReach": "This announcement is published to customers outside your access. Only someone with access to every customer it addresses can edit, unpublish or delete it.",
+				"organisations": "Customer organisations",
+				"projects": "Projects",
+				"severity": "Severity",
+				"startsAt": "Show from",
+				"title": "Title"
+			},
+			"forbidden": {
+				"description": "Managing announcements needs permission to manage services in this workspace.",
+				"title": "You cannot manage announcements"
+			},
+			"list": {
+				"description": "Maintenance windows, release notices and incidents that customers see in the portal. Saving keeps a draft; customers see an announcement only after you publish it, while it is inside its window.",
+				"emptyDescription": "Create an announcement to tell customers about maintenance, releases or incidents.",
+				"emptyTitle": "No announcements yet",
+				"from": "From {{start}}",
+				"new": "New announcement",
+				"title": "Announcements",
+				"window": "{{start}} – {{end}}"
+			},
+			"rangeInvalid": "The end must be after the start.",
+			"severity": {
+				"incident": "Incident",
+				"info": "Information",
+				"maintenance": "Maintenance"
+			},
+			"state": {
+				"draft": "Draft",
+				"ended": "Ended",
+				"live": "Live",
+				"scheduled": "Scheduled"
+			}
 		}
 	},
 	"timeTracking": {
