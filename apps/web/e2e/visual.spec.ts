@@ -368,6 +368,7 @@ const workItem = {
   assigneeId: null,
   assigneeName: null,
   requesterId: "visual-requester",
+  requesterName: "Dana Lee",
   parentId: null,
   position: "1.0000000000",
   customerVisibility: "private",
