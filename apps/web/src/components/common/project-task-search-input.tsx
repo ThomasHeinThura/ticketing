@@ -8,6 +8,8 @@ interface ProjectTaskSearchInputProps {
   placeholder: string;
   clearLabel: string;
   inputRef?: React.Ref<HTMLInputElement>;
+  /** Off when a parent owns Cmd/Ctrl+F, as the collapsible header search does. */
+  registerShortcut?: boolean;
 }
 
 export default function ProjectTaskSearchInput({
@@ -16,11 +18,13 @@ export default function ProjectTaskSearchInput({
   placeholder,
   clearLabel,
   inputRef,
+  registerShortcut = true,
 }: ProjectTaskSearchInputProps) {
   const internalInputRef = useRef<HTMLInputElement>(null);
   const resolvedInputRef = inputRef ?? internalInputRef;
 
   useEffect(() => {
+    if (!registerShortcut) return;
     const focusSearch = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f") {
         event.preventDefault();
@@ -32,11 +36,13 @@ export default function ProjectTaskSearchInput({
 
     window.addEventListener("keydown", focusSearch);
     return () => window.removeEventListener("keydown", focusSearch);
-  }, [resolvedInputRef]);
+  }, [registerShortcut, resolvedInputRef]);
 
   return (
     <div className="relative w-full max-w-sm">
-      <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+      {/* z-10: the Input's positioned frame paints an opaque light-theme background over an
+          earlier absolute sibling, which hid this icon in light mode. */}
+      <Search className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
       <Input
         ref={resolvedInputRef}
         aria-label={placeholder}

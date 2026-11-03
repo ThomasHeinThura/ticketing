@@ -24,10 +24,10 @@ export default function ProjectLayoutControlsFallback({
     <div
       aria-busy="true"
       aria-label={`${t("common:empty.loading")} ${loadingLabel}`}
-      className="flex min-w-0 flex-1 items-center gap-2"
+      className="flex flex-1 items-center gap-2"
       role="status"
     >
-      <div className="hidden min-w-0 items-center gap-1 md:flex">
+      <div className="hidden min-w-0 shrink-0 items-center gap-1 md:flex">
         {projectName ? (
           <span className="max-w-32 truncate text-xs text-foreground">
             {projectName}
@@ -38,17 +38,20 @@ export default function ProjectLayoutControlsFallback({
       </div>
       <Skeleton className="size-7 md:hidden" />
       {showViewSwitcher ? (
+        // Same slot geometry as the loaded view strip, so nothing shifts when it swaps in.
         <div
           aria-hidden="true"
-          className="hidden h-8 min-w-0 max-w-full shrink overflow-hidden rounded-lg border border-border/80 bg-background sm:block"
+          className="hidden min-w-44 flex-1 contain-inline-size sm:block"
         >
-          <div className="inline-flex h-full w-max min-w-max items-center gap-0.5 p-0.5">
-            {viewLabels.map((label, index) => (
-              <Skeleton
-                key={label}
-                className={index === 2 ? "h-6 w-24" : "h-6 w-16"}
-              />
-            ))}
+          <div className="h-8 w-max max-w-full overflow-hidden rounded-lg border border-border/80 bg-background">
+            <div className="inline-flex h-full w-max min-w-max items-center gap-0.5 p-0.5">
+              {viewLabels.map((label, index) => (
+                <Skeleton
+                  key={label}
+                  className={index === 2 ? "h-6 w-24" : "h-6 w-16"}
+                />
+              ))}
+            </div>
           </div>
         </div>
       ) : null}

@@ -87,7 +87,9 @@ function ViewTab({
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "h-6 scroll-mx-1 gap-1.5 rounded-md px-2 text-xs",
+        // The scroll margin matches the strip's 1.5rem edge fade, so a focused or
+        // active tab scrolled into view is never left under the fade.
+        "h-6 scroll-mx-6 gap-1.5 rounded-md px-2 text-xs",
         !active && "text-muted-foreground",
       )}
     >
@@ -281,8 +283,11 @@ export default function ProjectLayoutControls({
   };
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
-      <div className="hidden min-w-0 shrink items-center gap-1 md:flex [&>button]:max-w-40 [&>button]:min-w-0 [&>button]:shrink">
+    // No min-w-0 here: the project crumb and the strip's minimum width hold their room, so on a
+    // narrow header the workspace crumb before them truncates instead.
+    <div className="flex flex-1 items-center gap-2">
+      {/* Kaneo keeps the project crumb's label (up to max-w-40); it never shrinks to the chevron. */}
+      <div className="hidden min-w-0 shrink-0 items-center gap-1 md:flex [&>button]:max-w-40 [&>button]:min-w-0">
         <ProjectCrumbSelect
           workspaceId={workspaceId}
           projectId={projectId}
@@ -334,111 +339,123 @@ export default function ProjectLayoutControls({
       ) : null}
 
       {showViewSwitcher && (
-        <ScrollArea
-          aria-label={t("navigation:projectViews.workItems")}
-          className="hidden h-8 min-w-0 w-max max-w-full shrink rounded-lg border border-border/80 bg-background sm:block"
-          onFocusCapture={(event) => {
-            const target = event.target;
-            if (
-              target instanceof HTMLElement &&
-              tabsRef.current?.contains(target)
-            )
-              target.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-          }}
-        >
-          <div
-            ref={tabsRef}
-            className="inline-flex h-full w-max min-w-max items-center gap-0.5 p-0.5"
+        // The slot takes the room left after the crumb but never less than min-w-44, which leaves
+        // the widest tab its 24 px scroll margin on each side, clear of the fade. Inline-size
+        // containment keeps the tabs' full width out of the header's minimum size, so the
+        // workspace crumb truncates first. The strip itself stays as wide as its tabs.
+        <div className="hidden min-w-44 flex-1 contain-inline-size sm:block">
+          {/* The fade's mask clips anything drawn outside the scroll frame, so the frame's
+              focus ring is drawn on the strip's root instead. */}
+          <ScrollArea
+            scrollFade
+            aria-label={t("navigation:projectViews.workItems")}
+            className="h-8 w-max max-w-full rounded-lg border border-border/80 bg-background has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-2 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-ring has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-1 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-background"
+            onFocusCapture={(event) => {
+              const target = event.target;
+              if (
+                target instanceof HTMLElement &&
+                tabsRef.current?.contains(target)
+              )
+                target.scrollIntoView?.({
+                  block: "nearest",
+                  inline: "nearest",
+                });
+            }}
           >
-            <ViewTab
-              active={resolvedView === "overview"}
-              icon={LayoutDashboard}
-              onClick={() => handleNavigateToOverviewView("overview")}
+            <div
+              ref={tabsRef}
+              className="inline-flex h-full w-max min-w-max items-center gap-0.5 p-0.5"
             >
-              {t("navigation:projectViews.overview")}
-            </ViewTab>
-            <ViewTab
-              active={resolvedView === "backlog"}
-              icon={SquircleDashed}
-              onClick={handleNavigateToBacklog}
-            >
-              {t("navigation:projectViews.backlog")}
-            </ViewTab>
-            <ViewTab
-              active={resolvedView === "board"}
-              icon={SquareKanban}
-              onClick={handleNavigateToBoard}
-            >
-              {t("navigation:projectViews.workItems")}
-            </ViewTab>
-            {calendarOn ? (
               <ViewTab
-                active={resolvedView === "calendar"}
-                icon={CalendarRange}
-                onClick={handleNavigateToCalendar}
+                active={resolvedView === "overview"}
+                icon={LayoutDashboard}
+                onClick={() => handleNavigateToOverviewView("overview")}
               >
-                {t("navigation:projectViews.calendar")}
+                {t("navigation:projectViews.overview")}
               </ViewTab>
-            ) : null}
-            {ganttOn ? (
               <ViewTab
-                active={resolvedView === "gantt"}
-                icon={CalendarDays}
-                onClick={handleNavigateToGantt}
+                active={resolvedView === "backlog"}
+                icon={SquircleDashed}
+                onClick={handleNavigateToBacklog}
               >
-                {t("navigation:projectViews.timeline")}
+                {t("navigation:projectViews.backlog")}
               </ViewTab>
-            ) : null}
-            {agileFeatures.cycles ? (
               <ViewTab
-                active={resolvedView === "cycles"}
-                icon={Repeat}
-                onClick={handleNavigateToCycles}
+                active={resolvedView === "board"}
+                icon={SquareKanban}
+                onClick={handleNavigateToBoard}
               >
-                {t("navigation:projectViews.cycles")}
+                {t("navigation:projectViews.workItems")}
               </ViewTab>
-            ) : null}
-            {agileFeatures.modules ? (
+              {calendarOn ? (
+                <ViewTab
+                  active={resolvedView === "calendar"}
+                  icon={CalendarRange}
+                  onClick={handleNavigateToCalendar}
+                >
+                  {t("navigation:projectViews.calendar")}
+                </ViewTab>
+              ) : null}
+              {ganttOn ? (
+                <ViewTab
+                  active={resolvedView === "gantt"}
+                  icon={CalendarDays}
+                  onClick={handleNavigateToGantt}
+                >
+                  {t("navigation:projectViews.timeline")}
+                </ViewTab>
+              ) : null}
+              {agileFeatures.cycles ? (
+                <ViewTab
+                  active={resolvedView === "cycles"}
+                  icon={Repeat}
+                  onClick={handleNavigateToCycles}
+                >
+                  {t("navigation:projectViews.cycles")}
+                </ViewTab>
+              ) : null}
+              {agileFeatures.modules ? (
+                <ViewTab
+                  active={resolvedView === "modules"}
+                  icon={Layers}
+                  onClick={handleNavigateToModules}
+                >
+                  {t("navigation:projectViews.modules")}
+                </ViewTab>
+              ) : null}
+              {pagesOn ? (
+                <ViewTab
+                  active={resolvedView === "pages"}
+                  icon={FileText}
+                  onClick={handleNavigateToPages}
+                >
+                  {t("navigation:projectViews.pages")}
+                </ViewTab>
+              ) : null}
               <ViewTab
-                active={resolvedView === "modules"}
-                icon={Layers}
-                onClick={handleNavigateToModules}
+                active={resolvedView === "prerequisites"}
+                icon={ListChecks}
+                onClick={() => handleNavigateToOverviewView("prerequisites")}
               >
-                {t("navigation:projectViews.modules")}
+                {t("navigation:projectViews.prerequisites")}
               </ViewTab>
-            ) : null}
-            {pagesOn ? (
               <ViewTab
-                active={resolvedView === "pages"}
-                icon={FileText}
-                onClick={handleNavigateToPages}
+                active={resolvedView === "team"}
+                icon={Users}
+                onClick={() => handleNavigateToOverviewView("team")}
               >
-                {t("navigation:projectViews.pages")}
+                {t("navigation:projectViews.team")}
               </ViewTab>
-            ) : null}
-            <ViewTab
-              active={resolvedView === "prerequisites"}
-              icon={ListChecks}
-              onClick={() => handleNavigateToOverviewView("prerequisites")}
-            >
-              {t("navigation:projectViews.prerequisites")}
-            </ViewTab>
-            <ViewTab
-              active={resolvedView === "team"}
-              icon={Users}
-              onClick={() => handleNavigateToOverviewView("team")}
-            >
-              {t("navigation:projectViews.team")}
-            </ViewTab>
-            <ViewTab
-              active={resolvedView === "documents"}
-              icon={Files}
-              onClick={() => handleNavigateToOverviewView("documents")}
-            >
-              {t("navigation:projectViews.documents")}
-            </ViewTab>
-          </div>
-        </ScrollArea>
+              <ViewTab
+                active={resolvedView === "documents"}
+                icon={Files}
+                onClick={() => handleNavigateToOverviewView("documents")}
+              >
+                {t("navigation:projectViews.documents")}
+              </ViewTab>
+            </div>
+          </ScrollArea>
+        </div>
       )}
     </div>
   );
