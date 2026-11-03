@@ -306,8 +306,8 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
         data-testid="project-backlog-page"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h1 className="font-semibold text-lg">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="min-w-0 break-words font-semibold text-lg">
               {project ? project.name : projectKey} ·{" "}
               {t("navigation:projectList.backlog", { defaultValue: "Backlog" })}
             </h1>
@@ -319,7 +319,9 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
               {t("workItems:list.heading")}
             </Link>
           </div>
-          <div className="flex items-center gap-2">
+          {/* Below `sm` the actions take their own full-width row and wrap, so the primary
+              action is never pushed past the edge. */}
+          <div className="flex flex-wrap items-center gap-2 max-sm:w-full">
             {project ? (
               <Suspense fallback={null}>
                 <WorkItemSelectionToggle
