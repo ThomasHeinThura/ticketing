@@ -16,6 +16,7 @@ import { HTTPException } from "hono/http-exception";
 import { WebSocketServer } from "ws";
 import activity from "./activity";
 import agile from "./agile";
+import { announcementRouter, portalAnnouncementRouter } from "./announcement";
 import apiKey from "./api-key";
 import approval from "./approval";
 import attachment from "./attachment";
@@ -955,6 +956,7 @@ async function customerPortalDocumentState(
  * its state.
  */
 const PORTAL_FEATURE_DATA_PREFIXES = [
+  "/api/portal/announcements",
   "/api/portal/approvals",
   "/api/portal/catalogue",
   "/api/portal/home",
@@ -2061,6 +2063,9 @@ export function createApp(
   // P5 service catalogue, changes, freezes and releases: mounted at the root like work items.
   api.route("/", serviceManagement);
   const portalReleaseApi = api.route("/portal", portalReleaseRouter);
+  // D7 customer announcements: staff management and the portal reads.
+  const announcementApi = api.route("/announcements", announcementRouter);
+  const portalAnnouncementApi = api.route("/portal", portalAnnouncementRouter);
   const workItemCommentVersionsApi = api.route("/", workItemCommentVersions);
   const approvalApi = api.route("/", approval);
   const combinedWorkItemApi = api.route("/", combinedWorkItemRouter);
@@ -2541,6 +2546,8 @@ export function createApp(
     teamApi,
     kbApi,
     portalReleaseApi,
+    announcementApi,
+    portalAnnouncementApi,
     reportApi,
     scimProtocolApi,
     invitationApi,
@@ -3087,6 +3094,8 @@ const {
   teamApi,
   kbApi,
   portalReleaseApi,
+  announcementApi,
+  portalAnnouncementApi,
   reportApi,
   scimProtocolApi,
   invitationApi,
@@ -3254,6 +3263,8 @@ export type AppType =
   | typeof teamApi
   | typeof kbApi
   | typeof portalReleaseApi
+  | typeof announcementApi
+  | typeof portalAnnouncementApi
   | typeof reportApi
   | typeof scimProtocolApi
   | typeof workflowApi

@@ -1348,6 +1348,11 @@ export const routes = {
     build: (params: { id: string }) =>
       `/agent/service-management/releases/${encodeURIComponent(params.id)}`,
   },
+  /** D7 customer announcements: drafts, schedule, audience and publication. */
+  serviceManagementAnnouncements: {
+    path: "/agent/service-management/announcements" as const,
+    build: () => "/agent/service-management/announcements",
+  },
   /** Customer portal home, rooted on its separate origin. */
   portalHome: {
     path: "/" as const,
@@ -1391,6 +1396,20 @@ export const routes = {
     path: "/releases/$id" as const,
     build: (params: { id: string }) =>
       `/releases/${encodeURIComponent(params.id)}`,
+  },
+  /** D7: announcements addressed to the customer's organisation. */
+  portalAnnouncements: {
+    path: "/announcements" as const,
+    build: (search: PortalProjectSearch & { cursor?: string } = {}) => {
+      const { cursor } = parsePortalAnnouncementsSearch(search);
+      const query = new URLSearchParams(cursor ? { cursor } : {});
+      return `/announcements${portalProjectQuery(query, search)}`;
+    },
+  },
+  portalAnnouncement: {
+    path: "/announcements/$id" as const,
+    build: (params: { id: string }) =>
+      `/announcements/${encodeURIComponent(params.id)}`,
   },
   portalCatalogue: {
     path: "/catalogue" as const,
@@ -2186,6 +2205,13 @@ export function parsePortalReleasesSearch(
 ): PortalProjectSearch & { cursor?: string } {
   const { cursor, project } = parsePortalRequestsSearch(raw);
   return { ...(cursor ? { cursor } : {}), ...(project ? { project } : {}) };
+}
+
+/** D7 announcements list: the same cursor and project scope as release notes. */
+export function parsePortalAnnouncementsSearch(
+  raw: unknown,
+): PortalProjectSearch & { cursor?: string } {
+  return parsePortalReleasesSearch(raw);
 }
 
 export function parsePortalApprovalsSearch(

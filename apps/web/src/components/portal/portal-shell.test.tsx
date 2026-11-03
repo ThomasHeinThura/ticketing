@@ -15,7 +15,7 @@ const location = vi.hoisted(() => ({ pathname: "/", search: {} }));
 const navigate = vi.hoisted(() => vi.fn());
 const signOut = vi.hoisted(() => vi.fn());
 const getPortalProjects = vi.hoisted(() => vi.fn());
-const getPortalReleases = vi.hoisted(() => vi.fn());
+const getPortalAnnouncements = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
@@ -47,7 +47,9 @@ vi.mock("@/lib/i18n/portal-translation", () => ({
 vi.mock("@/fetchers/kb/portal", () => ({
   getPortalKb: vi.fn().mockResolvedValue({ data: [], total: 1 }),
 }));
-vi.mock("@/fetchers/portal/releases", () => ({ getPortalReleases }));
+vi.mock("@/fetchers/portal/announcements", () => ({
+  getPortalAnnouncements,
+}));
 vi.mock("@/fetchers/portal/projects", () => ({ getPortalProjects }));
 vi.mock("@/fetchers/portal-notifications", () => ({
   getPortalNotifications: vi.fn().mockResolvedValue({
@@ -105,8 +107,9 @@ beforeEach(() => {
   navigate.mockReset();
   signOut.mockReset();
   getPortalProjects.mockReset();
-  getPortalReleases.mockReset();
-  getPortalReleases.mockResolvedValue({ data: [], nextCursor: null });
+  getPortalAnnouncements.mockReset();
+  getPortalAnnouncements.mockResolvedValue({ data: [], nextCursor: null });
+  window.sessionStorage.clear();
   setViewport(1280);
 });
 
@@ -128,7 +131,7 @@ describe("portal shell", () => {
       ["navigation.approvals", "/approvals"],
       ["navigation.knowledgeBase", "/kb"],
       ["navigation.updates", "/notifications"],
-      ["navigation.announcements", "/releases"],
+      ["navigation.announcements", "/announcements"],
       ["navigation.settings", "/account"],
     ])
       expect(await screen.findByRole("link", { name })).toHaveAttribute(
@@ -137,14 +140,61 @@ describe("portal shell", () => {
       );
   });
 
-  it("hides Announcements where release notes do not answer", async () => {
-    getPortalReleases.mockRejectedValue(new Error("feature off"));
+  it("keeps Announcements active on the release notes tab", async () => {
+    location.pathname = "/releases";
+    renderShell();
+    const announcements = await screen.findByRole("link", {
+      name: "navigation.announcements",
+    });
+    expect(announcements).toHaveAttribute("data-active", "true");
+    expect(announcements).not.toHaveAttribute("aria-current");
+  });
+
+  it("shows an active incident banner and dismisses it for the session", async () => {
+    getPortalAnnouncements.mockResolvedValue({
+      data: [
+        {
+          id: "announcement-1",
+          title: "Payments degraded",
+          body: "",
+          severity: "incident",
+          startsAt: "2030-01-01T00:00:00.000Z",
+          endsAt: null,
+          publishedAt: "2030-01-01T00:00:00.000Z",
+        },
+      ],
+      nextCursor: null,
+    });
+    renderShell();
+    const link = await screen.findByRole("link", {
+      name: "Payments degraded",
+    });
+    expect(link).toHaveAttribute("href", "/announcements/$id");
+    expect(getPortalAnnouncements).toHaveBeenCalledWith({
+      limit: 3,
+      severities: ["incident", "maintenance"],
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "portal:announcements.banner.dismiss",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("link", { name: "Payments degraded" }),
+      ).toBeNull(),
+    );
+    expect(
+      window.sessionStorage.getItem("taskdesk.portal.dismissedAnnouncements"),
+    ).toContain("announcement-1");
+  });
+
+  it("shows no banner when announcements do not answer", async () => {
+    getPortalAnnouncements.mockRejectedValue(new Error("feature off"));
     renderShell();
     await screen.findByRole("link", { name: "navigation.settings" });
-    await waitFor(() => expect(getPortalReleases).toHaveBeenCalled());
-    expect(
-      screen.queryByRole("link", { name: "navigation.announcements" }),
-    ).toBeNull();
+    await waitFor(() => expect(getPortalAnnouncements).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("keeps Support active on a request detail without claiming the page", async () => {

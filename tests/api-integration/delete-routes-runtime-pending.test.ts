@@ -570,6 +570,10 @@ const CASES: Case[] = [
  * world it needs. Each named file must exist and request the route (checked below).
  */
 const RUNTIME_ELSEWHERE: Record<string, { file: string; fragment: string }> = {
+  "DELETE /api/announcements/{id}": {
+    file: "announcements.test.ts",
+    fragment: "/api/announcements/",
+  },
   "DELETE /api/project/{id}/prerequisites/{prerequisiteId}": {
     file: "project-prerequisites.test.ts",
     fragment: "/prerequisites/",

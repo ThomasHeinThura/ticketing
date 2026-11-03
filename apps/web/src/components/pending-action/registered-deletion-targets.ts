@@ -7,6 +7,7 @@ export const REGISTERED_DELETION_TARGETS = [
   "project_label",
   "column",
   "canned_response",
+  "announcement",
   "milestone",
   "prerequisite",
   "document_link",

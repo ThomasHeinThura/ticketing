@@ -42,3 +42,9 @@ export const portalSupportMatch: PortalNavigationMatch = {
     routes.portalKb.path,
   ],
 };
+
+/** Announcements owns its list and detail, plus the release notes shown as its second tab. */
+export const portalAnnouncementsMatch: PortalNavigationMatch = {
+  to: routes.portalAnnouncements.path,
+  prefixes: [routes.portalReleases.path],
+};
