@@ -54,6 +54,9 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // Overview (0213): the summary fields and lifecycle status; the contract and hour bank.
   "project.summary_updated",
   "project_contract.set",
+  // Documents register (0216, U-15): an entry is added or edited. Deletion is a pending action.
+  "document_link.created",
+  "document_link.updated",
   "sla_policy.created",
   "sla_policy.updated",
   "sla_policy.published",

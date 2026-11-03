@@ -369,6 +369,10 @@ async function runJourney(
     ).toBeVisible();
     const document = page.getByRole("link", { name: /Statement of work/u });
     await expect(document).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(document).toHaveAttribute("target", "_blank");
+    // U-15: the entry shows its description; only customer-visible entries are listed.
+    await expect(page.getByText("Signed scope and fees")).toBeVisible();
+    await expect(page.getByTestId("portal-project-document")).toHaveCount(1);
     await expect(page.getByText("Internal margin sheet")).toHaveCount(0);
     await expect(page.getByText("INTERNAL NOTE")).toHaveCount(0);
     await expectNoSeriousAxeViolations(page);

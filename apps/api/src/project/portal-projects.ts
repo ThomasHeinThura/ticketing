@@ -190,8 +190,19 @@ export const portalProjectDetailSchema = z
           "Blocking prerequisites the customer owns (owner side customer or both), read-only.",
       }),
     documents: z
-      .array(z.object({ id: z.string(), title: z.string(), url: z.string() }))
-      .openapi({ description: "Customer-visible document links only." }),
+      .array(
+        z.object({
+          id: z.string(),
+          title: z.string(),
+          url: z.string(),
+          kind: z.enum(["contract", "sow", "design", "handover", "other"]),
+          description: z.string().nullable(),
+        }),
+      )
+      .openapi({
+        description:
+          "Customer-visible Documents entries only (staff-only entries and Pages never appear).",
+      }),
     contacts: z.array(contactSchema).openapi({
       description:
         "The project's designated key contacts (CP-4): the manager and active staff stakeholders.",
@@ -410,6 +421,8 @@ export async function getPortalProject(
         id: schema.documentLinkTable.id,
         title: schema.documentLinkTable.title,
         url: schema.documentLinkTable.url,
+        kind: schema.documentLinkTable.kind,
+        description: schema.documentLinkTable.description,
       })
       .from(schema.documentLinkTable)
       .where(

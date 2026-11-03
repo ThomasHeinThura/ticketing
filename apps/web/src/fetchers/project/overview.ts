@@ -265,15 +265,40 @@ export async function listDocumentLinks(id: string) {
   return response.json();
 }
 
-export async function addDocumentLink(
-  id: string,
-  json: { url: string; title: string; customerVisible?: boolean },
-) {
+export type DocumentKind = DocumentLink["kind"];
+export const DOCUMENT_KINDS: readonly DocumentKind[] = [
+  "contract",
+  "sow",
+  "design",
+  "handover",
+  "other",
+];
+export type DocumentLinkInput = {
+  url: string;
+  title: string;
+  kind: DocumentKind;
+  description: string | null;
+  customerVisible: boolean;
+};
+
+export async function addDocumentLink(id: string, json: DocumentLinkInput) {
   const response = await client.project[":id"]["document-links"].$post({
     param: { id },
     json,
   });
   if (!response.ok) return failWith(response, "Failed to add the document");
+  return response.json();
+}
+
+export async function updateDocumentLink(
+  id: string,
+  documentLinkId: string,
+  json: Partial<DocumentLinkInput>,
+) {
+  const response = await client.project[":id"]["document-links"][
+    ":documentLinkId"
+  ].$patch({ param: { id, documentLinkId }, json });
+  if (!response.ok) return failWith(response, "Failed to save the document");
   return response.json();
 }
 

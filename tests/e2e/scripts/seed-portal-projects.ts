@@ -86,6 +86,8 @@ async function main(input: SeedInput) {
       projectId: input.projectId,
       title: "Statement of work",
       url: "https://docs.example.test/sow",
+      kind: "sow",
+      description: "Signed scope and fees",
       customerVisible: true,
     },
     {

@@ -17912,9 +17912,37 @@
 										},
 										"opensInNewTab": {
 											"type": "string"
+										},
+										"kinds": {
+											"type": "object",
+											"additionalProperties": false,
+											"properties": {
+												"contract": {
+													"type": "string"
+												},
+												"sow": {
+													"type": "string"
+												},
+												"design": {
+													"type": "string"
+												},
+												"handover": {
+													"type": "string"
+												},
+												"other": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"contract",
+												"sow",
+												"design",
+												"handover",
+												"other"
+											]
 										}
 									},
-									"required": ["title", "none", "opensInNewTab"]
+									"required": ["title", "none", "opensInNewTab", "kinds"]
 								},
 								"figures": {
 									"type": "string"
@@ -33553,6 +33581,22 @@
 						"failed",
 						"hasChildren"
 					]
+				},
+				"share": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"staffOnly": {
+							"type": "string"
+						},
+						"staffOnlyHint": {
+							"type": "string"
+						},
+						"addToDocuments": {
+							"type": "string"
+						}
+					},
+					"required": ["staffOnly", "staffOnlyHint", "addToDocuments"]
 				}
 			},
 			"required": [
@@ -33564,7 +33608,8 @@
 				"editor",
 				"history",
 				"conflict",
-				"delete"
+				"delete",
+				"share"
 			]
 		},
 		"projectOverview": {
@@ -34675,9 +34720,6 @@
 						"loadFailed": {
 							"type": "string"
 						},
-						"empty": {
-							"type": "string"
-						},
 						"pages": {
 							"type": "string"
 						},
@@ -34685,6 +34727,55 @@
 							"type": "string"
 						},
 						"openPages": {
+							"type": "string"
+						},
+						"editTitle": {
+							"type": "string"
+						},
+						"urlHint": {
+							"type": "string"
+						},
+						"fieldKind": {
+							"type": "string"
+						},
+						"fieldDescription": {
+							"type": "string"
+						},
+						"kinds": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"contract": {
+									"type": "string"
+								},
+								"sow": {
+									"type": "string"
+								},
+								"design": {
+									"type": "string"
+								},
+								"handover": {
+									"type": "string"
+								},
+								"other": {
+									"type": "string"
+								}
+							},
+							"required": ["contract", "sow", "design", "handover", "other"]
+						},
+						"opensInNewTab": {
+							"type": "string"
+						},
+						"updated": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"pageStaffOnly": {
 							"type": "string"
 						}
 					},
@@ -34705,10 +34796,19 @@
 						"staffOnly",
 						"saved",
 						"loadFailed",
-						"empty",
 						"pages",
 						"pagesDescription",
-						"openPages"
+						"openPages",
+						"editTitle",
+						"urlHint",
+						"fieldKind",
+						"fieldDescription",
+						"kinds",
+						"opensInNewTab",
+						"updated",
+						"emptyTitle",
+						"emptyDescription",
+						"pageStaffOnly"
 					]
 				},
 				"common": {

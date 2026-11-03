@@ -240,6 +240,32 @@ for (const screen of OVERVIEW_SCREENS)
       });
     }
 
+// U-15: the Documents register's add dialog (type select, description, customer-visible
+// switch with its explanation), on desktop light and phone dark.
+for (const [width, height, colorScheme] of [
+  [1280, 720, "light"],
+  [390, 844, "dark"],
+] as const)
+  test(`project documents add dialog (${width}px, ${colorScheme}) has no serious or critical axe violations @a11y`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ colorScheme });
+    await mountProjectAdminApp(page);
+    await installProjectOverviewFixture(page, PROJECT_ID, { project: PROJECT });
+    await page.goto("/agent/projects/WLP/documents");
+    await expect(
+      page.getByTestId("project-document-row").first(),
+    ).toContainText("Statement of work");
+    await page.getByRole("button", { name: "Add document" }).click();
+    const dialog = page.getByRole("dialog", { name: "Add document" });
+    await expect(
+      dialog.getByRole("switch", { name: "Visible to customers" }),
+    ).toBeVisible();
+    await expect(dialog.getByLabel("Title")).toBeFocused();
+    expect(await seriousOrCriticalViolations(page)).toEqual([]);
+  });
+
 test("mobile project navigation retains keyboard calendar and Timeline (Gantt) journeys @a11y", async ({
   page,
 }) => {

@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   savePage: vi.fn(),
   requestPageDeletion: vi.fn(),
   restorePageVersion: vi.fn(),
+  addDocumentLink: vi.fn(),
   toastError: vi.fn(),
   open: vi.fn(),
   editorMounts: vi.fn(),
@@ -63,6 +65,10 @@ vi.mock("@/fetchers/pages", async (importOriginal) => ({
   requestPageDeletion: (...args: unknown[]) =>
     mocks.requestPageDeletion(...args),
   restorePageVersion: (...args: unknown[]) => mocks.restorePageVersion(...args),
+}));
+vi.mock("@/fetchers/project/overview", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/fetchers/project/overview")>()),
+  addDocumentLink: (...args: unknown[]) => mocks.addDocumentLink(...args),
 }));
 vi.mock("@/lib/toast", () => ({
   toast: {
@@ -359,6 +365,41 @@ describe("PageDetail", () => {
       expect(mocks.open).toHaveBeenCalledWith({ pendingActionId: "pa1" }),
     );
     expect(mocks.requestPageDeletion).toHaveBeenCalledWith("HELP", "pg1");
+  });
+
+  it("marks the page staff-only and offers no Add to Documents without edit rights", async () => {
+    setup(false);
+    renderDetail();
+    expect(await screen.findByTestId("page-staff-only")).toHaveTextContent(
+      "share.staffOnly",
+    );
+    expect(screen.queryByText("share.addToDocuments")).toBeNull();
+  });
+
+  it("adds the page to Documents as a staff-only entry linking to the page", async () => {
+    setup(true);
+    mocks.addDocumentLink.mockResolvedValue({ id: "d1" });
+    renderDetail();
+    fireEvent.click(await screen.findByText("share.addToDocuments"));
+    const dialog = await screen.findByRole("dialog");
+    expect(screen.getByTestId("document-staff-only-note")).toHaveTextContent(
+      "documents.pageStaffOnly",
+    );
+    expect(
+      screen.queryByLabelText("documents.fieldCustomerVisible"),
+    ).toBeNull();
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "documents.add" }),
+    );
+    await vi.waitFor(() =>
+      expect(mocks.addDocumentLink).toHaveBeenCalledWith("p1", {
+        title: "Runbook",
+        url: `${window.location.origin}/agent/projects/HELP/pages/pg1`,
+        kind: "other",
+        description: null,
+        customerVisible: false,
+      }),
+    );
   });
 
   it("shows one not-found message for a missing page", async () => {
