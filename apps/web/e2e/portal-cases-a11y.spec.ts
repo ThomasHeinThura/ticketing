@@ -149,6 +149,8 @@ function apiBody(pathname: string): unknown {
       return { data: [], hasMore: false, nextCursor: null };
     case "/api/portal/releases":
       return { data: [] };
+    case "/api/portal/announcements":
+      return { data: [], nextCursor: null };
     case "/api/portal/notification/inbox":
       return { data: [], unreadCount: 0, hasMore: false, nextCursor: null };
     default:

@@ -7615,7 +7615,9 @@ test("portal home screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("Average first response")).toBeVisible();
   // The lazy shell is ready: navigation and the top bar have both painted.
-  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Dashboard", exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-home.png", {
     animations: "disabled",
