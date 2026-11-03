@@ -99,7 +99,7 @@ export function PortalKbBrowse({
   });
   const tree = flatten(categories.data?.categories ?? []);
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
+    <main className="@container mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
       <header className="space-y-1">
         <h1 className="font-semibold text-2xl">{t("kb:portal.title")}</h1>
         <p className="text-muted-foreground">{t("kb:portal.description")}</p>
@@ -114,7 +114,9 @@ export function PortalKbBrowse({
           onChange={(event) => setText(event.target.value)}
         />
       </div>
-      <div className="grid gap-6 md:grid-cols-[14rem_1fr]">
+      {/* The categories sit beside the articles only when the page itself is wide enough (the
+          portal sidebar takes part of the viewport); otherwise they stack above them. */}
+      <div className="grid gap-6 @2xl:grid-cols-[14rem_1fr]">
         <nav
           aria-label={t("kb:portal.categories")}
           className="flex flex-col gap-1"
