@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DashboardWidget, ReportEnvelope } from "@/fetchers/report";
 
@@ -23,6 +23,7 @@ vi.mock("react-i18next", () => ({
     t: (key: string, options?: Record<string, unknown>) => {
       if (options && "n" in options)
         return `${key} ${options.n}/${options.needed}`;
+      if (options && "time" in options) return `${key} ${options.time}`;
       return options && typeof options.defaultValue === "string"
         ? options.defaultValue
         : key;
@@ -118,9 +119,49 @@ describe("a dashboard widget (RP-13)", () => {
     show(base, "number");
     expect(screen.getByText("12")).toBeTruthy();
     expect(screen.getByText("Items completed")).toBeTruthy();
+    // The caption is the window and its as-of time (RP-4); the rest of the context is behind
+    // "About".
+    expect(screen.getByTestId("widget-context").textContent).toBe(
+      "reports:context.window · reports:context.asOf 2026-10-24T09:30",
+    );
+    expect(screen.getByTestId("widget-as-of").textContent).toBe(
+      "reports:context.asOf 2026-10-24T09:30",
+    );
+    expect(screen.queryByTestId("report-context")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "reports:dashboard.aboutNumbers" }),
+    );
     expect(screen.getByTestId("report-context").textContent).toContain(
       "reports:context.scopeReach",
     );
+  });
+
+  it.each([
+    ["number", false],
+    ["bar", false],
+    ["table", false],
+    ["number", true],
+  ] as const)(
+    "states its as-of time in the visible caption of a %s widget (live: %s) (RP-4)",
+    (chartType, live) => {
+      show({ ...base, window: { ...base.window, live } }, chartType);
+      const caption = screen.getByTestId("widget-context");
+      expect(caption.textContent).toContain(
+        live ? "reports:context.windowLive" : "reports:context.window",
+      );
+      expect(caption.contains(screen.getByTestId("widget-as-of"))).toBe(true);
+      expect(screen.getByTestId("widget-as-of").textContent).toBe(
+        "reports:context.asOf 2026-10-24T09:30",
+      );
+      cleanup();
+    },
+  );
+
+  it("marks the card with its chart type and never cuts the title short", () => {
+    show(base, "number");
+    const card = screen.getByTestId("dashboard-widget");
+    expect(card.getAttribute("data-chart-type")).toBe("number");
+    expect(card.innerHTML).not.toContain("truncate");
   });
 
   it("never turns a missing number into 0% (RP-1)", () => {
@@ -145,15 +186,23 @@ describe("a dashboard widget (RP-13)", () => {
 
   it("gives a chart widget its table equivalent (RP-11)", () => {
     const { container } = show(base, "bar");
-    expect(container.querySelector("svg")).not.toBeNull();
+    expect(container.querySelector('svg[role="img"]')).not.toBeNull();
     expect(
       screen.getByRole("button", { name: "reports:views.table" }),
     ).toBeTruthy();
   });
 
+  it("re-measures its scroll fade when the chart inside shrinks to fit (fit rule, 3 Nov)", () => {
+    show(base, "bar");
+    const frame = screen.getByRole("region", { name: "Throughput" });
+    const content = frame.querySelector('[data-slot="scroll-area-content"]');
+    expect(content).not.toBeNull();
+    expect(content?.querySelector('svg[role="img"]')).not.toBeNull();
+  });
+
   it("is just the table for a table widget", () => {
     const { container } = show(base, "table");
-    expect(container.querySelector("svg")).toBeNull();
+    expect(container.querySelector('svg[role="img"]')).toBeNull();
     expect(screen.getByRole("table")).toBeTruthy();
   });
 
@@ -172,7 +221,7 @@ describe("a dashboard widget (RP-13)", () => {
       "bar",
     );
     expect(screen.getByText("—")).toBeTruthy();
-    expect(container.querySelector("svg")).toBeNull();
+    expect(container.querySelector('svg[role="img"]')).toBeNull();
   });
 
   it("shows the empty text instead of a blank chart when every value is missing", () => {
@@ -192,7 +241,7 @@ describe("a dashboard widget (RP-13)", () => {
     );
     expect(screen.getByTestId("dashboard-widget-empty")).toBeTruthy();
     expect(screen.getByText("reports:empty.noData")).toBeTruthy();
-    expect(container.querySelector("svg")).toBeNull();
+    expect(container.querySelector('svg[role="img"]')).toBeNull();
   });
 
   it("keeps the view toggle and the export action in the same header row", () => {

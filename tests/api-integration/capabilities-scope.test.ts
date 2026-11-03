@@ -335,8 +335,8 @@ describe("GET /api/capabilities", () => {
     const memberCaps = (await (
       await app.request(`/api/capabilities?workspaceId=${member.workspace.id}`)
     ).json()) as Record<string, boolean>;
-    // The legacy statement lets a member create projects; the strict capability does not.
-    expect(memberCaps.createProjects).toBe(true);
+    // A-06: createProjects now follows the strict project:create the create route enforces.
+    expect(memberCaps.createProjects).toBe(false);
     expect(memberCaps.bindProjectOrganisation).toBe(false);
 
     mockAuthenticatedSession(admin.user);
@@ -344,6 +344,102 @@ describe("GET /api/capabilities", () => {
       await app.request(`/api/capabilities?workspaceId=${admin.workspace.id}`)
     ).json()) as Record<string, boolean>;
     expect(adminCaps.bindProjectOrganisation).toBe(true);
+  });
+
+  it("reports project and label flags that match what the routes accept (A-06)", async () => {
+    const { app } = createApp();
+    // `labels` is only stated for roles whose label-route status this fixture can observe
+    // (owner/admin/member/viewer). Manager and lead hold workspace reach through canonical
+    // memberships this fixture does not seed.
+    const expected: Record<string, { projects: boolean; labels?: boolean }> = {
+      owner: { projects: true, labels: true },
+      admin: { projects: true, labels: true },
+      manager: { projects: true },
+      lead: { projects: false },
+      member: { projects: false, labels: true },
+      viewer: { projects: false, labels: false },
+    };
+    for (const [role, want] of Object.entries(expected)) {
+      const person = await createWorkspaceMember({ role });
+      mockAuthenticatedSession(person.user);
+      const response = await app.request(
+        `/api/capabilities?workspaceId=${person.workspace.id}`,
+      );
+      expect(response.status, role).toBe(200);
+      const caps = (await response.json()) as Record<string, boolean>;
+      expect(
+        {
+          createProjects: caps.createProjects,
+          bindProjectOrganisation: caps.bindProjectOrganisation,
+        },
+        role,
+      ).toEqual({
+        createProjects: want.projects,
+        bindProjectOrganisation: want.projects,
+      });
+
+      // The flag agrees with the route: a refused role meets 403 on POST /api/project.
+      const created = await app.request("/api/project", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: `A06 ${role}`,
+          workspaceId: person.workspace.id,
+          icon: "Layout",
+          slug: `A6${role.slice(0, 2).toUpperCase()}`,
+        }),
+      });
+      if (want.projects) expect(created.status, role).not.toBe(403);
+      else expect(created.status, role).toBe(403);
+
+      // The label flags follow the legacy `label:*` statements the label routes gate on, so a
+      // built-in member keeps creating and editing labels (flag true, route 200) and a viewer is
+      // refused on both.
+      if (want.labels !== undefined) {
+        expect(
+          {
+            createLabels: caps.createLabels,
+            updateLabels: caps.updateLabels,
+            deleteLabels: caps.deleteLabels,
+          },
+          role,
+        ).toEqual({
+          createLabels: want.labels,
+          updateLabels: want.labels,
+          deleteLabels: want.labels,
+        });
+
+        const createdLabel = await app.request("/api/label", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            name: `A06 new ${role}`,
+            color: "#3b82f6",
+            workspaceId: person.workspace.id,
+          }),
+        });
+        expect(createdLabel.status, role).toBe(want.labels ? 200 : 403);
+
+        const [label] = await db
+          .insert(schema.labelTable)
+          .values({
+            name: `A06 ${role}`,
+            color: "#ef4444",
+            workspaceId: person.workspace.id,
+            taskId: null,
+          })
+          .returning();
+        const updated = await app.request(`/api/label/${label?.id}`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            name: `A06 ${role} renamed`,
+            color: "#22c55e",
+          }),
+        });
+        expect(updated.status, role).toBe(want.labels ? 200 : 403);
+      }
+    }
   });
 
   it("reports exact service-calendar management for an admin", async () => {

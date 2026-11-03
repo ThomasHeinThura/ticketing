@@ -4,6 +4,7 @@ import type { MaterializedNotificationRow } from "../inbox.repository";
 import { listVisibleNotificationRows } from "../inbox.repository";
 import {
   resolveNotificationDeepLinks,
+  resolveNotificationSubmissionRefs,
   resolveNotificationWorkItemKeys,
 } from "../links";
 
@@ -20,22 +21,31 @@ export async function enrichVisibleNotifications(
     notifications,
   ).catch(() => new Map<string, string>());
   const deepLinks = resolveNotificationDeepLinks(notifications);
+  const submissionRefs = await resolveNotificationSubmissionRefs(
+    notifications,
+  ).catch(() => new Map<string, string>());
 
   return rows.map(({ notification: base, projectId, workspaceId }) => {
     // `NO-14`: the owning work item's key (null when the resource has none), `kind` for the
     // inbox filters, and `readAt` so mark-unread round-trips.
-    const { [QUIET_HOURS_HOLD_KEY]: _held, ...visibleEventData } =
+    const { [QUIET_HOURS_HOLD_KEY]: _held, ...storedEventData } =
       base.eventData &&
       typeof base.eventData === "object" &&
       !Array.isArray(base.eventData)
         ? (base.eventData as Record<string, unknown>)
         : ({} as Record<string, unknown>);
+    // A-09: the submission's triage reference, so a "Customer replied" row can open it.
+    const submissionRef = submissionRefs.get(base.id);
+    const visibleEventData = submissionRef
+      ? { ...storedEventData, submissionRef }
+      : storedEventData;
     const notification = {
       ...base,
       eventData:
-        base.eventData &&
-        typeof base.eventData === "object" &&
-        !Array.isArray(base.eventData)
+        submissionRef ||
+        (base.eventData &&
+          typeof base.eventData === "object" &&
+          !Array.isArray(base.eventData))
           ? Object.keys(visibleEventData).length === 0
             ? null
             : visibleEventData

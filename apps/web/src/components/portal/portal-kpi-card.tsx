@@ -58,7 +58,10 @@ export function PortalKpiCard({
         <Icon className="size-4.5" />
       </span>
       <span className="grid min-w-0 gap-0.5">
-        <span className="truncate text-muted-foreground text-sm">{label}</span>
+        {/* The label wraps too: a figure's name is never cut off (fit rule, 3 Nov). */}
+        <span className="break-words text-muted-foreground text-sm">
+          {label}
+        </span>
         <span className="font-semibold text-2xl text-foreground tabular-nums leading-tight">
           {value}
         </span>

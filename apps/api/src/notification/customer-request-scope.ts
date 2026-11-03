@@ -130,7 +130,9 @@ function ownedSubmissionExists(
           eq(submission.id, submissionId),
           eq(submission.requesterId, identity.personId),
           eq(submission.organisationId, identity.organisationId),
-          eq(workspace.organisationId, submission.organisationId),
+          // The workspace belongs to the provider organisation, the submission to the
+          // customer's (A-01); comparing the two hid every submission notification. Reach is
+          // the requester and the customer organisation above.
           eq(requestType.customerVisible, true),
           isNull(workspace.deletedAt),
           or(isNull(submission.workItemId), linkedItem),

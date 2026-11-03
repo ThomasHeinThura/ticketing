@@ -311,7 +311,13 @@ async function failure(response: Response, fallback: string): Promise<never> {
     } catch {
       body = null;
     }
-    if (body?.message === "feature_disabled") throw new FeatureDisabledError();
+    // A-11: the feature gate answers with a plain-text `feature_disabled` body, not JSON.
+    if (
+      body?.message === "feature_disabled" ||
+      (body === null &&
+        (await readErrorDetail(response.clone(), "")) === "feature_disabled")
+    )
+      throw new FeatureDisabledError();
     if (body?.message === "cycle_overlap" && body.conflictingCycle)
       throw new CycleOverlapError(body.conflictingCycle as CycleRef);
     if (

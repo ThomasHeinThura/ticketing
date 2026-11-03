@@ -484,6 +484,11 @@
 			"title": "Entrar no God Mode",
 			"subtitle": "Administradores da instância entram com a senha e o código do aplicativo autenticador. O login único não está disponível aqui.",
 			"passwordDisabled": "O login com senha está desativado nesta instância, então o God Mode não pode ser aberto por esta página. Peça ao operador para ativar o login local."
+		},
+		"wrongPortal": {
+			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
+			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
+			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
 		}
 	},
 	"settings": {
@@ -1033,6 +1038,8 @@
 			},
 			"importExportTasks": "Importar/Exportar",
 			"importExportTasksDescription": "Importe e exporte {{term_work_item_other}}.",
+			"exportWorkItems": "Export",
+			"exportWorkItemsDescription": "Download the {{term_work_item_other}} in this {{term_project_one}} as a CSV file.",
 			"engagement": {
 				"amber": "Amber",
 				"calendarRequired": "A managed service needs a service calendar.",
@@ -4886,7 +4893,10 @@
 		"summary": "Summary",
 		"systemReasons": {
 			"clarification_window_expired": "Closed automatically: no reply within {{days}} days of the clarification request."
-		}
+		},
+		"loadError": "The {{term_submission_other}} could not be loaded.",
+		"noAccessDescription": "Triage needs the intake triage permission. Ask a workspace admin if you need it.",
+		"noAccessTitle": "You cannot triage {{term_submission_other}}"
 	},
 	"requestTypes": {
 		"addField": "Add field",
@@ -7087,6 +7097,10 @@
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
 				"title": "SLAs are off for this workspace"
+			},
+			"pages": {
+				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
+				"title": "Pages are off for this {{term_project_one}}"
 			}
 		},
 		"modules": {
@@ -7980,7 +7994,8 @@
 			"empty": "No time logged on this item.",
 			"everyone": "Everyone",
 			"loadError": "Could not load the time on this item.",
-			"total": "Total"
+			"total": "Total",
+			"featureOff": "Time tracking is off for this {{term_project_one}}."
 		},
 		"timer": {
 			"cappedNotice": "The timer ran past 12 hours, so only 12 hours were recorded. Edit the entry to what actually happened.",
@@ -8559,7 +8574,8 @@
 			"title": "Dashboard",
 			"widgetView": "View of {{title}}",
 			"workspaceScope": "Workspace",
-			"exportWidget": "Export {{title}} as CSV"
+			"exportWidget": "Export {{title}} as CSV",
+			"aboutNumbers": "About the numbers in {{title}}"
 		},
 		"detail": {
 			"back": "All reports",
@@ -8925,6 +8941,12 @@
 			"retry": "Try again",
 			"subtitle": "A CSV export you requested. Only you can download it.",
 			"title": "Report export"
+		},
+		"chartScroll": {
+			"hint_many": "Scroll sideways to see all {{count}} columns.",
+			"hint_one": "Scroll sideways to see the {{count}} column.",
+			"hint_other": "Scroll sideways to see all {{count}} columns.",
+			"region": "{{label}} Scrolls sideways."
 		}
 	},
 	"godModeDeliveries": {

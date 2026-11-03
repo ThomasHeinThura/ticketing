@@ -96,6 +96,29 @@ export function ReportContextLine({ report }: { report: ReportEnvelope }) {
     report.scope.kind === "all"
       ? t("reports:context.scopeAll", { count: report.scope.projectCount })
       : t("reports:context.scopeReach", { count: report.scope.projectCount });
+  const window = reportWindowText(report, t);
+  return (
+    <p className="text-muted-foreground text-sm" data-testid="report-context">
+      <span>{scope}</span>
+      <span aria-hidden="true"> · </span>
+      <span>{window}</span>
+      <span aria-hidden="true"> · </span>
+      <span>
+        {t("reports:context.asOf", { time: formatDateTime(report.asOf) })}
+      </span>
+      <span aria-hidden="true"> · </span>
+      <span data-testid="report-boundary">{boundaryText(report, t)}</span>
+      <span aria-hidden="true"> · </span>
+      <span data-testid="report-sources">{sourceSummary(report, t)}</span>
+    </p>
+  );
+}
+
+/** The report's window in words: "Sep 21, 2026 to Oct 21, 2026 (30 days)", or live. */
+export function reportWindowText(
+  report: ReportEnvelope,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   const windowToDate = new Date(report.window.to);
   const isCustomExclusiveMidnight =
     report.window.preset === "custom" &&
@@ -106,7 +129,7 @@ export function ReportContextLine({ report }: { report: ReportEnvelope }) {
   const windowTo = isCustomExclusiveMidnight
     ? new Date(windowToDate.getTime() - 1).toISOString()
     : report.window.to;
-  const window = report.window.live
+  return report.window.live
     ? t("reports:context.windowLive")
     : t("reports:context.window", {
         from: formatDate(report.window.from, {
@@ -123,21 +146,6 @@ export function ReportContextLine({ report }: { report: ReportEnvelope }) {
         }),
         days: report.window.days,
       });
-  return (
-    <p className="text-muted-foreground text-sm" data-testid="report-context">
-      <span>{scope}</span>
-      <span aria-hidden="true"> · </span>
-      <span>{window}</span>
-      <span aria-hidden="true"> · </span>
-      <span>
-        {t("reports:context.asOf", { time: formatDateTime(report.asOf) })}
-      </span>
-      <span aria-hidden="true"> · </span>
-      <span data-testid="report-boundary">{boundaryText(report, t)}</span>
-      <span aria-hidden="true"> · </span>
-      <span data-testid="report-sources">{sourceSummary(report, t)}</span>
-    </p>
-  );
 }
 
 function TrendLine({ metric }: { metric: ReportMetric }) {
@@ -301,7 +309,7 @@ export function ReportVisual({
         </Card>
       ) : (
         <Card>
-          <CardContent className="overflow-x-auto p-0">{table}</CardContent>
+          <CardContent className="min-w-0 p-0">{table}</CardContent>
         </Card>
       )}
       {report.truncated ? (

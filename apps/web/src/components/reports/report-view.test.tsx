@@ -338,7 +338,7 @@ describe("a chart always has its table (RP-11)", () => {
         onViewChange={onViewChange}
       />,
     );
-    expect(container.querySelector("svg")).toBeNull();
+    expect(container.querySelector('svg[role="img"]')).toBeNull();
     const table = screen.getByRole("table", { name: "reports:tableLabel" });
     expect(table.textContent).toContain("urgent");
     expect(table.textContent).toContain("reports:notEnoughData 3/10");
@@ -348,6 +348,32 @@ describe("a chart always has its table (RP-11)", () => {
     render(<ReportVisual report={report({ chart: null })} view={undefined} />);
     expect(screen.getByRole("table")).toBeTruthy();
     expect(screen.queryByRole("tab")).toBeNull();
+  });
+});
+
+describe("a wide table shows it scrolls (3 Nov)", () => {
+  it("fades the cut edge of its named frame and carries a hint shown only while it overflows", () => {
+    render(
+      <ReportTable
+        columns={report().columns}
+        rows={report().rows}
+        label="Ageing: table"
+      />,
+    );
+    const region = screen.getByRole("region", { name: "Ageing: table" });
+    const viewport = region.querySelector('[data-slot="scroll-area-viewport"]');
+    expect(viewport?.className).toContain("mask-r-from-");
+    const hint = screen.getByTestId("table-scroll-hint");
+    // The hint counts the data columns, sits outside the scrolling frame, and is shown by CSS
+    // only when the frame reports horizontal overflow.
+    expect(hint.textContent).toBe(
+      `reports:chartScroll.hint ${report().columns.length}`,
+    );
+    expect(region.contains(hint)).toBe(false);
+    expect(hint.className).toContain("hidden");
+    expect(hint.className).toContain(
+      "group-has-[[data-slot=scroll-area-viewport][data-has-overflow-x]]/report-table:flex",
+    );
   });
 });
 

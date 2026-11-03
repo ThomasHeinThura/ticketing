@@ -484,6 +484,11 @@
 				"nameRequired": "Name is required",
 				"nameShort": "Name must be at least 2 characters"
 			}
+		},
+		"wrongPortal": {
+			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
+			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
+			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
 		}
 	},
 	"settings": {
@@ -1067,6 +1072,8 @@
 			},
 			"importExportTasks": "Import/Export",
 			"importExportTasksDescription": "Import and export {{term_work_item_other}}.",
+			"exportWorkItems": "Export",
+			"exportWorkItemsDescription": "Download the {{term_work_item_other}} in this {{term_project_one}} as a CSV file.",
 			"keyRenamePending": "The key was changed. Confirm to rename it.",
 			"keyRenameAction": "Rename key",
 			"keyRenameCancel": "Undo",
@@ -4864,7 +4871,10 @@
 			"work_item_type_unavailable": "The chosen work item type is no longer available in this workspace.",
 			"form_version_unavailable": "The form version this {{term_submission_one}} was made with is no longer available.",
 			"openWinner": "Open {{key}}"
-		}
+		},
+		"noAccessTitle": "You cannot triage {{term_submission_other}}",
+		"noAccessDescription": "Triage needs the intake triage permission. Ask a workspace admin if you need it.",
+		"loadError": "The {{term_submission_other}} could not be loaded."
 	},
 	"requestTypes": {
 		"title": "{{term_request_one}} types",
@@ -6897,6 +6907,10 @@
 			"sla": {
 				"title": "SLAs are off for this workspace",
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on."
+			},
+			"pages": {
+				"title": "Pages are off for this {{term_project_one}}",
+				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on."
 			}
 		},
 		"cycles": {
@@ -7970,7 +7984,8 @@
 			"empty": "No time logged on this item.",
 			"everyone": "Everyone",
 			"loadError": "Could not load the time on this item.",
-			"total": "Total"
+			"total": "Total",
+			"featureOff": "Time tracking is off for this {{term_project_one}}."
 		},
 		"settings": {
 			"backdateHelp": "People can log time this many days back; further back needs the backdating permission. 0 means today only.",
@@ -8475,6 +8490,11 @@
 		"notEnoughData": "Not enough data ({{n}} of {{needed}} needed)",
 		"tableLabel": "{{title}}: table",
 		"chartLabel": "{{title}}: chart. The same numbers are in the table view.",
+		"chartScroll": {
+			"hint_one": "Scroll sideways to see the {{count}} column.",
+			"hint_other": "Scroll sideways to see all {{count}} columns.",
+			"region": "{{label}} Scrolls sideways."
+		},
 		"truncated": "Only the first rows are shown.",
 		"views": {
 			"chart": "Chart",
@@ -9032,7 +9052,8 @@
 			"savedView": "Saved report",
 			"widgetView": "View of {{title}}",
 			"noMetric": "This report has no single number.",
-			"exportWidget": "Export {{title}} as CSV"
+			"exportWidget": "Export {{title}} as CSV",
+			"aboutNumbers": "About the numbers in {{title}}"
 		},
 		"editor": {
 			"title": "Dashboard editor",

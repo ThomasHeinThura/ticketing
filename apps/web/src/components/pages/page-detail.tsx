@@ -32,6 +32,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FeatureOff } from "@/components/agile/feature-off";
 import { DocumentEditor } from "@/components/editor/document-editor";
 import { LeaveUnsavedDialog } from "@/components/editor/leave-unsaved-dialog";
 import {
@@ -48,6 +49,7 @@ import {
   type Page,
   PageConflictError,
   type PageInput,
+  PagesDisabledError,
   type PageVersionSummary,
   pageKeys,
   requestPageDeletion,
@@ -688,6 +690,8 @@ export function PageDetail({
         <Skeleton className="h-40 w-full" />
       </div>
     );
+  if (query.error instanceof PagesDisabledError)
+    return <FeatureOff feature="pages" />;
   if (query.isError || !query.data) {
     const missing =
       query.error instanceof HttpError && query.error.status === 404;

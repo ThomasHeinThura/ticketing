@@ -102,6 +102,12 @@ import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
 import { ensureStaffPersonForUser } from "./utils/seed-internal-organisation";
+import {
+  CUSTOMER_PORTAL_UNAVAILABLE,
+  refusesWrongPortalWithError,
+  USE_AGENT_SIGN_IN,
+  USE_CUSTOMER_PORTAL,
+} from "./utils/wrong-portal-refusal";
 import { invalidateNativeAuthorization } from "./ws";
 
 export function assertCookieDomainIsNotConfiguredForHostIsolation() {
@@ -1231,6 +1237,19 @@ function createAuth(
           );
           deleteSessionCookie(ctx, true);
           ctx.context.setNewSession(null);
+          if (refusesWrongPortalWithError(ctx.path)) {
+            // A staff account belongs on the agent host; a customer account that lost portal
+            // access (deactivated, organisation closed) is refused without naming another door.
+            if (await hasCustomerSidePerson(newSession.user.id))
+              throw new APIError("FORBIDDEN", {
+                message: "This account cannot sign in to the customer portal.",
+                code: CUSTOMER_PORTAL_UNAVAILABLE,
+              });
+            throw new APIError("FORBIDDEN", {
+              message: "Use the agent sign-in page for this account.",
+              code: USE_AGENT_SIGN_IN,
+            });
+          }
           return;
         }
 
@@ -1249,6 +1268,11 @@ function createAuth(
           );
           deleteSessionCookie(ctx, true);
           ctx.context.setNewSession(null);
+          if (refusesWrongPortalWithError(ctx.path))
+            throw new APIError("FORBIDDEN", {
+              message: "Use the customer portal for this account.",
+              code: USE_CUSTOMER_PORTAL,
+            });
           return;
         }
 

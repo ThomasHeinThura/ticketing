@@ -212,6 +212,20 @@ export function getWebhookNotificationHref(
     : null;
 }
 
+/**
+ * A-09: a submission notice (a customer reply on a request) opens it in the triage queue. The
+ * inbox carries its reference as `eventData.submissionRef`.
+ */
+export function getSubmissionNotificationHref(
+  notification: Pick<Notification, "resourceType" | "eventData">,
+): string | null {
+  if (notification.resourceType !== "submission") return null;
+  const ref = getEventDataRecord(notification.eventData)?.submissionRef;
+  return typeof ref === "string" && /^SUB-[1-9]\d{0,9}$/u.test(ref)
+    ? routes.intakeQueue.build({ ref })
+    : null;
+}
+
 /** AK-6 notices open the current user's canonical API key management page. */
 export function getApiKeyNotificationHref(
   notification: Pick<Notification, "deepLink">,
@@ -261,6 +275,12 @@ export function useNotificationClick() {
       const apiKeyHref = getApiKeyNotificationHref(notification);
       if (apiKeyHref) {
         void navigate({ href: apiKeyHref });
+        return;
+      }
+
+      const submissionHref = getSubmissionNotificationHref(notification);
+      if (submissionHref) {
+        void navigate({ href: submissionHref });
         return;
       }
 

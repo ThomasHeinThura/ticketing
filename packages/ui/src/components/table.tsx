@@ -6,8 +6,16 @@ import { ScrollArea } from "./scroll-area";
 function Table({
   className,
   scrollLabel,
+  scrollFade = false,
   ...props
-}: React.ComponentProps<"table"> & { scrollLabel?: string }) {
+}: React.ComponentProps<"table"> & {
+  scrollLabel?: string;
+  /**
+   * With `scrollLabel`: fade the edge a wide table is cut at, so the cut reads as "more to
+   * scroll" rather than clipped text.
+   */
+  scrollFade?: boolean;
+}) {
   const table = (
     <table
       className={cn(
@@ -25,6 +33,7 @@ function Table({
         data-slot="table-container"
         role="region"
         aria-label={scrollLabel}
+        scrollFade={scrollFade}
       >
         {table}
       </ScrollArea>
