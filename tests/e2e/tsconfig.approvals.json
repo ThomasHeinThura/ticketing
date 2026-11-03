@@ -28,6 +28,7 @@
     "scripts/seed-approval-auth-provider.ts",
     "scripts/seed-instance-users-customer.ts",
     "scripts/seed-intake-primary.ts",
+    "scripts/seed-portal-projects.ts",
     "approvals-primary-journey.spec.ts",
     "playwright.approvals.config.ts",
     "customer-cannot-request-cab.spec.ts",
@@ -37,6 +38,7 @@
     "service-operations-primary-journey.spec.ts",
     "intake-primary-journey.spec.ts",
     "session-cache-security-journey.spec.ts",
+    "portal-projects-journey.spec.ts",
     "../api/mfa-csrf-app-fixture.test.ts"
   ]
 }

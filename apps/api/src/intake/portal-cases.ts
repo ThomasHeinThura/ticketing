@@ -802,6 +802,18 @@ export async function exportPortalCases(
 // Home
 // ---------------------------------------------------------------------------------------------
 
+/** Readable cases that are received, need more information or in progress. */
+const OUTSTANDING_COUNT_SQL = sql`count(*) FILTER (WHERE c.customer_status IN (${sql.join(
+  OPEN_STATUSES.map((value) => sql`${value}`),
+  sql`, `,
+)}))::int`;
+/**
+ * Every readable case waiting on the customer (a clarifying submission or an open
+ * `waiting_customer` pause, whoever raised it): the same rows as the list's
+ * `scope=all&status=need_more_info`.
+ */
+const NEED_MORE_INFO_COUNT_SQL = sql`count(*) FILTER (WHERE c.customer_status = 'need_more_info')::int`;
+
 export async function portalHomeCounts(
   personId: string,
   project: string | undefined,
@@ -809,10 +821,6 @@ export async function portalHomeCounts(
   const viewer = await loadPortalViewer(personId);
   const source = await caseSource(viewer);
   const projectFilter = project ? sql`AND c.project_key = ${project}` : sql``;
-  const open = sql.join(
-    OPEN_STATUSES.map((value) => sql`${value}`),
-    sql`, `,
-  );
   const closed = sql.join(
     CLOSED_STATUSES.map((value) => sql`${value}`),
     sql`, `,
@@ -825,10 +833,8 @@ export async function portalHomeCounts(
     }>(sql`
       WITH cases AS (${source})
       SELECT
-        count(*) FILTER (WHERE c.customer_status IN (${open}))::int AS outstanding,
-        -- Every readable case waiting on the customer: the same rows as the list's
-        -- scope=all&status=need_more_info.
-        count(*) FILTER (WHERE c.customer_status = 'need_more_info')::int AS need_more_info,
+        ${OUTSTANDING_COUNT_SQL} AS outstanding,
+        ${NEED_MORE_INFO_COUNT_SQL} AS need_more_info,
         count(*) FILTER (
           WHERE c.customer_status IN (${closed})
             AND c.closed_at >= now() - interval '30 days'
@@ -876,6 +882,46 @@ export async function portalHomeCounts(
         ? { seconds: Math.round(seconds / samples), sampleSize: samples }
         : null,
   };
+}
+
+/**
+ * The home's `outstanding` and `actionRequired.cases` per project id, over the same readable
+ * case set (S4c: the Projects list and Project Details counts equal `GET /api/portal/home
+ * ?project=KEY`). Ids without readable cases are absent.
+ */
+export async function portalCaseCountsByProject(
+  viewer: PortalViewer,
+  projectIds: readonly string[],
+): Promise<Map<string, { outstanding: number; needMoreInfo: number }>> {
+  const counts = new Map<
+    string,
+    { outstanding: number; needMoreInfo: number }
+  >();
+  if (projectIds.length === 0) return counts;
+  const source = await caseSource(viewer);
+  const result = await db.execute<{
+    project_id: string;
+    outstanding: number;
+    need_more_info: number;
+  }>(sql`
+    WITH cases AS (${source})
+    SELECT
+      c.project_id AS project_id,
+      ${OUTSTANDING_COUNT_SQL} AS outstanding,
+      ${NEED_MORE_INFO_COUNT_SQL} AS need_more_info
+    FROM cases c
+    WHERE c.project_id IN (${sql.join(
+      projectIds.map((id) => sql`${id}`),
+      sql`, `,
+    )})
+    GROUP BY c.project_id
+  `);
+  for (const row of result.rows)
+    counts.set(row.project_id, {
+      outstanding: Number(row.outstanding),
+      needMoreInfo: Number(row.need_more_info),
+    });
+  return counts;
 }
 
 /** The ids of the viewer organisation's live projects with this key (`?project=`). */

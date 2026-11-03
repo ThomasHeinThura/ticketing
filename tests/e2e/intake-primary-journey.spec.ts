@@ -794,7 +794,9 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       await returnPage.goto(new URL("/", portal).toString());
       expect((await homeResponse).status()).toBe(200);
       await expect(
-        returnPage.getByText("Outstanding", { exact: true }),
+        returnPage
+          .locator('[data-slot="portal-kpi-card"]')
+          .getByText("Outstanding", { exact: true }),
       ).toBeVisible();
       await expect(
         returnPage.getByRole("link", { name: ref, exact: true }),

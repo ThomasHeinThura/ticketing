@@ -19,6 +19,7 @@ import {
 import { PortalCaseTable } from "@/components/portal/cases/portal-case-table";
 import { PortalKpiCard } from "@/components/portal/portal-kpi-card";
 import { PortalOrientation } from "@/components/portal/portal-orientation";
+import { PortalProjectsCards } from "@/components/portal/projects/portal-projects-cards";
 import {
   usePortalCases,
   usePortalHome,
@@ -145,6 +146,8 @@ function PortalHome() {
           </div>
         )}
       </section>
+
+      <PortalProjectsCards projectKey={project} />
 
       <section
         className="flex flex-col gap-3"

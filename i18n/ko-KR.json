@@ -4259,6 +4259,131 @@
 			"summary": "Showing {{shown}} of {{total}}",
 			"viewAll": "View all {{term_request_other}}",
 			"yourTeam": "Your team"
+		},
+		"projects": {
+			"columns": {
+				"actionRequired": "Action required",
+				"key": "Key",
+				"name": "Name",
+				"outstanding": "Outstanding",
+				"status": "Status",
+				"type": "Type"
+			},
+			"description": "Your organisation's projects and managed services.",
+			"detail": {
+				"back": "All projects",
+				"contacts": {
+					"emailLabel": "Email {{name}}",
+					"manager": "Account manager",
+					"none": "No contacts are listed yet.",
+					"title": "Contact information",
+					"unnamed": "Your team"
+				},
+				"documents": {
+					"none": "No documents are shared yet.",
+					"opensInNewTab": "opens in a new tab",
+					"title": "Documents"
+				},
+				"hours": {
+					"none": "No service hours are allocated to this project.",
+					"overdrawn": "{{hours}} hours over the allocation",
+					"percentUsed": "{{percent}}% used",
+					"progressLabel": "Service hours used",
+					"remaining": "{{hours}} hours remaining",
+					"title": "Service hours allocation",
+					"usedOf": "{{used}} of {{total}} hours used"
+				},
+				"information": {
+					"createdOn": "Created on",
+					"goLive": "Go-live date",
+					"key": "Key",
+					"live": "Live",
+					"name": "Project name",
+					"notSet": "Not set",
+					"serviceHours": "Service calendar",
+					"supportTier": "Support tier",
+					"title": "Project information"
+				},
+				"loadFailed": "The project could not be loaded.",
+				"milestones": {
+					"none": "No milestones yet.",
+					"planned": "Planned",
+					"reached": "Reached",
+					"title": "Milestones"
+				},
+				"notFound": {
+					"description": "This project does not exist or is not shared with your organisation.",
+					"title": "Project not found"
+				},
+				"prerequisites": {
+					"description": "Items the team is waiting on before work can continue.",
+					"done": "Done",
+					"due": "Due {{date}}",
+					"none": "Nothing is waiting on you.",
+					"open": "Open",
+					"title": "What we need from you"
+				},
+				"subscription": {
+					"end": "End",
+					"ended": "Ended on {{date}}",
+					"none": "No subscription period is recorded for this project.",
+					"progressLabel": "Subscription period elapsed",
+					"remaining_other": "{{count}} days remaining",
+					"start": "Start",
+					"title": "Subscription period",
+					"upcoming": "Starts on {{date}}"
+				},
+				"summary": {
+					"inScope": "In scope",
+					"none": "No summary has been written yet.",
+					"objective": "Objective",
+					"outOfScope": "Out of scope",
+					"successCriteria": "Success criteria",
+					"title": "About this project"
+				}
+			},
+			"empty": {
+				"description": "Projects your team runs for your organisation appear here.",
+				"title": "No projects yet"
+			},
+			"health": {
+				"amber": "At risk",
+				"green": "On track",
+				"label": "Health",
+				"red": "Off track"
+			},
+			"kind": {
+				"managed_service": "Managed service",
+				"project": "Project"
+			},
+			"loadFailed": "Projects could not be loaded.",
+			"navigation": "Project details",
+			"noMatches": {
+				"description": "Try another search or type.",
+				"title": "No matching projects"
+			},
+			"search": {
+				"clear": "Clear search",
+				"label": "Search projects",
+				"placeholder": "Search by key or name"
+			},
+			"status": {
+				"active": "Active",
+				"closed": "Closed",
+				"on_hold": "On hold",
+				"planning": "Planning"
+			},
+			"tabs": {
+				"all": "All",
+				"label": "Filter by type",
+				"projects": "Projects",
+				"services": "Managed services"
+			},
+			"title": "Projects",
+			"dashboard": {
+				"title": "Your projects",
+				"viewAll": "View all projects"
+			}
 		}
 	},
 	"instanceUsers": {

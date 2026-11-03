@@ -750,6 +750,22 @@
 		"screenshot": "portal-kb.png"
 	},
 	{
+		"name": "portal-projects",
+		"inventoryRoute": "/projects",
+		"applicationRoute": "/projects",
+		"origin": "portal",
+		"test": "portal projects screen @visual",
+		"screenshot": "portal-projects.png"
+	},
+	{
+		"name": "portal-project-detail",
+		"inventoryRoute": "/projects/{key}",
+		"applicationRoute": "/projects/$projectKey",
+		"origin": "portal",
+		"test": "portal project detail screen @visual",
+		"screenshot": "portal-project-detail.png"
+	},
+	{
 		"name": "portal-kb-article",
 		"inventoryRoute": "/kb/{id}",
 		"applicationRoute": "/kb/$id",

@@ -1247,6 +1247,105 @@ const vExPortalReleases = {
   nextCursor: null,
 };
 
+// ---- Portal projects (S4c): GET /api/portal/projects and /api/portal/projects/VIS ----
+// Two projects so the top-bar project selector shows; counts and the contract are
+// server-computed, the page only renders them.
+const vPorProjectVisual = {
+  key: "VIS",
+  name: "Visual rollout",
+  kind: "project",
+  status: "active",
+  health: "green",
+  counts: { actionRequired: 1, outstanding: 3 },
+};
+const vPorProjects = {
+  data: [
+    vPorProjectVisual,
+    {
+      key: "OPS",
+      name: "Managed operations",
+      kind: "managed_service",
+      status: "on_hold",
+      health: "amber",
+      counts: { actionRequired: 0, outstanding: 1 },
+    },
+  ],
+};
+const vPorProjectDetail = {
+  ...vPorProjectVisual,
+  description: "Move every customer team onto the new support portal.",
+  createdAt: "2026-01-05T09:00:00.000Z",
+  supportLevel: "L2",
+  serviceCalendarName: "Business hours",
+  summary: {
+    objective: "Every customer team raises requests through the portal.",
+    inScope: "Portal set-up, request types and training.",
+    outOfScope: "Changes to the customer's own systems.",
+    successCriteria: "All teams onboarded before go-live.",
+  },
+  goLive: { name: "Go-live", date: "2026-12-01T00:00:00.000Z", reached: false },
+  milestones: [
+    {
+      id: "visual-milestone-kickoff",
+      name: "Kick-off",
+      date: "2026-01-12T00:00:00.000Z",
+      reachedAt: "2026-01-12T00:00:00.000Z",
+    },
+    {
+      id: "visual-milestone-golive",
+      name: "Go-live",
+      date: "2026-12-01T00:00:00.000Z",
+      reachedAt: null,
+    },
+  ],
+  prerequisites: [
+    {
+      id: "visual-prerequisite-vpn",
+      title: "Provide VPN access for the support team",
+      dueDate: "2026-11-20T00:00:00.000Z",
+      completedAt: null,
+    },
+  ],
+  documents: [
+    {
+      id: "visual-document-sow",
+      title: "Statement of work",
+      url: "https://docs.example.test/sow",
+    },
+  ],
+  contacts: [
+    {
+      kind: "manager",
+      role: null,
+      name: "Mara Manager",
+      email: "mara.manager@example.test",
+    },
+    {
+      kind: "stakeholder",
+      role: "Technical lead",
+      name: "Sam Stakeholder",
+      email: "sam.stakeholder@example.test",
+    },
+  ],
+  contract: {
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
+    period: {
+      state: "active",
+      totalDays: 365,
+      elapsedDays: 304,
+      daysRemaining: 61,
+      elapsedPct: 83,
+    },
+    hours: {
+      contractedMinutes: 12000,
+      usedMinutes: 7530,
+      remainingMinutes: 4470,
+      usedPct: 63,
+    },
+  },
+};
+
 // agile fixtures
 // ---- Cycles (GET /api/projects/help/cycles, /api/cycles/visual-cycle, /burndown) ----
 // Statuses, summaries, velocity and burndown points are all server-computed; the client never
@@ -5703,6 +5802,10 @@ async function installAuthenticatedFixture(page: Page) {
       body = vExWorkspaceLabels;
     } else if (path === "/api/portal/releases") {
       body = vExPortalReleases;
+    } else if (path === "/api/portal/projects") {
+      body = vPorProjects;
+    } else if (path === "/api/portal/projects/VIS") {
+      body = vPorProjectDetail;
     } else if (path === "/api/announcements") {
       body = vExAnnouncements;
     } else if (path === "/api/portal/announcements") {
@@ -7613,6 +7716,13 @@ test("portal home screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: "SUB-7", exact: true }),
   ).toBeVisible();
+  // S4c: the projects card list has painted from the shared projects query.
+  await expect(
+    page.getByRole("heading", { name: "Your projects", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Visual rollout", exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Average first response")).toBeVisible();
   // The lazy shell is ready: navigation and the top bar have both painted.
   await expect(
@@ -8962,6 +9072,29 @@ test("portal knowledge base screen @visual", async ({ page }) => {
     includeAA: true,
   });
 });
+test("portal projects screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/projects");
+  await expect(
+    page.getByRole("heading", { name: "Projects", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Visual rollout", exact: true }),
+  ).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-projects.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
 test("portal announcements screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("http://127.0.0.1:4179/announcements");
@@ -8977,6 +9110,27 @@ test("portal announcements screen @visual", async ({ page }) => {
   await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
   await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-announcements.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("portal project detail screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/projects/VIS");
+  await expect(
+    page.getByRole("heading", { name: "Visual rollout", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Mara Manager", { exact: true })).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-project-detail.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

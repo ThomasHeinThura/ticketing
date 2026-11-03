@@ -139,6 +139,20 @@ function apiBody(pathname: string): unknown {
         closedLast30Days: 5,
         averageFirstResponse: { seconds: 5400, sampleSize: 4 },
       };
+    case "/api/portal/projects":
+      // One project: the dashboard shows its card; the top-bar selector stays hidden.
+      return {
+        data: [
+          {
+            key: "INFRA",
+            name: "Infrastructure managed services platform",
+            kind: "managed_service",
+            status: "active",
+            health: "amber",
+            counts: { actionRequired: 2, outstanding: 3 },
+          },
+        ],
+      };
     case "/api/portal/requests":
       return casesPage;
     case "/api/portal/approvals":
@@ -277,6 +291,18 @@ for (const [viewportName, viewport] of VIEWPORTS)
       await expect(page.getByText("Average first response")).toBeVisible();
       await expect(
         page.getByRole("link", { name: "SUB-7", exact: true }),
+      ).toBeVisible();
+      // S4c: the projects card list has painted with the fixture project.
+      await expect(
+        page.getByRole("heading", { name: "Your projects", exact: true }),
+      ).toBeVisible();
+      await expect(
+        page
+          .getByRole("region", { name: "Your projects", exact: true })
+          .getByRole("link", {
+            name: "Infrastructure managed services platform",
+            exact: true,
+          }),
       ).toBeVisible();
       await expectSeverityAndStatus(page, viewportName);
       // CP-4: the assignee is always "Your team" (the column is hidden in a narrow frame).

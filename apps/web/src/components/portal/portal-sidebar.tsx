@@ -15,6 +15,7 @@ import {
 } from "@taskdesk/ui";
 import {
   Bell,
+  FolderKanban,
   Headset,
   LayoutDashboard,
   type LucideIcon,
@@ -83,6 +84,12 @@ export default function PortalSidebar() {
       to: routes.portalInbox.path,
       label: t("navigation.updates"),
       icon: Bell,
+    },
+    // S4c: the organisation's projects; `/projects/KEY` keeps it active.
+    {
+      to: routes.portalProjects.path,
+      label: t("projects.navigation"),
+      icon: FolderKanban,
     },
     // D7: announcements, with release notes as a tab of the same page.
     {

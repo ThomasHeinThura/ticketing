@@ -1468,6 +1468,23 @@ export const routes = {
     build: (params: { ref: string }) =>
       `/submissions/${encodeURIComponent(params.ref)}`,
   },
+  /** S4c: the organisation's projects (`docs/screens.md` "Projects list"). */
+  portalProjects: {
+    path: "/projects" as const,
+    build: (search: PortalProjectsSearch = {}) => {
+      const { tab, q } = parsePortalProjectsSearch(search);
+      const query = new URLSearchParams();
+      if (tab) query.set("tab", tab);
+      if (q) query.set("q", q);
+      return `/projects${portalProjectQuery(query, search)}`;
+    },
+  },
+  /** S4c: one project's details (`docs/screens.md` "Project detail"). */
+  portalProject: {
+    path: "/projects/$projectKey" as const,
+    build: (params: { projectKey: string }, search: PortalProjectSearch = {}) =>
+      `/projects/${encodeURIComponent(params.projectKey)}${portalProjectQuery(new URLSearchParams(), search)}`,
+  },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {
     path: "/agent/projects/$projectKey/work" as const,
@@ -2275,6 +2292,24 @@ export const portalProjectSearchMiddlewares: SearchMiddleware<PortalProjectSearc
         : result;
     },
   ];
+
+/** S4c projects list: `tab` narrows by kind (absent = all), `q` searches key and name. */
+export type PortalProjectsSearch = PortalProjectSearch & {
+  tab?: "projects" | "services";
+  q?: string;
+};
+
+export function parsePortalProjectsSearch(raw: unknown): PortalProjectsSearch {
+  if (!raw || typeof raw !== "object") return {};
+  const candidate = raw as Record<string, unknown>;
+  const tab = candidate.tab;
+  const q = typeof candidate.q === "string" ? candidate.q.trim() : "";
+  return {
+    ...(tab === "projects" || tab === "services" ? { tab } : {}),
+    ...(q && q.length <= 200 ? { q } : {}),
+    ...parsePortalProjectSearch(raw),
+  };
+}
 
 function portalProjectQuery(query: URLSearchParams, search: unknown) {
   const { project } = parsePortalProjectSearch(search);
