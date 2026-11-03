@@ -13,6 +13,7 @@ import { createApp } from "../../apps/api/src/index";
 import {
   createAttachmentDownloadUrl,
   createAttachmentUploadUrl,
+  createPortalAttachmentDownloadUrl,
 } from "../../apps/api/src/storage/filesystem";
 
 // Unit tests run without a database; the portal host is on unless a flag row turns it off.
@@ -24,6 +25,12 @@ vi.mock("../../apps/api/src/feature-flag/enforce", async (importOriginal) => ({
   customerPortalStateForUser: async () => null,
   customerPortalStateForSubmission: async () => "on" as const,
 }));
+// Unit tests run without a database: the portal session resolves to this customer person (or to
+// nobody), so the person-bound download route's own check is exercised without one.
+const sessionPerson = vi.hoisted(() => ({ id: "person-a" as string | null }));
+vi.mock("../../apps/api/src/storage/portal-session-person", () => ({
+  portalSessionPersonId: async () => sessionPerson.id,
+}));
 
 const PORTAL = "http://portal.localhost:5174";
 const PORTAL_HOST = "portal.localhost:5174";
@@ -34,7 +41,7 @@ const OTHER_SUBMISSION_KEY =
   "workspace/ws1/submission/sub2/attachment/att2/other.pdf";
 const WORK_ITEM_KEY = "workspace/ws1/work-item/wi1/attachment/att3/agent.pdf";
 
-describe("portal host admits only portal-submission attachment storage URLs (CP-19)", () => {
+describe("portal host storage for submission attachments: generic signed upload, person-bound download only (CP-19)", () => {
   let root: string;
   let previousRoot: string | undefined;
 
@@ -68,7 +75,7 @@ describe("portal host admits only portal-submission attachment storage URLs (CP-
       body,
     });
 
-  it("uploads and downloads a portal submission attachment through the portal origin", async () => {
+  it("uploads a portal submission attachment through the portal origin and downloads it only through a person-bound link", async () => {
     const { app } = createApp();
     const upload = createAttachmentUploadUrl(
       SUBMISSION_KEY,
@@ -80,18 +87,37 @@ describe("portal host admits only portal-submission attachment storage URLs (CP-
     expect(stored.status).toBe(204);
     expect(readFileSync(join(root, SUBMISSION_KEY), "utf8")).toBe("hello");
 
-    const download = await app.request(
+    const bound = await app.request(
       pathOf(
-        createAttachmentDownloadUrl(
+        createPortalAttachmentDownloadUrl(
           SUBMISSION_KEY,
           "report.pdf",
+          "person-a",
           `${PORTAL}/api`,
         ),
       ),
       { headers: { host: PORTAL_HOST } },
     );
-    expect(download.status).toBe(200);
-    expect(await download.text()).toBe("hello");
+    expect(bound.status).toBe(200);
+    expect(await bound.text()).toBe("hello");
+
+    // The old unbound link for the same key is refused on the portal host before the handler,
+    // and still serves staff on the agent host.
+    const unbound = pathOf(
+      createAttachmentDownloadUrl(
+        SUBMISSION_KEY,
+        "report.pdf",
+        `${PORTAL}/api`,
+      ),
+    );
+    expect(
+      (await app.request(unbound, { headers: { host: PORTAL_HOST } })).status,
+    ).toBe(404);
+    const agent = await app.request(unbound, {
+      headers: { host: "localhost:5173" },
+    });
+    expect(agent.status).toBe(200);
+    expect(await agent.text()).toBe("hello");
   });
 
   it("keeps the token binding: another key, a larger body and a bad token are refused", async () => {
@@ -152,6 +178,7 @@ describe("portal host admits only portal-submission attachment storage URLs (CP-
 
   const FINAL_KEY =
     "workspace/ws1/submission/sub1/attachment/att1/final/k3x9q2m7z1a8b4c6d0e5f2g1-report.pdf";
+  /** A person-bound portal download link for `key`, minted for `person-a`. */
   const download = (
     app: ReturnType<typeof createApp>["app"],
     key: string,
@@ -159,11 +186,18 @@ describe("portal host admits only portal-submission attachment storage URLs (CP-
     method = "GET",
   ) =>
     app.request(
-      pathOf(createAttachmentDownloadUrl(key, "report.pdf", `${PORTAL}/api`)),
+      pathOf(
+        createPortalAttachmentDownloadUrl(
+          key,
+          "report.pdf",
+          "person-a",
+          `${PORTAL}/api`,
+        ),
+      ),
       { method, headers: { host } },
     );
 
-  it("downloads a finalized portal submission attachment (final/<token>-<file>) on the portal host", async () => {
+  it("downloads a finalized portal submission attachment (final/<token>-<file>) on the portal host only for its person", async () => {
     const { app } = createApp();
     mkdirSync(dirname(join(root, FINAL_KEY)), { recursive: true });
     writeFileSync(join(root, FINAL_KEY), "finalized bytes");
@@ -173,15 +207,42 @@ describe("portal host admits only portal-submission attachment storage URLs (CP-
     expect((await download(app, FINAL_KEY, PORTAL_HOST, "HEAD")).status).toBe(
       200,
     );
+    // Another signed-in customer, and no portal session at all.
+    try {
+      sessionPerson.id = "person-b";
+      expect((await download(app, FINAL_KEY)).status).toBe(400);
+      sessionPerson.id = null;
+      expect((await download(app, FINAL_KEY)).status).toBe(401);
+    } finally {
+      sessionPerson.id = "person-a";
+    }
+    // The agent host does not serve the portal-bound route.
+    expect((await download(app, FINAL_KEY, "localhost:5173")).status).toBe(404);
+    // The unbound generic link, GET or HEAD, is refused on the portal host.
+    for (const method of ["GET", "HEAD"])
+      expect(
+        (
+          await app.request(
+            pathOf(
+              createAttachmentDownloadUrl(
+                FINAL_KEY,
+                "report.pdf",
+                `${PORTAL}/api`,
+              ),
+            ),
+            { method, headers: { host: PORTAL_HOST } },
+          )
+        ).status,
+        method,
+      ).toBe(404);
   });
 
-  it("refuses finalized-key lookalikes on the portal host (traversal, prefix, work item, extra segments, separators)", async () => {
+  it("refuses finalized-key lookalikes on the portal host (traversal, prefix, extra segments, separators)", async () => {
     const { app } = createApp();
     const token = "k3x9q2m7z1a8b4c6d0e5f2g1";
     for (const key of [
       `workspace/ws1/submission/sub1/attachment/att1/final/${token}-../../x.pdf`,
       `workspace/ws1/submission/sub1/attachment/att1/final/../${token}-x.pdf`,
-      `workspace/ws1/work-item/wi1/attachment/att1/final/${token}-x.pdf`,
       `other/ws1/submission/sub1/attachment/att1/final/${token}-x.pdf`,
       `workspace/ws1/submission/sub1/attachment/att1/final/${token}-x.pdf/extra`,
       `workspace/ws1/submission/sub1/attachment/att1/final/extra/${token}-x.pdf`,

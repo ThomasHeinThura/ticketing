@@ -38,7 +38,10 @@ import {
 import db, { schema } from "../../apps/api/src/database";
 import { invalidateFeatureFlagCache } from "../../apps/api/src/feature-flag/enforce";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
-import { putAttachmentObject } from "../../apps/api/src/storage/filesystem";
+import {
+  createAttachmentDownloadUrl,
+  putAttachmentObject,
+} from "../../apps/api/src/storage/filesystem";
 import {
   addCustomer,
   buildTenant,
@@ -46,7 +49,7 @@ import {
   portalRequest,
   type Tenant,
 } from "./helpers/approval-fixtures";
-import { mockAuthenticatedSession } from "./helpers/auth";
+import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { grantWorkItemProjectAccess, requireRow } from "./helpers/fixtures";
 
@@ -453,6 +456,47 @@ async function seed() {
     sharedItem,
     fabrikamItem,
   };
+}
+
+/** A published request type for Alice's organisation with a summary and an evidence file field. */
+async function evidenceRequestType(
+  s: Awaited<ReturnType<typeof seed>>,
+  required: boolean,
+) {
+  const formSchema = {
+    fields: [
+      { key: "summary", type: "text", label: "Summary", required: true },
+      { key: "evidence", type: "file", label: "Evidence", required },
+    ],
+  };
+  const requestType = requireRow(
+    await db
+      .insert(schema.requestTypeTable)
+      .values({
+        workspaceId: s.contoso.workspaceId,
+        key: `evidence-${randomUUID()}`,
+        name: "Evidence",
+        group: "General",
+        workItemTypeId: s.contoso.type.id,
+        formSchema,
+        published: true,
+        customerVisible: true,
+      })
+      .returning(),
+    "request type",
+  );
+  await db.insert(schema.requestTypeVersionTable).values({
+    workspaceId: s.contoso.workspaceId,
+    requestTypeId: requestType.id,
+    number: 1,
+    formSchema,
+    workItemTypeId: s.contoso.type.id,
+  });
+  await db.insert(schema.organisationRequestTypeTable).values({
+    organisationId: s.alice.orgId,
+    requestTypeId: requestType.id,
+  });
+  return requestType;
 }
 
 /** Alice's submission, accepted and converted into a work item she requests. */
@@ -1232,45 +1276,9 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
 
   it("keeps RT-5 on the server and takes a file field's files after creation (A-08)", async () => {
     const s = await seed();
-    const requestTypeWith = async (required: boolean) => {
-      const formSchema = {
-        fields: [
-          { key: "summary", type: "text", label: "Summary", required: true },
-          { key: "evidence", type: "file", label: "Evidence", required },
-        ],
-      };
-      const requestType = requireRow(
-        await db
-          .insert(schema.requestTypeTable)
-          .values({
-            workspaceId: s.contoso.workspaceId,
-            key: `evidence-${randomUUID()}`,
-            name: "Evidence",
-            group: "General",
-            workItemTypeId: s.contoso.type.id,
-            formSchema,
-            published: true,
-            customerVisible: true,
-          })
-          .returning(),
-        "request type",
-      );
-      await db.insert(schema.requestTypeVersionTable).values({
-        workspaceId: s.contoso.workspaceId,
-        requestTypeId: requestType.id,
-        number: 1,
-        formSchema,
-        workItemTypeId: s.contoso.type.id,
-      });
-      await db.insert(schema.organisationRequestTypeTable).values({
-        organisationId: s.alice.orgId,
-        requestTypeId: requestType.id,
-      });
-      return requestType;
-    };
     // RT-5 is retained: a required, visible field without an answer is refused by the create
     // route for every caller, a file field included (publishing refuses a required file field).
-    const strict = await requestTypeWith(true);
+    const strict = await evidenceRequestType(s, true);
     const refused = await portalRequest(
       s.contoso,
       s.alice,
@@ -1283,7 +1291,7 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     expect(refused.status).toBe(422);
 
     // An optional file field's files upload to the request once it exists, by field key.
-    const optional = await requestTypeWith(false);
+    const optional = await evidenceRequestType(s, false);
     const missingSummary = await portalRequest(
       s.contoso,
       s.alice,
@@ -1332,6 +1340,156 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
       },
     );
     expect(early.status).toBe(400);
+  });
+
+  it("binds a submission's own file download to the requester and refuses every other reader and unbound link (CP-19, AT-5)", async () => {
+    const s = await seed();
+    const optional = await evidenceRequestType(s, false);
+    /** A new submission of Alice's with one evidence file: its ref and the file's id. */
+    const submissionWithFile = async (filename: string) => {
+      const created = await portalRequest(
+        s.contoso,
+        s.alice,
+        "/api/portal/submissions",
+        {
+          method: "POST",
+          body: { key: optional.key, formData: { summary: "Logs" } },
+        },
+      );
+      expect(created.status, await created.clone().text()).toBe(200);
+      const { ref } = (await created.json()) as { ref: string };
+      const done = await customerUpload(
+        s.contoso,
+        s.alice,
+        `/api/portal/submissions/${ref}`,
+        {
+          filename,
+          contentType: "application/pdf",
+          size: PDF_BYTES.length,
+          fieldKey: "evidence",
+        },
+      );
+      expect(done.complete?.status, await done.complete?.text()).toBe(200);
+      return { ref, id: done.id as string };
+    };
+    const { ref, id: logs } = await submissionWithFile("logs.pdf");
+    // Alice's file on another of her submissions: a key the link must not reach.
+    const { id: other } = await submissionWithFile("other.pdf");
+    const base = `/api/portal/submissions/${ref}`;
+    const logsKey = await objectKeyOf(logs);
+    // The submission's own finalized object, not a work-item object.
+    expect(logsKey).toMatch(
+      /^workspace\/[^/]+\/submission\/[^/]+\/attachment\/[^/]+\/final\//u,
+    );
+    const list = (await (
+      await portalRequest(s.contoso, s.alice, `${base}/attachments`)
+    ).json()) as PortalFile[];
+    expect(list.find((file) => file.id === logs)?.downloadable).toBe(true);
+
+    // Byte-identical for the requester, through a person-bound link on the portal origin.
+    const { location, body } = await portalDownloadBytes(
+      s.contoso,
+      s.alice,
+      `${base}/attachments/${logs}`,
+    );
+    const signed = new URL(location);
+    expect(signed.host).toBe(PORTAL_HOST);
+    expect(signed.pathname).toBe("/api/storage/portal-download");
+    expect(body.equals(PDF_BYTES)).toBe(true);
+    expect(await downloadAudits(logs)).toEqual([
+      { actorId: s.alice.person.id },
+    ]);
+
+    const replay = (url: string, who: Customer | null = s.alice) => {
+      if (who) mockAuthenticatedSession(who.user, { portal: "customer" });
+      return portalHostStorage(s.contoso, url, { method: "GET" });
+    };
+    // Another customer of the same organisation and one of another organisation, under their
+    // own signed-in sessions: refused by the person binding.
+    expect((await replay(location, s.bob)).status).toBe(400);
+    expect((await replay(location, s.frank)).status).toBe(400);
+    // Neither can mint a link of their own: the own_submission route answers 404.
+    for (const who of [s.bob, s.frank])
+      expect(
+        (await portalRequest(s.contoso, who, `${base}/attachments/${logs}`))
+          .status,
+      ).toBe(404);
+    // A staff session presented on the portal host is not a customer person; no session at all.
+    for (const portal of ["customer", "agent"] as const) {
+      mockAuthenticatedSession(s.contoso.requester.user, { portal });
+      expect(
+        (await portalHostStorage(s.contoso, location, { method: "GET" }))
+          .status,
+        portal,
+      ).toBe(401);
+    }
+    mockAnonymousSession();
+    expect(
+      (await portalHostStorage(s.contoso, location, { method: "GET" })).status,
+    ).toBe(401);
+    // Expired, the key swapped to Alice's file on her other submission, a forged token, and a
+    // key outside the attachment shapes (refused by host).
+    expect((await afterExpiry(() => replay(location))).status).toBe(400);
+    expect(
+      (await replay(withParam(location, "key", await objectKeyOf(other))))
+        .status,
+    ).toBe(400);
+    expect(
+      (await replay(withParam(location, "token", "x".repeat(43)))).status,
+    ).toBe(400);
+    expect(
+      (await replay(withParam(location, "key", "workspace/x/other/secret.pdf")))
+        .status,
+    ).toBe(404);
+
+    // An unbound generic link for the submission key, the form the portal used to hand out, is
+    // refused on the portal host. Staff keep the generic route on the agent host.
+    const unbound = createAttachmentDownloadUrl(
+      logsKey,
+      "logs.pdf",
+      `http://${PORTAL_HOST}`,
+    );
+    expect(new URL(unbound).pathname).toBe("/api/storage/filesystem-download");
+    expect((await replay(unbound)).status).toBe(404);
+    mockAuthenticatedSession(s.contoso.requester.user);
+    const staffRedirect = await s.contoso.app.request(
+      `/api/submissions/${ref}/attachments/${logs}`,
+    );
+    expect(staffRedirect.status, await staffRedirect.clone().text()).toBe(302);
+    const staffUrl = new URL(
+      staffRedirect.headers.get("location") ?? "",
+      "http://localhost",
+    );
+    expect(staffUrl.pathname).toBe("/api/storage/filesystem-download");
+    expect((await replay(staffUrl.toString())).status).toBe(404);
+    const staffBytes = await s.contoso.app.request(
+      `${staffUrl.pathname}${staffUrl.search}`,
+    );
+    expect(staffBytes.status).toBe(200);
+    expect(Buffer.from(await staffBytes.arrayBuffer()).equals(PDF_BYTES)).toBe(
+      true,
+    );
+    // The portal-bound route is the portal host's only: the agent host does not serve it.
+    mockAuthenticatedSession(s.alice.user, { portal: "customer" });
+    expect(
+      (await s.contoso.app.request(`${signed.pathname}${signed.search}`))
+        .status,
+    ).toBe(404);
+
+    // Alice's own link still works for Alice.
+    const again = await replay(location);
+    expect(again.status).toBe(200);
+    expect(Buffer.from(await again.arrayBuffer()).equals(PDF_BYTES)).toBe(true);
+
+    // On S3 the portal gets the bucket's presigned GET (key and expiry only), as before.
+    const s3Host = useS3Driver();
+    const onS3 = await portalRequest(
+      s.contoso,
+      s.alice,
+      `${base}/attachments/${logs}`,
+    );
+    expect(onS3.status, await onS3.clone().text()).toBe(302);
+    expect(new URL(onS3.headers.get("location") ?? "").host).toBe(s3Host);
   });
 
   it("takes the requester's reply file on a direct request byte for byte and refuses replayed upload links (A-08, CP-19)", async () => {

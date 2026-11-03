@@ -1509,8 +1509,11 @@ This document covers behaviour and interface.
   a policy check. The bucket is never public, and there is **no anonymous read path**:
   kaneo's `is_public` branch in `authorize-asset-access.ts` is deleted at fork
   ([decision log](#pending-07-planningdecision-log)).
-  On the filesystem driver, a portal download or upload of a work-item file uses a portal-bound
-  link bound to the customer person as well as the key and expiry (`CP-19`, 3 November 2026).
+  On the filesystem driver, every portal download (a submission file or a work-item file) and
+  every portal upload of a work-item file uses a portal-bound link bound to the customer person
+  as well as the key and expiry, and the portal session must be that person (`CP-19`,
+  3 November 2026). On S3 the portal gets the bucket's five-minute presigned GET, which binds
+  only the key and expiry: whoever holds it can use it until it expires.
 - `AT-6` Every download writes an audit row (`attachment.downloaded` — [audit-trail.md](feature-contracts-p2.md#audit-trail)).
 - `AT-7` Deleting is soft; the object is removed the following night by `attachment-gc`,
   so an accidental deletion is recoverable for a day. Like every deletion it is a pending

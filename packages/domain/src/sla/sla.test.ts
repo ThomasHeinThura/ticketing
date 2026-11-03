@@ -7,7 +7,7 @@
  * with full-day windows every weekday.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ServiceCalendar } from "../calendar/types.js";
 import {
   computeMetricState,
@@ -604,5 +604,59 @@ describe("12×5 calendar (Mon–Fri 08:00–20:00 Europe/London)", () => {
     expect(dueAtFor(p, from, 60, [])?.getTime()).toBe(
       new Date("2026-09-28T08:00:00Z").getTime(), // Mon 07:00Z + 60 covered min
     );
+  });
+});
+
+describe("calendar work is memoized per zone-day", () => {
+  it("repeats a list page's SLA computation without any further Intl calls", () => {
+    // A list page computes every row with the same calendar; the zone-day offsets are
+    // computed once and reused, so a warm computation never formats a date again.
+    const policy: SlaPolicy = {
+      calendar: {
+        ...CALENDAR_8X5,
+        timezone: "Asia/Bangkok",
+        holidays: [{ date: "2026-10-23" }],
+      },
+      atRiskThresholdPct: 75,
+      goals: [
+        {
+          metric: "first_response",
+          workItemTypeId: null,
+          priority: null,
+          targetMinutes: 240,
+        },
+        {
+          metric: "resolution",
+          workItemTypeId: null,
+          priority: null,
+          targetMinutes: 2400,
+        },
+      ],
+    };
+    const facts: SlaWorkItemFacts = {
+      startedAt: new Date("2026-09-14T03:15:00Z"),
+      firstResponseAt: null,
+      resolvedAt: null,
+      pauses: [
+        {
+          metric: "resolution",
+          startedAt: new Date("2026-09-20T03:00:00Z"),
+          endedAt: new Date("2026-09-22T05:00:00Z"),
+          reason: "waiting_customer",
+        },
+      ],
+    };
+    const now = new Date("2026-11-03T10:00:00Z");
+    const first = computeSlaState(policy, facts, now);
+    const formatToParts = vi.spyOn(
+      Intl.DateTimeFormat.prototype,
+      "formatToParts",
+    );
+    try {
+      expect(computeSlaState(policy, facts, now)).toEqual(first);
+      expect(formatToParts).not.toHaveBeenCalled();
+    } finally {
+      formatToParts.mockRestore();
+    }
   });
 });
