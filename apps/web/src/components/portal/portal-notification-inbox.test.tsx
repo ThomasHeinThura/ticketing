@@ -64,6 +64,7 @@ const page: PortalNotificationPage = {
       kind: "work_item.commented",
       isRead: false,
       createdAt: "2026-10-26T10:00:00.000Z",
+      targetKind: "submission",
       requestRef: "SUB-7",
       commentId: "comment-7",
     },
@@ -103,6 +104,7 @@ describe("portal notification inbox", () => {
           kind: "approval.requested",
           isRead: false,
           createdAt: "2026-10-26T11:00:00.000Z",
+          targetKind: "approval",
           requestRef: null,
           commentId: null,
         },
@@ -115,6 +117,27 @@ describe("portal notification inbox", () => {
       }),
     ).toHaveAttribute("href", "/approvals");
     expect(screen.queryByText("notifications.requestReference")).toBeNull();
+  });
+
+  it("U-12: links a comment on a request the team raised to its portal request page", async () => {
+    mocks.get.mockReset().mockResolvedValue({
+      ...page,
+      data: [
+        {
+          id: "notification-3",
+          kind: "work_item.commented",
+          isRead: false,
+          createdAt: "2026-10-26T12:00:00.000Z",
+          targetKind: "request",
+          requestRef: "HELP-8",
+          commentId: "comment-8",
+        },
+      ],
+    });
+    renderInbox();
+    expect(
+      await screen.findByRole("link", { name: "notifications.events.comment" }),
+    ).toHaveAttribute("href", "/requests/HELP-8#comment-comment-8");
   });
 
   it("shows only customer filters and links to the exact public comment", async () => {

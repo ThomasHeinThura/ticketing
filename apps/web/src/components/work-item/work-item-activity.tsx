@@ -164,7 +164,9 @@ function activityValueText(
     if (field === "priority" && typeof value === "string")
       return t(`tasks:priority.${value}`, { defaultValue: value });
     if (
-      (field === "assignee" || field === "assigneeId") &&
+      (field === "assignee" ||
+        field === "assigneeId" ||
+        field === "requester") &&
       typeof value === "string" &&
       personName
     )
@@ -404,6 +406,14 @@ function WorkItemActivity({
   }
   function displayPersonName(personId: string | null) {
     if (!personId) return t("common:people.unknown");
+    // A-03: the requester is usually a customer, who is in neither list below; the detail row
+    // already carries the current requester's name.
+    const detail = queryClient.getQueryData<{
+      requesterId?: string | null;
+      requesterName?: string | null;
+    }>(["work-items", "detail", workItemKey]);
+    if (detail?.requesterId === personId && detail.requesterName)
+      return detail.requesterName;
     // Mention candidates carry person IDs and are already filtered by current
     // work-item reach. The workspace-members DTO only carries user IDs, so use
     // that legacy mapping only when no reachable person candidate is available.

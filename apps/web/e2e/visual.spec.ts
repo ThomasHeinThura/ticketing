@@ -5632,6 +5632,7 @@ const vPorInboxUnreadRows = [
     kind: "submission.replied",
     isRead: false,
     createdAt: "2026-10-15T09:30:00.000Z",
+    targetKind: "submission",
     requestRef: "SUB-7",
     commentId: "visual-comment-reply",
   },
@@ -5640,6 +5641,7 @@ const vPorInboxUnreadRows = [
     kind: "work_item.mentioned",
     isRead: false,
     createdAt: "2026-10-14T16:05:00.000Z",
+    targetKind: "submission",
     requestRef: "SUB-9",
     commentId: "visual-comment-mention",
   },
@@ -5648,6 +5650,7 @@ const vPorInboxUnreadRows = [
     kind: "approval.requested",
     isRead: false,
     createdAt: "2026-10-13T11:20:00.000Z",
+    targetKind: "approval",
     requestRef: null,
     commentId: null,
   },
@@ -6122,6 +6125,52 @@ async function installAuthenticatedFixture(page: Page) {
         closedLast30Days: 5,
         averageFirstResponse: { seconds: 5400, sampleSize: 4 },
       };
+    } else if (path.endsWith("/api/portal/requests/SUP-12")) {
+      body = {
+        ref: "SUP-12",
+        source: "direct",
+        title: "Confirm the new VPN profile",
+        requestTypeName: "Service request",
+        priority: "high",
+        customerStatus: "need_more_info",
+        createdAt: "2026-09-14T09:00:00.000Z",
+        updatedAt: "2026-09-15T09:00:00.000Z",
+        project: { key: "SUP", name: "Contoso Support" },
+        createdBy: { name: null, isYou: true },
+        isRequester: true,
+        customerVisibility: "private",
+        sla: null,
+        description: "Please test the new VPN profile on your laptop.",
+        resolvedAt: null,
+        customFields: [],
+        canReply: true,
+        canViewAttachments: true,
+        // A-08: reply files, through a portal-bound link on the filesystem driver (CP-19).
+        canUpload: true,
+        messages: [
+          {
+            id: "visual-comment-1",
+            actorType: "triager",
+            authorName: "Sam Support",
+            mine: false,
+            body: "Can you test it today?",
+            createdAt: "2026-09-15T08:00:00.000Z",
+          },
+        ],
+      };
+    } else if (path.endsWith("/api/portal/requests/SUP-12/attachments")) {
+      body = [
+        {
+          id: "visual-file-1",
+          filename: "vpn-guide.pdf",
+          mimeType: "application/pdf",
+          size: 20480,
+          state: "ready",
+          mine: false,
+          downloadable: true,
+          createdAt: "2026-09-15T08:30:00.000Z",
+        },
+      ];
     } else if (path.endsWith("/api/portal/requests")) {
       const visualCase = {
         source: "submission",
@@ -6866,6 +6915,33 @@ test("portal catalogue selected form @visual", async ({ page }) => {
   await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
   await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-catalogue-selected-form.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("portal request detail @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/requests/SUP-12");
+  await expect(
+    page.getByRole("heading", { name: "Confirm the new VPN profile" }),
+  ).toBeVisible();
+  await expect(page.getByText("Can you test it today?")).toBeVisible();
+  await expect(page.getByText("vpn-guide.pdf")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Not available to download here yet. Ask the team if you need it.",
+    ),
+  ).toBeVisible();
+  // The lazy shell is ready: navigation and the top bar have both painted.
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-request-detail.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

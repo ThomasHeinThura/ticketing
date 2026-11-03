@@ -15,6 +15,8 @@ export type WorkItemUpload = {
   itemKey: string;
   /** AT-1: set when the file belongs to a comment instead of the work item. */
   commentId?: string;
+  /** A-07 / AT-3: share the file with the customer (honoured on a public comment only). */
+  customerVisible?: boolean;
   file: File;
   state: "queued" | "uploading" | "failed";
   loaded: number;
@@ -78,6 +80,7 @@ async function run(id: number) {
       (checkpoint) => patch(id, { checkpoint }),
       {
         commentId: entry.commentId,
+        ...(entry.customerVisible ? { customerVisible: true } : {}),
         onProgress: (loaded) => patch(id, { loaded }),
       },
     );
@@ -106,6 +109,7 @@ async function run(id: number) {
 export function enqueueWorkItemUploads(input: {
   itemKey: string;
   commentId?: string;
+  customerVisible?: boolean;
   files: File[];
   /** Called once per file when it settles: ready (the row is gone) or failed (the row stays). */
   onDone?: (upload: WorkItemUpload) => void;
@@ -114,6 +118,7 @@ export function enqueueWorkItemUploads(input: {
     id: nextId++,
     itemKey: input.itemKey,
     commentId: input.commentId,
+    ...(input.customerVisible ? { customerVisible: true } : {}),
     file,
     state: "queued",
     loaded: 0,

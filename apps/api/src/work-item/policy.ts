@@ -158,6 +158,14 @@ export const workItemPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  // A-03: the requester picker's feed (customers of the project's organisation). Gated like the
+  // field it fills: `work_item:update` on the project.
+  "GET /api/projects/{projectId}/requester-candidates": {
+    capability: "work_item:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
   // Assign or reassign a work item (`assignment.md` § API; `AS-1`/`AS-2`). PRIMARY is
   // `work_item:assign`; the spec's own alternate branch is `orSelfTarget` on the PARSED
   // body -- a caller holding only `work_item:update` may assign the item TO THEMSELVES

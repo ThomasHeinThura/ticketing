@@ -24,6 +24,7 @@ import {
   withCreationTransaction,
 } from "../create-preparation";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import { assertProjectCustomerRequester } from "../requester";
 import { claimWorkItemNumber } from "./claim-work-item-number";
 
 /**
@@ -114,6 +115,9 @@ export async function createWorkItemInTransaction(
     tx,
     input,
   );
+  // A-03: a requester named at creation must be a customer of this project's organisation.
+  if (input.requesterId !== undefined)
+    await assertProjectCustomerRequester(tx, project.id, input.requesterId);
   const defaultAssigneeId =
     input.assigneeId === undefined
       ? await resolveProjectDefaultAssignee(tx, { projectId: project.id })
@@ -194,6 +198,7 @@ export async function createWorkItemInTransaction(
       startDate: input.startDate ?? null,
       dueDate: input.dueDate ?? null,
       assigneeId: effectiveFields.assigneeId ?? null,
+      requesterId: input.requesterId ?? null,
       createdAt: slaStartedAt,
       updatedAt: slaStartedAt,
       slaStartedAt,

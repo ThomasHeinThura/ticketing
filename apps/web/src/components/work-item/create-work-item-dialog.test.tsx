@@ -166,6 +166,11 @@ vi.mock("@/hooks/mutations/work-item/use-create-work-item", () => ({
   },
 }));
 
+// A-03: the requester chip has its own tests; with no customers it renders nothing.
+vi.mock("./create-work-item-requester-picker", () => ({
+  default: () => null,
+}));
+
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
 }));

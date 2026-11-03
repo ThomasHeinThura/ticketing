@@ -155,6 +155,61 @@ function apiBody(pathname: string): unknown {
       };
     case "/api/portal/requests":
       return casesPage;
+    // U-12: a request raised by staff, opened from the list.
+    case "/api/portal/requests/OPS-12":
+      return {
+        ref: "OPS-12",
+        source: "direct",
+        title: "Renew the TLS certificate",
+        requestTypeName: "Change",
+        priority: "high",
+        customerStatus: "need_more_info",
+        createdAt: "2026-09-15T00:00:00.000Z",
+        updatedAt: "2026-09-16T09:30:00.000Z",
+        project: { key: "HELP", name: "Help desk" },
+        createdBy: { name: null, isYou: true },
+        isRequester: true,
+        customerVisibility: "private",
+        sla: null,
+        description:
+          "The certificate expires next week. Confirm the new domain list.",
+        resolvedAt: null,
+        customFields: [],
+        canReply: true,
+        canViewAttachments: true,
+        canUpload: true,
+        messages: [
+          {
+            id: "ops-12-c1",
+            actorType: "triager",
+            authorName: "Sam Support",
+            mine: false,
+            body: "Which domains should the certificate cover?",
+            createdAt: "2026-09-16T09:00:00.000Z",
+          },
+          {
+            id: "ops-12-c2",
+            actorType: "customer",
+            authorName: null,
+            mine: true,
+            body: "Only the portal and the API domains.",
+            createdAt: "2026-09-16T09:20:00.000Z",
+          },
+        ],
+      };
+    case "/api/portal/requests/OPS-12/attachments":
+      return [
+        {
+          id: "ops-12-f1",
+          filename: "certificate-request.pdf",
+          mimeType: "application/pdf",
+          size: 20480,
+          state: "ready",
+          mine: false,
+          downloadable: true,
+          createdAt: "2026-09-16T09:10:00.000Z",
+        },
+      ];
     case "/api/portal/approvals":
       return { approvals: [] };
     case "/api/portal/submissions":
@@ -308,6 +363,33 @@ for (const [viewportName, viewport] of VIEWPORTS)
       // CP-4: the assignee is always "Your team" (the column is hidden in a narrow frame).
       await expect(page.getByText("Your team").first()).toBeAttached();
       await expectTableFitsWithServiceTarget(page);
+      expect(await seriousOrCriticalViolations(page)).toEqual([]);
+      expect(unmatched).toEqual([]);
+    });
+
+    test(`portal request page (${viewportName}, ${theme}) has no serious or critical axe violations @a11y`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.emulateMedia({ colorScheme: theme });
+      const unmatched = await mountPortal(page);
+      await page.goto(`${PORTAL_ORIGIN}/requests/OPS-12`);
+      await expectTheme(page, theme);
+      await expect(
+        page.getByRole("heading", {
+          name: "Renew the TLS certificate",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Which domains should the certificate cover?"),
+      ).toBeVisible();
+      await expect(page.getByText("certificate-request.pdf")).toBeVisible();
+      await expect(page.getByLabel("Reply", { exact: true })).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
       expect(await seriousOrCriticalViolations(page)).toEqual([]);
       expect(unmatched).toEqual([]);
     });

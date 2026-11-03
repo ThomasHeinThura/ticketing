@@ -19,7 +19,7 @@ type Deferred = {
   reject: (reason: unknown) => void;
   progress?: (loaded: number, total: number) => void;
   checkpoint?: (value: unknown) => void;
-  options?: { commentId?: string };
+  options?: { commentId?: string; customerVisible?: boolean };
 };
 
 const pending: Deferred[] = [];
@@ -74,6 +74,27 @@ describe("AT-12 upload queue", () => {
     expect(mocks.resume).toHaveBeenCalledTimes(4);
     // The finished file leaves the queue: its persisted row is the list's job now.
     expect(getWorkItemUploads()).toHaveLength(4);
+  });
+
+  it("A-07: shares a comment's files with the customer only when asked", async () => {
+    enqueueWorkItemUploads({
+      itemKey: "OPS-1",
+      commentId: "c1",
+      customerVisible: true,
+      files: [file("shared")],
+    });
+    enqueueWorkItemUploads({
+      itemKey: "OPS-1",
+      commentId: "c2",
+      files: [file("internal")],
+    });
+    await flush();
+    expect(pending[0]?.options).toMatchObject({
+      commentId: "c1",
+      customerVisible: true,
+    });
+    expect(pending[1]?.options?.commentId).toBe("c2");
+    expect(pending[1]?.options).not.toHaveProperty("customerVisible");
   });
 
   it("reports each file's own byte progress", async () => {

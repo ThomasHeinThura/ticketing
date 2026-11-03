@@ -33,6 +33,7 @@ import {
 } from "@/fetchers/portal-notifications";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { portalNotificationQueryKey } from "@/lib/portal-notification-query-keys";
+import { routes } from "@/lib/routes";
 
 const eventTranslation: Record<PortalNotificationKind, string> = {
   "work_item.commented": "notifications.events.comment",
@@ -201,7 +202,11 @@ function PortalNotificationCard({
             <CardTitle className="text-base">
               {notification.requestRef ? (
                 <Link
-                  to="/submissions/$ref"
+                  to={
+                    notification.targetKind === "request"
+                      ? routes.portalRequest.path
+                      : routes.portalSubmission.path
+                  }
                   params={{ ref: notification.requestRef }}
                   hash={
                     notification.commentId

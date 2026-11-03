@@ -33,6 +33,8 @@ export const PORTAL_CLIENT_ROUTE_PATTERNS: readonly string[] = [
   // Redirects to /sign-in on the client; kept because customers already have the link.
   "/portal/sign-in",
   "/requests",
+  // U-12: a request the team raised for the customer (D6), opened by its key.
+  "/requests/$ref",
   "/sign-in",
   "/submissions/$ref",
 ];

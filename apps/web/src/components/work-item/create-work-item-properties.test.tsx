@@ -11,6 +11,9 @@ vi.mock("react-i18next", () => ({
 vi.mock("./create-work-item-label-picker", () => ({
   default: () => null,
 }));
+vi.mock("./create-work-item-requester-picker", () => ({
+  default: () => null,
+}));
 
 const options: CreateWorkItemOptions = {
   states: [],
@@ -60,6 +63,7 @@ function setup(overrides: { disabled?: boolean; canUpdate?: boolean } = {}) {
           startDate={undefined}
           dueDate={undefined}
           assigneeId=""
+          requesterId=""
           labelIds={labelIds}
           onLabelCreated={vi.fn()}
           onLabelBusyChange={vi.fn()}
@@ -67,6 +71,7 @@ function setup(overrides: { disabled?: boolean; canUpdate?: boolean } = {}) {
           onStartDateChange={vi.fn()}
           onDueDateChange={vi.fn()}
           onAssigneeChange={vi.fn()}
+          onRequesterChange={vi.fn()}
           onLabelsChange={(ids) => {
             onLabelsChange(ids);
             setLabelIds(ids);

@@ -328,7 +328,10 @@ export async function markSubmissionDuplicate(input: {
 
 export async function presignPortalSubmissionAttachment(input: {
   ref: string;
-  fieldKey: string;
+  /** A form file field; omitted for a file sent with the request itself (A-08). */
+  fieldKey?: string;
+  /** A-08: the requester's reply on an accepted request that this file goes with. */
+  commentId?: string;
   filename: string;
   contentType: string;
   size: number;
@@ -338,7 +341,8 @@ export async function presignPortalSubmissionAttachment(input: {
   ].attachments.presign.$post({
     param: { ref: input.ref },
     json: {
-      fieldKey: input.fieldKey,
+      ...(input.fieldKey ? { fieldKey: input.fieldKey } : {}),
+      ...(input.commentId ? { commentId: input.commentId } : {}),
       filename: input.filename,
       contentType: input.contentType,
       size: input.size,

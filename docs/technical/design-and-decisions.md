@@ -3507,7 +3507,7 @@ Thomas approved D1–D9 for the customer portal redesign on 31 October 2026. D4�
 
 **Action required** follows the approved plan: readable cases that need more information plus approvals addressed to the caller. The figure equals the `scope=all&status=need_more_info` list the card opens.
 
-**Known gap:** a `direct` row has no portal detail page yet. It is listed and counted as action required when it waits on the customer, but it cannot be opened or answered in the portal.
+**Known gap closed (U-12, 3 November 2026):** a `direct` row opens at `/requests/{ref}` in the portal. Its readers are the case list's own (requester, participant, organisation-visible colleague); the requester replies, and the reply is a public comment on the work item that notifies the assignee, watchers and whoever last handled it (NO-21: latest public staff commenter, else project leads). Staff public comments reach the customer's portal inbox and link to the request page. Files and the Requester field follow the two 3 November decisions below.
 
 ## Customer organisation, projects and documents — 3 November 2026
 
@@ -3534,6 +3534,27 @@ Thomas's direction after UAT testing on 3 November 2026.
 A page can be shared with the customer only by adding it to Documents as a customer-visible entry. Pages themselves never appear in the portal.
 
 **UI.** Kaneo stays the visual base. Screens added for UAT (Overview, portal) are adjusted to Kaneo's spacing, typography and tab behaviour. Where the project tab strip overflows, it scrolls and keeps the active tab visible.
+
+**Portal files on the filesystem driver (CP-19; A-07, A-08).** The portal host serves work-item attachment files only through short-lived signed links. The portal `own_request` and `own_submission` routes mint them, after their own ownership and reach check:
+- **Download** (`GET /api/storage/portal-download`): a customer-visible file on the request or on a live public comment, never an internal or deleted comment's file.
+- **Upload** (`PUT /api/storage/portal-attachment-upload`): a fresh key under the work item, for the requester's reply on a direct request or on an accepted submission's request. Size and type limits are the agent upload's own. Staff see the file on the work item.
+
+Each link is signed with a key derived from `TASKDESK_AUTH_SECRET` (nothing new to configure). The signature binds:
+- the object key;
+- the customer person;
+- for an upload, the size ceiling;
+- an expiry, five minutes after minting (the existing filesystem link lifetime).
+
+The route answers only on the portal host, and the portal session must belong to that same person. A link cannot be replayed for another key, by another person or after expiry. An agent-signed link for a work-item key is refused on the portal host. Agent-host behaviour is unchanged. Submission-key files keep their existing signed routes. On S3 the links point at the bucket.
+
+**Requester field (A-03).** Staff can set a work item's requester to a customer, in the work-item detail and in the create dialog. The rules:
+- The caller needs `work_item:update` on the item.
+- The requester must be an active customer person of the project's organisation; anyone else is refused with 422.
+- Clearing the requester is allowed.
+- Every change is written to the audit history (`work_item.updated`, `changedFields: ["requester"]`) and as an internal activity row.
+- `If-Match` protects the edit like every other field edit.
+
+The portal then lists the item as that customer's own request, under the existing case-list rules.
 
 ## Inactive historical references
 

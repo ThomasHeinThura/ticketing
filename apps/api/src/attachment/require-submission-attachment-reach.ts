@@ -76,7 +76,7 @@ export function requireSubmissionAttachmentReach(
     // caller who reaches its project; otherwise the link is treated as absent. The portal
     // requester's own view is unchanged.
     const linkedWorkItemId = mode.startsWith("portal_")
-      ? await findLiveLinkedWorkItemId(db, row.workItemId)
+      ? await findLiveLinkedWorkItemId(db, row.workItemId, row.requesterId)
       : await reachableLinkedWorkItemId(
           identity,
           await callerReach(c as unknown as Context, c.get("userId")),
@@ -116,7 +116,11 @@ export function requireSubmissionAttachmentReach(
       const attachedToAcceptedWorkItem =
         row.state === "accepted" &&
         linkedWorkItemId !== null &&
-        attachment?.workItemId === linkedWorkItemId;
+        (attachment?.workItemId === linkedWorkItemId ||
+          // A file on a live public comment of the converted item: a staff file shared with
+          // the customer (A-07, download) or the requester's reply file (A-08, completion; the
+          // uploader, state and visibility checks below still apply).
+          attachment?.onPublicComment === true);
       if (
         !attachment ||
         (!attachedToSubmission && !attachedToAcceptedWorkItem) ||

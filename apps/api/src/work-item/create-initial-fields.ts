@@ -47,11 +47,15 @@ export async function recordInitialWorkItemFields(
     ...(fields.startDate !== undefined ? { startDate: null } : {}),
     ...(fields.dueDate !== undefined ? { dueDate: null } : {}),
     ...(labels ? { labelIds: [] } : {}),
+    ...(fields.requesterId !== undefined ? { requesterId: null } : {}),
   };
   const after = {
     ...(fields.startDate !== undefined ? { startDate: item.startDate } : {}),
     ...(fields.dueDate !== undefined ? { dueDate: item.dueDate } : {}),
     ...(labels ? { labelIds: labels.after } : {}),
+    ...(fields.requesterId !== undefined
+      ? { requesterId: item.requesterId }
+      : {}),
   };
   const rows = diffWorkItemFieldChanges(before, after, common);
   await recordWorkItemActivity(tx, rows);
@@ -84,6 +88,19 @@ export async function recordInitialWorkItemFields(
       }),
     });
   }
+  // A-03: naming the requester at creation is audited like a later change of it.
+  if (fields.requesterId !== undefined)
+    await appendAuditLog(tx, {
+      actorId,
+      actorType,
+      workspaceId: item.workspaceId,
+      projectId: item.projectId,
+      action: "work_item.updated",
+      entityType: "work_item",
+      entityId: item.id,
+      before: null,
+      after: { changedFields: ["requester"] },
+    });
   if (fields.assigneeId !== undefined) {
     await recordWorkItemActivity(tx, [
       {

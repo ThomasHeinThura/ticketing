@@ -11,7 +11,7 @@ import type {
 /** One row of `GET /api/portal/requests` (S4b). There is no assignee field (CP-4). */
 export type PortalCase = {
   ref: string;
-  /** `submission` rows open `/submissions/$ref`; `direct` rows (raised by staff) have no page yet. */
+  /** `submission` rows open `/submissions/$ref`; `direct` rows (raised by staff) open `/requests/$ref`. */
   source: "submission" | "direct";
   title: string;
   requestTypeName: string;

@@ -56,6 +56,11 @@ const BODY_LIMIT_RULES: readonly BodyLimitRule[] = [
     maxBytes: "exempt",
   },
   {
+    method: "PUT",
+    matches: exactPath("/api/storage/portal-attachment-upload"),
+    maxBytes: "exempt",
+  },
+  {
     method: "POST",
     matches: exactPath("/api/import-sources"),
     maxBytes: IMPORT_SOURCE_BODY_LIMIT_BYTES,

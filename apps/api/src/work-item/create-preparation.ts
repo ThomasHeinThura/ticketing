@@ -30,6 +30,8 @@ export type InitialWorkItemFields = {
   dueDate?: Date | null;
   labelIds?: string[];
   assigneeId?: string;
+  /** A-03: a customer of the project's organisation, validated in the create transaction. */
+  requesterId?: string;
 };
 
 /** Read live configuration under row locks; caller supplies a serializable transaction. */
@@ -68,7 +70,8 @@ export async function prepareWorkItemCreation(
     input.startDate !== undefined ||
     input.dueDate !== undefined ||
     input.labelIds !== undefined ||
-    input.assigneeId !== undefined;
+    input.assigneeId !== undefined ||
+    input.requesterId !== undefined;
   if (!input.authorization && needsAuthority)
     throw new HTTPException(403, {
       message: "Initial fields require an authenticated authorization context",
@@ -152,11 +155,14 @@ export async function prepareWorkItemCreation(
     if (
       (input.startDate !== undefined ||
         input.dueDate !== undefined ||
-        input.labelIds !== undefined) &&
+        input.labelIds !== undefined ||
+        // A-03: naming the requester is a field edit.
+        input.requesterId !== undefined) &&
       !can(identity, "work_item:update", "work_item", target)
     )
       throw new HTTPException(403, {
-        message: "Initial dates and labels require work item update permission",
+        message:
+          "Initial dates, labels and requester require work item update permission",
       });
     if (
       input.assigneeId !== undefined &&

@@ -116,6 +116,9 @@ whether it is an epic, and which custom fields apply.
   `work_item:update` on the project. Priority is separate: changing it needs
   `work_item:set_priority`, not `work_item:update` (see the Permissions table below). A
   customer's raise-only path — `work_item:escalate_priority` — is a later slice.
+  The requester (A-03, 3 November 2026) is also a `work_item:update` field, on create and on
+  edit: an active customer of the project's organisation, or cleared; anyone else is refused
+  with 422. Each change is audited and recorded as an internal activity row.
 - `WI-9` State changes go through the workflow — see [workflows](feature-contracts-p2.md#workflows). They are
   never a plain field update.
 - `WI-10` Assignment follows [assignment rules](feature-contracts-p1.md#assignment).
@@ -1492,10 +1495,15 @@ This document covers behaviour and interface.
   visible; customer uploads default to visible.
 - `AT-4` An attachment on an internal comment is always internal, whatever its own flag
   says.
+  Staff share a file with the customer by attaching it to a public comment with "Share these
+  files with the customer" on (A-07); the portal lists customer-visible files on the request
+  itself and on its live public comments, never on an internal or deleted comment.
 - `AT-5` Download URLs are presigned with a five-minute lifetime and are issued only after
   a policy check. The bucket is never public, and there is **no anonymous read path**:
   kaneo's `is_public` branch in `authorize-asset-access.ts` is deleted at fork
   ([decision log](#pending-07-planningdecision-log)).
+  On the filesystem driver, a portal download or upload of a work-item file uses a portal-bound
+  link bound to the customer person as well as the key and expiry (`CP-19`, 3 November 2026).
 - `AT-6` Every download writes an audit row (`attachment.downloaded` — [audit-trail.md](feature-contracts-p2.md#audit-trail)).
 - `AT-7` Deleting is soft; the object is removed the following night by `attachment-gc`,
   so an accidental deletion is recoverable for a day. Like every deletion it is a pending

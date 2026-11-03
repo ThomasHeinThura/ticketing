@@ -21,6 +21,7 @@ import {
   CalendarClock,
   CalendarDays,
   Check,
+  Contact,
   Copy,
   Plus,
   TriangleAlert,
@@ -35,6 +36,7 @@ import { getWorkItemLabels } from "@/fetchers/work-item/get-work-item-labels";
 import transitionWorkItem from "@/fetchers/work-item/transition-work-item";
 import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
 import useGetAssignablePeople from "@/hooks/queries/work-item/use-get-assignable-people";
+import useGetRequesterCandidates from "@/hooks/queries/work-item/use-get-requester-candidates";
 import useGetWorkItemTransitions from "@/hooks/queries/work-item/use-get-work-item-transitions";
 import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -822,6 +824,176 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
   );
 }
 
+/**
+ * A-03: the customer the request is raised for. Staff with `work_item:update` pick one of the
+ * project's organisation's customers (the server refuses anyone else) or clear it; the portal
+ * then lists the item as that customer's own request. Kaneo's people-row popover.
+ */
+function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const update = useUpdateWorkItemFields(item, onAccessLost);
+  const { canUpdateTasks } = useWorkspacePermission(
+    item.workspaceId,
+    item.projectId,
+  );
+  const canEdit = canUpdateTasks();
+  const candidates = useGetRequesterCandidates({
+    projectId: item.projectId,
+    enabled: open && canEdit,
+  });
+  useAccessLostOnQueryError(candidates.error, onAccessLost);
+  const dispatching = useRef(false);
+  const name = item.requesterId
+    ? (item.requesterName ?? t("workItems:journey.unnamedPerson"))
+    : null;
+  const trigger = (
+    <Button
+      variant="ghost"
+      size="sm"
+      className={rowClass(compact)}
+      data-testid="work-item-requester-control"
+    >
+      <Contact className="h-4 w-4 text-muted-foreground" />
+      <span
+        className={cn(
+          "truncate font-semibold text-xs",
+          !name && "text-muted-foreground",
+        )}
+      >
+        {name ?? t("workItems:properties.noRequester")}
+      </span>
+    </Button>
+  );
+  if (!canEdit) return trigger;
+  const list = Array.isArray(candidates.data) ? candidates.data : [];
+  const needle = query.trim().toLowerCase();
+  const shown = needle
+    ? list.filter((person) =>
+        `${person.name ?? ""} ${person.email ?? ""}`
+          .toLowerCase()
+          .includes(needle),
+      )
+    : list;
+  const label = (person: (typeof list)[number]) =>
+    person.name ?? person.email ?? t("workItems:journey.unnamedPerson");
+  const choose = (person: (typeof list)[number] | null) => {
+    const next = person?.personId ?? null;
+    if (update.isPending || dispatching.current || next === item.requesterId)
+      return;
+    dispatching.current = true;
+    update.mutate(
+      { requesterId: next },
+      {
+        onSuccess: () => {
+          // The PATCH answers with the raw row; the name shown is the one just picked.
+          queryClient.setQueryData<WorkItemDetailRow>(
+            workItemDetailKey(item.key),
+            (old) =>
+              old
+                ? {
+                    ...old,
+                    requesterId: next,
+                    requesterName: person ? label(person) : null,
+                  }
+                : old,
+          );
+          setOpen(false);
+          setQuery("");
+        },
+        onSettled: () => {
+          dispatching.current = false;
+        },
+      },
+    );
+  };
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setQuery("");
+      }}
+    >
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent className="w-64 p-0" align="start">
+        <div className="border-b border-border p-1">
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t("workItems:properties.requesterSearch")}
+            aria-label={t("workItems:properties.requesterSearch")}
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="max-h-72 overflow-y-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-full justify-start gap-2 rounded-none px-2 text-muted-foreground"
+            disabled={update.isPending || item.requesterId === null}
+            onClick={() => choose(null)}
+          >
+            {t("workItems:properties.noRequester")}
+            {item.requesterId === null ? (
+              <Check className="ml-auto h-4 w-4" />
+            ) : null}
+          </Button>
+          {candidates.isLoading ? (
+            <p className="p-3 text-muted-foreground text-sm" role="status">
+              {t("common:empty.loading")}
+            </p>
+          ) : candidates.isError && !isWorkItemAccessLost(candidates.error) ? (
+            <p className="p-3 text-muted-foreground text-sm" role="alert">
+              {t("workItems:properties.requesterError")}
+            </p>
+          ) : list.length === 0 ? (
+            <InlineMessage>
+              {t("workItems:properties.noCustomers")}
+            </InlineMessage>
+          ) : shown.length === 0 ? (
+            <InlineMessage>
+              {t("workItems:properties.noRequesterMatch")}
+            </InlineMessage>
+          ) : (
+            shown.map((person) => (
+              <Button
+                key={person.personId}
+                variant="ghost"
+                size="sm"
+                className="h-auto min-h-8 w-full justify-start gap-2 rounded-none px-2 py-1"
+                disabled={
+                  update.isPending || item.requesterId === person.personId
+                }
+                onClick={() => choose(person)}
+              >
+                <Avatar className="h-[16px] w-[16px]">
+                  <AvatarFallback className="text-[8px]">
+                    {getInitials(label(person))}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="flex min-w-0 flex-col items-start">
+                  <span className="truncate text-sm">{label(person)}</span>
+                  {person.name && person.email ? (
+                    <span className="truncate text-muted-foreground text-xs">
+                      {person.email}
+                    </span>
+                  ) : null}
+                </span>
+                {item.requesterId === person.personId ? (
+                  <Check className="ml-auto h-4 w-4" />
+                ) : null}
+              </Button>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function DateControl({
   item,
   compact,
@@ -1176,6 +1348,10 @@ function WorkItemPropertiesPanel({
             />
             <AssigneeControl
               key={`AssigneeControl:${item.workspaceId}:${item.projectId}:${item.key}`}
+              {...controlProps}
+            />
+            <RequesterControl
+              key={`RequesterControl:${item.workspaceId}:${item.projectId}:${item.key}`}
               {...controlProps}
             />
             <DateControl {...controlProps} field="startDate" />

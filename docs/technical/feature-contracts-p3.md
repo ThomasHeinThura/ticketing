@@ -173,8 +173,17 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   unarchived project of that organisation with the customer portal on, is part of the
   customer's case list and home counts. The same rule applies: the requester, a participant, or
   any colleague when the item is `organisation`-visible. Such a row has `source: "direct"` and
-  its work item key as `ref`. **Known gap:** a direct row has no portal detail page yet, so it
-  is listed but cannot be opened or answered in the portal.
+  its work item key as `ref`. It opens at `/requests/{ref}` (U-12): status, severity, service
+  target, the public conversation (public, live comments only) and, for the requester, the
+  customer-visible files and a reply box. The reply is a public comment on the work item; it
+  notifies the assignee and watchers (`NO-19`) plus whoever last handled the request (`NO-21`:
+  the latest public staff commenter, else the project leads) and, on a resolved request, asks
+  for a reopen (`WF-21`). A staff public comment on it reaches the customer's portal inbox,
+  which links to `/requests/{ref}#comment-{id}` (`targetKind: "request"`); the bell counts only
+  rows the inbox can list. Reply, file list, download and upload are the requester's (the same constant 404
+  otherwise). On the filesystem storage driver files move through portal-bound signed links
+  (`CP-19`). Staff name the requester with the Requester field (A-03: an active customer of the
+  project's organisation, `work_item:update`, audited; 422 for anyone else).
 - `CP-17` **Organisation SSO.** A customer organisation may have its own identity
   connection — Microsoft Entra first — bound to that organisation and to the customer
   portal only ([identity-provisioning.md](feature-contracts-p3.md#identity-provisioning) `IP-1`, `IP-2`). Its
@@ -231,8 +240,14 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   routes `PUT /api/storage/filesystem-attachment-upload` and `GET /api/storage/filesystem-download`
   are admitted on the portal host only when the signed `key` is a portal submission attachment
   object (`workspace/<id>/submission/<id>/attachment/<id>/<file>`), because presign mints the URL on the
-  requesting origin; the HMAC token still binds the exact key, size ceiling and expiry, and
-  work-item/agent keys stay denied. Every
+  requesting origin; the HMAC token still binds the exact key, size ceiling and expiry. A
+  work-item attachment object (`workspace/<id>/work-item/<id>/attachment/...`) is served on the
+  portal host only by `PUT /api/storage/portal-attachment-upload` and
+  `GET /api/storage/portal-download` (3 November 2026). Only the portal `own_request` /
+  `own_submission` routes mint those links, after their own check. Their token has its own key
+  derivation and binds the key, the customer person, the size ceiling (upload) and a five-minute
+  expiry, and the portal session must be that person. Agent-signed links for work-item keys stay
+  denied there, and the agent host does not serve the portal routes. Every
   websocket upgrade on the portal host remains denied until its own reviewed policy exists.
   A syntactically valid unknown Host is accepted only for these exact `GET`/`HEAD` health
   requests, preserving loopback Docker and deploy readiness probes; malformed, missing,
@@ -326,7 +341,10 @@ GET  /api/portal/requests                                  own_organisation (fil
 GET  /api/portal/requests/export.csv                       own_organisation (same rows as the list)
 GET  /api/portal/requests/{ref}                            own_request
 POST /api/portal/requests/{ref}/comments                   own_request
-POST /api/portal/requests/{ref}/attachments/presign        own_request
+POST /api/portal/requests/{ref}/attachments/presign        own_request   (requester only; a reply's files carry its commentId; CP-19 portal-bound PUT)
+GET  /api/portal/requests/{ref}/attachments                 own_request   (requester only; customer-visible files)
+POST /api/portal/requests/{ref}/attachments/{id}/complete   own_request   (requester only; size, quota and content checked)
+GET  /api/portal/requests/{ref}/attachments/{id}            own_request   (requester only; 302 to a signed URL, CP-19 portal-bound on the filesystem driver, audited)
 POST /api/portal/requests/{ref}/escalate                   own_request
 POST /api/portal/requests/{ref}/reopen                     own_request   (WF-21, system-actor transition)
 POST /api/portal/requests/{ref}/rate                       own_request

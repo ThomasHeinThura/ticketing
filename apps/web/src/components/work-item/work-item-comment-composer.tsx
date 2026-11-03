@@ -3,11 +3,20 @@ import {
   Alert,
   AlertDescription,
   Button,
+  Label,
+  Switch,
   ToggleGroup,
   ToggleGroupItem,
 } from "@taskdesk/ui";
 import { ArrowUp, Globe, Lock, Paperclip } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   COMMENT_COMPOSER_EDITOR_CLASS,
@@ -182,6 +191,11 @@ export default function WorkItemCommentComposer({
   const staged = useStagedCommentFiles(workItemKey);
   const canAttach =
     !isCheckingPermissions && permissions.canCreateAttachments();
+  // A-07 / AT-3: files on a public comment stay internal unless staff choose to share them.
+  // The choice is per comment; it never applies to an internal comment (AT-4).
+  const shareSwitchId = useId();
+  const [shareFiles, setShareFiles] = useState(false);
+  const sharesFiles = selectedCommentVisibility === "public" && shareFiles;
   const mentionCandidates = useQuery({
     queryKey: [
       "work-items",
@@ -249,6 +263,7 @@ export default function WorkItemCommentComposer({
   const updateVisibility = (nextVisibility: "public" | "internal") => {
     visibilityRef.current = nextVisibility;
     setVisibility(nextVisibility);
+    if (nextVisibility === "internal") setShareFiles(false);
     persistDraft(persistedDraftRef.current, nextVisibility);
   };
 
@@ -320,6 +335,7 @@ export default function WorkItemCommentComposer({
         enqueueWorkItemUploads({
           itemKey: workItemKey,
           commentId,
+          customerVisible: sharesFiles,
           files,
           onDone: () => {
             void queryClient.invalidateQueries({
@@ -331,6 +347,7 @@ export default function WorkItemCommentComposer({
       const emptyDraft = { text: "", document: EMPTY_COMMENT_DOCUMENT };
       persistedDraftRef.current = emptyDraft;
       setDraft(emptyDraft);
+      setShareFiles(false);
       await queryClient.invalidateQueries({
         queryKey: ["work-items", "comment-mention-candidates", workItemKey],
       });
@@ -409,12 +426,28 @@ export default function WorkItemCommentComposer({
         }
         attachments={
           staged.rows.length > 0 ? (
-            <div className="px-3 pb-2">
+            <div className="flex flex-col gap-2 px-3 pb-2">
               <CreateWorkItemStagedAttachments
                 rows={staged.rows}
                 onRemove={staged.remove}
                 disabled={composerBusy}
               />
+              {selectedCommentVisibility === "public" ? (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={shareSwitchId}
+                    checked={shareFiles}
+                    disabled={composerBusy}
+                    onCheckedChange={(checked) => setShareFiles(checked)}
+                  />
+                  <Label
+                    htmlFor={shareSwitchId}
+                    className="font-normal text-muted-foreground text-xs"
+                  >
+                    {t("activity:timeline.shareFilesWithCustomer")}
+                  </Label>
+                </div>
+              ) : null}
             </div>
           ) : null
         }

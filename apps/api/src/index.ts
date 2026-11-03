@@ -220,10 +220,18 @@ import {
 import { buildContentDisposition } from "./storage/content-disposition";
 import {
   readAttachmentDownloadObject,
+  readPortalAttachmentDownloadObject,
   StoragePathError,
   writeAttachmentUploadedObject,
+  writePortalAttachmentUploadedObject,
   writeUploadedObject,
 } from "./storage/filesystem";
+import {
+  isPortalStorageRequest,
+  isWorkItemDownloadKey,
+  isWorkItemUploadKey,
+} from "./storage/portal-servable";
+import { portalSessionPersonId } from "./storage/portal-session-person";
 import task, { taskV2 } from "./task";
 import taskRelation from "./task-relation";
 import team from "./team";
@@ -488,45 +496,6 @@ function matchesPortalNotificationRoute(method: string, path: string): boolean {
   return Object.keys(portalNotificationPolicies).some((routeKey) =>
     routeKeyMatchesRequest(routeKey, method, path),
   );
-}
-
-/**
- * CP-19 carve-out: the filesystem driver's signed upload/download routes are admitted on
- * the portal host ONLY for portal submission attachment objects. Presign (a `kind: portal`
- * route) mints a URL on the requesting origin, so without this a customer's presigned PUT
- * or download redirect would hit the portal host's blanket `/api` denial. The handler still
- * verifies the HMAC token that binds the exact key, size ceiling and expiry; no session
- * is involved. Agent/work-item keys (`.../work-item/...`) and any other key shape stay
- * denied by host, and every other agent route stays unreachable.
- */
-const PORTAL_SUBMISSION_ATTACHMENT_KEY =
-  /^workspace\/[A-Za-z0-9_-]+\/submission\/[A-Za-z0-9_-]+\/attachment\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+$/u;
-/**
- * `complete` moves the object to `<pending dir>/final/<cuid2 token>-<file>`
- * (`toFinalAttachmentObjectKey`), and the attachment row then points at that key, so a
- * download redirect carries it. Downloads only: nothing ever mints an upload token for a
- * finalized key.
- */
-const PORTAL_SUBMISSION_FINAL_ATTACHMENT_KEY =
-  /^workspace\/[A-Za-z0-9_-]+\/submission\/[A-Za-z0-9_-]+\/attachment\/[A-Za-z0-9_-]+\/final\/[a-z0-9]+-[A-Za-z0-9_.-]+$/u;
-
-function isPortalSubmissionStorageRequest(
-  method: string,
-  path: string,
-  key: string | undefined,
-): boolean {
-  if (key === undefined || key.includes("..")) return false;
-  if (method === "PUT" && path === "/api/storage/filesystem-attachment-upload")
-    return PORTAL_SUBMISSION_ATTACHMENT_KEY.test(key);
-  if (
-    (method === "GET" || method === "HEAD") &&
-    path === "/api/storage/filesystem-download"
-  )
-    return (
-      PORTAL_SUBMISSION_ATTACHMENT_KEY.test(key) ||
-      PORTAL_SUBMISSION_FINAL_ATTACHMENT_KEY.test(key)
-    );
-  return false;
 }
 
 function isCustomerAuthEndpoint(method: string, path: string): boolean {
@@ -1172,11 +1141,7 @@ export function createApp(
           (c.req.path === "/api/portal/csrf-token" ||
             c.req.path ===
               "/api/portal/notification-preferences/email-link-handoff")) ||
-        isPortalSubmissionStorageRequest(
-          c.req.method,
-          c.req.path,
-          c.req.query("key"),
-        );
+        isPortalStorageRequest(c.req.method, c.req.path, c.req.query("key"));
       if (isApiRequestPath(c.req.path) && !portalAllowed) return denyByHost(c);
       if (c.req.method !== "GET" && c.req.method !== "HEAD")
         if (!isApiRequestPath(c.req.path) || !portalAllowed)
@@ -1568,6 +1533,164 @@ export function createApp(
         if (!(error instanceof StoragePathError)) {
           logHttpRequestFailure();
         }
+        throw new HTTPException(error instanceof StoragePathError ? 400 : 404, {
+          message:
+            error instanceof StoragePathError
+              ? error.message
+              : "Attachment not found.",
+        });
+      }
+    },
+  );
+
+  // CP-19 (Thomas, 3 November 2026): the portal-bound siblings of the two routes above, for
+  // work-item attachment objects only. Minted only by the portal own_request / own_submission
+  // routes after their ownership and reach check (`storage/portal-servable.ts`). Answered only
+  // on the portal host (the host guard admits nothing else here, and the handler re-checks);
+  // the signed token binds key, person, size ceiling and expiry, and the portal session on the
+  // request must be that same person. An agent-signed URL is never accepted here.
+  const portalStorageQuery = {
+    key: z.string().min(1),
+    expires: z.string().regex(/^\d+$/, "expires must be a unix timestamp"),
+    token: z.string().min(1),
+  };
+  const assertPortalStorageRequest = (c: Context) => {
+    if (
+      getStorageDriver() !== "filesystem" ||
+      portalForHost(c.req.header("host")) !== "customer"
+    )
+      throw new HTTPException(404, { message: "Not found" });
+  };
+  api.openapi(
+    createRoute({
+      method: "put",
+      operationId: "uploadPortalAttachmentObject",
+      path: "/storage/portal-attachment-upload",
+      tags: ["Assets"],
+      summary: "Upload a customer's attachment bytes on the portal host",
+      description:
+        "The portal-bound equivalent of a presigned PUT on the filesystem storage driver, " +
+        "minted by the portal request and submission presign routes for a work-item " +
+        "attachment key. Portal host only. The signed token binds the key, the customer " +
+        "person, the size ceiling and a five-minute expiry; the portal session must be that " +
+        "person.",
+      security: [],
+      request: {
+        query: z.object({
+          ...portalStorageQuery,
+          maxBytes: z.string().regex(/^\d+$/, "maxBytes must be an integer"),
+        }),
+        body: {
+          required: true,
+          content: {
+            "application/octet-stream": {
+              schema: { type: "string", format: "binary" },
+            },
+          },
+        },
+      },
+      responses: {
+        204: { description: "Stored" },
+        400: errorResponse(
+          "Invalid key, expired or invalid token, a token for another person, or the upload exceeds the signed limit",
+        ),
+        401: errorResponse("No portal session"),
+        404: errorResponse(
+          "Not the portal host, or the filesystem storage driver is not active",
+        ),
+      },
+    }),
+    async (c) => {
+      assertPortalStorageRequest(c);
+      const { key, maxBytes, expires, token } = c.req.valid("query");
+      if (!isWorkItemUploadKey(key))
+        throw new HTTPException(400, { message: "Invalid upload key." });
+      const personId = await portalSessionPersonId(c.req.raw.headers);
+      if (!personId) throw new HTTPException(401, { message: "Unauthorized" });
+      try {
+        await writePortalAttachmentUploadedObject({
+          key,
+          maxBytes,
+          expires,
+          token,
+          personId,
+          body: c.req.raw.body,
+        });
+      } catch (error) {
+        if (!(error instanceof StoragePathError)) logHttpRequestFailure();
+        throw new HTTPException(400, {
+          message:
+            error instanceof StoragePathError
+              ? error.message
+              : "Upload failed.",
+        });
+      }
+      return c.body(null, 204);
+    },
+  );
+  api.openapi(
+    createRoute({
+      method: "get",
+      operationId: "downloadPortalAttachmentObject",
+      path: "/storage/portal-download",
+      tags: ["Assets"],
+      summary: "Download a customer-visible attachment on the portal host",
+      description:
+        "The portal-bound equivalent of a presigned GET on the filesystem storage driver, " +
+        "minted by the portal request and submission download routes after their own " +
+        "check. Portal host only; the token binds the key, the customer person and a " +
+        "five-minute expiry, and the portal session must be that person.",
+      security: [],
+      request: {
+        query: z.object({
+          ...portalStorageQuery,
+          filename: z.string().min(1),
+        }),
+      },
+      responses: {
+        200: {
+          description: "The attachment binary stream",
+          content: { "*/*": { schema: { type: "string", format: "binary" } } },
+        },
+        400: errorResponse(
+          "Invalid key, expired or invalid token, or a token for another person",
+        ),
+        401: errorResponse("No portal session"),
+        404: errorResponse(
+          "Not the portal host, the filesystem storage driver is not active, or the object is gone",
+        ),
+      },
+    }),
+    async (c) => {
+      assertPortalStorageRequest(c);
+      const { key, expires, token, filename } = c.req.valid("query");
+      if (!isWorkItemDownloadKey(key))
+        throw new HTTPException(400, { message: "Invalid download key." });
+      const personId = await portalSessionPersonId(c.req.raw.headers);
+      if (!personId) throw new HTTPException(401, { message: "Unauthorized" });
+      try {
+        const contentDisposition = buildContentDisposition(filename, false);
+        const object = await readPortalAttachmentDownloadObject({
+          key,
+          expires,
+          token,
+          personId,
+        });
+        const body = object.body as ReadableStream<Uint8Array> | null;
+        try {
+          return new Response(body, {
+            headers: {
+              "Cache-Control": "private, max-age=0, no-store",
+              "Content-Type": object.contentType || "application/octet-stream",
+              "Content-Disposition": contentDisposition,
+            },
+          });
+        } catch (responseError) {
+          await body?.cancel().catch(() => {});
+          throw responseError;
+        }
+      } catch (error) {
+        if (!(error instanceof StoragePathError)) logHttpRequestFailure();
         throw new HTTPException(error instanceof StoragePathError ? 400 : 404, {
           message:
             error instanceof StoragePathError

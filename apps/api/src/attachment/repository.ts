@@ -9,6 +9,7 @@ import {
   isNull,
   ne,
   or,
+  type SQL,
   sql,
 } from "drizzle-orm";
 import type { Executor } from "../database/executor";
@@ -84,6 +85,35 @@ const parentCommentLive = or(
   isNull(attachmentTable.commentId),
   isNull(commentTable.deletedAt),
 );
+
+/**
+ * AT-1/AT-4 for the portal: the file hangs off a live **public** comment of this work item. A
+ * comment file's `work_item_id` is NULL, so a customer reaches it only through this arm; an
+ * internal or deleted comment never shares its files, whatever the file's own flag says.
+ */
+export function onPublicCommentOf(workItemId: string): SQL {
+  return sql`${attachmentTable.commentId} IN (
+    SELECT pc.id FROM comment pc
+    WHERE pc.work_item_id = ${workItemId}
+      AND pc.visibility = 'public'
+      AND pc.deleted_at IS NULL
+  )`;
+}
+
+/**
+ * The files a customer may see on a work item (AT-3, AT-4): customer-visible, not deleted, on
+ * the item itself or on one of its live public comments.
+ */
+export function customerVisibleFileOf(workItemId: string): SQL {
+  return and(
+    eq(attachmentTable.customerVisible, true),
+    isNull(attachmentTable.deletedAt),
+    or(
+      eq(attachmentTable.workItemId, workItemId),
+      onPublicCommentOf(workItemId),
+    ),
+  ) as SQL;
+}
 
 export async function countWorkItemAttachments(
   executor: Executor,
@@ -242,11 +272,22 @@ export async function findReachableSubmissionAttachment(
   },
 ) {
   if (!input.identity) return [];
+  // A customer's own file on a live public comment of the converted item: a staff file shared
+  // with them (download), or their reply's file (completion; uploader and state are checked
+  // by the caller).
+  const portalCommentFiles =
+    (input.portalDownload || input.completion) &&
+    input.accepted &&
+    input.linkedWorkItemId &&
+    input.identity.side === "customer";
   const parent =
     input.completion && input.accepted && input.linkedWorkItemId
       ? or(
           eq(attachmentTable.submissionId, input.submissionId),
           eq(attachmentTable.workItemId, input.linkedWorkItemId),
+          portalCommentFiles
+            ? onPublicCommentOf(input.linkedWorkItemId)
+            : undefined,
         )
       : input.download
         ? undefined
@@ -289,6 +330,11 @@ export async function findReachableSubmissionAttachment(
       state: attachmentTable.state,
       customerVisible: attachmentTable.customerVisible,
       uploadedBy: attachmentTable.uploadedBy,
+      /** A file on a live public comment of the linked item (portal download or completion). */
+      onPublicComment:
+        portalCommentFiles && input.linkedWorkItemId
+          ? sql<boolean>`(${onPublicCommentOf(input.linkedWorkItemId)})`
+          : sql<boolean>`false`,
     })
     .from(attachmentTable)
     .innerJoin(submissionTable, eq(submissionTable.id, input.submissionId))
@@ -310,10 +356,25 @@ export async function findReachableSubmissionAttachment(
           input.accepted && input.linkedWorkItemId
             ? and(
                 eq(submissionTable.state, "accepted"),
-                eq(attachmentTable.workItemId, input.linkedWorkItemId),
-                eq(attachmentTable.workItemId, submissionTable.workItemId),
+                eq(submissionTable.workItemId, input.linkedWorkItemId),
+                portalCommentFiles
+                  ? or(
+                      eq(attachmentTable.workItemId, input.linkedWorkItemId),
+                      onPublicCommentOf(input.linkedWorkItemId),
+                    )
+                  : eq(attachmentTable.workItemId, input.linkedWorkItemId),
                 input.identity.side === "customer"
-                  ? eq(submissionTable.requesterId, input.identity.personId)
+                  ? and(
+                      eq(submissionTable.requesterId, input.identity.personId),
+                      // CP-16: the item is live and still this requester's (A-03).
+                      exists(
+                        liveWorkItemIds(
+                          executor,
+                          input.linkedWorkItemId,
+                          input.identity.personId,
+                        ),
+                      ),
+                    )
                   : undefined,
                 input.identity.side === "staff"
                   ? inArray(attachmentTable.workItemId, reachableLinkedProject)
@@ -359,15 +420,23 @@ export async function findSubmissionAttachmentContent(
   const linkedArm = input.linkedWorkItemId
     ? and(
         eq(submissionTable.state, "accepted"),
-        eq(attachmentTable.workItemId, input.linkedWorkItemId),
-        eq(attachmentTable.workItemId, submissionTable.workItemId),
+        eq(submissionTable.workItemId, input.linkedWorkItemId),
+        identity.side === "customer"
+          ? or(
+              eq(attachmentTable.workItemId, input.linkedWorkItemId),
+              onPublicCommentOf(input.linkedWorkItemId),
+            )
+          : eq(attachmentTable.workItemId, input.linkedWorkItemId),
         identity.side === "customer"
           ? eq(submissionTable.requesterId, identity.personId)
           : undefined,
         identity.side === "customer"
-          ? inArray(
-              attachmentTable.workItemId,
-              liveWorkItemIds(executor, input.linkedWorkItemId),
+          ? exists(
+              liveWorkItemIds(
+                executor,
+                input.linkedWorkItemId,
+                identity.personId,
+              ),
             )
           : undefined,
         identity.side === "staff"
@@ -587,6 +656,51 @@ export async function findWorkItemAttachment(
     );
 }
 
+/**
+ * A customer's own pending upload on a request raised by staff (U-12, A-08): on the work item or
+ * on the customer's own live public reply, customer-visible, uploaded by this customer. Same row
+ * shape as {@link findWorkItemAttachment}, so the shared completion checks apply unchanged.
+ */
+export async function findPortalRequestUpload(
+  executor: Executor,
+  identity: ResolvedIdentity | null,
+  input: { id: string; workspaceId: string; workItemId: string },
+) {
+  if (identity?.side !== "customer") return [];
+  return await executor
+    .select()
+    .from(attachmentTable)
+    .leftJoin(commentTable, eq(commentTable.id, attachmentTable.commentId))
+    .innerJoin(workItemTable, sql`${workItemTable.id} = ${parentWorkItemId}`)
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+    .where(
+      and(
+        eq(attachmentTable.id, input.id),
+        eq(attachmentTable.workspaceId, input.workspaceId),
+        eq(workItemTable.id, input.workItemId),
+        eq(workItemTable.requesterId, identity.personId),
+        eq(attachmentTable.uploadedBy, identity.personId),
+        eq(attachmentTable.customerVisible, true),
+        or(
+          isNull(attachmentTable.commentId),
+          eq(commentTable.visibility, "public"),
+        ),
+        parentCommentLive,
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+      ),
+    )
+    .limit(1)
+    .then((rows) =>
+      rows.map(({ attachment, comment }) => ({
+        ...attachment,
+        parentWorkItemId: input.workItemId,
+        commentVisibility: comment?.visibility ?? null,
+      })),
+    );
+}
+
 export async function findSubmissionCompletionAttachment(
   executor: Executor,
   identity: ResolvedIdentity | null,
@@ -623,7 +737,19 @@ export async function findSubmissionCompletionAttachment(
               ? and(
                   eq(submissionTable.state, "accepted"),
                   eq(submissionTable.workItemId, transferredParentId),
-                  eq(attachmentTable.workItemId, submissionTable.workItemId),
+                  // CP-16: the item is live and still this requester's (A-03).
+                  exists(
+                    liveWorkItemIds(
+                      executor,
+                      transferredParentId,
+                      input.requesterId,
+                    ),
+                  ),
+                  // On the converted item, or on the requester's reply there (A-08).
+                  or(
+                    eq(attachmentTable.workItemId, submissionTable.workItemId),
+                    onPublicCommentOf(transferredParentId),
+                  ),
                 )
               : eq(attachmentTable.submissionId, submissionTable.id),
           ),
@@ -735,8 +861,17 @@ export async function readOrganisationStorageUsage(
   };
 }
 
-/** The work item `workItemId` while it, and its project, are live (not deleted or archived). */
-function liveWorkItemIds(executor: Executor, workItemId: string) {
+/**
+ * The work item `workItemId` while it, and its project, are live (not deleted or archived) and
+ * it still belongs to the submission's requester `requesterId` (CP-16): once staff name another
+ * requester (A-03) the item is that customer's direct request, and the submission's link to it
+ * is treated as absent, as the portal case list does.
+ */
+function liveWorkItemIds(
+  executor: Executor,
+  workItemId: string,
+  requesterId: string,
+) {
   return executor
     .select({ id: workItemTable.id })
     .from(workItemTable)
@@ -744,6 +879,7 @@ function liveWorkItemIds(executor: Executor, workItemId: string) {
     .where(
       and(
         eq(workItemTable.id, workItemId),
+        eq(workItemTable.requesterId, requesterId),
         isNull(workItemTable.deletedAt),
         isNull(workItemTable.archivedAt),
         isNull(projectTable.deletedAt),
@@ -754,26 +890,18 @@ function liveWorkItemIds(executor: Executor, workItemId: string) {
 /**
  * AT-5/AT-7: the portal requester keeps access to a converted work item's customer-visible
  * files only while that item and its project are live. A soft-deleted or archived item (or a
- * deleted project) behaves as if the submission carried no link.
+ * deleted project) behaves as if the submission carried no link. CP-16: so does an item whose
+ * requester staff changed to someone else (A-03); it is then the new requester's direct request.
  */
 export async function findLiveLinkedWorkItemId(
   executor: Executor,
   workItemId: string | null,
+  requesterId: string,
 ): Promise<string | null> {
   if (!workItemId) return null;
-  const [row] = await executor
-    .select({ id: workItemTable.id })
-    .from(workItemTable)
-    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
-    .where(
-      and(
-        eq(workItemTable.id, workItemId),
-        isNull(workItemTable.deletedAt),
-        isNull(workItemTable.archivedAt),
-        isNull(projectTable.deletedAt),
-      ),
-    )
-    .limit(1);
+  const [row] = await liveWorkItemIds(executor, workItemId, requesterId).limit(
+    1,
+  );
   return row?.id ?? null;
 }
 
@@ -789,7 +917,10 @@ export async function listPortalSubmissionAttachments(
   const parents = [
     eq(attachmentTable.submissionId, input.submissionId),
     ...(input.workItemId
-      ? [eq(attachmentTable.workItemId, input.workItemId)]
+      ? [
+          eq(attachmentTable.workItemId, input.workItemId),
+          onPublicCommentOf(input.workItemId),
+        ]
       : []),
   ];
   return await executor
@@ -801,6 +932,8 @@ export async function listPortalSubmissionAttachments(
       submissionFieldKey: attachmentTable.submissionFieldKey,
       state: attachmentTable.state,
       createdAt: attachmentTable.createdAt,
+      /** Internal: the router derives `downloadable` from it and never returns it. */
+      objectKey: attachmentTable.objectKey,
     })
     .from(attachmentTable)
     .where(
@@ -818,13 +951,23 @@ export async function listPortalSubmissionAttachments(
                   eq(attachmentTable.submissionId, submissionTable.id),
                   and(
                     eq(submissionTable.state, "accepted"),
-                    eq(attachmentTable.workItemId, submissionTable.workItemId),
                     // P1R2-4: a converted item that staff deleted or archived (or whose
                     // project was deleted) no longer shares its files with the portal.
                     input.workItemId
-                      ? inArray(
-                          attachmentTable.workItemId,
-                          liveWorkItemIds(executor, input.workItemId),
+                      ? and(
+                          eq(submissionTable.workItemId, input.workItemId),
+                          // CP-16: only while the item is still this requester's.
+                          exists(
+                            liveWorkItemIds(
+                              executor,
+                              input.workItemId,
+                              identity.personId,
+                            ),
+                          ),
+                          or(
+                            eq(attachmentTable.workItemId, input.workItemId),
+                            onPublicCommentOf(input.workItemId),
+                          ),
                         )
                       : sql`false`,
                   ),
@@ -834,6 +977,12 @@ export async function listPortalSubmissionAttachments(
         ),
         eq(attachmentTable.customerVisible, true),
         isNull(attachmentTable.deletedAt),
+        // A file still uploading shows only to the customer who is uploading it (they can
+        // finish it); a staff upload in flight stays out of the portal until it is ready.
+        or(
+          eq(attachmentTable.state, "ready"),
+          eq(attachmentTable.uploadedBy, identity.personId),
+        ),
       ),
     )
     .orderBy(attachmentTable.createdAt);
@@ -967,6 +1116,7 @@ export async function lockAttachmentWorkItem(
       projectId: workItemTable.projectId,
       deletedAt: workItemTable.deletedAt,
       archivedAt: workItemTable.archivedAt,
+      requesterId: workItemTable.requesterId,
       ...(input.workspaceId ? { id: workItemTable.id } : {}),
     })
     .from(workItemTable)

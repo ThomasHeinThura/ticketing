@@ -18,6 +18,7 @@ import {
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
 import {
   deletePendingWorkItemAttachment,
+  findPortalRequestUpload,
   findWorkItemAttachment,
   getAttachmentSizeLimit,
   lockAttachmentWorkItem,
@@ -59,6 +60,11 @@ export type CompleteAttachmentInput = {
   actorId: string;
   actorType: "person" | "api_key";
   identity: ResolvedIdentity | null;
+  /**
+   * A-08: the requester completing their own upload on a request raised by staff. The row is
+   * found through the customer finder; every storage, size, quota and content check is shared.
+   */
+  portal?: true;
 };
 
 /**
@@ -78,7 +84,8 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
     identity,
   } = input;
 
-  const [attachment] = await findWorkItemAttachment(db, identity, {
+  const find = input.portal ? findPortalRequestUpload : findWorkItemAttachment;
+  const [attachment] = await find(db, identity, {
     id: attachmentId,
     workspaceId,
     workItemId,

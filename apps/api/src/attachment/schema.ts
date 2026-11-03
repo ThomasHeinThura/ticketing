@@ -38,9 +38,9 @@ export const presignAttachmentBody = z.object({
     .optional()
     .openapi({
       description:
-        "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured. " +
-        "On a comment attachment the default is the comment's own audience, and an internal " +
-        "comment's attachment is always internal (AT-4).",
+        "AT-3: staff uploads are not customer-visible unless this is explicitly true. On a " +
+        "comment attachment, true is honoured only for a public comment; an internal comment's " +
+        "attachment is always internal (AT-4).",
     }),
   commentId: z
     .string()

@@ -257,6 +257,8 @@ export type WorkItemFieldSnapshot = {
   dueDate?: Date | string | null;
   startDate?: Date | string | null;
   assigneeId?: string | null;
+  /** A-03: internal by CA-7's fail-closed default, like the assignee. */
+  requesterId?: string | null;
   stateId?: string;
 };
 
@@ -282,6 +284,8 @@ const DIFFABLE_FIELDS: ReadonlyArray<{
   // unmapped verb or field is internal"), the same way `assignee` does below.
   { key: "startDate", field: "start_date" },
   { key: "assigneeId", field: "assignee" },
+  // A-03: not a CA-7 public field, so `internal` by the same fail-closed default.
+  { key: "requesterId", field: "requester" },
 ];
 
 function valuesDiffer(a: unknown, b: unknown): boolean {

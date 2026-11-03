@@ -43,8 +43,14 @@ export type AttachmentUploadCheckpoint = {
   uploaded: boolean;
 };
 
-/** AT-1: where a file attaches. Omitted, it attaches to the work item itself. */
-export type AttachmentTarget = { commentId?: string };
+/**
+ * AT-1: where a file attaches. Omitted, it attaches to the work item itself. `customerVisible`
+ * (A-07) shares a file on a public comment with the customer; AT-3 keeps it internal otherwise.
+ */
+export type AttachmentTarget = {
+  commentId?: string;
+  customerVisible?: boolean;
+};
 
 export async function presignWorkItemAttachment(
   key: string,
@@ -58,6 +64,7 @@ export async function presignWorkItemAttachment(
       contentType: file.type || "application/octet-stream",
       size: file.size,
       ...(target.commentId ? { commentId: target.commentId } : {}),
+      ...(target.customerVisible ? { customerVisible: true } : {}),
     },
   });
   if (!response.ok)

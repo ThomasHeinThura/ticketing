@@ -521,6 +521,11 @@ const READS: Case[] = [
       json(a, "GET", `/api/projects/${i.projectId}/assignable`),
   },
   {
+    matrixKey: "GET /api/projects/{projectId}/requester-candidates",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/requester-candidates`),
+  },
+  {
     matrixKey: "GET /api/projects/{projectId}/settings/inheritance",
     call: (app, _w, i) =>
       json(app, "GET", `/api/projects/${i.projectId}/settings/inheritance`),

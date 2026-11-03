@@ -1002,7 +1002,7 @@ export async function createSubmission(input: {
   };
 }
 
-function paragraphDocument(text: string) {
+export function paragraphDocument(text: string) {
   return {
     type: "doc",
     content: text
@@ -1810,6 +1810,17 @@ export async function findSubmission(
           eq(schema.commentTable.workItemId, linkedWorkItemId),
           eq(schema.commentTable.visibility, "public"),
           isNull(schema.commentTable.deletedAt),
+          // CP-16 (A-03): a customer reads the item's conversation only while the item still
+          // names the submission's requester. Once staff name someone else it is that person's
+          // direct request, and the old submission's readers see none of it.
+          ...(staffIdentity
+            ? []
+            : [
+                eq(
+                  schema.workItemTable.requesterId,
+                  row.submission.requesterId,
+                ),
+              ]),
           ...(staffIdentity ? [isNull(schema.projectTable.deletedAt)] : []),
           ...(staffIdentity
             ? [
@@ -2758,6 +2769,17 @@ async function postSubmissionMessageInTransaction(
         throw new HTTPException(409, {
           message: "This request is temporarily unavailable",
         });
+      // CP-16: once staff name another requester (A-03) the item is that customer's direct
+      // request, and this submission's requester no longer replies on it. The share lock
+      // orders the check against that change.
+      const [owner] = await tx
+        .select({ requesterId: schema.workItemTable.requesterId })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.id, row.workItem.id))
+        .for("share")
+        .limit(1);
+      if (owner?.requesterId !== row.submission.requesterId)
+        throw new HTTPException(404, { message: "Submission not found" });
       const now = new Date();
       const [comment] = await tx
         .insert(schema.commentTable)

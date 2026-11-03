@@ -273,6 +273,23 @@ export const platformPolicies = {
       "short-lived, key-scoped signed token minted by GET /api/attachments/{id} after " +
       "its own policy check already ran",
   },
+  // CP-19 (3 November 2026): portal-bound siblings for work-item attachment objects, portal
+  // host only. Above the session guard like the two routes above (a direct PUT / redirect
+  // target, no CSRF header); the handler itself requires the portal session's customer person
+  // to equal the person the signed token binds, after the portal own_request / own_submission
+  // route that minted it ran its own policy check.
+  "PUT /api/storage/portal-attachment-upload": {
+    public: true,
+    reason:
+      "a direct-PUT upload authorized by a short-lived signed token binding key, customer " +
+      "person and size ceiling, checked against the portal session's person in the handler",
+  },
+  "GET /api/storage/portal-download": {
+    public: true,
+    reason:
+      "a presigned-style download authorized by a short-lived signed token binding key and " +
+      "customer person, checked against the portal session's person in the handler",
+  },
 
   // --- Issue #8 classification pass: inline routes in index.ts (below). GET /api/asset/{id}
   // is classified separately, in apps/api/src/asset/policy.ts, since it was moved below the

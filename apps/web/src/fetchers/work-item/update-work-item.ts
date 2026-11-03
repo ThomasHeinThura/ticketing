@@ -15,6 +15,8 @@ export type UpdateWorkItemInput = {
   dueDate?: string | null;
   // CF-3: custom field values by key; null clears a field. Validated server-side.
   customFields?: Record<string, unknown>;
+  // A-03: a customer of the project's organisation; null clears the requester.
+  requesterId?: string | null;
 };
 
 export default async function updateWorkItem({

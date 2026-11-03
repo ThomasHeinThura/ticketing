@@ -17,6 +17,10 @@ import {
   requirePendingActionRequesterIdentity,
 } from "../pending-action/service";
 import { createAttachmentDownloadUrl } from "../storage";
+import {
+  createPortalAttachmentDownloadUrl,
+  portalCanDownloadObject,
+} from "../storage/portal-servable";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
 import { requirePublicAppOrigin } from "../utils/request-origin";
 import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
@@ -358,8 +362,13 @@ const restoreAttachmentRoute = createRoute({
 });
 
 const portalSubmissionPresignBody = presignAttachmentBody
-  .omit({ commentId: true })
-  .extend({ fieldKey: z.string().min(1).max(100).optional() })
+  .extend({
+    fieldKey: z.string().min(1).max(100).optional(),
+    commentId: presignAttachmentBody.shape.commentId.openapi({
+      description:
+        "A-08: attach the file to the requester's reply on an accepted request (a live public comment they wrote on its work item). Refused (400) before acceptance.",
+    }),
+  })
   .strict();
 const portalSubmissionPresignRoute = createRoute({
   method: "post",
@@ -425,6 +434,11 @@ const portalSubmissionListRoute = createRoute({
           size: z.number(),
           submissionFieldKey: z.string().nullable(),
           state: z.string(),
+          /**
+           * The portal can serve the file's bytes: true for every ready file (CP-19, 3 November
+           * 2026: work-item files through a portal-bound signed link); false while uploading.
+           */
+          downloadable: z.boolean(),
           createdAt: z.date(),
         }),
       ),
@@ -649,6 +663,8 @@ const attachment = apiRouter<
         submissionId: c.get("submissionId"),
         requesterId: c.get("requesterId"),
         workspaceId: c.get("workspaceId"),
+        acceptedWorkItemId: c.get("submissionWorkItemId"),
+        commentId: c.req.valid("json").commentId,
         fieldKey: c.req.valid("json").fieldKey,
         filename: c.req.valid("json").filename,
         contentType: c.req.valid("json").contentType,
@@ -693,7 +709,14 @@ const attachment = apiRouter<
         workItemId: c.get("submissionWorkItemId"),
       },
     );
-    return c.json(rows, 200);
+    return c.json(
+      rows.map(({ objectKey, ...file }) => ({
+        ...file,
+        downloadable:
+          file.state === "ready" && portalCanDownloadObject(objectKey),
+      })),
+      200,
+    );
   })
   .openapi(portalSubmissionDownloadRoute, async (c) => {
     const [row] = await findSubmissionAttachmentContent(
@@ -708,11 +731,18 @@ const attachment = apiRouter<
       },
     );
     if (!row) throw new Error("Authorized submission attachment disappeared");
-    const downloadUrl = await createAttachmentDownloadUrl(
-      row.objectKey,
-      row.filename,
-      requirePublicAppOrigin(c.get("appPublicOrigin")),
-    );
+    // Never redirect to, or audit, a download the portal host would refuse; the list marks such
+    // a file `downloadable: false`.
+    if (!portalCanDownloadObject(row.objectKey))
+      throw new HTTPException(404, { message: "Attachment not found" });
+    // CP-19: a work-item file (a staff file shared on a public comment, or the requester's reply
+    // file) gets a portal-bound link for this requester on the filesystem driver.
+    const downloadUrl = await createPortalAttachmentDownloadUrl({
+      objectKey: row.objectKey,
+      filename: row.filename,
+      personId: c.get("requesterId"),
+      apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
+    });
     await appendAuditLog(db, {
       actorId: c.get("requesterId"),
       actorType: "person",

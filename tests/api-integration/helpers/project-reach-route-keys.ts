@@ -65,6 +65,7 @@ export const PROJECT_READ_ROUTE_KEYS = [
   "GET /api/project/{id}/stakeholders",
   "GET /api/project/{id}/document-links",
   "GET /api/projects/{projectId}/assignable",
+  "GET /api/projects/{projectId}/requester-candidates",
   "GET /api/projects/{projectId}/states",
   "GET /api/projects/{projectId}/state-templates",
   "GET /api/projects/{projectId}/members",

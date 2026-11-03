@@ -109,8 +109,11 @@ describe("PortalCaseTable", () => {
     expect(screen.getByText("Bob Colleague")).toBeVisible();
     expect(screen.getByText("A colleague")).toBeVisible();
     expect(screen.getAllByText("Your team")).toHaveLength(3);
-    // D6: no portal page yet, so the reference is plain text and the type stands in for a title.
-    expect(screen.getByText("ACME-3").closest("a")).toBeNull();
+    // D6 / U-12: a request raised by staff opens its own page; the type stands in for a title.
+    expect(screen.getByRole("link", { name: "ACME-3" })).toHaveAttribute(
+      "href",
+      "/requests/ACME-3",
+    );
     expect(screen.getAllByText("Incident")).toHaveLength(2);
     expect(screen.getAllByText("Not set")).toHaveLength(2);
     expect(screen.getAllByText("Acme Support")).toHaveLength(2);

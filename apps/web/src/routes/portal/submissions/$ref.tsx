@@ -17,7 +17,7 @@ import {
   Input,
   Textarea,
 } from "@taskdesk/ui";
-import { Paperclip } from "lucide-react";
+import { Paperclip, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PdfPreviewDialog, {
@@ -84,6 +84,10 @@ function PortalSubmissionContent() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
+  // A-08: files staged for the reply on an accepted request, and any the reply could not carry.
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
+  const [replyFileFailures, setReplyFileFailures] = useState<string[]>([]);
+  const replyFileInput = useRef<HTMLInputElement>(null);
   const [previewAttachment, setPreviewAttachment] =
     useState<PdfPreviewAttachment>();
   const page = useQuery({
@@ -91,9 +95,39 @@ function PortalSubmissionContent() {
     queryFn: () => getPortalSubmission(ref),
   });
   const reply = useMutation({
-    mutationFn: () => replyPortalSubmission({ ref, body: body.trim() }),
-    onSuccess: async () => {
+    mutationFn: async () => {
+      const posted = await replyPortalSubmission({ ref, body: body.trim() });
+      // A-08: each staged file attaches to this reply on the request the team works on.
+      const failed: string[] = [];
+      for (const file of replyFiles) {
+        try {
+          const signed = await presignPortalSubmissionAttachment({
+            ref,
+            commentId: posted.message.id,
+            filename: file.name,
+            contentType: file.type || "application/octet-stream",
+            size: file.size,
+          });
+          const put = await fetch(signed.uploadUrl, {
+            method: "PUT",
+            headers: signed.uploadHeaders as Record<string, string>,
+            body: file,
+          });
+          if (!put.ok) throw new Error("The file could not be stored.");
+          await completePortalSubmissionAttachment({
+            ref,
+            id: signed.attachmentId,
+          });
+        } catch {
+          failed.push(file.name);
+        }
+      }
+      return failed;
+    },
+    onSuccess: async (failed) => {
       setBody("");
+      setReplyFiles([]);
+      setReplyFileFailures(failed);
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["portal", portalUserId, "submission", ref],
@@ -113,10 +147,10 @@ function PortalSubmissionContent() {
       ]),
   });
   const upload = useMutation({
-    mutationFn: async (input: { fieldKey: string; file: File }) => {
+    mutationFn: async (input: { fieldKey?: string; file: File }) => {
       const signed = await presignPortalSubmissionAttachment({
         ref,
-        fieldKey: input.fieldKey,
+        ...(input.fieldKey ? { fieldKey: input.fieldKey } : {}),
         filename: input.file.name,
         contentType: input.file.type || "application/octet-stream",
         size: input.file.size,
@@ -232,9 +266,19 @@ function PortalSubmissionContent() {
   // CP-16: a colleague never fetches or sees the attachment list and cannot upload.
   const canViewAttachments =
     !!record && (record.canViewAttachments ?? requester);
+  const openForFiles = state === "new" || state === "clarifying";
+  // A-08: an accepted request takes files too; they attach to the request the team works on.
+  const acceptedForFiles = state === "accepted" && !!record?.workItem;
   const canUpload =
-    (record?.canUpload ?? requester) &&
-    (state === "new" || state === "clarifying");
+    (record?.canUpload ?? requester) && (openForFiles || acceptedForFiles);
+  const formFileFields = (record?.version?.formSchema?.fields ?? []).filter(
+    (field) => field.type === "file",
+  );
+  // The form's own file fields are the upload controls while it is open; without any, one
+  // general control takes files for the request. Once accepted, files go with a reply (A-08).
+  const generalUpload =
+    canUpload && openForFiles && formFileFields.length === 0;
+  const replyUpload = canUpload && acceptedForFiles;
   const attachments = useQuery({
     queryKey: ["portal", portalUserId, "submission", ref, "attachments"],
     queryFn: () => getPortalSubmissionAttachments(ref),
@@ -582,9 +626,17 @@ function PortalSubmissionContent() {
                     className="flex items-center justify-between gap-3 rounded border p-3"
                     key={file.id}
                   >
-                    <span>
-                      {file.filename} · {Math.ceil(file.size / 1024)} KB ·{" "}
-                      {file.state}
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span>
+                        {file.filename} · {Math.ceil(file.size / 1024)} KB ·{" "}
+                        {file.state}
+                      </span>
+                      {/* Say why a ready file has no Download (the API cannot serve its key), never leave it unexplained. */}
+                      {file.state === "ready" && !file.downloadable ? (
+                        <span className="text-muted-foreground text-xs">
+                          {t("portal:requestPage.fileNotDownloadable")}
+                        </span>
+                      ) : null}
                     </span>
                     {file.state === "pending" ? (
                       <Button
@@ -616,11 +668,15 @@ function PortalSubmissionContent() {
                                     ref,
                                     file.id,
                                   ),
-                                downloadPath:
-                                  portalSubmissionAttachmentDownloadPath(
-                                    ref,
-                                    file.id,
-                                  ),
+                                ...(file.downloadable
+                                  ? {
+                                      downloadPath:
+                                        portalSubmissionAttachmentDownloadPath(
+                                          ref,
+                                          file.id,
+                                        ),
+                                    }
+                                  : {}),
                               })
                             }
                           >
@@ -629,26 +685,40 @@ function PortalSubmissionContent() {
                             })}
                           </Button>
                         ) : null}
-                        <Button
-                          variant="outline"
-                          disabled={download.isPending}
-                          onClick={() =>
-                            download.mutate({
-                              id: file.id,
-                              filename: file.filename,
-                            })
-                          }
-                        >
-                          {t("portal:intake.download", {
-                            defaultValue: "Download",
-                          })}
-                        </Button>
+                        {/* A file the API marks not downloadable is listed without a download. */}
+                        {file.downloadable ? (
+                          <Button
+                            variant="outline"
+                            disabled={download.isPending}
+                            onClick={() =>
+                              download.mutate({
+                                id: file.id,
+                                filename: file.filename,
+                              })
+                            }
+                          >
+                            {t("portal:intake.download", {
+                              defaultValue: "Download",
+                            })}
+                          </Button>
+                        ) : null}
                       </div>
                     )}
                   </div>
                 ))}
-              {record.version?.formSchema?.fields
-                ?.filter((field) => field.type === "file" && canUpload)
+              {generalUpload ? (
+                <SubmissionFileField
+                  fieldKey="request"
+                  label={t("portal:requestPage.attach")}
+                  multiple
+                  uploading={upload.isPending}
+                  onFiles={(files) => {
+                    for (const file of files) upload.mutate({ file });
+                  }}
+                />
+              ) : null}
+              {formFileFields
+                .filter(() => canUpload && openForFiles)
                 .map((field) => (
                   <SubmissionFileField
                     key={field.key}
@@ -688,11 +758,92 @@ function PortalSubmissionContent() {
               <Textarea
                 id="portal-reply"
                 value={body}
+                disabled={reply.isPending}
                 onChange={(event) => setBody(event.target.value)}
               />
-              <Button type="submit" disabled={!body.trim() || reply.isPending}>
-                {t("portal:intake.sendReply", { defaultValue: "Send reply" })}
-              </Button>
+              {replyUpload && replyFiles.length > 0 ? (
+                <ul
+                  className="flex flex-col gap-1"
+                  aria-label={t("portal:requestPage.filesToSend")}
+                >
+                  {replyFiles.map((file, index) => (
+                    <li
+                      key={`${file.name}:${file.size}:${file.lastModified}`}
+                      className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border px-3 py-1.5"
+                    >
+                      <span className="truncate text-sm">{file.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={reply.isPending}
+                        aria-label={t("portal:requestPage.removeFile", {
+                          name: file.name,
+                        })}
+                        onClick={() =>
+                          setReplyFiles((current) =>
+                            current.filter((_, position) => position !== index),
+                          )
+                        }
+                      >
+                        <X aria-hidden="true" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {replyFileFailures.length > 0 ? (
+                <Alert variant="error">
+                  <AlertDescription>
+                    <span>{t("portal:requestPage.uploadFailed")}</span>
+                    <ul className="mt-1 list-disc ps-4">
+                      {replyFileFailures.map((name) => (
+                        <li key={name}>{name}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {replyUpload ? (
+                  <div className="flex items-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={reply.isPending}
+                      onClick={() => replyFileInput.current?.click()}
+                    >
+                      <Paperclip aria-hidden="true" />
+                      {t("portal:requestPage.attach")}
+                    </Button>
+                    <Input
+                      ref={replyFileInput}
+                      id="portal-reply-files"
+                      type="file"
+                      multiple
+                      className="sr-only"
+                      tabIndex={-1}
+                      aria-label={t("portal:requestPage.attach")}
+                      onChange={(event) => {
+                        const chosen = Array.from(event.target.files ?? []);
+                        setReplyFiles((current) => [...current, ...chosen]);
+                        event.target.value = "";
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <span />
+                )}
+                <Button
+                  type="submit"
+                  disabled={!body.trim() || reply.isPending}
+                >
+                  {reply.isPending
+                    ? t("portal:requestPage.sending")
+                    : t("portal:intake.sendReply", {
+                        defaultValue: "Send reply",
+                      })}
+                </Button>
+              </div>
             </form>
           )}
         </>

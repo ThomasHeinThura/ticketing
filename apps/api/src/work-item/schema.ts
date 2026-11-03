@@ -233,6 +233,18 @@ export const createWorkItemBody = z.object({
     .optional(),
   // CF-3/CF-4/CF-5: custom field values travel inside the work item payload.
   customFields: workItemCustomFieldsInput,
+  // A-03: raise the request for a customer of the project's organisation (needs
+  // `work_item:update` as well as `work_item:create`; 422 for anyone else).
+  requesterId: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+    .optional()
+    .openapi({
+      description:
+        "A-03: the request's requester, an active customer of the project's organisation " +
+        "(422 otherwise). Requires work_item:update as well as work_item:create.",
+    }),
 });
 
 export const updateWorkItemBody = z
@@ -256,6 +268,19 @@ export const updateWorkItemBody = z
       .refine((ids) => new Set(ids).size === ids.length, "Duplicate labels")
       .optional(),
     customFields: workItemCustomFieldsInput,
+    // A-03: name a customer of the project's organisation as the requester, or null to clear.
+    requesterId: z
+      .string()
+      .min(1)
+      .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          "A-03: the request's requester, an active customer of the project's organisation " +
+          "(422 otherwise); null clears it. The portal then lists the item as that " +
+          "customer's own request.",
+      }),
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field must be supplied",

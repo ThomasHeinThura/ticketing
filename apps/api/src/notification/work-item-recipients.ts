@@ -1,11 +1,22 @@
 import type { NotificationCopyDescriptorV1 } from "@taskdesk/domain";
-import { sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  sql,
+} from "drizzle-orm";
+import { schema } from "../database";
 import type { DbTransaction, DomainEventEnvelope } from "../events/outbox";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import {
   projectAncestryFor,
   projectOwnerTeamFor,
 } from "../utils/project-ancestry";
+import { resolveCommentAuthors } from "../work-item/comment-access";
 import type { NotificationRecipientCandidate } from "./fanout";
 import { configuredMentionChannels } from "./fanout.repository";
 import { canReadNativeInboxCandidate } from "./native-inbox-reach";
@@ -13,6 +24,7 @@ import {
   findCurrentNotificationResource,
   findNotificationPerson,
   findWorkItemAssigneeId,
+  listProjectLeadPersonIds,
   listWorkItemWatchers,
 } from "./repository";
 
@@ -247,9 +259,102 @@ export async function resolveWorkItemEventRecipients(
 }
 
 /** NO-19: watcher, assignee and requester recipients for a live comment. */
-export async function resolveCommentEventRecipients(
+export function resolveCommentEventRecipients(
   tx: DbTransaction,
   event: DomainEventEnvelope<Record<string, unknown>>,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  return resolveCommentRecipients(tx, event, null);
+}
+
+/**
+ * A customer's portal reply on a direct request (U-12): the `NO-19` comment audience plus the
+ * staff member who last handled the request (`NO-21` "whoever last handled it": the author of
+ * the latest live public staff comment, else the project's leads). Without this rule a reply on
+ * an unassigned, unwatched request would tell nobody. The added persons must be staff and pass
+ * the same reach check as every other comment recipient.
+ */
+export function resolveCustomerReplyRecipients(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  return resolveCommentRecipients(tx, event, findDirectRequestLastHandlers);
+}
+
+type CommentRecipientContext = {
+  commentId: string;
+  workItemId: string;
+  workspaceId: string;
+  projectId: string;
+};
+
+/** How many recent public comments are scanned for the last staff author. */
+const LAST_HANDLER_SCAN = 50;
+
+/** `NO-21` for a direct request: the latest public staff commenter, else the project leads. */
+export async function findDirectRequestLastHandlers(
+  tx: DbTransaction,
+  context: CommentRecipientContext,
+): Promise<string[]> {
+  const recent = await tx
+    .select({ authorId: schema.commentTable.authorId })
+    .from(schema.commentTable)
+    .where(
+      and(
+        eq(schema.commentTable.workItemId, context.workItemId),
+        eq(schema.commentTable.visibility, "public"),
+        isNull(schema.commentTable.deletedAt),
+        isNotNull(schema.commentTable.body),
+        isNotNull(schema.commentTable.authorId),
+        ne(schema.commentTable.id, context.commentId),
+      ),
+    )
+    .orderBy(desc(schema.commentTable.createdAt), desc(schema.commentTable.id))
+    .limit(LAST_HANDLER_SCAN);
+  // Older comments may store the author's user id; resolve every author to a person first.
+  const people = await resolveCommentAuthors(
+    tx,
+    recent.map((row) => row.authorId),
+  );
+  const authors = [
+    ...new Set(
+      recent.flatMap((row) => {
+        const personId = row.authorId ? people.get(row.authorId) : null;
+        return personId ? [personId] : [];
+      }),
+    ),
+  ];
+  if (authors.length > 0) {
+    const staff = new Set(
+      (
+        await tx
+          .select({ id: schema.personTable.id })
+          .from(schema.personTable)
+          .where(
+            and(
+              inArray(schema.personTable.id, authors),
+              eq(schema.personTable.side, "staff"),
+            ),
+          )
+      ).map((row) => row.id),
+    );
+    const latest = authors.find((personId) => staff.has(personId));
+    if (latest) return [latest];
+  }
+  return listProjectLeadPersonIds(tx, {
+    projectId: context.projectId,
+    workspaceId: context.workspaceId,
+  });
+}
+
+async function resolveCommentRecipients(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+  extraStaff:
+    | ((
+        tx: DbTransaction,
+        context: CommentRecipientContext,
+      ) => Promise<string[]>)
+    | null,
 ): Promise<readonly NotificationRecipientCandidate[]> {
   if (event.kind !== "work_item.commented" || !event.scope.workspaceId)
     return [];
@@ -314,6 +419,14 @@ export async function resolveCommentEventRecipients(
     if (personId) recipients.add(personId);
   for (const watcher of watchers)
     if (!watcher.muted) recipients.add(watcher.personId);
+  // Persons added only by the extra rule must be staff (`NO-21`: the reply goes to the team).
+  const staffOnly = new Set<string>();
+  if (extraStaff)
+    for (const personId of await extraStaff(tx, context))
+      if (!recipients.has(personId)) {
+        recipients.add(personId);
+        staffOnly.add(personId);
+      }
 
   const channels = await configuredMentionChannels(tx);
   const candidates: NotificationRecipientCandidate[] = [];
@@ -326,6 +439,7 @@ export async function resolveCommentEventRecipients(
       tx,
     );
     if (!identity || identity.personId !== personId) continue;
+    if (staffOnly.has(personId) && identity.side !== "staff") continue;
     const ancestorProjectIds = await projectAncestryFor(
       tx,
       identity,

@@ -126,6 +126,7 @@ const PATCH_FIELDS = [
   "priority",
   "startDate",
   "dueDate",
+  "requesterId",
   "updatedAt",
 ] as const;
 

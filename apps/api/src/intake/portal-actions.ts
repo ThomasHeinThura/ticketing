@@ -75,7 +75,16 @@ async function lockOwnSubmission(tx: Tx, number: number, personId: string) {
   return row;
 }
 
-async function lockLinkedWorkItem(tx: Tx, workItemId: string) {
+/**
+ * The submission's linked work item, locked. CP-16 (A-03): the link counts only while the item
+ * still names the submission's requester; once staff name someone else it is that person's
+ * direct request, and every action here answers the constant 404.
+ */
+async function lockLinkedWorkItem(
+  tx: Tx,
+  workItemId: string,
+  requesterId: string,
+) {
   const [item] = await tx
     .select()
     .from(schema.workItemTable)
@@ -83,6 +92,8 @@ async function lockLinkedWorkItem(tx: Tx, workItemId: string) {
     .for("update")
     .limit(1);
   assertWorkItemStillLive(item, "Submission not found");
+  if (item.requesterId !== requesterId)
+    throw new HTTPException(404, { message: "Submission not found" });
   await assertProjectStillLive(tx, item.projectId, "Submission not found");
   return item;
 }
@@ -105,7 +116,11 @@ export async function escalatePortalPriority(input: {
     const row = await lockOwnSubmission(tx, number, input.personId);
     if (row.submission.state !== "accepted" || !row.submission.workItemId)
       code("not_escalatable", "this request is not in progress yet");
-    const item = await lockLinkedWorkItem(tx, row.submission.workItemId);
+    const item = await lockLinkedWorkItem(
+      tx,
+      row.submission.workItemId,
+      row.submission.requesterId,
+    );
     if (item.resolvedAt)
       code("not_escalatable", "this request is already resolved");
     const verdict = judgeEscalation(item.priority, input.priority);
@@ -292,7 +307,11 @@ export async function reopenPortalSubmission(input: {
     }
     if (before.state !== "accepted" || !before.workItemId)
       code("not_reopenable", "this request cannot be reopened");
-    const item = await lockLinkedWorkItem(tx, before.workItemId);
+    const item = await lockLinkedWorkItem(
+      tx,
+      before.workItemId,
+      before.requesterId,
+    );
     if (!item.resolvedAt) code("not_reopenable", "this request is not closed");
     const windowDays = await findReopenWindowDays(tx);
     if (!isWithinReopenWindow(item.resolvedAt, new Date(), windowDays))
@@ -356,7 +375,11 @@ export async function ratePortalSubmission(input: {
     const row = await lockOwnSubmission(tx, number, input.personId);
     if (row.submission.state !== "accepted" || !row.submission.workItemId)
       code("not_rateable", "only a resolved request can be rated");
-    const item = await lockLinkedWorkItem(tx, row.submission.workItemId);
+    const item = await lockLinkedWorkItem(
+      tx,
+      row.submission.workItemId,
+      row.submission.requesterId,
+    );
     if (!item.resolvedAt)
       code("not_rateable", "only a resolved request can be rated");
     const [existing] = await tx

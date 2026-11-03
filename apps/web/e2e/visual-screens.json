@@ -114,6 +114,14 @@
 		"screenshot": "portal-submission-detail.png"
 	},
 	{
+		"name": "portal-request-detail",
+		"inventoryRoute": "/requests/{ref}",
+		"applicationRoute": "/requests/$ref",
+		"origin": "portal",
+		"test": "portal request detail @visual",
+		"screenshot": "portal-request-detail.png"
+	},
+	{
 		"name": "portal-sign-in-email",
 		"inventoryRoute": "/sign-in",
 		"applicationRoute": "/sign-in",

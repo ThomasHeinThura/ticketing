@@ -237,6 +237,15 @@ describe("field labels and values (A-40)", () => {
         (id) => names.get(id) ?? "Unknown",
       ),
     ).toBe("Assignee: — → Ada Lovelace");
+    // A-03: the requester is a person too, named the same way.
+    expect(
+      activityChangeDescription(
+        change(null, "cust-1", "requester"),
+        translate,
+        false,
+        (id) => (id === "cust-1" ? "Alice Customer" : "Unknown"),
+      ),
+    ).toBe("Requester: — → Alice Customer");
     expect(
       activityChangeDescription(change("a", "b", "watcher"), translate),
     ).toBe("Watcher: a → b");

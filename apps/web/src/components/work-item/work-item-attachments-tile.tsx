@@ -76,6 +76,10 @@ export default function WorkItemAttachmentTile({
       ? t("workItems:detail.attachments.uploadedBy", { name: uploaderName })
       : null,
     formatDateMedium(attachment.createdAt),
+    // AT-3 / A-07: staff see which files the customer can download.
+    attachment.customerVisible
+      ? t("workItems:detail.attachments.sharedWithCustomer")
+      : null,
   ]
     .filter(Boolean)
     .join(" · ");

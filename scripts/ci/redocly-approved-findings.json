@@ -46,5 +46,13 @@
 		"reason": "Templates overlap only on the literal URL /me/identity-links/intents/start, but the operations are method-disjoint (POST /me/identity-links/{targetConnectionId}/start has no GET; GET /me/identity-links/intents/{intentId} has no POST), so no request can match both. Renaming would break the shipped URL contract.",
 		"decision": "PR #891 CI fix lane; pending coordinator review",
 		"pr": 891
+	},
+	{
+		"operation": "GET /portal/requests/{ref}/attachments/{id}",
+		"rule": "operation-2xx-response",
+		"pointer": "#/paths/~1portal~1requests~1{ref}~1attachments~1{id}/get/responses",
+		"reason": "Redirect-only by design, like every attachment download (AT-5): after the own_request check the handler answers 302 to a five-minute presigned URL and writes the attachment.downloaded audit row (AT-6). No 200 response exists or is intended.",
+		"decision": "docs/technical/feature-contracts-p1.md AT-5 and AT-6; docs/technical/feature-contracts-p3.md CP-16",
+		"pr": 0
 	}
 ]
