@@ -171,7 +171,7 @@ export function ReportsIndex({
               {t("reports:index.description")}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               render={<Link to={routes.agentDashboard.path} />}

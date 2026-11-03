@@ -2,10 +2,17 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ReportChartData } from "@/fetchers/report";
 import {
+  chartLayout,
+  FALLBACK_WIDTH,
   formatChartValue,
+  legendHeight,
   lineSegments,
+  MIN_PLOT_HEIGHT,
   niceMax,
+  PLOT_HEIGHT,
   ReportChart,
+  textWidth,
+  wrapLabel,
 } from "./report-chart";
 
 afterEach(cleanup);
@@ -40,6 +47,240 @@ describe("chart maths", () => {
     expect(formatChartValue(87.5, "percent")).toBe("87.5%");
     expect(formatChartValue(3.5, "hours")).toBe("3.5 h");
     expect(formatChartValue(4, "count")).toBe("4");
+  });
+});
+
+describe("chart fit (3 Nov)", () => {
+  const weeks = Array.from(
+    { length: 26 },
+    (_, index) =>
+      `2026-${String(4 + Math.floor(index / 4)).padStart(2, "0")}-0${(index % 4) + 1}`,
+  );
+  const ticks = ["0", "5", "10", "15", "20"];
+
+  it("fills a wide container without scrolling, labels upright", () => {
+    const layout = chartLayout({
+      containerWidth: 900,
+      categories: ["Mon", "Tue", "Wed"],
+      seriesCount: 2,
+      type: "bar",
+      tickLabels: ticks,
+    });
+    expect(layout).toMatchObject({
+      width: 900,
+      scrolls: false,
+      rotate: false,
+      every: 1,
+    });
+    expect(layout.height).toBe(12 + PLOT_HEIGHT + layout.padBottom);
+  });
+
+  it("scrolls inside its frame when there are more bars than room, never squeezing them", () => {
+    const layout = chartLayout({
+      containerWidth: 310,
+      categories: weeks,
+      seriesCount: 1,
+      type: "bar",
+      tickLabels: ticks,
+    });
+    expect(layout.scrolls).toBe(true);
+    expect(layout.slot).toBe(20);
+    expect(layout.width).toBeGreaterThan(310);
+    expect(layout.width).toBe(
+      Math.ceil(layout.padLeft + 12 + layout.slot * weeks.length),
+    );
+  });
+
+  it("gives each series in a bar group room of its own", () => {
+    const layout = chartLayout({
+      containerWidth: 200,
+      categories: weeks,
+      seriesCount: 3,
+      type: "bar",
+      tickLabels: ticks,
+    });
+    expect(layout.slot).toBe(32);
+  });
+
+  it("wraps labels of several words under their bar instead of cutting them", () => {
+    const long = "Infrastructure managed services platform";
+    const layout = chartLayout({
+      containerWidth: 500,
+      categories: [long, "Help Desk", "Network", "Finance"],
+      seriesCount: 3,
+      type: "bar",
+      tickLabels: ticks,
+    });
+    expect(layout.rotate).toBe(false);
+    expect(layout.scrolls).toBe(false);
+    expect(layout.lines?.[0]?.join(" ")).toBe(long);
+    expect(layout.lines?.[1]).toEqual(["Help Desk"]);
+    // Three wrapped lines (18 characters fit a 114 px slot): the bottom padding holds them.
+    expect(layout.lines?.[0]).toEqual([
+      "Infrastructure",
+      "managed services",
+      "platform",
+    ]);
+    expect(layout.padBottom).toBe(14 + 2 * 12 + 14);
+  });
+
+  it("widens the slot to the longest word and scrolls when a narrow frame cannot wrap", () => {
+    const layout = chartLayout({
+      containerWidth: 260,
+      categories: [
+        "Infrastructure managed services platform",
+        "Help Desk",
+        "Network",
+        "Finance",
+      ],
+      seriesCount: 1,
+      type: "bar",
+      tickLabels: ticks,
+    });
+    expect(layout.scrolls).toBe(true);
+    expect(layout.slot).toBe(textWidth("Infrastructure") + 6);
+    expect(layout.lines?.[0]).toEqual([
+      "Infrastructure",
+      "managed",
+      "services",
+      "platform",
+    ]);
+  });
+
+  it("keeps an over-long word whole on its own line", () => {
+    expect(wrapLabel("Supercalifragilistic expialidocious", 6)).toEqual([
+      "Supercalifragilistic",
+      "expialidocious",
+    ]);
+    expect(wrapLabel("Help Desk", 20)).toEqual(["Help Desk"]);
+  });
+
+  it("turns single-word labels that do not fit their slot, and makes room below and to the left", () => {
+    const long = "Infrastructure-managed-services-platform";
+    const layout = chartLayout({
+      containerWidth: 400,
+      categories: [long, "Help-Desk", "Network", "Finance"],
+      seriesCount: 1,
+      type: "bar",
+      tickLabels: ticks,
+    });
+    expect(layout.rotate).toBe(true);
+    // The turned label's drop is its width times cos 45, so the bottom padding holds it.
+    expect(layout.padBottom).toBeGreaterThanOrEqual(
+      Math.ceil(textWidth(long) * Math.SQRT1_2),
+    );
+    // The first label's left end stays inside the drawing.
+    expect(
+      layout.padLeft + layout.slot / 2 - textWidth(long) * Math.SQRT1_2,
+    ).toBeGreaterThanOrEqual(0);
+  });
+
+  it("turns dense labels and still labels every category", () => {
+    const dense = chartLayout({
+      containerWidth: 300,
+      categories: weeks,
+      seriesCount: 1,
+      type: "line",
+      tickLabels: ticks,
+    });
+    expect(dense.rotate).toBe(true);
+    expect(dense.slot).toBe(16);
+    expect(dense.every).toBe(1);
+    const roomy = chartLayout({
+      containerWidth: 2000,
+      categories: weeks,
+      seriesCount: 1,
+      type: "line",
+      tickLabels: ticks,
+    });
+    expect(roomy.rotate).toBe(false);
+    expect(roomy.every).toBe(1);
+  });
+
+  it("shrinks the plot to fit a widget's height, labels, hint and legend included", () => {
+    const legend = ["Met", "Missed", "Paused for the customer"];
+    const free = chartLayout({
+      containerWidth: 500,
+      categories: weeks,
+      seriesCount: 3,
+      type: "bar",
+      tickLabels: ticks,
+      legendLabels: legend,
+    });
+    expect(free.plotHeight).toBe(PLOT_HEIGHT);
+    const fitted = chartLayout({
+      containerWidth: 500,
+      categories: weeks,
+      seriesCount: 3,
+      type: "bar",
+      tickLabels: ticks,
+      legendLabels: legend,
+      fitHeight: 280,
+    });
+    expect(fitted.scrolls).toBe(true);
+    // 24 for the hint, 10 for the scrollbar, the one-line legend, the drawing: all within 280.
+    expect(
+      fitted.height + 24 + 10 + legendHeight(legend, 500),
+    ).toBeLessThanOrEqual(280);
+    expect(fitted.plotHeight).toBeLessThan(PLOT_HEIGHT);
+    // Never smaller than a readable plot: a tiny frame scrolls instead.
+    const tiny = chartLayout({
+      containerWidth: 500,
+      categories: ["a"],
+      seriesCount: 1,
+      type: "bar",
+      tickLabels: ticks,
+      fitHeight: 40,
+    });
+    expect(tiny.plotHeight).toBe(MIN_PLOT_HEIGHT);
+  });
+
+  it("estimates a wrapping legend's height, and none for one series", () => {
+    expect(legendHeight(["Only"], 300)).toBe(0);
+    expect(legendHeight(["Met", "Missed"], 300)).toBe(8 + 16);
+    // Each item is 16 + 7 per character: two 23-character items cannot share 300 px.
+    expect(
+      legendHeight(["Paused for the customer", "Paused for the customer"], 300),
+    ).toBe(8 + 16 * 2 + 4);
+  });
+
+  it("widens the value axis for long tick labels", () => {
+    const layout = chartLayout({
+      containerWidth: 600,
+      categories: ["a"],
+      seriesCount: 1,
+      type: "bar",
+      tickLabels: ["0 h", "1250.5 h"],
+    });
+    expect(layout.padLeft).toBe(textWidth("1250.5 h") + 10);
+  });
+
+  it("draws at real size and shows a scroll hint and a named frame only when it scrolls", () => {
+    // A year of weeks: more bars than the 640 px fallback holds.
+    const year = [...weeks, ...weeks];
+    const wide: ReportChartData = {
+      type: "bar",
+      unit: "count",
+      categories: year,
+      series: [{ key: "x", label: "X", values: year.map(() => 1) }],
+    };
+    // Without ResizeObserver (jsdom) the chart is drawn at the fallback width.
+    const { container, unmount } = render(
+      <ReportChart chart={wide} label="Wide" />,
+    );
+    const svg = container.querySelector('svg[role="img"]');
+    expect(Number(svg?.getAttribute("width"))).toBeGreaterThanOrEqual(
+      FALLBACK_WIDTH,
+    );
+    expect(screen.getByTestId("chart-scroll-hint")).toBeTruthy();
+    expect(
+      screen.getByRole("region", { name: "reports:chartScroll.region" }),
+    ).toBeTruthy();
+    expect(container.innerHTML).not.toContain("…");
+    unmount();
+    render(<ReportChart chart={bar} label="Narrow" />);
+    expect(screen.queryByTestId("chart-scroll-hint")).toBeNull();
+    expect(screen.queryByRole("region")).toBeNull();
   });
 });
 

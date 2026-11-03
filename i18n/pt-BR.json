@@ -8431,7 +8431,8 @@
 			"title": "Dashboard",
 			"widgetView": "View of {{title}}",
 			"workspaceScope": "Workspace",
-			"exportWidget": "Export {{title}} as CSV"
+			"exportWidget": "Export {{title}} as CSV",
+			"aboutNumbers": "About the numbers in {{title}}"
 		},
 		"detail": {
 			"back": "All reports",
@@ -8797,6 +8798,12 @@
 			"retry": "Try again",
 			"subtitle": "A CSV export you requested. Only you can download it.",
 			"title": "Report export"
+		},
+		"chartScroll": {
+			"hint_many": "Scroll sideways to see all {{count}} columns.",
+			"hint_one": "Scroll sideways to see the {{count}} column.",
+			"hint_other": "Scroll sideways to see all {{count}} columns.",
+			"region": "{{label}} Scrolls sideways."
 		}
 	},
 	"godModeDeliveries": {

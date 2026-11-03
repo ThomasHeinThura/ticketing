@@ -8342,6 +8342,11 @@
 		"notEnoughData": "Not enough data ({{n}} of {{needed}} needed)",
 		"tableLabel": "{{title}}: table",
 		"chartLabel": "{{title}}: chart. The same numbers are in the table view.",
+		"chartScroll": {
+			"hint_one": "Scroll sideways to see the {{count}} column.",
+			"hint_other": "Scroll sideways to see all {{count}} columns.",
+			"region": "{{label}} Scrolls sideways."
+		},
 		"truncated": "Only the first rows are shown.",
 		"views": {
 			"chart": "Chart",
@@ -8899,7 +8904,8 @@
 			"savedView": "Saved report",
 			"widgetView": "View of {{title}}",
 			"noMetric": "This report has no single number.",
-			"exportWidget": "Export {{title}} as CSV"
+			"exportWidget": "Export {{title}} as CSV",
+			"aboutNumbers": "About the numbers in {{title}}"
 		},
 		"editor": {
 			"title": "Dashboard editor",
