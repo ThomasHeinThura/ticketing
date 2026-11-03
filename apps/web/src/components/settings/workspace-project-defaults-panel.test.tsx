@@ -96,27 +96,18 @@ describe("WorkspaceProjectDefaultsPanel", () => {
     expect(mocks.getCalendars).toHaveBeenCalledWith("ws-1", undefined);
   });
 
-  it("does not expose editing when workspace settings capability is absent", async () => {
+  it("is not offered and makes no requests without the workspace settings capability", async () => {
+    const { getWorkspaceProjectSettings } = await import(
+      "@/fetchers/project-settings-inheritance"
+    );
+    vi.mocked(getWorkspaceProjectSettings).mockClear();
     mocks.canEdit = false;
-    renderPanel();
-    expect(
-      await screen.findByTestId("workspace-project-defaults"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(
-        "settings:workspaceProjectDefaults.defaultSlaPolicy",
-      ),
-    ).toBeDisabled();
-    expect(
-      screen.getByLabelText(
-        "settings:workspaceProjectDefaults.defaultServiceCalendar",
-      ),
-    ).toBeDisabled();
-    expect(
-      screen.queryByRole("button", {
-        name: "settings:workspaceProjectDefaults.save",
-      }),
-    ).not.toBeInTheDocument();
+    const { container } = renderPanel();
+    await Promise.resolve();
+    expect(container).toBeEmptyDOMElement();
+    expect(getWorkspaceProjectSettings).not.toHaveBeenCalled();
+    expect(mocks.getPolicies).not.toHaveBeenCalled();
+    expect(mocks.getCalendars).not.toHaveBeenCalled();
   });
 
   it("is not offered and loads no SLA lists while feature.sla is off (P4R2-M1)", async () => {
