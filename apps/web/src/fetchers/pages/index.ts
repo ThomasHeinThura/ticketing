@@ -72,7 +72,20 @@ export class PageConflictError extends HttpError {
   }
 }
 
+/** `feature.pages` is off for the project: the API answers 404 `feature_disabled` (A-11). */
+export class PagesDisabledError extends HttpError {
+  constructor() {
+    super(404, "feature_disabled");
+    this.name = "PagesDisabledError";
+  }
+}
+
 async function failure(response: Response, fallback: string): Promise<never> {
+  if (
+    response.status === 404 &&
+    (await readErrorDetail(response.clone(), "")) === "feature_disabled"
+  )
+    throw new PagesDisabledError();
   if (response.status === 409) {
     try {
       const body = (await response.clone().json()) as Record<string, unknown>;

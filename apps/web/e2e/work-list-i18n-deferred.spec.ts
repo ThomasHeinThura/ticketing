@@ -110,7 +110,8 @@ async function navigateInApp(page: Page, path: string) {
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await installPerformanceApiFixture(page);
+  // A-04: /agent/triage needs intake:triage, so the triage case reaches the real page.
+  await installPerformanceApiFixture(page, { triageCapability: true });
 });
 
 test("the work list shows no raw keys while the deferred namespaces are held", async ({

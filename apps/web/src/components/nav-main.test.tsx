@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   countSavedView: vi.fn(),
   getWorkspaceResolvedFeatures: vi.fn(),
   logTime: true,
+  triage: true,
 }));
 
 /** A stand-in for the router's location store: only subscribers re-render when it changes. */
@@ -71,7 +72,10 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws-1" } }),
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
-  useWorkspacePermission: () => ({ canLogTime: () => mocks.logTime }),
+  useWorkspacePermission: () => ({
+    canLogTime: () => mocks.logTime,
+    canTriageIntake: () => mocks.triage,
+  }),
 }));
 vi.mock("@/hooks/queries/invitation/use-pending-invitations", () => ({
   usePendingInvitations: () => ({ data: [] }),
@@ -127,6 +131,7 @@ beforeEach(() => {
   );
   mocks.user = { id: "viewer-1" };
   router.state.pathname = "/agent/views";
+  mocks.triage = true;
   mocks.navigate.mockReset();
   mocks.preloadRoute.mockReset();
   mocks.preloadRoute.mockResolvedValue(undefined);
@@ -341,6 +346,19 @@ describe("NavMain highlight follows the router", () => {
 
     act(() => router.go("/agent/views/v-pinned"));
     expect(activeEntries()).toEqual(["Escalations"]);
+  });
+});
+
+describe("NavMain Triage entry (A-04)", () => {
+  it("shows Triage only to people who hold intake:triage", () => {
+    const holder = renderNav();
+    expect(screen.getByRole("button", { name: "Triage" })).toBeInTheDocument();
+    holder.unmount();
+
+    mocks.triage = false;
+    renderNav();
+    expect(screen.queryByRole("button", { name: "Triage" })).toBeNull();
+    expect(screen.getByRole("button", { name: "My work" })).toBeInTheDocument();
   });
 });
 

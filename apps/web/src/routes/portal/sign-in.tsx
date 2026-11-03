@@ -22,6 +22,7 @@ import {
   parsePortalSignInSearch,
   routes,
 } from "@/lib/routes";
+import { signInRefusalKey } from "@/lib/sign-in-refusal";
 
 export const Route = createFileRoute("/sign-in")({
   validateSearch: parsePortalSignInSearch,
@@ -69,6 +70,9 @@ function PortalSignIn() {
       new URLSearchParams(window.location.search).get("identity_error") ===
       "sign_in_failed",
   );
+  // A-05: a stable refusal code (staff on the portal host, a customer without portal access)
+  // gets its own translated message; every other failure keeps the generic one.
+  const [refusalKey, setRefusalKey] = useState<string | null>(null);
   // Stage changes replace the whole form, so the focused control unmounts and focus
   // would fall back to <body>. Move it to the first control of the new stage.
   const moveFocus = useRef(false);
@@ -106,6 +110,11 @@ function PortalSignIn() {
             : "portal-factor-code";
     document.getElementById(id)?.focus();
   }, [stage]);
+
+  function fail(error: unknown = null) {
+    setRefusalKey(signInRefusalKey(error));
+    setFailed(true);
+  }
 
   function updateStage(next: PortalSignInStage, nextFactor = factor) {
     moveFocus.current = true;
@@ -153,7 +162,7 @@ function PortalSignIn() {
     try {
       const result = await portalAuthClient.signIn.email({ email, password });
       if (result.error) {
-        setFailed(true);
+        fail(result.error);
         return;
       }
       if (
@@ -166,12 +175,12 @@ function PortalSignIn() {
       }
       const session = await portalAuthClient.getSession();
       if (session.error || !session.data?.session) {
-        setFailed(true);
+        fail();
         return;
       }
       await finishSignIn();
     } catch {
-      setFailed(true);
+      fail();
     } finally {
       setPending(false);
     }
@@ -191,18 +200,18 @@ function PortalSignIn() {
           ? await portalProviderAuthClient.twoFactor.verifyBackupCode({ code })
           : await portalProviderAuthClient.twoFactor.verifyTotp({ code });
       if (result.error) {
-        setFailed(true);
+        fail(result.error);
         return;
       }
       const session = await portalAuthClient.getSession();
       if (session.error || !session.data?.session) {
-        setFailed(true);
+        fail();
         return;
       }
       // Reauthentication can bypass sidebar sign-out; discard the former identity.
       await finishSignIn();
     } catch {
-      setFailed(true);
+      fail();
     } finally {
       setPending(false);
     }
@@ -225,13 +234,13 @@ function PortalSignIn() {
             : undefined,
         });
       if (result.error) {
-        setFailed(true);
+        fail(result.error);
         return;
       }
       storeEmail(email);
       updateStage("otp");
     } catch {
-      setFailed(true);
+      fail();
     } finally {
       setPending(false);
     }
@@ -254,17 +263,17 @@ function PortalSignIn() {
           : undefined,
       });
       if (result.error) {
-        setFailed(true);
+        fail(result.error);
         return;
       }
       const session = await portalAuthClient.getSession();
       if (session.error || !session.data?.session) {
-        setFailed(true);
+        fail();
         return;
       }
       await finishSignIn();
     } catch {
-      setFailed(true);
+      fail();
     } finally {
       setPending(false);
     }
@@ -289,12 +298,12 @@ function PortalSignIn() {
           : undefined,
       });
       if (result.error) {
-        setFailed(true);
+        fail(result.error);
         return;
       }
       setMagicLinkSent(true);
     } catch {
-      setFailed(true);
+      fail();
     } finally {
       setPending(false);
     }
@@ -338,7 +347,7 @@ function PortalSignIn() {
     setPassword("");
     const methods = authMethods.data ?? (await authMethods.refetch()).data;
     if (methods?.password) updateStage("password");
-    else if (!methods?.emailOtp && !methods?.magicLink) setFailed(true);
+    else if (!methods?.emailOtp && !methods?.magicLink) fail();
   }
 
   const title =
@@ -359,9 +368,11 @@ function PortalSignIn() {
           {failed ? (
             <Alert variant="error" className="mb-4">
               <AlertDescription>
-                {stage === "factor"
-                  ? t("auth:twoFactor.error")
-                  : t("auth:signInForm.failedSignIn")}
+                {refusalKey
+                  ? t(refusalKey)
+                  : stage === "factor"
+                    ? t("auth:twoFactor.error")
+                    : t("auth:signInForm.failedSignIn")}
               </AlertDescription>
             </Alert>
           ) : null}

@@ -5,6 +5,7 @@ import {
   getNotificationContent,
   getNotificationTitle,
   getPendingActionNotificationHref,
+  getSubmissionNotificationHref,
   getWebhookNotificationHref,
 } from "./notification-dropdown";
 
@@ -134,6 +135,40 @@ describe("API key auto-disable notification deep link", () => {
     expect(
       getApiKeyNotificationHref({
         deepLink: { type: "webhook", id: "hook/1" },
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("submission notification deep link (A-09)", () => {
+  it("opens the submission in the triage queue", () => {
+    const href = getSubmissionNotificationHref({
+      resourceType: "submission",
+      eventData: { projectId: "p1", submissionRef: "SUB-3" },
+    });
+    expect(href).not.toBeNull();
+    const url = new URL(href as string, "https://ticketing.localhost");
+    expect(url.pathname).toBe("/agent/triage");
+    expect(url.searchParams.get("ref")).toBe("SUB-3");
+  });
+
+  it("ignores other deep links and rows without one", () => {
+    expect(
+      getSubmissionNotificationHref({
+        resourceType: "work_item",
+        eventData: { submissionRef: "SUB-3" },
+      }),
+    ).toBeNull();
+    expect(
+      getSubmissionNotificationHref({
+        resourceType: "submission",
+        eventData: { submissionRef: "not-a-ref" },
+      }),
+    ).toBeNull();
+    expect(
+      getSubmissionNotificationHref({
+        resourceType: "submission",
+        eventData: null,
       }),
     ).toBeNull();
   });

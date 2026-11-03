@@ -1,5 +1,13 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { authClient } from "@/lib/auth-client";
+import { toast } from "@/lib/toast";
 import { SignInForm } from "./sign-in-form";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -44,5 +52,37 @@ describe("SignInForm password control", () => {
       password,
     );
     expect(password).toHaveAttribute("type", "text");
+  });
+});
+
+describe("SignInForm on the wrong host (A-05)", () => {
+  it("names the customer portal and never reports success for a refused customer", async () => {
+    vi.mocked(authClient.signIn.email).mockResolvedValue({
+      data: null,
+      error: {
+        status: 403,
+        code: "USE_CUSTOMER_PORTAL",
+        message: "Use the customer portal for this account.",
+      },
+    } as never);
+    const onSuccess = vi.fn();
+    render(<SignInForm onSuccess={onSuccess} />);
+    fireEvent.change(screen.getByLabelText("auth:forms.email"), {
+      target: { value: "customer@example.test" },
+    });
+    fireEvent.change(
+      screen.getByLabelText("auth:forms.password", { exact: true }),
+      { target: { value: "secret" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:signInForm.signIn" }),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "auth:wrongPortal.useCustomerPortal",
+      ),
+    );
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
   });
 });

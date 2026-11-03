@@ -484,6 +484,11 @@
 			"title": "God Mode에 로그인",
 			"subtitle": "인스턴스 관리자는 비밀번호와 인증 앱 코드로 로그인합니다. 여기서는 SSO(Single Sign-On)를 사용할 수 없습니다.",
 			"passwordDisabled": "이 인스턴스에서는 비밀번호 로그인이 꺼져 있어 이 페이지에서 God Mode를 열 수 없습니다. 운영자에게 로컬 로그인을 켜 달라고 요청하세요."
+		},
+		"wrongPortal": {
+			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
+			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
+			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
 		}
 	},
 	"settings": {
@@ -866,6 +871,8 @@
 			},
 			"importExportTasks": "가져오기/내보내기",
 			"importExportTasksDescription": "작업을 가져오고 내보냅니다.",
+			"exportWorkItems": "Export",
+			"exportWorkItemsDescription": "Download the {{term_work_item_other}} in this {{term_project_one}} as a CSV file.",
 			"engagement": {
 				"amber": "Amber",
 				"calendarRequired": "A managed service needs a service calendar.",
@@ -4844,7 +4851,10 @@
 		"summary": "Summary",
 		"systemReasons": {
 			"clarification_window_expired": "Closed automatically: no reply within {{days}} days of the clarification request."
-		}
+		},
+		"loadError": "The {{term_submission_other}} could not be loaded.",
+		"noAccessDescription": "Triage needs the intake triage permission. Ask a workspace admin if you need it.",
+		"noAccessTitle": "You cannot triage {{term_submission_other}}"
 	},
 	"requestTypes": {
 		"addField": "Add field",
@@ -7007,6 +7017,10 @@
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
 				"title": "SLAs are off for this workspace"
+			},
+			"pages": {
+				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
+				"title": "Pages are off for this {{term_project_one}}"
 			}
 		},
 		"modules": {
@@ -7870,7 +7884,8 @@
 			"empty": "No time logged on this item.",
 			"everyone": "Everyone",
 			"loadError": "Could not load the time on this item.",
-			"total": "Total"
+			"total": "Total",
+			"featureOff": "Time tracking is off for this {{term_project_one}}."
 		},
 		"timer": {
 			"cappedNotice": "The timer ran past 12 hours, so only 12 hours were recorded. Edit the entry to what actually happened.",

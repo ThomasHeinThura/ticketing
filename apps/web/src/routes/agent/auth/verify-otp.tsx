@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import PageTitle from "@/components/page-title";
 import { authClient } from "@/lib/auth-client";
+import { signInRefusalKey } from "@/lib/sign-in-refusal";
 import { toast } from "@/lib/toast";
 import { AuthLayout } from "../../../components/auth/layout";
 
@@ -90,8 +91,11 @@ function VerifyOtp() {
         );
 
         if (result.error) {
+          const refusal = signInRefusalKey(result.error);
           toast.error(
-            result.error.message || t("auth:verifyOtp.toast.invalidCode"),
+            refusal
+              ? t(refusal)
+              : result.error.message || t("auth:verifyOtp.toast.invalidCode"),
           );
           return;
         }

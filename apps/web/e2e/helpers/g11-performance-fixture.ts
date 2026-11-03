@@ -331,6 +331,7 @@ export async function installPerformanceApiFixture(
     dataDelayMs = 0,
     g13Windows = false,
     workflowCapabilities = false,
+    triageCapability = false,
     boardProject = false,
   }: {
     authenticated?: boolean;
@@ -342,6 +343,11 @@ export async function installPerformanceApiFixture(
      * share this fixture.
      */
     workflowCapabilities?: boolean;
+    /**
+     * Grant the strict `triageIntake` capability (`intake:triage`), which the Triage sidebar
+     * entry and the `/agent/triage` page require (A-04). Off by default.
+     */
+    triageCapability?: boolean;
     /** Serve the 200-item `BRD` board project (see `BOARD_PROJECT_KEY`). */
     boardProject?: boolean;
   } = {},
@@ -581,6 +587,7 @@ export async function installPerformanceApiFixture(
         ...(workflowCapabilities
           ? { transitionTasks: true, rankTasks: true }
           : {}),
+        ...(triageCapability ? { triageIntake: true } : {}),
       });
     if (path === `/api/workspace/${WORKSPACE_ID}/work-item-types`)
       return json([{ id: TYPE_ID, key: "task", name: "Task" }]);

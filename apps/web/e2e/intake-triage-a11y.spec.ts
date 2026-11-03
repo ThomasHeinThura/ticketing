@@ -12,7 +12,8 @@ import {
 const TRIAGE_SHEET = "/agent/triage?state=new&ref=SUB-7";
 
 async function mountTriageApp(page: Page) {
-  await installPerformanceApiFixture(page);
+  // A-04: the triage page needs intake:triage.
+  await installPerformanceApiFixture(page, { triageCapability: true });
   const json = (route: Route, body: unknown) =>
     route.fulfill({
       status: 200,

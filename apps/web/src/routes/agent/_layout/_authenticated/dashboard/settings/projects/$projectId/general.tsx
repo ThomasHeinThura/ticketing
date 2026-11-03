@@ -142,9 +142,11 @@ function RouteComponent() {
   const { mutateAsync: deleteProject, isPending: isDeleting } =
     useDeleteProject();
   const deleteProjectButtonRef = useRef<HTMLButtonElement>(null);
-  const { canManageProjects, canDeleteProjects } = useWorkspacePermission();
+  const { canManageProjects, canDeleteProjects, canExportTasks } =
+    useWorkspacePermission();
   const canEdit = canManageProjects();
   const canDelete = canDeleteProjects();
+  const canExport = canExportTasks();
 
   const projectForm = useForm<ProjectFormValues>({
     resolver: standardSchemaResolver(projectSchema),
@@ -704,18 +706,22 @@ function RouteComponent() {
                 workspaceId={workspace.id}
               />
             )}
-            <Separator />
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium">
-                  {t("settings:projectGeneral.importExportTasks")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("settings:projectGeneral.importExportTasksDescription")}
-                </p>
-              </div>
-              {project && <TasksImportExport project={project} />}
-            </div>
+            {project && canExport && (
+              <>
+                <Separator />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">
+                      {t("settings:projectGeneral.exportWorkItems")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("settings:projectGeneral.exportWorkItemsDescription")}
+                    </p>
+                  </div>
+                  <TasksImportExport project={project} />
+                </div>
+              </>
+            )}
           </div>
         </div>
 
