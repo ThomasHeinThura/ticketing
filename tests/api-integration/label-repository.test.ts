@@ -202,12 +202,47 @@ describe("label repository (#580)", () => {
       workspaceId: b.workspace.id,
     });
 
+    // No legacy row, but the canonical workspace-scope system `member` row backs the key, and
+    // resolveIdentity admits the grant through it; current SQL reach agrees (UAT re-audit: a
+    // lead or manager has only that row).
+    expect(
+      missingCanonicalRoleIdentity.authority.filter(
+        (grant) =>
+          grant.scope === "workspace" &&
+          grant.scopeId === a.workspace.id &&
+          grant.roleKey === "member",
+      ),
+    ).toHaveLength(1);
+    expect(
+      (
+        await listLabelsByWorkspaceId(
+          missingCanonicalRoleIdentity,
+          a.workspace.id,
+        )
+      ).map((label) => label.id),
+    ).toEqual([definition.id]);
+
+    // With no genuine backing row at query time (the canonical row is now a custom
+    // `is_system = false` row sharing the key), the already-resolved grant reaches nothing.
+    const canonicalMemberRole = and(
+      eq(schema.roleTable.scope, "workspace"),
+      eq(schema.roleTable.workspaceId, a.workspace.id),
+      eq(schema.roleTable.key, "member"),
+    );
+    await db
+      .update(schema.roleTable)
+      .set({ isSystem: false })
+      .where(canonicalMemberRole);
     expect(
       await listLabelsByWorkspaceId(
         missingCanonicalRoleIdentity,
         a.workspace.id,
       ),
     ).toEqual([]);
+    await db
+      .update(schema.roleTable)
+      .set({ isSystem: true })
+      .where(canonicalMemberRole);
 
     const now = new Date();
     await db.insert(schema.workspaceRoleTable).values({
