@@ -1,4 +1,3 @@
-import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 import { seriousOrCriticalViolations } from "./helpers/axe";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
@@ -18,12 +17,8 @@ const VIEWPORTS = [
 ] as const;
 const THEMES = ["light", "dark"] as const;
 
-const SCREENSHOT_DIR = process.env.REPORTS_FIT_SCREENSHOT_DIR;
-
 async function screenshot(page: Page, name: string) {
-  const file = SCREENSHOT_DIR
-    ? path.join(SCREENSHOT_DIR, `${name}.png`)
-    : test.info().outputPath(`${name}.png`);
+  const file = test.info().outputPath(`${name}.png`);
   await page.screenshot({ path: file, fullPage: true, animations: "disabled" });
 }
 
@@ -537,6 +532,20 @@ function portalApiBody(pathname: string): unknown {
       return { data: [] };
     case "/api/portal/announcements":
       return { data: [], nextCursor: null };
+    case "/api/portal/projects":
+      // One project with a long name: its dashboard card must wrap, not clip.
+      return {
+        data: [
+          {
+            key: "INFRA",
+            name: "Infrastructure managed services platform",
+            kind: "managed_service",
+            status: "active",
+            health: "amber",
+            counts: { actionRequired: 2, outstanding: 3 },
+          },
+        ],
+      };
     case "/api/portal/notification/inbox":
       return { data: [], unreadCount: 0, hasMore: false, nextCursor: null };
     default:
