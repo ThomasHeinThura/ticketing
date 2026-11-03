@@ -735,8 +735,10 @@ const attachment = apiRouter<
     // a file `downloadable: false`.
     if (!portalCanDownloadObject(row.objectKey))
       throw new HTTPException(404, { message: "Attachment not found" });
-    // CP-19: a work-item file (a staff file shared on a public comment, or the requester's reply
-    // file) gets a portal-bound link for this requester on the filesystem driver.
+    // CP-19: on the filesystem driver every file (the submission's own form files, a staff file
+    // shared on a public comment, the requester's reply file) gets a portal-bound link for this
+    // requester. In portal modes `requesterId` is the caller's own person: the reach middleware
+    // finds the submission by the session person's id.
     const downloadUrl = await createPortalAttachmentDownloadUrl({
       objectKey: row.objectKey,
       filename: row.filename,
