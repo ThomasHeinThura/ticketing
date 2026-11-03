@@ -36,6 +36,7 @@ import {
   parseWorkItemWorkSearch,
   routes,
   type SavedViewUrlSearch,
+  safePortalRedirect,
   toggleWorkItemSortDirection,
   WORK_ITEM_SORT_DIRECTIONS,
   WORK_ITEM_SORT_FIELDS,
@@ -585,6 +586,51 @@ describe("canonical intake URLs", () => {
       url,
     );
     expect(url).not.toMatch(/@|password|code/iu);
+  });
+
+  it("keeps a same-origin return path through sign-in and drops anything else", () => {
+    const url = routes.portalSignIn.build({
+      stage: "email",
+      redirect: "/requests/HELP-6?tab=activity",
+    });
+    const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
+    expect(parsePortalSignInSearch(search)).toEqual({
+      stage: "email",
+      factor: "totp",
+      redirect: "/requests/HELP-6?tab=activity",
+    });
+    expect(routes.portalSignIn.build(parsePortalSignInSearch(search))).toBe(
+      url,
+    );
+    expect(safePortalRedirect("/account#preference_token=signed")).toBe(
+      "/account",
+    );
+    expect(safePortalRedirect("/kb/../requests")).toBe("/requests");
+    for (const unsafe of [
+      "https://evil.example/requests",
+      "//evil.example/requests",
+      "/\\evil.example",
+      "/\tevil",
+      "/\t/evil.example",
+      "/\n/evil.example",
+      "javascript:alert(1)",
+      "/..//evil.example",
+      "/%2e%2e//evil.example",
+      "/.//evil.example",
+      "/kb/..//evil.example",
+      "/auth/sign-in",
+      "/agent/inbox",
+      "requests",
+      "/sign-in?stage=password",
+      "/portal/sign-in",
+      `/${"a".repeat(2048)}`,
+      42,
+      undefined,
+    ])
+      expect(safePortalRedirect(unsafe)).toBeUndefined();
+    expect(
+      parsePortalSignInSearch({ redirect: "//evil.example" }),
+    ).not.toHaveProperty("redirect");
   });
 
   it("preserves in-progress whitespace in catalogue search URLs", () => {
