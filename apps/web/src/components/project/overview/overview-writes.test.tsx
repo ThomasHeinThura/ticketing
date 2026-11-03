@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   listDocumentLinks: vi.fn(),
   addDocumentLink: vi.fn(),
   deleteDocumentLink: vi.fn(),
+  updateDocumentLink: vi.fn(),
   openPendingAction: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
@@ -119,6 +120,7 @@ vi.mock("@/fetchers/project/overview", async (importOriginal) => {
     listDocumentLinks: pass(mocks.listDocumentLinks),
     addDocumentLink: pass(mocks.addDocumentLink),
     deleteDocumentLink: pass(mocks.deleteDocumentLink),
+    updateDocumentLink: pass(mocks.updateDocumentLink),
   };
 });
 
@@ -203,8 +205,11 @@ const sow = {
   projectId: "p1",
   url: "https://docs.example.test/sow",
   title: "Statement of work",
+  kind: "sow" as const,
+  description: "Signed in March",
   customerVisible: true,
   createdAt: "2026-10-01T00:00:00.000Z",
+  updatedAt: "2026-10-01T00:00:00.000Z",
 };
 
 beforeEach(() => {
@@ -454,9 +459,60 @@ describe("DocumentsPage writes", () => {
       expect(mocks.addDocumentLink).toHaveBeenCalledWith("p1", {
         title: "Runbook",
         url: "https://docs.example.test/runbook",
+        kind: "other",
+        description: null,
         customerVisible: false,
       }),
     );
+  });
+
+  it("shows each entry's type, description and visibility", async () => {
+    renderWith(<DocumentsPage projectKey="HELP" />);
+    expect(await screen.findByText("documents.kinds.sow")).toBeTruthy();
+    expect(screen.getByText("Signed in March")).toBeTruthy();
+    expect(screen.getByText("documents.customerVisible")).toBeTruthy();
+  });
+
+  it("explains Documents and Pages when the register is empty", async () => {
+    mocks.listDocumentLinks.mockResolvedValue([]);
+    renderWith(<DocumentsPage projectKey="HELP" />);
+    expect(await screen.findByText("documents.emptyTitle")).toBeTruthy();
+    expect(screen.getByText("documents.emptyDescription")).toBeTruthy();
+  });
+
+  it("edits an entry with its current values prefilled", async () => {
+    mocks.updateDocumentLink.mockResolvedValue({ ...sow, title: "SOW v2" });
+    renderWith(<DocumentsPage projectKey="HELP" />);
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: 'common.actionsFor {"name":"Statement of work"}',
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "common.edit" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("documents.fieldTitle")).toHaveValue(
+      "Statement of work",
+    );
+    expect(
+      within(dialog).getByLabelText("documents.fieldDescription"),
+    ).toHaveValue("Signed in March");
+    type("documents.fieldTitle", "SOW v2");
+    type("documents.fieldDescription", "  ");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "common.save" }),
+    );
+    await waitFor(() =>
+      expect(mocks.updateDocumentLink).toHaveBeenCalledWith("p1", "d1", {
+        title: "SOW v2",
+        url: "https://docs.example.test/sow",
+        kind: "sow",
+        description: null,
+        customerVisible: true,
+      }),
+    );
+    expect(mocks.addDocumentLink).not.toHaveBeenCalled();
   });
 
   it("refuses a URL that is not http(s) before sending anything", async () => {
@@ -523,5 +579,118 @@ describe("DocumentsPage writes", () => {
         name: 'common.actionsFor {"name":"Statement of work"}',
       }),
     ).toBeNull();
+  });
+
+  // A link to a Page opens only on the agent host, so a customer cannot open it. The dialog
+  // warns, but keeps the switch and never flips an existing entry's visibility on save.
+  it("warns on a customer-visible page link but keeps its visibility on save", async () => {
+    const pageUrl = `${window.location.origin}/agent/projects/HELP/pages/pg1`;
+    mocks.listDocumentLinks.mockResolvedValue([
+      { ...sow, title: "Runbook", url: pageUrl, kind: "other" },
+    ]);
+    mocks.updateDocumentLink.mockResolvedValue({ ...sow, title: "Runbook v2" });
+    renderWith(<DocumentsPage projectKey="HELP" />);
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: 'common.actionsFor {"name":"Runbook"}',
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "common.edit" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByTestId("document-page-link-note"),
+    ).toHaveTextContent("documents.pageStaffOnly");
+    expect(
+      within(dialog).getByRole("switch", {
+        name: "documents.fieldCustomerVisible",
+      }),
+    ).toBeChecked();
+    type("documents.fieldTitle", "Runbook v2");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "common.save" }),
+    );
+    await waitFor(() =>
+      expect(mocks.updateDocumentLink).toHaveBeenCalledWith("p1", "d1", {
+        title: "Runbook v2",
+        url: pageUrl,
+        kind: "other",
+        description: "Signed in March",
+        customerVisible: true,
+      }),
+    );
+  });
+
+  it("shows no page-link note for an external document", async () => {
+    renderWith(<DocumentsPage projectKey="HELP" />);
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: 'common.actionsFor {"name":"Statement of work"}',
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "common.edit" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByTestId("document-page-link-note")).toBeNull();
+    expect(
+      within(dialog).getByRole("switch", {
+        name: "documents.fieldCustomerVisible",
+      }),
+    ).toHaveAccessibleDescription("documents.customerVisibleHint");
+  });
+
+  it("describes the visibility switch with the page-link note when shown", async () => {
+    renderWith(<DocumentsPage projectKey="HELP" />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "documents.add" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    type(
+      "documents.fieldUrl",
+      `${window.location.origin}/agent/projects/HELP/pages/pg1`,
+    );
+    expect(
+      within(dialog).getByRole("switch", {
+        name: "documents.fieldCustomerVisible",
+      }),
+    ).toHaveAccessibleDescription(
+      "documents.customerVisibleHint documents.pageStaffOnly",
+    );
+  });
+
+  // Kaneo headers keep the primary action on the right: the text block takes the
+  // remaining width so the button does not wrap under the description on desktop.
+  it("lets the header text grow so the add action stays on the right", async () => {
+    renderWith(<DocumentsPage projectKey="HELP" />);
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: "documents.title",
+    });
+    expect(heading.parentElement).toHaveClass("min-w-0", "flex-1");
+  });
+
+  it("shows the note when a page link is typed into a new entry", async () => {
+    renderWith(<DocumentsPage projectKey="HELP" />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "documents.add" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    type(
+      "documents.fieldUrl",
+      "https://elsewhere.example.test/agent/projects/HELP/pages/pg1",
+    );
+    expect(within(dialog).queryByTestId("document-page-link-note")).toBeNull();
+    type(
+      "documents.fieldUrl",
+      `${window.location.origin}/agent/projects/HELP/pages/pg1`,
+    );
+    expect(within(dialog).getByTestId("document-page-link-note")).toBeVisible();
+    expect(
+      within(dialog).getByRole("switch", {
+        name: "documents.fieldCustomerVisible",
+      }),
+    ).not.toBeChecked();
   });
 });

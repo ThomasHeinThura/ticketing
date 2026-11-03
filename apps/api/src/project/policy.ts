@@ -436,6 +436,12 @@ export const projectPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "PATCH /api/project/{id}/document-links/{documentLinkId}": {
+    capability: "project:update",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
   "DELETE /api/project/{id}/document-links/{documentLinkId}": {
     capability: "project:update",
     scope: "project",

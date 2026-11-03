@@ -438,30 +438,51 @@ function DocumentsCard({ project }: { project: PortalProjectDetail }) {
       {project.documents.length === 0 ? (
         <Muted>{t("projects.detail.documents.none")}</Muted>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-3">
           {project.documents.map((document) => {
             const href = safeHref(document.url);
+            const kindLabel = t(
+              `projects.detail.documents.kinds.${document.kind}`,
+            );
+            // The type badge adds nothing when the title already says it.
+            const showKind =
+              kindLabel.toLocaleLowerCase() !==
+              document.title.trim().toLocaleLowerCase();
             return (
-              <li key={document.id} className="text-sm">
-                {href ? (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-sm text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                  >
+              <li
+                key={document.id}
+                className="flex flex-col gap-1 text-sm"
+                data-testid="portal-project-document"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  {href ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-sm text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span className="break-words">{document.title}</span>
+                      <ExternalLink
+                        className="size-3.5 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <span className="sr-only">
+                        ({t("projects.detail.documents.opensInNewTab")})
+                      </span>
+                    </a>
+                  ) : (
                     <span className="break-words">{document.title}</span>
-                    <ExternalLink
-                      className="size-3.5 shrink-0"
-                      aria-hidden="true"
-                    />
-                    <span className="sr-only">
-                      ({t("projects.detail.documents.opensInNewTab")})
-                    </span>
-                  </a>
-                ) : (
-                  <span className="break-words">{document.title}</span>
-                )}
+                  )}
+                  {showKind ? (
+                    <Badge variant="outline">{kindLabel}</Badge>
+                  ) : null}
+                </div>
+                {document.description ? (
+                  <p className="whitespace-pre-line break-words text-muted-foreground">
+                    {document.description}
+                  </p>
+                ) : null}
               </li>
             );
           })}

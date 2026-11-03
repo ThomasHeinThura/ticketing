@@ -255,16 +255,22 @@ const visualDocumentLinks = [
     projectId: project.id,
     url: "https://docs.example.test/statement-of-work",
     title: "Statement of work",
+    kind: "sow",
+    description: "Signed scope and fees for the support contract.",
     customerVisible: true,
     createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
   },
   {
     id: "visual-document-2",
     projectId: project.id,
     url: "https://docs.example.test/runbook",
     title: "Support runbook",
+    kind: "handover",
+    description: null,
     customerVisible: false,
     createdAt: "2026-10-02T00:00:00.000Z",
+    updatedAt: "2026-10-02T00:00:00.000Z",
   },
 ];
 
@@ -1314,6 +1320,8 @@ const vPorProjectDetail = {
       id: "visual-document-sow",
       title: "Statement of work",
       url: "https://docs.example.test/sow",
+      kind: "sow",
+      description: null,
     },
   ],
   contacts: [
@@ -7430,7 +7438,9 @@ test("project documents screen @visual", async ({ page }) => {
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Statement of work", { exact: true }),
+    page.getByText("Signed scope and fees for the support contract.", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("project-documents.png", {
     animations: "disabled",

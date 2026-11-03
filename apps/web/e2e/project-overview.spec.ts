@@ -367,6 +367,87 @@ test.describe("Project Overview (S3)", () => {
     ).toContainText("Stood down");
   });
 
+  test("adds a typed customer-visible document and edits it (U-15)", async ({
+    page,
+  }) => {
+    await capabilities(page, true);
+    const state = await installProjectOverviewFixture(page, PROJECT_ID, {
+      project,
+    });
+    await page.goto("/agent/projects/WLP/documents");
+    const register = page.getByTestId("project-document-links");
+    await expect(register).toContainText("Statement of work");
+    await expect(register).toContainText("Signed scope and fees");
+
+    await page.getByRole("button", { name: "Add document" }).click();
+    const dialog = page.getByRole("dialog", { name: "Add document" });
+    await dialog.getByLabel("Title").fill("Go-live pack");
+    await dialog
+      .getByLabel("Address")
+      .fill("https://docs.example.test/handover");
+    await dialog.getByLabel("Type").click();
+    await page.getByRole("option", { name: "Handover" }).click();
+    await dialog
+      .getByLabel("Description (optional)")
+      .fill("Final pack for go-live");
+    await expect(dialog).toContainText(
+      "Customers see this on Project Details in the portal.",
+    );
+    await dialog.getByRole("switch", { name: "Visible to customers" }).click();
+    await dialog.getByRole("button", { name: "Add document" }).click();
+    await expect(dialog).toBeHidden();
+    expect(state.requests.at(-1)).toMatchObject({
+      method: "POST",
+      path: `/api/project/${PROJECT_ID}/document-links`,
+      body: {
+        title: "Go-live pack",
+        url: "https://docs.example.test/handover",
+        kind: "handover",
+        description: "Final pack for go-live",
+        customerVisible: true,
+      },
+    });
+    const added = page
+      .getByTestId("project-document-row")
+      .filter({ hasText: "Go-live pack" });
+    await expect(added).toContainText("Handover");
+    await expect(added).toContainText("Customer can see");
+
+    await added
+      .getByRole("button", { name: "Actions for Go-live pack" })
+      .click();
+    await page.getByRole("menuitem", { name: "Edit" }).click();
+    const edit = page.getByRole("dialog", { name: "Edit document" });
+    await expect(edit.getByLabel("Title")).toHaveValue("Go-live pack");
+    await edit.getByRole("switch", { name: "Visible to customers" }).click();
+    await edit.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(edit).toBeHidden();
+    expect(state.requests.at(-1)).toMatchObject({
+      method: "PATCH",
+      body: { customerVisible: false },
+    });
+    await page.reload();
+    await expect(
+      page
+        .getByTestId("project-document-row")
+        .filter({ hasText: "Go-live pack" }),
+    ).toContainText("Staff only");
+  });
+
+  test("explains Documents and Pages when the register is empty", async ({
+    page,
+  }) => {
+    await capabilities(page, true);
+    const state = await installProjectOverviewFixture(page, PROJECT_ID, {
+      project,
+    });
+    state.documentLinks.length = 0;
+    await page.goto("/agent/projects/WLP/documents");
+    await expect(page.getByTestId("project-documents-empty")).toContainText(
+      "Pages are different",
+    );
+  });
+
   test("a viewer gets no write controls on Prerequisites, Team and Documents", async ({
     page,
   }) => {
@@ -406,7 +487,7 @@ test.describe("Project Overview (S3)", () => {
       "Statement of work",
     );
     await expect(
-      page.getByRole("button", { name: "Add document link" }),
+      page.getByRole("button", { name: "Add document" }),
     ).toHaveCount(0);
     await expect(
       page

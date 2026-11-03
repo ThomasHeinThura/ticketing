@@ -44,6 +44,7 @@ import createProjectCtrl, {
   InvalidProjectOrganisationError,
   ProjectSlugTakenError,
 } from "./controllers/create-project";
+import { documentLinkActorOf } from "./controllers/document-link-audit";
 import getProjectCtrl from "./controllers/get-project";
 import getProjectsCtrl from "./controllers/get-projects";
 import listDocumentLinksCtrl from "./controllers/list-document-links";
@@ -60,6 +61,7 @@ import reorderProjectsCtrl from "./controllers/reorder-projects";
 import restoreProjectCtrl from "./controllers/restore-project";
 import standDownStakeholderCtrl from "./controllers/stand-down-stakeholder";
 import unarchiveProjectCtrl from "./controllers/unarchive-project";
+import updateDocumentLinkCtrl from "./controllers/update-document-link";
 import updateMilestoneCtrl from "./controllers/update-milestone";
 import updatePrerequisiteCtrl from "./controllers/update-prerequisite";
 import updateProjectCtrl from "./controllers/update-project";
@@ -122,6 +124,7 @@ import {
   projectStateParam,
   reorderProjectsBody,
   stakeholderParam,
+  updateDocumentLinkBody,
   updateMilestoneBody,
   updatePrerequisiteBody,
   updateProjectBody,
@@ -932,7 +935,9 @@ const addDocumentLinkRoute = createRoute({
   tags: ["Projects"],
   summary: "Add a document link",
   description:
-    "A link, never a copy. No PATCH: editing url or title is remove-then-re-add.",
+    "Adds an entry to the project's Documents register: a link, never a copy, with a type " +
+    "(contract, sow, design, handover or other) and an optional description. Customer " +
+    "visibility is off by default. Audited as document_link.created.",
   middleware: [
     workspaceAccess.fromProject("id", {
       requireProjectReach: true,
@@ -952,6 +957,37 @@ const addDocumentLinkRoute = createRoute({
     400: errorResponse("Invalid body"),
     403: errorResponse("Missing project:update permission"),
     404: errorResponse("Project not found"),
+  },
+});
+
+const updateDocumentLinkRoute = createRoute({
+  method: "patch",
+  operationId: "updateDocumentLink",
+  path: "/{id}/document-links/{documentLinkId}",
+  tags: ["Projects"],
+  summary: "Edit a document link",
+  description:
+    "Edits the title, address, type, description or customer visibility of one Documents " +
+    "entry of this project. Audited as document_link.updated.",
+  middleware: [
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
+  ] as const,
+  request: {
+    params: documentLinkParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateDocumentLinkBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The edited document link", documentLinkSchema),
+    400: errorResponse("Invalid body"),
+    403: errorResponse("Missing project:update permission"),
+    404: errorResponse("Project or document link not found"),
   },
 });
 
@@ -1429,8 +1465,24 @@ const project = apiRouter<
     const { id } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const body = c.req.valid("json");
-    const created = await addDocumentLinkCtrl(id, workspaceId, body);
+    const created = await addDocumentLinkCtrl(
+      id,
+      workspaceId,
+      body,
+      documentLinkActorOf(c),
+    );
     return c.json(created, 200);
+  })
+  .openapi(updateDocumentLinkRoute, async (c) => {
+    const { id, documentLinkId } = c.req.valid("param");
+    const updated = await updateDocumentLinkCtrl(
+      id,
+      documentLinkId,
+      c.get("workspaceId"),
+      c.req.valid("json"),
+      documentLinkActorOf(c),
+    );
+    return c.json(updated, 200);
   })
   .openapi(deleteDocumentLinkRoute, async (c) => {
     const { id, documentLinkId } = c.req.valid("param");
