@@ -59,6 +59,11 @@ function utcEpochMilliseconds(
   minute = 0,
   second = 0,
 ): number {
+  // `Date.UTC` computes the same MakeDay/MakeTime result and is far cheaper; it only differs
+  // for years 0-99, which it remaps to 1900-1999.
+  if (year < 0 || year > 99) {
+    return Date.UTC(year, month - 1, day, hour, minute, second);
+  }
   const date = new Date(0);
   date.setUTCFullYear(year, month - 1, day);
   date.setUTCHours(hour, minute, second, 0);
@@ -164,8 +169,71 @@ type TimeInterval = {
   endMs: number;
 };
 
-/** Finds the constant-offset UTC segments within one calendar-local day. */
+/**
+ * Offset segments depend only on the zone and the local date, yet every SLA computation asks
+ * for the same days again and again: `dueAtFor`'s binary search re-walks its whole stretch on
+ * each of ~30 probes, and a list page repeats that per row. Each fresh computation costs about
+ * fifty `Intl` calls, which made a 100-row page spend seconds here. Memoized; bounded by a
+ * clear-on-overflow cap (20,000 zone-days is decades of history for a handful of zones).
+ */
+const DAY_SEGMENT_CACHE = new Map<string, readonly OffsetSegment[]>();
+const DAY_SEGMENT_CACHE_LIMIT = 20_000;
+
+/** The constant-offset UTC segments within one calendar-local day, memoized. */
 function offsetSegmentsForLocalDay(
+  timeZone: string,
+  date: LocalDate,
+): readonly OffsetSegment[] {
+  const key = `${timeZone}|${date.year}-${date.month}-${date.day}`;
+  const cached = DAY_SEGMENT_CACHE.get(key);
+  if (cached) return cached;
+  const segments = Object.freeze(
+    computeOffsetSegmentsForLocalDay(timeZone, date).map((segment) =>
+      Object.freeze(segment),
+    ),
+  );
+  if (DAY_SEGMENT_CACHE.size >= DAY_SEGMENT_CACHE_LIMIT) {
+    DAY_SEGMENT_CACHE.clear();
+  }
+  DAY_SEGMENT_CACHE.set(key, segments);
+  return segments;
+}
+
+function localDateOfUtcMs(ms: number): LocalDate {
+  const date = new Date(ms);
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+}
+
+/**
+ * The calendar date `instant` falls on in `timeZone`; the same answer as
+ * `instantToLocalDateTime`, read from the memoized day segments instead of `Intl`. A zone's
+ * offset is within ±14 hours, so the local date is the UTC date or a neighbour; the segment
+ * holding the instant carries the zone's offset there (the assumption every covered interval
+ * already rests on). An instant no segment holds falls back to `Intl`.
+ */
+function localDateOf(timeZone: string, instant: Date): LocalDate {
+  const instantMs = instant.getTime();
+  const utcDate = localDateOfUtcMs(instantMs);
+  for (const shift of [0, -1, 1]) {
+    for (const segment of offsetSegmentsForLocalDay(
+      timeZone,
+      shift === 0 ? utcDate : addDays(utcDate, shift),
+    )) {
+      if (segment.startMs <= instantMs && instantMs < segment.endMs) {
+        return localDateOfUtcMs(instantMs + segment.offsetMs);
+      }
+    }
+  }
+  const local = instantToLocalDateTime(timeZone, instant);
+  return { year: local.year, month: local.month, day: local.day };
+}
+
+/** Finds the constant-offset UTC segments within one calendar-local day. */
+function computeOffsetSegmentsForLocalDay(
   timeZone: string,
   date: LocalDate,
 ): OffsetSegment[] {
@@ -174,9 +242,12 @@ function offsetSegmentsForLocalDay(
   const probeMs = 60 * 60_000;
   const segments: OffsetSegment[] = [];
   let cursor = dayStart;
+  // The offset at `cursor`, carried over from the probe that already measured that instant.
+  let cursorOffsetMs: number | null = null;
 
   while (cursor < dayEnd) {
-    const offsetMs = offsetMinutesAt(timeZone, new Date(cursor)) * 60_000;
+    const offsetMs: number =
+      cursorOffsetMs ?? offsetMinutesAt(timeZone, new Date(cursor)) * 60_000;
     const probeEnd = Math.min(cursor + probeMs, dayEnd);
     const probeOffsetMs =
       offsetMinutesAt(timeZone, new Date(probeEnd)) * 60_000;
@@ -186,6 +257,7 @@ function offsetSegmentsForLocalDay(
       if (previous?.offsetMs === offsetMs) previous.endMs = probeEnd;
       else segments.push({ startMs: cursor, endMs: probeEnd, offsetMs });
       cursor = probeEnd;
+      cursorOffsetMs = probeOffsetMs;
       continue;
     }
 
@@ -203,6 +275,7 @@ function offsetSegmentsForLocalDay(
 
     segments.push({ startMs: cursor, endMs: high, offsetMs });
     cursor = high;
+    cursorOffsetMs = null;
   }
 
   return segments;
@@ -438,22 +511,12 @@ export function coveredMinutesBetween(
     return 0;
   }
 
-  const fromLocal = instantToLocalDateTime(calendar.timezone, from);
-  const toLocal = instantToLocalDateTime(calendar.timezone, to);
   const fromMs = from.getTime();
   const toMs = to.getTime();
 
   let total = 0;
-  let cursor: LocalDate = {
-    year: fromLocal.year,
-    month: fromLocal.month,
-    day: fromLocal.day,
-  };
-  const lastDate: LocalDate = {
-    year: toLocal.year,
-    month: toLocal.month,
-    day: toLocal.day,
-  };
+  let cursor: LocalDate = localDateOf(calendar.timezone, from);
+  const lastDate: LocalDate = localDateOf(calendar.timezone, to);
 
   // Bound the loop defensively — a calendar and a range are both finite in every real
   // case; this only ever protects against a caller passing a malformed multi-year range.
@@ -498,12 +561,7 @@ export function nextWindowOpening(
     return null;
   }
 
-  const cursor = instantToLocalDateTime(calendar.timezone, instant);
-  let cursorDate: LocalDate = {
-    year: cursor.year,
-    month: cursor.month,
-    day: cursor.day,
-  };
+  let cursorDate: LocalDate = localDateOf(calendar.timezone, instant);
   const instantMs = instant.getTime();
 
   // A year plus slack is far beyond any real holiday run; this only guards against an
