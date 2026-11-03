@@ -11,6 +11,7 @@ import {
   workspaceUserTable,
 } from "../../database/schema";
 import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { ServerTiming } from "../../utils/server-timing";
 import { decorateWorkItemRows } from "../decorate-rows";
 import { resolveWorkItemEpicProjections } from "../epic-projection";
 import {
@@ -23,6 +24,8 @@ import {
   workItemCursorCondition,
   workItemOrderBy,
 } from "../list-query";
+import { loadWorkItemRowFacts } from "../row-facts";
+import { loadWorkItemRowSla } from "../row-sla";
 import type { ListWorkItemsQuery } from "../schema";
 
 /**
@@ -52,7 +55,9 @@ import type { ListWorkItemsQuery } from "../schema";
  * one `SELECT ... LEFT/INNER JOIN ...` resolves state and assignee facts for the page, one
  * `SELECT count(*)` resolves `meta.total`, and bounded page queries resolve assigned labels
  * and epic ancestry. Epic ancestry uses one recursive query for the whole page, never one
- * query per item or ancestor.
+ * query per item or ancestor. `tests/api-integration/work-item-list-query-budget.test.ts`
+ * holds the whole request (middleware included) to the same query count at 10 and 100 rows.
+ * Each phase is recorded on `timing`, which the route sends as `Server-Timing`.
  */
 
 const WORK_ITEM_PRIORITY_COLUMN_VALUES = [
@@ -157,18 +162,16 @@ export async function listWorkItems(
   workspaceId: string,
   callerUserId: string,
   query: ListWorkItemsQuery,
+  timing: ServerTiming = new ServerTiming(),
 ) {
-  await getProjectWorkspaceId(projectId);
+  await timing.measure("project", () => getProjectWorkspaceId(projectId));
 
   const sortField: WorkItemSortField = query.sort ?? "key";
   const dir: WorkItemSortDirection = query.dir ?? "asc";
   const limit = query.limit ?? DEFAULT_WORK_ITEM_LIST_LIMIT;
 
-  const filterConditions = await buildFilterConditions(
-    projectId,
-    workspaceId,
-    query,
-    callerUserId,
+  const filterConditions = await timing.measure("filters", () =>
+    buildFilterConditions(projectId, workspaceId, query, callerUserId),
   );
 
   const pageConditions = [...filterConditions];
@@ -183,7 +186,7 @@ export async function listWorkItems(
   // `limit + 1`: the standard cursor-pagination lookahead -- fetching one extra row
   // tells us whether another page exists without a separate query, and that extra row
   // is dropped before the response is built.
-  const rows = await db
+  const rowsQuery = db
     .select({
       workItem: workItemTable,
       stateName: stateTemplateTable.name,
@@ -233,14 +236,17 @@ export async function listWorkItems(
     .where(and(...pageConditions))
     .orderBy(...workItemOrderBy(sortField, dir))
     .limit(limit + 1);
+  const rows = await timing.measure("rows", () => rowsQuery);
 
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
 
-  const [totalRow] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(workItemTable)
-    .where(and(...filterConditions));
+  const [totalRow] = await timing.measure("count", () =>
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(workItemTable)
+      .where(and(...filterConditions)),
+  );
   const total = totalRow?.total ?? 0;
 
   const lastRow = page.at(-1);
@@ -254,31 +260,29 @@ export async function listWorkItems(
         })
       : null;
 
+  const labelsQuery = db
+    .select({
+      workItemId: workItemLabelTable.workItemId,
+      id: labelTable.id,
+      name: labelTable.name,
+      color: labelTable.color,
+    })
+    .from(workItemLabelTable)
+    .innerJoin(labelTable, eq(labelTable.id, workItemLabelTable.labelId))
+    .where(
+      and(
+        inArray(
+          workItemLabelTable.workItemId,
+          page.map((row) => row.workItem.id),
+        ),
+        eq(labelTable.workspaceId, workspaceId),
+        isNull(labelTable.taskId),
+        or(isNull(labelTable.projectId), eq(labelTable.projectId, projectId)),
+      ),
+    )
+    .orderBy(labelTable.name, labelTable.id);
   const labels = page.length
-    ? await db
-        .select({
-          workItemId: workItemLabelTable.workItemId,
-          id: labelTable.id,
-          name: labelTable.name,
-          color: labelTable.color,
-        })
-        .from(workItemLabelTable)
-        .innerJoin(labelTable, eq(labelTable.id, workItemLabelTable.labelId))
-        .where(
-          and(
-            inArray(
-              workItemLabelTable.workItemId,
-              page.map((row) => row.workItem.id),
-            ),
-            eq(labelTable.workspaceId, workspaceId),
-            isNull(labelTable.taskId),
-            or(
-              isNull(labelTable.projectId),
-              eq(labelTable.projectId, projectId),
-            ),
-          ),
-        )
-        .orderBy(labelTable.name, labelTable.id)
+    ? await timing.measure("labels", () => labelsQuery)
     : [];
   const labelsByItem = new Map<
     string,
@@ -289,11 +293,18 @@ export async function listWorkItems(
     assigned.push(label);
     labelsByItem.set(workItemId, assigned);
   }
-  const decorate = await decorateWorkItemRows(db, page, (row) => row.workItem);
-  const epicByItem = await resolveWorkItemEpicProjections(
-    projectId,
-    workspaceId,
-    page.map((row) => row.workItem.id),
+  const decorate = await decorateWorkItemRows(db, page, (row) => row.workItem, {
+    facts: (executor, items) =>
+      timing.measure("facts", () => loadWorkItemRowFacts(executor, items)),
+    sla: (executor, items) =>
+      timing.measure("sla", () => loadWorkItemRowSla(executor, items)),
+  });
+  const epicByItem = await timing.measure("epic", () =>
+    resolveWorkItemEpicProjections(
+      projectId,
+      workspaceId,
+      page.map((row) => row.workItem.id),
+    ),
   );
   return {
     data: page.map((row) => ({
