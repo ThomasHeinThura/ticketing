@@ -14,6 +14,7 @@ import {
   listVisibleNotificationInbox,
   markOwnReadableNotificationRead,
   markReadableNotificationsRead,
+  type NotificationInboxAdmission,
 } from "./inbox.repository";
 import {
   admitPortalNotifications,
@@ -52,6 +53,11 @@ const portalNotificationSchema = z.object({
   kind: customerEventSchema,
   isRead: z.boolean(),
   createdAt: z.string().datetime(),
+  /**
+   * What the row opens: `submission` (`/submissions/{ref}`), `request` (a request staff raised
+   * for the customer, `/requests/{ref}`) or `approval` (the portal Approvals screen).
+   */
+  targetKind: z.enum(["submission", "request", "approval"]),
   /** Null for an approval event, which opens the portal Approvals screen. */
   requestRef: z.string().nullable(),
   commentId: z.string().nullable(),
@@ -146,6 +152,27 @@ const markAllReadRoute = createRoute({
   },
 });
 
+type AdmissionRows = Parameters<NotificationInboxAdmission>[0];
+
+async function admitListablePortalNotifications(
+  rows: AdmissionRows,
+  personId: string,
+): Promise<Set<string>> {
+  const customerRows = rows.filter(({ notification }) =>
+    isCustomerEventKind(notification.kind),
+  );
+  const flagged = await admitPortalNotifications(customerRows);
+  const candidates = customerRows.filter(({ notification }) =>
+    flagged.has(notification.id),
+  );
+  const targets = await resolvePortalNotificationTargets(candidates, personId);
+  return new Set(
+    candidates.flatMap(({ notification }) =>
+      targets.has(notification.id) ? [notification.id] : [],
+    ),
+  );
+}
+
 function customerNotificationRows(
   rows: Awaited<ReturnType<typeof listVisibleNotificationInbox>>["rows"],
   targets: Awaited<ReturnType<typeof resolvePortalNotificationTargets>>,
@@ -164,6 +191,7 @@ function customerNotificationRows(
         kind,
         isRead: notification.isRead === true,
         createdAt: notification.createdAt.toISOString(),
+        targetKind: target.targetKind,
         requestRef: target.requestRef,
         commentId: target.commentId,
       },
@@ -188,8 +216,11 @@ export const portalNotificationRouter = apiRouter()
       limit: query.limit,
       ...(cursor ? { cursor } : {}),
       // P4R2-M2: notifications of a project or workspace with the customer portal off are
-      // neither listed nor counted.
-      admit: (rows) => admitPortalNotifications(rows),
+      // neither listed nor counted. A row the portal cannot open (no customer event kind, or no
+      // request the customer may still read) is neither listed nor counted either, so the bell
+      // and the list always agree.
+      admit: (rows) =>
+        admitListablePortalNotifications(rows, identity.personId),
     });
     const targets = await resolvePortalNotificationTargets(
       result.rows.map(({ notification }) => ({ notification })),

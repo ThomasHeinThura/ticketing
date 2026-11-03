@@ -1468,6 +1468,12 @@ export const routes = {
     build: (params: { ref: string }) =>
       `/submissions/${encodeURIComponent(params.ref)}`,
   },
+  /** U-12 (D6): a request the team raised for the customer, opened by its key. */
+  portalRequest: {
+    path: "/requests/$ref" as const,
+    build: (params: { ref: string }) =>
+      `/requests/${encodeURIComponent(params.ref)}`,
+  },
   /** S4c: the organisation's projects (`docs/screens.md` "Projects list"). */
   portalProjects: {
     path: "/projects" as const,

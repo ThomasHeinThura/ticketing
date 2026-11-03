@@ -138,9 +138,13 @@ export function PortalCaseTable({
                         {item.ref}
                       </Link>
                     ) : (
-                      <span className="whitespace-nowrap font-medium tabular-nums">
+                      <Link
+                        to={routes.portalRequest.path}
+                        params={{ ref: item.ref }}
+                        className="whitespace-nowrap font-medium text-primary tabular-nums outline-none hover:underline focus-visible:underline"
+                      >
                         {item.ref}
-                      </span>
+                      </Link>
                     )}
                     <span className="break-words text-muted-foreground">
                       {item.requestTypeName}
@@ -222,7 +226,7 @@ export function PortalCaseTable({
   );
 }
 
-function PortalCaseSeverity({
+export function PortalCaseSeverity({
   priority,
 }: {
   priority: PortalCase["priority"];
@@ -239,7 +243,7 @@ function PortalCaseSeverity({
   );
 }
 
-function PortalCaseStatus({
+export function PortalCaseStatus({
   status,
 }: {
   status: PortalCase["customerStatus"];

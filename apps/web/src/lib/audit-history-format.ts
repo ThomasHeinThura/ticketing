@@ -122,7 +122,7 @@ export function auditValueLabel(
       ? lookups.unassigned
       : lookups.none;
   if (field === "stateId") return lookups.states.get(value) ?? lookups.unknown;
-  if (field === "assigneeId" || field === "assignee")
+  if (field === "assigneeId" || field === "assignee" || field === "requester")
     return lookups.people.get(value) ?? lookups.unknown;
   if (field === "priority") return lookups.priority(value);
   if (field === "description") {

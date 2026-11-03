@@ -2449,7 +2449,8 @@
 				"updated": "Updated",
 				"transitioned": "Changed state",
 				"commented": "Commented"
-			}
+			},
+			"shareFilesWithCustomer": "Share these files with the customer"
 		}
 	},
 	"tasks": {
@@ -3446,7 +3447,8 @@
 				"pdfPreviewZoomOut": "Zoom out",
 				"pdfPreviewZoomIn": "Zoom in",
 				"pdfPreviewDownload": "Download {{name}}",
-				"pdfPreviewOpen": "Preview {{name}}"
+				"pdfPreviewOpen": "Preview {{name}}",
+				"sharedWithCustomer": "Visible to customer"
 			},
 			"change": {
 				"heading": "{{term_service_one}} and {{term_change_one}}"
@@ -3701,7 +3703,13 @@
 				"saveFailed": "The change could not be saved.",
 				"rollupOnly": "Σ {{value}} from children",
 				"rollupBeside": "Σ {{value}} from children"
-			}
+			},
+			"requester": "Requester",
+			"noRequester": "No requester",
+			"requesterSearch": "Search customers",
+			"noRequesterMatch": "No customer matches.",
+			"noCustomers": "This organisation has no customers yet.",
+			"requesterError": "Customers could not be loaded."
 		},
 		"deletion": {
 			"actions": "{{term_work_item_one}} actions",
@@ -3842,7 +3850,8 @@
 				"checklist": "Checklist",
 				"dueDate": "Due date",
 				"startDate": "Start date",
-				"deleted_at": "Deleted on"
+				"deleted_at": "Deleted on",
+				"requester": "Requester"
 			},
 			"unassigned": "Unassigned"
 		},
@@ -3984,7 +3993,9 @@
 			},
 			"systemReasons": {
 				"clarification_window_expired": "No reply was received within {{days}} days of our request for clarification, so this {{term_request_one}} was closed. Contact us if you would like to continue."
-			}
+			},
+			"filesNotAttached": "Your {{term_request_one}} {{ref}} was sent, but these files could not be attached:",
+			"openSentRequest": "Open {{ref}}"
 		},
 		"orientation": {
 			"title": "Welcome to your portal",
@@ -4414,6 +4425,22 @@
 				"title": "Your projects",
 				"viewAll": "View all projects"
 			}
+		},
+		"requestPage": {
+			"back": "Back to {{term_request_other}}",
+			"notFound": {
+				"title": "We could not find this {{term_request_one}}",
+				"description": "This {{term_request_one}} does not exist or you do not have access to it."
+			},
+			"loadFailed": "Could not load this {{term_request_one}}. Try again.",
+			"sharedByTeam": "Shared by our team",
+			"fileNotDownloadable": "Not available to download here yet. Ask the team if you need it.",
+			"download": "Download {{name}}",
+			"attach": "Attach files",
+			"filesToSend": "Files to send with your reply",
+			"removeFile": "Remove {{name}}",
+			"sending": "Sending…",
+			"uploadFailed": "Your reply was sent, but these files could not be attached:"
 		}
 	},
 	"instanceUsers": {

@@ -6,6 +6,8 @@ import {
   customerPortalOnFor,
   customerPortalScope,
 } from "../feature-flag/enforce";
+import { findReadableDirectCaseRefs } from "../intake/portal-cases";
+import { loadPortalViewer } from "../intake/repository";
 
 type InboxRow = {
   notification: {
@@ -17,12 +19,21 @@ type InboxRow = {
 };
 
 export type PortalNotificationTarget = {
+  /**
+   * What the row opens: an accepted or open submission (`/submissions/{ref}`), a request staff
+   * raised for the customer (`/requests/{ref}`, U-12), or the portal Approvals screen.
+   */
+  targetKind: "submission" | "request" | "approval";
   /** Null for an approval row, which links to the portal Approvals screen (AP-19/AP-21). */
   requestRef: string | null;
   commentId: string | null;
 };
 
-/** Resolve safe portal request links only through an accepted request owned by the caller. */
+/**
+ * Resolve safe portal links only through a request the caller may open: their own submission
+ * (or the accepted submission behind a work item), else a direct request the case list shows
+ * them (`findReadableDirectCaseRefs`, `CP-16`). Anything else gets no target and is not listed.
+ */
 export async function resolvePortalNotificationTargets(
   rows: readonly InboxRow[],
   requesterId: string,
@@ -135,6 +146,17 @@ export async function resolvePortalNotificationTargets(
   const commentWorkItemById = new Map(
     comments.map((comment) => [comment.id, comment.workItemId]),
   );
+  // U-12: a work item with no accepted submission of the caller may be a direct request.
+  const directCandidates = [...itemIds].filter(
+    (id) => !targetByWorkItemId.has(id),
+  );
+  const directRefByWorkItemId = directCandidates.length
+    ? await findReadableDirectCaseRefs(
+        await loadPortalViewer(requesterId),
+        directCandidates,
+      )
+    : new Map<string, string>();
+
   const result = new Map<string, PortalNotificationTarget>();
   for (const { notification } of rows) {
     const resourceId = notification.resourceId;
@@ -142,22 +164,46 @@ export async function resolvePortalNotificationTargets(
     // `P2R1-04`: the inbox read predicate already admits only the addressed customer approver
     // of a reachable customer approval; the row carries no request reference or internal id.
     if (notification.resourceType === "approval") {
-      result.set(notification.id, { requestRef: null, commentId: null });
+      result.set(notification.id, {
+        targetKind: "approval",
+        requestRef: null,
+        commentId: null,
+      });
       continue;
     }
-    const ref =
-      notification.resourceType === "submission"
-        ? targetBySubmissionId.get(resourceId)
-        : notification.resourceType === "comment"
-          ? targetByWorkItemId.get(commentWorkItemById.get(resourceId) ?? "")
-          : notification.resourceType === "work_item"
-            ? targetByWorkItemId.get(itemRefToId.get(resourceId) ?? resourceId)
-            : undefined;
-    if (!ref) continue;
-    result.set(notification.id, {
-      requestRef: ref,
-      commentId: notification.resourceType === "comment" ? resourceId : null,
-    });
+    const commentId =
+      notification.resourceType === "comment" ? resourceId : null;
+    if (notification.resourceType === "submission") {
+      const ref = targetBySubmissionId.get(resourceId);
+      if (ref)
+        result.set(notification.id, {
+          targetKind: "submission",
+          requestRef: ref,
+          commentId,
+        });
+      continue;
+    }
+    const workItemId =
+      notification.resourceType === "comment"
+        ? commentWorkItemById.get(resourceId)
+        : notification.resourceType === "work_item"
+          ? (itemRefToId.get(resourceId) ?? resourceId)
+          : undefined;
+    if (!workItemId) continue;
+    const submissionRef = targetByWorkItemId.get(workItemId);
+    const directRef = directRefByWorkItemId.get(workItemId);
+    if (submissionRef)
+      result.set(notification.id, {
+        targetKind: "submission",
+        requestRef: submissionRef,
+        commentId,
+      });
+    else if (directRef)
+      result.set(notification.id, {
+        targetKind: "request",
+        requestRef: directRef,
+        commentId,
+      });
   }
   return result;
 }

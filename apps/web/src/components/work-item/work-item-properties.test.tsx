@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   transitionsError: null as unknown,
   people: [] as unknown[],
   peopleError: null as unknown,
+  requesters: [] as unknown[],
 }));
 
 vi.mock("./work-item-actions", () => ({ default: () => null }));
@@ -79,6 +80,15 @@ vi.mock("@/hooks/queries/work-item/use-get-assignable-people", () => ({
   }),
 }));
 
+vi.mock("@/hooks/queries/work-item/use-get-requester-candidates", () => ({
+  default: () => ({
+    data: mocks.requesters,
+    error: null,
+    isError: false,
+    isLoading: false,
+  }),
+}));
+
 function item(overrides: Partial<WorkItemDetailRow> = {}) {
   return {
     key: "HELP-7",
@@ -89,6 +99,8 @@ function item(overrides: Partial<WorkItemDetailRow> = {}) {
     priority: "high",
     assigneeId: null,
     assigneeName: null,
+    requesterId: null,
+    requesterName: null,
     startDate: null,
     dueDate: null,
     version: 4,
@@ -130,6 +142,7 @@ beforeEach(() => {
   mocks.transitionsError = null;
   mocks.people = [];
   mocks.peopleError = null;
+  mocks.requesters = [];
 });
 
 describe("WorkItemProperties", () => {
@@ -812,6 +825,88 @@ describe("WorkItemProperties", () => {
       await screen.findByRole("button", { name: /Casey Ray/ }),
     ).toBeInTheDocument();
     expect(mocks.assign).not.toHaveBeenCalled();
+  });
+
+  it("names a customer as requester with the item's version, then shows the name (A-03)", async () => {
+    mocks.update.mockResolvedValue({ key: "HELP-7", version: 5 });
+    mocks.requesters = [
+      {
+        personId: "cust-1",
+        name: "Alice Customer",
+        email: "alice@example.test",
+      },
+      { personId: "cust-2", name: null, email: "bob@example.test" },
+    ];
+    const seed = item();
+    renderProps(
+      <WorkItemProperties item={seed} onAccessLost={vi.fn()} />,
+      seed,
+    );
+    const trigger = screen.getByTestId("work-item-requester-control");
+    expect(trigger).toHaveTextContent("workItems:properties.noRequester");
+    fireEvent.click(trigger);
+    // The search narrows the organisation's customers by name or email.
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: "workItems:properties.requesterSearch",
+      }),
+      { target: { value: "bob" } },
+    );
+    expect(screen.queryByRole("button", { name: /Alice Customer/ })).toBeNull();
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: "workItems:properties.requesterSearch",
+      }),
+      { target: { value: "" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Alice Customer/ }));
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        key: "HELP-7",
+        version: 4,
+        requesterId: "cust-1",
+      }),
+    );
+  });
+
+  it("clears the requester", async () => {
+    mocks.update.mockResolvedValue({ key: "HELP-7", version: 5 });
+    renderProps(
+      <WorkItemProperties
+        item={item({ requesterId: "cust-1", requesterName: "Alice Customer" })}
+        onAccessLost={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Alice Customer/ }));
+    expect(
+      await screen.findByText("workItems:properties.noCustomers"),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:properties.noRequester" }),
+    );
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        key: "HELP-7",
+        version: 4,
+        requesterId: null,
+      }),
+    );
+  });
+
+  it("shows the requester read-only without work_item:update", () => {
+    mocks.canUpdate = false;
+    renderProps(
+      <WorkItemProperties
+        item={item({ requesterId: "cust-1", requesterName: "Alice Customer" })}
+        onAccessLost={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Alice Customer/ }));
+    expect(
+      screen.queryByRole("textbox", {
+        name: "workItems:properties.requesterSearch",
+      }),
+    ).toBeNull();
   });
 
   it("shows every property read-only to a role that cannot change them", () => {

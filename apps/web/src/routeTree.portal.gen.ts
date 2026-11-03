@@ -27,6 +27,7 @@ import { Route as PortalRequestsRouteImport } from './routes/portal/portal/reque
 import { Route as PortalSignInRouteImport } from './routes/portal/portal/sign-in'
 import { Route as ProjectsProjectKeyRouteImport } from './routes/portal/projects_.$projectKey'
 import { Route as ReleasesIdRouteImport } from './routes/portal/releases_.$id'
+import { Route as RequestsRefRouteImport } from './routes/portal/requests_.$ref'
 import { Route as SubmissionsRefRouteImport } from './routes/portal/submissions/$ref'
 
 const IndexRoute = IndexRouteImport.update({
@@ -119,6 +120,11 @@ const ReleasesIdRoute = ReleasesIdRouteImport.update({
   path: '/releases/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RequestsRefRoute = RequestsRefRouteImport.update({
+  id: '/requests_/$ref',
+  path: '/requests/$ref',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SubmissionsRefRoute = SubmissionsRefRouteImport.update({
   id: '/submissions/$ref',
   path: '/submissions/$ref',
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/portal/sign-in': typeof PortalSignInRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/releases/$id': typeof ReleasesIdRoute
+  '/requests/$ref': typeof RequestsRefRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRoutesByTo {
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/portal/sign-in': typeof PortalSignInRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/releases/$id': typeof ReleasesIdRoute
+  '/requests/$ref': typeof RequestsRefRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRoutesById {
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/portal/sign-in': typeof PortalSignInRoute
   '/projects_/$projectKey': typeof ProjectsProjectKeyRoute
   '/releases_/$id': typeof ReleasesIdRoute
+  '/requests_/$ref': typeof RequestsRefRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRouteTypes {
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/portal/sign-in'
     | '/projects/$projectKey'
     | '/releases/$id'
+    | '/requests/$ref'
     | '/submissions/$ref'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/portal/sign-in'
     | '/projects/$projectKey'
     | '/releases/$id'
+    | '/requests/$ref'
     | '/submissions/$ref'
   id:
     | '__root__'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/portal/sign-in'
     | '/projects_/$projectKey'
     | '/releases_/$id'
+    | '/requests_/$ref'
     | '/submissions/$ref'
   fileRoutesById: FileRoutesById
 }
@@ -274,6 +286,7 @@ export interface RootRouteChildren {
   PortalSignInRoute: typeof PortalSignInRoute
   ProjectsProjectKeyRoute: typeof ProjectsProjectKeyRoute
   ReleasesIdRoute: typeof ReleasesIdRoute
+  RequestsRefRoute: typeof RequestsRefRoute
   SubmissionsRefRoute: typeof SubmissionsRefRoute
 }
 
@@ -405,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReleasesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/requests_/$ref': {
+      id: '/requests_/$ref'
+      path: '/requests/$ref'
+      fullPath: '/requests/$ref'
+      preLoaderRoute: typeof RequestsRefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/submissions/$ref': {
       id: '/submissions/$ref'
       path: '/submissions/$ref'
@@ -434,6 +454,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalSignInRoute: PortalSignInRoute,
   ProjectsProjectKeyRoute: ProjectsProjectKeyRoute,
   ReleasesIdRoute: ReleasesIdRoute,
+  RequestsRefRoute: RequestsRefRoute,
   SubmissionsRefRoute: SubmissionsRefRoute,
 }
 export const routeTree = rootRouteImport

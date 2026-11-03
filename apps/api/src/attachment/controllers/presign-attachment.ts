@@ -5,6 +5,7 @@ import {
   buildAttachmentStorageKey,
   createAttachmentUploadUrl,
 } from "../../storage";
+import { createPortalAttachmentUploadUrl } from "../../storage/portal-servable";
 import { getFileExtension, sanitizePathSegment } from "../../storage/shared";
 import {
   assertProjectStillLive,
@@ -39,6 +40,11 @@ export type PresignAttachmentInput = {
   commentId?: string;
   userId: string;
   apiBaseUrl: string;
+  /**
+   * CP-19: the customer person a portal route presigns for (A-08). The upload URL is then
+   * portal-bound to this person on the filesystem driver; every check below is shared.
+   */
+  portalPersonId?: string;
 };
 
 // Same defaults as the `instance_setting` migration's own column DEFAULTs
@@ -243,13 +249,22 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     throw new HTTPException(500, { message: "Failed to create attachment" });
   }
 
-  const upload = await createAttachmentUploadUrl(
-    objectKey,
-    contentType,
-    maxBytes,
-    apiBaseUrl,
-    size,
-  );
+  const upload = input.portalPersonId
+    ? await createPortalAttachmentUploadUrl({
+        objectKey,
+        contentType,
+        maxBytes,
+        personId: input.portalPersonId,
+        apiBaseUrl,
+        declaredSize: size,
+      })
+    : await createAttachmentUploadUrl(
+        objectKey,
+        contentType,
+        maxBytes,
+        apiBaseUrl,
+        size,
+      );
 
   return {
     attachmentId: inserted.id,

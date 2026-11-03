@@ -270,13 +270,72 @@ describe("portal submission route", () => {
     }
   });
 
+  it("sends an accepted request's reply with its files, each attached to that reply (A-08)", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue({
+      ...submission,
+      submission: { ...submission.submission, state: "accepted" },
+      workItem: { title: "T", description: "", state: "open", priority: null },
+    });
+    mocks.reply.mockReset().mockResolvedValue({ message: { id: "reply-1" } });
+    mocks.presignAttachment.mockReset().mockResolvedValue({
+      attachmentId: "file-1",
+      uploadUrl: "/api/storage/portal-attachment-upload?key=k",
+      uploadHeaders: { "Content-Type": "application/pdf" },
+    });
+    mocks.completeAttachment.mockReset().mockResolvedValue({ id: "file-1" });
+    const put = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    renderSubmission();
+    await screen.findByText(/Access request ·/u);
+    // Once accepted, files go with a reply rather than a separate upload control.
+    const picker = screen.getByLabelText("portal:requestPage.attach");
+    const file = new File(["%PDF-1.4"], "logs.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(picker, { target: { files: [file] } });
+    expect(
+      screen.getByRole("list", { name: "portal:requestPage.filesToSend" }),
+    ).toHaveTextContent("logs.pdf");
+    fireEvent.change(screen.getByLabelText("Reply"), {
+      target: { value: "Logs attached" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send reply" }));
+    await waitFor(() =>
+      expect(mocks.completeAttachment).toHaveBeenCalledWith({
+        ref: "SUB-7",
+        id: "file-1",
+      }),
+    );
+    expect(mocks.reply).toHaveBeenCalledWith({
+      ref: "SUB-7",
+      body: "Logs attached",
+    });
+    expect(mocks.presignAttachment).toHaveBeenCalledWith({
+      ref: "SUB-7",
+      commentId: "reply-1",
+      filename: "logs.pdf",
+      contentType: "application/pdf",
+      size: file.size,
+    });
+    expect(put).toHaveBeenCalledWith(
+      "/api/storage/portal-attachment-upload?key=k",
+      expect.objectContaining({ method: "PUT", body: file }),
+    );
+    put.mockRestore();
+  });
+
   it("downloads under the file name and shows an error when the download fails", async () => {
     mocks.getSubmission.mockReset().mockResolvedValue(submission);
-    mocks.getAttachments
-      .mockReset()
-      .mockResolvedValue([
-        { id: "att-1", filename: "evidence.png", size: 2048, state: "ready" },
-      ]);
+    mocks.getAttachments.mockReset().mockResolvedValue([
+      {
+        id: "att-1",
+        filename: "evidence.png",
+        size: 2048,
+        state: "ready",
+        downloadable: true,
+      },
+    ]);
     mocks.downloadAttachment
       .mockReset()
       .mockRejectedValueOnce(new Error("Unable to download attachment"))
@@ -305,6 +364,7 @@ describe("portal submission route", () => {
         mimeType: "application/pdf",
         size: 512,
         state: "ready",
+        downloadable: true,
       },
       {
         id: "doc-1",
@@ -313,6 +373,7 @@ describe("portal submission route", () => {
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         size: 512,
         state: "ready",
+        downloadable: true,
       },
     ]);
     renderSubmission();
@@ -330,5 +391,39 @@ describe("portal submission route", () => {
     ).toHaveAttribute("src", "/pdf-preview.html");
     expect(mocks.previewPath).toHaveBeenCalledWith("SUB-7", "pdf/1");
     expect(mocks.downloadPath).toHaveBeenCalledWith("SUB-7", "pdf/1");
+  });
+
+  it("lists a team file the portal cannot serve without any download, even in the preview (CP-19)", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue(submission);
+    mocks.getAttachments.mockReset().mockResolvedValue([
+      {
+        id: "guide-1",
+        filename: "vpn-guide.pdf",
+        mimeType: "application/pdf",
+        size: 512,
+        state: "ready",
+        downloadable: false,
+      },
+    ]);
+    mocks.downloadPath.mockClear();
+    renderSubmission();
+
+    const preview = await screen.findByRole("button", {
+      name: "workItems:detail.attachments.pdfPreviewOpen",
+    });
+    expect(screen.getByText(/vpn-guide\.pdf/u)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Download" })).toBeNull();
+    // The missing Download is explained next to the file.
+    expect(
+      screen.getByText("portal:requestPage.fileNotDownloadable"),
+    ).toBeVisible();
+    fireEvent.click(preview);
+    expect(
+      await screen.findByTitle("workItems:detail.attachments.pdfPreviewTitle"),
+    ).toHaveAttribute("src", "/pdf-preview.html");
+    expect(mocks.downloadPath).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("link", { name: /pdfPreviewDownload/u }),
+    ).toBeNull();
   });
 });

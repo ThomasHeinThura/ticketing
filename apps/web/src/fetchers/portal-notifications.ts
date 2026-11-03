@@ -18,6 +18,11 @@ export type PortalNotification = {
   kind: PortalNotificationKind;
   isRead: boolean;
   createdAt: string;
+  /**
+   * What the row opens: a submission, a request the team raised for the customer (U-12), or
+   * the Approvals screen.
+   */
+  targetKind: "submission" | "request" | "approval";
   /** Null for an approval event, which opens the Approvals screen. */
   requestRef: string | null;
   commentId: string | null;

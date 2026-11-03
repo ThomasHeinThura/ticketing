@@ -20,7 +20,8 @@ export type PdfPreviewAttachment = {
   id: string;
   filename: string;
   previewPath: string;
-  downloadPath: string;
+  /** Omitted when the viewer cannot download the file; the preview has no download then. */
+  downloadPath?: string;
 };
 
 function makeNonce() {
@@ -316,17 +317,19 @@ export default function PdfPreviewDialog({
                 >
                   <Plus className="size-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  render={<a href={getApiUrl(attachment.downloadPath)} />}
-                  aria-label={t(
-                    "workItems:detail.attachments.pdfPreviewDownload",
-                    { name: attachment.filename },
-                  )}
-                >
-                  <Download className="size-4" />
-                </Button>
+                {attachment.downloadPath ? (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    render={<a href={getApiUrl(attachment.downloadPath)} />}
+                    aria-label={t(
+                      "workItems:detail.attachments.pdfPreviewDownload",
+                      { name: attachment.filename },
+                    )}
+                  >
+                    <Download className="size-4" />
+                  </Button>
+                ) : null}
                 <Button
                   variant="ghost"
                   size="icon-sm"

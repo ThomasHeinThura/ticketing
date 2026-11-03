@@ -1426,7 +1426,10 @@ export async function listVisibleNotificationRows(params: {
  */
 export type NotificationInboxAdmission = (
   rows: ReadonlyArray<{
-    notification: Pick<NotificationRow, "id" | "resourceType" | "resourceId">;
+    notification: Pick<
+      NotificationRow,
+      "id" | "kind" | "resourceType" | "resourceId"
+    >;
   }>,
 ) => Promise<ReadonlySet<string>>;
 

@@ -171,6 +171,7 @@ export const generatedRouteMetadata = {
     "/releases",
     "/releases/$id",
     "/requests",
+    "/requests/$ref",
     "/sign-in",
     "/submissions/$ref",
   ],

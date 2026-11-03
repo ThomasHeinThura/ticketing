@@ -58,6 +58,26 @@ describe("portal required-field validation", () => {
       [],
     );
   });
+
+  it("counts a required file field as answered only when files are staged for it", () => {
+    const schema = {
+      fields: [
+        { key: "evidence", type: "file", label: "Evidence", required: true },
+        {
+          key: "hiddenFile",
+          type: "file",
+          label: "Hidden",
+          required: true,
+          showIf: { field_key: "evidence", op: "eq", value: "never" },
+        },
+      ],
+    } as const;
+
+    expect(missingRequiredIntakeFields(schema, {})).toEqual(["evidence"]);
+    expect(
+      missingRequiredIntakeFields(schema, {}, (key) => key === "evidence"),
+    ).toEqual([]);
+  });
 });
 
 describe("immutable submission answer labels", () => {

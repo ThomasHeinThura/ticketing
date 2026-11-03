@@ -188,7 +188,10 @@ vi.mock("@tanstack/react-query", () => ({
     }
     return { data: mocks.cannedResponses, isLoading: false, isError: false };
   },
-  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  useQueryClient: () => ({
+    invalidateQueries: vi.fn(),
+    getQueryData: vi.fn(() => undefined),
+  }),
 }));
 vi.mock("@/fetchers/attachment/work-item-upload-queue", () => ({
   enqueueWorkItemUploads: mocks.enqueue,

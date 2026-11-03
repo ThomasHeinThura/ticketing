@@ -189,8 +189,11 @@ describe("PortalRequestsPage", () => {
     expect(screen.getByText("request.author.you")).toBeTruthy();
     expect(screen.getByText("Bob Colleague")).toBeTruthy();
     expect(screen.getAllByText("cases.yourTeam")).toHaveLength(2);
-    // D6: a request raised by staff has no portal page, so its reference is not a link.
-    expect(screen.getByText("CCY-9").closest("a")).toBeNull();
+    // D6 / U-12: a request raised by staff opens its own portal page.
+    expect(screen.getByRole("link", { name: "CCY-9" })).toHaveAttribute(
+      "href",
+      "/requests/$ref",
+    );
     expect(screen.getByText("cases.raisedByTeam")).toBeTruthy();
     expect(screen.queryByText(/assignee/i)).toBeNull();
   });

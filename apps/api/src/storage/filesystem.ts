@@ -831,6 +831,161 @@ export async function readAttachmentDownloadObject(params: {
   return getPrivateObject(params.key);
 }
 
+// ---------------------------------------------------------------------------
+// CP-19 (Thomas, 3 November 2026): portal-bound signed links for work-item attachment objects.
+//
+// The portal `own_request` / `own_submission` routes mint these after their own ownership and
+// reach checks. Their HKDF info strings differ from the agent tokens above, so an agent-minted
+// URL is never a valid portal credential and the reverse. The HMAC also binds the customer
+// person the link was minted for; the storage route admits it only when the portal session on
+// the request resolves to that same person, so a copied link does not work for anyone else.
+// Same secret (`TASKDESK_AUTH_SECRET`), same TTLs; nothing new to configure.
+// ---------------------------------------------------------------------------
+
+const PORTAL_ATTACHMENT_UPLOAD_TOKEN_INFO =
+  "taskdesk:storage:portal-attachment-upload-token:v1";
+const PORTAL_ATTACHMENT_DOWNLOAD_TOKEN_INFO =
+  "taskdesk:storage:portal-attachment-download-token:v1";
+
+function signPortalToken(info: string, fields: readonly string[]): string {
+  const hmac = crypto.createHmac("sha256", deriveTokenKey(info));
+  hmac.update(fields.join("\n"));
+  return hmac.digest("base64url");
+}
+
+function verifyPortalToken(
+  info: string,
+  fields: readonly string[],
+  token: string,
+): boolean {
+  let expected: string;
+  try {
+    expected = signPortalToken(info, fields);
+  } catch {
+    return false;
+  }
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const providedBuf = Buffer.from(token, "utf8");
+  if (expectedBuf.length !== providedBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, providedBuf);
+}
+
+function assertNotExpired(expires: string, label: string): number {
+  const expiresNum = Number.parseInt(expires, 10);
+  if (!Number.isFinite(expiresNum))
+    throw new StoragePathError(`Invalid or missing ${label} expiry.`);
+  if (Math.floor(Date.now() / 1000) > expiresNum)
+    throw new StoragePathError(
+      `${label === "upload" ? "Upload" : "Download"} URL has expired.`,
+    );
+  return expiresNum;
+}
+
+/** A portal-bound upload URL on the portal origin: key, person, size ceiling and expiry signed. */
+export function createPortalAttachmentUploadUrl(
+  key: string,
+  contentType: string,
+  maxBytes: number,
+  personId: string,
+  apiBaseUrl: string,
+): TaskImageUploadUrl {
+  const expires =
+    Math.floor(Date.now() / 1000) + DEFAULT_UPLOAD_URL_TTL_SECONDS;
+  const token = signPortalToken(PORTAL_ATTACHMENT_UPLOAD_TOKEN_INFO, [
+    key,
+    personId,
+    String(maxBytes),
+    String(expires),
+  ]);
+  const query = new URLSearchParams({
+    key,
+    maxBytes: String(maxBytes),
+    expires: String(expires),
+    token,
+  });
+  return {
+    key,
+    uploadUrl: `${normalizeApiServerUrl(apiBaseUrl)}/storage/portal-attachment-upload?${query.toString()}`,
+    headers: { "Content-Type": contentType },
+  };
+}
+
+/**
+ * Writes a portal upload after checking the portal token against the session's person. Same
+ * path safety, atomic publish and signed size ceiling as {@link writeAttachmentUploadedObject}.
+ */
+export async function writePortalAttachmentUploadedObject(params: {
+  key: string;
+  maxBytes: string;
+  expires: string;
+  token: string;
+  personId: string;
+  body: ReadableStream<Uint8Array> | null;
+}): Promise<void> {
+  const maxBytesNum = Number.parseInt(params.maxBytes, 10);
+  if (!Number.isFinite(maxBytesNum) || maxBytesNum <= 0)
+    throw new StoragePathError("Invalid maxBytes.");
+  const expiresNum = assertNotExpired(params.expires, "upload");
+  if (
+    !verifyPortalToken(
+      PORTAL_ATTACHMENT_UPLOAD_TOKEN_INFO,
+      [params.key, params.personId, String(maxBytesNum), String(expiresNum)],
+      params.token,
+    )
+  )
+    throw new StoragePathError("Invalid or missing upload token.");
+  if (!params.body) throw new StoragePathError("Missing upload body.");
+  const config = await getCanonicalFilesystemConfig();
+  const candidate = resolveWithinRoot(config.root, params.key);
+  const dir = path.dirname(candidate);
+  await assertNoSymlinkEscape(dir, config.root);
+  await fsp.mkdir(dir, { recursive: true });
+  await assertNoSymlinkEscape(dir, config.root);
+  await writeStreamToFile(params.body, candidate, maxBytesNum);
+}
+
+/** A portal-bound download URL on the portal origin: key, person and expiry signed. */
+export function createPortalAttachmentDownloadUrl(
+  key: string,
+  filename: string,
+  personId: string,
+  apiBaseUrl: string,
+): string {
+  const expires =
+    Math.floor(Date.now() / 1000) + DEFAULT_DOWNLOAD_URL_TTL_SECONDS;
+  const token = signPortalToken(PORTAL_ATTACHMENT_DOWNLOAD_TOKEN_INFO, [
+    key,
+    personId,
+    String(expires),
+  ]);
+  const query = new URLSearchParams({
+    key,
+    expires: String(expires),
+    token,
+    filename,
+  });
+  return `${normalizeApiServerUrl(apiBaseUrl)}/storage/portal-download?${query.toString()}`;
+}
+
+/** Verifies a portal download token against the session's person, then opens the object. */
+export async function readPortalAttachmentDownloadObject(params: {
+  key: string;
+  expires: string;
+  token: string;
+  personId: string;
+}): Promise<AssetObject> {
+  const expiresNum = assertNotExpired(params.expires, "download");
+  if (
+    !verifyPortalToken(
+      PORTAL_ATTACHMENT_DOWNLOAD_TOKEN_INFO,
+      [params.key, params.personId, String(expiresNum)],
+      params.token,
+    )
+  )
+    throw new StoragePathError("Invalid or missing download token.");
+  return getPrivateObject(params.key);
+}
+
 /**
  * Issue #28 (attachments), B3 security-review fix (2026-09-27): returns the object's real
  * stored size (from `fs.stat`, no body read at all) alongside only its first `headerBytes`

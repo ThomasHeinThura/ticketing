@@ -9920,6 +9920,9 @@
 								}
 							},
 							"required": ["created", "updated", "transitioned", "commented"]
+						},
+						"shareFilesWithCustomer": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -9965,7 +9968,8 @@
 						"attachmentDeleted",
 						"actors",
 						"reopenRequested",
-						"verbs"
+						"verbs",
+						"shareFilesWithCustomer"
 					]
 				}
 			},
@@ -14132,6 +14136,9 @@
 								},
 								"pdfPreviewOpen": {
 									"type": "string"
+								},
+								"sharedWithCustomer": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -14169,7 +14176,8 @@
 								"pdfPreviewZoomOut",
 								"pdfPreviewZoomIn",
 								"pdfPreviewDownload",
-								"pdfPreviewOpen"
+								"pdfPreviewOpen",
+								"sharedWithCustomer"
 							]
 						},
 						"change": {
@@ -15202,6 +15210,24 @@
 								"rollupOnly",
 								"rollupBeside"
 							]
+						},
+						"requester": {
+							"type": "string"
+						},
+						"noRequester": {
+							"type": "string"
+						},
+						"requesterSearch": {
+							"type": "string"
+						},
+						"noRequesterMatch": {
+							"type": "string"
+						},
+						"noCustomers": {
+							"type": "string"
+						},
+						"requesterError": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -15223,7 +15249,13 @@
 						"importedOn",
 						"openSource",
 						"unsaved",
-						"agile"
+						"agile",
+						"requester",
+						"noRequester",
+						"requesterSearch",
+						"noRequesterMatch",
+						"noCustomers",
+						"requesterError"
 					]
 				},
 				"deletion": {
@@ -15738,6 +15770,9 @@
 								},
 								"deleted_at": {
 									"type": "string"
+								},
+								"requester": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -15758,7 +15793,8 @@
 								"checklist",
 								"dueDate",
 								"startDate",
-								"deleted_at"
+								"deleted_at",
+								"requester"
 							]
 						},
 						"unassigned": {
@@ -16304,6 +16340,12 @@
 								}
 							},
 							"required": ["clarification_window_expired"]
+						},
+						"filesNotAttached": {
+							"type": "string"
+						},
+						"openSentRequest": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -16336,7 +16378,9 @@
 						"attachmentListError",
 						"downloadError",
 						"sla",
-						"systemReasons"
+						"systemReasons",
+						"filesNotAttached",
+						"openSentRequest"
 					]
 				},
 				"orientation": {
@@ -17993,6 +18037,68 @@
 						"detail",
 						"dashboard"
 					]
+				},
+				"requestPage": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"back": {
+							"type": "string"
+						},
+						"notFound": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description"]
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"sharedByTeam": {
+							"type": "string"
+						},
+						"fileNotDownloadable": {
+							"type": "string"
+						},
+						"download": {
+							"type": "string"
+						},
+						"attach": {
+							"type": "string"
+						},
+						"filesToSend": {
+							"type": "string"
+						},
+						"removeFile": {
+							"type": "string"
+						},
+						"sending": {
+							"type": "string"
+						},
+						"uploadFailed": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"back",
+						"notFound",
+						"loadFailed",
+						"sharedByTeam",
+						"fileNotDownloadable",
+						"download",
+						"attach",
+						"filesToSend",
+						"removeFile",
+						"sending",
+						"uploadFailed"
+					]
 				}
 			},
 			"required": [
@@ -18013,7 +18119,8 @@
 				"shell",
 				"announcements",
 				"cases",
-				"projects"
+				"projects",
+				"requestPage"
 			]
 		},
 		"instanceUsers": {

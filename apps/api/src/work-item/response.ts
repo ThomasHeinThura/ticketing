@@ -134,6 +134,8 @@ export const workItemDetailSchema = workItemShape
         "The project's CA-2 default for the comment composer; comments still require an explicit visibility on create.",
     }),
     assigneeName: z.string().nullable(),
+    /** A-03: the requester's display name (null when unset or unresolvable). */
+    requesterName: z.string().nullable(),
     ...assigneeFactsShape,
     customFields: z.array(workItemCustomFieldSchema),
     importProvenance: z.array(workItemImportProvenanceSchema).openapi({

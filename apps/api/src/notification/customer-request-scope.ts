@@ -6,6 +6,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  notExists,
   or,
   type SQLWrapper,
   sql,
@@ -15,6 +16,7 @@ import type { Executor } from "../database/executor";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
 import {
   commentTable,
+  personTable,
   projectTable,
   requestTypeTable,
   submissionTable,
@@ -22,7 +24,100 @@ import {
   workspaceTable,
 } from "../database/schema";
 
+/**
+ * The portal case list's direct-source condition: no submission of the item's current requester
+ * links the item, so the submission rule does not already cover it. An item converted from (or
+ * merged with) another customer's submission and then moved to this requester (A-03) is theirs
+ * as a direct request; the first customer's submission no longer owns it.
+ */
+function notLinkedToRequesterSubmission(
+  workItemId: SQLWrapper,
+  requesterId: SQLWrapper,
+  executor: Executor,
+) {
+  const linked = alias(
+    submissionTable,
+    "notification_direct_linked_submission",
+  );
+  return notExists(
+    executor
+      .select({ one: sql`1` })
+      .from(linked)
+      .where(
+        and(
+          eq(linked.workItemId, workItemId),
+          eq(linked.requesterId, requesterId),
+        ),
+      ),
+  );
+}
+
+/**
+ * U-12 (D6, `CP-16`): a request staff raised for a customer (`direct`) belongs to its requester,
+ * on the portal case list's direct-source conditions: the item's requester is this customer-side
+ * person of the serving project's organisation, and the item, its live, unarchived project and
+ * workspace still exist, and no submission of this requester links the item (the submission
+ * rule covers that one). Only the requester owns it; a participant or an organisation colleague
+ * reads the request but is not told about it, as on the submission side.
+ */
+function directOwnedRequestExists(
+  personId: string,
+  workItemId: SQLWrapper,
+  executor: Executor,
+  identity?: ResolvedIdentity,
+) {
+  const item = alias(workItemTable, "notification_direct_request_item");
+  const requester = alias(personTable, "notification_direct_request_person");
+  const project = alias(projectTable, "notification_direct_request_project");
+  const workspace = alias(
+    workspaceTable,
+    "notification_direct_request_workspace",
+  );
+  return exists(
+    executor
+      .select({ one: sql`1` })
+      .from(item)
+      .innerJoin(requester, eq(requester.id, item.requesterId))
+      .innerJoin(project, eq(project.id, item.projectId))
+      .innerJoin(workspace, eq(workspace.id, item.workspaceId))
+      .where(
+        and(
+          eq(item.id, workItemId),
+          eq(item.requesterId, personId),
+          eq(requester.side, "customer"),
+          eq(requester.organisationId, project.organisationId),
+          eq(project.workspaceId, item.workspaceId),
+          isNull(item.deletedAt),
+          isNull(item.archivedAt),
+          isNull(project.deletedAt),
+          isNull(project.archivedAt),
+          isNull(workspace.deletedAt),
+          notLinkedToRequesterSubmission(item.id, item.requesterId, executor),
+          identity
+            ? currentProjectReachPredicate(
+                identity,
+                project.id,
+                project.workspaceId,
+                project.organisationId,
+                executor,
+              )
+            : undefined,
+        ),
+      ),
+  );
+}
+
+/** The customer owns the item: through a linked submission, or as a direct request's requester. */
 function linkedOwnedRequestExists(
+  personId: string,
+  workItemId: SQLWrapper,
+  executor: Executor,
+  identity?: ResolvedIdentity,
+) {
+  return sql`(${submissionOwnedRequestExists(personId, workItemId, executor, identity)} OR ${directOwnedRequestExists(personId, workItemId, executor, identity)})`;
+}
+
+function submissionOwnedRequestExists(
   personId: string,
   workItemId: SQLWrapper,
   executor: Executor,
@@ -236,10 +331,48 @@ export async function findLinkedRequestOwnerPersonIds(
         isNull(workspace.deletedAt),
       ),
     );
+  // U-12: a direct request's customer requester owns it too (see `directOwnedRequestExists`).
+  const directItem = alias(workItemTable, "notification_direct_owner_item");
+  const directRequester = alias(
+    personTable,
+    "notification_direct_owner_person",
+  );
+  const directProject = alias(
+    projectTable,
+    "notification_direct_owner_project",
+  );
+  const directWorkspace = alias(
+    workspaceTable,
+    "notification_direct_owner_workspace",
+  );
+  const directRows = await executor
+    .select({ workItemId: directItem.id, personId: directRequester.id })
+    .from(directItem)
+    .innerJoin(directRequester, eq(directRequester.id, directItem.requesterId))
+    .innerJoin(directProject, eq(directProject.id, directItem.projectId))
+    .innerJoin(directWorkspace, eq(directWorkspace.id, directItem.workspaceId))
+    .where(
+      and(
+        inArray(directItem.id, [...new Set(workItemIds)]),
+        eq(directRequester.side, "customer"),
+        eq(directRequester.organisationId, directProject.organisationId),
+        eq(directProject.workspaceId, directItem.workspaceId),
+        isNull(directItem.deletedAt),
+        isNull(directItem.archivedAt),
+        isNull(directProject.deletedAt),
+        isNull(directProject.archivedAt),
+        isNull(directWorkspace.deletedAt),
+        notLinkedToRequesterSubmission(
+          directItem.id,
+          directItem.requesterId,
+          executor,
+        ),
+      ),
+    );
   const owners = new Map<string, string[]>();
-  for (const row of rows) {
+  for (const row of [...rows, ...directRows]) {
     const personIds = owners.get(row.workItemId) ?? [];
-    personIds.push(row.personId);
+    if (!personIds.includes(row.personId)) personIds.push(row.personId);
     owners.set(row.workItemId, personIds);
   }
   return owners;

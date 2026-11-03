@@ -176,6 +176,32 @@ export const intakePolicies = {
     portal: "customer",
     predicate: "own_organisation",
   },
+  // U-12 (D6): a request raised by staff. Reach is the case list's row (requester, participant,
+  // organisation-visible colleague); reply and files are the requester's only (CP-16).
+  "GET /api/portal/requests/{ref}": {
+    portal: "customer",
+    predicate: "own_request",
+  },
+  "POST /api/portal/requests/{ref}/comments": {
+    portal: "customer",
+    predicate: "own_request",
+  },
+  "GET /api/portal/requests/{ref}/attachments": {
+    portal: "customer",
+    predicate: "own_request",
+  },
+  "POST /api/portal/requests/{ref}/attachments/presign": {
+    portal: "customer",
+    predicate: "own_request",
+  },
+  "POST /api/portal/requests/{ref}/attachments/{id}/complete": {
+    portal: "customer",
+    predicate: "own_request",
+  },
+  "GET /api/portal/requests/{ref}/attachments/{id}": {
+    portal: "customer",
+    predicate: "own_request",
+  },
   "GET /api/portal/submissions/{ref}": {
     portal: "customer",
     predicate: "own_submission",

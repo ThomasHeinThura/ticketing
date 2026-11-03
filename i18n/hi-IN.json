@@ -2449,7 +2449,8 @@
 				"updated": "Updated"
 			},
 			"imported": "Imported",
-			"importedTitle": "Imported from {{system}} on {{date}}. The time shown is the original time."
+			"importedTitle": "Imported from {{system}} on {{date}}. The time shown is the original time.",
+			"shareFilesWithCustomer": "Share these files with the customer"
 		}
 	},
 	"tasks": {
@@ -3273,7 +3274,8 @@
 				"pdfPreviewTooLarge": "This PDF is too large to preview. Download the file to view it.",
 				"pdfPreviewUnavailable": "PDF preview is unavailable. Download the file to view it.",
 				"pdfPreviewZoomIn": "Zoom in",
-				"pdfPreviewZoomOut": "Zoom out"
+				"pdfPreviewZoomOut": "Zoom out",
+				"sharedWithCustomer": "Visible to customer"
 			},
 			"sla": {
 				"due": "due {{date}}",
@@ -3677,7 +3679,13 @@
 			"importedFrom": "Imported from {{system}}",
 			"importedFromStale": "Imported from {{system}} (no longer in the source)",
 			"importedOn": "Imported {{date}}",
-			"openSource": "Open the original in {{system}}"
+			"openSource": "Open the original in {{system}}",
+			"requester": "अनुरोधकर्ता",
+			"noRequester": "कोई अनुरोधकर्ता नहीं",
+			"requesterSearch": "ग्राहक खोजें",
+			"noRequesterMatch": "कोई ग्राहक मेल नहीं खाता।",
+			"noCustomers": "इस संगठन में अभी कोई ग्राहक नहीं है।",
+			"requesterError": "ग्राहक लोड नहीं हो सके।"
 		},
 		"relations": {
 			"add": "Add relation",
@@ -3841,7 +3849,8 @@
 				"title": "Title",
 				"dueDate": "Due date",
 				"startDate": "Start date",
-				"deleted_at": "Deleted on"
+				"deleted_at": "Deleted on",
+				"requester": "अनुरोधकर्ता"
 			},
 			"noValue": "None",
 			"unassigned": "Unassigned"
@@ -3980,7 +3989,9 @@
 			},
 			"systemReasons": {
 				"clarification_window_expired": "No reply was received within {{days}} days of our request for clarification, so this {{term_request_one}} was closed. Contact us if you would like to continue."
-			}
+			},
+			"filesNotAttached": "Your {{term_request_one}} {{ref}} was sent, but these files could not be attached:",
+			"openSentRequest": "Open {{ref}}"
 		},
 		"orientation": {
 			"body": "Raise a new {{term_request_one}} from the {{term_request_one}} catalogue. You can follow its progress, reply to our team and see what is due under My {{term_request_other}}.",
@@ -4414,6 +4425,22 @@
 				"title": "Your projects",
 				"viewAll": "View all projects"
 			}
+		},
+		"requestPage": {
+			"attach": "Attach files",
+			"back": "Back to {{term_request_other}}",
+			"download": "Download {{name}}",
+			"filesToSend": "Files to send with your reply",
+			"loadFailed": "Could not load this {{term_request_one}}. Try again.",
+			"notFound": {
+				"description": "This {{term_request_one}} does not exist or you do not have access to it.",
+				"title": "We could not find this {{term_request_one}}"
+			},
+			"removeFile": "Remove {{name}}",
+			"sending": "Sending…",
+			"sharedByTeam": "Shared by our team",
+			"fileNotDownloadable": "Not available to download here yet. Ask the team if you need it.",
+			"uploadFailed": "Your reply was sent, but these files could not be attached:"
 		}
 	},
 	"instanceUsers": {

@@ -1299,9 +1299,10 @@ describe("intake atomic conversion", () => {
       submissionId: result.id,
       workItemId: result.workItemId,
     });
-    expect(portalRows.map(({ id }) => id)).toEqual(
-      expect.arrayContaining([pendingRequesterUpload.id, staffUpload.id]),
-    );
+    // The requester sees her own upload in flight (to finish it); a staff upload still
+    // uploading stays out of the portal until it is ready (A-07).
+    expect(portalRows.map(({ id }) => id)).toContain(pendingRequesterUpload.id);
+    expect(portalRows.map(({ id }) => id)).not.toContain(staffUpload.id);
     expect(staffRows.map(({ id }) => id)).toEqual(
       expect.arrayContaining([pendingRequesterUpload.id, staffUpload.id]),
     );

@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   getCatalogue: vi.fn(),
   getRequestType: vi.fn(),
   submit: vi.fn(),
+  presign: vi.fn(),
+  complete: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -32,6 +34,8 @@ vi.mock("@/fetchers/intake", () => ({
   getPortalCatalogue: mocks.getCatalogue,
   getPortalRequestType: mocks.getRequestType,
   submitPortalRequest: mocks.submit,
+  presignPortalSubmissionAttachment: mocks.presign,
+  completePortalSubmissionAttachment: mocks.complete,
 }));
 
 vi.mock("react-i18next", async () => ({
@@ -115,6 +119,8 @@ describe("portal catalogue route", () => {
     mocks.getCatalogue.mockReset().mockResolvedValue(catalogue);
     mocks.getRequestType.mockReset().mockResolvedValue(form);
     mocks.submit.mockReset();
+    mocks.presign.mockReset();
+    mocks.complete.mockReset();
     localStorage.clear();
   });
 
@@ -354,6 +360,136 @@ describe("portal catalogue route", () => {
         "No request types are available for your organisation.",
       ),
     ).toBeVisible();
+  });
+
+  it("replaces the form once the request exists, so a failed file upload cannot send it twice", async () => {
+    mocks.getRequestType.mockResolvedValue({
+      ...form,
+      formSchema: {
+        fields: [
+          { key: "title", label: "Summary", type: "text", required: true },
+          { key: "evidence", label: "Evidence", type: "file" },
+        ],
+      },
+    });
+    localStorage.setItem(
+      "taskdesk:intake-draft:customer-a:access:3",
+      JSON.stringify({ title: "Laptop access" }),
+    );
+    mocks.submit.mockResolvedValue({ ref: "SUB-7", state: "accepted" });
+    mocks.presign.mockRejectedValue(new Error("upload refused"));
+    renderCatalogue();
+    const summary = await screen.findByRole("textbox", { name: "Summary" });
+    fireEvent.change(screen.getByLabelText("Evidence"), {
+      target: {
+        files: [
+          new File(["%PDF-1.4"], "screen.pdf", { type: "application/pdf" }),
+        ],
+      },
+    });
+    expect(screen.getByText("screen.pdf")).toBeVisible();
+    const requestForm = summary.closest("form");
+    if (!requestForm) throw new Error("The request form is missing");
+    fireEvent.submit(requestForm);
+
+    expect(
+      await screen.findByText("portal:intake.filesNotAttached"),
+    ).toBeVisible();
+    expect(screen.getByText("screen.pdf")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "portal:intake.openSentRequest" }),
+    ).toBeVisible();
+    // The form and its Submit button are gone: neither a click nor Enter can resend it.
+    expect(
+      screen.queryByRole("button", { name: "portal:intake.submit" }),
+    ).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Summary" })).toBeNull();
+    expect(document.querySelector("form")).toBeNull();
+    fireEvent.submit(requestForm);
+    expect(mocks.submit).toHaveBeenCalledTimes(1);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(
+      localStorage.getItem("taskdesk:intake-draft:customer-a:access:3"),
+    ).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "portal:intake.openSentRequest" }),
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/submissions/$ref",
+      params: { ref: "SUB-7" },
+    });
+  });
+
+  it("requires a staged file for a required file field, focusing its Attach button, then submits", async () => {
+    mocks.getRequestType.mockResolvedValue({
+      ...form,
+      formSchema: {
+        fields: [
+          { key: "title", label: "Summary", type: "text", required: true },
+          {
+            key: "evidence",
+            label: "Evidence",
+            type: "file",
+            required: true,
+          },
+        ],
+      },
+    });
+    mocks.submit.mockResolvedValue({ ref: "SUB-8", state: "new" });
+    mocks.presign.mockResolvedValue({
+      attachmentId: "att-1",
+      uploadUrl: "https://portal.example.test/upload",
+      uploadHeaders: {},
+    });
+    mocks.complete.mockResolvedValue({});
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    renderCatalogue();
+    const summary = await screen.findByRole("textbox", { name: "Summary" });
+    fireEvent.change(summary, { target: { value: "Laptop access" } });
+    const requestForm = summary.closest("form");
+    if (!requestForm) throw new Error("The request form is missing");
+    const attach = screen.getByRole("button", {
+      name: "workItems:detail.attachments.add",
+    });
+
+    // No file staged: the request is not sent and focus goes to the visible Attach button.
+    fireEvent.submit(requestForm);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This field is required.",
+    );
+    expect(attach).toHaveFocus();
+    expect(attach).toHaveAttribute("aria-invalid", "true");
+    expect(attach).toHaveAttribute(
+      "aria-describedby",
+      "request-field-error-evidence",
+    );
+    expect(mocks.submit).not.toHaveBeenCalled();
+
+    // A staged file answers the field: its error clears and the request is sent with the file.
+    fireEvent.change(screen.getByLabelText("Evidence"), {
+      target: {
+        files: [
+          new File(["%PDF-1.4"], "screen.pdf", { type: "application/pdf" }),
+        ],
+      },
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.submit(requestForm);
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: "/submissions/$ref",
+        params: { ref: "SUB-8" },
+      }),
+    );
+    expect(mocks.submit).toHaveBeenCalledTimes(1);
+    expect(mocks.presign).toHaveBeenCalledWith(
+      expect.objectContaining({ ref: "SUB-8", fieldKey: "evidence" }),
+    );
+    expect(mocks.complete).toHaveBeenCalledWith({ ref: "SUB-8", id: "att-1" });
+    fetchMock.mockRestore();
   });
 
   it("moves focus to the form heading when a card is opened", async () => {

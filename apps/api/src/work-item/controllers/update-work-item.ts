@@ -24,6 +24,7 @@ import {
 } from "../assert-work-item-live";
 import { replaceWorkItemLabels } from "../labels-repository";
 import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
+import { assertProjectCustomerRequester } from "../requester";
 
 /** A `custom_field` change names its field by key, since `field` is the fixed CA-7 name. */
 function customFieldKey(row: NewActivityInput): { key?: string } {
@@ -41,6 +42,11 @@ export type UpdateWorkItemInput = {
   dueDate?: Date | null;
   /** CF-3: custom field values by key; a null value clears the field. */
   customFields?: Record<string, unknown>;
+  /**
+   * A-03: a customer of the project's organisation (422 otherwise), or null to clear.
+   * Recorded as an internal `updated`/`requester` activity row and in the audit row.
+   */
+  requesterId?: string | null;
 };
 
 /**
@@ -153,6 +159,7 @@ export async function updateWorkItem(
   if (input.priority !== undefined) values.priority = input.priority;
   if (input.startDate !== undefined) values.startDate = input.startDate;
   if (input.dueDate !== undefined) values.dueDate = input.dueDate;
+  if (input.requesterId !== undefined) values.requesterId = input.requesterId;
 
   const { updated, activityRows, realtimeEvent, auditFailed } =
     await db.transaction(async (tx) => {
@@ -189,6 +196,14 @@ export async function updateWorkItem(
       if (locked.version !== assertedVersion) {
         throw new WorkItemVersionConflictError(assertedVersion, locked.version);
       }
+
+      // A-03: validated under the row lock, against the item's own project.
+      if (input.requesterId !== undefined && input.requesterId !== null)
+        await assertProjectCustomerRequester(
+          tx,
+          locked.projectId,
+          input.requesterId,
+        );
 
       const labelChange =
         input.labelIds === undefined
@@ -261,6 +276,10 @@ export async function updateWorkItem(
       if (input.startDate !== undefined) {
         before.startDate = locked.startDate;
         after.startDate = updated.startDate;
+      }
+      if (input.requesterId !== undefined) {
+        before.requesterId = locked.requesterId;
+        after.requesterId = updated.requesterId;
       }
 
       const activityRows = [

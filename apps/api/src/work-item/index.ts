@@ -101,6 +101,7 @@ import {
   classifyWorkItemMentionPeople,
   findWorkItemMentionContext,
 } from "./mention-access";
+import { listProjectRequesterCandidates } from "./requester";
 import { requireCommentReach } from "./require-comment-reach";
 import { requireDeletedWorkItemReach } from "./require-deleted-work-item-reach";
 import { requireWorkItemReach } from "./require-work-item-reach";
@@ -292,6 +293,9 @@ const createWorkItemRoute = createRoute({
     // to be effectively unreachable going forward, not a normal-path response.
     409: errorResponse(
       "This work item's key is already claimed by another work item",
+    ),
+    422: errorResponse(
+      "The requester is not a customer of the project's organisation (A-03)",
     ),
   },
 });
@@ -609,8 +613,9 @@ const updateWorkItemRoute = createRoute({
   tags: ["Work items"],
   summary: "Update work item",
   description:
-    "Partially update a work item's title, description, priority, startDate, dueDate or labelIds " +
-    "(`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a " +
+    "Partially update a work item's title, description, priority, startDate, dueDate, labelIds " +
+    "or requesterId (`WI-8`; A-03: the requester must be a customer of the project's " +
+    "organisation, else 422). Requires `If-Match` with the work item's current version (`WI-7`); a " +
     "mismatch returns 409 with both versions. Custom-field editing, state " +
     "transitions and assignment are not part of this route -- see their own mechanisms. " +
     "Changing `priority` additionally requires `work_item:set_priority` " +
@@ -628,7 +633,9 @@ const updateWorkItemRoute = createRoute({
     },
   },
   responses: {
-    422: errorResponse("Labels must belong to this workspace catalogue"),
+    422: errorResponse(
+      "Labels must belong to this workspace catalogue, or the requester is not a customer of the project's organisation",
+    ),
     200: jsonResponse("The updated work item", workItemSchema),
     400: errorResponse("Invalid body, or a malformed If-Match header"),
     403: errorResponse(
@@ -665,6 +672,39 @@ const listAssignablePeopleRoute = createRoute({
     ),
     400: errorResponse("Malformed project ID (including a NUL byte)"),
     403: errorResponse("Missing work_item:read permission"),
+    404: errorResponse("Project not found or out of reach"),
+  },
+});
+
+// A-03: the requester picker's feed. Only the project's organisation's active customers, and
+// only for a caller who may change a work item's fields there (`work_item:update`).
+const listRequesterCandidatesRoute = createRoute({
+  method: "get",
+  operationId: "listRequesterCandidates",
+  path: "/projects/{projectId}/requester-candidates",
+  tags: ["Work items"],
+  summary: "List the customers who can be a request's requester",
+  description:
+    "A-03: the active customers of the project's organisation, for the Requester field. " +
+    "Empty for a project of the internal organisation. Requires work_item:update.",
+  middleware: [
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: { params: projectIdParam },
+  responses: {
+    200: jsonResponse(
+      "The customers who can be named as requester",
+      z.array(
+        z.object({
+          personId: z.string(),
+          name: z.string().nullable(),
+          email: z.string().nullable(),
+        }),
+      ),
+    ),
+    400: errorResponse("Malformed project ID (including a NUL byte)"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Project not found or out of reach"),
   },
 });
@@ -1625,6 +1665,7 @@ const workItem = apiRouter<
       assigneeId,
       templateId,
       customFields,
+      requesterId,
     } = c.req.valid("json");
     const { actorId, actorType } = resolveActor(
       c.get("userId"),
@@ -1648,6 +1689,7 @@ const workItem = apiRouter<
       dueDate,
       labelIds,
       assigneeId,
+      ...(requesterId !== undefined ? { requesterId } : {}),
       afterInsert: async (tx, inserted) => {
         if (template)
           await applyTemplateInTransaction(tx, template, inserted, {
@@ -1886,6 +1928,7 @@ const workItem = apiRouter<
       dueDate,
       labelIds,
       customFields,
+      requesterId,
     } = c.req.valid("json");
 
     // Field-level authority, on top of the route's `work_item:update` gate above: rbac.md
@@ -1923,6 +1966,7 @@ const workItem = apiRouter<
           dueDate,
           labelIds,
           customFields,
+          requesterId,
         },
         {
           apiKeyId: c.get("apiKey")?.id ?? null,
@@ -1944,6 +1988,12 @@ const workItem = apiRouter<
       throw error;
     }
   })
+  .openapi(listRequesterCandidatesRoute, async (c) =>
+    c.json(
+      await listProjectRequesterCandidates(db, c.req.valid("param").projectId),
+      200,
+    ),
+  )
   .openapi(listAssignablePeopleRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");

@@ -12,6 +12,7 @@ import {
   workItemTable,
   workspaceUserTable,
 } from "../../database/schema";
+import { findRequesterName } from "../requester";
 import { loadWorkItemRowFacts } from "../row-facts";
 
 /**
@@ -110,6 +111,8 @@ export async function getWorkItemByKey(key: string, workspaceId: string) {
     // resolvable" (a placeholder person, or a user outside this workspace) apart from
     // "unassigned".
     assigneeName: row.assigneeIsWorkspaceMember ? row.assigneeName : null,
+    // A-03: the requester's display name for the staff Requester field (customer or staff).
+    requesterName: await findRequesterName(db, row.workItem.requesterId),
     // CF-3: only the fields that apply to this item's type, with its values.
     customFields: await workItemCustomFields(db, row.workItem),
     importProvenance: await workItemImportProvenance(row.workItem),

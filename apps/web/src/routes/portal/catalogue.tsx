@@ -14,6 +14,7 @@ import {
   SelectValue,
   Textarea,
 } from "@taskdesk/ui";
+import { Paperclip, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DateField } from "@/components/common/date-field";
@@ -22,8 +23,10 @@ import {
   usePortalKbDeflection,
 } from "@/components/kb/portal/portal-kb-deflection";
 import {
+  completePortalSubmissionAttachment,
   getPortalCatalogue,
   getPortalRequestType,
+  presignPortalSubmissionAttachment,
   submitPortalRequest,
 } from "@/fetchers/intake";
 import { invalidatePortalCaseViews } from "@/hooks/queries/portal/use-portal-cases";
@@ -152,19 +155,74 @@ function PortalCatalogueContent() {
   // KB-10: articles opened from this form are deflections only if the form is then abandoned.
   const kbDeflection = usePortalKbDeflection(selected?.key);
   const queryClient = useQueryClient();
+  // A-08: files chosen for the form's file fields are held in the browser until the request
+  // exists, then uploaded to it field by field. A file that fails stays visible on the tracking
+  // page, where it can be finished or sent again.
+  const [stagedFiles, setStagedFiles] = useState<Record<string, File[]>>({});
+  const stagedFor = (key: string) =>
+    stagedFiles[`${selected?.key ?? ""}:${key}`] ?? [];
+  const setStagedFor = (key: string, files: File[]) =>
+    setStagedFiles((current) => ({
+      ...current,
+      [`${selected?.key ?? ""}:${key}`]: files,
+    }));
+  // Set once a request was created but some of its files did not arrive. The request exists, so
+  // the form is replaced by this outcome: a second submit would create a duplicate request.
+  const [uploadFailures, setUploadFailures] = useState<{
+    ref: string;
+    failed: string[];
+  } | null>(null);
   const submit = useMutation({
-    mutationFn: () =>
-      submitPortalRequest({
+    mutationFn: async () => {
+      const created = await submitPortalRequest({
         key: selected?.key ?? "",
         formData: answers,
         customerVisibility: selected?.forcePrivate
           ? "private"
           : effectiveVisibility,
-      }),
+      });
+      // An auto-accepted request is already being worked on: a form field no longer applies,
+      // so its files attach to the request itself.
+      const open = created.state === "new" || created.state === "clarifying";
+      const failed: string[] = [];
+      for (const field of (selected?.formSchema.fields ?? []).filter(
+        (candidate) => candidate.type === "file",
+      ))
+        for (const file of stagedFor(field.key)) {
+          try {
+            const signed = await presignPortalSubmissionAttachment({
+              ref: created.ref,
+              ...(open ? { fieldKey: field.key } : {}),
+              filename: file.name,
+              contentType: file.type || "application/octet-stream",
+              size: file.size,
+            });
+            const put = await fetch(signed.uploadUrl, {
+              method: "PUT",
+              headers: signed.uploadHeaders as Record<string, string>,
+              body: file,
+            });
+            if (!put.ok) throw new Error("upload");
+            await completePortalSubmissionAttachment({
+              ref: created.ref,
+              id: signed.attachmentId,
+            });
+          } catch {
+            failed.push(file.name);
+          }
+        }
+      return { ref: created.ref, failed };
+    },
     onSuccess: async (result) => {
+      setStagedFiles({});
       kbDeflection.markSubmitted();
       void invalidatePortalCaseViews(queryClient, portalUserId);
       if (storageKey) localStorage.removeItem(storageKey);
+      // The request exists either way; a file that did not arrive is named here, with the way on.
+      if (result.failed.length > 0) {
+        setUploadFailures(result);
+        return;
+      }
       await navigate({
         to: routes.portalSubmission.path,
         params: { ref: result.ref },
@@ -173,6 +231,7 @@ function PortalCatalogueContent() {
   });
   useEffect(() => {
     setFieldErrors({});
+    setUploadFailures(null);
     setAnswersKey(storageKey);
     if (!storageKey) {
       setAnswers({});
@@ -291,290 +350,349 @@ function PortalCatalogueContent() {
             {selected.name}
           </h2>
           {selected.description && <p>{selected.description}</p>}
-          <form
-            className="flex flex-col gap-4"
-            noValidate
-            onSubmit={(event) => {
-              event.preventDefault();
-              const missingRequired = missingRequiredIntakeFields(
-                selected.formSchema,
-                answers,
-              );
-              if (missingRequired.length > 0) {
-                const nextErrors = Object.fromEntries(
-                  missingRequired.map((key) => [
-                    key,
-                    t("portal:intake.fieldRequired", {
-                      defaultValue: "This field is required.",
-                    }),
-                  ]),
-                );
-                setFieldErrors(nextErrors);
-                document
-                  .getElementById(`request-field-${missingRequired[0]}`)
-                  ?.focus();
-                return;
-              }
-              setFieldErrors({});
-              submit.mutate();
-            }}
-          >
-            {fields.filter(visible).map((field) => (
-              <div className="flex flex-col gap-1" key={field.key}>
+          {uploadFailures ? (
+            <Alert variant="error">
+              <AlertDescription className="flex flex-col items-start gap-2">
                 <span>
-                  {field.label}
-                  {field.required ? " *" : ""}
+                  {t("portal:intake.filesNotAttached", {
+                    ref: uploadFailures.ref,
+                  })}
                 </span>
-                {field.help && (
-                  <span className="text-muted-foreground text-sm">
-                    {field.help}
+                <ul className="list-disc ps-4">
+                  {uploadFailures.failed.map((name) => (
+                    <li key={name}>{name}</li>
+                  ))}
+                </ul>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    void navigate({
+                      to: routes.portalSubmission.path,
+                      params: { ref: uploadFailures.ref },
+                    })
+                  }
+                >
+                  {t("portal:intake.openSentRequest", {
+                    ref: uploadFailures.ref,
+                  })}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <form
+              className="flex flex-col gap-4"
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault();
+                // The request already exists: never submit it a second time.
+                if (uploadFailures || submit.isPending) return;
+                const missingRequired = missingRequiredIntakeFields(
+                  selected.formSchema,
+                  answers,
+                  (key) => stagedFor(key).length > 0,
+                );
+                if (missingRequired.length > 0) {
+                  const nextErrors = Object.fromEntries(
+                    missingRequired.map((key) => [
+                      key,
+                      t("portal:intake.fieldRequired", {
+                        defaultValue: "This field is required.",
+                      }),
+                    ]),
+                  );
+                  setFieldErrors(nextErrors);
+                  // A file field's own input is hidden; its visible Attach button takes focus.
+                  const first = missingRequired[0];
+                  const firstIsFile = selected.formSchema.fields.some(
+                    (candidate) =>
+                      candidate.key === first && candidate.type === "file",
+                  );
+                  document
+                    .getElementById(
+                      firstIsFile
+                        ? `request-field-attach-${first}`
+                        : `request-field-${first}`,
+                    )
+                    ?.focus();
+                  return;
+                }
+                setFieldErrors({});
+                submit.mutate();
+              }}
+            >
+              {fields.filter(visible).map((field) => (
+                <div className="flex flex-col gap-1" key={field.key}>
+                  <span>
+                    {field.label}
+                    {field.required ? " *" : ""}
                   </span>
-                )}
-                {field.type === "file" ? (
-                  <span className="text-muted-foreground text-sm">
-                    {t("portal:intake.fileUploadAfterSubmission", {
-                      defaultValue:
-                        "You can attach files from the request tracking page after submitting.",
-                    })}
-                  </span>
-                ) : field.type === "textarea" ? (
-                  <Textarea
-                    id={`request-field-${field.key}`}
-                    aria-label={field.label}
-                    aria-invalid={Boolean(fieldErrors[field.key])}
-                    aria-describedby={
-                      fieldErrors[field.key]
-                        ? `request-field-error-${field.key}`
-                        : undefined
-                    }
-                    required={field.required}
-                    value={String(answers[field.key] ?? "")}
-                    onChange={(event) => {
-                      setAnswers((old) => ({
-                        ...old,
-                        [field.key]: event.target.value,
-                      }));
-                      setFieldErrors((old) => {
-                        const next = { ...old };
-                        delete next[field.key];
-                        return next;
-                      });
-                    }}
-                  />
-                ) : field.type === "select" || field.type === "combobox" ? (
-                  <Select
-                    value={String(answers[field.key] ?? "") || null}
-                    onValueChange={(value) => {
-                      setAnswers((old) => ({
-                        ...old,
-                        [field.key]: value ?? "",
-                      }));
-                      setFieldErrors((old) => {
-                        const next = { ...old };
-                        delete next[field.key];
-                        return next;
-                      });
-                    }}
-                  >
-                    <SelectTrigger
+                  {field.help && (
+                    <span className="text-muted-foreground text-sm">
+                      {field.help}
+                    </span>
+                  )}
+                  {field.type === "file" ? (
+                    <CatalogueFileField
+                      fieldKey={field.key}
+                      label={field.label}
+                      multiple={Boolean(field.multiple)}
+                      files={stagedFor(field.key)}
+                      disabled={submit.isPending}
+                      errorId={
+                        fieldErrors[field.key]
+                          ? `request-field-error-${field.key}`
+                          : undefined
+                      }
+                      onChange={(files) => {
+                        setStagedFor(field.key, files);
+                        if (files.length > 0)
+                          setFieldErrors((old) => {
+                            const next = { ...old };
+                            delete next[field.key];
+                            return next;
+                          });
+                      }}
+                    />
+                  ) : field.type === "textarea" ? (
+                    <Textarea
                       id={`request-field-${field.key}`}
                       aria-label={field.label}
-                      aria-required={field.required}
                       aria-invalid={Boolean(fieldErrors[field.key])}
                       aria-describedby={
                         fieldErrors[field.key]
                           ? `request-field-error-${field.key}`
                           : undefined
                       }
-                      onBlur={() => {
-                        if (field.required && !answers[field.key]) {
-                          setFieldErrors((old) => ({
-                            ...old,
-                            [field.key]: t("portal:intake.fieldRequired", {
-                              defaultValue: "This field is required.",
-                            }),
-                          }));
-                        }
+                      required={field.required}
+                      value={String(answers[field.key] ?? "")}
+                      onChange={(event) => {
+                        setAnswers((old) => ({
+                          ...old,
+                          [field.key]: event.target.value,
+                        }));
+                        setFieldErrors((old) => {
+                          const next = { ...old };
+                          delete next[field.key];
+                          return next;
+                        });
+                      }}
+                    />
+                  ) : field.type === "select" || field.type === "combobox" ? (
+                    <Select
+                      value={String(answers[field.key] ?? "") || null}
+                      onValueChange={(value) => {
+                        setAnswers((old) => ({
+                          ...old,
+                          [field.key]: value ?? "",
+                        }));
+                        setFieldErrors((old) => {
+                          const next = { ...old };
+                          delete next[field.key];
+                          return next;
+                        });
                       }}
                     >
-                      <SelectValue
-                        placeholder={t("common:empty.select", {
-                          defaultValue: "Choose an option",
-                        })}
-                      />
+                      <SelectTrigger
+                        id={`request-field-${field.key}`}
+                        aria-label={field.label}
+                        aria-required={field.required}
+                        aria-invalid={Boolean(fieldErrors[field.key])}
+                        aria-describedby={
+                          fieldErrors[field.key]
+                            ? `request-field-error-${field.key}`
+                            : undefined
+                        }
+                        onBlur={() => {
+                          if (field.required && !answers[field.key]) {
+                            setFieldErrors((old) => ({
+                              ...old,
+                              [field.key]: t("portal:intake.fieldRequired", {
+                                defaultValue: "This field is required.",
+                              }),
+                            }));
+                          }
+                        }}
+                      >
+                        <SelectValue
+                          placeholder={t("common:empty.select", {
+                            defaultValue: "Choose an option",
+                          })}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(field.options ?? []).map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : field.type === "checkbox" ? (
+                    <Checkbox
+                      id={`request-field-${field.key}`}
+                      aria-label={field.label}
+                      aria-invalid={Boolean(fieldErrors[field.key])}
+                      aria-describedby={
+                        fieldErrors[field.key]
+                          ? `request-field-error-${field.key}`
+                          : undefined
+                      }
+                      checked={Boolean(answers[field.key])}
+                      onCheckedChange={(checked) => {
+                        setAnswers((old) => ({
+                          ...old,
+                          [field.key]: checked,
+                        }));
+                        setFieldErrors((old) => {
+                          const next = { ...old };
+                          delete next[field.key];
+                          return next;
+                        });
+                      }}
+                    />
+                  ) : field.type === "date" ? (
+                    <DateField
+                      id={`request-field-${field.key}`}
+                      label={`${field.label}${field.required ? " *" : ""}`}
+                      aria-invalid={Boolean(fieldErrors[field.key])}
+                      aria-describedby={
+                        fieldErrors[field.key]
+                          ? `request-field-error-${field.key}`
+                          : field.required
+                            ? `request-field-required-${field.key}`
+                            : undefined
+                      }
+                      placeholder={t("common:empty.select")}
+                      clearLabel={t("common:clearDate")}
+                      value={String(answers[field.key] ?? "")}
+                      dateEntry={{
+                        label: t("common:dateEntry", {
+                          label: field.label,
+                          defaultValue: "{{label}} (YYYY-MM-DD)",
+                        }),
+                        invalidLabel: t("common:invalidDate"),
+                        saveLabel: t("common:actions.save"),
+                      }}
+                      onChange={(value) => {
+                        setAnswers((old) => ({
+                          ...old,
+                          [field.key]: value,
+                        }));
+                        setFieldErrors((old) => {
+                          const next = { ...old };
+                          delete next[field.key];
+                          return next;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <Input
+                      id={`request-field-${field.key}`}
+                      aria-label={field.label}
+                      aria-invalid={Boolean(fieldErrors[field.key])}
+                      aria-describedby={
+                        fieldErrors[field.key]
+                          ? `request-field-error-${field.key}`
+                          : undefined
+                      }
+                      type={field.type === "number" ? "number" : "text"}
+                      required={field.required}
+                      value={String(answers[field.key] ?? "")}
+                      onChange={(event) => {
+                        setAnswers((old) => ({
+                          ...old,
+                          [field.key]: event.target.value,
+                        }));
+                        setFieldErrors((old) => {
+                          const next = { ...old };
+                          delete next[field.key];
+                          return next;
+                        });
+                      }}
+                    />
+                  )}
+                  {field.type === "date" && field.required ? (
+                    <span
+                      className="sr-only"
+                      id={`request-field-required-${field.key}`}
+                    >
+                      {t("portal:intake.fieldRequired", {
+                        defaultValue: "This field is required.",
+                      })}
+                    </span>
+                  ) : null}
+                  {fieldErrors[field.key] && (
+                    <p
+                      className="text-destructive text-sm"
+                      id={`request-field-error-${field.key}`}
+                      role="alert"
+                    >
+                      {fieldErrors[field.key]}
+                    </p>
+                  )}
+                  {field.mapsTo?.field === "title" ? (
+                    <PortalKbSuggestions
+                      query={String(answers[field.key] ?? "")}
+                      scope={portalUserId}
+                      onOpen={kbDeflection.recordOpened}
+                    />
+                  ) : null}
+                </div>
+              ))}
+              {!selected.forcePrivate && (
+                <label
+                  className="flex flex-col gap-1"
+                  htmlFor="request-customer-visibility"
+                >
+                  {t("portal:intake.visibilityLabel", {
+                    defaultValue: "Who can see this request?",
+                  })}
+                  <Select
+                    value={effectiveVisibility}
+                    onValueChange={(value) =>
+                      value &&
+                      setVisibility({
+                        key: selected.key,
+                        value: value as "private" | "organisation",
+                      })
+                    }
+                  >
+                    <SelectTrigger id="request-customer-visibility">
+                      <SelectValue>
+                        {effectiveVisibility === "private"
+                          ? visibilityPrivateLabel
+                          : visibilityOrganisationLabel}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {(field.options ?? []).map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="private">
+                        {visibilityPrivateLabel}
+                      </SelectItem>
+                      <SelectItem value="organisation">
+                        {visibilityOrganisationLabel}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
-                ) : field.type === "checkbox" ? (
-                  <Checkbox
-                    id={`request-field-${field.key}`}
-                    aria-label={field.label}
-                    aria-invalid={Boolean(fieldErrors[field.key])}
-                    aria-describedby={
-                      fieldErrors[field.key]
-                        ? `request-field-error-${field.key}`
-                        : undefined
-                    }
-                    checked={Boolean(answers[field.key])}
-                    onCheckedChange={(checked) => {
-                      setAnswers((old) => ({
-                        ...old,
-                        [field.key]: checked,
-                      }));
-                      setFieldErrors((old) => {
-                        const next = { ...old };
-                        delete next[field.key];
-                        return next;
-                      });
-                    }}
-                  />
-                ) : field.type === "date" ? (
-                  <DateField
-                    id={`request-field-${field.key}`}
-                    label={`${field.label}${field.required ? " *" : ""}`}
-                    aria-invalid={Boolean(fieldErrors[field.key])}
-                    aria-describedby={
-                      fieldErrors[field.key]
-                        ? `request-field-error-${field.key}`
-                        : field.required
-                          ? `request-field-required-${field.key}`
-                          : undefined
-                    }
-                    placeholder={t("common:empty.select")}
-                    clearLabel={t("common:clearDate")}
-                    value={String(answers[field.key] ?? "")}
-                    dateEntry={{
-                      label: t("common:dateEntry", {
-                        label: field.label,
-                        defaultValue: "{{label}} (YYYY-MM-DD)",
-                      }),
-                      invalidLabel: t("common:invalidDate"),
-                      saveLabel: t("common:actions.save"),
-                    }}
-                    onChange={(value) => {
-                      setAnswers((old) => ({
-                        ...old,
-                        [field.key]: value,
-                      }));
-                      setFieldErrors((old) => {
-                        const next = { ...old };
-                        delete next[field.key];
-                        return next;
-                      });
-                    }}
-                  />
-                ) : (
-                  <Input
-                    id={`request-field-${field.key}`}
-                    aria-label={field.label}
-                    aria-invalid={Boolean(fieldErrors[field.key])}
-                    aria-describedby={
-                      fieldErrors[field.key]
-                        ? `request-field-error-${field.key}`
-                        : undefined
-                    }
-                    type={field.type === "number" ? "number" : "text"}
-                    required={field.required}
-                    value={String(answers[field.key] ?? "")}
-                    onChange={(event) => {
-                      setAnswers((old) => ({
-                        ...old,
-                        [field.key]: event.target.value,
-                      }));
-                      setFieldErrors((old) => {
-                        const next = { ...old };
-                        delete next[field.key];
-                        return next;
-                      });
-                    }}
-                  />
-                )}
-                {field.type === "date" && field.required ? (
-                  <span
-                    className="sr-only"
-                    id={`request-field-required-${field.key}`}
-                  >
-                    {t("portal:intake.fieldRequired", {
-                      defaultValue: "This field is required.",
+                </label>
+              )}
+              {submit.isError && (
+                <Alert variant="error">
+                  <AlertDescription>
+                    {t("portal:intake.submitError", {
+                      defaultValue:
+                        "The request could not be submitted. Check your answers and try again.",
                     })}
-                  </span>
-                ) : null}
-                {fieldErrors[field.key] && (
-                  <p
-                    className="text-destructive text-sm"
-                    id={`request-field-error-${field.key}`}
-                    role="alert"
-                  >
-                    {fieldErrors[field.key]}
-                  </p>
-                )}
-                {field.mapsTo?.field === "title" ? (
-                  <PortalKbSuggestions
-                    query={String(answers[field.key] ?? "")}
-                    scope={portalUserId}
-                    onOpen={kbDeflection.recordOpened}
-                  />
-                ) : null}
-              </div>
-            ))}
-            {!selected.forcePrivate && (
-              <label
-                className="flex flex-col gap-1"
-                htmlFor="request-customer-visibility"
-              >
-                {t("portal:intake.visibilityLabel", {
-                  defaultValue: "Who can see this request?",
-                })}
-                <Select
-                  value={effectiveVisibility}
-                  onValueChange={(value) =>
-                    value &&
-                    setVisibility({
-                      key: selected.key,
-                      value: value as "private" | "organisation",
-                    })
-                  }
-                >
-                  <SelectTrigger id="request-customer-visibility">
-                    <SelectValue>
-                      {effectiveVisibility === "private"
-                        ? visibilityPrivateLabel
-                        : visibilityOrganisationLabel}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="private">
-                      {visibilityPrivateLabel}
-                    </SelectItem>
-                    <SelectItem value="organisation">
-                      {visibilityOrganisationLabel}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
-            )}
-            {submit.isError && (
-              <Alert variant="error">
-                <AlertDescription>
-                  {t("portal:intake.submitError", {
-                    defaultValue:
-                      "The request could not be submitted. Check your answers and try again.",
-                  })}
-                </AlertDescription>
-              </Alert>
-            )}
-            <Button type="submit" disabled={submit.isPending}>
-              {submit.isPending
-                ? t("common:empty.loading", { defaultValue: "Submitting…" })
-                : t("portal:intake.submit")}
-            </Button>
-          </form>
+                  </AlertDescription>
+                </Alert>
+              )}
+              <Button type="submit" disabled={submit.isPending}>
+                {submit.isPending
+                  ? t("common:empty.loading", { defaultValue: "Submitting…" })
+                  : t("portal:intake.submit")}
+              </Button>
+            </form>
+          )}
         </section>
       ) : (
         <div className="flex flex-col gap-6">
@@ -626,5 +744,89 @@ function PortalCatalogueContent() {
         </div>
       )}
     </main>
+  );
+}
+
+/**
+ * A-08: a request form's file field. The files wait in the browser and upload once the request
+ * is created; the same Kaneo button and hidden library file input as the tracking page.
+ */
+function CatalogueFileField({
+  fieldKey,
+  label,
+  multiple,
+  files,
+  disabled,
+  errorId,
+  onChange,
+}: {
+  fieldKey: string;
+  label: string;
+  multiple: boolean;
+  files: File[];
+  disabled: boolean;
+  /** Set while the field shows a "required" error: the Attach button points at it. */
+  errorId?: string;
+  onChange: (files: File[]) => void;
+}) {
+  const { t } = usePortalTranslation();
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="flex flex-col items-start gap-2">
+      {files.length > 0 ? (
+        <ul className="flex w-full flex-col gap-1">
+          {files.map((file, index) => (
+            <li
+              key={`${file.name}:${file.size}:${file.lastModified}`}
+              className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border px-3 py-1.5"
+            >
+              <span className="truncate text-sm">{file.name}</span>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={disabled}
+                aria-label={t("portal:requestPage.removeFile", {
+                  name: file.name,
+                })}
+                onClick={() =>
+                  onChange(files.filter((_, position) => position !== index))
+                }
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {multiple || files.length === 0 ? (
+        <Button
+          id={`request-field-attach-${fieldKey}`}
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          aria-invalid={errorId ? true : undefined}
+          aria-describedby={errorId}
+          onClick={() => inputRef.current?.click()}
+        >
+          <Paperclip className="size-4" aria-hidden="true" />
+          {t("workItems:detail.attachments.add")}
+        </Button>
+      ) : null}
+      <Input
+        ref={inputRef}
+        id={`request-field-${fieldKey}`}
+        type="file"
+        multiple={multiple}
+        unstyled
+        className="sr-only"
+        tabIndex={-1}
+        aria-label={label}
+        onChange={(event) => {
+          const chosen = Array.from(event.target.files ?? []);
+          onChange(multiple ? [...files, ...chosen] : chosen.slice(0, 1));
+          event.target.value = "";
+        }}
+      />
+    </div>
   );
 }

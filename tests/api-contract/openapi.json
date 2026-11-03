@@ -6131,6 +6131,12 @@
               "null"
             ]
           },
+          "requesterName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "assigneeActive": {
             "type": [
               "boolean",
@@ -6368,6 +6374,7 @@
           "stateCategory",
           "defaultCommentVisibility",
           "assigneeName",
+          "requesterName",
           "customFields",
           "importProvenance"
         ]
@@ -9410,6 +9417,193 @@
           },
           "404": {
             "description": "The filesystem storage driver is not active, or the object is gone",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/portal-attachment-upload": {
+      "put": {
+        "operationId": "uploadPortalAttachmentObject",
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Upload a customer's attachment bytes on the portal host",
+        "description": "The portal-bound equivalent of a presigned PUT on the filesystem storage driver, minted by the portal request and submission presign routes for a work-item attachment key. Portal host only. The signed token binds the key, the customer person, the size ceiling and a five-minute expiry; the portal session must be that person.",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "required": true,
+            "name": "expires",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "token",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "required": true,
+            "name": "maxBytes",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Stored"
+          },
+          "400": {
+            "description": "Invalid key, expired or invalid token, a token for another person, or the upload exceeds the signed limit",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No portal session",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not the portal host, or the filesystem storage driver is not active",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/portal-download": {
+      "get": {
+        "operationId": "downloadPortalAttachmentObject",
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Download a customer-visible attachment on the portal host",
+        "description": "The portal-bound equivalent of a presigned GET on the filesystem storage driver, minted by the portal request and submission download routes after their own check. Portal host only; the token binds the key, the customer person and a five-minute expiry, and the portal session must be that person.",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "required": true,
+            "name": "expires",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "token",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "filename",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The attachment binary stream",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key, expired or invalid token, or a token for another person",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No portal session",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not the portal host, the filesystem storage driver is not active, or the object is gone",
             "content": {
               "text/plain": {
                 "schema": {
@@ -35925,6 +36119,11 @@
                     "type": "object",
                     "additionalProperties": {},
                     "description": "Custom field values keyed by field key. A null or empty value clears the field."
+                  },
+                  "requesterId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A-03: the request's requester, an active customer of the project's organisation (422 otherwise). Requires work_item:update as well as work_item:create."
                   }
                 },
                 "required": [
@@ -35981,6 +36180,16 @@
           },
           "409": {
             "description": "This work item's key is already claimed by another work item",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The requester is not a customer of the project's organisation (A-03)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -36501,7 +36710,7 @@
           "Work items"
         ],
         "summary": "Update work item",
-        "description": "Partially update a work item's title, description, priority, startDate, dueDate or labelIds (`WI-8`). Requires `If-Match` with the work item's current version (`WI-7`); a mismatch returns 409 with both versions. Custom-field editing, state transitions and assignment are not part of this route -- see their own mechanisms. Changing `priority` additionally requires `work_item:set_priority` (`docs/01-architecture/rbac.md`) -- `work_item:update` alone is not enough.",
+        "description": "Partially update a work item's title, description, priority, startDate, dueDate, labelIds or requesterId (`WI-8`; A-03: the requester must be a customer of the project's organisation, else 422). Requires `If-Match` with the work item's current version (`WI-7`); a mismatch returns 409 with both versions. Custom-field editing, state transitions and assignment are not part of this route -- see their own mechanisms. Changing `priority` additionally requires `work_item:set_priority` (`docs/01-architecture/rbac.md`) -- `work_item:update` alone is not enough.",
         "parameters": [
           {
             "schema": {
@@ -36573,6 +36782,14 @@
                     "type": "object",
                     "additionalProperties": {},
                     "description": "Custom field values keyed by field key. A null or empty value clears the field."
+                  },
+                  "requesterId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "description": "A-03: the request's requester, an active customer of the project's organisation (422 otherwise); null clears it. The portal then lists the item as that customer's own request."
                   }
                 }
               }
@@ -36634,7 +36851,7 @@
             }
           },
           "422": {
-            "description": "Labels must belong to this workspace catalogue",
+            "description": "Labels must belong to this workspace catalogue, or the requester is not a customer of the project's organisation",
             "content": {
               "text/plain": {
                 "schema": {
@@ -37062,6 +37279,96 @@
           },
           "403": {
             "description": "No access to the workspace, or missing workspace:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/requester-candidates": {
+      "get": {
+        "operationId": "listRequesterCandidates",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List the customers who can be a request's requester",
+        "description": "A-03: the active customers of the project's organisation, for the Requester field. Empty for a project of the internal organisation. Requires work_item:update.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The customers who can be named as requester",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "personId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "email": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "personId",
+                      "name",
+                      "email"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project ID (including a NUL byte)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -54087,6 +54394,14 @@
                             "type": "string",
                             "format": "date-time"
                           },
+                          "targetKind": {
+                            "type": "string",
+                            "enum": [
+                              "submission",
+                              "request",
+                              "approval"
+                            ]
+                          },
                           "requestRef": {
                             "type": [
                               "string",
@@ -54105,6 +54420,7 @@
                           "kind",
                           "isRead",
                           "createdAt",
+                          "targetKind",
                           "requestRef",
                           "commentId"
                         ]
@@ -58312,6 +58628,752 @@
         }
       }
     },
+    "/portal/requests/{ref}": {
+      "get": {
+        "operationId": "getPortalRequest",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Get a request the team raised for the customer",
+        "description": "U-12 (D6): the requester, a participant or (organisation-visible) a colleague reads the request, its status, service target and public conversation. Internal comments and fields are never returned.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "submission",
+                        "direct"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "requestTypeName": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "low",
+                        "medium",
+                        "high",
+                        "urgent",
+                        null
+                      ]
+                    },
+                    "customerStatus": {
+                      "type": "string",
+                      "enum": [
+                        "received",
+                        "need_more_info",
+                        "in_progress",
+                        "resolved",
+                        "declined",
+                        "closed",
+                        "withdrawn"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "project": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "name"
+                      ]
+                    },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "isRequester": {
+                      "type": "boolean"
+                    },
+                    "customerVisibility": {
+                      "type": "string",
+                      "enum": [
+                        "private",
+                        "organisation"
+                      ]
+                    },
+                    "sla": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "on_track",
+                            "at_risk",
+                            "breached",
+                            "met",
+                            "missed"
+                          ]
+                        },
+                        "dueAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        },
+                        "metric": {
+                          "type": "string",
+                          "enum": [
+                            "first_response",
+                            "resolution"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "dueAt",
+                        "metric"
+                      ]
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "resolvedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "customFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "format": {
+                            "type": "string"
+                          },
+                          "helpText": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "value": {}
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "format",
+                          "helpText"
+                        ]
+                      }
+                    },
+                    "canReply": {
+                      "type": "boolean"
+                    },
+                    "canViewAttachments": {
+                      "type": "boolean"
+                    },
+                    "canUpload": {
+                      "type": "boolean"
+                    },
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "actorType": {
+                            "type": "string",
+                            "enum": [
+                              "customer",
+                              "triager",
+                              "system"
+                            ]
+                          },
+                          "authorName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "mine": {
+                            "type": "boolean"
+                          },
+                          "body": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "actorType",
+                          "authorName",
+                          "mine",
+                          "body",
+                          "createdAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "ref",
+                    "source",
+                    "title",
+                    "requestTypeName",
+                    "priority",
+                    "customerStatus",
+                    "createdAt",
+                    "updatedAt",
+                    "project",
+                    "createdBy",
+                    "isRequester",
+                    "customerVisibility",
+                    "sla",
+                    "description",
+                    "resolvedAt",
+                    "customFields",
+                    "canReply",
+                    "canViewAttachments",
+                    "canUpload",
+                    "messages"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/requests/{ref}/comments": {
+      "post": {
+        "operationId": "replyToPortalRequest",
+        "tags": [
+          "Portal submissions"
+        ],
+        "summary": "Reply on a request the team raised for the customer",
+        "description": "The requester's reply becomes a public comment on the work item and notifies the team. A reply to a resolved request asks for a reopen (WF-21).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 10000
+                  }
+                },
+                "required": [
+                  "body"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reply posted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "actorType": {
+                          "type": "string",
+                          "enum": [
+                            "customer",
+                            "triager",
+                            "system"
+                          ]
+                        },
+                        "authorName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "mine": {
+                          "type": "boolean"
+                        },
+                        "body": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "actorType",
+                        "authorName",
+                        "mine",
+                        "body",
+                        "createdAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ref",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/requests/{ref}/attachments": {
+      "get": {
+        "operationId": "listPortalRequestAttachments",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "List the request's customer-visible files",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer-visible files",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "filename": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "size": {
+                        "type": "number"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "mine": {
+                        "type": "boolean"
+                      },
+                      "downloadable": {
+                        "type": "boolean"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "filename",
+                      "mimeType",
+                      "size",
+                      "state",
+                      "mine",
+                      "downloadable",
+                      "createdAt"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/requests/{ref}/attachments/presign": {
+      "post": {
+        "operationId": "presignPortalRequestAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Presign the requester's upload on a request",
+        "description": "AT-3: a customer upload is customer-visible. The configured size, type and per-item limits apply; the bytes are checked at completion. On the filesystem storage driver the upload URL is a portal-bound signed PUT for this requester and a fresh key under the work item (CP-19).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "filename": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "size": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "commentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Attach the file to this reply: a live public comment the requester wrote on this request."
+                  }
+                },
+                "required": [
+                  "filename",
+                  "contentType",
+                  "size"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The presigned upload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentPresignResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or disallowed file",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Request or comment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/requests/{ref}/attachments/{id}/complete": {
+      "post": {
+        "operationId": "completePortalRequestAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Verify and complete the requester's upload",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "filename": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "mine": {
+                      "type": "boolean"
+                    },
+                    "downloadable": {
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "filename",
+                    "mimeType",
+                    "size",
+                    "state",
+                    "mine",
+                    "downloadable",
+                    "createdAt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Upload missing, too large or of the wrong type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Attachment is no longer pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/requests/{ref}/attachments/{id}": {
+      "get": {
+        "operationId": "downloadPortalRequestAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Download a customer-visible file of the request",
+        "description": "302 to a short-lived signed URL. On the filesystem storage driver it is a portal-bound link for this requester (CP-19): it works only on the portal host, for this person, for five minutes.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": true,
+            "name": "ref",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the presigned download URL"
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/portal/submissions/{ref}": {
       "get": {
         "operationId": "getOwnPortalSubmission",
@@ -61706,7 +62768,7 @@
                   },
                   "customerVisible": {
                     "type": "boolean",
-                    "description": "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured. On a comment attachment the default is the comment's own audience, and an internal comment's attachment is always internal (AT-4)."
+                    "description": "AT-3: staff uploads are not customer-visible unless this is explicitly true. On a comment attachment, true is honoured only for a public comment; an internal comment's attachment is always internal (AT-4)."
                   },
                   "commentId": {
                     "type": "string",
@@ -62255,7 +63317,13 @@
                   },
                   "customerVisible": {
                     "type": "boolean",
-                    "description": "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured. On a comment attachment the default is the comment's own audience, and an internal comment's attachment is always internal (AT-4)."
+                    "description": "AT-3: staff uploads are not customer-visible unless this is explicitly true. On a comment attachment, true is honoured only for a public comment; an internal comment's attachment is always internal (AT-4)."
+                  },
+                  "commentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "A-08: attach the file to the requester's reply on an accepted request (a live public comment they wrote on its work item). Refused (400) before acceptance."
                   },
                   "fieldKey": {
                     "type": "string",
@@ -62495,6 +63563,9 @@
                       "state": {
                         "type": "string"
                       },
+                      "downloadable": {
+                        "type": "boolean"
+                      },
                       "createdAt": {
                         "type": "string",
                         "format": "date-time"
@@ -62507,6 +63578,7 @@
                       "size",
                       "submissionFieldKey",
                       "state",
+                      "downloadable",
                       "createdAt"
                     ]
                   }

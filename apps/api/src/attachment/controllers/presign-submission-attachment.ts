@@ -7,21 +7,44 @@ import {
   getFileExtension,
   sanitizePathSegment,
 } from "../../storage";
+import { createPortalAttachmentUploadUrl } from "../../storage/portal-servable";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../../work-item/assert-work-item-live";
 import { isMimeTypeAllowedForExtension } from "../magic-bytes";
 import {
   countSubmissionAttachments,
+  countWorkItemAttachments,
   findSubmissionFormSchema,
   findSubmissionForPresign,
   getAttachmentSettings,
   insertSubmissionAttachment,
+  insertWorkItemAttachment,
+  lockAttachmentWorkItem,
+  lockCommentForAttachment,
   lockSubmissionForPresign,
 } from "../repository";
 import { assertOrganisationStorageQuota } from "../storage-quota";
 
+/**
+ * A customer upload on their own request (AT-3: customer uploads are customer-visible). While the
+ * submission is open (`new`, `clarifying`) the file attaches to the submission, optionally to a
+ * form field. Once accepted (A-08) it attaches to the converted work item, the same parent the
+ * completion step already accepts, so the requester can send files with a reply; a file field
+ * no longer applies then.
+ */
 export async function presignSubmissionAttachment(input: {
   submissionId: string;
   workspaceId: string;
   requesterId: string;
+  /** The live work item an accepted submission converted into (null otherwise). */
+  acceptedWorkItemId?: string | null;
+  /**
+   * A-08: attach the file to the requester's reply on the accepted request (a live public
+   * comment they wrote on the converted work item). Only for an accepted submission.
+   */
+  commentId?: string;
   fieldKey?: string;
   filename: string;
   contentType: string;
@@ -29,11 +52,22 @@ export async function presignSubmissionAttachment(input: {
   apiBaseUrl: string;
 }) {
   const [submission] = await findSubmissionForPresign(db, input);
-  if (
-    !submission ||
-    (submission.state !== "new" && submission.state !== "clarifying")
-  )
+  const open =
+    submission?.state === "new" || submission?.state === "clarifying";
+  const acceptedParent =
+    submission?.state === "accepted" && input.acceptedWorkItemId
+      ? input.acceptedWorkItemId
+      : null;
+  if (!submission || (!open && !acceptedParent))
     throw new HTTPException(404, { message: "Submission not found" });
+  if (acceptedParent && input.fieldKey)
+    throw new HTTPException(400, {
+      message: "The attachment field is not part of this submitted form.",
+    });
+  if (input.commentId && !acceptedParent)
+    throw new HTTPException(400, {
+      message: "Files go with a reply only once the request is accepted.",
+    });
   const [settings] = await getAttachmentSettings(db);
   const maxBytes = settings?.maxBytes ?? 25 * 1024 * 1024;
   const maxPerParent = settings?.maxPerItem ?? 100;
@@ -84,12 +118,15 @@ export async function presignSubmissionAttachment(input: {
     });
   const safeName = `${sanitizePathSegment(input.filename.replace(/\.[^/.]+$/, "") || "file")}${extension ? `.${extension}` : ""}`;
   const attachmentId = createId();
+  // An open submission's file lives under the submission; once accepted, a fresh key under the
+  // converted work item, served to the portal only through a portal-bound link (CP-19).
   const objectKey = buildAttachmentStorageKey(
     [
       "workspace",
       sanitizePathSegment(input.workspaceId),
-      "submission",
-      sanitizePathSegment(input.submissionId),
+      ...(acceptedParent
+        ? ["work-item", sanitizePathSegment(acceptedParent)]
+        : ["submission", sanitizePathSegment(input.submissionId)]),
       "attachment",
       attachmentId,
       safeName,
@@ -97,10 +134,68 @@ export async function presignSubmissionAttachment(input: {
   );
   const [row] = await db.transaction(async (tx) => {
     const [locked] = await lockSubmissionForPresign(tx, input);
-    if (!locked || (locked.state !== "new" && locked.state !== "clarifying"))
+    if (
+      !locked ||
+      (acceptedParent
+        ? locked.state !== "accepted"
+        : locked.state !== "new" && locked.state !== "clarifying")
+    )
       throw new HTTPException(409, {
         message: "Submission changed before upload",
       });
+    if (acceptedParent) {
+      // The converted item must still be live, in the request's workspace (the completion step
+      // checks the same workspace), and under its per-item file limit.
+      const [item] = await lockAttachmentWorkItem(tx, {
+        workItemId: acceptedParent,
+        workspaceId: input.workspaceId,
+      });
+      assertWorkItemStillLive(item);
+      // CP-16: once staff name another requester (A-03) the item is no longer this request's;
+      // the share lock orders this check against that change.
+      if (item.requesterId !== input.requesterId)
+        throw new HTTPException(404, { message: "Submission not found" });
+      await assertProjectStillLive(tx, item.projectId);
+      await assertOrganisationStorageQuota(tx, {
+        workspaceId: input.workspaceId,
+        additionalBytes: input.size,
+      });
+      const [itemCount] = await countWorkItemAttachments(tx, acceptedParent);
+      if ((itemCount?.value ?? 0) >= maxPerParent)
+        throw new HTTPException(400, {
+          message: `This request already has the maximum of ${maxPerParent} attachments.`,
+        });
+      if (input.commentId) {
+        // The reply must be the requester's own live public comment on this item; the share
+        // lock makes a concurrent deletion wait, so a file never lands on a tombstone.
+        const [comment] = await lockCommentForAttachment(tx, {
+          commentId: input.commentId,
+          workItemId: acceptedParent,
+          workspaceId: input.workspaceId,
+        });
+        if (
+          !comment ||
+          comment.deletedAt ||
+          comment.visibility !== "public" ||
+          comment.authorId !== input.requesterId
+        )
+          throw new HTTPException(404, { message: "Comment not found" });
+      }
+      return insertWorkItemAttachment(tx, {
+        id: attachmentId,
+        workspaceId: input.workspaceId,
+        organisationId: submission.organisationId,
+        ...(input.commentId
+          ? { commentId: input.commentId }
+          : { workItemId: acceptedParent }),
+        objectKey,
+        filename: input.filename,
+        contentType: input.contentType,
+        size: input.size,
+        customerVisible: true,
+        uploadedBy: input.requesterId,
+      });
+    }
     await assertOrganisationStorageQuota(tx, {
       workspaceId: input.workspaceId,
       additionalBytes: input.size,
@@ -165,13 +260,22 @@ export async function presignSubmissionAttachment(input: {
     throw new HTTPException(500, {
       message: "Could not create the pending attachment",
     });
-  const upload = await createAttachmentUploadUrl(
-    objectKey,
-    input.contentType,
-    maxBytes,
-    input.apiBaseUrl,
-    input.size,
-  );
+  const upload = acceptedParent
+    ? await createPortalAttachmentUploadUrl({
+        objectKey,
+        contentType: input.contentType,
+        maxBytes,
+        personId: input.requesterId,
+        apiBaseUrl: input.apiBaseUrl,
+        declaredSize: input.size,
+      })
+    : await createAttachmentUploadUrl(
+        objectKey,
+        input.contentType,
+        maxBytes,
+        input.apiBaseUrl,
+        input.size,
+      );
   return {
     attachmentId: row.id,
     uploadUrl: upload.uploadUrl,

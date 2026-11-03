@@ -21,6 +21,7 @@ import { getInitials } from "@/lib/get-initials";
 import { resolveLabelColor } from "@/lib/label-color";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import CreateWorkItemLabelPicker from "./create-work-item-label-picker";
+import CreateWorkItemRequesterPicker from "./create-work-item-requester-picker";
 import type {
   CreateWorkItemLabel,
   CreateWorkItemOptions,
@@ -38,10 +39,13 @@ type Props = {
   startDate: Date | undefined;
   dueDate: Date | undefined;
   assigneeId: string;
+  /** A-03: the customer the request is raised for ("" for none). */
+  requesterId: string;
   labelIds: string[];
   onStartDateChange: (day: Date | undefined) => void;
   onDueDateChange: (day: Date | undefined) => void;
   onAssigneeChange: (id: string) => void;
+  onRequesterChange: (id: string) => void;
   onLabelsChange: (ids: string[]) => void;
   canUpdate: boolean;
   canAssign: boolean;
@@ -247,6 +251,13 @@ export default function CreateWorkItemProperties(props: Props) {
             </div>
           </PopoverContent>
         </Popover>
+        <CreateWorkItemRequesterPicker
+          projectId={props.projectId}
+          requesterId={props.requesterId}
+          onChange={props.onRequesterChange}
+          canUpdate={canUpdate}
+          disabled={disabled}
+        />
         {dateChip("dueDate", props.dueDate, props.onDueDateChange)}
         <CreateWorkItemLabelPicker
           workspaceId={props.workspaceId}

@@ -98,6 +98,7 @@ export default function CreateWorkItemDialogForm({
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [assigneeId, setAssigneeId] = useState("");
+  const [requesterId, setRequesterId] = useState("");
   const [labelIds, setLabelIds] = useState<string[]>([]);
   const [createdLabels, setCreatedLabels] = useState<CreateWorkItemLabel[]>([]);
   const [labelBusy, setLabelBusy] = useState(false);
@@ -159,7 +160,7 @@ export default function CreateWorkItemDialogForm({
     ],
   };
   const optionalFieldsValid =
-    (!(startDate || dueDate || labelIds.length) || canUpdate) &&
+    (!(startDate || dueDate || labelIds.length || requesterId) || canUpdate) &&
     (!assigneeId ||
       ((canAssign || canUpdate) &&
         !options.peopleError &&
@@ -195,6 +196,7 @@ export default function CreateWorkItemDialogForm({
     startDate: startDate ? dayToIso(startDate, null) : undefined,
     dueDate: dueDate ? dayToIso(dueDate, null) : undefined,
     assigneeId: assigneeId || undefined,
+    requesterId: requesterId || undefined,
     labelIds: labelIds.length ? labelIds : undefined,
     templateId: templateId ?? undefined,
     customFields: Object.keys(customFieldPayload).length
@@ -213,6 +215,7 @@ export default function CreateWorkItemDialogForm({
         startDate ||
         dueDate ||
         assigneeId ||
+        requesterId ||
         labelIds.length ||
         Object.values(customFieldValues).some(isValueSet) ||
         labelDraftDirty,
@@ -253,6 +256,7 @@ export default function CreateWorkItemDialogForm({
     setStartDate(undefined);
     setDueDate(undefined);
     setAssigneeId("");
+    setRequesterId("");
     setLabelIds([]);
     setCustomFieldValues({});
     setTemplateId(null);
@@ -544,10 +548,12 @@ export default function CreateWorkItemDialogForm({
           startDate={startDate}
           dueDate={dueDate}
           assigneeId={assigneeId}
+          requesterId={requesterId}
           labelIds={labelIds}
           onStartDateChange={setStartDate}
           onDueDateChange={setDueDate}
           onAssigneeChange={setAssigneeId}
+          onRequesterChange={setRequesterId}
           onLabelsChange={setLabelIds}
           canUpdate={canUpdate}
           canAssign={canAssign}

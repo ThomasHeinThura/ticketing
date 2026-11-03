@@ -15,6 +15,8 @@ export type CreateWorkItemInput = {
   templateId?: string;
   /** CF-3/CF-4: custom field values by key; required fields block creation server-side. */
   customFields?: Record<string, unknown>;
+  /** A-03: raise it for a customer of the project's organisation (needs `work_item:update`). */
+  requesterId?: string;
 };
 
 /**

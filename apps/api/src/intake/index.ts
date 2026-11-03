@@ -65,6 +65,7 @@ import {
   portalMe,
   portalMeSchema,
 } from "./portal-cases";
+import portalRequestsRouter from "./portal-requests-router";
 import { PORTAL_CUSTOMER_STATUSES } from "./portal-status";
 import {
   acceptSubmission,
@@ -1783,6 +1784,8 @@ const router = requestTypeRouter
   .route("/", portalSubmissionRouter)
   .route("/", portalCasesRouter)
   .route("/", portalBacklogRouter)
+  // After the case list and backlog routers: their static `/portal/requests/*` paths win.
+  .route("/", portalRequestsRouter)
   .route("/", portalDetailRouter)
   .route("/", portalMessageRouter)
   .route("/", portalWithdrawRouter)

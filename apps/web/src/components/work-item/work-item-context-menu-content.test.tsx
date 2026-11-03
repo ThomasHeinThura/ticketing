@@ -201,6 +201,7 @@ function row(): WorkItemDetailRow {
     assigneeId: null,
     assigneeName: null,
     requesterId: null,
+    requesterName: null,
     parentId: null,
     customerVisibility: "private",
     archivedAt: null,

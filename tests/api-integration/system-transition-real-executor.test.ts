@@ -603,6 +603,11 @@ describe("WF-21 customer reply on a resolved request, through the real reply pat
         .returning(),
       "submission",
     );
+    // Conversion names the submission's requester on the item (CP-16).
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: principal.person.id })
+      .where(eq(schema.workItemTable.id, itemId));
     return { principal, submission };
   }
 

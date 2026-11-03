@@ -125,7 +125,7 @@ const portalSlaSchema = z.object({
 export const portalCaseSchema = z.object({
   /** `SUB-n` for a submission; the request key for a request raised by staff (D6). */
   ref: z.string(),
-  /** `submission` rows open their durable page; `direct` rows have no portal page yet. */
+  /** `submission` rows open `/submissions/{ref}`; `direct` rows open `/requests/{ref}` (D6). */
   source: z.enum(["submission", "direct"]),
   title: z.string(),
   requestTypeName: z.string(),
@@ -550,7 +550,7 @@ function toDate(value: Date | string): Date {
 async function selectCases(
   viewer: PortalViewer,
   filters: PortalCaseFilters,
-  options: { limit: number; after?: CaseCursor },
+  options: { limit: number; after?: CaseCursor; where?: SQL[] },
 ): Promise<CaseRow[]> {
   const sort = filters.sort ?? "updated_desc";
   const column = sort.startsWith("created")
@@ -558,7 +558,10 @@ async function selectCases(
     : sql`c.updated_at`;
   const descending = sort.endsWith("_desc");
   const sortAt = sql`date_trunc('milliseconds', ${column})`;
-  const conditions = filterConditions(viewer, filters);
+  const conditions = [
+    ...filterConditions(viewer, filters),
+    ...(options.where ?? []),
+  ];
   if (options.after) {
     const at = sql`${options.after.at}::timestamptz`;
     conditions.push(
@@ -698,6 +701,60 @@ export async function listPortalCases(
     },
     meta: { total },
   };
+}
+
+/**
+ * One request raised by staff (`direct`, D6) that the viewer may read, by its work item key:
+ * the list's own row through the list's own SQL, so the detail page and the list never disagree
+ * on reach (`CP-16`). `null` for a key the viewer cannot read; the caller answers with the
+ * constant 404 (`CP-2`).
+ */
+export async function findReadableDirectCase(
+  viewer: PortalViewer,
+  key: string,
+  /** The page needs the service target; a reach check (reply, files) does not. */
+  options: { withSla: boolean } = { withSla: true },
+): Promise<{ item: PortalCase; workItemId: string } | null> {
+  const [row] = await selectCases(
+    viewer,
+    {},
+    { limit: 1, where: [sql`c.source = 'direct'`, sql`c.ref = ${key}`] },
+  );
+  if (!row?.work_item_id) return null;
+  const [item] = await toCases(viewer, [row], options.withSla);
+  return item ? { item, workItemId: row.work_item_id } : null;
+}
+
+/**
+ * The keys of the direct requests (D6) among `workItemIds` that the viewer may read, through
+ * the case list's own reach (`CP-16`), by work item id. Used to link a notification to its
+ * portal request page; an item the viewer cannot read is left out.
+ */
+export async function findReadableDirectCaseRefs(
+  viewer: PortalViewer,
+  workItemIds: readonly string[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(workItemIds)];
+  if (ids.length === 0) return new Map();
+  const rows = await selectCases(
+    viewer,
+    {},
+    {
+      limit: ids.length,
+      where: [
+        sql`c.source = 'direct'`,
+        sql`c.work_item_id IN (${sql.join(
+          ids.map((id) => sql`${id}`),
+          sql`, `,
+        )})`,
+      ],
+    },
+  );
+  return new Map(
+    rows.flatMap((row) =>
+      row.work_item_id ? [[row.work_item_id, row.ref] as const] : [],
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------------------------

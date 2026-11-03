@@ -103,6 +103,8 @@ async function createUploadWorld(withReopenEdge: boolean) {
         key: `${project.slug}-1`,
         title: "Resolved request",
         resolvedAt: new Date(),
+        // Conversion names the submission's requester on the item (CP-16).
+        requesterId: customer.person.id,
       })
       .returning(),
     "resolved request",

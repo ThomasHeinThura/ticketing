@@ -38,6 +38,7 @@ const item: WorkItemDetailRow = {
   assigneeId: null,
   assigneeName: null,
   requesterId: null,
+  requesterName: null,
   parentId: null,
   position: "1",
   customerVisibility: "private",

@@ -141,11 +141,12 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Not found (portal origin) | `*` | route | P3 | ⬜ |
 | Portal home | `/` | route | P3 | 🟡 |
 | Portal requests | `/requests` | route | P3 | 🟡 |
+| Request raised by the team (D6, U-12): status, public conversation, files, reply | `/requests/{ref}` | route | P3 | 🟡 |
 | Portal approval decision | `/approvals?approval={id}` | route | P3 | 🟡 |
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **153** (137 routes + 16 overlays, dialogs and sections) |
+| **Total** | **154** (138 routes + 16 overlays, dialogs and sections) |
 
 ## Overlays, dialogs and embedded sections
 

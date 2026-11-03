@@ -111,6 +111,12 @@ async function seed() {
     "private attachment",
   );
   const accepted = await submit(owner, "accepted", t.workItem.id);
+  // Conversion names the submission's requester on the item (CP-16); the link holds only while
+  // it does.
+  await db
+    .update(schema.workItemTable)
+    .set({ requesterId: owner.person.id })
+    .where(eq(schema.workItemTable.id, t.workItem.id));
   const duplicate = await submit(other, "duplicate", t.workItem.id);
   return {
     t,
@@ -743,6 +749,14 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
       portal: true,
     };
 
+    // A file the requester sent after acceptance: on the work item, keyed under the submission,
+    // so the portal host can serve it (CP-19) and the download baseline below is a real 302.
+    await db
+      .update(schema.attachmentTable)
+      .set({
+        objectKey: `workspace/${s.t.workspaceId}/submission/${s.accepted.id}/attachment/a1/secret.pdf`,
+      })
+      .where(eq(schema.attachmentTable.id, s.privateAttachment.id));
     const listed = await portalRequest(t, s.owner, base);
     expect(await names(listed)).toEqual(["owner-private.pdf"]);
     const download = await portalRequest(
