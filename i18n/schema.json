@@ -35061,6 +35061,34 @@
 				"chartLabel": {
 					"type": "string"
 				},
+				"chartScroll": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"hint_one": {
+							"type": "string"
+						},
+						"hint_zero": {
+							"type": "string"
+						},
+						"hint_two": {
+							"type": "string"
+						},
+						"hint_few": {
+							"type": "string"
+						},
+						"hint_many": {
+							"type": "string"
+						},
+						"hint_other": {
+							"type": "string"
+						},
+						"region": {
+							"type": "string"
+						}
+					},
+					"required": ["region"]
+				},
 				"truncated": {
 					"type": "string"
 				},
@@ -37249,6 +37277,9 @@
 						},
 						"exportWidget": {
 							"type": "string"
+						},
+						"aboutNumbers": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -37265,7 +37296,8 @@
 						"savedView",
 						"widgetView",
 						"noMetric",
-						"exportWidget"
+						"exportWidget",
+						"aboutNumbers"
 					]
 				},
 				"editor": {
@@ -37697,6 +37729,7 @@
 				"notEnoughData",
 				"tableLabel",
 				"chartLabel",
+				"chartScroll",
 				"truncated",
 				"views",
 				"badges",
