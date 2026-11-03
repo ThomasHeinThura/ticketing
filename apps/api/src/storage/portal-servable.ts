@@ -9,20 +9,21 @@ import {
  * CP-19: what the portal host serves from the filesystem storage driver (the default; local SIT
  * and Technexus use it). On S3 every signed URL points at the bucket, never at the portal host.
  *
- * 1. **Submission objects** (`workspace/<id>/submission/<id>/attachment/...`): the generic signed
- *    routes `PUT /api/storage/filesystem-attachment-upload` and
- *    `GET /api/storage/filesystem-download` are admitted on the portal host for these keys only.
- *    Their HMAC token binds the exact key, size ceiling and expiry.
- * 2. **Work-item objects** (`workspace/<id>/work-item/<id>/attachment/...`, Thomas, 3 November
- *    2026): only through the portal-bound routes `PUT /api/storage/portal-attachment-upload` and
- *    `GET /api/storage/portal-download`. Only the portal `own_request` / `own_submission` routes
- *    mint those links, after their ownership and reach check. The token has its own key
- *    derivation (an agent-minted URL is never accepted) and binds the key, the customer person,
- *    the size ceiling (upload) and a five-minute expiry. The route also requires the portal
- *    session on the request to be that same person.
+ * 1. **Downloads** of submission objects (`workspace/<id>/submission/<id>/attachment/...`) and
+ *    work-item objects (`workspace/<id>/work-item/<id>/attachment/...`), pending or final: only
+ *    through the portal-bound route `GET /api/storage/portal-download` (Thomas, 3 November 2026).
+ *    Only the portal `own_request` / `own_submission` routes mint those links, after their
+ *    ownership and reach check. The token has its own key derivation (an agent-minted URL is
+ *    never accepted) and binds the key, the customer person and a five-minute expiry. The route
+ *    also requires the portal session on the request to be that same person.
+ * 2. **Uploads**: a pending submission key through the generic signed
+ *    `PUT /api/storage/filesystem-attachment-upload` (its HMAC binds the exact key, size ceiling
+ *    and expiry); a pending work-item key only through the portal-bound
+ *    `PUT /api/storage/portal-attachment-upload`, which also binds the customer person.
  *
- * Every other agent route, and every agent-signed URL for a work-item key, stays denied on the
- * portal host.
+ * Every other agent route stays denied on the portal host, including the generic
+ * `GET /api/storage/filesystem-download` for every key, so an unbound download link is refused
+ * there. The agent host keeps serving the generic routes to staff unchanged.
  */
 const SEGMENT = "[A-Za-z0-9_-]+";
 const FILE = "[A-Za-z0-9_.-]+";
@@ -60,11 +61,22 @@ export function isWorkItemUploadKey(key: string): boolean {
   return !key.includes("..") && WORK_ITEM_PENDING_KEY.test(key);
 }
 
-/** A work-item attachment key (pending or final): what a portal download token may name. */
-export function isWorkItemDownloadKey(key: string): boolean {
+/** A work-item attachment key (pending or final). */
+function isWorkItemDownloadKey(key: string): boolean {
   return (
     !key.includes("..") &&
     (WORK_ITEM_PENDING_KEY.test(key) || WORK_ITEM_FINAL_KEY.test(key))
+  );
+}
+
+/**
+ * A submission or work-item attachment key (pending or final): what a portal download token may
+ * name (CP-19, 3 November 2026).
+ */
+export function isPortalDownloadKey(key: string): boolean {
+  return (
+    !key.includes("..") &&
+    (isSubmissionDownloadKey(key) || isWorkItemDownloadKey(key))
   );
 }
 
@@ -77,15 +89,12 @@ export function isPortalStorageRequest(
   if (key === undefined || key.includes("..")) return false;
   if (method === "PUT" && path === "/api/storage/filesystem-attachment-upload")
     return SUBMISSION_PENDING_KEY.test(key);
-  if (
-    (method === "GET" || method === "HEAD") &&
-    path === "/api/storage/filesystem-download"
-  )
-    return isSubmissionDownloadKey(key);
   if (method === "PUT" && path === PORTAL_UPLOAD_PATH)
     return isWorkItemUploadKey(key);
+  // Downloads only through the person-bound route; the generic, unbound
+  // `GET /api/storage/filesystem-download` is never admitted here.
   if ((method === "GET" || method === "HEAD") && path === PORTAL_DOWNLOAD_PATH)
-    return isWorkItemDownloadKey(key);
+    return isPortalDownloadKey(key);
   return false;
 }
 
@@ -95,17 +104,14 @@ export function isPortalStorageRequest(
  * application writes.
  */
 export function portalCanDownloadObject(objectKey: string): boolean {
-  return (
-    getStorageDriver() !== "filesystem" ||
-    (!objectKey.includes("..") &&
-      (isSubmissionDownloadKey(objectKey) || isWorkItemDownloadKey(objectKey)))
-  );
+  return getStorageDriver() !== "filesystem" || isPortalDownloadKey(objectKey);
 }
 
 /**
  * The download URL a portal route hands the customer, after its own reach check. On the
- * filesystem driver a work-item key gets a portal-bound link for `personId`; a submission key
- * keeps the generic signed link. On S3 it is the bucket's presigned GET.
+ * filesystem driver a submission or work-item key gets a portal-bound link for `personId`, which
+ * must be the person behind the portal session (Thomas, 3 November 2026). On S3 it is the
+ * bucket's five-minute presigned GET, bound to the key and expiry only.
  */
 export async function createPortalAttachmentDownloadUrl(input: {
   objectKey: string;
@@ -115,7 +121,7 @@ export async function createPortalAttachmentDownloadUrl(input: {
 }): Promise<string> {
   if (
     getStorageDriver() === "filesystem" &&
-    isWorkItemDownloadKey(input.objectKey)
+    isPortalDownloadKey(input.objectKey)
   )
     return filesystemDriver.createPortalAttachmentDownloadUrl(
       input.objectKey,

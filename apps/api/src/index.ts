@@ -227,8 +227,8 @@ import {
   writeUploadedObject,
 } from "./storage/filesystem";
 import {
+  isPortalDownloadKey,
   isPortalStorageRequest,
-  isWorkItemDownloadKey,
   isWorkItemUploadKey,
 } from "./storage/portal-servable";
 import { portalSessionPersonId } from "./storage/portal-session-person";
@@ -1543,12 +1543,14 @@ export function createApp(
     },
   );
 
-  // CP-19 (Thomas, 3 November 2026): the portal-bound siblings of the two routes above, for
-  // work-item attachment objects only. Minted only by the portal own_request / own_submission
-  // routes after their ownership and reach check (`storage/portal-servable.ts`). Answered only
-  // on the portal host (the host guard admits nothing else here, and the handler re-checks);
-  // the signed token binds key, person, size ceiling and expiry, and the portal session on the
-  // request must be that same person. An agent-signed URL is never accepted here.
+  // CP-19 (Thomas, 3 November 2026): the portal-bound siblings of the two routes above. The
+  // upload takes work-item attachment keys; the download takes work-item and submission
+  // attachment keys, and is the portal host's only download route (the generic one above is
+  // refused there). Minted only by the portal own_request / own_submission routes after their
+  // ownership and reach check (`storage/portal-servable.ts`). Answered only on the portal host
+  // (the host guard admits nothing else here, and the handler re-checks); the signed token binds
+  // key, person, size ceiling and expiry, and the portal session on the request must be that
+  // same person. An agent-signed URL is never accepted here.
   const portalStorageQuery = {
     key: z.string().min(1),
     expires: z.string().regex(/^\d+$/, "expires must be a unix timestamp"),
@@ -1664,7 +1666,7 @@ export function createApp(
     async (c) => {
       assertPortalStorageRequest(c);
       const { key, expires, token, filename } = c.req.valid("query");
-      if (!isWorkItemDownloadKey(key))
+      if (!isPortalDownloadKey(key))
         throw new HTTPException(400, { message: "Invalid download key." });
       const personId = await portalSessionPersonId(c.req.raw.headers);
       if (!personId) throw new HTTPException(401, { message: "Unauthorized" });
