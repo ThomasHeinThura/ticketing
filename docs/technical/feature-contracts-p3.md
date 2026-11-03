@@ -406,6 +406,21 @@ in your head — which is the point of not reusing the agent handlers.
   case is read-only to the caller. `actionRequired.approvals` counts pending approvals
   addressed to the caller.
 
+<a id="customer-portal-projects"></a>
+### Projects (S4c)
+
+- `GET /api/portal/projects` lists the caller's organisation's live projects (not archived, not deleted, `feature.customer_portal` on for the project): `key` (`project.slug`), `name`, `kind`, `status`, `health` and `counts`. `counts.outstanding` counts readable requests in the project that are received, need more information or in progress. `counts.actionRequired` counts every readable request in the project that needs more information (a clarifying submission or an open `waiting_customer` pause on its item, including a colleague's organisation-visible request and a request raised by staff) plus pending customer approvals addressed to the caller. Both are computed by the code behind `GET /api/portal/home`, so `counts.outstanding` and `counts.actionRequired` equal `outstanding` and `actionRequired.total` of `GET /api/portal/home?project=KEY` for the same caller.
+- `GET /api/portal/projects/{key}` returns the following, and nothing else:
+  - `key`, `name`, `kind`, `status`, `health`, `description`, `createdAt`, `supportLevel`, `serviceCalendarName`;
+  - `summary`: objective, in scope, out of scope and success criteria. The internal status note is never returned;
+  - `milestones`;
+  - `goLive`: the last milestone by date, ties going to the latest created. Names are not matched;
+  - `prerequisites`: blocking items with owner side `customer` or `both`, read-only;
+  - `documents`: those with `customer_visible = true`, title and URL only;
+  - `contacts` (`CP-4` key contacts): the active staff manager and active staff stakeholders with name, role and email. Customer-side stakeholders are never listed;
+  - `contract` (D2/D3, approved 31 Oct 2026): the period dates, elapsed progress, days remaining, and aggregate billable hours used and remaining. No time entries, rates or people.
+- Any other key returns the same 404 (`CP-2`): another organisation's, archived, deleted, portal off, unknown or malformed.
+
 <a id="customer-portal-edge-cases"></a>
 ### Edge cases
 

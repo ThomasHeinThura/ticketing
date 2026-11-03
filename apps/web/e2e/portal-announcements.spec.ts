@@ -142,6 +142,7 @@ function apiBody(url: URL, options: { banner: boolean }): unknown {
   if (pathname === "/api/portal/notification/inbox")
     return { data: [], unreadCount: 0, hasMore: false, nextCursor: null };
   if (pathname === "/api/portal/kb") return { data: [], nextCursor: null };
+  if (pathname === "/api/portal/projects") return { data: [] };
   if (pathname === "/api/portal/releases") return releases;
   if (pathname === "/api/portal/announcements") {
     // The shell banner asks for incidents and maintenance only.

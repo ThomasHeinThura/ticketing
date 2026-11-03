@@ -1,5 +1,11 @@
 import { expectNoA11yViolations } from "@taskdesk/ui/test/a11y";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const navigate = vi.hoisted(() => vi.fn());
@@ -15,7 +21,17 @@ const state = vi.hoisted(() => ({
     } | null,
   },
   caseQueries: [] as unknown[],
+  projects: [] as Array<Record<string, unknown>>,
 }));
+
+const ROLLOUT = {
+  key: "ROLL",
+  name: "Contoso rollout",
+  kind: "project",
+  status: "active",
+  health: "amber",
+  counts: { actionRequired: 2, outstanding: 5 },
+};
 
 vi.mock("@/components/portal/portal-orientation", () => ({
   PortalOrientation: () => null,
@@ -24,9 +40,21 @@ vi.mock("@/fetchers/portal/cases", () => ({
   getPortalHome: vi.fn(),
   getPortalCases: vi.fn(),
 }));
+vi.mock("@/fetchers/portal/projects", () => ({
+  getPortalProjects: vi.fn(),
+  portalProjectKeys: { list: () => ["portal", "projects", "list"] },
+}));
 vi.mock("@tanstack/react-query", () => ({
   keepPreviousData: (value: unknown) => value,
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
+    if (queryKey[1] === "projects")
+      return {
+        data: { data: state.projects },
+        isSuccess: true,
+        isPending: false,
+        isError: false,
+        refetch: vi.fn(),
+      };
     if (queryKey[2] === "home")
       return { data: state.home, isError: false, refetch: vi.fn() };
     state.caseQueries.push(queryKey[3]);
@@ -71,12 +99,12 @@ vi.mock("@tanstack/react-router", async () => {
       HTMLAnchorElement,
       React.PropsWithChildren<{
         to: string;
-        params?: { ref: string };
+        params?: Record<string, string>;
         search?: Record<string, string>;
       }>
     >(({ children, to, params, search, ...props }, ref) => (
       <a
-        href={`${to.replace("$ref", params?.ref ?? "")}${
+        href={`${to.replace(/\$(\w+)/gu, (_, name: string) => params?.[name] ?? "")}${
           search ? `?${new URLSearchParams(search)}` : ""
         }`}
         ref={ref}
@@ -113,6 +141,7 @@ afterEach(() => {
   navigate.mockReset();
   state.search = {};
   state.caseQueries = [];
+  state.projects = [];
   state.home.averageFirstResponse = { seconds: 5400, sampleSize: 2 };
   state.home.actionRequired = { total: 3, cases: 2, approvals: 1 };
 });
@@ -193,7 +222,44 @@ describe("Portal dashboard", () => {
     });
   });
 
+  it("shows a card per project linking to its details, with status, health and counts", () => {
+    state.projects = [ROLLOUT];
+    const Component = Route as unknown as React.ComponentType;
+    render(<Component />);
+    expect(
+      screen.getByRole("heading", { name: "Your projects" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Contoso rollout" }),
+    ).toHaveAttribute("href", "/projects/ROLL");
+    const card = within(screen.getByRole("region", { name: "Your projects" }));
+    expect(card.getByText("ROLL")).toBeVisible();
+    expect(card.getByText("Project")).toBeVisible();
+    expect(card.getByText("Active")).toBeVisible();
+    expect(card.getByText("At risk")).toBeVisible();
+    expect(card.getByText("2")).toBeVisible();
+    expect(card.getByText("5")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "View all projects" }),
+    ).toHaveAttribute("href", "/projects");
+  });
+
+  it("shows only the selected project's card and no section without projects", () => {
+    state.projects = [ROLLOUT, { ...ROLLOUT, key: "OPS", name: "Operations" }];
+    state.search = { project: "OPS" };
+    const Component = Route as unknown as React.ComponentType;
+    const { unmount } = render(<Component />);
+    expect(screen.getByRole("link", { name: "Operations" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Contoso rollout" })).toBeNull();
+    unmount();
+    state.projects = [];
+    state.search = {};
+    render(<Component />);
+    expect(screen.queryByRole("heading", { name: "Your projects" })).toBeNull();
+  });
+
   it("has no serious or critical axe violations (G4)", async () => {
+    state.projects = [ROLLOUT];
     const Component = Route as unknown as React.ComponentType;
     const { container } = render(<Component />);
     await expectNoA11yViolations(container, { impact: "serious-or-critical" });

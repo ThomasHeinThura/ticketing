@@ -16,7 +16,10 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import PortalProjectSelector from "./portal-project-selector";
 
 const getPortalProjects = vi.hoisted(() => vi.fn());
-vi.mock("@/fetchers/portal/projects", () => ({ getPortalProjects }));
+vi.mock("@/fetchers/portal/projects", () => ({
+  getPortalProjects,
+  portalProjectKeys: { list: () => ["portal", "projects", "list"] },
+}));
 vi.mock("@/lib/i18n/portal-translation", () => ({
   usePortalTranslation: () => ({ t: (key: string) => key, i18n: {} }),
 }));
@@ -55,6 +58,8 @@ const SHELL_PATHS = [
   "/releases/$id",
   "/account",
   "/submissions/$ref",
+  "/projects",
+  "/projects/$projectKey",
 ];
 
 describe("portal project scope registration", () => {

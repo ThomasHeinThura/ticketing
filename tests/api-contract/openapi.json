@@ -7553,6 +7553,451 @@
           "updatedAt"
         ]
       },
+      "PortalProjectList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalProjectSummary"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "PortalProjectSummary": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "project",
+              "managed_service"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planning",
+              "active",
+              "on_hold",
+              "closed"
+            ]
+          },
+          "health": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "red",
+              "amber",
+              "green"
+            ]
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "actionRequired": {
+                "type": "integer",
+                "description": "Readable requests in this project that need more information (a clarifying submission or an open waiting_customer pause on its item, including colleagues' requests and requests raised by staff), plus pending customer approvals addressed to the caller."
+              },
+              "outstanding": {
+                "type": "integer",
+                "description": "Readable requests in this project that are received, need more information or in progress."
+              }
+            },
+            "required": [
+              "actionRequired",
+              "outstanding"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "kind",
+          "status",
+          "health",
+          "counts"
+        ]
+      },
+      "PortalProjectDetail": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "project",
+              "managed_service"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planning",
+              "active",
+              "on_hold",
+              "closed"
+            ]
+          },
+          "health": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "red",
+              "amber",
+              "green"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "supportLevel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "L1",
+              "L2",
+              "L3"
+            ]
+          },
+          "serviceCalendarName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "objective": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "inScope": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "outOfScope": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "successCriteria": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "objective",
+              "inScope",
+              "outOfScope",
+              "successCriteria"
+            ]
+          },
+          "goLive": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "reached": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "date",
+              "reached"
+            ],
+            "description": "The last milestone by date; null when none."
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reachedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "date",
+                "reachedAt"
+              ]
+            }
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "dueDate": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "completedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "dueDate",
+                "completedAt"
+              ]
+            },
+            "description": "Blocking prerequisites the customer owns (owner side customer or both), read-only."
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "url"
+              ]
+            },
+            "description": "Customer-visible document links only."
+          },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "manager",
+                    "stakeholder"
+                  ]
+                },
+                "role": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The stakeholder's role; null for the project manager."
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "email": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "role",
+                "name",
+                "email"
+              ]
+            },
+            "description": "The project's designated key contacts (CP-4): the manager and active staff stakeholders."
+          },
+          "contract": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "startDate": {
+                "type": "string"
+              },
+              "endDate": {
+                "type": "string"
+              },
+              "period": {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "upcoming",
+                      "active",
+                      "ended"
+                    ]
+                  },
+                  "totalDays": {
+                    "type": "integer"
+                  },
+                  "elapsedDays": {
+                    "type": "integer"
+                  },
+                  "daysRemaining": {
+                    "type": "integer"
+                  },
+                  "elapsedPct": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "state",
+                  "totalDays",
+                  "elapsedDays",
+                  "daysRemaining",
+                  "elapsedPct"
+                ]
+              },
+              "hours": {
+                "type": "object",
+                "properties": {
+                  "contractedMinutes": {
+                    "type": "integer"
+                  },
+                  "usedMinutes": {
+                    "type": "integer",
+                    "description": "Billable minutes logged on the project inside the contract period (aggregate only)."
+                  },
+                  "remainingMinutes": {
+                    "type": "integer",
+                    "description": "Contracted minus used; negative when overdrawn."
+                  },
+                  "usedPct": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "contractedMinutes",
+                  "usedMinutes",
+                  "remainingMinutes",
+                  "usedPct"
+                ]
+              }
+            },
+            "required": [
+              "startDate",
+              "endDate",
+              "period",
+              "hours"
+            ],
+            "description": "Null when the project has no contract (D2)."
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "actionRequired": {
+                "type": "integer",
+                "description": "Readable requests in this project that need more information (a clarifying submission or an open waiting_customer pause on its item, including colleagues' requests and requests raised by staff), plus pending customer approvals addressed to the caller."
+              },
+              "outstanding": {
+                "type": "integer",
+                "description": "Readable requests in this project that are received, need more information or in progress."
+              }
+            },
+            "required": [
+              "actionRequired",
+              "outstanding"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "kind",
+          "status",
+          "health",
+          "description",
+          "createdAt",
+          "supportLevel",
+          "serviceCalendarName",
+          "summary",
+          "goLive",
+          "milestones",
+          "prerequisites",
+          "documents",
+          "contacts",
+          "contract",
+          "counts"
+        ]
+      },
       "CommentVersionPage": {
         "type": "object",
         "properties": {
@@ -45720,6 +46165,88 @@
           },
           "404": {
             "description": "Release not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/projects": {
+      "get": {
+        "operationId": "listPortalProjects",
+        "tags": [
+          "Portal projects"
+        ],
+        "summary": "List the customer organisation's projects",
+        "description": "Live, non-archived projects of the caller's organisation with the customer portal on, ordered by name, with action-required and outstanding request counts.",
+        "responses": {
+          "200": {
+            "description": "The organisation's projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalProjectList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Portal account unavailable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/projects/{key}": {
+      "get": {
+        "operationId": "getPortalProject",
+        "tags": [
+          "Portal projects"
+        ],
+        "summary": "Read one of the customer organisation's projects",
+        "description": "Project information, summary, milestones, the customer's blocking prerequisites, customer-visible documents, key contacts and the contract period with hours used and remaining. Another organisation's, archived or unknown key is 404 (CP-2).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalProjectDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Project not found",
             "content": {
               "text/plain": {
                 "schema": {

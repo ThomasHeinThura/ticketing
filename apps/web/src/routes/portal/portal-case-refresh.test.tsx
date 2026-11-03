@@ -18,6 +18,8 @@ const fake = vi.hoisted(() => ({
   getCases: vi.fn(),
   getApprovals: vi.fn(),
   decide: vi.fn(),
+  getProjects: vi.fn(),
+  getProjectDetail: vi.fn(),
 }));
 
 vi.mock("@/components/portal/portal-orientation", () => ({
@@ -26,6 +28,12 @@ vi.mock("@/components/portal/portal-orientation", () => ({
 vi.mock("@/fetchers/portal/cases", () => ({
   getPortalHome: fake.getHome,
   getPortalCases: fake.getCases,
+}));
+vi.mock("@/fetchers/portal/projects", async () => ({
+  ...(await vi.importActual<typeof import("@/fetchers/portal/projects")>(
+    "@/fetchers/portal/projects",
+  )),
+  getPortalProjects: fake.getProjects,
 }));
 vi.mock("@/fetchers/approval/portal-approvals", () => ({
   getPortalApprovals: fake.getApprovals,
@@ -64,6 +72,7 @@ vi.mock("react-i18next", async () => ({
   }),
 }));
 
+import { portalProjectKeys } from "@/fetchers/portal/projects";
 import { Route as ApprovalsRoute } from "./approvals";
 import { Route as DashboardRoute } from "./index";
 
@@ -118,6 +127,8 @@ beforeEach(() => {
     ],
   });
   fake.decide.mockReset().mockResolvedValue({});
+  fake.getProjects.mockReset().mockResolvedValue({ data: [] });
+  fake.getProjectDetail.mockReset().mockResolvedValue({ key: "HELP" });
 });
 afterEach(cleanup);
 
@@ -199,4 +210,37 @@ it("refetches cached figures for a dashboard that is not mounted (refetchType al
   expect(client.getQueryData(["portal", "customer-a", "home", null])).toEqual(
     homeAfter,
   );
+});
+
+it("refetches the per-project counts (list and detail) after an approval decision", async () => {
+  const client = appClient();
+  const dashboard = render(
+    <QueryClientProvider client={client}>
+      <Dashboard />
+    </QueryClientProvider>,
+  );
+  // The dashboard project cards read the shared projects list (`staleTime: 60_000`).
+  await waitFor(() => expect(fake.getProjects).toHaveBeenCalledTimes(1));
+  dashboard.unmount();
+  // A Project Details page visited earlier is cached but no longer mounted.
+  await client.fetchQuery({
+    queryKey: portalProjectKeys.detail("HELP"),
+    queryFn: fake.getProjectDetail,
+  });
+  expect(fake.getProjectDetail).toHaveBeenCalledTimes(1);
+
+  render(
+    <QueryClientProvider client={client}>
+      <Approvals />
+    </QueryClientProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "approvals.approve" }),
+  );
+  await waitFor(() => expect(fake.decide).toHaveBeenCalledTimes(1));
+  await screen.findByText("approvals.recorded");
+  // Without this the project cards, the Projects list and Project Details keep the pre-decision
+  // "action required" count for up to a minute while the KPI already shows the new figure.
+  await waitFor(() => expect(fake.getProjects).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(fake.getProjectDetail).toHaveBeenCalledTimes(2));
 });

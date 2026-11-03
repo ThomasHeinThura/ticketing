@@ -12,7 +12,10 @@ import {
   DropdownMenuTrigger,
 } from "@taskdesk/ui";
 import { ChevronDown, FolderKanban } from "lucide-react";
-import { getPortalProjects } from "@/fetchers/portal/projects";
+import {
+  getPortalProjects,
+  portalProjectKeys,
+} from "@/fetchers/portal/projects";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { parsePortalProjectSearch } from "@/lib/routes";
 
@@ -29,7 +32,7 @@ export default function PortalProjectSelector() {
   const search = useLocation({ select: (location) => location.search });
   const selected = parsePortalProjectSearch(search).project ?? ALL_PROJECTS;
   const projects = useQuery({
-    queryKey: ["portal", "projects", "selector"],
+    queryKey: portalProjectKeys.list(),
     queryFn: getPortalProjects,
     retry: false,
     staleTime: 60_000,

@@ -25,6 +25,9 @@ export const PORTAL_CLIENT_ROUTE_PATTERNS: readonly string[] = [
   "/releases",
   "/releases/$id",
   "/approvals",
+  // S4c: the organisation's projects and one project's details.
+  "/projects",
+  "/projects/$projectKey",
   // Redirects to /requests on the client; kept because customers bookmark it.
   "/portal/requests",
   // Redirects to /sign-in on the client; kept because customers already have the link.

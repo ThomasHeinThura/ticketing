@@ -8,6 +8,7 @@ import {
   getPortalHome,
   type PortalCaseQuery,
 } from "@/fetchers/portal/cases";
+import { portalProjectKeys } from "@/fetchers/portal/projects";
 
 /**
  * The dashboard figures and the case lists change whenever the customer or the support team acts
@@ -39,8 +40,9 @@ export function usePortalCases(
 
 /**
  * Called by every portal mutation that changes a case or an approval. `refetchType: "all"`
- * refetches every cached dashboard figure and case list now, mounted or not, so the next visit to
- * `/` or `/requests` paints current data instead of the figures from before the action.
+ * refetches every cached dashboard figure, case list and project count (the project cards, the
+ * Projects list, Project Details and the top-bar selector) now, mounted or not, so the next visit
+ * paints current data instead of the figures from before the action.
  */
 export function invalidatePortalCaseViews(
   queryClient: QueryClient,
@@ -53,6 +55,10 @@ export function invalidatePortalCaseViews(
     }),
     queryClient.invalidateQueries({
       queryKey: ["portal", portalUserId, "cases"],
+      refetchType: "all",
+    }),
+    queryClient.invalidateQueries({
+      queryKey: portalProjectKeys.all,
       refetchType: "all",
     }),
   ]);
