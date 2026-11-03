@@ -51,6 +51,7 @@ import {
   capabilityCredential,
   requireWorkspaceCapability,
 } from "../utils/require-workspace-capability";
+import { ServerTiming } from "../utils/server-timing";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import type { ActivityActorType } from "./activity";
@@ -1719,12 +1720,15 @@ const workItem = apiRouter<
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
     const query = c.req.valid("query");
+    const timing = new ServerTiming();
     const result = await listWorkItems(
       projectId,
       workspaceId,
       c.get("userId"),
       query,
+      timing,
     );
+    c.header("Server-Timing", timing.header());
     return c.json(result, 200);
   })
   .openapi(searchWorkItemsRoute, async (c) => {
