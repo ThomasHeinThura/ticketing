@@ -3495,6 +3495,20 @@ Thomas approved the execution plan and the specific canonical ownership/feature-
 
 This updates the earlier P5 compatibility choice only for the approved authorization and feature-gate behavior; it does not authorize broader read access, new owner predicates, a new security model, threshold/calibration changes, main merges or public deployment. Those remain separate approval boundaries.
 
+## Portal cases owner decisions — 31 October 2026
+
+Thomas approved D1–D9 for the customer portal redesign on 31 October 2026. D4–D6 change or read retained portal contracts and are recorded here; the contract text is in [feature-contracts-p3.md](feature-contracts-p3.md) (`CP-4`, `CP-6`, `CP-16` and the case list section of the portal API).
+
+| Decision | Governs | Outcome |
+| --- | --- | --- |
+| D4 | `CP-6`, `SLA-21` | The portal home shows an average first-response time: requests first answered in the last 30 days, only in projects with `feature.sla` on, hidden when there is none. |
+| D5 | `CP-4` | A portal case row names a same-organisation customer colleague who raised it ("Created by"); the caller's own case shows as "You". The assignee stays hidden. |
+| D6 | `CP-16`, `own_request` | Requests raised by staff for a customer (work items without the requester's submission) appear in the portal case list and home counts as `direct` rows, under the same requester, participant and organisation-visibility rule. |
+
+**Action required** follows the approved plan: readable cases that need more information plus approvals addressed to the caller. The figure equals the `scope=all&status=need_more_info` list the card opens.
+
+**Known gap:** a `direct` row has no portal detail page yet. It is listed and counted as action required when it waits on the customer, but it cannot be opened or answered in the portal.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.

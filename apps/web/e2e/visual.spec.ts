@@ -6012,6 +6012,50 @@ async function installAuthenticatedFixture(page: Page) {
               },
             ],
       };
+    } else if (path.endsWith("/api/portal/home")) {
+      body = {
+        actionRequired: { total: 2, cases: 1, approvals: 1 },
+        outstanding: 3,
+        closedLast30Days: 5,
+        averageFirstResponse: { seconds: 5400, sampleSize: 4 },
+      };
+    } else if (path.endsWith("/api/portal/requests")) {
+      const visualCase = {
+        source: "submission",
+        requestTypeName: "Access request",
+        createdAt: "2026-09-15T00:00:00.000Z",
+        updatedAt: "2026-09-16T09:30:00.000Z",
+        project: { key: "HELP", name: "Help desk" },
+        isRequester: true,
+        customerVisibility: "private",
+        sla: null,
+      };
+      body = {
+        cases: [
+          {
+            ...visualCase,
+            ref: "SUB-7",
+            title: "Access to the support workspace",
+            priority: "high",
+            customerStatus: "need_more_info",
+            createdBy: { name: null, isYou: true },
+          },
+          {
+            ...visualCase,
+            ref: "HELP-12",
+            source: "direct",
+            title: "Renew the TLS certificate",
+            requestTypeName: "Task",
+            priority: "medium",
+            customerStatus: "in_progress",
+            createdBy: { name: "Dana Customer", isYou: false },
+            isRequester: false,
+            customerVisibility: "organisation",
+          },
+        ],
+        page: { hasMore: false, nextCursor: null },
+        meta: { total: 2 },
+      };
     } else if (path.endsWith("/api/portal/submissions")) {
       body = {
         submissions: [
@@ -7569,8 +7613,11 @@ test("portal home screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: "SUB-7", exact: true }),
   ).toBeVisible();
+  await expect(page.getByText("Average first response")).toBeVisible();
   // The lazy shell is ready: navigation and the top bar have both painted.
-  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Dashboard", exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Get help", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("portal-home.png", {
     animations: "disabled",
@@ -7586,7 +7633,7 @@ test("portal requests screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("http://127.0.0.1:4179/requests");
   await expect(
-    page.getByRole("heading", { name: "My Requests", exact: true }),
+    page.getByRole("heading", { name: "Support Requests", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "SUB-7", exact: true }),

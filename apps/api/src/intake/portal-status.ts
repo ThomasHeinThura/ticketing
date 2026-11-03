@@ -19,6 +19,11 @@ export type PortalStatusWorkItem = {
   resolvedAt: Date | null;
   /** `state_template.group`: backlog | unstarted | started | completed | cancelled. */
   stateGroup: string;
+  /**
+   * An open `sla_pause` with reason `waiting_customer` (a workflow `pause_sla` effect): the team
+   * is waiting on the customer, so an open item shows `need_more_info`.
+   */
+  waitingOnCustomer?: boolean;
 };
 
 export function portalCustomerStatus(
@@ -40,6 +45,7 @@ export function portalCustomerStatus(
       if (workItem.stateGroup === "cancelled") return "closed";
       if (workItem.resolvedAt || workItem.stateGroup === "completed")
         return "resolved";
+      if (workItem.waitingOnCustomer) return "need_more_info";
       return "in_progress";
     }
     default:
