@@ -1,5 +1,3 @@
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
   installPerformanceApiFixture,
@@ -11,8 +9,8 @@ import { installProjectOverviewFixture } from "./helpers/project-overview-fixtur
 
 // Audit A-22 (portal KB at tablet), A-23 (backlog header at phone) and A-24 (portal orientation
 // Alert at phone): each screen fits its viewport with nothing cut off and no sideways scroll, and
-// the desktop layout is unchanged. Screenshots are evidence files, not G8 baselines; set
-// RESPONSIVE_SHOTS_DIR to keep them outside the test output.
+// the desktop layout is unchanged. Screenshots are evidence files in the test output, not G8
+// baselines.
 
 const THEMES = ["light", "dark"] as const;
 type Theme = (typeof THEMES)[number];
@@ -21,14 +19,7 @@ const TABLET = { width: 768, height: 1024 };
 const DESKTOP = { width: 1280, height: 800 };
 
 async function screenshot(page: Page, name: string) {
-  const dir = process.env.RESPONSIVE_SHOTS_DIR;
-  const file = dir
-    ? path.join(
-        dir,
-        `${process.env.RESPONSIVE_SHOTS_PREFIX ?? "shot"}-${name}.png`,
-      )
-    : test.info().outputPath(`${name}.png`);
-  if (dir) mkdirSync(dir, { recursive: true });
+  const file = test.info().outputPath(`${name}.png`);
   await page.screenshot({ path: file, fullPage: true, animations: "disabled" });
 }
 
