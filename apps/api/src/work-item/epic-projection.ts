@@ -128,19 +128,21 @@ export async function resolveWorkItemEpicProjections(
       v.available AS epic_available
     FROM requested r
     JOIN availability v ON v.item_id = r.item_id
-    LEFT JOIN LATERAL (
-      SELECT a.node_id AS id, a.key, a.title
+    -- The nearest live epic per item, chosen once for the whole page (an item's ancestry
+    -- is one chain, one node per depth). A per-row LATERAL rescanned the whole ancestry
+    -- CTE for every row, which grew quadratically with the page size.
+    LEFT JOIN (
+      SELECT DISTINCT ON (a.item_id)
+        a.item_id, a.node_id AS id, a.key, a.title
       FROM ancestry a
       JOIN work_item_type wt
         ON wt.id = a.type_id
        AND wt.workspace_id = a.workspace_id
-      WHERE a.item_id = r.item_id
-        AND wt.is_epic = true
+      WHERE wt.is_epic = true
         AND a.archived_at IS NULL
         AND a.deleted_at IS NULL
-      ORDER BY a.depth ASC
-      LIMIT 1
-    ) epic ON true
+      ORDER BY a.item_id, a.depth ASC
+    ) epic ON epic.item_id = r.item_id
   `);
   const rows = ((result as unknown as { rows?: unknown[] }).rows ??
     (result as unknown as unknown[])) as RawProjection[];
