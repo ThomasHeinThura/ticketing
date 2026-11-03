@@ -14,6 +14,7 @@ import {
 } from "@taskdesk/ui";
 import { PortalOrientation } from "@/components/portal/portal-orientation";
 import { PortalRequestState } from "@/components/portal/portal-request-state";
+import { PortalProjectsCards } from "@/components/portal/projects/portal-projects-cards";
 import { getPortalSubmissions } from "@/fetchers/intake";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/")({
 function PortalHome() {
   const { t } = usePortalTranslation("portal");
   const { portalUserId } = Route.useRouteContext();
+  const { project } = Route.useSearch();
   const query = useQuery({
     queryKey: ["portal", portalUserId, "recent-submissions"],
     queryFn: () => getPortalSubmissions({ limit: "5" }),
@@ -48,6 +50,7 @@ function PortalHome() {
         </Button>
       </header>
       <PortalOrientation portalUserId={portalUserId} />
+      <PortalProjectsCards projectKey={project} />
       <section
         className="flex flex-col gap-3"
         aria-labelledby="recent-requests"

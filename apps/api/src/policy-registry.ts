@@ -70,6 +70,7 @@ import { oauthPolicies } from "./oauth/policy";
 import { pagesPolicies } from "./pages/policy";
 import { pendingActionPolicies } from "./pending-action/policy";
 import { projectPolicies } from "./project/policy";
+import { portalProjectPolicies } from "./project/portal-policy";
 import { reportPolicies } from "./report/policy";
 import { searchPolicies } from "./search/policy";
 import { securityHeaderPolicies } from "./security-headers/policy";
@@ -357,6 +358,10 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/instance/policy.ts", policies: instancePolicies },
   { name: "apps/api/src/imports/policy.ts", policies: importPolicies },
   { name: "apps/api/src/project/policy.ts", policies: projectPolicies },
+  {
+    name: "apps/api/src/project/portal-policy.ts",
+    policies: portalProjectPolicies,
+  },
   { name: "apps/api/src/workspace/policy.ts", policies: workspacePolicies },
   { name: "apps/api/src/invitation/policy.ts", policies: invitationPolicies },
   { name: "apps/api/src/work-item/policy.ts", policies: workItemPolicies },

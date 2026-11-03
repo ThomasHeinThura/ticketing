@@ -48,7 +48,10 @@ vi.mock("@/fetchers/kb/portal", () => ({
   getPortalKb: vi.fn().mockResolvedValue({ data: [], total: 1 }),
 }));
 vi.mock("@/fetchers/portal/releases", () => ({ getPortalReleases }));
-vi.mock("@/fetchers/portal/projects", () => ({ getPortalProjects }));
+vi.mock("@/fetchers/portal/projects", () => ({
+  getPortalProjects,
+  portalProjectKeys: { list: () => ["portal", "projects", "list"] },
+}));
 vi.mock("@/fetchers/portal-notifications", () => ({
   getPortalNotifications: vi.fn().mockResolvedValue({
     data: [],
@@ -128,6 +131,7 @@ describe("portal shell", () => {
       ["navigation.approvals", "/approvals"],
       ["navigation.knowledgeBase", "/kb"],
       ["navigation.updates", "/notifications"],
+      ["projects.navigation", "/projects"],
       ["navigation.announcements", "/releases"],
       ["navigation.settings", "/account"],
     ])
@@ -191,13 +195,32 @@ describe("portal shell", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps the project selector off until its API ships", async () => {
-    renderShell();
+  it("shows the project selector only when the organisation has two or more projects", async () => {
+    const project = (key: string, name: string) => ({
+      key,
+      name,
+      kind: "project",
+      status: "active",
+      health: null,
+      counts: { actionRequired: 0, outstanding: 0 },
+    });
+    getPortalProjects.mockResolvedValue({ data: [project("CON", "Contoso")] });
+    const single = renderShell();
     await screen.findByRole("link", { name: "shell.getHelp" });
-    expect(getPortalProjects).not.toHaveBeenCalled();
+    await waitFor(() => expect(getPortalProjects).toHaveBeenCalled());
     expect(
       screen.queryByRole("button", { name: "shell.projectSelector.label" }),
     ).toBeNull();
+    single.unmount();
+    getPortalProjects.mockResolvedValue({
+      data: [project("CON", "Contoso"), project("OPS", "Operations")],
+    });
+    renderShell();
+    expect(
+      await screen.findByRole("button", {
+        name: "shell.projectSelector.label",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("shows the customer in the avatar menu and reports a refused sign-out", async () => {

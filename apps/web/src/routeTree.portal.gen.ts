@@ -15,6 +15,7 @@ import { Route as ApprovalsRouteImport } from './routes/portal/approvals'
 import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
 import { Route as KbRouteImport } from './routes/portal/kb'
 import { Route as NotificationsRouteImport } from './routes/portal/notifications'
+import { Route as ProjectsRouteImport } from './routes/portal/projects'
 import { Route as ReleasesRouteImport } from './routes/portal/releases'
 import { Route as RequestsRouteImport } from './routes/portal/requests'
 import { Route as SignInRouteImport } from './routes/portal/sign-in'
@@ -22,6 +23,7 @@ import { Route as InviteIdRouteImport } from './routes/portal/invite/$id'
 import { Route as KbIdRouteImport } from './routes/portal/kb_.$id'
 import { Route as PortalRequestsRouteImport } from './routes/portal/portal/requests'
 import { Route as PortalSignInRouteImport } from './routes/portal/portal/sign-in'
+import { Route as ProjectsProjectKeyRouteImport } from './routes/portal/projects_.$projectKey'
 import { Route as ReleasesIdRouteImport } from './routes/portal/releases_.$id'
 import { Route as SubmissionsRefRouteImport } from './routes/portal/submissions/$ref'
 
@@ -53,6 +55,11 @@ const KbRoute = KbRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReleasesRoute = ReleasesRouteImport.update({
@@ -90,6 +97,11 @@ const PortalSignInRoute = PortalSignInRouteImport.update({
   path: '/portal/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsProjectKeyRoute = ProjectsProjectKeyRouteImport.update({
+  id: '/projects_/$projectKey',
+  path: '/projects/$projectKey',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReleasesIdRoute = ReleasesIdRouteImport.update({
   id: '/releases_/$id',
   path: '/releases/$id',
@@ -108,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
   '/notifications': typeof NotificationsRoute
+  '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
@@ -115,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/kb/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
+  '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/releases/$id': typeof ReleasesIdRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
@@ -125,6 +139,7 @@ export interface FileRoutesByTo {
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
   '/notifications': typeof NotificationsRoute
+  '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
@@ -132,6 +147,7 @@ export interface FileRoutesByTo {
   '/kb/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
+  '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/releases/$id': typeof ReleasesIdRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
@@ -143,6 +159,7 @@ export interface FileRoutesById {
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
   '/notifications': typeof NotificationsRoute
+  '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
@@ -150,6 +167,7 @@ export interface FileRoutesById {
   '/kb_/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
   '/portal/sign-in': typeof PortalSignInRoute
+  '/projects_/$projectKey': typeof ProjectsProjectKeyRoute
   '/releases_/$id': typeof ReleasesIdRoute
   '/submissions/$ref': typeof SubmissionsRefRoute
 }
@@ -162,6 +180,7 @@ export interface FileRouteTypes {
     | '/catalogue'
     | '/kb'
     | '/notifications'
+    | '/projects'
     | '/releases'
     | '/requests'
     | '/sign-in'
@@ -169,6 +188,7 @@ export interface FileRouteTypes {
     | '/kb/$id'
     | '/portal/requests'
     | '/portal/sign-in'
+    | '/projects/$projectKey'
     | '/releases/$id'
     | '/submissions/$ref'
   fileRoutesByTo: FileRoutesByTo
@@ -179,6 +199,7 @@ export interface FileRouteTypes {
     | '/catalogue'
     | '/kb'
     | '/notifications'
+    | '/projects'
     | '/releases'
     | '/requests'
     | '/sign-in'
@@ -186,6 +207,7 @@ export interface FileRouteTypes {
     | '/kb/$id'
     | '/portal/requests'
     | '/portal/sign-in'
+    | '/projects/$projectKey'
     | '/releases/$id'
     | '/submissions/$ref'
   id:
@@ -196,6 +218,7 @@ export interface FileRouteTypes {
     | '/catalogue'
     | '/kb'
     | '/notifications'
+    | '/projects'
     | '/releases'
     | '/requests'
     | '/sign-in'
@@ -203,6 +226,7 @@ export interface FileRouteTypes {
     | '/kb_/$id'
     | '/portal/requests'
     | '/portal/sign-in'
+    | '/projects_/$projectKey'
     | '/releases_/$id'
     | '/submissions/$ref'
   fileRoutesById: FileRoutesById
@@ -214,6 +238,7 @@ export interface RootRouteChildren {
   CatalogueRoute: typeof CatalogueRoute
   KbRoute: typeof KbRoute
   NotificationsRoute: typeof NotificationsRoute
+  ProjectsRoute: typeof ProjectsRoute
   ReleasesRoute: typeof ReleasesRoute
   RequestsRoute: typeof RequestsRoute
   SignInRoute: typeof SignInRoute
@@ -221,6 +246,7 @@ export interface RootRouteChildren {
   KbIdRoute: typeof KbIdRoute
   PortalRequestsRoute: typeof PortalRequestsRoute
   PortalSignInRoute: typeof PortalSignInRoute
+  ProjectsProjectKeyRoute: typeof ProjectsProjectKeyRoute
   ReleasesIdRoute: typeof ReleasesIdRoute
   SubmissionsRefRoute: typeof SubmissionsRefRoute
 }
@@ -267,6 +293,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/releases': {
@@ -318,6 +351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalSignInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects_/$projectKey': {
+      id: '/projects_/$projectKey'
+      path: '/projects/$projectKey'
+      fullPath: '/projects/$projectKey'
+      preLoaderRoute: typeof ProjectsProjectKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/releases_/$id': {
       id: '/releases_/$id'
       path: '/releases/$id'
@@ -342,6 +382,7 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogueRoute: CatalogueRoute,
   KbRoute: KbRoute,
   NotificationsRoute: NotificationsRoute,
+  ProjectsRoute: ProjectsRoute,
   ReleasesRoute: ReleasesRoute,
   RequestsRoute: RequestsRoute,
   SignInRoute: SignInRoute,
@@ -349,6 +390,7 @@ const rootRouteChildren: RootRouteChildren = {
   KbIdRoute: KbIdRoute,
   PortalRequestsRoute: PortalRequestsRoute,
   PortalSignInRoute: PortalSignInRoute,
+  ProjectsProjectKeyRoute: ProjectsProjectKeyRoute,
   ReleasesIdRoute: ReleasesIdRoute,
   SubmissionsRefRoute: SubmissionsRefRoute,
 }

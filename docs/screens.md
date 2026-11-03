@@ -128,8 +128,8 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Customer portal — request catalogue and selected form | `/catalogue?q=no-match&key=access` | route | P3 | 🟡 |
 | Customer portal — submission detail | `/submissions/{ref}` | route | P3 | 🟡 |
 | Approvals | `/approvals` | route | P3 | ⬜ |
-| Projects list | `/projects` | route | P3 | ⬜ |
-| Project detail | `/projects/{key}` | route | P3 | ⬜ |
+| Projects list | `/projects` | route | P3 | 🟡 |
+| Project detail | `/projects/{key}` | route | P3 | 🟡 |
 | Knowledge base | `/kb` | route | P5 | 🟡 |
 | Article | `/kb/{id}` | route | P5 | 🟡 |
 | Satisfaction survey | `/submissions/{ref}` | route | P3 | ⬜ |

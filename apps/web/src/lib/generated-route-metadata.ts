@@ -163,6 +163,8 @@ export const generatedRouteMetadata = {
     "/notifications",
     "/portal/requests",
     "/portal/sign-in",
+    "/projects",
+    "/projects/$projectKey",
     "/releases",
     "/releases/$id",
     "/requests",

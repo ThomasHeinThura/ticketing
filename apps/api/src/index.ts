@@ -187,6 +187,7 @@ import { policyRegistry } from "./policy-registry";
 import { isPortalClientRoute } from "./portal-client-routes";
 import project, { projectStates } from "./project";
 import { projectOverviewApi as projectOverview } from "./project/overview";
+import { portalProjectRouter } from "./project/portal-projects";
 import { projectSettingsInheritanceApi as projectSettingsInheritance } from "./project/settings-inheritance";
 import report from "./report";
 import {
@@ -958,6 +959,7 @@ const PORTAL_FEATURE_DATA_PREFIXES = [
   "/api/portal/approvals",
   "/api/portal/catalogue",
   "/api/portal/kb",
+  "/api/portal/projects",
   "/api/portal/releases",
   "/api/portal/requests",
   "/api/portal/submissions",
@@ -2060,6 +2062,7 @@ export function createApp(
   // P5 service catalogue, changes, freezes and releases: mounted at the root like work items.
   api.route("/", serviceManagement);
   const portalReleaseApi = api.route("/portal", portalReleaseRouter);
+  const portalProjectApi = api.route("/portal", portalProjectRouter);
   const workItemCommentVersionsApi = api.route("/", workItemCommentVersions);
   const approvalApi = api.route("/", approval);
   const combinedWorkItemApi = api.route("/", combinedWorkItemRouter);
@@ -2540,6 +2543,7 @@ export function createApp(
     teamApi,
     kbApi,
     portalReleaseApi,
+    portalProjectApi,
     reportApi,
     scimProtocolApi,
     invitationApi,
@@ -3086,6 +3090,7 @@ const {
   teamApi,
   kbApi,
   portalReleaseApi,
+  portalProjectApi,
   reportApi,
   scimProtocolApi,
   invitationApi,
@@ -3253,6 +3258,7 @@ export type AppType =
   | typeof teamApi
   | typeof kbApi
   | typeof portalReleaseApi
+  | typeof portalProjectApi
   | typeof reportApi
   | typeof scimProtocolApi
   | typeof workflowApi
