@@ -29,8 +29,13 @@ describe("ProjectLayoutControlsFallback", () => {
     const fallback = screen.getByRole("status", {
       name: `${translate("common:empty.loading")} ${translate("navigation:projectViews.selectProject")}: ENG. Overview. Backlog. ${translate("navigation:projectViews.workItems")}. Calendar. Timeline`,
     });
-    expect(fallback).toHaveClass("min-w-0", "flex-1");
-    expect(fallback.querySelector(".overflow-hidden")).toBeInTheDocument();
+    // Same geometry as the loaded controls: the row keeps its minimum size and the strip
+    // slot never drops below min-w-44.
+    expect(fallback).toHaveClass("flex-1");
+    expect(fallback).not.toHaveClass("min-w-0");
+    expect(
+      fallback.querySelector(".overflow-hidden")?.parentElement,
+    ).toHaveClass("min-w-44", "flex-1", "contain-inline-size");
     expect(screen.getByText("ENG")).toBeInTheDocument();
   });
 

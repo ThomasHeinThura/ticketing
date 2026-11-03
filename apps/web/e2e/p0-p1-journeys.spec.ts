@@ -88,6 +88,79 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
     await expect(page).toHaveURL(/\/dashboard\/workspace\/[^/]+\/search/);
   });
 
+  // U-14: on a phone the Inbox filters scroll instead of being cut off, and the project list
+  // keeps Kaneo's header (breadcrumb + Create project) with Recently deleted in the page.
+  test("Journey 1b: phone Inbox filters and project list header stay usable", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/agent/inbox?filter=assignments");
+    const assignments = page.getByRole("tab", { name: "Assignments" });
+    await expect(assignments).toHaveAttribute("aria-selected", "true");
+    // Visible on screen and clear of the strip's 24 px edge fade (the fade only covers an edge
+    // that still has content to scroll to).
+    const inViewport = (name: string | RegExp) =>
+      page.getByRole("tab", { name }).evaluate((tab) => {
+        const viewport = tab.closest<HTMLElement>(
+          '[data-slot="scroll-area-viewport"]',
+        );
+        if (!viewport) return false;
+        const box = tab.getBoundingClientRect();
+        const frame = viewport.getBoundingClientRect();
+        const maxScroll = viewport.scrollWidth - viewport.clientWidth;
+        return (
+          box.left >= 0 &&
+          box.right <= innerWidth &&
+          box.left - frame.left >= Math.min(24, viewport.scrollLeft) - 0.5 &&
+          frame.right - box.right >=
+            Math.min(24, maxScroll - viewport.scrollLeft) - 0.5
+        );
+      });
+    // The overflowing filter list fades the edge that still has filters past it.
+    expect(
+      await page
+        .getByTestId("inbox-filter-scroll")
+        .locator('[data-slot="scroll-area-viewport"]')
+        .evaluate((element) => getComputedStyle(element).maskImage),
+    ).not.toBe("none");
+    await expect.poll(() => inViewport("Assignments")).toBe(true);
+    await page.getByRole("tab", { name: "All" }).focus();
+    await expect.poll(() => inViewport("All")).toBe(true);
+    for (const name of [/^Unread/, "Mentions", "Assignments"]) {
+      await page.keyboard.press("ArrowRight");
+      await expect(page.getByRole("tab", { name })).toBeFocused();
+      await expect.poll(() => inViewport(name)).toBe(true);
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+
+    await page.goto("/agent");
+    await expect(page.getByTestId("g13-projects-content")).toBeVisible();
+    const crumbs = page.locator("header nav span.truncate");
+    await expect(crumbs.last()).toHaveText("Projects");
+    // Like Kaneo, a long workspace name may still truncate both crumbs a little, but each
+    // keeps a readable width (before this change both fell to a single letter).
+    for (const width of await crumbs.evaluateAll((labels) =>
+      labels.map((label) => label.clientWidth),
+    ))
+      expect(width).toBeGreaterThanOrEqual(32);
+    await expect(
+      page.locator("header").getByRole("button", { name: "Create Project" }),
+    ).toBeVisible();
+    const recentlyDeleted = page.getByRole("button", {
+      name: "Recently deleted",
+    });
+    await expect(
+      page.locator("header").getByRole("button", { name: "Recently deleted" }),
+    ).toBeHidden();
+    await expect(recentlyDeleted.filter({ visible: true })).toHaveCount(1);
+    await recentlyDeleted.filter({ visible: true }).click();
+    await expect(page).toHaveURL(/recovery=deleted/);
+  });
+
   test("Journey 2: Project Overview (/agent/projects/$projectKey) and Work Layout Switcher (board, list, table)", async ({
     page,
   }) => {

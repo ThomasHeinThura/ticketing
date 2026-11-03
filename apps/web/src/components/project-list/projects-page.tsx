@@ -475,9 +475,12 @@ export default function ProjectsPage({
           title={t("workspace:projects.pageTitle")}
           headerActions={
             <div className="flex items-center gap-2">
+              {/* Kaneo's header holds only Create project; on phones the breadcrumb keeps that
+                  room and Recently deleted moves into the page. */}
               <Button
                 variant="outline"
                 size="xs"
+                className="hidden sm:inline-flex"
                 onClick={() => onRecoveryModeChange?.(true)}
               >
                 {t("workspace:projects.showDeleted")}
@@ -515,6 +518,14 @@ export default function ProjectsPage({
                   {t("workspace:projects.createProject")}
                 </Button>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="sm:hidden"
+                onClick={() => onRecoveryModeChange?.(true)}
+              >
+                {t("workspace:projects.showDeleted")}
+              </Button>
             </EmptyContent>
           </Empty>
           <PageTitle title={t("workspace:projects.pageTitle")} />
@@ -537,9 +548,12 @@ export default function ProjectsPage({
             <div className="hidden lg:flex">
               {renderKindSelect("project-kind-filter", "sm:min-h-6 sm:text-xs")}
             </div>
+            {/* Kaneo's header holds only Create project; on phones the breadcrumb keeps that
+                room and Recently deleted moves to the row below with the kind filter. */}
             <Button
               variant="outline"
               size="xs"
+              className="hidden sm:inline-flex"
               onClick={() => onRecoveryModeChange?.(true)}
             >
               {t("workspace:projects.showDeleted")}
@@ -558,8 +572,16 @@ export default function ProjectsPage({
           </div>
         }
       >
-        <div className="flex px-4 py-2 lg:hidden">
+        <div className="flex items-center gap-2 px-4 py-2 lg:hidden">
           {renderKindSelect("project-kind-filter-mobile", "w-full sm:w-auto")}
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 sm:hidden"
+            onClick={() => onRecoveryModeChange?.(true)}
+          >
+            {t("workspace:projects.showDeleted")}
+          </Button>
         </div>
         {visibleProjects?.length === 0 ? (
           <Empty className="min-h-[60vh]" data-testid="projects-kind-empty">

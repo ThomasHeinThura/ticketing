@@ -266,6 +266,234 @@ for (const [width, height, colorScheme] of [
     expect(await seriousOrCriticalViolations(page)).toEqual([]);
   });
 
+// U-14: the project crumb keeps its label and the view strip (all 11 views on) keeps the active
+// or focused tab clear of its 24 px edge fade, on load and on every Tab press, at desktop and
+// tablet widths. The fade only covers an edge that still has content to scroll to, so the
+// required inset on each side is the smaller of 24 px and the distance left to scroll that way.
+const STRIP_FADE_PX = 24;
+
+async function mountAllProjectViews(page: Page) {
+  await mountProjectAdminApp(page);
+  await page.route("**/api/features/resolved**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: {
+        "Access-Control-Allow-Origin": "http://127.0.0.1:4178",
+        "Access-Control-Allow-Credentials": "true",
+      },
+      body: JSON.stringify({
+        features: [
+          "feature.calendar",
+          "feature.timeline",
+          "feature.cycles",
+          "feature.modules",
+          "feature.pages",
+        ].map((key) => ({
+          key,
+          enabled: true,
+          source: "project",
+          locked: false,
+        })),
+      }),
+    }),
+  );
+  await installProjectOverviewFixture(page, PROJECT_ID, { project: PROJECT });
+}
+
+/** How far `selector`'s element sits inside the strip, against the fade it must clear. */
+function stripInset(page: Page, selector: string) {
+  return page.evaluate(
+    ([selector, fade]) => {
+      const tab = document.querySelector<HTMLElement>(selector);
+      const viewport = tab?.closest<HTMLElement>(
+        '[data-slot="scroll-area-viewport"]',
+      );
+      if (!tab || !viewport) return null;
+      const tabBox = tab.getBoundingClientRect();
+      const viewportBox = viewport.getBoundingClientRect();
+      const maxScroll = viewport.scrollWidth - viewport.clientWidth;
+      const left = tabBox.left - viewportBox.left;
+      const right = viewportBox.right - tabBox.right;
+      return {
+        label: tab.textContent,
+        clearOfFade:
+          left >= Math.min(fade, viewport.scrollLeft) - 0.5 &&
+          right >= Math.min(fade, maxScroll - viewport.scrollLeft) - 0.5,
+        left: Math.round(left),
+        right: Math.round(right),
+      };
+    },
+    [selector, STRIP_FADE_PX] as const,
+  );
+}
+
+/** Boxes of the project header's crumbs, view strip, left row and actions. */
+function headerGeometry(page: Page) {
+  return page.evaluate(() => {
+    const box = (element: Element | null | undefined) => {
+      if (!element) throw new Error("header element missing");
+      const { left, right, width } = element.getBoundingClientRect();
+      return { left, right, width };
+    };
+    const header = document.querySelector("header");
+    const strip = header?.querySelector('[aria-label="Work items"]');
+    let row = strip as HTMLElement | null | undefined;
+    while (
+      row?.parentElement &&
+      !row.parentElement.classList.contains("justify-between")
+    )
+      row = row.parentElement;
+    return {
+      workspace: box(
+        header?.querySelector('button[aria-label^="Overview: " i]'),
+      ),
+      project: box(
+        header?.querySelector('button[aria-label^="Select project: " i]'),
+      ),
+      strip: box(strip),
+      leftRow: box(row),
+      actions: box(row?.nextElementSibling),
+    };
+  });
+}
+
+for (const [name, path, activeLabel] of [
+  ["board", "/agent/projects/WLP/work?layout=board", "Work items"],
+  ["prerequisites", "/agent/projects/WLP/prerequisites", "Prerequisites"],
+  ["documents", "/agent/projects/WLP/documents", "Documents"],
+  // Calendar also puts its search in the header's right-hand actions.
+  ["calendar", `${PROJECT_VIEW}/calendar`, "Calendar"],
+] as const)
+  for (const width of [1280, 1024, 960, 900, 800, 768])
+    test(`project view strip keeps the ${name} tab clear of its fade at ${width}px @a11y`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await mountAllProjectViews(page);
+      await page.goto(path);
+      const header = page.locator("header");
+      const strip = header.locator('[aria-label="Work items"]');
+      const viewport = strip.locator('[data-slot="scroll-area-viewport"]');
+      const tabs = viewport.getByRole("button");
+      await expect(tabs).toHaveCount(11);
+      await expect(
+        viewport.getByRole("button", { name: activeLabel, exact: true }),
+      ).toHaveAttribute("aria-current", "page");
+
+      // The project crumb shows its whole label, not just the chevron.
+      const crumb = header.getByRole("button", {
+        name: "Select project: Performance fixture",
+      });
+      await expect(crumb).toContainText("Performance fixture");
+      expect(
+        await crumb
+          .locator("span")
+          .first()
+          .evaluate(
+            (label) =>
+              label.clientWidth > 0 && label.scrollWidth <= label.clientWidth,
+          ),
+      ).toBe(true);
+
+      // On load the active view is scrolled clear of the fade.
+      await expect
+        .poll(() => stripInset(page, 'header [aria-current="page"]'))
+        .toMatchObject({ label: activeLabel, clearOfFade: true });
+      // The overflowing strip fades its edges.
+      expect(
+        await viewport.evaluate(
+          (element) => getComputedStyle(element).maskImage,
+        ),
+      ).not.toBe("none");
+      // Nothing in the header overflows: the strip stays inside the left row, the row ends
+      // before the actions, and both crumbs keep their own room (no overlap, and the
+      // workspace crumb stays a 24 px target).
+      const geometry = await headerGeometry(page);
+      expect(geometry.strip.right).toBeLessThanOrEqual(
+        geometry.leftRow.right + 0.5,
+      );
+      expect(geometry.leftRow.right).toBeLessThanOrEqual(
+        geometry.actions.left + 0.5,
+      );
+      expect(geometry.workspace.right).toBeLessThanOrEqual(
+        geometry.project.left + 0.5,
+      );
+      expect(geometry.workspace.width).toBeGreaterThanOrEqual(24);
+
+      // The strip's scroll frame is a Tab stop with a ring the fade's mask cannot clip.
+      await crumb.focus();
+      await page.keyboard.press("Tab");
+      await expect(viewport).toBeFocused();
+      expect(
+        await viewport.evaluate((element) => element.matches(":focus-visible")),
+      ).toBe(true);
+      expect(
+        await strip.evaluate((element) => getComputedStyle(element).boxShadow),
+      ).not.toBe("none");
+
+      // Every tab is clear of the fade as keyboard focus reaches it.
+      for (let index = 0; index < 11; index += 1) {
+        await page.keyboard.press("Tab");
+        await expect(tabs.nth(index)).toBeFocused();
+        await expect
+          .poll(() => stripInset(page, "header :focus"))
+          .toMatchObject({ clearOfFade: true });
+      }
+
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    });
+
+// From md to below lg the Calendar search collapses to an icon button so the header fits;
+// Cmd/Ctrl+F and the button open the same field, and lg and up keep the inline field.
+for (const width of [768, 900, 1024])
+  test(`calendar header search fits and stays reachable at ${width}px @a11y`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await mountAllProjectViews(page);
+    await page.goto(`${PROJECT_VIEW}/calendar`);
+    const header = page.locator("header");
+    await expect(header.locator('[aria-current="page"]')).toHaveText(
+      "Calendar",
+    );
+    const trigger = header.getByRole("button", { name: "Search tickets..." });
+    const field = page.getByRole("searchbox", { name: "Search tickets..." });
+
+    if (width >= 1024) {
+      await expect(trigger).toBeHidden();
+      await expect(field).toBeVisible();
+      await page.keyboard.press("ControlOrMeta+f");
+      await expect(field).toBeFocused();
+      return;
+    }
+
+    await expect(trigger).toBeVisible();
+    await expect(field).toBeHidden();
+    await page.keyboard.press("ControlOrMeta+f");
+    const popoverField = page
+      .locator('[data-slot="popover-popup"]')
+      .getByRole("searchbox", { name: "Search tickets..." });
+    await expect(popoverField).toBeFocused();
+    await popoverField.fill("fixture");
+    await expect(page).toHaveURL(/[?&]q=fixture/);
+    await page.keyboard.press("Escape");
+    await expect(popoverField).toBeHidden();
+    await expect(trigger).toBeFocused();
+    await expect(
+      trigger.getByTestId("project-task-search-active"),
+    ).toBeAttached();
+
+    await page.keyboard.press("Enter");
+    await expect(popoverField).toBeFocused();
+    await expect(popoverField).toHaveValue("fixture");
+    expect(await seriousOrCriticalViolations(page)).toEqual([]);
+  });
+
 test("mobile project navigation retains keyboard calendar and Timeline (Gantt) journeys @a11y", async ({
   page,
 }) => {

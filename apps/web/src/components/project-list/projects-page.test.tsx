@@ -178,7 +178,26 @@ describe("ProjectsPage recovery mode", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Recently deleted" }));
+    // U-14: the header offers it from sm up; on phones it sits in the page (here the empty
+    // state), so the breadcrumb keeps its room as in Kaneo.
+    const [headerEntry, phoneEntry] = screen.getAllByRole("button", {
+      name: "Recently deleted",
+    });
+    expect(headerEntry).toHaveClass("hidden", "sm:inline-flex");
+    expect(phoneEntry).toHaveClass("sm:hidden");
+    expect(phoneEntry.parentElement).toHaveAttribute(
+      "data-slot",
+      "empty-content",
+    );
+    fireEvent.click(phoneEntry);
+    await waitFor(() => {
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: "/agent",
+        search: { recovery: "deleted" },
+      });
+    });
+    mocks.navigate.mockClear();
+    fireEvent.click(headerEntry);
     await waitFor(() => {
       expect(mocks.navigate).toHaveBeenCalledWith({
         to: "/agent",
@@ -216,6 +235,29 @@ describe("ProjectsPage engagement kind (S5)", () => {
       translate("workspace:projects.managedServiceBadge"),
     );
     expect(badges[0].closest("tr")).toHaveTextContent("Acme support");
+  });
+
+  it("puts Recently deleted beside the kind filter on phones, out of the header (U-14)", () => {
+    mocks.projects = [delivery, managed];
+    const onRecoveryModeChange = vi.fn();
+    render(
+      <ProjectsPage
+        workspaceId="workspace-1"
+        onRecoveryModeChange={onRecoveryModeChange}
+      />,
+    );
+    const [headerEntry, phoneEntry] = screen.getAllByRole("button", {
+      name: translate("workspace:projects.showDeleted"),
+    });
+    expect(headerEntry).toHaveClass("hidden", "sm:inline-flex");
+    expect(phoneEntry).toHaveClass("shrink-0", "sm:hidden");
+    const row = phoneEntry.parentElement;
+    expect(row).toHaveClass("lg:hidden");
+    expect(
+      row?.querySelector('[data-testid="project-kind-filter-mobile"]'),
+    ).not.toBeNull();
+    fireEvent.click(phoneEntry);
+    expect(onRecoveryModeChange).toHaveBeenCalledWith(true);
   });
 
   it("shows only the filtered kind and hands filter changes to the URL owner", async () => {

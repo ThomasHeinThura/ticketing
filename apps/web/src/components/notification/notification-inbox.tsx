@@ -1,5 +1,6 @@
-import { Button, Tabs, TabsList, TabsTrigger } from "@taskdesk/ui";
+import { Button, ScrollArea, Tabs, TabsList, TabsTrigger } from "@taskdesk/ui";
 import { Bell, Mail, MailOpen } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ActionTooltip } from "@/components/common/action-tooltip";
 import {
@@ -29,6 +30,7 @@ export default function NotificationInbox({
   onFilterChange: (filter: InboxFilter) => void;
 }) {
   const { t } = useTranslation();
+  const tabListRef = useRef<HTMLDivElement>(null);
   const {
     data: notifications,
     isLoading,
@@ -53,6 +55,13 @@ export default function NotificationInbox({
     assignments: "navigation:inbox.emptyAssignments",
   }[filter];
 
+  // A filter opened from a link (?filter=assignments) may sit past a phone's edge.
+  useEffect(() => {
+    tabListRef.current
+      ?.querySelector<HTMLElement>(`[data-filter="${filter}"]`)
+      ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [filter]);
+
   return (
     <div className="flex flex-col gap-4 p-4">
       <h1 className="sr-only">{t("navigation:sidebar.inbox")}</h1>
@@ -60,19 +69,42 @@ export default function NotificationInbox({
         <Tabs
           value={filter}
           onValueChange={(value) => onFilterChange(value as InboxFilter)}
+          className="min-w-0 max-w-full"
         >
-          <TabsList className="bg-sidebar gap-2">
-            <TabsTrigger value="all">{t("navigation:inbox.all")}</TabsTrigger>
-            <TabsTrigger value="unread">
-              {t("navigation:inbox.unread", { count: unreadCount })}
-            </TabsTrigger>
-            <TabsTrigger value="mentions">
-              {t("navigation:inbox.mentions")}
-            </TabsTrigger>
-            <TabsTrigger value="assignments">
-              {t("navigation:inbox.assignments")}
-            </TabsTrigger>
-          </TabsList>
+          {/* Four filters are wider than a phone; the list scrolls instead of being cut off,
+              with the project view strip's edge fade. The selected or focused filter is
+              scrolled clear of the 1.5rem fade, and the frame's focus ring is drawn on the
+              root because the fade's mask clips anything outside the scroll frame. */}
+          <ScrollArea
+            scrollFade
+            className="h-auto w-fit max-w-full rounded-lg has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-2 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-ring has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-1 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-background"
+            data-testid="inbox-filter-scroll"
+            onFocusCapture={(event) => {
+              if (event.target instanceof HTMLElement)
+                event.target.scrollIntoView?.({
+                  block: "nearest",
+                  inline: "nearest",
+                });
+            }}
+          >
+            <TabsList
+              ref={tabListRef}
+              className="bg-sidebar gap-2 *:data-[slot=tabs-tab]:scroll-mx-6"
+            >
+              <TabsTrigger value="all" data-filter="all">
+                {t("navigation:inbox.all")}
+              </TabsTrigger>
+              <TabsTrigger value="unread" data-filter="unread">
+                {t("navigation:inbox.unread", { count: unreadCount })}
+              </TabsTrigger>
+              <TabsTrigger value="mentions" data-filter="mentions">
+                {t("navigation:inbox.mentions")}
+              </TabsTrigger>
+              <TabsTrigger value="assignments" data-filter="assignments">
+                {t("navigation:inbox.assignments")}
+              </TabsTrigger>
+            </TabsList>
+          </ScrollArea>
         </Tabs>
         {unreadCount > 0 ? (
           <Button

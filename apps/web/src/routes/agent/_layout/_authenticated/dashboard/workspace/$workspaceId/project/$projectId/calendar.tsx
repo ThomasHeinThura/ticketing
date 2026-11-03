@@ -20,7 +20,7 @@ import ScheduleViewState, {
   scheduleViewStatus,
 } from "@/components/calendar/schedule-view-state";
 import ProjectLayout from "@/components/common/project-layout";
-import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
+import ProjectTaskSearchHeader from "@/components/common/project-task-search-header";
 import ProjectViewFeatureGate from "@/components/common/project-view-feature-gate";
 import PageTitle from "@/components/page-title";
 import { useRescheduleWorkItem } from "@/components/work-item/work-item-calendar-reschedule";
@@ -299,7 +299,7 @@ function RouteComponent() {
       workspaceId={workspaceId}
       activeView="calendar"
       headerActions={
-        <ProjectTaskSearchInput
+        <ProjectTaskSearchHeader
           value={search.q ?? ""}
           onValueChange={updateQuery}
           placeholder={t("tasks:boardSearchPlaceholder")}

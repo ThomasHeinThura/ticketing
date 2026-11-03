@@ -229,9 +229,17 @@ describe("ProjectLayoutControls permissions", () => {
     featureState.modules = true;
     featureState.pages = true;
     rerender(<ProjectLayoutControls {...props} showViewSwitcher />);
-    expect(
-      screen.getByLabelText(translate("navigation:projectViews.workItems")),
-    ).toHaveClass("min-w-0", "shrink");
+    // U-14: the strip sizes to its tabs inside a slot that never drops below min-w-44, so
+    // the widest tab keeps its 24 px scroll margin clear of the edge fade.
+    const strip = screen.getByLabelText(
+      translate("navigation:projectViews.workItems"),
+    );
+    expect(strip).toHaveClass("w-max", "max-w-full");
+    expect(strip.parentElement).toHaveClass(
+      "min-w-44",
+      "flex-1",
+      "contain-inline-size",
+    );
     expect(screen.getByRole("button", { name: "Cycles" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Modules" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pages" })).toBeInTheDocument();
