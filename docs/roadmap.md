@@ -25,6 +25,16 @@
 | U-9 | Release, redeploy both environments, rerun the full audit and browser tests | Audit clean of highs/mediums in the touched areas |
 | U-10 | Hand Thomas credentials and a test checklist for final human verification | Thomas signs off |
 
+**Added 3 Nov (Thomas, after UAT testing):**
+
+| # | Item | Done when |
+| --- | --- | --- |
+| U-11 | **Engagement-scoped portal.** The organisation Dashboard shows cases across all engagements plus engagement cards. Each project or managed service gets its own status page in the portal: health, status, KPIs and cases scoped to it, subscription, hours, milestones, contacts, shared documents. The project selector scopes the dashboard. | A Contoso customer with two engagements sees each one's own figures; Fabrikam sees none of them |
+| U-12 | **Staff tickets in the customer's journey.** Staff raise tickets for a customer inside an engagement. Billable time feeds the hour bank, and the ticket appears in the customer's portal and can be opened and answered there (closes the D6 gap). | Staff-raised ticket visible, openable and answerable by the customer; Overview hours update |
+| U-13 | **Reports and charts fit the screen.** Dashboard and report charts sit inside their container at every width, wide content scrolls in its frame, and captions are not cut off. | Reports and dashboard checked at 390/768/1280/1920 in light and dark |
+| U-14 | **Kaneo UI adjustment pass** on the UAT screens (Overview, portal, announcements, triage): spacing, type, tab-strip overflow | Side-by-side check with Kaneo `42bb8011`; G8 updated |
+| U-15 | **Pages and Documents journey** per the 3 Nov decision. Documents tab: links and attachments, customer-visible flag shown on portal Project Details. Pages stay staff-only, and a page is shared only by adding it to Documents. | Both tabs explain their purpose; customer-visible documents appear in the portal and nothing else does |
+
 **Decided 31 Oct (Thomas):** Technexus stays open for self-registration during UAT (A-15 accepted for UAT). There is no email provider for UAT (A-02); testers use seeded passwords.
 
 **After UAT:** God Mode completeness (A-29–A-34: health checks, branding, general settings, session/password policy, storage, config export), remaining lows, rest of L-04, L-05, L-02, #918/#920, L-06, L-07, L-11 and the full regression suite.
