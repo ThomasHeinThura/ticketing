@@ -76,7 +76,7 @@ Reach and authority are separate checks. Membership determines reachable resourc
 | **Knowledge** | `kb_article:read` | | Read articles |
 | | `kb_article:write` | `kb_article:read` | Draft and edit articles |
 | | `kb_article:publish` | `kb_article:write` | Publish, archive, manage categories |
-| **Service management** | `service:read` | | See services |
+| **Service catalogue** | `service:read` | | See services |
 | | `service:manage` | `service:read` | Manage services, dependencies and service state |
 | | `change:manage` | | Change details, freezes, freeze override (elevated) |
 | | `release:manage` | | Releases and checklists |

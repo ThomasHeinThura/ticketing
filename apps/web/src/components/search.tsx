@@ -2,19 +2,26 @@
 
 import { Button, SidebarGroup } from "@taskdesk/ui";
 import { SearchIcon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import SearchCommandMenu from "@/components/search-command-menu";
+import SearchCommandMenu, {
+  focusedElement,
+} from "@/components/search-command-menu";
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 export default function Search() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Closing returns focus here: the Search button, or what had focus when "/" was pressed.
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   useRegisterShortcuts({
     shortcuts: {
       [shortcuts.search.prefix]: () => {
+        if (!open)
+          returnFocusRef.current = focusedElement() ?? triggerRef.current;
         setOpen(true);
       },
     },
@@ -25,7 +32,11 @@ export default function Search() {
       <Button
         variant="ghost"
         className="inline-flex h-8 w-full cursor-pointer rounded-md border border-input bg-background px-2 py-1.5 text-foreground text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        onClick={() => setOpen(true)}
+        ref={triggerRef}
+        onClick={() => {
+          returnFocusRef.current = triggerRef.current;
+          setOpen(true);
+        }}
         type="button"
       >
         <span className="flex min-w-0 grow items-center gap-2">
@@ -43,7 +54,11 @@ export default function Search() {
         </kbd>
       </Button>
 
-      <SearchCommandMenu open={open} setOpen={setOpen} />
+      <SearchCommandMenu
+        open={open}
+        setOpen={setOpen}
+        returnFocusRef={returnFocusRef}
+      />
     </SidebarGroup>
   );
 }

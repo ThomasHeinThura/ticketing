@@ -802,7 +802,9 @@ export default function WorkItemInlineFields({
             size="sm"
             variant="ghost"
             className="h-7 min-w-0 max-w-full justify-start overflow-hidden px-1.5 text-xs"
-            aria-label={t("edit", { name: field.name })}
+            aria-label={t("workItems:detail.editField", {
+              name: field.name,
+            })}
             data-testid={`work-item-inline-custom-field-edit-${field.key}`}
             disabled={mutation.isPending}
             onClick={() => {

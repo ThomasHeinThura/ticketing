@@ -67,9 +67,32 @@
 						},
 						"loadFailed": {
 							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"filterAction": {
+							"type": "string"
+						},
+						"limit": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
 						}
 					},
-					"required": ["columns", "loadFailed"]
+					"required": [
+						"columns",
+						"loadFailed",
+						"description",
+						"filterAction",
+						"limit",
+						"emptyTitle",
+						"emptyDescription"
+					]
 				},
 				"picker": {
 					"type": "object",
@@ -132,6 +155,15 @@
 						},
 						"save": {
 							"type": "string"
+						},
+						"previous": {
+							"type": "string"
+						},
+						"next": {
+							"type": "string"
+						},
+						"refresh": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -149,7 +181,10 @@
 						"tryAgain",
 						"markRead",
 						"markUnread",
-						"save"
+						"save",
+						"previous",
+						"next",
+						"refresh"
 					]
 				},
 				"a11y": {
@@ -911,6 +946,19 @@
 				},
 				"clearDate": {
 					"type": "string"
+				},
+				"retry": {
+					"type": "string"
+				},
+				"navigation": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"auditLog": {
+							"type": "string"
+						}
+					},
+					"required": ["auditLog"]
 				}
 			},
 			"required": [
@@ -931,7 +979,9 @@
 				"pendingDeletion",
 				"dateEntry",
 				"invalidDate",
-				"clearDate"
+				"clearDate",
+				"retry",
+				"navigation"
 			]
 		},
 		"auth": {
@@ -3036,6 +3086,16 @@
 								},
 								"writesWarning": {
 									"type": "string"
+								},
+								"capabilityGroups": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"Instance": {
+											"type": "string"
+										}
+									},
+									"required": ["Instance"]
 								}
 							},
 							"required": [
@@ -3064,7 +3124,8 @@
 								"writesLabel",
 								"writesDescription",
 								"writesWarningTitle",
-								"writesWarning"
+								"writesWarning",
+								"capabilityGroups"
 							]
 						}
 					},
@@ -8384,6 +8445,9 @@
 						},
 						"deleteProject": {
 							"type": "string"
+						},
+						"backlog": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8395,7 +8459,8 @@
 						"deleteConfirmTitle",
 						"deleteConfirmDescription",
 						"deletedToast",
-						"deleteProject"
+						"deleteProject",
+						"backlog"
 					]
 				},
 				"search": {
@@ -10923,6 +10988,9 @@
 								"dueNextWeek",
 								"noDueDate"
 							]
+						},
+						"title": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -10936,7 +11004,8 @@
 						"addFilter",
 						"sections",
 						"noTasksInSection",
-						"filters"
+						"filters",
+						"title"
 					]
 				},
 				"sort": {
@@ -12166,6 +12235,12 @@
 						},
 						"showAllKinds": {
 							"type": "string"
+						},
+						"actions": {
+							"type": "string"
+						},
+						"archived": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12201,7 +12276,9 @@
 						"managedServiceBadge",
 						"filteredEmptyTitle",
 						"filteredEmptyDescription",
-						"showAllKinds"
+						"showAllKinds",
+						"actions",
+						"archived"
 					]
 				},
 				"search": {
@@ -12425,6 +12502,9 @@
 						},
 						"copyFailed": {
 							"type": "string"
+						},
+						"expiredBadge": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12433,7 +12513,8 @@
 						"linkLabel",
 						"copyLink",
 						"linkCopied",
-						"copyFailed"
+						"copyFailed",
+						"expiredBadge"
 					]
 				},
 				"inviteModal": {
@@ -13150,6 +13231,28 @@
 						},
 						"reload": {
 							"type": "string"
+						},
+						"columns": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"key": {
+									"type": "string"
+								},
+								"title": {
+									"type": "string"
+								},
+								"priority": {
+									"type": "string"
+								},
+								"assignee": {
+									"type": "string"
+								}
+							},
+							"required": ["key", "title", "priority", "assignee"]
+						},
+						"columnUnavailable": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -13209,7 +13312,9 @@
 						"customFieldPersonUnavailable",
 						"sortColumnAria",
 						"cursorChanged",
-						"reload"
+						"reload",
+						"columns",
+						"columnUnavailable"
 					]
 				},
 				"create": {
@@ -14060,6 +14165,9 @@
 						},
 						"resizeProperties": {
 							"type": "string"
+						},
+						"editField": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -14096,7 +14204,8 @@
 						"attachments",
 						"change",
 						"time",
-						"resizeProperties"
+						"resizeProperties",
+						"editField"
 					]
 				},
 				"journey": {
@@ -14497,6 +14606,9 @@
 						},
 						"combinedStateGroupingRequired": {
 							"type": "string"
+						},
+						"rankForbidden": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -14545,7 +14657,8 @@
 						"combinedDescendants",
 						"combinedScope",
 						"crossProjectRankDenied",
-						"combinedStateGroupingRequired"
+						"combinedStateGroupingRequired",
+						"rankForbidden"
 					]
 				},
 				"bulk": {
@@ -15587,6 +15700,15 @@
 								},
 								"checklist": {
 									"type": "string"
+								},
+								"dueDate": {
+									"type": "string"
+								},
+								"startDate": {
+									"type": "string"
+								},
+								"deleted_at": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -15604,8 +15726,14 @@
 								"archived_at",
 								"key",
 								"template",
-								"checklist"
+								"checklist",
+								"dueDate",
+								"startDate",
+								"deleted_at"
 							]
+						},
+						"unassigned": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -15621,8 +15749,47 @@
 						"emptyValue",
 						"noValue",
 						"actions",
-						"fields"
+						"fields",
+						"unassigned"
 					]
+				},
+				"priority": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"urgent": {
+							"type": "string"
+						},
+						"high": {
+							"type": "string"
+						},
+						"medium": {
+							"type": "string"
+						},
+						"low": {
+							"type": "string"
+						},
+						"no-priority": {
+							"type": "string"
+						}
+					},
+					"required": ["urgent", "high", "medium", "low", "no-priority"]
+				},
+				"backlog": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"rankColumn": {
+							"type": "string"
+						}
+					},
+					"required": ["emptyTitle", "emptyDescription", "rankColumn"]
 				}
 			},
 			"required": [
@@ -15644,7 +15811,9 @@
 				"openChildren",
 				"sla",
 				"move",
-				"auditHistory"
+				"auditHistory",
+				"priority",
+				"backlog"
 			]
 		},
 		"portal": {
@@ -15726,9 +15895,22 @@
 						},
 						"allRequests": {
 							"type": "string"
+						},
+						"dashboardTitle": {
+							"type": "string"
+						},
+						"dashboardDescription": {
+							"type": "string"
 						}
 					},
-					"required": ["title", "description", "recent", "allRequests"]
+					"required": [
+						"title",
+						"description",
+						"recent",
+						"allRequests",
+						"dashboardTitle",
+						"dashboardDescription"
+					]
 				},
 				"requests": {
 					"type": "object",
@@ -16895,6 +17077,372 @@
 						"projectSelector"
 					]
 				},
+				"announcements": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"backToList": {
+							"type": "string"
+						},
+						"loadMore": {
+							"type": "string"
+						},
+						"noBody": {
+							"type": "string"
+						},
+						"window": {
+							"type": "string"
+						},
+						"since": {
+							"type": "string"
+						},
+						"severity": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"info": {
+									"type": "string"
+								},
+								"maintenance": {
+									"type": "string"
+								},
+								"incident": {
+									"type": "string"
+								}
+							},
+							"required": ["info", "maintenance", "incident"]
+						},
+						"tabs": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"announcements": {
+									"type": "string"
+								},
+								"releaseNotes": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "announcements", "releaseNotes"]
+						},
+						"banner": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"dismiss": {
+									"type": "string"
+								}
+							},
+							"required": ["dismiss"]
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"loading",
+						"loadFailed",
+						"emptyTitle",
+						"emptyDescription",
+						"unavailable",
+						"backToList",
+						"loadMore",
+						"noBody",
+						"window",
+						"since",
+						"severity",
+						"tabs",
+						"banner"
+					]
+				},
+				"cases": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"outstandingTitle": {
+							"type": "string"
+						},
+						"outstandingDescription": {
+							"type": "string"
+						},
+						"viewAll": {
+							"type": "string"
+						},
+						"listTitle": {
+							"type": "string"
+						},
+						"listDescription": {
+							"type": "string"
+						},
+						"export": {
+							"type": "string"
+						},
+						"exportHint": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"emptyNoneTitle": {
+							"type": "string"
+						},
+						"emptyNoneDescription": {
+							"type": "string"
+						},
+						"yourTeam": {
+							"type": "string"
+						},
+						"notSet": {
+							"type": "string"
+						},
+						"raisedByTeam": {
+							"type": "string"
+						},
+						"summary": {
+							"type": "string"
+						},
+						"nextPage": {
+							"type": "string"
+						},
+						"firstPage": {
+							"type": "string"
+						},
+						"pagination": {
+							"type": "string"
+						},
+						"scope": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"mine": {
+									"type": "string"
+								},
+								"all": {
+									"type": "string"
+								}
+							},
+							"required": ["label", "mine", "all"]
+						},
+						"columns": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"updated": {
+									"type": "string"
+								},
+								"details": {
+									"type": "string"
+								},
+								"project": {
+									"type": "string"
+								},
+								"severity": {
+									"type": "string"
+								},
+								"status": {
+									"type": "string"
+								},
+								"createdBy": {
+									"type": "string"
+								},
+								"assignedTo": {
+									"type": "string"
+								},
+								"created": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"updated",
+								"details",
+								"project",
+								"severity",
+								"status",
+								"createdBy",
+								"assignedTo",
+								"created"
+							]
+						},
+						"filters": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"created": {
+									"type": "string"
+								},
+								"on": {
+									"type": "string"
+								},
+								"from": {
+									"type": "string"
+								},
+								"to": {
+									"type": "string"
+								},
+								"clearDates": {
+									"type": "string"
+								},
+								"clear": {
+									"type": "string"
+								},
+								"search": {
+									"type": "string"
+								},
+								"searchPlaceholder": {
+									"type": "string"
+								},
+								"anyDate": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"created",
+								"on",
+								"from",
+								"to",
+								"clearDates",
+								"clear",
+								"search",
+								"searchPlaceholder",
+								"anyDate"
+							]
+						},
+						"sort": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string"
+								},
+								"updated_desc": {
+									"type": "string"
+								},
+								"updated_asc": {
+									"type": "string"
+								},
+								"created_desc": {
+									"type": "string"
+								},
+								"created_asc": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"label",
+								"updated_desc",
+								"updated_asc",
+								"created_desc",
+								"created_asc"
+							]
+						},
+						"kpi": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"loadFailed": {
+									"type": "string"
+								},
+								"actionRequired": {
+									"type": "string"
+								},
+								"actionRequiredCases": {
+									"type": "string"
+								},
+								"actionRequiredApprovals": {
+									"type": "string"
+								},
+								"outstanding": {
+									"type": "string"
+								},
+								"outstandingHint": {
+									"type": "string"
+								},
+								"closed": {
+									"type": "string"
+								},
+								"closedHint": {
+									"type": "string"
+								},
+								"averageResponse": {
+									"type": "string"
+								},
+								"averageResponseHint": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"loadFailed",
+								"actionRequired",
+								"actionRequiredCases",
+								"actionRequiredApprovals",
+								"outstanding",
+								"outstandingHint",
+								"closed",
+								"closedHint",
+								"averageResponse",
+								"averageResponseHint"
+							]
+						}
+					},
+					"required": [
+						"outstandingTitle",
+						"outstandingDescription",
+						"viewAll",
+						"listTitle",
+						"listDescription",
+						"export",
+						"exportHint",
+						"loadFailed",
+						"emptyTitle",
+						"emptyDescription",
+						"emptyNoneTitle",
+						"emptyNoneDescription",
+						"yourTeam",
+						"notSet",
+						"raisedByTeam",
+						"summary",
+						"nextPage",
+						"firstPage",
+						"pagination",
+						"scope",
+						"columns",
+						"filters",
+						"sort",
+						"kpi"
+					]
+				},
 				"projects": {
 					"type": "object",
 					"additionalProperties": false,
@@ -17402,6 +17950,8 @@
 				"releases",
 				"notifications",
 				"shell",
+				"announcements",
+				"cases",
 				"projects"
 			]
 		},
@@ -18638,6 +19188,9 @@
 								},
 								"request_type": {
 									"type": "string"
+								},
+								"announcement": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -18667,7 +19220,8 @@
 								"project_page",
 								"organisation",
 								"identity_connection",
-								"request_type"
+								"request_type",
+								"announcement"
 							]
 						}
 					},
@@ -23897,6 +24451,12 @@
 				},
 				"pairedQueueDescription": {
 					"type": "string"
+				},
+				"emptySubmissionsTitle": {
+					"type": "string"
+				},
+				"emptySubmissionsDescription": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -23959,7 +24519,9 @@
 				"addSort",
 				"removeSort",
 				"openIntakeQueue",
-				"pairedQueueDescription"
+				"pairedQueueDescription",
+				"emptySubmissionsTitle",
+				"emptySubmissionsDescription"
 			]
 		},
 		"identityConnections": {
@@ -26207,6 +26769,12 @@
 				},
 				"forbidden": {
 					"type": "string"
+				},
+				"stateOn": {
+					"type": "string"
+				},
+				"stateOff": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -26234,7 +26802,9 @@
 				"flags",
 				"page",
 				"forbiddenTitle",
-				"forbidden"
+				"forbidden",
+				"stateOn",
+				"stateOff"
 			]
 		},
 		"godModeSettings": {
@@ -26794,6 +27364,9 @@
 						},
 						"deliveriesPending": {
 							"type": "string"
+						},
+						"expiredInvitationDeliveryEnvelopes": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -26807,7 +27380,8 @@
 						"outboxDead",
 						"outboxPending",
 						"deliveriesDead",
-						"deliveriesPending"
+						"deliveriesPending",
+						"expiredInvitationDeliveryEnvelopes"
 					]
 				},
 				"rotateSecrets": {
@@ -30024,9 +30598,18 @@
 						},
 						"releases": {
 							"type": "string"
+						},
+						"announcements": {
+							"type": "string"
 						}
 					},
-					"required": ["title", "services", "changes", "releases"]
+					"required": [
+						"title",
+						"services",
+						"changes",
+						"releases",
+						"announcements"
+					]
 				},
 				"disabled": {
 					"type": "object",
@@ -31391,6 +31974,232 @@
 						"appliedTitle",
 						"applied"
 					]
+				},
+				"announcements": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"list": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"new": {
+									"type": "string"
+								},
+								"emptyTitle": {
+									"type": "string"
+								},
+								"emptyDescription": {
+									"type": "string"
+								},
+								"window": {
+									"type": "string"
+								},
+								"from": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"new",
+								"emptyTitle",
+								"emptyDescription",
+								"window",
+								"from"
+							]
+						},
+						"create": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"submit": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description", "submit"]
+						},
+						"edit": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								}
+							},
+							"required": ["title"]
+						},
+						"fields": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"severity": {
+									"type": "string"
+								},
+								"audience": {
+									"type": "string"
+								},
+								"organisations": {
+									"type": "string"
+								},
+								"projects": {
+									"type": "string"
+								},
+								"noTargets": {
+									"type": "string"
+								},
+								"workspaceNeedsReach": {
+									"type": "string"
+								},
+								"publishNeedsReach": {
+									"type": "string"
+								},
+								"publishedNeedsReach": {
+									"type": "string"
+								},
+								"startsAt": {
+									"type": "string"
+								},
+								"endsAt": {
+									"type": "string"
+								},
+								"noEnd": {
+									"type": "string"
+								},
+								"body": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"title",
+								"severity",
+								"audience",
+								"organisations",
+								"projects",
+								"noTargets",
+								"workspaceNeedsReach",
+								"publishNeedsReach",
+								"publishedNeedsReach",
+								"startsAt",
+								"endsAt",
+								"noEnd",
+								"body"
+							]
+						},
+						"severity": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"info": {
+									"type": "string"
+								},
+								"maintenance": {
+									"type": "string"
+								},
+								"incident": {
+									"type": "string"
+								}
+							},
+							"required": ["info", "maintenance", "incident"]
+						},
+						"audience": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"workspace": {
+									"type": "string"
+								},
+								"organisations": {
+									"type": "string"
+								},
+								"projects": {
+									"type": "string"
+								}
+							},
+							"required": ["workspace", "organisations", "projects"]
+						},
+						"state": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"draft": {
+									"type": "string"
+								},
+								"scheduled": {
+									"type": "string"
+								},
+								"live": {
+									"type": "string"
+								},
+								"ended": {
+									"type": "string"
+								}
+							},
+							"required": ["draft", "scheduled", "live", "ended"]
+						},
+						"actions": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"publish": {
+									"type": "string"
+								},
+								"unpublish": {
+									"type": "string"
+								},
+								"edit": {
+									"type": "string"
+								},
+								"delete": {
+									"type": "string"
+								}
+							},
+							"required": ["publish", "unpublish", "edit", "delete"]
+						},
+						"rangeInvalid": {
+							"type": "string"
+						},
+						"forbidden": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description"]
+						}
+					},
+					"required": [
+						"list",
+						"create",
+						"edit",
+						"fields",
+						"severity",
+						"audience",
+						"state",
+						"actions",
+						"rangeInvalid",
+						"forbidden"
+					]
 				}
 			},
 			"required": [
@@ -31408,7 +32217,8 @@
 				"freezes",
 				"overrides",
 				"releases",
-				"presets"
+				"presets",
+				"announcements"
 			]
 		},
 		"timeTracking": {
@@ -38078,6 +38888,12 @@
 				},
 				"purgeConflict": {
 					"type": "string"
+				},
+				"unknownDate": {
+					"type": "string"
+				},
+				"restoreOperationUnavailable": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -38190,7 +39006,9 @@
 				"purgeSubmitting",
 				"purgeRequestFailedTitle",
 				"purgeRequestFailed",
-				"purgeConflict"
+				"purgeConflict",
+				"unknownDate",
+				"restoreOperationUnavailable"
 			]
 		},
 		"term": {
@@ -40384,6 +41202,9 @@
 						"reconcile",
 						"losses"
 					]
+				},
+				"rejectionCodesColumn": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -40463,7 +41284,8 @@
 				"states",
 				"counts",
 				"logCodes",
-				"wizard"
+				"wizard",
+				"rejectionCodesColumn"
 			]
 		}
 	},

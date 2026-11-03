@@ -129,7 +129,8 @@ export function DashboardWidgetCard({
         </div>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 overflow-hidden pt-0">
-        <ScrollArea role="region" aria-label={title}>
+        {/* A KPI row is short: fade the edge that has more to read instead of cutting a line in half. */}
+        <ScrollArea role="region" aria-label={title} scrollFade>
           <div className="space-y-2">
             {footer}
             {data.isLoading ? (

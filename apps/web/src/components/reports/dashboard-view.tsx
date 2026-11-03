@@ -53,7 +53,7 @@ export function DashboardView({
     list[0];
   const dashboard = useDashboard(workspaceId, chosen?.id ?? "");
   const catalogue = useReportCatalogue(workspaceId);
-  const wide = useWideGrid();
+  const { wide, measureRef } = useWideGrid();
   return (
     <>
       <PageTitle title={t("reports:dashboard.title")} />
@@ -134,7 +134,11 @@ export function DashboardView({
                 </AlertDescription>
               </Alert>
             ) : (
-              <DashboardGrid wide={wide} data-testid="dashboard-grid">
+              <DashboardGrid
+                wide={wide}
+                measureRef={measureRef}
+                data-testid="dashboard-grid"
+              >
                 {readingOrder(dashboard.data.widgets).map((widget) => (
                   <div
                     key={widget.id}

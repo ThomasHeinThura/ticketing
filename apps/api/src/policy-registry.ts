@@ -33,6 +33,7 @@ import {
 } from "@taskdesk/permissions";
 import { activityPolicies } from "./activity/policy";
 import { agilePolicies } from "./agile/policy";
+import { announcementPolicies } from "./announcement/policy";
 import { apiKeyPolicies } from "./api-key/policy";
 import { approvalPolicies } from "./approval/policy";
 import { assetPolicies } from "./asset/policy";
@@ -408,6 +409,10 @@ export const POLICY_SOURCES = [
   {
     name: "apps/api/src/canned-response/policy.ts",
     policies: cannedResponsePolicies,
+  },
+  {
+    name: "apps/api/src/announcement/policy.ts",
+    policies: announcementPolicies,
   },
   {
     name: "apps/api/src/notification/policy.ts",

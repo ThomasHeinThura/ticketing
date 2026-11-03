@@ -75,6 +75,7 @@ export function PortalProjectsList({
     queryKey: portalProjectKeys.list(),
     queryFn: getPortalProjects,
     staleTime: 60_000,
+    refetchOnMount: "always",
   });
   const all = projects.data?.data ?? [];
   const visible = all.filter(

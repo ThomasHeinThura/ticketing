@@ -40,6 +40,7 @@ export const generatedRouteMetadata = {
     "/agent/reports/exports/$id",
     "/agent/reports/new",
     "/agent/search",
+    "/agent/service-management/announcements",
     "/agent/service-management/changes",
     "/agent/service-management/releases",
     "/agent/service-management/releases/$id",
@@ -155,6 +156,8 @@ export const generatedRouteMetadata = {
     // Canonical full paths for this surface.
     "/",
     "/account",
+    "/announcements",
+    "/announcements/$id",
     "/approvals",
     "/catalogue",
     "/invite/$id",

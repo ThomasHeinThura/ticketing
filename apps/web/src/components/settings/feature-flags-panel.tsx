@@ -146,6 +146,9 @@ function FeatureRowItem({
   const { t } = useTranslation("featureFlags");
   const toggleId = `feature-${row.key}`;
   const lockId = `feature-lock-${row.key}`;
+  // Base UI puts `id` on the hidden input, so the visible switch is named by aria-labelledby.
+  const nameId = `feature-name-${row.key}`;
+  const lockLabelId = `feature-lock-label-${row.key}`;
   const lockedBelow = level !== "instance" && row.locked;
   const overridden = level !== "instance" && row.override != null;
   const lastChanged = row.updatedAt
@@ -159,7 +162,7 @@ function FeatureRowItem({
     <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <Label htmlFor={toggleId} className="font-medium text-sm">
+          <Label id={nameId} htmlFor={toggleId} className="font-medium text-sm">
             {t(`flags.${row.key}.name`)}
           </Label>
           {lockedBelow ? (
@@ -194,6 +197,7 @@ function FeatureRowItem({
           <div className="flex items-center gap-2">
             <Switch
               id={lockId}
+              aria-labelledby={`${lockLabelId} ${nameId}`}
               checked={row.locked}
               disabled={busy}
               onCheckedChange={(locked) =>
@@ -204,7 +208,11 @@ function FeatureRowItem({
                 })
               }
             />
-            <Label htmlFor={lockId} className="text-muted-foreground text-xs">
+            <Label
+              id={lockLabelId}
+              htmlFor={lockId}
+              className="text-muted-foreground text-xs"
+            >
               {t("lock")}
             </Label>
           </div>
@@ -228,14 +236,19 @@ function FeatureRowItem({
         <div className="flex items-center gap-2">
           <Switch
             id={toggleId}
+            aria-labelledby={nameId}
             checked={row.enabled}
             disabled={busy || lockedBelow}
             onCheckedChange={(enabled) =>
               onChange({ key: row.key, enabled, expectedVersion: row.version })
             }
           />
-          <Label htmlFor={toggleId} className="text-muted-foreground text-xs">
-            {t("enabledSwitch")}
+          <Label
+            htmlFor={toggleId}
+            aria-hidden="true"
+            className="text-muted-foreground text-xs"
+          >
+            {t(row.enabled ? "stateOn" : "stateOff")}
           </Label>
         </div>
       </div>

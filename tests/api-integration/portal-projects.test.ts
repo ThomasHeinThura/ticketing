@@ -95,6 +95,28 @@ async function detail(as: unknown, key: string) {
   );
 }
 
+/** `GET /api/portal/home?project=KEY` as the Projects counts' shape (S4b dashboard). */
+async function homeCounts(
+  tenant: Parameters<typeof portalRequest>[0],
+  as: unknown,
+  key: string,
+) {
+  const response = await portalRequest(
+    tenant,
+    as as never,
+    `/api/portal/home?project=${encodeURIComponent(key)}`,
+  );
+  expect(response.status, await response.clone().text()).toBe(200);
+  const home = (await response.json()) as {
+    actionRequired: { total: number };
+    outstanding: number;
+  };
+  return {
+    actionRequired: home.actionRequired.total,
+    outstanding: home.outstanding,
+  };
+}
+
 async function setProject(
   projectId: string,
   values: Partial<typeof schema.projectTable.$inferInsert>,
@@ -412,6 +434,20 @@ describe("GET /api/portal/projects", () => {
       (await (await detail(s.customer, contosoKey)).json()) as ProjectDetail
     ).counts;
     expect(detailed).toEqual({ actionRequired: 2, outstanding: 2 });
+    // The same figures as the dashboard for that project (one shared case source).
+    expect(await homeCounts(s.t, s.customer, contosoKey)).toEqual({
+      actionRequired: 2,
+      outstanding: 2,
+    });
+    // The colleague sees the same two cases waiting on the organisation.
+    const colleagueListed = (
+      (await (await list(colleague as never)).json()) as {
+        data: ProjectSummary[];
+      }
+    ).data.find((project) => project.key === contosoKey)?.counts;
+    expect(colleagueListed).toEqual(
+      await homeCounts(s.t, colleague, contosoKey),
+    );
   });
 });
 
@@ -686,6 +722,11 @@ describe("action required: pending customer approvals addressed to the caller", 
     };
 
     expect(await counts(approver)).toEqual({
+      actionRequired: 1,
+      outstanding: 0,
+    });
+    // The same approval count as the dashboard for that project.
+    expect(await homeCounts(t, approver, t.project.slug)).toEqual({
       actionRequired: 1,
       outstanding: 0,
     });

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/portal/__root'
 import { Route as IndexRouteImport } from './routes/portal/index'
 import { Route as AccountRouteImport } from './routes/portal/account'
+import { Route as AnnouncementsRouteImport } from './routes/portal/announcements'
 import { Route as ApprovalsRouteImport } from './routes/portal/approvals'
 import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
 import { Route as KbRouteImport } from './routes/portal/kb'
@@ -19,6 +20,7 @@ import { Route as ProjectsRouteImport } from './routes/portal/projects'
 import { Route as ReleasesRouteImport } from './routes/portal/releases'
 import { Route as RequestsRouteImport } from './routes/portal/requests'
 import { Route as SignInRouteImport } from './routes/portal/sign-in'
+import { Route as AnnouncementsIdRouteImport } from './routes/portal/announcements_.$id'
 import { Route as InviteIdRouteImport } from './routes/portal/invite/$id'
 import { Route as KbIdRouteImport } from './routes/portal/kb_.$id'
 import { Route as PortalRequestsRouteImport } from './routes/portal/portal/requests'
@@ -35,6 +37,11 @@ const IndexRoute = IndexRouteImport.update({
 const AccountRoute = AccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnnouncementsRoute = AnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApprovalsRoute = ApprovalsRouteImport.update({
@@ -77,6 +84,11 @@ const SignInRoute = SignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnnouncementsIdRoute = AnnouncementsIdRouteImport.update({
+  id: '/announcements_/$id',
+  path: '/announcements/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InviteIdRoute = InviteIdRouteImport.update({
   id: '/invite/$id',
   path: '/invite/$id',
@@ -116,6 +128,7 @@ const SubmissionsRefRoute = SubmissionsRefRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/announcements': typeof AnnouncementsRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
@@ -124,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/announcements/$id': typeof AnnouncementsIdRoute
   '/invite/$id': typeof InviteIdRoute
   '/kb/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
@@ -135,6 +149,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/announcements': typeof AnnouncementsRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
@@ -143,6 +158,7 @@ export interface FileRoutesByTo {
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/announcements/$id': typeof AnnouncementsIdRoute
   '/invite/$id': typeof InviteIdRoute
   '/kb/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
@@ -155,6 +171,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/announcements': typeof AnnouncementsRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
@@ -163,6 +180,7 @@ export interface FileRoutesById {
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
   '/sign-in': typeof SignInRoute
+  '/announcements_/$id': typeof AnnouncementsIdRoute
   '/invite/$id': typeof InviteIdRoute
   '/kb_/$id': typeof KbIdRoute
   '/portal/requests': typeof PortalRequestsRoute
@@ -176,6 +194,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/announcements'
     | '/approvals'
     | '/catalogue'
     | '/kb'
@@ -184,6 +203,7 @@ export interface FileRouteTypes {
     | '/releases'
     | '/requests'
     | '/sign-in'
+    | '/announcements/$id'
     | '/invite/$id'
     | '/kb/$id'
     | '/portal/requests'
@@ -195,6 +215,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/announcements'
     | '/approvals'
     | '/catalogue'
     | '/kb'
@@ -203,6 +224,7 @@ export interface FileRouteTypes {
     | '/releases'
     | '/requests'
     | '/sign-in'
+    | '/announcements/$id'
     | '/invite/$id'
     | '/kb/$id'
     | '/portal/requests'
@@ -214,6 +236,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/announcements'
     | '/approvals'
     | '/catalogue'
     | '/kb'
@@ -222,6 +245,7 @@ export interface FileRouteTypes {
     | '/releases'
     | '/requests'
     | '/sign-in'
+    | '/announcements_/$id'
     | '/invite/$id'
     | '/kb_/$id'
     | '/portal/requests'
@@ -234,6 +258,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  AnnouncementsRoute: typeof AnnouncementsRoute
   ApprovalsRoute: typeof ApprovalsRoute
   CatalogueRoute: typeof CatalogueRoute
   KbRoute: typeof KbRoute
@@ -242,6 +267,7 @@ export interface RootRouteChildren {
   ReleasesRoute: typeof ReleasesRoute
   RequestsRoute: typeof RequestsRoute
   SignInRoute: typeof SignInRoute
+  AnnouncementsIdRoute: typeof AnnouncementsIdRoute
   InviteIdRoute: typeof InviteIdRoute
   KbIdRoute: typeof KbIdRoute
   PortalRequestsRoute: typeof PortalRequestsRoute
@@ -265,6 +291,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/account'
       preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/announcements': {
+      id: '/announcements'
+      path: '/announcements'
+      fullPath: '/announcements'
+      preLoaderRoute: typeof AnnouncementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/approvals': {
@@ -323,6 +356,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/announcements_/$id': {
+      id: '/announcements_/$id'
+      path: '/announcements/$id'
+      fullPath: '/announcements/$id'
+      preLoaderRoute: typeof AnnouncementsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invite/$id': {
       id: '/invite/$id'
       path: '/invite/$id'
@@ -378,6 +418,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  AnnouncementsRoute: AnnouncementsRoute,
   ApprovalsRoute: ApprovalsRoute,
   CatalogueRoute: CatalogueRoute,
   KbRoute: KbRoute,
@@ -386,6 +427,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReleasesRoute: ReleasesRoute,
   RequestsRoute: RequestsRoute,
   SignInRoute: SignInRoute,
+  AnnouncementsIdRoute: AnnouncementsIdRoute,
   InviteIdRoute: InviteIdRoute,
   KbIdRoute: KbIdRoute,
   PortalRequestsRoute: PortalRequestsRoute,

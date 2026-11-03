@@ -16,6 +16,7 @@ import { NavMain } from "./nav-main";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  preloadRoute: vi.fn(),
   user: { id: "viewer-1" } as { id: string } | undefined,
   paint: { resolve: () => {} },
   getSavedViews: vi.fn(),
@@ -45,6 +46,7 @@ vi.mock("@tanstack/react-router", async () => {
   const { useSyncExternalStore } = await import("react");
   return {
     useNavigate: () => mocks.navigate,
+    useRouter: () => ({ preloadRoute: mocks.preloadRoute }),
     useLocation: <T,>(options?: {
       select?: (location: { pathname: string }) => T;
     }) => {
@@ -126,6 +128,8 @@ beforeEach(() => {
   mocks.user = { id: "viewer-1" };
   router.state.pathname = "/agent/views";
   mocks.navigate.mockReset();
+  mocks.preloadRoute.mockReset();
+  mocks.preloadRoute.mockResolvedValue(undefined);
   mocks.getWorkspaceResolvedFeatures.mockResolvedValue([]);
   mocks.getSavedViews.mockResolvedValue([
     view("v-pinned", "Escalations", true),
@@ -337,6 +341,46 @@ describe("NavMain highlight follows the router", () => {
 
     act(() => router.go("/agent/views/v-pinned"));
     expect(activeEntries()).toEqual(["Escalations"]);
+  });
+});
+
+describe("NavMain preloads on intent (S7b)", () => {
+  it("preloads an entry's route on hover and on keyboard focus, and still navigates on click", () => {
+    renderNav();
+    const triage = screen.getByRole("button", { name: "Triage" });
+    fireEvent.mouseEnter(triage);
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: "/agent/triage",
+      params: undefined,
+    });
+    fireEvent.focus(screen.getByRole("button", { name: "Inbox" }));
+    expect(mocks.preloadRoute).toHaveBeenLastCalledWith({
+      to: "/agent/inbox",
+      params: undefined,
+    });
+    fireEvent.click(triage);
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent/triage" });
+  });
+
+  it("preloads a pinned view by its id", async () => {
+    renderNav();
+    mocks.paint.resolve();
+    fireEvent.mouseEnter(
+      await screen.findByRole("button", { name: /Escalations/u }),
+    );
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: "/agent/views/$id",
+      params: { id: "v-pinned" },
+    });
+  });
+
+  it("ignores a failed preload; the click still loads the route", async () => {
+    mocks.preloadRoute.mockRejectedValue(new Error("chunk failed"));
+    renderNav();
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Triage" }));
+    await Promise.resolve();
+    fireEvent.click(screen.getByRole("button", { name: "Triage" }));
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent/triage" });
   });
 });
 

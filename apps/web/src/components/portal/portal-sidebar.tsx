@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { ActionTooltip } from "@/components/common/action-tooltip";
 import { getPortalKb } from "@/fetchers/kb/portal";
-import { getPortalReleases } from "@/fetchers/portal/releases";
 import {
   getDefaultPortalTerm,
   usePortalTranslation,
@@ -33,6 +32,7 @@ import { routes } from "@/lib/routes";
 import {
   isPortalNavigationActive,
   type PortalNavigationMatch,
+  portalAnnouncementsMatch,
   portalAriaCurrent,
   portalSupportMatch,
 } from "./portal-navigation";
@@ -52,13 +52,6 @@ export default function PortalSidebar() {
   const knowledgeBase = useQuery({
     queryKey: ["portal", "kb-navigation"],
     queryFn: () => getPortalKb({ limit: 1 }),
-    retry: false,
-    staleTime: 60_000,
-  });
-  // Announcements lists portal release notes; it appears only where that feature answers.
-  const releases = useQuery({
-    queryKey: ["portal", "release-navigation"],
-    queryFn: () => getPortalReleases({ limit: 1 }),
     retry: false,
     staleTime: 60_000,
   });
@@ -98,15 +91,12 @@ export default function PortalSidebar() {
       label: t("projects.navigation"),
       icon: FolderKanban,
     },
-    ...(releases.isSuccess
-      ? [
-          {
-            to: routes.portalReleases.path,
-            label: t("navigation.announcements"),
-            icon: Megaphone,
-          },
-        ]
-      : []),
+    // D7: announcements, with release notes as a tab of the same page.
+    {
+      ...portalAnnouncementsMatch,
+      label: t("navigation.announcements"),
+      icon: Megaphone,
+    },
     {
       to: routes.portalAccount.path,
       label: t("navigation.settings"),

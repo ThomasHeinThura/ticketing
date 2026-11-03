@@ -88,6 +88,8 @@ export function PortalProjectsCards({ projectKey }: { projectKey?: string }) {
     queryFn: getPortalProjects,
     retry: false,
     staleTime: 60_000,
+    // Staff actions must show when the customer comes back (shared client: refetchOnMount false).
+    refetchOnMount: "always",
   });
   const visible = (projects.data?.data ?? []).filter(
     (project) => !projectKey || project.key === projectKey,
@@ -100,11 +102,12 @@ export function PortalProjectsCards({ projectKey }: { projectKey?: string }) {
       aria-labelledby="portal-dashboard-projects"
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 id="portal-dashboard-projects" className="font-medium text-sm">
+        <h2 id="portal-dashboard-projects" className="font-semibold text-base">
           {t("projects.dashboard.title")}
         </h2>
         <Button
           variant="ghost"
+          size="sm"
           render={<Link to={routes.portalProjects.path} />}
         >
           {t("projects.dashboard.viewAll")}
@@ -119,7 +122,7 @@ export function PortalProjectsCards({ projectKey }: { projectKey?: string }) {
               variant="outline"
               onClick={() => void projects.refetch()}
             >
-              {t("common:actions.tryAgain")}
+              {t("common:actions.retry")}
             </Button>
           </AlertDescription>
         </Alert>

@@ -468,6 +468,13 @@
 		"screenshot": "releases.png"
 	},
 	{
+		"name": "announcements",
+		"inventoryRoute": "/agent/service-management/announcements",
+		"applicationRoute": "/agent/service-management/announcements",
+		"test": "service-management announcements screen @visual",
+		"screenshot": "announcements.png"
+	},
+	{
 		"name": "kb",
 		"inventoryRoute": "/agent/kb",
 		"applicationRoute": "/agent/kb",
@@ -765,6 +772,22 @@
 		"origin": "portal",
 		"test": "portal knowledge base article screen @visual",
 		"screenshot": "portal-kb-article.png"
+	},
+	{
+		"name": "portal-announcements",
+		"inventoryRoute": "/announcements",
+		"applicationRoute": "/announcements",
+		"origin": "portal",
+		"test": "portal announcements screen @visual",
+		"screenshot": "portal-announcements.png"
+	},
+	{
+		"name": "portal-announcement",
+		"inventoryRoute": "/announcements/{id}",
+		"applicationRoute": "/announcements/$id",
+		"origin": "portal",
+		"test": "portal announcement detail screen @visual",
+		"screenshot": "portal-announcement.png"
 	},
 	{
 		"name": "portal-notifications",

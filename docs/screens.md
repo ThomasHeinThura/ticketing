@@ -33,10 +33,11 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
 | Intake queue and submission detail | `/agent/triage?state=new&ref={ref}` | route | P2 | 🟡 |
 | Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | ⬜ |
-| Services list | `/agent/service-management/services` | route | P5 | 🟡 |
-| Service detail | `/agent/service-management/services/{id}` | route | P5 | 🟡 |
-| Change calendar | `/agent/service-management/changes` | route | P5 | 🟡 |
-| Releases | `/agent/service-management/releases` | route | P5 | 🟡 |
+| Service catalogue — services list (D8: named "Service catalogue"; URL unchanged) | `/agent/service-management/services` | route | P5 | 🟡 |
+| Service catalogue — service detail | `/agent/service-management/services/{id}` | route | P5 | 🟡 |
+| Service catalogue — change calendar | `/agent/service-management/changes` | route | P5 | 🟡 |
+| Service catalogue — releases | `/agent/service-management/releases` | route | P5 | 🟡 |
+| Service catalogue — announcements (D7) | `/agent/service-management/announcements` | route | P5 | 🟡 |
 | Knowledge base list | `/agent/kb` | route | P5 | 🟡 |
 | Article view | `/agent/kb/{id}` | route | P5 | 🟡 |
 | Article editor | `/agent/kb/{id}/edit` | route | P5 | 🟡 |
@@ -132,6 +133,8 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Project detail | `/projects/{key}` | route | P3 | 🟡 |
 | Knowledge base | `/kb` | route | P5 | 🟡 |
 | Article | `/kb/{id}` | route | P5 | 🟡 |
+| Announcements (D7; release notes tab at `/releases`; incident and maintenance banner on the shell) | `/announcements` | route | P5 | 🟡 |
+| Announcement | `/announcements/{id}` | route | P5 | 🟡 |
 | Satisfaction survey | `/submissions/{ref}` | route | P3 | ⬜ |
 | Customer notification inbox and bell | `/notifications?filter=unread` | route | P4 | 🟡 |
 | Account (mention/comment email notification preferences; remaining controls open) | `/account` | route | P3 | 🟡 |
@@ -142,7 +145,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **150** (134 routes + 16 overlays, dialogs and sections) |
+| **Total** | **153** (137 routes + 16 overlays, dialogs and sections) |
 
 ## Overlays, dialogs and embedded sections
 

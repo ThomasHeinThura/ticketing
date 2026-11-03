@@ -360,6 +360,40 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"DELETE /api/announcements/{id}": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"DELETE /api/attachments/{id}": {
 			"instance_admin": {
 				"inReach": "403 forbidden",
@@ -2291,6 +2325,108 @@
 			},
 			"viewer": {
 				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/announcements": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/announcements/{id}": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/announcements/audience-options": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
 				"outOfReach": "404 not_found"
 			},
 			"customer": {
@@ -5970,6 +6106,74 @@
 				"outOfReach": "allow"
 			}
 		},
+		"GET /api/portal/announcements": {
+			"instance_admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"owner": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"manager": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"lead": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"member": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"viewer": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/portal/announcements/{id}": {
+			"instance_admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"owner": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"manager": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"lead": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"member": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"viewer": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"GET /api/portal/approvals": {
 			"instance_admin": {
 				"inReach": "403 portal_required",
@@ -6174,6 +6378,40 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"GET /api/portal/home": {
+			"instance_admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"owner": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"manager": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"lead": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"member": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"viewer": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"GET /api/portal/invitations/{id}/continuation-result": {
 			"instance_admin": {
 				"inReach": "403 portal_required",
@@ -6311,6 +6549,40 @@
 			}
 		},
 		"GET /api/portal/kb/deflection": {
+			"instance_admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"owner": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"manager": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"lead": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"member": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"viewer": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/portal/me": {
 			"instance_admin": {
 				"inReach": "403 portal_required",
 				"outOfReach": "403 portal_required"
@@ -6582,7 +6854,75 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"GET /api/portal/requests": {
+			"instance_admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"owner": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"manager": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"lead": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"member": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"viewer": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"GET /api/portal/requests/backlog": {
+			"instance_admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"owner": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"admin": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"manager": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"lead": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"member": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"viewer": {
+				"inReach": "403 portal_required",
+				"outOfReach": "403 portal_required"
+			},
+			"customer": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"GET /api/portal/requests/export.csv": {
 			"instance_admin": {
 				"inReach": "403 portal_required",
 				"outOfReach": "403 portal_required"
@@ -11682,6 +12022,40 @@
 				"outOfReach": "allow"
 			}
 		},
+		"PATCH /api/announcements/{id}": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"PATCH /api/auth/*": {
 			"instance_admin": {
 				"inReach": "allow",
@@ -14332,6 +14706,108 @@
 			"customer": {
 				"inReach": "403 forbidden",
 				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/announcements": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /api/announcements/{id}/publish": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
+		"POST /api/announcements/{id}/unpublish": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
 			}
 		},
 		"POST /api/approvals/{id}/decide": {

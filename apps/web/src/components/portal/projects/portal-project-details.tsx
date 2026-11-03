@@ -499,6 +499,7 @@ export function PortalProjectDetails({ projectKey }: { projectKey: string }) {
     queryFn: () => getPortalProject(projectKey),
     retry: (count, error) =>
       !(error instanceof HttpError && error.status === 404) && count < 2,
+    refetchOnMount: "always",
   });
   const project = query.data;
   const notFound =

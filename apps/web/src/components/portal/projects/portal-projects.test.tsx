@@ -320,7 +320,7 @@ describe("PortalProjectsCards (Dashboard)", () => {
     wrap(<PortalProjectsCards />);
     expect(await screen.findByText("projects.loadFailed")).toBeInTheDocument();
     fireEvent.click(
-      screen.getByRole("button", { name: "common:actions.tryAgain" }),
+      screen.getByRole("button", { name: "common:actions.retry" }),
     );
     expect(
       await screen.findByRole("link", { name: "Contoso rollout" }),

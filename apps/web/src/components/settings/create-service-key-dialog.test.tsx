@@ -44,6 +44,7 @@ vi.mock("@/fetchers/service-keys", () => ({
   createServiceKey: (...args: unknown[]) => mocks.create(...args),
 }));
 
+import { agentSessionKeys } from "@/lib/agent-session";
 import { CreateServiceKeyDialog } from "./create-service-key-dialog";
 
 beforeEach(() => {
@@ -57,6 +58,13 @@ afterEach(cleanup);
 function renderDialog(onCreated = vi.fn()) {
   const client = new QueryClient();
   client.setQueryData(["god-mode", "step-up-factor"], mocks.factorStatus);
+  // S7b: the shell's kept session and passed factor answer are present, as after cached
+  // navigations; they must never stand in for this action's own fresh verification.
+  client.setQueryData(agentSessionKeys.session(), {
+    user: { id: "u1" },
+    session: { id: "s1", userId: "u1" },
+  });
+  client.setQueryData(agentSessionKeys.factorsPassed("u1", "s1"), true);
   render(
     <QueryClientProvider client={client}>
       <CreateServiceKeyDialog

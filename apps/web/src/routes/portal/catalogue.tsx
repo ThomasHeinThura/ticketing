@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { FormSchema } from "@taskdesk/domain";
 import {
@@ -26,6 +26,7 @@ import {
   getPortalRequestType,
   submitPortalRequest,
 } from "@/fetchers/intake";
+import { invalidatePortalCaseViews } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 import { missingRequiredIntakeFields } from "@/lib/intake-validation";
@@ -150,6 +151,7 @@ function PortalCatalogueContent() {
   );
   // KB-10: articles opened from this form are deflections only if the form is then abandoned.
   const kbDeflection = usePortalKbDeflection(selected?.key);
+  const queryClient = useQueryClient();
   const submit = useMutation({
     mutationFn: () =>
       submitPortalRequest({
@@ -161,6 +163,7 @@ function PortalCatalogueContent() {
       }),
     onSuccess: async (result) => {
       kbDeflection.markSubmitted();
+      void invalidatePortalCaseViews(queryClient, portalUserId);
       if (storageKey) localStorage.removeItem(storageKey);
       await navigate({
         to: routes.portalSubmission.path,

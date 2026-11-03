@@ -6,6 +6,10 @@ import type { PortalShellUser } from "./portal-user-menu";
 // Navigation and the top bar load separately from page content (G11 portal budget).
 const PortalSidebar = lazy(() => import("./portal-sidebar"));
 const PortalTopbar = lazy(() => import("./portal-topbar"));
+// D7: active incident and maintenance announcements, loaded after the shell.
+const PortalAnnouncementBanner = lazy(
+  () => import("./announcements/portal-announcement-banner"),
+);
 
 /** Kaneo sidebar/inset shell with the customer top bar. */
 export default function PortalLayout({
@@ -42,6 +46,9 @@ export default function PortalLayout({
               <PortalTopbar user={user} />
             </Suspense>
           </header>
+          <Suspense fallback={null}>
+            <PortalAnnouncementBanner />
+          </Suspense>
           {children}
         </SidebarInset>
       </SidebarProvider>

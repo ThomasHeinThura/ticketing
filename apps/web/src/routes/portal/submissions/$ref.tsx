@@ -42,6 +42,7 @@ import {
   withdrawPortalSubmission,
 } from "@/fetchers/intake";
 import { usePortalRequestActions } from "@/hooks/mutations/portal/use-portal-request-actions";
+import { invalidatePortalCaseViews } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 import { submissionAnswerRows } from "@/lib/intake-validation";
@@ -93,17 +94,23 @@ function PortalSubmissionContent() {
     mutationFn: () => replyPortalSubmission({ ref, body: body.trim() }),
     onSuccess: async () => {
       setBody("");
-      await queryClient.invalidateQueries({
-        queryKey: ["portal", portalUserId, "submission", ref],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["portal", portalUserId, "submission", ref],
+        }),
+        invalidatePortalCaseViews(queryClient, portalUserId),
+      ]);
     },
   });
   const withdraw = useMutation({
     mutationFn: () => withdrawPortalSubmission(ref),
     onSuccess: async () =>
-      queryClient.invalidateQueries({
-        queryKey: ["portal", portalUserId, "submission", ref],
-      }),
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["portal", portalUserId, "submission", ref],
+        }),
+        invalidatePortalCaseViews(queryClient, portalUserId),
+      ]),
   });
   const upload = useMutation({
     mutationFn: async (input: { fieldKey: string; file: File }) => {

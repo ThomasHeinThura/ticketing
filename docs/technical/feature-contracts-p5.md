@@ -895,6 +895,45 @@ A grouping of changes deployed together.
 - `REL-5` A release may be published to the customer portal, so customers can see what
   changed. Off by default.
 
+<a id="service-management-announcements"></a>
+### Announcements
+
+Customer notices written by staff and shown in the customer portal (D7, approved by Thomas on
+31 October 2026).
+
+- An announcement has a title (1–200 characters), a plain-text body (at most 20,000
+  characters), a severity (`info`, `maintenance` or `incident`), a start, an optional end
+  after the start, and an audience. A new announcement is a draft (`published_at` null).
+- Audience: `workspace` (every customer organisation with a live project in the workspace),
+  `organisations` (named customer organisations served by a live project in the workspace) or
+  `projects` (the customer organisations of named live projects in the workspace). Targets
+  outside the workspace, or outside the caller's reach, are refused with 422.
+- Staff project reach applies to every staff route. An announcement with no project target,
+  and no organisation target served by a project, in the caller's reach answers 404 (read,
+  edit, publish, unpublish, delete) and is left out of the list; targets outside reach are
+  hidden from each row and kept on edit. Changing the audience or publishing while such hidden
+  targets exist, and creating, switching to or publishing a `workspace` announcement without
+  reach to every live customer project of the workspace, are refused with 422. A published
+  announcement is live for every customer it addresses, so editing (any field), unpublishing
+  or deleting it, like publishing it, needs reach to every one of them: no hidden target, and
+  for `workspace` reach to every live customer project. Otherwise 422; drafts are exempt.
+  Each staff row carries `reachesAudience`, that same test, so the screen disables Publish,
+  and on a published row Edit, Unpublish and Delete, with the reason; it says only that a
+  target is out of reach, as the 422 does, never which.
+- The portal shows an announcement only when it is published, not deleted, inside its window
+  (`starts_at <= now`, `ends_at` null or later), and addressed to the caller's organisation
+  through a live, portal-enabled project of theirs in a workspace with the service catalogue
+  on. Anything else answers 404, including another organisation's or another workspace's
+  announcement.
+- The portal lists announcements newest start first, with release notes (`REL-5`) as a second
+  tab at `/releases`. Active `incident` and `maintenance` announcements also appear as a banner
+  at the top of every portal page; a customer can dismiss each one for the browser session.
+- The body is shown as plain text. No markup is rendered.
+- Create, update, publish, unpublish and delete are audited (`announcement.created`,
+  `announcement.updated`, `announcement.published`, `announcement.unpublished`,
+  `announcement.deleted`). Updates use optimistic concurrency (`version`). Deletion is soft and
+  goes through a click-confirmed pending action.
+
 ---
 
 <a id="service-management-permissions"></a>
@@ -910,6 +949,8 @@ A grouping of changes deployed together.
 | Manage freezes | `change:manage` |
 | Override a freeze | `change:manage` + elevated + audited |
 | Manage releases | `release:manage` |
+| Manage announcements | `service:manage` |
+| Read portal announcements | customer portal, own organisation |
 
 <a id="service-management-screens"></a>
 ### Screens
@@ -938,6 +979,16 @@ POST   /api/change-freezes                     change:manage
 GET    /api/releases                           project:read
 POST   /api/releases                           release:manage
 POST   /api/releases/{id}/notes                release:manage
+GET    /api/announcements?workspaceId=         service:manage
+GET    /api/announcements/audience-options     service:manage
+POST   /api/announcements                      service:manage
+GET    /api/announcements/{id}                 service:manage
+PATCH  /api/announcements/{id}                 service:manage
+POST   /api/announcements/{id}/publish         service:manage
+POST   /api/announcements/{id}/unpublish       service:manage
+DELETE /api/announcements/{id}                 service:manage (pending action)
+GET    /api/portal/announcements               customer, own organisation
+GET    /api/portal/announcements/{id}          customer, own organisation
 ```
 
 <a id="service-management-edge-cases"></a>
