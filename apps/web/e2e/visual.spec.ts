@@ -6946,9 +6946,7 @@ test("portal request detail @visual", async ({ page }) => {
   await expect(page.getByText("Can you test it today?")).toBeVisible();
   await expect(page.getByText("vpn-guide.pdf")).toBeVisible();
   await expect(
-    page.getByText(
-      "Not available to download here yet. Ask the team if you need it.",
-    ),
+    page.getByRole("link", { name: "Download vpn-guide.pdf" }),
   ).toBeVisible();
   // The lazy shell is ready: navigation and the top bar have both painted.
   await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
