@@ -76,8 +76,11 @@ export function DocumentsPage({ projectKey }: { projectKey: string }) {
   const { project, isLoading } = useProjectByKey(projectKey);
   const projectId = project?.id ?? "";
   const pagesOn = useProjectPagesFeature(projectId);
-  const { canUpdateProjects } = useWorkspacePermission();
+  const { canUpdateProjects, isCheckingPermissions } = useWorkspacePermission();
   const canUpdate = canUpdateProjects();
+  // Only someone who can add documents is told to add them; the read-only copy waits for the
+  // permission check, so an admin never sees it flash first.
+  const readOnly = !isCheckingPermissions && !canUpdate;
   const failure = useFailureMessage();
   const openPendingAction = useOpenPendingAction();
   const [editing, setEditing] = useState<DocumentLink | "new" | null>(null);
@@ -141,7 +144,9 @@ export function DocumentsPage({ projectKey }: { projectKey: string }) {
             <EmptyHeader>
               <EmptyTitle>{t("documents.emptyTitle")}</EmptyTitle>
               <EmptyDescription>
-                {t("documents.emptyDescription")}
+                {readOnly
+                  ? t("documents.emptyDescriptionReadOnly")
+                  : t("documents.emptyDescription")}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

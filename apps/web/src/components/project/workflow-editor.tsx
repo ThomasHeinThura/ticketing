@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useUpsertWorkflowRule } from "@/hooks/mutations/workflow-rule/use-upsert-workflow-rule";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useGetWorkflowRules } from "@/hooks/queries/workflow-rule/use-get-workflow-rules";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
 
 const GITHUB_EVENT_TYPES = [
@@ -31,6 +32,10 @@ export default function WorkflowEditor({ projectId }: WorkflowEditorProps) {
   const { data: rules, isLoading: rulesLoading } =
     useGetWorkflowRules(projectId);
   const { mutateAsync: upsertRule } = useUpsertWorkflowRule();
+  // `PUT /api/workflow-rule/{projectId}` needs project:update. Without it the pickers are
+  // shown read-only (and stay disabled while the check runs), so a pick never ends in a 403.
+  const { canUpdateProjects, isCheckingPermissions } = useWorkspacePermission();
+  const canEdit = !isCheckingPermissions && canUpdateProjects();
 
   if (columnsLoading || rulesLoading) {
     return (
@@ -84,8 +89,9 @@ export default function WorkflowEditor({ projectId }: WorkflowEditorProps) {
                 </span>
                 <Select
                   value={currentRule?.columnId ?? ""}
+                  disabled={!canEdit}
                   onValueChange={async (value) => {
-                    if (!value) return;
+                    if (!value || !canEdit) return;
                     try {
                       await upsertRule({
                         projectId,
@@ -139,6 +145,14 @@ export default function WorkflowEditor({ projectId }: WorkflowEditorProps) {
 
   return (
     <div className="space-y-10">
+      {!canEdit && !isCheckingPermissions ? (
+        <p
+          className="text-xs text-muted-foreground"
+          data-testid="workflow-rules-read-only"
+        >
+          {t("settings:workflowEditor.readOnly")}
+        </p>
+      ) : null}
       {renderRuleSection("github", "githubHeading", "githubHint")}
       {renderRuleSection("gitea", "giteaHeading", "giteaHint")}
     </div>

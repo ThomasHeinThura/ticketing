@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 import WorkflowEditor from "./workflow-editor";
 
@@ -27,10 +27,23 @@ vi.mock("@/hooks/queries/workflow-rule/use-get-workflow-rules", () => ({
   }),
 }));
 
+const permission = vi.hoisted(() => ({ checking: false, canUpdate: true }));
+
 vi.mock("@/hooks/mutations/workflow-rule/use-upsert-workflow-rule", () => ({
   useUpsertWorkflowRule: () => ({ mutateAsync: vi.fn() }),
 }));
 
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    isCheckingPermissions: permission.checking,
+    canUpdateProjects: () => permission.canUpdate,
+  }),
+}));
+
+beforeEach(() => {
+  permission.checking = false;
+  permission.canUpdate = true;
+});
 afterEach(cleanup);
 
 describe("WorkflowEditor accessibility", () => {
@@ -54,5 +67,35 @@ describe("WorkflowEditor accessibility", () => {
       new Set(pickers.map((picker) => picker.getAttribute("aria-labelledby")))
         .size,
     ).toBe(10);
+  });
+});
+
+describe("WorkflowEditor permissions", () => {
+  it("offers live column pickers to someone with project:update", () => {
+    render(<WorkflowEditor projectId="project-1" />);
+    for (const picker of screen.getAllByRole("combobox"))
+      expect(picker).not.toHaveAttribute("data-disabled");
+    expect(screen.queryByTestId("workflow-rules-read-only")).toBeNull();
+  });
+
+  it("shows the pickers read-only with a hint to a member or viewer without project:update", () => {
+    permission.canUpdate = false;
+    render(<WorkflowEditor projectId="project-1" />);
+    const pickers = screen.getAllByRole("combobox");
+    expect(pickers).toHaveLength(10);
+    for (const picker of pickers)
+      expect(picker).toHaveAttribute("data-disabled");
+    expect(screen.getByTestId("workflow-rules-read-only")).toHaveTextContent(
+      "Only people who can update this Project can change automation rules.",
+    );
+  });
+
+  it("keeps the pickers disabled while the permission check runs, without the hint", () => {
+    permission.checking = true;
+    permission.canUpdate = false;
+    render(<WorkflowEditor projectId="project-1" />);
+    for (const picker of screen.getAllByRole("combobox"))
+      expect(picker).toHaveAttribute("data-disabled");
+    expect(screen.queryByTestId("workflow-rules-read-only")).toBeNull();
   });
 });

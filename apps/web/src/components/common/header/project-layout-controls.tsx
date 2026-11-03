@@ -14,7 +14,15 @@ import {
   SquircleDashed,
   Users,
 } from "lucide-react";
-import { lazy, type ReactNode, Suspense, useLayoutEffect, useRef } from "react";
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
 import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
@@ -30,6 +38,12 @@ import { routes } from "@/lib/routes";
 const MobileProjectNav = lazy(
   () => import("@/components/common/header/mobile-project-nav"),
 );
+const ProjectViewOverflowMenu = lazy(
+  () => import("@/components/common/header/project-view-overflow-menu"),
+);
+
+/** Below `lg` the header has no room for the tab strip; the project menu lists the views. */
+const TAB_STRIP_BREAKPOINT = 1024;
 
 type ProjectView =
   | "overview"
@@ -70,11 +84,13 @@ const OVERVIEW_VIEW_ROUTES = {
 } as const;
 
 function ViewTab({
+  view,
   active,
   icon: Icon,
   onClick,
   children,
 }: {
+  view: ProjectView;
   active: boolean;
   icon: LucideIcon;
   onClick: () => void;
@@ -85,6 +101,7 @@ function ViewTab({
       variant={active ? "secondary" : "ghost"}
       size="xs"
       onClick={onClick}
+      data-project-view={view}
       aria-current={active ? "page" : undefined}
       className={cn(
         // The scroll margin matches the strip's 1.5rem edge fade, so a focused or
@@ -121,7 +138,7 @@ export default function ProjectLayoutControls({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useIsMobile();
+  const showsProjectMenu = useIsMobile(TAB_STRIP_BREAKPOINT);
   const { data: workspaceProjects } = useGetProjects({ workspaceId });
   const permissions = useWorkspacePermission(workspaceId);
   const canCreateProject =
@@ -170,6 +187,71 @@ export default function ProjectLayoutControls({
     calendarOn,
     ganttOn,
   ]);
+  // Tabs that are not fully inside the strip's visible frame (scrolled away or under the edge
+  // fade) are listed in the "More" menu, so none is out of reach at a glance. Every tab stays
+  // in the strip, so the menu never changes the strip's width and cannot cause a resize loop.
+  const [hiddenViews, setHiddenViews] = useState<string[]>([]);
+  useLayoutEffect(() => {
+    const tabs = tabsRef.current;
+    const viewport = tabs?.parentElement;
+    if (!showViewSwitcher || !tabs || !viewport) {
+      setHiddenViews((current) => (current.length ? [] : current));
+      return;
+    }
+    const measure = () => {
+      const frame = viewport.getBoundingClientRect();
+      const hidden: string[] = [];
+      if (frame.width > 0)
+        for (const tab of tabs.querySelectorAll<HTMLElement>(
+          "[data-project-view]",
+        )) {
+          const box = tab.getBoundingClientRect();
+          if (box.left < frame.left - 1 || box.right > frame.right + 1)
+            hidden.push(tab.dataset.projectView ?? "");
+        }
+      setHiddenViews((current) =>
+        current.length === hidden.length &&
+        current.every((view, index) => view === hidden[index])
+          ? current
+          : hidden,
+      );
+    };
+    measure();
+    viewport.addEventListener("scroll", measure, { passive: true });
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(measure);
+    observer?.observe(viewport);
+    observer?.observe(tabs);
+    return () => {
+      viewport.removeEventListener("scroll", measure);
+      observer?.disconnect();
+    };
+    // Feature tabs appearing or going change the strip's size, which the observer reports.
+  }, [showViewSwitcher]);
+  // A vertical mouse wheel over the strip scrolls it sideways while it can still move that
+  // way; at either end the page scrolls as usual. React's wheel handler is passive, so this is
+  // a native listener that may cancel the vertical scroll.
+  useEffect(() => {
+    const viewport = tabsRef.current?.parentElement;
+    if (!showViewSwitcher || !viewport) return;
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      const maxScroll = viewport.scrollWidth - viewport.clientWidth;
+      if (maxScroll <= 0) return;
+      const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+      if (
+        (delta < 0 && viewport.scrollLeft <= 0) ||
+        (delta > 0 && viewport.scrollLeft >= maxScroll)
+      )
+        return;
+      event.preventDefault();
+      viewport.scrollLeft += delta;
+    };
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", onWheel);
+  }, [showViewSwitcher]);
   const handleNavigateToOverviewView = (
     view: keyof typeof OVERVIEW_VIEW_ROUTES,
   ) => {
@@ -282,6 +364,104 @@ export default function ProjectLayoutControls({
     });
   };
 
+  // One list drives the strip and its "More" menu, in the strip's order.
+  const viewTabs: Array<{
+    view: ProjectView;
+    icon: LucideIcon;
+    label: string;
+    onSelect: () => void;
+  }> = [
+    {
+      view: "overview",
+      icon: LayoutDashboard,
+      label: t("navigation:projectViews.overview"),
+      onSelect: () => handleNavigateToOverviewView("overview"),
+    },
+    {
+      view: "backlog",
+      icon: SquircleDashed,
+      label: t("navigation:projectViews.backlog"),
+      onSelect: handleNavigateToBacklog,
+    },
+    {
+      view: "board",
+      icon: SquareKanban,
+      label: t("navigation:projectViews.workItems"),
+      onSelect: handleNavigateToBoard,
+    },
+    ...(calendarOn
+      ? [
+          {
+            view: "calendar" as const,
+            icon: CalendarRange,
+            label: t("navigation:projectViews.calendar"),
+            onSelect: handleNavigateToCalendar,
+          },
+        ]
+      : []),
+    ...(ganttOn
+      ? [
+          {
+            view: "gantt" as const,
+            icon: CalendarDays,
+            label: t("navigation:projectViews.timeline"),
+            onSelect: handleNavigateToGantt,
+          },
+        ]
+      : []),
+    ...(agileFeatures.cycles
+      ? [
+          {
+            view: "cycles" as const,
+            icon: Repeat,
+            label: t("navigation:projectViews.cycles"),
+            onSelect: handleNavigateToCycles,
+          },
+        ]
+      : []),
+    ...(agileFeatures.modules
+      ? [
+          {
+            view: "modules" as const,
+            icon: Layers,
+            label: t("navigation:projectViews.modules"),
+            onSelect: handleNavigateToModules,
+          },
+        ]
+      : []),
+    ...(pagesOn
+      ? [
+          {
+            view: "pages" as const,
+            icon: FileText,
+            label: t("navigation:projectViews.pages"),
+            onSelect: handleNavigateToPages,
+          },
+        ]
+      : []),
+    {
+      view: "prerequisites",
+      icon: ListChecks,
+      label: t("navigation:projectViews.prerequisites"),
+      onSelect: () => handleNavigateToOverviewView("prerequisites"),
+    },
+    {
+      view: "team",
+      icon: Users,
+      label: t("navigation:projectViews.team"),
+      onSelect: () => handleNavigateToOverviewView("team"),
+    },
+    {
+      view: "documents",
+      icon: Files,
+      label: t("navigation:projectViews.documents"),
+      onSelect: () => handleNavigateToOverviewView("documents"),
+    },
+  ];
+  const overflowItems = viewTabs
+    .filter((tab) => hiddenViews.includes(tab.view))
+    .map((tab) => ({ ...tab, active: resolvedView === tab.view }));
+
   return (
     // No min-w-0 here: the project crumb and the strip's minimum width hold their room, so on a
     // narrow header the workspace crumb before them truncates instead.
@@ -297,8 +477,8 @@ export default function ProjectLayoutControls({
         />
       </div>
 
-      {isMobile && projectId && workspaceId ? (
-        <div className="md:hidden">
+      {showsProjectMenu && projectId && workspaceId ? (
+        <div className="lg:hidden">
           <Suspense fallback={null}>
             <MobileProjectNav
               workspaceId={workspaceId}
@@ -342,14 +522,15 @@ export default function ProjectLayoutControls({
         // The slot takes the room left after the crumb but never less than min-w-44, which leaves
         // the widest tab its 24 px scroll margin on each side, clear of the fade. Inline-size
         // containment keeps the tabs' full width out of the header's minimum size, so the
-        // workspace crumb truncates first. The strip itself stays as wide as its tabs.
-        <div className="hidden min-w-44 flex-1 contain-inline-size sm:block">
+        // workspace crumb truncates first. The strip itself stays as wide as its tabs, and the
+        // "More" menu after it keeps its own room.
+        <div className="hidden min-w-44 flex-1 items-center gap-1 contain-inline-size lg:flex">
           {/* The fade's mask clips anything drawn outside the scroll frame, so the frame's
               focus ring is drawn on the strip's root instead. */}
           <ScrollArea
             scrollFade
             aria-label={t("navigation:projectViews.workItems")}
-            className="h-8 w-max max-w-full rounded-lg border border-border/80 bg-background has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-2 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-ring has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-1 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-background"
+            className="h-8 w-max min-w-0 max-w-full shrink rounded-lg border border-border/80 bg-background has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-2 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-ring has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-1 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-background"
             onFocusCapture={(event) => {
               const target = event.target;
               if (
@@ -366,95 +547,24 @@ export default function ProjectLayoutControls({
               ref={tabsRef}
               className="inline-flex h-full w-max min-w-max items-center gap-0.5 p-0.5"
             >
-              <ViewTab
-                active={resolvedView === "overview"}
-                icon={LayoutDashboard}
-                onClick={() => handleNavigateToOverviewView("overview")}
-              >
-                {t("navigation:projectViews.overview")}
-              </ViewTab>
-              <ViewTab
-                active={resolvedView === "backlog"}
-                icon={SquircleDashed}
-                onClick={handleNavigateToBacklog}
-              >
-                {t("navigation:projectViews.backlog")}
-              </ViewTab>
-              <ViewTab
-                active={resolvedView === "board"}
-                icon={SquareKanban}
-                onClick={handleNavigateToBoard}
-              >
-                {t("navigation:projectViews.workItems")}
-              </ViewTab>
-              {calendarOn ? (
+              {viewTabs.map((tab) => (
                 <ViewTab
-                  active={resolvedView === "calendar"}
-                  icon={CalendarRange}
-                  onClick={handleNavigateToCalendar}
+                  key={tab.view}
+                  view={tab.view}
+                  active={resolvedView === tab.view}
+                  icon={tab.icon}
+                  onClick={tab.onSelect}
                 >
-                  {t("navigation:projectViews.calendar")}
+                  {tab.label}
                 </ViewTab>
-              ) : null}
-              {ganttOn ? (
-                <ViewTab
-                  active={resolvedView === "gantt"}
-                  icon={CalendarDays}
-                  onClick={handleNavigateToGantt}
-                >
-                  {t("navigation:projectViews.timeline")}
-                </ViewTab>
-              ) : null}
-              {agileFeatures.cycles ? (
-                <ViewTab
-                  active={resolvedView === "cycles"}
-                  icon={Repeat}
-                  onClick={handleNavigateToCycles}
-                >
-                  {t("navigation:projectViews.cycles")}
-                </ViewTab>
-              ) : null}
-              {agileFeatures.modules ? (
-                <ViewTab
-                  active={resolvedView === "modules"}
-                  icon={Layers}
-                  onClick={handleNavigateToModules}
-                >
-                  {t("navigation:projectViews.modules")}
-                </ViewTab>
-              ) : null}
-              {pagesOn ? (
-                <ViewTab
-                  active={resolvedView === "pages"}
-                  icon={FileText}
-                  onClick={handleNavigateToPages}
-                >
-                  {t("navigation:projectViews.pages")}
-                </ViewTab>
-              ) : null}
-              <ViewTab
-                active={resolvedView === "prerequisites"}
-                icon={ListChecks}
-                onClick={() => handleNavigateToOverviewView("prerequisites")}
-              >
-                {t("navigation:projectViews.prerequisites")}
-              </ViewTab>
-              <ViewTab
-                active={resolvedView === "team"}
-                icon={Users}
-                onClick={() => handleNavigateToOverviewView("team")}
-              >
-                {t("navigation:projectViews.team")}
-              </ViewTab>
-              <ViewTab
-                active={resolvedView === "documents"}
-                icon={Files}
-                onClick={() => handleNavigateToOverviewView("documents")}
-              >
-                {t("navigation:projectViews.documents")}
-              </ViewTab>
+              ))}
             </div>
           </ScrollArea>
+          {overflowItems.length > 0 ? (
+            <Suspense fallback={null}>
+              <ProjectViewOverflowMenu items={overflowItems} />
+            </Suspense>
+          ) : null}
         </div>
       )}
     </div>

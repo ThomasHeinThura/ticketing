@@ -18,6 +18,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { LazyActionTooltip } from "@/components/common/lazy-action-tooltip";
 import PageTitle from "@/components/page-title";
+import ProjectNotFound from "@/components/project/project-not-found";
 import loadWorkItemBoardView, {
   isWorkItemBoardViewLoaded,
   preloadWorkItemBoardView,
@@ -557,8 +558,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     isWorkspaceLoading ||
     isProjectsLoading ||
     (!!project && isWorkItemsLoading);
-  const isError =
-    isWorkspaceError || isProjectsError || projectNotFound || isWorkItemsError;
+  // A missing or out-of-reach Project is not a load failure: it gets the not-found denial
+  // below instead of the Retry alert, since a retry cannot help.
+  const isError = isWorkspaceError || isProjectsError || isWorkItemsError;
 
   useEffect(() => {
     if (!project?.id) return;
@@ -919,6 +921,14 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
       {t("workItems:board.combinedDescendants")}
     </Button>
   );
+
+  if (projectNotFound)
+    return (
+      <>
+        <PageTitle title={t("workItems:list.pageTitle")} />
+        <ProjectNotFound />
+      </>
+    );
 
   return (
     <>

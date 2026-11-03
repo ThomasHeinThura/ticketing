@@ -8,8 +8,10 @@ import {
   TableHeader,
   TableRow,
 } from "@taskdesk/ui";
+import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { ActionTooltip } from "@/components/common/action-tooltip";
+import { formatDateTime } from "@/lib/format";
 import { submissionAge } from "@/lib/intake-queue";
 import { routes } from "@/lib/routes";
 
@@ -42,18 +44,31 @@ export function SubmissionQueueTable({
   now?: number;
 }) {
   const { t } = useTranslation("intake");
+  // A click anywhere on a row opens its submission, like the reference does. The reference
+  // stays the keyboard target; clicks on the row's own links and buttons, and a click that
+  // ends a text selection, keep their own meaning.
+  const openFromRow = (event: MouseEvent<HTMLTableRowElement>, ref: string) => {
+    if (event.button !== 0 || event.defaultPrevented) return;
+    const target = event.target;
+    if (target instanceof Element && target.closest("a, button")) return;
+    if (window.getSelection?.()?.toString()) return;
+    onOpenSubmission(ref);
+  };
   return (
     <Table aria-label={t("title")}>
       <TableHeader>
         <TableRow>
           <TableHead>{t("reference")}</TableHead>
-          <TableHead className="min-w-64">{t("summary")}</TableHead>
+          <TableHead className="min-w-48">{t("summary")}</TableHead>
           <TableHead>{t("requestType")}</TableHead>
           <TableHead>{t("customer")}</TableHead>
           <TableHead>{t("organisation")}</TableHead>
           <TableHead>{t("submittedAt")}</TableHead>
           <TableHead>{t("age")}</TableHead>
-          <TableHead>{t("queueSuggestedDuplicates")}</TableHead>
+          {/* The long header wraps over two lines; its cells hold short keys. */}
+          <TableHead className="w-28 whitespace-normal">
+            {t("queueSuggestedDuplicates")}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -61,6 +76,9 @@ export function SubmissionQueueTable({
           <TableRow
             key={row.ref}
             data-state={selectedRef === row.ref ? "selected" : undefined}
+            data-testid={`triage-row-${row.ref}`}
+            className="cursor-pointer"
+            onClick={(event) => openFromRow(event, row.ref)}
           >
             <TableCell>
               <Button
@@ -75,14 +93,30 @@ export function SubmissionQueueTable({
                 {row.ref}
               </Button>
             </TableCell>
-            <TableCell className="min-w-64 whitespace-normal">
+            <TableCell className="min-w-48 whitespace-normal">
               {row.summary}
             </TableCell>
-            <TableCell>{row.requestType.name}</TableCell>
-            <TableCell>{row.requester.displayName ?? t("customer")}</TableCell>
-            <TableCell>{row.organisation.name}</TableCell>
-            <TableCell>
-              {new Date(row.submission.createdAt).toLocaleString()}
+            <TableCell
+              className="max-w-40 truncate"
+              title={row.requestType.name}
+            >
+              {row.requestType.name}
+            </TableCell>
+            <TableCell
+              className="max-w-36 truncate"
+              title={row.requester.displayName ?? undefined}
+            >
+              {row.requester.displayName ?? t("customer")}
+            </TableCell>
+            <TableCell
+              className="max-w-36 truncate"
+              title={row.organisation.name}
+            >
+              {row.organisation.name}
+            </TableCell>
+            {/* The app's own date format (date and short time), in the app's language. */}
+            <TableCell data-testid="triage-row-submitted">
+              {formatDateTime(row.submission.createdAt)}
             </TableCell>
             <TableCell data-testid="triage-row-age">
               {(() => {

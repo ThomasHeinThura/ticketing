@@ -129,9 +129,10 @@ export default function MobileProjectNav({
         <div className="space-y-3">
           <div className="space-y-1">
             <p className="px-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-              View
+              {t("navigation:mobileProjectNav.viewHeading")}
             </p>
-            <div className="grid grid-cols-3 gap-1">
+            {/* Two columns: TaskDesk's longer view names (Prerequisites, Documents) fit whole. */}
+            <div className="grid grid-cols-2 gap-1">
               {onSelectOverview ? (
                 <MobileViewButton
                   active={activeView === "overview"}
@@ -152,7 +153,7 @@ export default function MobileProjectNav({
                     : "border-transparent text-muted-foreground hover:bg-accent",
                 )}
               >
-                Backlog
+                {t("navigation:projectViews.backlog")}
               </Button>
               <Button
                 variant="ghost"
@@ -166,7 +167,7 @@ export default function MobileProjectNav({
                 )}
               >
                 <SquareKanban className="size-3.5" />
-                Board
+                {t("navigation:projectViews.workItems")}
               </Button>
               {onSelectCalendar ? (
                 <Button
@@ -280,7 +281,7 @@ export default function MobileProjectNav({
 
           <div className="space-y-1">
             <p className="px-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-              Projects
+              {t("navigation:mobileProjectNav.projectsHeading")}
             </p>
             <div className="max-h-56 space-y-0.5 overflow-y-auto">
               {(projects ?? []).map((project) => {
@@ -318,7 +319,7 @@ export default function MobileProjectNav({
               className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
             >
               <Plus className="size-3.5" />
-              Add project
+              {t("navigation:projectList.addProject")}
             </Button>
           ) : null}
 

@@ -56,7 +56,9 @@ function Fact({
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <dt className="text-muted-foreground text-xs">{label}</dt>
-      <dd className="min-w-0 truncate text-sm">{children}</dd>
+      {/* Values wrap instead of truncating: a period or a kickoff date must stay readable in a
+          narrow column (375 px phones, or the overview's side column). */}
+      <dd className="min-w-0 break-words text-sm">{children}</dd>
     </div>
   );
 }
@@ -179,7 +181,7 @@ export function ContractPanel({
                   })}
             </span>
           </div>
-          <dl className="grid grid-cols-2 gap-3">
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Fact label={t("contract.period")}>
               {formatDate(contract.startDate, locale)} –{" "}
               {formatDate(contract.endDate, locale)}

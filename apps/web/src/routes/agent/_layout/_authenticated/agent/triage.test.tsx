@@ -113,7 +113,8 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 const REAL_ENGLISH_KEYS =
   /^(status|statusFilter|states\..+|attachmentStates\..+|submissionRegion|submissionFallback|loadingDetails|destinationProject|chooseProject|workItemType|chooseWorkItemType|download|ageSuffix\..+|errors\..+|actorTypes\..+|systemReasons\..+|reference|summary|requestType|organisation|submittedAt|convertedWorkItem|claimedAt|defaultFromRequestType|convertHeading)$/u;
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({
     t: (
       key: string,
@@ -257,6 +258,27 @@ describe("intake triage route", () => {
       "Matching request",
     );
     expect(mocks.getDuplicateSuggestions).not.toHaveBeenCalled();
+  });
+
+  it("keeps the queue picker and table inside the header's 16 px gutter", async () => {
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [
+        {
+          ref: "SUB-7",
+          summary: "Customer request",
+          submission: { state: "new", createdAt: "2026-10-01T00:00:00Z" },
+          requestType: { name: "Help" },
+          requester: { displayName: "Ada" },
+          organisation: { name: "Northstar" },
+        },
+      ],
+      page: { hasMore: false, nextCursor: null },
+    });
+    renderTriage();
+    const table = await screen.findByRole("table", { name: "title" });
+    const content = screen.getByTestId("triage-content");
+    expect(content).toHaveClass("px-4", "py-3");
+    expect(content).toContainElement(table);
   });
 
   it("shows no-access without fetching when the caller lacks intake:triage (A-04)", async () => {

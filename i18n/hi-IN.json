@@ -1549,6 +1549,7 @@
 			"githubHint": "जब GitHub इवेंट होता है, तो लिंक किए गए {{term_work_item_one}} को कॉलम में ले जाएँ।",
 			"giteaHeading": "Gitea",
 			"giteaHint": "जब Gitea वेबहुक इवेंट होता है, तो लिंक किए गए {{term_work_item_one}} को कॉलम में ले जाएँ।",
+			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
 			"selectColumnPlaceholder": "कॉलम चुनें...",
 			"toastUpdated": "वर्कफ़्लो नियम अपडेट किया गया",
 			"toastError": "नियम अपडेट करने में विफल",
@@ -2031,6 +2032,9 @@
 			"pages": "Pages",
 			"backlog": "Backlog",
 			"documents": "Documents",
+			"moreLabel": "More {{term_project_one}} views",
+			"notFound": "This {{term_project_one}} does not exist or is out of reach.",
+			"backToProjects": "Back to {{term_project_other}}",
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
@@ -2142,7 +2146,9 @@
 			"projectLabel": "{{term_project_one}}"
 		},
 		"mobileProjectNav": {
-			"menuLabel": "{{term_project_one}} नेविगेशन"
+			"menuLabel": "{{term_project_one}} नेविगेशन",
+			"viewHeading": "View",
+			"projectsHeading": "{{term_project_other}}"
 		},
 		"keyboardShortcuts": {
 			"title": "कीबोर्ड शॉर्टकट",
@@ -9862,6 +9868,7 @@
 			"updated": "Document saved.",
 			"emptyTitle": "No documents yet",
 			"emptyDescription": "Add the contract, statement of work, designs or handover packs as links to where they live. Pages are different: they are long-form staff notes written in TaskDesk and are never shown to customers.",
+			"emptyDescriptionReadOnly": "No documents are registered for this {{term_project_one}} yet. A {{term_project_one}} admin or lead adds them.",
 			"pageStaffOnly": "Customers cannot open Pages, so keep this entry staff only. To share it with a customer, add a link they can open, such as an exported copy on SharePoint, and make that entry visible to customers."
 		},
 		"editSummary": {

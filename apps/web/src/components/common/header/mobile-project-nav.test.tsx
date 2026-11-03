@@ -74,10 +74,41 @@ describe("MobileProjectNav project settings (L-03)", () => {
       }),
     );
     expect(
-      await screen.findByRole("button", { name: /Board/ }),
+      await screen.findByRole("button", { name: "Work items" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Project settings" }),
     ).toBeNull();
+  });
+});
+
+describe("MobileProjectNav wording", () => {
+  it("names the views and sections in the app's language, matching the tab strip", async () => {
+    render(
+      <MobileProjectNav
+        workspaceId="workspace-1"
+        projectId="project-1"
+        activeView="backlog"
+        onSelectBoard={vi.fn()}
+        onSelectBacklog={vi.fn()}
+        onSelectProject={vi.fn()}
+        onAddProject={vi.fn()}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("navigation:mobileProjectNav.menuLabel"),
+      }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Work items" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Backlog" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Board/ })).toBeNull();
+    expect(screen.getByText("View")).toBeInTheDocument();
+    expect(screen.getByText("Projects")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add Project" }),
+    ).toBeInTheDocument();
   });
 });

@@ -272,6 +272,37 @@ describe("ProjectOverviewPage", () => {
     ).toBeVisible();
   });
 
+  it("stacks the contract facts on a phone and lets dates wrap instead of truncating", async () => {
+    mocks.getProjectContract.mockResolvedValue({
+      projectId: "p1",
+      contract: {
+        startDate: "2026-10-01",
+        endDate: "2027-09-30",
+        coverage: "business_hours",
+        kickoffStatus: "completed",
+        kickoffDate: "2026-10-05",
+      },
+      state: "active",
+      daysRemaining: 300,
+      hourBank: {
+        contractedMinutes: 6000,
+        usedMinutes: 600,
+        remainingMinutes: 5400,
+        usedPct: 10,
+      },
+      recentEntries: [],
+      recentEntriesVisible: false,
+    });
+    renderPage();
+    const period = await screen.findByText("contract.period");
+    const facts = period.closest("dl");
+    expect(facts).toHaveClass("grid-cols-1", "sm:grid-cols-2");
+    for (const value of facts?.querySelectorAll("dd") ?? []) {
+      expect(value).not.toHaveClass("truncate");
+      expect(value).toHaveClass("break-words");
+    }
+  });
+
   it("hides every edit control for a viewer", async () => {
     mocks.canUpdate = false;
     mocks.canManage = false;
