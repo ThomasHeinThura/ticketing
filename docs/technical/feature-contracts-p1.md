@@ -823,8 +823,14 @@ login.
 - `PR-12` A stakeholder may be stood down without deletion, removing them from counts and
   pickers while preserving history.
 
-**Documents** — links to external systems. Links, never copies, so they cannot go stale.
-Customer visibility is off by default.
+**Documents** — the register of the engagement's official documents (decision of 3 Nov 2026).
+Each entry is a link to where the file lives, never a copy, with a type (`contract`, `sow`,
+`design`, `handover`, `other`) and an optional description. Customer visibility is off by
+default; customer-visible entries appear on the portal's Project Details. Pages are staff-only
+and never appear in the portal; a page added to Documents is staff-only by default, and the
+Documents dialog warns before a link to a Page is made customer-visible, because the portal
+cannot open it yet (the 3 Nov decision allows sharing a page that way; open for Thomas). Uploaded
+attachments as entries are a follow-up (the `attachment` single-parent rule must change first).
 
 <a id="projects-and-engagements-behaviour"></a>
 ### Behaviour
@@ -907,8 +913,9 @@ POST   /api/projects/{projectId}/prerequisites                project:update
 PATCH  /api/projects/{projectId}/prerequisites/{id}           project:update
 DELETE /api/projects/{projectId}/prerequisites/{id}           project:update
 GET    /api/projects/{projectId}/document-links               project:read
-POST   /api/projects/{projectId}/document-links               project:update
-DELETE /api/projects/{projectId}/document-links/{id}          project:update  — no PATCH: a link is add-or-remove only; editing its url or title is remove-then-re-add
+POST   /api/projects/{projectId}/document-links               project:update  — audited document_link.created
+PATCH  /api/projects/{projectId}/document-links/{id}          project:update  — edits title, url, type, description or visibility; audited document_link.updated (U-15, 3 Nov 2026)
+DELETE /api/projects/{projectId}/document-links/{id}          project:update  — pending action
 GET    /api/projects/{projectId}/health                       project:read
 PATCH  /api/projects/{projectId}/health                       project:update
 GET    /api/project/{id}/overview                             project:read            — derived counts, current/overdue milestones, facts, effective SLA targets (0213)

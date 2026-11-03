@@ -32,6 +32,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FeatureOff } from "@/components/agile/feature-off";
 import { DocumentEditor } from "@/components/editor/document-editor";
 import { LeaveUnsavedDialog } from "@/components/editor/leave-unsaved-dialog";
 import {
@@ -39,6 +40,7 @@ import {
   removedNodeTypes,
 } from "@/components/kb/kb-article-content";
 import PageTitle from "@/components/page-title";
+import { DocumentLinkDialog } from "@/components/project/overview/documents-page";
 import { TaskTitlePresentation } from "@/components/task/task-detail-presentation";
 import {
   getPage,
@@ -48,6 +50,7 @@ import {
   type Page,
   PageConflictError,
   type PageInput,
+  PagesDisabledError,
   type PageVersionSummary,
   pageKeys,
   requestPageDeletion,
@@ -57,6 +60,7 @@ import {
 import { useDocumentAutosave } from "@/hooks/use-document-autosave";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { HttpError } from "@/lib/http-error";
+import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { descendantIds, flattenPageTree } from "./pages-tree";
 
@@ -322,6 +326,7 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
   const openPendingAction = useOpenPendingAction();
   const [conflict, setConflict] = useState<PageConflictError | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [addingToDocuments, setAddingToDocuments] = useState(false);
   const list = useQuery({
     queryKey: pageKeys.list(projectKey),
     queryFn: () => getPages(projectKey),
@@ -518,22 +523,36 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
               {page.title}
             </h1>
           )}
-          {page.canEdit ? (
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {page.canEdit ? (
               <span
                 className="text-muted-foreground text-sm"
                 aria-live="polite"
               >
                 {statusLabel}
               </span>
-              <Button
-                variant="outline"
-                onClick={() => setConfirmingDelete(true)}
-              >
-                {t("delete.action")}
-              </Button>
-            </div>
-          ) : null}
+            ) : null}
+            <Badge variant="outline" data-testid="page-staff-only">
+              {t("share.staffOnly")}
+              <span className="sr-only"> {t("share.staffOnlyHint")}</span>
+            </Badge>
+            {page.canEdit ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setAddingToDocuments(true)}
+                >
+                  {t("share.addToDocuments")}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmingDelete(true)}
+                >
+                  {t("delete.action")}
+                </Button>
+              </>
+            ) : null}
+          </div>
         </div>
         <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
           <div className="min-w-0 space-y-4">
@@ -625,6 +644,18 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
           leave: t("editor.leave"),
         }}
       />
+      {addingToDocuments ? (
+        <DocumentLinkDialog
+          projectId={page.projectId}
+          staffOnly
+          initial={{
+            title: page.title,
+            url: `${window.location.origin}${routes.projectPage.build({ projectKey, pageId: page.id })}`,
+            kind: "other",
+          }}
+          onClose={() => setAddingToDocuments(false)}
+        />
+      ) : null}
       {confirmingDelete ? (
         <Dialog
           open
@@ -688,6 +719,8 @@ export function PageDetail({
         <Skeleton className="h-40 w-full" />
       </div>
     );
+  if (query.error instanceof PagesDisabledError)
+    return <FeatureOff feature="pages" />;
   if (query.isError || !query.data) {
     const missing =
       query.error instanceof HttpError && query.error.status === 404;

@@ -7,6 +7,7 @@ import { AuthLayout } from "@/components/auth/layout";
 import { authClient } from "@/lib/auth-client";
 import { parseOptionalStringSearch } from "@/lib/optional-string-search";
 import { getSafeRedirectPath } from "@/lib/safe-redirect";
+import { signInRefusalKey } from "@/lib/sign-in-refusal";
 
 export const Route = createFileRoute("/auth/two-factor")({
   component: TwoFactorChallenge,
@@ -32,7 +33,11 @@ function TwoFactorChallenge() {
       const result = backupCode
         ? await authClient.twoFactor.verifyBackupCode({ code })
         : await authClient.twoFactor.verifyTotp({ code });
-      if (result.error) throw new Error(t("auth:twoFactor.error"));
+      if (result.error) {
+        const refusal = signInRefusalKey(result.error);
+        setError(refusal ? t(refusal) : t("auth:twoFactor.error"));
+        return;
+      }
       // Only a safe same-origin path is followed; without one the default stays /dashboard.
       const redirectPath = getSafeRedirectPath(search.redirect);
       if (redirectPath) await navigate({ href: redirectPath });

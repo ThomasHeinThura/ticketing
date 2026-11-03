@@ -4,6 +4,13 @@ import { HttpError, readErrorDetail } from "@/lib/http-error";
 
 export type PortalProjectKind = "project" | "managed_service";
 
+export type PortalDocumentKind =
+  | "contract"
+  | "sow"
+  | "design"
+  | "handover"
+  | "other";
+
 export type PortalProjectCounts = {
   /**
    * Readable requests that need more information (colleagues' and staff-raised included) plus
@@ -48,7 +55,14 @@ export type PortalProjectDetail = PortalProjectOption & {
     dueDate: string | null;
     completedAt: string | null;
   }>;
-  documents: Array<{ id: string; title: string; url: string }>;
+  /** Customer-visible Documents entries only; Pages never appear in the portal. */
+  documents: Array<{
+    id: string;
+    title: string;
+    url: string;
+    kind: PortalDocumentKind;
+    description: string | null;
+  }>;
   contacts: Array<{
     kind: "manager" | "stakeholder";
     role: string | null;

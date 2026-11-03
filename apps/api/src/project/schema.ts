@@ -226,11 +226,43 @@ export const updateStakeholderBody = z
     message: "at least one field must be supplied",
   });
 
+/** The Documents register's entry types (0216, U-15; decision of 3 Nov 2026). */
+export const DOCUMENT_LINK_KINDS = [
+  "contract",
+  "sow",
+  "design",
+  "handover",
+  "other",
+] as const;
+
+const documentLinkKind = z.enum(DOCUMENT_LINK_KINDS);
+
+/** Optional note, at most 2,000 characters (the column's CHECK); null clears it. */
+const documentLinkDescription = z
+  .string()
+  .max(2000)
+  .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+  .nullable();
+
 export const createDocumentLinkBody = z.object({
   url: documentLinkUrl,
   title: nulSafeText(),
+  kind: documentLinkKind.optional(),
+  description: documentLinkDescription.optional(),
   customerVisible: z.boolean().optional(),
 });
+
+export const updateDocumentLinkBody = z
+  .object({
+    url: documentLinkUrl.optional(),
+    title: nulSafeText().optional(),
+    kind: documentLinkKind.optional(),
+    description: documentLinkDescription.optional(),
+    customerVisible: z.boolean().optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: "at least one field must be supplied",
+  });
 
 export const workspaceIdQuery = z.object({ workspaceId: z.string() });
 

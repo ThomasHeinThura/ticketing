@@ -1485,11 +1485,14 @@ export const routes = {
       return `/projects${portalProjectQuery(query, search)}`;
     },
   },
-  /** S4c: one project's details (`docs/screens.md` "Project detail"). */
+  /**
+   * S4c: one project's details (`docs/screens.md` "Project detail"). U-11: its cases table keeps
+   * the dashboard's `scope`, `status` and `priority` filters in the URL.
+   */
   portalProject: {
     path: "/projects/$projectKey" as const,
-    build: (params: { projectKey: string }, search: PortalProjectSearch = {}) =>
-      `/projects/${encodeURIComponent(params.projectKey)}${portalProjectQuery(new URLSearchParams(), search)}`,
+    build: (params: { projectKey: string }, search: PortalHomeSearch = {}) =>
+      `/projects/${encodeURIComponent(params.projectKey)}${portalProjectQuery(portalCaseFilterQuery(parsePortalHomeSearch(search)), search)}`,
   },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {

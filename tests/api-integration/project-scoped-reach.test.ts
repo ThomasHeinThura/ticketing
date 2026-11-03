@@ -241,6 +241,16 @@ const WRITES: Case[] = [
       }),
   },
   {
+    matrixKey: "PATCH /api/project/{id}/document-links/{documentLinkId}",
+    call: (app, _w, i) =>
+      json(
+        app,
+        "PATCH",
+        `/api/project/${i.projectId}/document-links/${i.documentLinkId}`,
+        { title: "Overwritten link" },
+      ),
+  },
+  {
     matrixKey: "DELETE /api/project/{id}/document-links/{documentLinkId}",
     successStatus: 202,
     call: (app, _w, i) =>

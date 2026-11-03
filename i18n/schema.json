@@ -1940,6 +1940,26 @@
 						"toast",
 						"validation"
 					]
+				},
+				"wrongPortal": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"useCustomerPortal": {
+							"type": "string"
+						},
+						"useAgentSignIn": {
+							"type": "string"
+						},
+						"customerPortalUnavailable": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"useCustomerPortal",
+						"useAgentSignIn",
+						"customerPortalUnavailable"
+					]
 				}
 			},
 			"required": [
@@ -1957,7 +1977,8 @@
 				"accountSecurity",
 				"invitation",
 				"onboarding",
-				"profileSetup"
+				"profileSetup",
+				"wrongPortal"
 			]
 		},
 		"settings": {
@@ -4183,6 +4204,12 @@
 						"importExportTasksDescription": {
 							"type": "string"
 						},
+						"exportWorkItems": {
+							"type": "string"
+						},
+						"exportWorkItemsDescription": {
+							"type": "string"
+						},
 						"keyRenamePending": {
 							"type": "string"
 						},
@@ -4423,6 +4450,8 @@
 						"engagement",
 						"importExportTasks",
 						"importExportTasksDescription",
+						"exportWorkItems",
+						"exportWorkItemsDescription",
 						"keyRenamePending",
 						"keyRenameAction",
 						"keyRenameCancel",
@@ -17883,9 +17912,40 @@
 										},
 										"opensInNewTab": {
 											"type": "string"
+										},
+										"kinds": {
+											"type": "object",
+											"additionalProperties": false,
+											"properties": {
+												"contract": {
+													"type": "string"
+												},
+												"sow": {
+													"type": "string"
+												},
+												"design": {
+													"type": "string"
+												},
+												"handover": {
+													"type": "string"
+												},
+												"other": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"contract",
+												"sow",
+												"design",
+												"handover",
+												"other"
+											]
 										}
 									},
-									"required": ["title", "none", "opensInNewTab"]
+									"required": ["title", "none", "opensInNewTab", "kinds"]
+								},
+								"figures": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -17899,7 +17959,8 @@
 								"summary",
 								"milestones",
 								"prerequisites",
-								"documents"
+								"documents",
+								"figures"
 							]
 						},
 						"dashboard": {
@@ -20163,6 +20224,15 @@
 						"form_version_unavailable",
 						"openWinner"
 					]
+				},
+				"noAccessTitle": {
+					"type": "string"
+				},
+				"noAccessDescription": {
+					"type": "string"
+				},
+				"loadError": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -20217,7 +20287,10 @@
 				"ageSuffix",
 				"actorTypes",
 				"systemReasons",
-				"errors"
+				"errors",
+				"noAccessTitle",
+				"noAccessDescription",
+				"loadError"
 			]
 		},
 		"requestTypes": {
@@ -28387,6 +28460,19 @@
 								}
 							},
 							"required": ["title", "description"]
+						},
+						"pages": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description"]
 						}
 					},
 					"required": [
@@ -28395,7 +28481,8 @@
 						"estimates",
 						"calendar",
 						"timeline",
-						"sla"
+						"sla",
+						"pages"
 					]
 				},
 				"cycles": {
@@ -32910,9 +32997,19 @@
 						},
 						"total": {
 							"type": "string"
+						},
+						"featureOff": {
+							"type": "string"
 						}
 					},
-					"required": ["add", "empty", "everyone", "loadError", "total"]
+					"required": [
+						"add",
+						"empty",
+						"everyone",
+						"loadError",
+						"total",
+						"featureOff"
+					]
 				},
 				"settings": {
 					"type": "object",
@@ -33484,6 +33581,22 @@
 						"failed",
 						"hasChildren"
 					]
+				},
+				"share": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"staffOnly": {
+							"type": "string"
+						},
+						"staffOnlyHint": {
+							"type": "string"
+						},
+						"addToDocuments": {
+							"type": "string"
+						}
+					},
+					"required": ["staffOnly", "staffOnlyHint", "addToDocuments"]
 				}
 			},
 			"required": [
@@ -33495,7 +33608,8 @@
 				"editor",
 				"history",
 				"conflict",
-				"delete"
+				"delete",
+				"share"
 			]
 		},
 		"projectOverview": {
@@ -33690,6 +33804,24 @@
 						},
 						"blockingOf_other": {
 							"type": "string"
+						},
+						"closed": {
+							"type": "string"
+						},
+						"closedHint": {
+							"type": "string"
+						},
+						"firstResponse": {
+							"type": "string"
+						},
+						"firstResponseHint": {
+							"type": "string"
+						},
+						"firstResponseNone": {
+							"type": "string"
+						},
+						"firstResponseOff": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -33697,7 +33829,13 @@
 						"status",
 						"workComplete",
 						"workBreakdown",
-						"blocking"
+						"blocking",
+						"closed",
+						"closedHint",
+						"firstResponse",
+						"firstResponseHint",
+						"firstResponseNone",
+						"firstResponseOff"
 					]
 				},
 				"attention": {
@@ -34582,9 +34720,6 @@
 						"loadFailed": {
 							"type": "string"
 						},
-						"empty": {
-							"type": "string"
-						},
 						"pages": {
 							"type": "string"
 						},
@@ -34592,6 +34727,55 @@
 							"type": "string"
 						},
 						"openPages": {
+							"type": "string"
+						},
+						"editTitle": {
+							"type": "string"
+						},
+						"urlHint": {
+							"type": "string"
+						},
+						"fieldKind": {
+							"type": "string"
+						},
+						"fieldDescription": {
+							"type": "string"
+						},
+						"kinds": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"contract": {
+									"type": "string"
+								},
+								"sow": {
+									"type": "string"
+								},
+								"design": {
+									"type": "string"
+								},
+								"handover": {
+									"type": "string"
+								},
+								"other": {
+									"type": "string"
+								}
+							},
+							"required": ["contract", "sow", "design", "handover", "other"]
+						},
+						"opensInNewTab": {
+							"type": "string"
+						},
+						"updated": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"pageStaffOnly": {
 							"type": "string"
 						}
 					},
@@ -34612,10 +34796,19 @@
 						"staffOnly",
 						"saved",
 						"loadFailed",
-						"empty",
 						"pages",
 						"pagesDescription",
-						"openPages"
+						"openPages",
+						"editTitle",
+						"urlHint",
+						"fieldKind",
+						"fieldDescription",
+						"kinds",
+						"opensInNewTab",
+						"updated",
+						"emptyTitle",
+						"emptyDescription",
+						"pageStaffOnly"
 					]
 				},
 				"common": {
@@ -34967,6 +35160,34 @@
 				},
 				"chartLabel": {
 					"type": "string"
+				},
+				"chartScroll": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"hint_one": {
+							"type": "string"
+						},
+						"hint_zero": {
+							"type": "string"
+						},
+						"hint_two": {
+							"type": "string"
+						},
+						"hint_few": {
+							"type": "string"
+						},
+						"hint_many": {
+							"type": "string"
+						},
+						"hint_other": {
+							"type": "string"
+						},
+						"region": {
+							"type": "string"
+						}
+					},
+					"required": ["region"]
 				},
 				"truncated": {
 					"type": "string"
@@ -37156,6 +37377,9 @@
 						},
 						"exportWidget": {
 							"type": "string"
+						},
+						"aboutNumbers": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -37172,7 +37396,8 @@
 						"savedView",
 						"widgetView",
 						"noMetric",
-						"exportWidget"
+						"exportWidget",
+						"aboutNumbers"
 					]
 				},
 				"editor": {
@@ -37604,6 +37829,7 @@
 				"notEnoughData",
 				"tableLabel",
 				"chartLabel",
+				"chartScroll",
 				"truncated",
 				"views",
 				"badges",

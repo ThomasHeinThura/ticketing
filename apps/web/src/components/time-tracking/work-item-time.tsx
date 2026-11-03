@@ -23,6 +23,7 @@ import {
   requestTimeEntryDeletion,
   startTimer,
   type TimeEntry,
+  TimeTrackingDisabledError,
 } from "@/fetchers/time-tracking";
 import {
   useTimeActivities,
@@ -123,6 +124,15 @@ export default function WorkItemTime({
 
   if (entries.isLoading || activities.isLoading)
     return <Skeleton className="h-16 w-full" />;
+  // A-10: tracking is off for this item's project; say so instead of a load failure.
+  if (entries.error instanceof TimeTrackingDisabledError)
+    return (
+      <Alert variant="info">
+        <AlertDescription>
+          {t("timeTracking:section.featureOff")}
+        </AlertDescription>
+      </Alert>
+    );
   if (entries.isError || !list)
     return (
       <Alert variant="error">

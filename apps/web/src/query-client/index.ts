@@ -1,5 +1,9 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
-import { handleUnauthorized, isUnauthorizedError } from "@/lib/http-error";
+import {
+  HttpError,
+  handleUnauthorized,
+  isUnauthorizedError,
+} from "@/lib/http-error";
 import { followAuditInvalidation } from "./audit-invalidation";
 import { configureNotifyScheduler } from "./notify-scheduler";
 
@@ -60,8 +64,24 @@ function captureCacheError(error: unknown, context: "query" | "mutation") {
   console.error(`[${area}]`, error);
 }
 
+/**
+ * A refusal (4xx) answers the same on every retry: no access, not found, feature off. Retrying
+ * only delays the right empty state (A-04, A-11). A timeout (408) or rate limit (429) may pass.
+ */
+function isFinalClientError(error: unknown): boolean {
+  return (
+    error instanceof HttpError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+  );
+}
+
 export function shouldRetryQuery(failureCount: number, error: unknown) {
-  return isNetworkError(error) || isUnauthorizedError(error)
+  return isNetworkError(error) ||
+    isUnauthorizedError(error) ||
+    isFinalClientError(error)
     ? false
     : failureCount < 2;
 }

@@ -1,3 +1,4 @@
+import { formatSubmissionReference } from "@taskdesk/domain";
 import { eq, inArray, or } from "drizzle-orm";
 import db, { schema } from "../database";
 
@@ -30,6 +31,44 @@ export function resolveNotificationDeepLinks(
       row.resourceId
     )
       result.set(row.id, { type: "api_key", id: row.resourceId });
+  }
+  return result;
+}
+
+/**
+ * A-09: a `submission` row (`submission.replied`, `submission.declined`) carries its triage
+ * reference (`SUB-n`) as `eventData.submissionRef`, so the inbox can open it. Rows reaching here
+ * are already reach-filtered by the inbox read, which admits a staff `submission.replied` row
+ * only while its reader holds intake:triage. Keyed by notification id.
+ */
+export async function resolveNotificationSubmissionRefs(
+  rows: readonly LinkRow[],
+): Promise<Map<string, string>> {
+  const ids = [
+    ...new Set(
+      rows
+        .filter((row) => row.resourceType === "submission" && row.resourceId)
+        .map((row) => row.resourceId as string),
+    ),
+  ];
+  const result = new Map<string, string>();
+  if (ids.length === 0) return result;
+  const submissions = await db
+    .select({
+      id: schema.submissionTable.id,
+      number: schema.submissionTable.number,
+    })
+    .from(schema.submissionTable)
+    .where(inArray(schema.submissionTable.id, ids));
+  const refs = new Map(
+    submissions.map((row) => [row.id, formatSubmissionReference(row.number)]),
+  );
+  for (const row of rows) {
+    const ref =
+      row.resourceType === "submission" && row.resourceId
+        ? refs.get(row.resourceId)
+        : undefined;
+    if (ref) result.set(row.id, ref);
   }
   return result;
 }

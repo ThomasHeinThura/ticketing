@@ -21,7 +21,6 @@ import {
   CircleCheck,
   CircleDashed,
   ExternalLink,
-  Inbox,
   Mail,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -33,8 +32,10 @@ import {
 import { formatDateMedium } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { routes } from "@/lib/routes";
-import { PortalKpiCard } from "../portal-kpi-card";
+import { type PortalHomeSearch, routes } from "@/lib/routes";
+import type { PortalCaseFilterPatch } from "../cases/portal-case-filters";
+import { PortalOutstandingCases } from "../cases/portal-outstanding-cases";
+import { PortalHomeKpis } from "../portal-home-kpis";
 import {
   formatPortalCalendarDate,
   formatPortalHours,
@@ -437,30 +438,51 @@ function DocumentsCard({ project }: { project: PortalProjectDetail }) {
       {project.documents.length === 0 ? (
         <Muted>{t("projects.detail.documents.none")}</Muted>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-3">
           {project.documents.map((document) => {
             const href = safeHref(document.url);
+            const kindLabel = t(
+              `projects.detail.documents.kinds.${document.kind}`,
+            );
+            // The type badge adds nothing when the title already says it.
+            const showKind =
+              kindLabel.toLocaleLowerCase() !==
+              document.title.trim().toLocaleLowerCase();
             return (
-              <li key={document.id} className="text-sm">
-                {href ? (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-sm text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                  >
+              <li
+                key={document.id}
+                className="flex flex-col gap-1 text-sm"
+                data-testid="portal-project-document"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  {href ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-sm text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span className="break-words">{document.title}</span>
+                      <ExternalLink
+                        className="size-3.5 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <span className="sr-only">
+                        ({t("projects.detail.documents.opensInNewTab")})
+                      </span>
+                    </a>
+                  ) : (
                     <span className="break-words">{document.title}</span>
-                    <ExternalLink
-                      className="size-3.5 shrink-0"
-                      aria-hidden="true"
-                    />
-                    <span className="sr-only">
-                      ({t("projects.detail.documents.opensInNewTab")})
-                    </span>
-                  </a>
-                ) : (
-                  <span className="break-words">{document.title}</span>
-                )}
+                  )}
+                  {showKind ? (
+                    <Badge variant="outline">{kindLabel}</Badge>
+                  ) : null}
+                </div>
+                {document.description ? (
+                  <p className="whitespace-pre-line break-words text-muted-foreground">
+                    {document.description}
+                  </p>
+                ) : null}
               </li>
             );
           })}
@@ -487,12 +509,25 @@ function DetailsSkeleton() {
 }
 
 /**
- * Project Details (S4c), modelled on the WSO2 portal: project information, contact information,
- * subscription period and service-hours allocation, then the summary, milestones, what the team
- * needs from the customer and the shared documents. Everything shown comes from
- * `GET /api/portal/projects/{key}`, which returns the customer view only.
+ * Project Details (S4c), modelled on the WSO2 portal: the engagement's own status page (U-11).
+ * The dashboard's four figures and its outstanding cases, scoped to this project
+ * (`GET /api/portal/home?project=KEY`, `GET /api/portal/requests?project=KEY`), then project
+ * information, contact information, subscription period and service-hours allocation, the
+ * summary, milestones, what the team needs from the customer and the shared documents
+ * (`GET /api/portal/projects/{key}`, the customer view only). The scoped reads wait for the
+ * project to load, so an unknown key asks for nothing else.
  */
-export function PortalProjectDetails({ projectKey }: { projectKey: string }) {
+export function PortalProjectDetails({
+  projectKey,
+  portalUserId,
+  caseFilters,
+  onCaseFiltersChange,
+}: {
+  projectKey: string;
+  portalUserId: string;
+  caseFilters: Pick<PortalHomeSearch, "scope" | "status" | "priority">;
+  onCaseFiltersChange: (patch: PortalCaseFilterPatch) => void;
+}) {
   const { t } = usePortalTranslation("portal");
   const query = useQuery({
     queryKey: portalProjectKeys.detail(projectKey),
@@ -558,20 +593,17 @@ export function PortalProjectDetails({ projectKey }: { projectKey: string }) {
               </p>
             </div>
           </header>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PortalKpiCard
-              label={t("projects.columns.actionRequired")}
-              value={project.counts.actionRequired}
-              icon={CircleAlert}
-              tone={project.counts.actionRequired > 0 ? "warning" : "neutral"}
-            />
-            <PortalKpiCard
-              label={t("projects.columns.outstanding")}
-              value={project.counts.outstanding}
-              icon={Inbox}
-              tone="info"
-            />
-          </div>
+          <PortalHomeKpis
+            portalUserId={portalUserId}
+            project={project.key}
+            label={t("projects.detail.figures")}
+          />
+          <PortalOutstandingCases
+            portalUserId={portalUserId}
+            filters={caseFilters}
+            project={project.key}
+            onChange={onCaseFiltersChange}
+          />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <InformationCard project={project} />
             <ContactsCard project={project} />

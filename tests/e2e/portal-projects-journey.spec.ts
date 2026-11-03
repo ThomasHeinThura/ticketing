@@ -17,7 +17,8 @@ import { uniqueProjectKey } from "./helpers/project-key";
  * the customer lists their organisation's projects, opens Project Details (information,
  * contacts, subscription period, service hours, milestones, prerequisites, documents), never
  * sees an internal note or a hidden document, and gets "not found" for another organisation's
- * project key (CP-2). Axe runs on both screens (G4), desktop and mobile.
+ * project key (CP-2). Axe runs on both screens (G4), desktop and mobile. U-11: Project Details
+ * shows the dashboard's figures and outstanding cases for that project only.
  */
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -306,6 +307,21 @@ async function runJourney(
       "GET",
       `/api/portal/projects/${projects.projectKey}`,
     );
+    // U-11: the figures and the cases are read for this project only.
+    const scopedHome = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname === "/api/portal/home" &&
+        url.searchParams.get("project") === projects.projectKey
+      );
+    });
+    const scopedCases = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname === "/api/portal/requests" &&
+        url.searchParams.get("project") === projects.projectKey
+      );
+    });
     await page.getByRole("link", { name: "Portal rollout" }).click();
     const detail = await detailResponse;
     expect(detail.status()).toBe(200);
@@ -328,6 +344,24 @@ async function runJourney(
       await expect(
         page.getByRole("heading", { level: 2, name: title }),
       ).toBeVisible();
+    const home = await scopedHome;
+    expect(home.status()).toBe(200);
+    const figures = (await home.json()) as { outstanding: number };
+    expect((await scopedCases).status()).toBe(200);
+    const projectFigures = page.getByRole("region", {
+      name: "Project figures",
+      exact: true,
+    });
+    await expect(projectFigures.getByText("Outstanding")).toBeVisible();
+    await expect(
+      projectFigures.getByRole("link", { name: /^Outstanding/u }),
+    ).toContainText(String(figures.outstanding));
+    await expect(
+      page.getByRole("link", { name: /^View all /u }),
+    ).toHaveAttribute(
+      "href",
+      new RegExp(`[?&]project=${projects.projectKey}(&|$)`, "u"),
+    );
     await expect(page.getByText("29 days remaining")).toBeVisible();
     await expect(page.getByText("0 of 100 hours used")).toBeVisible();
     await expect(
@@ -335,6 +369,10 @@ async function runJourney(
     ).toBeVisible();
     const document = page.getByRole("link", { name: /Statement of work/u });
     await expect(document).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(document).toHaveAttribute("target", "_blank");
+    // U-15: the entry shows its description; only customer-visible entries are listed.
+    await expect(page.getByText("Signed scope and fees")).toBeVisible();
+    await expect(page.getByTestId("portal-project-document")).toHaveCount(1);
     await expect(page.getByText("Internal margin sheet")).toHaveCount(0);
     await expect(page.getByText("INTERNAL NOTE")).toHaveCount(0);
     await expectNoSeriousAxeViolations(page);

@@ -1103,11 +1103,32 @@ export const documentLinkTable = pgTable(
       }),
     url: text("url").notNull(),
     title: text("title").notNull(),
+    // 0216 (U-15, decision of 3 Nov 2026): the register's type and an optional note.
+    kind: text("kind", {
+      enum: ["contract", "sow", "design", "handover", "other"],
+    })
+      .default("other")
+      .notNull(),
+    description: text("description"),
     // Customer visibility is off by default (projects-and-engagements.md, "Documents").
     customerVisible: boolean("customer_visible").default(false).notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
-  (table) => [index("document_link_projectId_idx").on(table.projectId)],
+  (table) => [
+    index("document_link_projectId_idx").on(table.projectId),
+    check(
+      "document_link_kind_check",
+      sql`${table.kind} IN ('contract', 'sow', 'design', 'handover', 'other')`,
+    ),
+    check(
+      "document_link_description_check",
+      sql`char_length(${table.description}) <= 2000`,
+    ),
+  ],
 );
 
 /**

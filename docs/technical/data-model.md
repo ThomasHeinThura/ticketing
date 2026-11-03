@@ -237,7 +237,7 @@ Better Auth owns `user`, `session`, `account`, `verification`, `two_factor`, `pa
 | `milestone` | `project_id`, `name`, `date`, `reached_at` |
 | `prerequisite` | `project_id`, `title`, `owner_side`, `due_date`, `is_blocking`, `completed_at` |
 | `stakeholder` | `project_id`, `person_id`, `role`, `escalation_order`, `escalation_wait_minutes`, `active` |
-| `document_link` | `project_id`, `url`, `title`, `customer_visible` |
+| `document_link` | `project_id`, `url`, `title`, `kind` (`contract`\|`sow`\|`design`\|`handover`\|`other`, default `other`; migration `0216`), nullable `description` (CHECK ≤ 2,000 characters), `customer_visible` (default false), `created_at`, `updated_at`. The project Documents register (U-15, decision of 3 Nov 2026): links only, never copies; customer-visible rows appear on the portal's Project Details |
 | `project_contract` | Migration `0213`, decision D2: at most one per project — `project_id` is the primary key and an FK to `project` (`ON DELETE CASCADE`). `start_date`, `end_date` (CHECK `end_date >= start_date`), `contracted_minutes` (CHECK 1–60,000,000), `coverage` (`9x5`\|`12x5`\|`24x7`), `kickoff_status` (`pending`\|`scheduled`\|`completed`, default `pending`), nullable `kickoff_date`, `created_at`, `updated_at`. Written only by `PUT /api/project/{id}/contract` (`project:manage_settings`, audited `project_contract.set`). Hours used are never stored: they are the billable `time_entry` minutes on the project dated inside the period |
 
 `workspace_role` stores the inherited workspace role-name and JSON permission bridge. It does not replace canonical scoped role/membership checks or grant authority by identity-provider hints.

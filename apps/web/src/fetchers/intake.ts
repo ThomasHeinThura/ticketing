@@ -1,4 +1,5 @@
 import { client } from "@taskdesk/libs";
+import { HttpError, readErrorDetail } from "@/lib/http-error";
 import type { IntakeServerFilters } from "@/lib/intake-queue";
 import { recordServerDate, serverInstant } from "@/lib/server-clock";
 
@@ -35,7 +36,10 @@ export async function getSubmissions(
     },
   });
   if (!response.ok)
-    throw new Error((await response.text()) || "Unable to load submissions");
+    throw new HttpError(
+      response.status,
+      await readErrorDetail(response, "Unable to load submissions"),
+    );
   // `IQ-5`: the queue ages rows against the server's clock, carried by the response itself.
   recordServerDate(response);
   const serverNow = serverInstant(response.headers.get("date"));
@@ -47,7 +51,10 @@ export async function getRequestTypes(workspaceId: string) {
     query: { workspaceId },
   });
   if (!response.ok)
-    throw new Error((await response.text()) || "Unable to load request types");
+    throw new HttpError(
+      response.status,
+      await readErrorDetail(response, "Unable to load request types"),
+    );
   return response.json();
 }
 

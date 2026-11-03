@@ -62,15 +62,18 @@ export function WorkspaceProjectDefaultsPanel({
   // flag is off for the workspace the panel is not offered (the lists would answer 404).
   const workspaceFeatures = useWorkspaceFeatures(workspaceId);
   const slaOn = workspaceFeatures.isOn("feature.sla");
+  // Reading these defaults needs `workspace:manage_settings` (policy.ts), so the panel is only
+  // offered to managers; other roles would get a 403 for every query.
+  const offered = Boolean(workspaceId) && slaOn && canEdit;
   const queryKey = ["workspace", workspaceId, "project-settings"] as const;
   const settings = useQuery({
     queryKey,
     queryFn: () => getWorkspaceProjectSettings(workspaceId),
-    enabled: Boolean(workspaceId) && slaOn,
+    enabled: offered,
   });
   const slaQuery = useQuery({
     queryKey: ["workspace", workspaceId, "project-default-sla-options"],
-    enabled: Boolean(workspaceId) && slaOn,
+    enabled: offered,
     queryFn: async () => {
       const pages = await allPages((cursor) =>
         getSlaPolicies(workspaceId, cursor),
@@ -80,7 +83,7 @@ export function WorkspaceProjectDefaultsPanel({
   });
   const calendarQuery = useQuery({
     queryKey: ["workspace", workspaceId, "project-default-calendar-options"],
-    enabled: Boolean(workspaceId) && slaOn,
+    enabled: offered,
     queryFn: async () => {
       const pages = await allPages((cursor) =>
         getServiceCalendars(workspaceId, cursor),
@@ -197,6 +200,7 @@ export function WorkspaceProjectDefaultsPanel({
   };
 
   if (!workspaceFeatures.isLoading && !slaOn) return null;
+  if (!isCheckingPermissions && !canEdit) return null;
   const loading =
     workspaceFeatures.isLoading ||
     settings.isLoading ||
