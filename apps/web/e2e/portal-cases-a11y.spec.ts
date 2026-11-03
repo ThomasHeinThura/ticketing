@@ -111,7 +111,60 @@ const casesPage = {
   meta: { total: 4 },
 };
 
-/** Fixture reads of the portal shell and the two screens. */
+const infraProject = {
+  key: "INFRA",
+  name: "Infrastructure managed services platform",
+  kind: "managed_service",
+  status: "active",
+  health: "amber",
+  counts: { actionRequired: 2, outstanding: 3 },
+};
+
+/** U-11 Project Details: the customer view of the one fixture project. */
+const infraProjectDetail = {
+  ...infraProject,
+  description: "Run and patch the customer's infrastructure.",
+  createdAt: "2026-01-05T09:00:00.000Z",
+  supportLevel: "L2",
+  serviceCalendarName: "Business hours",
+  summary: {
+    objective: "Keep the platform patched and available.",
+    inScope: null,
+    outOfScope: null,
+    successCriteria: null,
+  },
+  goLive: null,
+  milestones: [],
+  prerequisites: [],
+  documents: [],
+  contacts: [
+    {
+      kind: "manager",
+      role: null,
+      name: "Mara Manager",
+      email: "mara.manager@example.test",
+    },
+  ],
+  contract: {
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
+    period: {
+      state: "active",
+      totalDays: 365,
+      elapsedDays: 304,
+      daysRemaining: 61,
+      elapsedPct: 83,
+    },
+    hours: {
+      contractedMinutes: 12000,
+      usedMinutes: 7530,
+      remainingMinutes: 4470,
+      usedPct: 63,
+    },
+  },
+};
+
+/** Fixture reads of the portal shell and the screens. */
 function apiBody(pathname: string): unknown {
   switch (pathname) {
     case "/api/auth/get-session":
@@ -141,18 +194,9 @@ function apiBody(pathname: string): unknown {
       };
     case "/api/portal/projects":
       // One project: the dashboard shows its card; the top-bar selector stays hidden.
-      return {
-        data: [
-          {
-            key: "INFRA",
-            name: "Infrastructure managed services platform",
-            kind: "managed_service",
-            status: "active",
-            health: "amber",
-            counts: { actionRequired: 2, outstanding: 3 },
-          },
-        ],
-      };
+      return { data: [infraProject] };
+    case "/api/portal/projects/INFRA":
+      return infraProjectDetail;
     case "/api/portal/requests":
       return casesPage;
     case "/api/portal/approvals":
@@ -361,6 +405,67 @@ for (const [viewportName, viewport] of VIEWPORTS)
       expect(await seriousOrCriticalViolations(page)).toEqual([]);
       await calendar.getByRole("button").filter({ hasText: /^20$/ }).click();
       await expect(page).toHaveURL(/[?&]to=\d{4}-\d{2}-20(&|$)/);
+      expect(unmatched).toEqual([]);
+    });
+
+    test(`portal project details (${viewportName}, ${theme}) shows the engagement's figures and cases and has no serious or critical axe violations @a11y`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.emulateMedia({ colorScheme: theme });
+      const unmatched = await mountPortal(page);
+      // U-11: the figures and the cases are read for this project only.
+      const scopedHome = page.waitForRequest(
+        (request) =>
+          new URL(request.url()).pathname === "/api/portal/home" &&
+          new URL(request.url()).searchParams.get("project") === "INFRA",
+      );
+      const scopedCases = page.waitForRequest(
+        (request) =>
+          new URL(request.url()).pathname === "/api/portal/requests" &&
+          new URL(request.url()).searchParams.get("project") === "INFRA",
+      );
+      await page.goto(`${PORTAL_ORIGIN}/projects/INFRA`);
+      await expectTheme(page, theme);
+      await scopedHome;
+      await scopedCases;
+      await expect(
+        page.getByRole("heading", {
+          level: 1,
+          name: "Infrastructure managed services platform",
+          exact: true,
+        }),
+      ).toBeVisible();
+      const figures = page.getByRole("region", {
+        name: "Project figures",
+        exact: true,
+      });
+      await expect(figures.getByText("Average first response")).toBeVisible();
+      await expect(figures.getByText("Closed", { exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: "SUB-7", exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: /^View all / }),
+      ).toHaveAttribute("href", /[?&]project=INFRA(&|$)/);
+      await expectSeverityAndStatus(page, viewportName);
+      await expectTableFitsWithServiceTarget(page);
+      // Never a sideways page scroll.
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth,
+        ),
+      ).toBe(true);
+      expect(await seriousOrCriticalViolations(page)).toEqual([]);
+
+      // Keyboard: the My/All toggle switches the scoped list to All and keeps the project.
+      const all = page.getByRole("button", { name: /^All / });
+      await all.focus();
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/\/projects\/INFRA\?.*scope=all/);
+      await expect(all).toBeFocused();
       expect(unmatched).toEqual([]);
     });
   }

@@ -17886,6 +17886,9 @@
 										}
 									},
 									"required": ["title", "none", "opensInNewTab"]
+								},
+								"figures": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -17899,7 +17902,8 @@
 								"summary",
 								"milestones",
 								"prerequisites",
-								"documents"
+								"documents",
+								"figures"
 							]
 						},
 						"dashboard": {
@@ -33690,6 +33694,24 @@
 						},
 						"blockingOf_other": {
 							"type": "string"
+						},
+						"closed": {
+							"type": "string"
+						},
+						"closedHint": {
+							"type": "string"
+						},
+						"firstResponse": {
+							"type": "string"
+						},
+						"firstResponseHint": {
+							"type": "string"
+						},
+						"firstResponseNone": {
+							"type": "string"
+						},
+						"firstResponseOff": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -33697,7 +33719,13 @@
 						"status",
 						"workComplete",
 						"workBreakdown",
-						"blocking"
+						"blocking",
+						"closed",
+						"closedHint",
+						"firstResponse",
+						"firstResponseHint",
+						"firstResponseNone",
+						"firstResponseOff"
 					]
 				},
 				"attention": {
