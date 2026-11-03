@@ -24463,6 +24463,7 @@
 			"apps/web/src/components/common/header/project-layout-controls-fallback.tsx::ProjectLayoutControlsFallback::div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbPresentation::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/header/workspace-crumb-select.tsx::WorkspaceCrumbSelect::Button[0]::text-foreground#0",
+			"apps/web/src/components/common/project-task-search-header.tsx::ProjectTaskSearchHeader::Popover[0]/PopoverTrigger[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/common/task-layout.tsx::TaskLayout::TaskPageFrame[0]/Layout.Header[0]/div[0]/div[0]/div[1]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/task-layout.tsx::TaskLayout::TaskPageFrame[0]/Layout.Header[0]/div[0]/div[0]/div[1]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/task-layout.tsx::TaskLayout::TaskPageFrame[0]/Layout.Header[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/SidebarTrigger[0]::hover:text-foreground#0",
@@ -24595,6 +24596,19 @@
 				"id": "apps/web/src/components/common/header/workspace-crumb-select.tsx::WorkspaceCrumbSelect::Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/common/header/workspace-crumb-select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
+					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
+					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
+				],
+				"id": "apps/web/src/components/common/project-task-search-header.tsx::ProjectTaskSearchHeader::Popover[0]/PopoverTrigger[0]/Button[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/project-task-search-header.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -24929,6 +24943,7 @@
 			"apps/web/src/components/common/header/project-layout-controls-fallback.tsx::ProjectLayoutControlsFallback::div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbPresentation::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/header/workspace-crumb-select.tsx::WorkspaceCrumbSelect::Button[0]::text-foreground#0",
+			"apps/web/src/components/common/project-task-search-header.tsx::ProjectTaskSearchHeader::Popover[0]/PopoverTrigger[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/common/task-layout.tsx::TaskLayout::TaskPageFrame[0]/Layout.Header[0]/div[0]/div[0]/div[1]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/task-layout.tsx::TaskLayout::TaskPageFrame[0]/Layout.Header[0]/div[0]/div[0]/div[1]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/task-layout.tsx::TaskLayout::TaskPageFrame[0]/Layout.Header[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/SidebarTrigger[0]::hover:text-foreground#0",
@@ -25061,6 +25076,19 @@
 				"id": "apps/web/src/components/common/header/workspace-crumb-select.tsx::WorkspaceCrumbSelect::Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/common/header/workspace-crumb-select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
+					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
+					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
+				],
+				"id": "apps/web/src/components/common/project-task-search-header.tsx::ProjectTaskSearchHeader::Popover[0]/PopoverTrigger[0]/Button[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/project-task-search-header.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -28282,7 +28310,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -28293,7 +28321,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -28304,7 +28332,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[2]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -28315,7 +28343,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[3]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[3]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -28571,7 +28599,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -28582,7 +28610,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -28593,7 +28621,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[2]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -28604,7 +28632,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[3]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[3]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -57317,6 +57345,7 @@
 			"apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbPresentation::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-muted-foreground#0",
+			"apps/web/src/components/common/project-task-search-header.tsx::ProjectTaskSearchHeader::Popover[0]/PopoverTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/project-task-search-input.tsx::ProjectTaskSearchInput::div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/errors/error-display.tsx::ErrorDisplay::div[0]/Card[0]/CardContent[0]/div[0]/ul[0]::text-muted-foreground#0",
 			"apps/web/src/components/errors/error-display.tsx::ErrorDisplay::div[0]/Card[0]/CardContent[0]/div[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
@@ -57979,10 +58008,23 @@
 			},
 			{
 				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
+					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
+					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
+				],
+				"id": "apps/web/src/components/common/project-task-search-header.tsx::ProjectTaskSearchHeader::Popover[0]/PopoverTrigger[0]/Button[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/project-task-search-header.tsx"
+			},
+			{
+				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/ProjectTaskSearchInput[0]",
+					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
 					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
 				],
@@ -62888,6 +62930,7 @@
 			"apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbPresentation::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-muted-foreground#0",
+			"apps/web/src/components/common/project-task-search-header.tsx::ProjectTaskSearchHeader::Popover[0]/PopoverTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/project-task-search-input.tsx::ProjectTaskSearchInput::div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/errors/error-display.tsx::ErrorDisplay::div[0]/Card[0]/CardContent[0]/div[0]/ul[0]::text-muted-foreground#0",
 			"apps/web/src/components/errors/error-display.tsx::ErrorDisplay::div[0]/Card[0]/CardContent[0]/div[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
@@ -63550,10 +63593,23 @@
 			},
 			{
 				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
+					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
+					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
+				],
+				"id": "apps/web/src/components/common/project-task-search-header.tsx::ProjectTaskSearchHeader::Popover[0]/PopoverTrigger[0]/Button[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/project-task-search-header.tsx"
+			},
+			{
+				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/ProjectTaskSearchInput[0]",
+					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
 					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
 				],
@@ -85546,6 +85602,7 @@
 			"apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]/Settings[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbOptionsPresentation::DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/picker-popover.tsx::PickerPopover::Popover[0]/PopoverTrigger[0]/Button[0]/ChevronDown[0]::text-muted-foreground#0",
+			"apps/web/src/components/common/project-task-search-input.tsx::ProjectTaskSearchInput::div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/custom-field/custom-field-value-input.tsx::CustomFieldValueInput::Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/custom-field/custom-field-value-input.tsx::CustomFieldValueInput::Popover[0]/PopoverTrigger[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
 			"apps/web/src/components/custom-field/custom-field-value-input.tsx::MultiChoice::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -86335,6 +86392,18 @@
 				"id": "apps/web/src/components/common/picker-popover.tsx::PickerPopover::Popover[0]/PopoverTrigger[0]/Button[0]/ChevronDown[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/common/picker-popover.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/common/project-task-search-header.tsx:ProjectTaskSearchHeader",
+					"jsx:Popover[0]/PopoverContent[0]/ProjectTaskSearchInput[0]",
+					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
+				],
+				"id": "apps/web/src/components/common/project-task-search-input.tsx::ProjectTaskSearchInput::div[0]/Search[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/project-task-search-input.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -90912,6 +90981,7 @@
 			"apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]/Settings[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbOptionsPresentation::DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/picker-popover.tsx::PickerPopover::Popover[0]/PopoverTrigger[0]/Button[0]/ChevronDown[0]::text-muted-foreground#0",
+			"apps/web/src/components/common/project-task-search-input.tsx::ProjectTaskSearchInput::div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/custom-field/custom-field-value-input.tsx::CustomFieldValueInput::Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/custom-field/custom-field-value-input.tsx::CustomFieldValueInput::Popover[0]/PopoverTrigger[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
 			"apps/web/src/components/custom-field/custom-field-value-input.tsx::MultiChoice::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -91701,6 +91771,18 @@
 				"id": "apps/web/src/components/common/picker-popover.tsx::PickerPopover::Popover[0]/PopoverTrigger[0]/Button[0]/ChevronDown[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/common/picker-popover.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/common/project-task-search-header.tsx:ProjectTaskSearchHeader",
+					"jsx:Popover[0]/PopoverContent[0]/ProjectTaskSearchInput[0]",
+					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
+				],
+				"id": "apps/web/src/components/common/project-task-search-input.tsx::ProjectTaskSearchInput::div[0]/Search[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/common/project-task-search-input.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -97650,7 +97732,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -97661,7 +97743,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -97672,7 +97754,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[2]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -97683,7 +97765,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[3]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[3]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -98897,7 +98979,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -98908,7 +98990,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -98919,7 +99001,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[2]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -98930,7 +99012,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-inbox.tsx:NotificationInbox",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[3]"
+					"jsx:div[0]/div[0]/Tabs[0]/ScrollArea[0]/TabsList[0]/TabsTrigger[3]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
