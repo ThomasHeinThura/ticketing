@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import type { ComponentType, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 import { Route } from "./$ref";
 
 const mocks = vi.hoisted(() => ({
@@ -34,7 +35,16 @@ vi.mock("@tanstack/react-router", () => ({
     useRouteContext: () => ({ portalUserId: "customer-a" }),
     useParams: () => ({ ref: "SUB-7" }),
   }),
+  Link: ({ children, to, ...props }: { children?: unknown; to: string }) => (
+    <a href={to} {...(props as object)}>
+      {children as never}
+    </a>
+  ),
   useLocation: () => ({ hash: window.location.hash }),
+}));
+
+vi.mock("@/components/portal/requests/portal-submission-fetch", () => ({
+  getPortalSubmissionDetail: mocks.getSubmission,
 }));
 
 vi.mock("@/fetchers/intake", () => ({
@@ -120,9 +130,23 @@ describe("portal submission route", () => {
   });
 
   it("keeps a failed primary read out of the loaded page and retries it", async () => {
+    // A transient failure is retried twice before the page offers its own Retry.
+    mocks.getSubmission
+      .mockReset()
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValue({
+        ...submission,
+        submission: { ...submission.submission, state: "clarifying" },
+      });
     renderSubmission();
 
-    const retry = await screen.findByRole("button", { name: "Retry" });
+    const retry = await screen.findByRole(
+      "button",
+      { name: "Retry" },
+      { timeout: 6000 },
+    );
     expect(screen.getByRole("alert")).toHaveTextContent(
       "This request could not be loaded or updated.",
     );
@@ -130,15 +154,153 @@ describe("portal submission route", () => {
       screen.queryByRole("heading", { name: "Your answers" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Send reply" }),
+      screen.queryByRole("button", { name: "intake.sendReply" }),
     ).not.toBeInTheDocument();
 
     fireEvent.click(retry);
-    await waitFor(() => expect(mocks.getSubmission).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocks.getSubmission).toHaveBeenCalledTimes(4));
     expect(
       await screen.findByRole("heading", { name: "Your answers" }),
     ).toBeVisible();
-    expect(screen.getByRole("button", { name: "Send reply" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "intake.sendReply" }),
+    ).toBeDisabled();
+  });
+
+  it("says a missing or foreign submission is not found, with a way back, and does not retry", async () => {
+    mocks.getSubmission
+      .mockReset()
+      .mockRejectedValue(new HttpError(404, "Submission not found"));
+    renderSubmission();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "portal:requestPage.notFound.title",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "portal:requestPage.back" }),
+    ).toHaveAttribute("href", "/requests");
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(mocks.getSubmission).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads like the request page: back link, title and reference, details card, portal dates and sizes", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue({
+      ...submission,
+      submission: {
+        ...submission.submission,
+        state: "accepted",
+        createdAt: "2026-10-31T19:55:13.000Z",
+      },
+      customerStatus: "in_progress",
+      workItem: {
+        title: "VPN drops every 10 minutes",
+        description: "",
+        state: "open",
+        priority: "urgent",
+      },
+      messages: [
+        {
+          id: "m1",
+          actorType: "triager",
+          authorName: "Sam",
+          mine: false,
+          body: "Looking now",
+          reasonCode: null,
+          reasonParams: null,
+          createdAt: "2026-10-31T19:55:13.000Z",
+        },
+      ],
+    });
+    mocks.getAttachments.mockReset().mockResolvedValue([
+      {
+        id: "f1",
+        filename: "audit.txt",
+        mimeType: "text/plain",
+        size: 46,
+        state: "ready",
+        downloadable: true,
+      },
+    ]);
+    const { container } = renderSubmission();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "VPN drops every 10 minutes",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText("SUB-7")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "portal:requestPage.back" }),
+    ).toBeVisible();
+    // Severity (not "Priority"), from the same badge as the case list.
+    expect(screen.getByText("portal:cases.columns.severity")).toBeVisible();
+    expect(screen.queryByText("portal:request.priority.label")).toBeNull();
+    const expected = new Intl.DateTimeFormat(undefined, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date("2026-10-31T19:55:13.000Z"));
+    expect(screen.getByText(/^Sam ·/u)).toHaveTextContent(`Sam · ${expected}`);
+    expect(container.textContent).not.toContain(
+      new Date("2026-10-31T19:55:13.000Z").toLocaleString(),
+    );
+    // 46 B reads as 46 B, and a ready file never says "ready".
+    expect(await screen.findByText("46 B")).toBeVisible();
+    expect(container.textContent).not.toMatch(/1 KB|· ready/u);
+    // The shell owns the page's <main> landmark.
+    expect(container.querySelector("main")).toBeNull();
+    expect(document.title).toBe(
+      "VPN drops every 10 minutes · SUB-7 · navigation.title",
+    );
+  });
+
+  it("moves focus to the reply just sent when replying closes the reply box (IQ-13)", async () => {
+    const message = {
+      id: "m9",
+      actorType: "customer",
+      authorName: null,
+      mine: true,
+      body: "Here is the detail",
+      reasonCode: null,
+      reasonParams: null,
+      createdAt: "2026-11-03T10:00:00.000Z",
+    };
+    mocks.getSubmission
+      .mockReset()
+      .mockResolvedValueOnce({
+        ...submission,
+        submission: { ...submission.submission, state: "clarifying" },
+      })
+      // The reply returns the request to the team: no reply box any more.
+      .mockResolvedValue({ ...submission, messages: [message] });
+    mocks.reply.mockReset().mockResolvedValue({ message: { id: "m9" } });
+    renderSubmission();
+    const box = await screen.findByLabelText("intake.reply");
+    fireEvent.change(box, { target: { value: "Here is the detail" } });
+    fireEvent.click(screen.getByRole("button", { name: "intake.sendReply" }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        document.getElementById("comment-m9"),
+      ),
+    );
+    expect(screen.queryByLabelText("intake.reply")).toBeNull();
+    expect(
+      screen
+        .getAllByRole("status")
+        .some((node) => node.textContent === "portal:requestPage.replySent"),
+    ).toBe(true);
+  });
+
+  it("shows a severity only once the team has the request, never 'Not set' for the customer's own choice", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue(submission);
+    renderSubmission();
+    await screen.findByRole("heading", { level: 1, name: "Access request" });
+    expect(screen.queryByText("portal:cases.columns.severity")).toBeNull();
   });
 
   it("P2R1-05: shows the auto-decline as a system message, never as staff or a colleague", async () => {
@@ -236,11 +398,18 @@ describe("portal submission route", () => {
     expect(screen.getByText("Yes")).toBeVisible();
   });
 
-  it("shows no dangling separator in the header while loading, then the joined subtitle", async () => {
+  it("shows a loading state without a header, then the title, reference and status", async () => {
     mocks.getSubmission.mockReset().mockResolvedValue(submission);
     const { container } = renderSubmission();
+    expect(container.querySelector("header")).toBeNull();
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Access request" }),
+    ).toBeVisible();
+    expect(screen.getByText("SUB-7")).toBeVisible();
+    // The request type is the title here, so no subtitle repeats it.
     expect(container.querySelector("header p")).toBeNull();
-    expect(await screen.findByText("Access request · new")).toBeVisible();
+    expect(screen.getByText("new")).toBeVisible();
   });
 
   it("offers the reply box only where the API accepts a reply (clarifying, accepted)", async () => {
@@ -261,9 +430,9 @@ describe("portal submission route", () => {
             : null,
       });
       const view = renderSubmission();
-      await screen.findByText(/Access request ·/u);
+      await screen.findByRole("heading", { level: 1 });
       expect(
-        screen.queryByRole("button", { name: "Send reply" }) !== null,
+        screen.queryByRole("button", { name: "intake.sendReply" }) !== null,
         state,
       ).toBe(visible);
       view.unmount();
@@ -287,20 +456,20 @@ describe("portal submission route", () => {
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(null, { status: 204 }));
     renderSubmission();
-    await screen.findByText(/Access request ·/u);
+    await screen.findByRole("heading", { level: 1 });
     // Once accepted, files go with a reply rather than a separate upload control.
-    const picker = screen.getByLabelText("portal:requestPage.attach");
+    const picker = screen.getByLabelText("requestPage.attach");
     const file = new File(["%PDF-1.4"], "logs.pdf", {
       type: "application/pdf",
     });
     fireEvent.change(picker, { target: { files: [file] } });
     expect(
-      screen.getByRole("list", { name: "portal:requestPage.filesToSend" }),
+      screen.getByRole("list", { name: "requestPage.filesToSend" }),
     ).toHaveTextContent("logs.pdf");
-    fireEvent.change(screen.getByLabelText("Reply"), {
+    fireEvent.change(screen.getByLabelText("intake.reply"), {
       target: { value: "Logs attached" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Send reply" }));
+    fireEvent.click(screen.getByRole("button", { name: "intake.sendReply" }));
     await waitFor(() =>
       expect(mocks.completeAttachment).toHaveBeenCalledWith({
         ref: "SUB-7",

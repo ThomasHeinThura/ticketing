@@ -15,6 +15,7 @@ import {
 } from "@taskdesk/ui";
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
+import PageTitle from "@/components/page-title";
 import WorkItemList from "@/components/work-item/work-item-list";
 import { postWorkItemSearch } from "@/fetchers/work-item/search-work-items";
 import useGetMyApprovals from "@/hooks/queries/approval/use-get-my-approvals";
@@ -54,6 +55,7 @@ export default function MyWork({
   const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-4 p-4">
+      <PageTitle title={t("navigation:sidebar.myWork")} />
       <h1 className="sr-only">{t("navigation:sidebar.myWork")}</h1>
       <Tabs
         value={lens}

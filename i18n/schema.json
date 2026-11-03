@@ -15919,9 +15919,6 @@
 						"support": {
 							"type": "string"
 						},
-						"updates": {
-							"type": "string"
-						},
 						"announcements": {
 							"type": "string"
 						},
@@ -15940,7 +15937,6 @@
 						"signOutFailed",
 						"dashboard",
 						"support",
-						"updates",
 						"announcements",
 						"settings"
 					]
@@ -17108,9 +17104,56 @@
 								},
 								"placeholder": {
 									"type": "string"
+								},
+								"dialogPlaceholder": {
+									"type": "string"
+								},
+								"hint": {
+									"type": "string"
+								},
+								"empty": {
+									"type": "string"
+								},
+								"searching": {
+									"type": "string"
+								},
+								"groups": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"articles": {
+											"type": "string"
+										},
+										"requestTypes": {
+											"type": "string"
+										},
+										"cases": {
+											"type": "string"
+										},
+										"more": {
+											"type": "string"
+										}
+									},
+									"required": ["articles", "requestTypes", "cases", "more"]
+								},
+								"allArticles": {
+									"type": "string"
+								},
+								"allRequestTypes": {
+									"type": "string"
 								}
 							},
-							"required": ["label", "placeholder"]
+							"required": [
+								"label",
+								"placeholder",
+								"dialogPlaceholder",
+								"hint",
+								"empty",
+								"searching",
+								"groups",
+								"allArticles",
+								"allRequestTypes"
+							]
 						},
 						"userMenu": {
 							"type": "object",
@@ -17487,6 +17530,12 @@
 								"averageResponse",
 								"averageResponseHint"
 							]
+						},
+						"raisedByTeamFor": {
+							"type": "string"
+						},
+						"raisedByTeamForColleague": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -17513,16 +17562,15 @@
 						"columns",
 						"filters",
 						"sort",
-						"kpi"
+						"kpi",
+						"raisedByTeamFor",
+						"raisedByTeamForColleague"
 					]
 				},
 				"projects": {
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
-						"navigation": {
-							"type": "string"
-						},
 						"title": {
 							"type": "string"
 						},
@@ -18022,7 +18070,6 @@
 						}
 					},
 					"required": [
-						"navigation",
 						"title",
 						"description",
 						"tabs",
@@ -18084,6 +18131,12 @@
 						},
 						"uploadFailed": {
 							"type": "string"
+						},
+						"replySent": {
+							"type": "string"
+						},
+						"fileUploadPending": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -18097,7 +18150,9 @@
 						"filesToSend",
 						"removeFile",
 						"sending",
-						"uploadFailed"
+						"uploadFailed",
+						"replySent",
+						"fileUploadPending"
 					]
 				}
 			},

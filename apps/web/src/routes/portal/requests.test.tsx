@@ -194,7 +194,9 @@ describe("PortalRequestsPage", () => {
       "href",
       "/requests/$ref",
     );
-    expect(screen.getByText("cases.raisedByTeam")).toBeTruthy();
+    // A colleague's view names the requester; "raised for you" is the requester's only.
+    expect(screen.getByText("cases.raisedByTeamFor")).toBeTruthy();
+    expect(screen.queryByText("cases.raisedByTeam")).toBeNull();
     expect(screen.queryByText(/assignee/i)).toBeNull();
   });
 

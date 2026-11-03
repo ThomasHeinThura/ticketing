@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   Alert,
@@ -13,17 +13,25 @@ import {
   Empty,
   EmptyDescription,
   EmptyHeader,
-  Input,
   Skeleton,
-  Textarea,
 } from "@taskdesk/ui";
-import { ArrowLeft, Download, Paperclip, X } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { ArrowLeft, Download } from "lucide-react";
+import { useEffect } from "react";
 import {
   PortalCaseSeverity,
   PortalCaseStatus,
+  raisedByTeamLabel,
 } from "@/components/portal/cases/portal-case-table";
+import {
+  formatPortalDateTime,
+  formatPortalFileSize,
+} from "@/components/portal/portal-format";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import { PortalSlaStatus } from "@/components/portal/portal-sla-status";
+import {
+  type PortalReplyFileFailure,
+  PortalReplyForm,
+} from "@/components/portal/requests/portal-reply-form";
 import {
   getPortalRequest,
   getPortalRequestFiles,
@@ -38,22 +46,6 @@ import { HttpError } from "@/lib/http-error";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { messageAuthor } from "@/lib/portal-request";
 import { routes } from "@/lib/routes";
-
-function formatSize(size: number) {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDateTime(value: string, locale?: string) {
-  return new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
 
 function fieldValue(
   value: unknown,
@@ -121,7 +113,16 @@ export function PortalRequestDetails({
     ]);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+      <PortalPageTitle
+        title={
+          notFound
+            ? t("requestPage.notFound.title")
+            : request
+              ? `${request.title || request.requestTypeName} · ${request.ref}`
+              : requestRef
+        }
+      />
       <div>
         <Button
           variant="ghost"
@@ -173,7 +174,9 @@ export function PortalRequestDetails({
               </Badge>
             </div>
             <p className="text-muted-foreground text-sm">
-              {[request.requestTypeName, t("cases.raisedByTeam")].join(" · ")}
+              {[request.requestTypeName, raisedByTeamLabel(request, t)].join(
+                " · ",
+              )}
             </p>
           </header>
           {request.canReply ? null : (
@@ -194,15 +197,15 @@ export function PortalRequestDetails({
             />
           ) : null}
           {request.canReply ? (
-            <ReplyForm
-              requestRef={request.ref}
+            <PortalReplyForm
               canUpload={request.canUpload}
+              send={(input) => sendRequestReply(request.ref, input)}
               onSent={refresh}
             />
           ) : null}
         </>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -257,7 +260,7 @@ function RequestFacts({
               </dt>
               <dd className="text-sm tabular-nums">
                 <time dateTime={request.updatedAt}>
-                  {formatDateTime(request.updatedAt, locale)}
+                  {formatPortalDateTime(request.updatedAt, locale)}
                 </time>
               </dd>
             </div>
@@ -320,7 +323,7 @@ function Conversation({
                     <CardDescription>
                       {"name" in author ? author.name : t(author.key)} ·{" "}
                       <time dateTime={message.createdAt}>
-                        {formatDateTime(message.createdAt, locale)}
+                        {formatPortalDateTime(message.createdAt, locale)}
                       </time>
                     </CardDescription>
                   </CardHeader>
@@ -393,11 +396,11 @@ function Files({
                 </span>
                 <span className="text-muted-foreground text-xs">
                   {[
-                    formatSize(file.size),
+                    formatPortalFileSize(file.size),
                     file.mine
                       ? t("request.author.you")
                       : t("requestPage.sharedByTeam"),
-                    formatDateTime(file.createdAt, locale),
+                    formatPortalDateTime(file.createdAt, locale),
                   ].join(" · ")}
                 </span>
                 {file.downloadable ? null : (
@@ -430,162 +433,29 @@ function Files({
   );
 }
 
-type FailedFile = { name: string; reason: string | null };
-
-function ReplyForm({
-  requestRef,
-  canUpload,
-  onSent,
-}: {
-  requestRef: string;
-  canUpload: boolean;
-  onSent: () => Promise<unknown>;
-}) {
-  const { t } = usePortalTranslation("portal");
-  const id = useId();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [body, setBody] = useState("");
-  const [staged, setStaged] = useState<File[]>([]);
-  const [failed, setFailed] = useState<FailedFile[]>([]);
-  const send = useMutation({
-    mutationFn: async () => {
-      const posted = await replyToPortalRequest({
-        ref: requestRef,
-        body: body.trim(),
+/** A-08: post the reply, then attach each staged file to it; a file that fails is reported. */
+async function sendRequestReply(
+  ref: string,
+  input: { body: string; files: File[] },
+): Promise<PortalReplyFileFailure[]> {
+  const posted = await replyToPortalRequest({ ref, body: input.body });
+  const failures: PortalReplyFileFailure[] = [];
+  for (const file of input.files) {
+    try {
+      await uploadPortalRequestFile({
+        ref,
+        commentId: posted.message.id,
+        file,
       });
-      const failures: FailedFile[] = [];
-      for (const file of staged) {
-        try {
-          await uploadPortalRequestFile({
-            ref: requestRef,
-            commentId: posted.message.id,
-            file,
-          });
-        } catch (error) {
-          failures.push({
-            name: file.name,
-            reason:
-              error instanceof HttpError && error.status < 500 && error.message
-                ? error.message
-                : null,
-          });
-        }
-      }
-      return failures;
-    },
-    onSuccess: async (failures) => {
-      setBody("");
-      setStaged([]);
-      setFailed(failures);
-      await onSent();
-    },
-  });
-  const busy = send.isPending;
-  return (
-    <form
-      className="flex flex-col gap-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (body.trim() && !busy) send.mutate();
-      }}
-    >
-      <label htmlFor={`${id}-body`} className="font-medium">
-        {t("intake.reply")}
-      </label>
-      <Textarea
-        id={`${id}-body`}
-        value={body}
-        disabled={busy}
-        onChange={(event) => setBody(event.target.value)}
-      />
-      {staged.length > 0 ? (
-        <ul
-          className="flex flex-col gap-1"
-          aria-label={t("requestPage.filesToSend")}
-        >
-          {staged.map((file, index) => (
-            <li
-              key={`${file.name}:${file.size}:${file.lastModified}`}
-              className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border px-3 py-1.5"
-            >
-              <span className="truncate text-sm">
-                {file.name}
-                <span className="text-muted-foreground">
-                  {" · "}
-                  {formatSize(file.size)}
-                </span>
-              </span>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={busy}
-                aria-label={t("requestPage.removeFile", { name: file.name })}
-                onClick={() =>
-                  setStaged((current) =>
-                    current.filter((_, position) => position !== index),
-                  )
-                }
-              >
-                <X aria-hidden="true" />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {send.isError ? (
-        <Alert variant="error">
-          <AlertDescription>{t("intake.pageError")}</AlertDescription>
-        </Alert>
-      ) : null}
-      {failed.length > 0 ? (
-        <Alert variant="error">
-          <AlertDescription>
-            <span>{t("requestPage.uploadFailed")}</span>
-            <ul className="mt-1 list-disc ps-4">
-              {failed.map((file) => (
-                <li key={file.name}>
-                  {file.reason ? `${file.name}: ${file.reason}` : file.name}
-                </li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {canUpload ? (
-          <div className="flex items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => inputRef.current?.click()}
-            >
-              <Paperclip aria-hidden="true" />
-              {t("requestPage.attach")}
-            </Button>
-            <Input
-              ref={inputRef}
-              id={`${id}-files`}
-              type="file"
-              multiple
-              unstyled
-              className="sr-only"
-              tabIndex={-1}
-              aria-label={t("requestPage.attach")}
-              onChange={(event) => {
-                const chosen = Array.from(event.target.files ?? []);
-                setStaged((current) => [...current, ...chosen]);
-                event.target.value = "";
-              }}
-            />
-          </div>
-        ) : (
-          <span />
-        )}
-        <Button type="submit" disabled={!body.trim() || busy}>
-          {busy ? t("requestPage.sending") : t("intake.sendReply")}
-        </Button>
-      </div>
-    </form>
-  );
+    } catch (error) {
+      failures.push({
+        name: file.name,
+        reason:
+          error instanceof HttpError && error.status < 500 && error.message
+            ? error.message
+            : null,
+      });
+    }
+  }
+  return failures;
 }

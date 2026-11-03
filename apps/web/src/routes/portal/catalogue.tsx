@@ -22,6 +22,7 @@ import {
   PortalKbSuggestions,
   usePortalKbDeflection,
 } from "@/components/kb/portal/portal-kb-deflection";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
   completePortalSubmissionAttachment,
   getPortalCatalogue,
@@ -274,7 +275,10 @@ function PortalCatalogueContent() {
   const visible = (field: FormSchema["fields"][number]) =>
     fieldVisibility.get(field.key) ?? true;
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+      <PortalPageTitle
+        title={selected?.name ?? t("portal:intake.catalogueTitle")}
+      />
       <header>
         <h1
           className="font-semibold text-2xl outline-none"
@@ -308,21 +312,24 @@ function PortalCatalogueContent() {
           </Button>
         </Alert>
       )}
-      <label className="flex flex-col gap-1" htmlFor="catalogue-search">
-        {t("common:actions.filter", { defaultValue: "Search" })}
-        <Input
-          id="catalogue-search"
-          value={q}
-          onChange={(event) =>
-            void navigate({
-              search: { q: event.target.value || undefined, key },
-            })
-          }
-          placeholder={t("portal:intake.searchPlaceholder", {
-            defaultValue: "Search requests",
-          })}
-        />
-      </label>
+      {/* The filter narrows the list; an open form replaces the list, so it hides with it. */}
+      {key ? null : (
+        <label className="flex flex-col gap-1" htmlFor="catalogue-search">
+          {t("common:actions.filter", { defaultValue: "Search" })}
+          <Input
+            id="catalogue-search"
+            value={q}
+            onChange={(event) =>
+              void navigate({
+                search: { q: event.target.value || undefined, key },
+              })
+            }
+            placeholder={t("portal:intake.searchPlaceholder", {
+              defaultValue: "Search requests",
+            })}
+          />
+        </label>
+      )}
       {primaryLoading && !primaryError ? (
         <p role="status">
           {t("common:empty.loading", { defaultValue: "Loading…" })}
@@ -743,7 +750,7 @@ function PortalCatalogueContent() {
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

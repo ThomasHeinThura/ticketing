@@ -10,6 +10,7 @@ import {
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { AnnouncementSeverityBadge } from "@/components/announcements/announcement-severity-badge";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import { getPortalAnnouncement } from "@/fetchers/portal/announcements";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
@@ -42,17 +43,19 @@ export function PortalAnnouncementDetail({
 
   if (announcement.isPending)
     return (
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+        <PortalPageTitle title={t("portal:announcements.title")} />
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-32 w-full" />
-      </main>
+      </div>
     );
   if (announcement.isError) {
     const unavailable =
       announcement.error instanceof HttpError &&
       announcement.error.status === 404;
     return (
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+        <PortalPageTitle title={t("portal:announcements.title")} />
         {back}
         <Alert variant={unavailable ? "default" : "error"}>
           <AlertDescription>
@@ -61,13 +64,14 @@ export function PortalAnnouncementDetail({
               : t("portal:announcements.loadFailed")}
           </AlertDescription>
         </Alert>
-      </main>
+      </div>
     );
   }
 
   const entry = announcement.data;
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+      <PortalPageTitle title={entry.title} />
       {back}
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -92,6 +96,6 @@ export function PortalAnnouncementDetail({
           )}
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

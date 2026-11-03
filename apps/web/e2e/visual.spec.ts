@@ -6965,9 +6965,16 @@ test("portal request detail @visual", async ({ page }) => {
 test("portal submission detail @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("http://127.0.0.1:4179/submissions/SUB-7");
+  // The request page's layout: back link, the title (the request type until the team
+  // accepts it) and the reference.
   await expect(
-    page.getByRole("heading", { name: "Request SUB-7", exact: true }),
+    page.getByRole("heading", {
+      level: 1,
+      name: "Access request",
+      exact: true,
+    }),
   ).toBeVisible();
+  await expect(page.getByText("SUB-7", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Your answers" }),
   ).toBeVisible();

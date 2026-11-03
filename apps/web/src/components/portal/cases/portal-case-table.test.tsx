@@ -203,4 +203,67 @@ describe("PortalCaseTable", () => {
     expect(within(withoutSla).queryByText("Due soon")).toBeNull();
     expect(within(withoutSla).queryByText(/due by/i)).toBeNull();
   });
+
+  it("says 'raised for you' only to the requester and names the requester to a colleague (D5, D6)", () => {
+    const direct: PortalCase = {
+      ...base,
+      ref: "HELP-4",
+      source: "direct",
+      createdBy: { name: null, isYou: true },
+      isRequester: true,
+    };
+    render(
+      <PortalCaseTable
+        caption="Requests"
+        cases={[
+          direct,
+          {
+            ...direct,
+            ref: "HELP-5",
+            createdBy: { name: "Bob Colleague", isYou: false },
+            isRequester: false,
+          },
+          {
+            ...direct,
+            ref: "HELP-6",
+            createdBy: { name: null, isYou: false },
+            isRequester: false,
+          },
+        ]}
+      />,
+    );
+    const rows = within(
+      screen.getByRole("table", { name: "Requests" }),
+    ).getAllByRole("row");
+    expect(
+      within(rows[1]).getByText("Raised by our team for you"),
+    ).toBeVisible();
+    expect(
+      within(rows[2]).getByText("Raised by our team for Bob Colleague"),
+    ).toBeVisible();
+    expect(
+      within(rows[2]).queryByText("Raised by our team for you"),
+    ).toBeNull();
+    expect(
+      within(rows[3]).getByText("Raised by our team for a colleague"),
+    ).toBeVisible();
+  });
+
+  it("rings a keyboard-focused case reference like the other portal controls", () => {
+    render(
+      <PortalCaseTable
+        caption="Requests"
+        cases={[base, { ...base, ref: "HELP-4", source: "direct" }]}
+      />,
+    );
+    for (const name of ["SUB-7", "HELP-4"]) {
+      const link = screen.getByRole("link", { name });
+      expect(link).toHaveClass(
+        "focus-visible:ring-2",
+        "focus-visible:ring-ring",
+        "rounded-sm",
+      );
+      expect(link.className).not.toContain("focus-visible:underline");
+    }
+  });
 });

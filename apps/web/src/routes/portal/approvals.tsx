@@ -23,6 +23,7 @@ import {
   Textarea,
 } from "@taskdesk/ui";
 import { useState } from "react";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
   decidePortalApproval,
   getPortalApprovals,
@@ -81,7 +82,8 @@ function PortalApprovals() {
         ? "approvals.forbidden"
         : "approvals.failed";
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+      <PortalPageTitle title={t("approvals.title")} />
       <header>
         <h1 className="font-semibold text-lg">{t("approvals.title")}</h1>
         <p className="text-sm text-muted-foreground">
@@ -222,6 +224,6 @@ function PortalApprovals() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </main>
+    </div>
   );
 }

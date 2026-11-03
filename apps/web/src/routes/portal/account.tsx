@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PortalCanonicalPreferencesPage } from "@/components/account/portal-canonical-preferences";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
   parsePortalProjectSearch,
   portalProjectSearchMiddlewares,
@@ -12,6 +14,12 @@ export const Route = createFileRoute("/account")({
 });
 
 function PortalAccountRoute() {
+  const { t } = usePortalTranslation("portal");
   const { portalUserId } = Route.useRouteContext();
-  return <PortalCanonicalPreferencesPage portalUserId={portalUserId} />;
+  return (
+    <>
+      <PortalPageTitle title={t("navigation.settings")} />
+      <PortalCanonicalPreferencesPage portalUserId={portalUserId} />
+    </>
+  );
 }

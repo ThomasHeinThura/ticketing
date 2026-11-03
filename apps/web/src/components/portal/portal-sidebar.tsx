@@ -82,13 +82,13 @@ export default function PortalSidebar() {
     },
     {
       to: routes.portalInbox.path,
-      label: t("navigation.updates"),
+      label: t("notifications.title"),
       icon: Bell,
     },
     // S4c: the organisation's projects; `/projects/KEY` keeps it active.
     {
       to: routes.portalProjects.path,
-      label: t("projects.navigation"),
+      label: t("projects.title"),
       icon: FolderKanban,
     },
     // D7: announcements, with release notes as a tab of the same page.

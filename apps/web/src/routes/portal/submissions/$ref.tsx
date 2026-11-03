@@ -1,12 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
   Badge,
   Button,
   Card,
-  CardAction,
   CardDescription,
   CardHeader,
   CardPanel,
@@ -15,14 +14,23 @@ import {
   EmptyDescription,
   EmptyHeader,
   Input,
-  Textarea,
+  Skeleton,
 } from "@taskdesk/ui";
-import { Paperclip, X } from "lucide-react";
+import { ArrowLeft, Download, Paperclip } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PdfPreviewDialog, {
   type PdfPreviewAttachment,
 } from "@/components/attachments/pdf-preview-dialog";
+import {
+  PortalCaseSeverity,
+  PortalCaseStatus,
+} from "@/components/portal/cases/portal-case-table";
+import {
+  formatPortalDateTime,
+  formatPortalFileSize,
+} from "@/components/portal/portal-format";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
   PortalActionAlert,
   PortalRaisePriority,
@@ -31,9 +39,13 @@ import {
 } from "@/components/portal/portal-request-actions";
 import { PortalSlaStatus } from "@/components/portal/portal-sla-status";
 import {
+  type PortalReplyFileFailure,
+  PortalReplyForm,
+} from "@/components/portal/requests/portal-reply-form";
+import { getPortalSubmissionDetail } from "@/components/portal/requests/portal-submission-fetch";
+import {
   completePortalSubmissionAttachment,
   downloadPortalSubmissionAttachment,
-  getPortalSubmission,
   getPortalSubmissionAttachments,
   portalSubmissionAttachmentDownloadPath,
   portalSubmissionAttachmentPreviewPath,
@@ -41,8 +53,10 @@ import {
   replyPortalSubmission,
   withdrawPortalSubmission,
 } from "@/fetchers/intake";
+import type { PortalCase } from "@/fetchers/portal/cases";
 import { usePortalRequestActions } from "@/hooks/mutations/portal/use-portal-request-actions";
 import { invalidatePortalCaseViews } from "@/hooks/queries/portal/use-portal-cases";
+import { HttpError } from "@/lib/http-error";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 import { submissionAnswerRows } from "@/lib/intake-validation";
@@ -55,7 +69,16 @@ import {
 import {
   parsePortalProjectSearch,
   portalProjectSearchMiddlewares,
+  routes,
 } from "@/lib/routes";
+
+/** The priorities the case list shows as a severity; anything else reads "Not set". */
+const PORTAL_SEVERITIES: readonly string[] = [
+  "low",
+  "medium",
+  "high",
+  "urgent",
+];
 
 export const Route = createFileRoute("/submissions/$ref")({
   validateSearch: parsePortalProjectSearch,
@@ -78,64 +101,68 @@ function PortalSubmissionPage() {
 }
 
 function PortalSubmissionContent() {
-  const { t } = usePortalTranslation();
+  const { t, i18n } = usePortalTranslation();
+  const locale = i18n?.resolvedLanguage || i18n?.language || undefined;
   const { portalUserId } = Route.useRouteContext();
   const { ref } = Route.useParams();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const [body, setBody] = useState("");
-  // A-08: files staged for the reply on an accepted request, and any the reply could not carry.
-  const [replyFiles, setReplyFiles] = useState<File[]>([]);
-  const [replyFileFailures, setReplyFileFailures] = useState<string[]>([]);
-  const replyFileInput = useRef<HTMLInputElement>(null);
   const [previewAttachment, setPreviewAttachment] =
     useState<PdfPreviewAttachment>();
   const page = useQuery({
     queryKey: ["portal", portalUserId, "submission", ref],
-    queryFn: () => getPortalSubmission(ref),
+    queryFn: () => getPortalSubmissionDetail(ref),
+    // A missing or foreign ref is "not found" at once, never retried.
+    retry: (count, error) =>
+      !(error instanceof HttpError && error.status === 404) && count < 2,
   });
-  const reply = useMutation({
-    mutationFn: async () => {
-      const posted = await replyPortalSubmission({ ref, body: body.trim() });
-      // A-08: each staged file attaches to this reply on the request the team works on.
-      const failed: string[] = [];
-      for (const file of replyFiles) {
-        try {
-          const signed = await presignPortalSubmissionAttachment({
-            ref,
-            commentId: posted.message.id,
-            filename: file.name,
-            contentType: file.type || "application/octet-stream",
-            size: file.size,
-          });
-          const put = await fetch(signed.uploadUrl, {
-            method: "PUT",
-            headers: signed.uploadHeaders as Record<string, string>,
-            body: file,
-          });
-          if (!put.ok) throw new Error("The file could not be stored.");
-          await completePortalSubmissionAttachment({
-            ref,
-            id: signed.attachmentId,
-          });
-        } catch {
-          failed.push(file.name);
-        }
+  // A-08: post the reply, then attach each staged file to it on the request the team works on.
+  const sendReply = async (input: {
+    body: string;
+    files: File[];
+  }): Promise<PortalReplyFileFailure[]> => {
+    const posted = await replyPortalSubmission({ ref, body: input.body });
+    postedReply.current = posted.message.id;
+    const failed: PortalReplyFileFailure[] = [];
+    for (const file of input.files) {
+      try {
+        const signed = await presignPortalSubmissionAttachment({
+          ref,
+          commentId: posted.message.id,
+          filename: file.name,
+          contentType: file.type || "application/octet-stream",
+          size: file.size,
+        });
+        const put = await fetch(signed.uploadUrl, {
+          method: "PUT",
+          headers: signed.uploadHeaders as Record<string, string>,
+          body: file,
+        });
+        if (!put.ok) throw new Error("The file could not be stored.");
+        await completePortalSubmissionAttachment({
+          ref,
+          id: signed.attachmentId,
+        });
+      } catch {
+        failed.push({ name: file.name, reason: null });
       }
-      return failed;
-    },
-    onSuccess: async (failed) => {
-      setBody("");
-      setReplyFiles([]);
-      setReplyFileFailures(failed);
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["portal", portalUserId, "submission", ref],
-        }),
-        invalidatePortalCaseViews(queryClient, portalUserId),
-      ]);
-    },
-  });
+    }
+    return failed;
+  };
+  // IQ-13: replying to a "need more information" request returns it to the team, which closes
+  // the reply box. Focus then goes to the reply just sent, and the page announces it.
+  const postedReply = useRef<string | null>(null);
+  const [sentReplyId, setSentReplyId] = useState<string | null>(null);
+  const [pageAnnouncement, setPageAnnouncement] = useState("");
+  const refreshAfterReply = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["portal", portalUserId, "submission", ref],
+      }),
+      invalidatePortalCaseViews(queryClient, portalUserId),
+    ]);
+    setSentReplyId(postedReply.current);
+  };
   const withdraw = useMutation({
     mutationFn: () => withdrawPortalSubmission(ref),
     onSuccess: async () =>
@@ -193,6 +220,7 @@ function PortalSubmissionContent() {
           state?: string;
           formData?: Record<string, unknown>;
           workItemId?: string | null;
+          createdAt?: string;
         };
         canWithdraw?: boolean;
         /** Customer-language status decided by the server (CP-5); absent: mapped from the submission state. */
@@ -296,14 +324,25 @@ function PortalSubmissionContent() {
     actions.reopen.error.code === "reopen_pending_review";
   const canReopen = requester && record?.canReopen === true && !reopenPending;
   const statusKey = customerStatusKey(record?.customerStatus, state);
-  const stateLabel = statusKey
-    ? t(`portal:${statusKey}`, { defaultValue: state })
-    : undefined;
-  // Nothing to show until the record loads: no dangling separator while loading.
-  const subtitle = [record?.requestType?.name, stateLabel]
-    .filter(Boolean)
-    .join(" · ");
+  // CP-5: the customer status the case list shows; mapped from the state when the API omits it.
+  const caseStatus = (
+    statusKey?.startsWith("request.status.")
+      ? statusKey.slice("request.status.".length)
+      : undefined
+  ) as PortalCase["customerStatus"] | undefined;
   const sla = readPortalSla(record?.sla ?? record?.workItem?.sla);
+  const priority = record?.workItem?.priority;
+  const severity = (
+    priority && PORTAL_SEVERITIES.includes(priority) ? priority : null
+  ) as PortalCase["priority"];
+  const answers = record
+    ? submissionAnswerRows(
+        record.version?.formSchema?.fields,
+        record.submission?.formData,
+      )
+    : [];
+  // The same title the case list shows: the team's title, else the request type's name.
+  const title = record?.workItem?.title || record?.requestType?.name || ref;
   const authorLabel = (message: {
     actorType: string;
     authorName?: string | null;
@@ -312,47 +351,56 @@ function PortalSubmissionContent() {
     const author = messageAuthor(message);
     return "name" in author ? author.name : t(`portal:${author.key}`);
   };
+  const notFound = page.error instanceof HttpError && page.error.status === 404;
+  const replyOpen =
+    requester && (state === "clarifying" || state === "accepted");
+  useEffect(() => {
+    if (!sentReplyId) return;
+    // The reply box is still here: it keeps focus and says "Reply sent" itself.
+    if (replyOpen) {
+      setSentReplyId(null);
+      return;
+    }
+    const target = document.getElementById(`comment-${sentReplyId}`);
+    if (!target) return;
+    target.focus();
+    setPageAnnouncement(t("portal:requestPage.replySent"));
+    setSentReplyId(null);
+  }, [sentReplyId, replyOpen, t]);
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+      <p role="status" className="sr-only">
+        {pageAnnouncement}
+      </p>
+      <PortalPageTitle
+        title={
+          notFound
+            ? t("portal:requestPage.notFound.title")
+            : record
+              ? `${title} · ${ref}`
+              : ref
+        }
+      />
+      <div>
+        <Button
+          variant="ghost"
+          size="sm"
+          render={<Link to={routes.portalRequests.path} />}
+        >
+          <ArrowLeft aria-hidden="true" />
+          {t("portal:requestPage.back")}
+        </Button>
+      </div>
+      {notFound ? (
+        <section className="flex flex-col gap-1">
           <h1 className="font-semibold text-2xl">
-            {t("portal:intake.submissionTitle", {
-              ref,
-            })}
+            {t("portal:requestPage.notFound.title")}
           </h1>
-          {subtitle ? <CardDescription>{subtitle}</CardDescription> : null}
-        </div>
-        {record && (canRaisePriority || canReopen || canWithdraw) ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {canRaisePriority ? (
-              <PortalRaisePriority
-                current={record.workItem?.priority ?? null}
-                escalate={actions.escalate}
-              />
-            ) : null}
-            {canReopen ? <PortalReopenButton reopen={actions.reopen} /> : null}
-            {canWithdraw ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => withdraw.mutate()}
-                disabled={withdraw.isPending}
-              >
-                {t("portal:intake.withdraw", {
-                  defaultValue: "Withdraw request",
-                })}
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </header>
-      {page.isLoading && (
-        <p role="status">
-          {t("common:empty.loading", { defaultValue: "Loading…" })}
-        </p>
-      )}
-      {page.isError ? (
+          <p className="text-muted-foreground text-sm">
+            {t("portal:requestPage.notFound.description")}
+          </p>
+        </section>
+      ) : page.isError ? (
         <Alert variant="error">
           <AlertDescription>
             {t("portal:intake.pageError", {
@@ -363,102 +411,165 @@ function PortalSubmissionContent() {
             {t("common:actions.retry", { defaultValue: "Retry" })}
           </Button>
         </Alert>
-      ) : null}
-      {!page.isError && (reply.isError || withdraw.isError) && (
-        <Alert variant="error">
-          <AlertDescription>
-            {t("portal:intake.pageError", {
-              defaultValue: "This request could not be loaded or updated.",
-            })}
-          </AlertDescription>
-        </Alert>
-      )}
-      {record && !requester ? (
-        <Alert variant="info">
-          <AlertDescription>{t("portal:request.readOnly")}</AlertDescription>
-        </Alert>
-      ) : null}
-      <PortalActionAlert error={actions.escalate.error} />
-      <PortalActionAlert error={actions.reopen.error} />
-      {record && (
+      ) : !record ? (
+        <div className="flex flex-col gap-4" role="status">
+          <span className="sr-only">
+            {t("common:empty.loading", { defaultValue: "Loading…" })}
+          </span>
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      ) : (
         <>
-          {state === "accepted" && record.workItem ? (
-            <Card aria-label={t("portal:request.details")}>
-              <CardHeader>
-                <CardTitle render={(props) => <h2 {...props} />}>
-                  {record.workItem.title}
-                </CardTitle>
-                <CardAction>
-                  {stateLabel ? (
-                    <Badge variant="outline">{stateLabel}</Badge>
+          <header className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="break-words font-semibold text-2xl">{title}</h1>
+                <Badge variant="outline" className="font-mono">
+                  {ref}
+                </Badge>
+              </div>
+              {record.requestType?.name && record.requestType.name !== title ? (
+                <p className="text-muted-foreground text-sm">
+                  {record.requestType.name}
+                </p>
+              ) : null}
+            </div>
+            {canRaisePriority || canReopen || canWithdraw ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {canRaisePriority ? (
+                  <PortalRaisePriority
+                    current={record.workItem?.priority ?? null}
+                    escalate={actions.escalate}
+                  />
+                ) : null}
+                {canReopen ? (
+                  <PortalReopenButton reopen={actions.reopen} />
+                ) : null}
+                {canWithdraw ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => withdraw.mutate()}
+                    disabled={withdraw.isPending}
+                  >
+                    {t("portal:intake.withdraw", {
+                      defaultValue: "Withdraw request",
+                    })}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </header>
+          {withdraw.isError ? (
+            <Alert variant="error">
+              <AlertDescription>
+                {t("portal:intake.pageError", {
+                  defaultValue: "This request could not be loaded or updated.",
+                })}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {requester ? null : (
+            <Alert variant="info">
+              <AlertDescription>
+                {t("portal:request.readOnly")}
+              </AlertDescription>
+            </Alert>
+          )}
+          <PortalActionAlert error={actions.escalate.error} />
+          <PortalActionAlert error={actions.reopen.error} />
+          <Card aria-label={t("portal:request.details")}>
+            <CardHeader>
+              <CardTitle render={(props) => <h2 {...props} />}>
+                {t("portal:request.details")}
+              </CardTitle>
+            </CardHeader>
+            <CardPanel>
+              <div className="flex flex-col gap-4">
+                <dl className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <dt>
+                      <CardDescription>
+                        {t("portal:cases.columns.status")}
+                      </CardDescription>
+                    </dt>
+                    <dd className="flex flex-col items-start gap-1.5">
+                      {caseStatus ? (
+                        <PortalCaseStatus status={caseStatus} />
+                      ) : statusKey ? (
+                        <Badge variant="outline">
+                          {t(`portal:${statusKey}`, { defaultValue: state })}
+                        </Badge>
+                      ) : null}
+                      {sla ? <PortalSlaStatus sla={sla} /> : null}
+                    </dd>
+                  </div>
+                  {/* The team's severity exists once it accepts the request; before that the
+                      customer's own answer (if the form asks) is under "Your answers". */}
+                  {record.workItem ? (
+                    <div className="flex flex-col gap-1">
+                      <dt>
+                        <CardDescription>
+                          {t("portal:cases.columns.severity")}
+                        </CardDescription>
+                      </dt>
+                      <dd>
+                        <PortalCaseSeverity priority={severity} />
+                      </dd>
+                    </div>
                   ) : null}
-                </CardAction>
-              </CardHeader>
-              <CardPanel>
-                <div className="flex flex-col gap-3">
-                  <dl className="grid gap-3 sm:grid-cols-2">
-                    {record.workItem.priority && (
-                      <div>
-                        <dt>
-                          <CardDescription>
-                            {t("portal:request.priority.label")}
-                          </CardDescription>
-                        </dt>
-                        <dd>
-                          {t(
-                            `portal:request.priority.value.${record.workItem.priority}`,
-                            { defaultValue: record.workItem.priority },
+                  {record.submission?.createdAt ? (
+                    <div className="flex flex-col gap-1">
+                      <dt>
+                        <CardDescription>
+                          {t("portal:cases.columns.created")}
+                        </CardDescription>
+                      </dt>
+                      <dd className="text-sm tabular-nums">
+                        <time dateTime={record.submission.createdAt}>
+                          {formatPortalDateTime(
+                            record.submission.createdAt,
+                            locale,
                           )}
-                        </dd>
-                      </div>
-                    )}
-                    {(record.customFields ?? []).map((field) => (
-                      <div key={field.key}>
-                        <dt>
-                          <CardDescription>{field.label}</CardDescription>
-                        </dt>
-                        <dd>
-                          {field.value === true
-                            ? t("customFields:value.yes", {
-                                defaultValue: "Yes",
+                        </time>
+                      </dd>
+                    </div>
+                  ) : null}
+                  {(record.customFields ?? []).map((field) => (
+                    <div className="flex flex-col gap-1" key={field.key}>
+                      <dt>
+                        <CardDescription>{field.label}</CardDescription>
+                      </dt>
+                      <dd className="break-words text-sm">
+                        {field.value === true
+                          ? t("customFields:value.yes", {
+                              defaultValue: "Yes",
+                            })
+                          : field.value === false
+                            ? t("customFields:value.no", {
+                                defaultValue: "No",
                               })
-                            : field.value === false
-                              ? t("customFields:value.no", {
-                                  defaultValue: "No",
-                                })
-                              : Array.isArray(field.value)
-                                ? field.value.join(", ")
-                                : typeof field.value === "object" &&
-                                    field.value !== null
-                                  ? Object.values(field.value).join(" ")
-                                  : String(field.value ?? "")}
-                        </dd>
-                      </div>
-                    ))}
-                    {sla && (
-                      <div>
-                        <dt>
-                          <CardDescription>
-                            {t("portal:intake.sla.label", {
-                              defaultValue: "Service target",
-                            })}
-                          </CardDescription>
-                        </dt>
-                        <dd>
-                          <PortalSlaStatus sla={sla} />
-                        </dd>
-                      </div>
-                    )}
-                  </dl>
-                  {record.workItem.description && (
-                    <p className="whitespace-pre-wrap">
-                      {record.workItem.description}
-                    </p>
-                  )}
-                </div>
-              </CardPanel>
-            </Card>
-          ) : (
+                            : Array.isArray(field.value)
+                              ? field.value.join(", ")
+                              : typeof field.value === "object" &&
+                                  field.value !== null
+                                ? Object.values(field.value).join(" ")
+                                : String(field.value ?? "")}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                {record.workItem?.description ? (
+                  <p className="whitespace-pre-wrap break-words text-sm">
+                    {record.workItem.description}
+                  </p>
+                ) : null}
+              </div>
+            </CardPanel>
+          </Card>
+          {state === "accepted" && record.workItem ? null : (
             <Card>
               <CardHeader>
                 <CardTitle render={(props) => <h2 {...props} />}>
@@ -466,16 +577,15 @@ function PortalSubmissionContent() {
                 </CardTitle>
               </CardHeader>
               <CardPanel>
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  {submissionAnswerRows(
-                    record.version?.formSchema?.fields,
-                    record.submission?.formData,
-                  ).map((answer) => (
-                    <div key={answer.key}>
+                <dl className="grid gap-4 sm:grid-cols-2">
+                  {answers.map((answer) => (
+                    <div className="flex flex-col gap-1" key={answer.key}>
                       <dt>
                         <CardDescription>{answer.label}</CardDescription>
                       </dt>
-                      <dd>{answer.value}</dd>
+                      <dd className="whitespace-pre-wrap break-words text-sm">
+                        {answer.value}
+                      </dd>
                     </div>
                   ))}
                 </dl>
@@ -500,13 +610,51 @@ function PortalSubmissionContent() {
               existing={record.satisfaction ?? null}
             />
           ) : null}
-          <section className="flex flex-col gap-3">
-            <h2 className="font-medium">
+          <section
+            className="flex flex-col gap-3"
+            aria-labelledby="submission-thread"
+          >
+            <h2 id="submission-thread" className="font-medium">
               {t("portal:intake.conversation", {
                 defaultValue: "Conversation",
               })}
             </h2>
-            {record.messages?.length ? null : (
+            {record.messages?.length ? (
+              <ol className="flex flex-col gap-3">
+                {record.messages.map((message) => (
+                  <li
+                    key={message.id}
+                    id={`comment-${message.id}`}
+                    tabIndex={-1}
+                    className="scroll-m-4 rounded-md focus-visible:outline-2 focus-visible:outline-ring"
+                  >
+                    <Card>
+                      <CardHeader>
+                        <CardDescription>
+                          {authorLabel(message)} ·{" "}
+                          <time dateTime={message.createdAt}>
+                            {formatPortalDateTime(message.createdAt, locale)}
+                          </time>
+                        </CardDescription>
+                      </CardHeader>
+                      <CardPanel>
+                        <p className="whitespace-pre-wrap break-words">
+                          {message.reasonCode
+                            ? t(
+                                `portal:intake.systemReasons.${message.reasonCode}`,
+                                {
+                                  ...message.reasonParams,
+                                  defaultValue: message.body,
+                                },
+                              )
+                            : message.body}
+                        </p>
+                      </CardPanel>
+                    </Card>
+                  </li>
+                ))}
+              </ol>
+            ) : (
               <Empty>
                 <EmptyHeader>
                   <EmptyDescription>
@@ -517,48 +665,19 @@ function PortalSubmissionContent() {
                 </EmptyHeader>
               </Empty>
             )}
-            <ol className="flex flex-col gap-3">
-              {record.messages?.map((message) => (
-                <li
-                  key={message.id}
-                  id={`comment-${message.id}`}
-                  tabIndex={-1}
-                  className="scroll-m-4 rounded-md focus-visible:outline-2 focus-visible:outline-ring"
-                >
-                  <Card>
-                    <CardHeader>
-                      <CardDescription>
-                        {authorLabel(message)} ·{" "}
-                        {new Date(message.createdAt).toLocaleString()}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardPanel>
-                      <p className="whitespace-pre-wrap">
-                        {message.reasonCode
-                          ? t(
-                              `portal:intake.systemReasons.${message.reasonCode}`,
-                              {
-                                ...message.reasonParams,
-                                defaultValue: message.body,
-                              },
-                            )
-                          : message.body}
-                      </p>
-                    </CardPanel>
-                  </Card>
-                </li>
-              ))}
-            </ol>
           </section>
           {canViewAttachments || canUpload ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="font-medium">
+            <section
+              className="flex flex-col gap-3"
+              aria-labelledby="submission-files"
+            >
+              <h2 id="submission-files" className="font-medium">
                 {t("portal:intake.attachments", {
                   defaultValue: "Attachments",
                 })}
               </h2>
               {attachments.isLoading && (
-                <p role="status">
+                <p role="status" className="text-muted-foreground text-sm">
                   {t("common:empty.loading", { defaultValue: "Loading…" })}
                 </p>
               )}
@@ -620,92 +739,112 @@ function PortalSubmissionContent() {
                   </EmptyHeader>
                 </Empty>
               ) : null}
-              {canViewAttachments &&
-                attachments.data?.map((file) => (
-                  <div
-                    className="flex items-center justify-between gap-3 rounded border p-3"
-                    key={file.id}
-                  >
-                    <span className="flex min-w-0 flex-col gap-0.5">
-                      <span>
-                        {file.filename} · {Math.ceil(file.size / 1024)} KB ·{" "}
-                        {file.state}
-                      </span>
-                      {/* Say why a ready file has no Download (the API cannot serve its key), never leave it unexplained. */}
-                      {file.state === "ready" && !file.downloadable ? (
-                        <span className="text-muted-foreground text-xs">
-                          {t("portal:requestPage.fileNotDownloadable")}
+              {canViewAttachments && attachments.data?.length ? (
+                <ul className="flex flex-col gap-2">
+                  {attachments.data.map((file) => (
+                    <li
+                      className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3"
+                      key={file.id}
+                    >
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="truncate font-medium text-sm">
+                          {file.filename}
                         </span>
-                      ) : null}
-                    </span>
-                    {file.state === "pending" ? (
-                      <Button
-                        variant="outline"
-                        onClick={() => finishUpload.mutate(file.id)}
-                        disabled={finishUpload.isPending}
-                      >
-                        {t("portal:intake.completeUpload", {
-                          defaultValue: "Finish upload",
-                        })}
-                      </Button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {file.state === "ready" &&
-                        file.mimeType?.trim().toLowerCase() ===
-                          "application/pdf" ? (
-                          <Button
-                            variant="outline"
-                            aria-label={t(
-                              "workItems:detail.attachments.pdfPreviewOpen",
-                              { name: file.filename },
-                            )}
-                            onClick={() =>
-                              setPreviewAttachment({
-                                id: file.id,
-                                filename: file.filename,
-                                previewPath:
-                                  portalSubmissionAttachmentPreviewPath(
-                                    ref,
-                                    file.id,
-                                  ),
-                                ...(file.downloadable
-                                  ? {
-                                      downloadPath:
-                                        portalSubmissionAttachmentDownloadPath(
-                                          ref,
-                                          file.id,
-                                        ),
-                                    }
-                                  : {}),
-                              })
-                            }
-                          >
-                            {t("workItems:detail.attachments.pdfPreviewOpen", {
-                              name: file.filename,
-                            })}
-                          </Button>
+                        <span className="text-muted-foreground text-xs">
+                          {[
+                            formatPortalFileSize(file.size),
+                            // Only a file that is not ready says so; "ready" is never shown.
+                            file.state === "pending"
+                              ? t("portal:requestPage.fileUploadPending")
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                        {/* Say why a ready file has no Download (the API cannot serve its key), never leave it unexplained. */}
+                        {file.state === "ready" && !file.downloadable ? (
+                          <span className="text-muted-foreground text-xs">
+                            {t("portal:requestPage.fileNotDownloadable")}
+                          </span>
                         ) : null}
-                        {/* A file the API marks not downloadable is listed without a download. */}
-                        {file.downloadable ? (
-                          <Button
-                            variant="outline"
-                            disabled={download.isPending}
-                            onClick={() =>
-                              download.mutate({
-                                id: file.id,
-                                filename: file.filename,
-                              })
-                            }
-                          >
-                            {t("portal:intake.download", {
-                              defaultValue: "Download",
-                            })}
-                          </Button>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      </span>
+                      {file.state === "pending" ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => finishUpload.mutate(file.id)}
+                          disabled={finishUpload.isPending}
+                        >
+                          {t("portal:intake.completeUpload", {
+                            defaultValue: "Finish upload",
+                          })}
+                        </Button>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          {file.state === "ready" &&
+                          file.mimeType?.trim().toLowerCase() ===
+                            "application/pdf" ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              aria-label={t(
+                                "workItems:detail.attachments.pdfPreviewOpen",
+                                { name: file.filename },
+                              )}
+                              onClick={() =>
+                                setPreviewAttachment({
+                                  id: file.id,
+                                  filename: file.filename,
+                                  previewPath:
+                                    portalSubmissionAttachmentPreviewPath(
+                                      ref,
+                                      file.id,
+                                    ),
+                                  ...(file.downloadable
+                                    ? {
+                                        downloadPath:
+                                          portalSubmissionAttachmentDownloadPath(
+                                            ref,
+                                            file.id,
+                                          ),
+                                      }
+                                    : {}),
+                                })
+                              }
+                            >
+                              {t(
+                                "workItems:detail.attachments.pdfPreviewOpen",
+                                {
+                                  name: file.filename,
+                                },
+                              )}
+                            </Button>
+                          ) : null}
+                          {/* A file the API marks not downloadable is listed without a download. */}
+                          {file.downloadable ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={download.isPending}
+                              onClick={() =>
+                                download.mutate({
+                                  id: file.id,
+                                  filename: file.filename,
+                                })
+                              }
+                            >
+                              <Download aria-hidden="true" />
+                              {t("portal:intake.download", {
+                                defaultValue: "Download",
+                              })}
+                            </Button>
+                          ) : null}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {generalUpload ? (
                 <SubmissionFileField
                   fieldKey="request"
@@ -744,108 +883,13 @@ function PortalSubmissionContent() {
               )}
             </section>
           ) : null}
-          {requester && (state === "clarifying" || state === "accepted") && (
-            <form
-              className="flex flex-col gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                reply.mutate();
-              }}
-            >
-              <label htmlFor="portal-reply">
-                {t("portal:intake.reply", { defaultValue: "Reply" })}
-              </label>
-              <Textarea
-                id="portal-reply"
-                value={body}
-                disabled={reply.isPending}
-                onChange={(event) => setBody(event.target.value)}
-              />
-              {replyUpload && replyFiles.length > 0 ? (
-                <ul
-                  className="flex flex-col gap-1"
-                  aria-label={t("portal:requestPage.filesToSend")}
-                >
-                  {replyFiles.map((file, index) => (
-                    <li
-                      key={`${file.name}:${file.size}:${file.lastModified}`}
-                      className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border px-3 py-1.5"
-                    >
-                      <span className="truncate text-sm">{file.name}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={reply.isPending}
-                        aria-label={t("portal:requestPage.removeFile", {
-                          name: file.name,
-                        })}
-                        onClick={() =>
-                          setReplyFiles((current) =>
-                            current.filter((_, position) => position !== index),
-                          )
-                        }
-                      >
-                        <X aria-hidden="true" />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {replyFileFailures.length > 0 ? (
-                <Alert variant="error">
-                  <AlertDescription>
-                    <span>{t("portal:requestPage.uploadFailed")}</span>
-                    <ul className="mt-1 list-disc ps-4">
-                      {replyFileFailures.map((name) => (
-                        <li key={name}>{name}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                {replyUpload ? (
-                  <div className="flex items-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={reply.isPending}
-                      onClick={() => replyFileInput.current?.click()}
-                    >
-                      <Paperclip aria-hidden="true" />
-                      {t("portal:requestPage.attach")}
-                    </Button>
-                    <Input
-                      ref={replyFileInput}
-                      id="portal-reply-files"
-                      type="file"
-                      multiple
-                      className="sr-only"
-                      tabIndex={-1}
-                      aria-label={t("portal:requestPage.attach")}
-                      onChange={(event) => {
-                        const chosen = Array.from(event.target.files ?? []);
-                        setReplyFiles((current) => [...current, ...chosen]);
-                        event.target.value = "";
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <span />
-                )}
-                <Button
-                  type="submit"
-                  disabled={!body.trim() || reply.isPending}
-                >
-                  {reply.isPending
-                    ? t("portal:requestPage.sending")
-                    : t("portal:intake.sendReply", {
-                        defaultValue: "Send reply",
-                      })}
-                </Button>
-              </div>
-            </form>
-          )}
+          {replyOpen ? (
+            <PortalReplyForm
+              canUpload={replyUpload}
+              send={sendReply}
+              onSent={refreshAfterReply}
+            />
+          ) : null}
         </>
       )}
       <PdfPreviewDialog
@@ -854,7 +898,7 @@ function PortalSubmissionContent() {
           if (!open) setPreviewAttachment(undefined);
         }}
       />
-    </main>
+    </div>
   );
 }
 

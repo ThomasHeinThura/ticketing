@@ -567,9 +567,8 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       await customerPage.goto(
         new URL("/catalogue?q=no-match&key=access", portal).toString(),
       );
-      await expect(customerPage.locator("#catalogue-search")).toHaveValue(
-        "no-match",
-      );
+      // An open form hides the list's filter (the form replaces the list); `q` stays in the URL.
+      await expect(customerPage.locator("#catalogue-search")).toHaveCount(0);
       await expect(
         customerPage.getByRole("heading", {
           name: "Access request",
