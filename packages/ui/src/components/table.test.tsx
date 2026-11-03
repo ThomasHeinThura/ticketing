@@ -61,4 +61,31 @@ describe("Table", () => {
     expect(screen.getByRole("cell", { name: "Delivered" })).toBeInTheDocument();
     await expectNoA11yViolations(baseElement);
   });
+
+  it("fades the cut edge of a scrolling table only when asked", () => {
+    const { rerender } = render(
+      <Table scrollLabel="Wide rows">
+        <TableBody>
+          <TableRow>
+            <TableCell>Alpha</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    const viewport = () =>
+      screen
+        .getByRole("region", { name: "Wide rows" })
+        .querySelector('[data-slot="scroll-area-viewport"]');
+    expect(viewport()?.className).not.toContain("mask-r-from-");
+    rerender(
+      <Table scrollLabel="Wide rows" scrollFade>
+        <TableBody>
+          <TableRow>
+            <TableCell>Alpha</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    expect(viewport()?.className).toContain("mask-r-from-");
+  });
 });
