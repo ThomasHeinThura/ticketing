@@ -212,7 +212,8 @@ export const PROJECT_UNDER_OPEN_HOLD = openHoldOver(
  * of its projects, and for grants the group mappings that qualify by the same rules), plus the
  * P5 workspace-level rows: every knowledge base article (and its versions, feedback, deflection
  * events), dashboard owners, saved-view creators, invitation inviters and acceptors, and the
- * creators of services, releases and change freezes, the `done_by` person of every release checklist item (releases are workspace-bound, not project-bound), and the person and creator of the
+ * creators of services, releases and change freezes, the creators and last editors of
+ * announcements, the `done_by` person of every release checklist item (releases are workspace-bound, not project-bound), and the person and creator of the
  * workspace-default hourly rates (`project_id IS NULL`; project rates go with the project) and the person and creator of every `available_hours` row. Mirrors
  * `workspaceDependentPredicates` in `workspace/controllers/delete-workspace-role-dependents.ts`.
  */
@@ -261,6 +262,8 @@ export function workspaceOwnPeople(workspaceId: string): SQL {
       UNION ALL SELECT rl."created_by" FROM "release" rl WHERE rl."workspace_id" = ${workspaceId}
       UNION ALL SELECT cf."created_by" FROM "change_freeze" cf WHERE cf."workspace_id" = ${workspaceId}
       UNION ALL SELECT cf."cancelled_by" FROM "change_freeze" cf WHERE cf."workspace_id" = ${workspaceId}
+      UNION ALL SELECT an."created_by" FROM "announcement" an WHERE an."workspace_id" = ${workspaceId}
+      UNION ALL SELECT an."updated_by" FROM "announcement" an WHERE an."workspace_id" = ${workspaceId}
     `)}
   `;
 }

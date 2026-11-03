@@ -22,6 +22,12 @@ vi.mock("@tanstack/react-router", () => ({
     to: string;
     params?: Record<string, string>;
   }) => <a href={to.replace("$id", params?.id ?? "")}>{children}</a>,
+  useLocation: (options?: {
+    select?: (value: { pathname: string }) => unknown;
+  }) => {
+    const location = { pathname: "/releases" };
+    return options?.select ? options.select(location) : location;
+  },
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),

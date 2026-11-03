@@ -9813,6 +9813,7 @@
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractDialog::Dialog[0]/DialogContent[0]/DialogPanel[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/documents-page.tsx::DocumentLinkDialog::Dialog[0]/DialogContent[0]/DialogPanel[0]/div[1]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/reports/report-drill.tsx::DrillItemsDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-destructive-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/service-management/freeze-dialog.tsx::FreezeDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/create-work-item-label-picker.tsx::CreateWorkItemLabelPicker::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive-foreground#0",
@@ -9942,6 +9943,18 @@
 				"id": "apps/web/src/components/reports/report-drill.tsx::DrillItemsDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-destructive-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/reports/report-drill.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementDialog",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -10115,6 +10128,7 @@
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractDialog::Dialog[0]/DialogContent[0]/DialogPanel[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/documents-page.tsx::DocumentLinkDialog::Dialog[0]/DialogContent[0]/DialogPanel[0]/div[1]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/reports/report-drill.tsx::DrillItemsDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-destructive-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/service-management/freeze-dialog.tsx::FreezeDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/create-work-item-label-picker.tsx::CreateWorkItemLabelPicker::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive-foreground#0",
@@ -10244,6 +10258,18 @@
 				"id": "apps/web/src/components/reports/report-drill.tsx::DrillItemsDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-destructive-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/reports/report-drill.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementDialog",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -33486,6 +33512,8 @@
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#1",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/ul[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
@@ -36464,6 +36492,28 @@
 				"id": "apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/ul[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/pending-action/pending-action-approval.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/announcements_.$id.tsx:/announcements_/$id",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/announcements.tsx:/announcements",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -42572,6 +42622,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/portal/announcements_.$id.tsx:/announcements_/$id",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/releases_.$id.tsx:/releases_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
@@ -44301,6 +44362,8 @@
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#1",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/ul[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
@@ -47279,6 +47342,28 @@
 				"id": "apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/ul[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/pending-action/pending-action-approval.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/announcements_.$id.tsx:/announcements_/$id",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/announcements.tsx:/announcements",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -53466,6 +53551,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/portal/announcements_.$id.tsx:/announcements_/$id",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/releases_.$id.tsx:/releases_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
@@ -55897,6 +55993,7 @@
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#3",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#4",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#5",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationCard::li[0]/Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/span[0]::text-muted-foreground#0",
@@ -55969,6 +56066,7 @@
 			"apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/DndContext[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChangesCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChecklistCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
@@ -57605,6 +57703,18 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx:PortalAnnouncementDetail",
+					"jsx:main[0]/Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationCard",
 					"jsx:li[0]/Card[0]/CardPanel[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
@@ -58457,6 +58567,18 @@
 				"id": "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-calendar/window-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementCard",
+					"jsx:Card[0]/CardPanel[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -60278,6 +60400,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationInbox",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -61106,6 +61239,7 @@
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#3",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#4",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#5",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationCard::li[0]/Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/span[0]::text-muted-foreground#0",
@@ -61178,6 +61312,7 @@
 			"apps/web/src/components/service-calendar/weekly-cover-card.tsx::WeeklyCoverCard::Card[0]/CardContent[0]/DndContext[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChangesCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChecklistCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
@@ -62814,6 +62949,18 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx:PortalAnnouncementDetail",
+					"jsx:main[0]/Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationCard",
 					"jsx:li[0]/Card[0]/CardPanel[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
@@ -63666,6 +63813,18 @@
 				"id": "apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-calendar/window-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementCard",
+					"jsx:Card[0]/CardPanel[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -65537,6 +65696,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/pages/pages-list.tsx:PagesList",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -68094,6 +68264,19 @@
 					"apps/web/src/components/portal/accept-invitation.tsx:AcceptInvitation",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/portal/invite/$id.tsx:/invite/$id",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/announcements.tsx:/announcements",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -72683,6 +72866,19 @@
 					"apps/web/src/components/portal/accept-invitation.tsx:AcceptInvitation",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/portal/invite/$id.tsx:/invite/$id",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/announcements.tsx:/announcements",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -83080,6 +83276,7 @@
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/Icon[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCounts::dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ServiceReference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::WorkItemChangeSection::p[0]::text-muted-foreground#0",
@@ -84941,6 +85138,18 @@
 				"id": "apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/service-calendar/time-field.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementDialog",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -88383,6 +88592,7 @@
 			"apps/web/src/components/search-command-menu/index.tsx::SearchCommandMenu::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/Icon[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/calendar-usage-card.tsx::CalendarUsageCounts::dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ServiceReference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::WorkItemChangeSection::p[0]::text-muted-foreground#0",
@@ -90244,6 +90454,18 @@
 				"id": "apps/web/src/components/service-calendar/time-field.tsx::TimeField::Popover[0]/PopoverTrigger[0]/Button[0]/Clock[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/service-calendar/time-field.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/service-management/announcements-list.tsx:AnnouncementDialog",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/service-management/announcements-list.tsx::AnnouncementDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/service-management/announcements-list.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -100813,6 +101035,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-notification-inbox.tsx:PortalNotificationInbox",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -101538,6 +101771,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/pages/pages-list.tsx:PagesList",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/portal/announcements/portal-announcements-list.tsx:PortalAnnouncementsList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",

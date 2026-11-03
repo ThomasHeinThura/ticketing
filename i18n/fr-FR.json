@@ -4193,6 +4193,33 @@
 				"signingOut": "Signing out…",
 				"unnamed": "Unnamed user"
 			}
+		},
+		"announcements": {
+			"backToList": "Back to announcements",
+			"banner": {
+				"dismiss": "Dismiss {{title}}"
+			},
+			"description": "Maintenance, releases and incidents for the services your organisation uses.",
+			"emptyDescription": "There are no current announcements for your organisation.",
+			"emptyTitle": "No announcements right now",
+			"loadFailed": "Could not load announcements. Try again.",
+			"loading": "Loading announcements…",
+			"loadMore": "Load more",
+			"noBody": "No further details were published.",
+			"severity": {
+				"incident": "Incident",
+				"info": "Information",
+				"maintenance": "Planned maintenance"
+			},
+			"since": "Since {{start}}",
+			"tabs": {
+				"announcements": "Announcements",
+				"label": "Announcements and release notes",
+				"releaseNotes": "Release notes"
+			},
+			"title": "Announcements",
+			"unavailable": "This announcement is unavailable.",
+			"window": "{{start}} – {{end}}"
 		}
 	},
 	"instanceUsers": {
@@ -4449,7 +4476,8 @@
 				"webhook": "Delete webhook",
 				"organisation": "Delete organisation",
 				"identity_connection": "Delete identity connection",
-				"request_type": "Delete {{term_request_one}} type"
+				"request_type": "Delete {{term_request_one}} type",
+				"announcement": "Delete announcement"
 			},
 			"confirmName": "Type the exact name to confirm",
 			"hidden": "This request is no longer available for confirmation.",
@@ -7334,7 +7362,8 @@
 			"changes": "{{term_change_one}} calendar",
 			"releases": "Releases",
 			"services": "{{term_service_other}}",
-			"title": "Service catalogue"
+			"title": "Service catalogue",
+			"announcements": "Announcements"
 		},
 		"override": {
 			"description": "Approving {{key}} during a freeze needs a reason and a fresh verification. The override is audited prominently.",
@@ -7573,6 +7602,67 @@
 			"L1": "L1 support",
 			"L2": "L2 support",
 			"L3": "L3 support"
+		},
+		"announcements": {
+			"actions": {
+				"delete": "Delete {{title}}",
+				"edit": "Edit {{title}}",
+				"publish": "Publish",
+				"unpublish": "Unpublish"
+			},
+			"audience": {
+				"organisations": "Specific customer organisations",
+				"projects": "Customers of specific projects",
+				"workspace": "All customers in this workspace"
+			},
+			"create": {
+				"description": "Write the notice, choose who sees it and when. Publish it from the list when it is ready.",
+				"submit": "Save draft",
+				"title": "New announcement"
+			},
+			"edit": {
+				"title": "Edit announcement"
+			},
+			"fields": {
+				"audience": "Audience",
+				"body": "Message",
+				"endsAt": "Show until",
+				"noEnd": "No end",
+				"noTargets": "No customer organisations have a live project in this workspace.",
+				"workspaceNeedsReach": "Addressing all customers needs access to every customer project in this workspace.",
+				"publishNeedsReach": "Publishing this announcement needs access to every customer it addresses.",
+				"publishedNeedsReach": "This announcement is published to customers outside your access. Only someone with access to every customer it addresses can edit, unpublish or delete it.",
+				"organisations": "Customer organisations",
+				"projects": "Projects",
+				"severity": "Severity",
+				"startsAt": "Show from",
+				"title": "Title"
+			},
+			"forbidden": {
+				"description": "Managing announcements needs permission to manage services in this workspace.",
+				"title": "You cannot manage announcements"
+			},
+			"list": {
+				"description": "Maintenance windows, release notices and incidents that customers see in the portal. Saving keeps a draft; customers see an announcement only after you publish it, while it is inside its window.",
+				"emptyDescription": "Create an announcement to tell customers about maintenance, releases or incidents.",
+				"emptyTitle": "No announcements yet",
+				"from": "From {{start}}",
+				"new": "New announcement",
+				"title": "Announcements",
+				"window": "{{start}} – {{end}}"
+			},
+			"rangeInvalid": "The end must be after the start.",
+			"severity": {
+				"incident": "Incident",
+				"info": "Information",
+				"maintenance": "Maintenance"
+			},
+			"state": {
+				"draft": "Draft",
+				"ended": "Ended",
+				"live": "Live",
+				"scheduled": "Scheduled"
+			}
 		}
 	},
 	"timeTracking": {

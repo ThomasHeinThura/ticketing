@@ -62,6 +62,7 @@ import { Route as LayoutAuthenticatedAgentKbIdRouteImport } from './routes/agent
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey'
 import { Route as LayoutAuthenticatedAgentReportsKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/reports_.$key'
 import { Route as LayoutAuthenticatedAgentReportsNewRouteImport } from './routes/agent/_layout/_authenticated/agent/reports_.new'
+import { Route as LayoutAuthenticatedAgentServiceManagementAnnouncementsRouteImport } from './routes/agent/_layout/_authenticated/agent/service-management/announcements'
 import { Route as LayoutAuthenticatedAgentServiceManagementChangesRouteImport } from './routes/agent/_layout/_authenticated/agent/service-management/changes'
 import { Route as LayoutAuthenticatedAgentServiceManagementReleasesRouteImport } from './routes/agent/_layout/_authenticated/agent/service-management/releases'
 import { Route as LayoutAuthenticatedAgentServiceManagementServicesRouteImport } from './routes/agent/_layout/_authenticated/agent/service-management/services'
@@ -460,6 +461,12 @@ const LayoutAuthenticatedAgentReportsNewRoute =
   LayoutAuthenticatedAgentReportsNewRouteImport.update({
     id: '/reports_/new',
     path: '/reports/new',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentServiceManagementAnnouncementsRoute =
+  LayoutAuthenticatedAgentServiceManagementAnnouncementsRouteImport.update({
+    id: '/service-management/announcements',
+    path: '/service-management/announcements',
     getParentRoute: () => LayoutAuthenticatedAgentRoute,
   } as any)
 const LayoutAuthenticatedAgentServiceManagementChangesRoute =
@@ -1161,6 +1168,7 @@ export interface FileRoutesByFullPath {
   '/agent/projects/$projectKey': typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
   '/agent/reports/$key': typeof LayoutAuthenticatedAgentReportsKeyRoute
   '/agent/reports/new': typeof LayoutAuthenticatedAgentReportsNewRoute
+  '/agent/service-management/announcements': typeof LayoutAuthenticatedAgentServiceManagementAnnouncementsRoute
   '/agent/service-management/changes': typeof LayoutAuthenticatedAgentServiceManagementChangesRoute
   '/agent/service-management/releases': typeof LayoutAuthenticatedAgentServiceManagementReleasesRouteWithChildren
   '/agent/service-management/services': typeof LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren
@@ -1307,6 +1315,7 @@ export interface FileRoutesByTo {
   '/agent/projects/$projectKey': typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
   '/agent/reports/$key': typeof LayoutAuthenticatedAgentReportsKeyRoute
   '/agent/reports/new': typeof LayoutAuthenticatedAgentReportsNewRoute
+  '/agent/service-management/announcements': typeof LayoutAuthenticatedAgentServiceManagementAnnouncementsRoute
   '/agent/service-management/changes': typeof LayoutAuthenticatedAgentServiceManagementChangesRoute
   '/agent/service-management/releases': typeof LayoutAuthenticatedAgentServiceManagementReleasesRouteWithChildren
   '/agent/service-management/services': typeof LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren
@@ -1456,6 +1465,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/agent/projects/$projectKey': typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
   '/_layout/_authenticated/agent/reports_/$key': typeof LayoutAuthenticatedAgentReportsKeyRoute
   '/_layout/_authenticated/agent/reports_/new': typeof LayoutAuthenticatedAgentReportsNewRoute
+  '/_layout/_authenticated/agent/service-management/announcements': typeof LayoutAuthenticatedAgentServiceManagementAnnouncementsRoute
   '/_layout/_authenticated/agent/service-management/changes': typeof LayoutAuthenticatedAgentServiceManagementChangesRoute
   '/_layout/_authenticated/agent/service-management/releases': typeof LayoutAuthenticatedAgentServiceManagementReleasesRouteWithChildren
   '/_layout/_authenticated/agent/service-management/services': typeof LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren
@@ -1607,6 +1617,7 @@ export interface FileRouteTypes {
     | '/agent/projects/$projectKey'
     | '/agent/reports/$key'
     | '/agent/reports/new'
+    | '/agent/service-management/announcements'
     | '/agent/service-management/changes'
     | '/agent/service-management/releases'
     | '/agent/service-management/services'
@@ -1753,6 +1764,7 @@ export interface FileRouteTypes {
     | '/agent/projects/$projectKey'
     | '/agent/reports/$key'
     | '/agent/reports/new'
+    | '/agent/service-management/announcements'
     | '/agent/service-management/changes'
     | '/agent/service-management/releases'
     | '/agent/service-management/services'
@@ -1901,6 +1913,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/agent/projects/$projectKey'
     | '/_layout/_authenticated/agent/reports_/$key'
     | '/_layout/_authenticated/agent/reports_/new'
+    | '/_layout/_authenticated/agent/service-management/announcements'
     | '/_layout/_authenticated/agent/service-management/changes'
     | '/_layout/_authenticated/agent/service-management/releases'
     | '/_layout/_authenticated/agent/service-management/services'
@@ -2381,6 +2394,13 @@ declare module '@tanstack/react-router' {
       path: '/reports/new'
       fullPath: '/agent/reports/new'
       preLoaderRoute: typeof LayoutAuthenticatedAgentReportsNewRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/service-management/announcements': {
+      id: '/_layout/_authenticated/agent/service-management/announcements'
+      path: '/service-management/announcements'
+      fullPath: '/agent/service-management/announcements'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentServiceManagementAnnouncementsRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentRoute
     }
     '/_layout/_authenticated/agent/service-management/changes': {
@@ -3204,6 +3224,7 @@ interface LayoutAuthenticatedAgentRouteChildren {
   LayoutAuthenticatedAgentProjectsProjectKeyRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRouteWithChildren
   LayoutAuthenticatedAgentReportsKeyRoute: typeof LayoutAuthenticatedAgentReportsKeyRoute
   LayoutAuthenticatedAgentReportsNewRoute: typeof LayoutAuthenticatedAgentReportsNewRoute
+  LayoutAuthenticatedAgentServiceManagementAnnouncementsRoute: typeof LayoutAuthenticatedAgentServiceManagementAnnouncementsRoute
   LayoutAuthenticatedAgentServiceManagementChangesRoute: typeof LayoutAuthenticatedAgentServiceManagementChangesRoute
   LayoutAuthenticatedAgentServiceManagementReleasesRoute: typeof LayoutAuthenticatedAgentServiceManagementReleasesRouteWithChildren
   LayoutAuthenticatedAgentServiceManagementServicesRoute: typeof LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren
@@ -3237,6 +3258,8 @@ const LayoutAuthenticatedAgentRouteChildren: LayoutAuthenticatedAgentRouteChildr
       LayoutAuthenticatedAgentReportsKeyRoute,
     LayoutAuthenticatedAgentReportsNewRoute:
       LayoutAuthenticatedAgentReportsNewRoute,
+    LayoutAuthenticatedAgentServiceManagementAnnouncementsRoute:
+      LayoutAuthenticatedAgentServiceManagementAnnouncementsRoute,
     LayoutAuthenticatedAgentServiceManagementChangesRoute:
       LayoutAuthenticatedAgentServiceManagementChangesRoute,
     LayoutAuthenticatedAgentServiceManagementReleasesRoute:

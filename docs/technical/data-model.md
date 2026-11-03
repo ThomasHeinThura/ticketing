@@ -172,6 +172,9 @@ Identity is connection + subject; email is not a tenant key. Person organisation
 | `change_service` | `work_item_id`, `service_id` — the affected services of a change |
 | `change_freeze` | `workspace_id`, `name`, `reason`, `starts_at`, `ends_at`, `cancelled_at/by` (a freeze is cancelled, never deleted). **v** |
 | `release` | `workspace_id`, `service_id` (restrict), `name`, `planned_date`, `status` (`planned`\|`in_progress`\|`released`\|`cancelled`), `notes`, `notes_generated_at`, `notes_edited_at`, `publish_to_portal` (default false), `published_at`. **v** |
+| `announcement` | `workspace_id`, `title` (1–200), `body` (plain text, at most 20,000), `severity` (`info`\|`maintenance`\|`incident`), `audience` (`workspace`\|`organisations`\|`projects`), `starts_at`, `ends_at` null (after `starts_at`), `published_at` null (null is a draft), `created_by`, `updated_by`, `deleted_at` (soft delete). Unique `(workspace_id, id)`. **v**. Migration `0215_announcements`; see [announcements](feature-contracts-p5.md#service-management-announcements) |
+| `announcement_organisation` | `workspace_id`, `announcement_id` (composite FK to `announcement (workspace_id, id)`, cascade), `organisation_id` (FK, cascade). Primary key `(announcement_id, organisation_id)` |
+| `announcement_project` | `workspace_id`, `announcement_id` (composite FK to `announcement (workspace_id, id)`, cascade), `project_id` (composite FK to `project (workspace_id, id)`, cascade), so a target cannot be another workspace's project. Primary key `(announcement_id, project_id)` |
 
 ## 11. Automations, notifications, integrations, audit
 

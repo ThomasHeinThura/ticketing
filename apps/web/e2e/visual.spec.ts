@@ -1128,6 +1128,108 @@ const vExWorkspaceLabels = [
   },
 ];
 
+// ---- D7 announcements: GET /api/announcements (staff) ----
+// Draft, scheduled (2099), live (since 2026, no end) and ended (2026) rows, so each state
+// badge renders the same whatever day the suite runs.
+const vExAnnouncements = {
+  data: [
+    {
+      id: "visual-announcement-incident",
+      workspaceId: "visual-workspace",
+      title: "Email delivery delayed",
+      body: "Some notification emails are arriving late. We are working with the mail relay provider.",
+      severity: "incident",
+      audience: "workspace",
+      organisations: [],
+      projects: [],
+      startsAt: "2026-10-21T08:00:00.000Z",
+      endsAt: null,
+      publishedAt: "2026-10-21T08:05:00.000Z",
+      version: 2,
+      createdAt: "2026-10-21T08:00:00.000Z",
+      updatedAt: "2026-10-21T08:05:00.000Z",
+      reachesAudience: true,
+    },
+    {
+      id: "visual-announcement-maintenance",
+      workspaceId: "visual-workspace",
+      title: "Database maintenance window",
+      body: "The help desk is read-only while the database is upgraded.",
+      severity: "maintenance",
+      audience: "organisations",
+      organisations: [{ id: "visual-org-contoso", name: "Contoso" }],
+      projects: [],
+      startsAt: "2099-01-10T22:00:00.000Z",
+      endsAt: "2099-01-11T01:00:00.000Z",
+      publishedAt: "2026-10-20T09:00:00.000Z",
+      version: 3,
+      createdAt: "2026-10-20T08:00:00.000Z",
+      updatedAt: "2026-10-20T09:00:00.000Z",
+      reachesAudience: true,
+    },
+    {
+      id: "visual-announcement-release",
+      workspaceId: "visual-workspace",
+      title: "New request form for access changes",
+      body: "",
+      severity: "info",
+      audience: "projects",
+      organisations: [],
+      projects: [{ id: "visual-project", name: "Help Desk" }],
+      startsAt: "2026-10-22T08:00:00.000Z",
+      endsAt: null,
+      publishedAt: null,
+      version: 1,
+      createdAt: "2026-10-19T08:00:00.000Z",
+      updatedAt: "2026-10-19T08:00:00.000Z",
+      reachesAudience: true,
+    },
+    {
+      id: "visual-announcement-ended",
+      workspaceId: "visual-workspace",
+      title: "Phone line outage",
+      body: "The support phone line was unavailable.",
+      severity: "incident",
+      audience: "workspace",
+      organisations: [],
+      projects: [],
+      startsAt: "2026-01-05T10:00:00.000Z",
+      endsAt: "2026-01-05T12:00:00.000Z",
+      publishedAt: "2026-01-05T10:02:00.000Z",
+      version: 4,
+      createdAt: "2026-01-05T10:00:00.000Z",
+      updatedAt: "2026-01-05T12:00:00.000Z",
+      reachesAudience: true,
+    },
+  ],
+};
+
+// ---- D7 announcements: GET /api/portal/announcements (customer list and detail) ----
+const vExPortalAnnouncementMaintenance = {
+  id: "visual-announcement-maintenance",
+  title: "Database maintenance window",
+  body: "The help desk is read-only while the database is upgraded.\nRequests sent during the window are queued and answered afterwards.",
+  severity: "maintenance",
+  startsAt: "2026-10-21T22:00:00.000Z",
+  endsAt: "2099-01-11T01:00:00.000Z",
+  publishedAt: "2026-10-20T09:00:00.000Z",
+};
+const vExPortalAnnouncements = {
+  data: [
+    vExPortalAnnouncementMaintenance,
+    {
+      id: "visual-announcement-info",
+      title: "New request form for access changes",
+      body: "",
+      severity: "info",
+      startsAt: "2026-10-20T08:00:00.000Z",
+      endsAt: null,
+      publishedAt: "2026-10-20T08:00:00.000Z",
+    },
+  ],
+  nextCursor: null,
+};
+
 // ---- Portal shell: GET /api/portal/releases?limit=1 (PortalReleasePage) ----
 // The one published release of the svc fixtures (visual-release-mail).
 const vExPortalReleases = {
@@ -5601,6 +5703,18 @@ async function installAuthenticatedFixture(page: Page) {
       body = vExWorkspaceLabels;
     } else if (path === "/api/portal/releases") {
       body = vExPortalReleases;
+    } else if (path === "/api/announcements") {
+      body = vExAnnouncements;
+    } else if (path === "/api/portal/announcements") {
+      // The shell banner asks for severities; it stays empty so no other portal baseline moves.
+      body =
+        url.search === "?limit=3&severity=incident%2Cmaintenance"
+          ? { data: [], nextCursor: null }
+          : vExPortalAnnouncements;
+    } else if (
+      path === "/api/portal/announcements/visual-announcement-maintenance"
+    ) {
+      body = vExPortalAnnouncementMaintenance;
     } else if (
       path === "/api/projects/visual-project/work-items" &&
       url.search === "?sort=position&dir=asc&limit=200&cycle=visual-cycle"
@@ -7872,6 +7986,29 @@ test("service-management releases screen @visual", async ({ page }) => {
   });
 });
 
+test("service-management announcements screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/service-management/announcements");
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Email delivery delayed", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Phone line outage", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("announcements.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
 test("knowledge base list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/kb");
@@ -8778,6 +8915,58 @@ test("portal knowledge base screen @visual", async ({ page }) => {
     includeAA: true,
   });
 });
+test("portal announcements screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("http://127.0.0.1:4179/announcements");
+  await expect(
+    page.getByRole("heading", { name: "Announcements", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", {
+      name: "New request form for access changes",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-announcements.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("portal announcement detail screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto(
+    "http://127.0.0.1:4179/announcements/visual-announcement-maintenance",
+  );
+  await expect(
+    page.getByRole("heading", {
+      name: "Database maintenance window",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Back to announcements", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Get help", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-announcement.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
 test("portal knowledge base article screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("http://127.0.0.1:4179/kb/visual-article");

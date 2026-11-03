@@ -4178,6 +4178,33 @@
 				"label": "Project",
 				"all": "All projects"
 			}
+		},
+		"announcements": {
+			"title": "Announcements",
+			"description": "Maintenance, releases and incidents for the services your organisation uses.",
+			"loading": "Loading announcements…",
+			"loadFailed": "Could not load announcements. Try again.",
+			"emptyTitle": "No announcements right now",
+			"emptyDescription": "There are no current announcements for your organisation.",
+			"unavailable": "This announcement is unavailable.",
+			"backToList": "Back to announcements",
+			"loadMore": "Load more",
+			"noBody": "No further details were published.",
+			"window": "{{start}} – {{end}}",
+			"since": "Since {{start}}",
+			"severity": {
+				"info": "Information",
+				"maintenance": "Planned maintenance",
+				"incident": "Incident"
+			},
+			"tabs": {
+				"label": "Announcements and release notes",
+				"announcements": "Announcements",
+				"releaseNotes": "Release notes"
+			},
+			"banner": {
+				"dismiss": "Dismiss {{title}}"
+			}
 		}
 	},
 	"instanceUsers": {
@@ -4453,7 +4480,8 @@
 				"project_page": "Delete page",
 				"organisation": "Delete organisation",
 				"identity_connection": "Delete identity connection",
-				"request_type": "Delete {{term_request_one}} type"
+				"request_type": "Delete {{term_request_one}} type",
+				"announcement": "Delete announcement"
 			}
 		},
 		"hardPurge": {
@@ -7178,7 +7206,8 @@
 			"title": "Service catalogue",
 			"services": "{{term_service_other}}",
 			"changes": "{{term_change_one}} calendar",
-			"releases": "Releases"
+			"releases": "Releases",
+			"announcements": "Announcements"
 		},
 		"disabled": {
 			"title": "{{term_service_one}} catalogue is off",
@@ -7519,6 +7548,67 @@
 			"applied": "{{imported}} added, {{duplicates}} already present.",
 			"retroactive_one": "{{count}} open {{term_work_item_one}} has a deadline that moves later because of these holidays.",
 			"retroactive_other": "{{count}} open {{term_work_item_other}} have deadlines that move later because of these holidays."
+		},
+		"announcements": {
+			"list": {
+				"title": "Announcements",
+				"description": "Maintenance windows, release notices and incidents that customers see in the portal. Saving keeps a draft; customers see an announcement only after you publish it, while it is inside its window.",
+				"new": "New announcement",
+				"emptyTitle": "No announcements yet",
+				"emptyDescription": "Create an announcement to tell customers about maintenance, releases or incidents.",
+				"window": "{{start}} – {{end}}",
+				"from": "From {{start}}"
+			},
+			"create": {
+				"title": "New announcement",
+				"description": "Write the notice, choose who sees it and when. Publish it from the list when it is ready.",
+				"submit": "Save draft"
+			},
+			"edit": {
+				"title": "Edit announcement"
+			},
+			"fields": {
+				"title": "Title",
+				"severity": "Severity",
+				"audience": "Audience",
+				"organisations": "Customer organisations",
+				"projects": "Projects",
+				"noTargets": "No customer organisations have a live project in this workspace.",
+				"workspaceNeedsReach": "Addressing all customers needs access to every customer project in this workspace.",
+				"publishNeedsReach": "Publishing this announcement needs access to every customer it addresses.",
+				"publishedNeedsReach": "This announcement is published to customers outside your access. Only someone with access to every customer it addresses can edit, unpublish or delete it.",
+				"startsAt": "Show from",
+				"endsAt": "Show until",
+				"noEnd": "No end",
+				"body": "Message"
+			},
+			"severity": {
+				"info": "Information",
+				"maintenance": "Maintenance",
+				"incident": "Incident"
+			},
+			"audience": {
+				"workspace": "All customers in this workspace",
+				"organisations": "Specific customer organisations",
+				"projects": "Customers of specific projects"
+			},
+			"state": {
+				"draft": "Draft",
+				"scheduled": "Scheduled",
+				"live": "Live",
+				"ended": "Ended"
+			},
+			"actions": {
+				"publish": "Publish",
+				"unpublish": "Unpublish",
+				"edit": "Edit {{title}}",
+				"delete": "Delete {{title}}"
+			},
+			"rangeInvalid": "The end must be after the start.",
+			"forbidden": {
+				"title": "You cannot manage announcements",
+				"description": "Managing announcements needs permission to manage services in this workspace."
+			}
 		}
 	},
 	"timeTracking": {
