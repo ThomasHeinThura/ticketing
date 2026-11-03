@@ -9,10 +9,17 @@ function ScrollArea({
   children,
   scrollFade = false,
   scrollbarGutter = false,
+  observeContent = false,
   ...props
 }: ScrollAreaPrimitive.Root.Props & {
   scrollFade?: boolean;
   scrollbarGutter?: boolean;
+  /**
+   * Re-measure the overflow (and so the fade) whenever the content changes size, not only when
+   * the frame does. Use it where content resizes inside a fixed frame, such as a chart that
+   * shrinks to fit a dashboard widget after its first render.
+   */
+  observeContent?: boolean;
 }) {
   return (
     <ScrollAreaPrimitive.Root
@@ -29,7 +36,18 @@ function ScrollArea({
         )}
         data-slot="scroll-area-viewport"
       >
-        {children}
+        {observeContent ? (
+          // Base UI sizes this wrapper to its widest child; a minimum of zero keeps wide content
+          // (a chart with its own scroll frame) scrolling inside that frame, not this one.
+          <ScrollAreaPrimitive.Content
+            data-slot="scroll-area-content"
+            style={{ minWidth: 0 }}
+          >
+            {children}
+          </ScrollAreaPrimitive.Content>
+        ) : (
+          children
+        )}
       </ScrollAreaPrimitive.Viewport>
       <ScrollBar orientation="vertical" />
       <ScrollBar orientation="horizontal" />

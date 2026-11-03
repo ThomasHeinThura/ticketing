@@ -16,6 +16,8 @@ import { Route } from "./triage";
 
 const mocks = vi.hoisted(() => ({
   search: { state: "new" } as IntakeQueueSearch,
+  canTriage: true,
+  checkingPermissions: false,
   queuePanelProps: undefined as Record<string, unknown> | undefined,
   queuePickerProps: undefined as Record<string, unknown> | undefined,
   workItemTypes: [] as Array<{ id: string; name: string }>,
@@ -65,8 +67,9 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
-    canTriageIntake: () => true,
+    canTriageIntake: () => mocks.canTriage,
     canShareSavedViews: () => false,
+    isCheckingPermissions: mocks.checkingPermissions,
   }),
 }));
 vi.mock("@/components/intake/queue-picker", () => ({
@@ -121,7 +124,9 @@ vi.mock("react-i18next", () => ({
       const value =
         key === "actionError"
           ? "The intake action failed or the submission changed. Reload the queue and try again."
-          : (options?.defaultValue ?? key);
+          : key === "loadError"
+            ? "The submissions could not be loaded."
+            : (options?.defaultValue ?? key);
       return value.replace(/\{\{(\w+)\}\}/gu, (_match, name: string) =>
         String((options as Record<string, unknown> | undefined)?.[name] ?? ""),
       );
@@ -159,6 +164,8 @@ function renderTriage() {
 describe("intake triage route", () => {
   beforeEach(() => {
     mocks.search = { state: "new" };
+    mocks.canTriage = true;
+    mocks.checkingPermissions = false;
     mocks.queuePanelProps = undefined;
     mocks.queuePickerProps = undefined;
     mocks.workItemTypes = [];
@@ -252,12 +259,42 @@ describe("intake triage route", () => {
     expect(mocks.getDuplicateSuggestions).not.toHaveBeenCalled();
   });
 
+  it("shows no-access without fetching when the caller lacks intake:triage (A-04)", async () => {
+    mocks.canTriage = false;
+    mocks.checkingPermissions = true;
+    const view = renderTriage();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.queryByText("noAccessTitle")).toBeNull();
+
+    mocks.checkingPermissions = false;
+    view.rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <IntakeRoute />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("noAccessTitle")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.queuePickerProps).toBeUndefined();
+    expect(mocks.getSubmissions).not.toHaveBeenCalled();
+    expect(mocks.getRequestTypes).not.toHaveBeenCalled();
+  });
+
+  it("shows no-access instead of a retry when the server refuses the queue (A-04)", async () => {
+    const { HttpError } = await import("@/lib/http-error");
+    mocks.getSubmissions
+      .mockReset()
+      .mockRejectedValue(new HttpError(403, "Forbidden"));
+    renderTriage();
+    expect(await screen.findByText("noAccessTitle")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  });
+
   it("keeps a failed queue distinct from empty and offers retry", async () => {
     renderTriage();
 
     const retry = await screen.findByRole("button", { name: "Retry" });
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "The intake action failed or the submission changed. Reload the queue and try again.",
+      "The submissions could not be loaded.",
     );
     expect(
       screen.queryByText("New customer requests will appear here."),

@@ -32,6 +32,7 @@ import PageTitle from "@/components/page-title";
 import { getRequestTypes, getSubmissions } from "@/fetchers/intake";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { HttpError } from "@/lib/http-error";
 import {
   matchesIntakeFilters,
   serverClockNow,
@@ -53,6 +54,9 @@ function IntakeRoute() {
   const { t } = useTranslation("intake");
   const workspace = useActiveWorkspace();
   const permissions = useWorkspacePermission(workspace.data?.id);
+  // A-04: triage needs intake:triage. Without it nothing is fetched (the API answers 403) and
+  // the page says so once the capability read settles.
+  const canTriage = permissions.canTriageIntake();
   const {
     state,
     ref,
@@ -105,7 +109,7 @@ function IntakeRoute() {
   const requestTypeList = useQuery({
     queryKey: ["request-types", workspace.data?.id],
     queryFn: () => getRequestTypes(workspace.data?.id ?? ""),
-    enabled: Boolean(workspace.data?.id),
+    enabled: Boolean(workspace.data?.id) && canTriage,
   });
   const requestTypeRefs = (
     requestTypeList.data as unknown as
@@ -128,7 +132,7 @@ function IntakeRoute() {
     queryKey: ["intake", workspace.data?.id, state, cursor, server],
     queryFn: () =>
       getSubmissions(workspace.data?.id ?? "", state, cursor, server),
-    enabled: Boolean(workspace.data?.id) && !pending && !queuePair,
+    enabled: Boolean(workspace.data?.id) && canTriage && !pending && !queuePair,
   });
   const rows = (queue.data?.submissions ?? []) as StaffSubmissionQueueRow[];
   const requestTypeOptions = (
@@ -150,6 +154,29 @@ function IntakeRoute() {
   const hasFilters = Boolean(requestType || assignee || age);
   const changeFilters = (patch: Record<string, string | undefined>) =>
     void navigate({ search: searchWith({ ...patch, cursor: undefined }) });
+  const deniedByServer =
+    queue.error instanceof HttpError && queue.error.status === 403;
+  if (workspace.data?.id && (!canTriage || deniedByServer))
+    return (
+      <div className="flex h-full w-full min-w-0 flex-col">
+        <PageTitle title={t("title")} />
+        <Layout.Header className="items-center justify-between">
+          <h1 className="px-2 font-medium text-sm">{t("title")}</h1>
+        </Layout.Header>
+        <Layout.Content className="overflow-y-auto">
+          {permissions.isCheckingPermissions === true && !deniedByServer ? (
+            <p role="status">{t("loading")}</p>
+          ) : (
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>{t("noAccessTitle")}</EmptyTitle>
+                <EmptyDescription>{t("noAccessDescription")}</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+        </Layout.Content>
+      </div>
+    );
   return (
     <div className="flex h-full w-full min-w-0 flex-col">
       <PageTitle title={t("title")} />
@@ -283,7 +310,7 @@ function IntakeRoute() {
           />
         ) : queue.isError ? (
           <Alert variant="error" role="alert">
-            <AlertDescription>{t("actionError")}</AlertDescription>
+            <AlertDescription>{t("loadError")}</AlertDescription>
             <Button variant="outline" onClick={() => void queue.refetch()}>
               {t("retry", { defaultValue: "Retry" })}
             </Button>

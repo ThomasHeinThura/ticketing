@@ -113,7 +113,10 @@ export async function installProjectOverviewFixture(
       total: 42,
       blockingPrerequisitesOutstanding: 1,
       prerequisites: 3,
+      closedLast30Days: 6,
     },
+    averageFirstResponse: { seconds: 2700, sampleSize: 5 },
+    slaEnabled: true,
     currentMilestone: {
       id: "m2",
       name: "Go-live",

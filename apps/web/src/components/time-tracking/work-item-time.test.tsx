@@ -11,6 +11,7 @@ import type { TimeEntry, TimeEntryList } from "@/fetchers/time-tracking";
 import type { WorkItemDetailRow } from "@/types/work-item";
 
 const mocks = vi.hoisted(() => ({
+  disabled: class TimeTrackingDisabledError extends Error {},
   getTimeEntries: vi.fn(),
   getTimer: vi.fn(),
   getTimeActivities: vi.fn(),
@@ -44,7 +45,7 @@ vi.mock("@/fetchers/time-tracking", () => {
   }
   return {
     TimeRuleError,
-    TimeTrackingDisabledError: class extends Error {},
+    TimeTrackingDisabledError: mocks.disabled,
     getTimeEntries: (...args: unknown[]) => mocks.getTimeEntries(...args),
     getTimer: (...args: unknown[]) => mocks.getTimer(...args),
     getTimeActivities: (...args: unknown[]) => mocks.getTimeActivities(...args),
@@ -140,6 +141,15 @@ afterEach(() => {
 });
 
 describe("WorkItemTime", () => {
+  it("says time tracking is off for the project instead of a load error (A-10)", async () => {
+    mocks.getTimeEntries.mockRejectedValue(new mocks.disabled());
+    renderSection();
+    expect(
+      await screen.findByText("timeTracking:section.featureOff"),
+    ).toBeTruthy();
+    expect(screen.queryByText("timeTracking:section.loadError")).toBeNull();
+  });
+
   it("lists the entries with the total in h:mm", async () => {
     renderSection();
     expect(await screen.findAllByTestId("time-entry-row")).toHaveLength(1);

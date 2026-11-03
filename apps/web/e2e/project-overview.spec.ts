@@ -60,6 +60,11 @@ test.describe("Project Overview (S3)", () => {
     await expect(header).toContainText("12 open");
     await expect(header).toContainText("2 breached");
     await expect(page.getByTestId("project-kpi-work")).toContainText("30/42");
+    // U-11: the portal home's closed-in-30-days and first-response figures, for staff.
+    await expect(page.getByTestId("project-kpi-closed")).toContainText("6");
+    await expect(page.getByTestId("project-kpi-first-response")).toContainText(
+      "45 min",
+    );
     await expect(page.getByTestId("project-overview-attention")).toBeVisible();
 
     const tabs = page.getByLabel("Work items", { exact: true });

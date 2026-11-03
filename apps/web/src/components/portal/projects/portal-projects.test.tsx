@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { expectNoA11yViolations } from "@taskdesk/ui/test/a11y";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   PortalProjectDetail,
@@ -15,6 +15,8 @@ import { PortalProjectsList } from "./portal-projects-list";
 const navigate = vi.hoisted(() => vi.fn());
 const getPortalProjects = vi.hoisted(() => vi.fn());
 const getPortalProject = vi.hoisted(() => vi.fn());
+const getPortalHome = vi.hoisted(() => vi.fn());
+const getPortalCases = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
@@ -25,18 +27,23 @@ vi.mock("@tanstack/react-router", async () => {
       React.AnchorHTMLAttributes<HTMLAnchorElement> & {
         to: string;
         params?: Record<string, string>;
+        search?: Record<string, string | undefined>;
       }
-    >(({ children, to, params, ...props }, ref) => (
-      <a
-        href={
-          params?.projectKey ? to.replace("$projectKey", params.projectKey) : to
-        }
-        ref={ref}
-        {...props}
-      >
-        {children}
-      </a>
-    )),
+    >(({ children, to, params, search, ...props }, ref) => {
+      const path = params?.projectKey
+        ? to.replace("$projectKey", params.projectKey)
+        : to;
+      const query = new URLSearchParams(
+        Object.entries(search ?? {}).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined,
+        ),
+      ).toString();
+      return (
+        <a href={query ? `${path}?${query}` : path} ref={ref} {...props}>
+          {children}
+        </a>
+      );
+    }),
   };
 });
 
@@ -51,6 +58,8 @@ vi.mock("@/lib/i18n/portal-translation", () => ({
     i18n: { resolvedLanguage: "en-US", language: "en-US" },
   }),
 }));
+
+vi.mock("@/fetchers/portal/cases", () => ({ getPortalHome, getPortalCases }));
 
 vi.mock("@/fetchers/portal/projects", () => ({
   getPortalProjects,
@@ -169,10 +178,57 @@ function wrap(children: ReactNode) {
   );
 }
 
+const scopedHome = {
+  actionRequired: { total: 3, cases: 2, approvals: 1 },
+  outstanding: 7,
+  closedLast30Days: 4,
+  averageFirstResponse: { seconds: 5400, sampleSize: 6 },
+};
+
+const scopedCase = {
+  ref: "SUB-41",
+  source: "submission",
+  title: "Printer offline in Building 2",
+  requestTypeName: "Incident",
+  priority: "high",
+  customerStatus: "in_progress",
+  createdAt: "2026-10-01T09:00:00.000Z",
+  updatedAt: "2026-10-02T09:00:00.000Z",
+  project: { key: "CON", name: "Contoso rollout" },
+  createdBy: { name: null, isYou: true },
+  isRequester: true,
+  customerVisibility: "private",
+  sla: null,
+};
+
+/** Project Details as its route renders it: the signed-in customer and the URL's case filters. */
+function Details(
+  props: Partial<ComponentProps<typeof PortalProjectDetails>> & {
+    projectKey: string;
+  },
+) {
+  return (
+    <PortalProjectDetails
+      portalUserId="customer-a"
+      caseFilters={{}}
+      onCaseFiltersChange={() => undefined}
+      {...props}
+    />
+  );
+}
+
 beforeEach(() => {
   navigate.mockReset();
   getPortalProjects.mockReset();
   getPortalProject.mockReset();
+  getPortalHome.mockReset();
+  getPortalCases.mockReset();
+  getPortalHome.mockResolvedValue(scopedHome);
+  getPortalCases.mockResolvedValue({
+    cases: [scopedCase],
+    page: { nextCursor: null, hasMore: false },
+    meta: { total: 1 },
+  });
 });
 
 describe("PortalProjectsList", () => {
@@ -350,7 +406,7 @@ describe("PortalProjectsCards (Dashboard)", () => {
 describe("PortalProjectDetails", () => {
   it("shows information, contacts, subscription period, hours and the engagement", async () => {
     getPortalProject.mockResolvedValue(detail());
-    wrap(<PortalProjectDetails projectKey="CON" />);
+    wrap(<Details projectKey="CON" />);
     expect(
       await screen.findByRole("heading", { level: 1, name: "Contoso rollout" }),
     ).toBeInTheDocument();
@@ -383,7 +439,7 @@ describe("PortalProjectDetails", () => {
 
   it("opens documents safely and never links a non-web URL", async () => {
     getPortalProject.mockResolvedValue(detail());
-    wrap(<PortalProjectDetails projectKey="CON" />);
+    wrap(<Details projectKey="CON" />);
     const document = await screen.findByRole("link", {
       name: /Statement of work/u,
     });
@@ -420,7 +476,7 @@ describe("PortalProjectDetails", () => {
         },
       }),
     );
-    const { unmount } = wrap(<PortalProjectDetails projectKey="CON" />);
+    const { unmount } = wrap(<Details projectKey="CON" />);
     expect(
       await screen.findByText("projects.detail.hours.overdrawn(hours=2.5)"),
     ).toBeInTheDocument();
@@ -429,7 +485,7 @@ describe("PortalProjectDetails", () => {
     ).toBeInTheDocument();
     unmount();
     getPortalProject.mockResolvedValue(detail({ contract: null }));
-    wrap(<PortalProjectDetails projectKey="CON" />);
+    wrap(<Details projectKey="CON" />);
     expect(
       await screen.findByText("projects.detail.subscription.none"),
     ).toBeInTheDocument();
@@ -438,7 +494,7 @@ describe("PortalProjectDetails", () => {
 
   it("shows not found for a project outside the organisation (CP-2)", async () => {
     getPortalProject.mockRejectedValue(new HttpError(404, "Project not found"));
-    wrap(<PortalProjectDetails projectKey="OTHER" />);
+    wrap(<Details projectKey="OTHER" />);
     expect(
       await screen.findByRole("heading", {
         level: 1,
@@ -446,11 +502,76 @@ describe("PortalProjectDetails", () => {
       }),
     ).toBeInTheDocument();
     expect(getPortalProject).toHaveBeenCalledTimes(1);
+    // Nothing else is asked for a project the customer cannot read.
+    expect(getPortalHome).not.toHaveBeenCalled();
+    expect(getPortalCases).not.toHaveBeenCalled();
+  });
+
+  it("shows the dashboard figures scoped to this project (U-11)", async () => {
+    getPortalProject.mockResolvedValue(detail());
+    wrap(<Details projectKey="CON" />);
+    const figures = await screen.findByRole("region", {
+      name: "projects.detail.figures",
+    });
+    expect(getPortalHome).toHaveBeenCalledWith("CON");
+    expect(
+      await within(figures).findByText("cases.kpi.actionRequired"),
+    ).toBeInTheDocument();
+    expect(within(figures).getByText("3")).toBeInTheDocument();
+    expect(within(figures).getByText("4")).toBeInTheDocument();
+    expect(within(figures).getByText("1.5 hr")).toBeInTheDocument();
+    // Every figure opens its list scoped to this project, not the whole organisation.
+    expect(
+      within(figures).getByRole("link", { name: /cases\.kpi\.outstanding/u }),
+    ).toHaveAttribute(
+      "href",
+      "/requests?scope=all&status=received%2Cneed_more_info%2Cin_progress&project=CON",
+    );
+    expect(
+      within(figures).getByRole("link", {
+        name: "cases.kpi.actionRequiredCases(cases=2)",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "/requests?scope=all&status=need_more_info&project=CON",
+    );
+    expect(
+      within(figures).getByRole("link", {
+        name: "cases.kpi.actionRequiredApprovals(approvals=1)",
+      }),
+    ).toHaveAttribute("href", "/approvals?project=CON");
+  });
+
+  it("lists this project's outstanding cases with My/All and a scoped View all (U-11)", async () => {
+    getPortalProject.mockResolvedValue(detail());
+    const onCaseFiltersChange = vi.fn();
+    wrap(
+      <Details
+        projectKey="CON"
+        caseFilters={{ scope: "all" }}
+        onCaseFiltersChange={onCaseFiltersChange}
+      />,
+    );
+    expect(
+      await screen.findByText("Printer offline in Building 2"),
+    ).toBeInTheDocument();
+    expect(getPortalCases).toHaveBeenCalledWith({
+      scope: "all",
+      status: "received,need_more_info,in_progress",
+      project: "CON",
+      limit: 10,
+    });
+    expect(screen.getByRole("link", { name: "cases.viewAll" })).toHaveAttribute(
+      "href",
+      "/requests?scope=all&status=received%2Cneed_more_info%2Cin_progress&project=CON",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "cases.scope.mine" }));
+    expect(onCaseFiltersChange).toHaveBeenCalledWith({ scope: undefined });
   });
 
   it("has no serious or critical axe violations (G4)", async () => {
     getPortalProject.mockResolvedValue(detail());
-    const { container } = wrap(<PortalProjectDetails projectKey="CON" />);
+    const { container } = wrap(<Details projectKey="CON" />);
     await screen.findByRole("heading", { level: 1, name: "Contoso rollout" });
     await expectNoA11yViolations(container);
   });

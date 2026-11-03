@@ -1940,6 +1940,26 @@
 						"toast",
 						"validation"
 					]
+				},
+				"wrongPortal": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"useCustomerPortal": {
+							"type": "string"
+						},
+						"useAgentSignIn": {
+							"type": "string"
+						},
+						"customerPortalUnavailable": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"useCustomerPortal",
+						"useAgentSignIn",
+						"customerPortalUnavailable"
+					]
 				}
 			},
 			"required": [
@@ -1957,7 +1977,8 @@
 				"accountSecurity",
 				"invitation",
 				"onboarding",
-				"profileSetup"
+				"profileSetup",
+				"wrongPortal"
 			]
 		},
 		"settings": {
@@ -4183,6 +4204,12 @@
 						"importExportTasksDescription": {
 							"type": "string"
 						},
+						"exportWorkItems": {
+							"type": "string"
+						},
+						"exportWorkItemsDescription": {
+							"type": "string"
+						},
 						"keyRenamePending": {
 							"type": "string"
 						},
@@ -4423,6 +4450,8 @@
 						"engagement",
 						"importExportTasks",
 						"importExportTasksDescription",
+						"exportWorkItems",
+						"exportWorkItemsDescription",
 						"keyRenamePending",
 						"keyRenameAction",
 						"keyRenameCancel",
@@ -17914,6 +17943,9 @@
 										}
 									},
 									"required": ["title", "none", "opensInNewTab", "kinds"]
+								},
+								"figures": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -17927,7 +17959,8 @@
 								"summary",
 								"milestones",
 								"prerequisites",
-								"documents"
+								"documents",
+								"figures"
 							]
 						},
 						"dashboard": {
@@ -20191,6 +20224,15 @@
 						"form_version_unavailable",
 						"openWinner"
 					]
+				},
+				"noAccessTitle": {
+					"type": "string"
+				},
+				"noAccessDescription": {
+					"type": "string"
+				},
+				"loadError": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -20245,7 +20287,10 @@
 				"ageSuffix",
 				"actorTypes",
 				"systemReasons",
-				"errors"
+				"errors",
+				"noAccessTitle",
+				"noAccessDescription",
+				"loadError"
 			]
 		},
 		"requestTypes": {
@@ -28415,6 +28460,19 @@
 								}
 							},
 							"required": ["title", "description"]
+						},
+						"pages": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description"]
 						}
 					},
 					"required": [
@@ -28423,7 +28481,8 @@
 						"estimates",
 						"calendar",
 						"timeline",
-						"sla"
+						"sla",
+						"pages"
 					]
 				},
 				"cycles": {
@@ -32938,9 +32997,19 @@
 						},
 						"total": {
 							"type": "string"
+						},
+						"featureOff": {
+							"type": "string"
 						}
 					},
-					"required": ["add", "empty", "everyone", "loadError", "total"]
+					"required": [
+						"add",
+						"empty",
+						"everyone",
+						"loadError",
+						"total",
+						"featureOff"
+					]
 				},
 				"settings": {
 					"type": "object",
@@ -33735,6 +33804,24 @@
 						},
 						"blockingOf_other": {
 							"type": "string"
+						},
+						"closed": {
+							"type": "string"
+						},
+						"closedHint": {
+							"type": "string"
+						},
+						"firstResponse": {
+							"type": "string"
+						},
+						"firstResponseHint": {
+							"type": "string"
+						},
+						"firstResponseNone": {
+							"type": "string"
+						},
+						"firstResponseOff": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -33742,7 +33829,13 @@
 						"status",
 						"workComplete",
 						"workBreakdown",
-						"blocking"
+						"blocking",
+						"closed",
+						"closedHint",
+						"firstResponse",
+						"firstResponseHint",
+						"firstResponseNone",
+						"firstResponseOff"
 					]
 				},
 				"attention": {
@@ -34597,9 +34690,6 @@
 						"addTitle": {
 							"type": "string"
 						},
-						"editTitle": {
-							"type": "string"
-						},
 						"addDescription": {
 							"type": "string"
 						},
@@ -34609,10 +34699,40 @@
 						"fieldUrl": {
 							"type": "string"
 						},
-						"urlHint": {
+						"urlInvalid": {
 							"type": "string"
 						},
-						"urlInvalid": {
+						"fieldCustomerVisible": {
+							"type": "string"
+						},
+						"customerVisibleHint": {
+							"type": "string"
+						},
+						"customerVisible": {
+							"type": "string"
+						},
+						"staffOnly": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"pages": {
+							"type": "string"
+						},
+						"pagesDescription": {
+							"type": "string"
+						},
+						"openPages": {
+							"type": "string"
+						},
+						"editTitle": {
+							"type": "string"
+						},
+						"urlHint": {
 							"type": "string"
 						},
 						"fieldKind": {
@@ -34643,43 +34763,16 @@
 							},
 							"required": ["contract", "sow", "design", "handover", "other"]
 						},
-						"fieldCustomerVisible": {
-							"type": "string"
-						},
-						"customerVisibleHint": {
-							"type": "string"
-						},
-						"customerVisible": {
-							"type": "string"
-						},
-						"staffOnly": {
-							"type": "string"
-						},
 						"opensInNewTab": {
 							"type": "string"
 						},
-						"saved": {
-							"type": "string"
-						},
 						"updated": {
-							"type": "string"
-						},
-						"loadFailed": {
 							"type": "string"
 						},
 						"emptyTitle": {
 							"type": "string"
 						},
 						"emptyDescription": {
-							"type": "string"
-						},
-						"pages": {
-							"type": "string"
-						},
-						"pagesDescription": {
-							"type": "string"
-						},
-						"openPages": {
 							"type": "string"
 						},
 						"pageStaffOnly": {
@@ -34693,28 +34786,28 @@
 						"links",
 						"add",
 						"addTitle",
-						"editTitle",
 						"addDescription",
 						"fieldTitle",
 						"fieldUrl",
-						"urlHint",
 						"urlInvalid",
-						"fieldKind",
-						"fieldDescription",
-						"kinds",
 						"fieldCustomerVisible",
 						"customerVisibleHint",
 						"customerVisible",
 						"staffOnly",
-						"opensInNewTab",
 						"saved",
-						"updated",
 						"loadFailed",
-						"emptyTitle",
-						"emptyDescription",
 						"pages",
 						"pagesDescription",
 						"openPages",
+						"editTitle",
+						"urlHint",
+						"fieldKind",
+						"fieldDescription",
+						"kinds",
+						"opensInNewTab",
+						"updated",
+						"emptyTitle",
+						"emptyDescription",
 						"pageStaffOnly"
 					]
 				},
@@ -35067,6 +35160,34 @@
 				},
 				"chartLabel": {
 					"type": "string"
+				},
+				"chartScroll": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"hint_one": {
+							"type": "string"
+						},
+						"hint_zero": {
+							"type": "string"
+						},
+						"hint_two": {
+							"type": "string"
+						},
+						"hint_few": {
+							"type": "string"
+						},
+						"hint_many": {
+							"type": "string"
+						},
+						"hint_other": {
+							"type": "string"
+						},
+						"region": {
+							"type": "string"
+						}
+					},
+					"required": ["region"]
 				},
 				"truncated": {
 					"type": "string"
@@ -37256,6 +37377,9 @@
 						},
 						"exportWidget": {
 							"type": "string"
+						},
+						"aboutNumbers": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -37272,7 +37396,8 @@
 						"savedView",
 						"widgetView",
 						"noMetric",
-						"exportWidget"
+						"exportWidget",
+						"aboutNumbers"
 					]
 				},
 				"editor": {
@@ -37704,6 +37829,7 @@
 				"notEnoughData",
 				"tableLabel",
 				"chartLabel",
+				"chartScroll",
 				"truncated",
 				"views",
 				"badges",

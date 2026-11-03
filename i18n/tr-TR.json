@@ -484,6 +484,11 @@
 			"title": "God Mode'a giriş yapın",
 			"subtitle": "Örnek yöneticileri parolaları ve kimlik doğrulayıcı kodlarıyla giriş yapar. Çoklu oturum açma burada kullanılamaz.",
 			"passwordDisabled": "Bu örnekte parolayla giriş kapalı olduğundan God Mode bu sayfadan açılamaz. Operatörden yerel girişi etkinleştirmesini isteyin."
+		},
+		"wrongPortal": {
+			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
+			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
+			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
 		}
 	},
 	"settings": {
@@ -866,6 +871,8 @@
 			},
 			"importExportTasks": "İçe/Dışa Aktar",
 			"importExportTasksDescription": "Talepleri içe ve dışa aktarın.",
+			"exportWorkItems": "Export",
+			"exportWorkItemsDescription": "Download the {{term_work_item_other}} in this {{term_project_one}} as a CSV file.",
 			"engagement": {
 				"amber": "Amber",
 				"calendarRequired": "A managed service needs a service calendar.",
@@ -4362,7 +4369,8 @@
 					"outOfScope": "Out of scope",
 					"successCriteria": "Success criteria",
 					"title": "About this project"
-				}
+				},
+				"figures": "Project figures"
 			},
 			"empty": {
 				"description": "Projects your team runs for your organisation appear here.",
@@ -4870,7 +4878,10 @@
 		"summary": "Summary",
 		"systemReasons": {
 			"clarification_window_expired": "Closed automatically: no reply within {{days}} days of the clarification request."
-		}
+		},
+		"loadError": "The {{term_submission_other}} could not be loaded.",
+		"noAccessDescription": "Triage needs the intake triage permission. Ask a workspace admin if you need it.",
+		"noAccessTitle": "You cannot triage {{term_submission_other}}"
 	},
 	"requestTypes": {
 		"addField": "Add field",
@@ -7049,6 +7060,10 @@
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
 				"title": "SLAs are off for this workspace"
+			},
+			"pages": {
+				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
+				"title": "Pages are off for this {{term_project_one}}"
 			}
 		},
 		"modules": {
@@ -7927,7 +7942,8 @@
 			"empty": "No time logged on this item.",
 			"everyone": "Everyone",
 			"loadError": "Could not load the time on this item.",
-			"total": "Total"
+			"total": "Total",
+			"featureOff": "Time tracking is off for this {{term_project_one}}."
 		},
 		"timer": {
 			"cappedNotice": "The timer ran past 12 hours, so only 12 hours were recorded. Edit the entry to what actually happened.",
@@ -8508,7 +8524,8 @@
 			"title": "Dashboard",
 			"widgetView": "View of {{title}}",
 			"workspaceScope": "Workspace",
-			"exportWidget": "Export {{title}} as CSV"
+			"exportWidget": "Export {{title}} as CSV",
+			"aboutNumbers": "About the numbers in {{title}}"
 		},
 		"detail": {
 			"back": "All reports",
@@ -8869,6 +8886,11 @@
 			"retry": "Try again",
 			"subtitle": "A CSV export you requested. Only you can download it.",
 			"title": "Report export"
+		},
+		"chartScroll": {
+			"hint_one": "Scroll sideways to see the {{count}} column.",
+			"hint_other": "Scroll sideways to see all {{count}} columns.",
+			"region": "{{label}} Scrolls sideways."
 		}
 	},
 	"godModeDeliveries": {
@@ -9862,7 +9884,13 @@
 			"health": "Health",
 			"status": "Status",
 			"workBreakdown": "{{inProgress}} in progress · {{waiting}} waiting",
-			"workComplete": "Work complete"
+			"workComplete": "Work complete",
+			"closed": "Closed",
+			"closedHint": "In the last 30 days",
+			"firstResponse": "Average first response",
+			"firstResponseHint": "Last 30 days",
+			"firstResponseNone": "None in the last 30 days",
+			"firstResponseOff": "SLA tracking is off for this project"
 		},
 		"loadFailed": "The overview could not be loaded.",
 		"loading": "Loading the overview…",

@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import { authClient } from "@/lib/auth-client";
+import { signInRefusalKey } from "@/lib/sign-in-refusal";
 import { toast } from "@/lib/toast";
 
 export type SignInFormValues = {
@@ -64,7 +65,12 @@ export function SignInForm({
       });
 
       if (result.error) {
-        toast.error(result.error.message || t("auth:signInForm.failedSignIn"));
+        const refusal = signInRefusalKey(result.error);
+        toast.error(
+          refusal
+            ? t(refusal)
+            : result.error.message || t("auth:signInForm.failedSignIn"),
+        );
         return;
       }
 

@@ -76,7 +76,10 @@ const visualProjectOverview = {
     total: 4,
     blockingPrerequisitesOutstanding: 1,
     prerequisites: 2,
+    closedLast30Days: 3,
   },
+  averageFirstResponse: { seconds: 5400, sampleSize: 4 },
+  slaEnabled: true,
   currentMilestone: {
     id: "visual-milestone-2",
     name: "Go-live",
@@ -7373,6 +7376,11 @@ test("project overview screen @visual", async ({ page }) => {
     page.getByText("45 h of 120 h used", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Go-live", { exact: true })).toBeVisible();
+  // U-11: the closed and first-response tiles have painted their fixture figures.
+  await expect(page.getByTestId("project-kpi-closed")).toBeVisible();
+  await expect(
+    page.getByText("Average first response", { exact: true }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("project-overview.png", {
     animations: "disabled",
     caret: "hide",
@@ -9137,6 +9145,14 @@ test("portal project detail screen @visual", async ({ page }) => {
     page.getByRole("heading", { name: "Visual rollout", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Mara Manager", { exact: true })).toBeVisible();
+  // U-11: the scoped figures and cases load only after the project does; wait for both so the
+  // screenshot never catches their skeletons.
+  await expect(
+    page.getByText("Average first response", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "SUB-7", exact: true }),
+  ).toBeVisible();
   // The lazy shell is ready: navigation and the top bar have both painted.
   await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
   await expect(page.getByText("Get help", { exact: true })).toBeVisible();

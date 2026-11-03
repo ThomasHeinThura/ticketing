@@ -21,7 +21,6 @@ import {
   CircleCheck,
   CircleDashed,
   ExternalLink,
-  Inbox,
   Mail,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -33,8 +32,10 @@ import {
 import { formatDateMedium } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { routes } from "@/lib/routes";
-import { PortalKpiCard } from "../portal-kpi-card";
+import { type PortalHomeSearch, routes } from "@/lib/routes";
+import type { PortalCaseFilterPatch } from "../cases/portal-case-filters";
+import { PortalOutstandingCases } from "../cases/portal-outstanding-cases";
+import { PortalHomeKpis } from "../portal-home-kpis";
 import {
   formatPortalCalendarDate,
   formatPortalHours,
@@ -508,12 +509,25 @@ function DetailsSkeleton() {
 }
 
 /**
- * Project Details (S4c), modelled on the WSO2 portal: project information, contact information,
- * subscription period and service-hours allocation, then the summary, milestones, what the team
- * needs from the customer and the shared documents. Everything shown comes from
- * `GET /api/portal/projects/{key}`, which returns the customer view only.
+ * Project Details (S4c), modelled on the WSO2 portal: the engagement's own status page (U-11).
+ * The dashboard's four figures and its outstanding cases, scoped to this project
+ * (`GET /api/portal/home?project=KEY`, `GET /api/portal/requests?project=KEY`), then project
+ * information, contact information, subscription period and service-hours allocation, the
+ * summary, milestones, what the team needs from the customer and the shared documents
+ * (`GET /api/portal/projects/{key}`, the customer view only). The scoped reads wait for the
+ * project to load, so an unknown key asks for nothing else.
  */
-export function PortalProjectDetails({ projectKey }: { projectKey: string }) {
+export function PortalProjectDetails({
+  projectKey,
+  portalUserId,
+  caseFilters,
+  onCaseFiltersChange,
+}: {
+  projectKey: string;
+  portalUserId: string;
+  caseFilters: Pick<PortalHomeSearch, "scope" | "status" | "priority">;
+  onCaseFiltersChange: (patch: PortalCaseFilterPatch) => void;
+}) {
   const { t } = usePortalTranslation("portal");
   const query = useQuery({
     queryKey: portalProjectKeys.detail(projectKey),
@@ -579,20 +593,17 @@ export function PortalProjectDetails({ projectKey }: { projectKey: string }) {
               </p>
             </div>
           </header>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PortalKpiCard
-              label={t("projects.columns.actionRequired")}
-              value={project.counts.actionRequired}
-              icon={CircleAlert}
-              tone={project.counts.actionRequired > 0 ? "warning" : "neutral"}
-            />
-            <PortalKpiCard
-              label={t("projects.columns.outstanding")}
-              value={project.counts.outstanding}
-              icon={Inbox}
-              tone="info"
-            />
-          </div>
+          <PortalHomeKpis
+            portalUserId={portalUserId}
+            project={project.key}
+            label={t("projects.detail.figures")}
+          />
+          <PortalOutstandingCases
+            portalUserId={portalUserId}
+            filters={caseFilters}
+            project={project.key}
+            onChange={onCaseFiltersChange}
+          />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <InformationCard project={project} />
             <ContactsCard project={project} />

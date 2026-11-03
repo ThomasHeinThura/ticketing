@@ -145,6 +145,7 @@ type Overview = {
   status: string;
   kind: string;
   counts: Record<string, number>;
+  averageFirstResponse: { seconds: number; sampleSize: number } | null;
   currentMilestone: { id: string; name: string } | null;
   overdueMilestoneIds: string[];
   facts: Record<string, string | null>;
@@ -288,7 +289,11 @@ describe("API integration: project overview, summary and contract (0213)", () =>
       total: 6,
       blockingPrerequisitesOutstanding: 1,
       prerequisites: 3,
+      // U-11: two completed and one cancelled item, all closed today; the deleted one is left out.
+      closedLast30Days: 3,
     });
+    // Nothing has a first response yet.
+    expect(body.averageFirstResponse).toBeNull();
     expect(body.currentMilestone?.name).toBe("Kick-off");
     expect(body.overdueMilestoneIds).toEqual([past?.id]);
     expect(body.status).toBe("active");

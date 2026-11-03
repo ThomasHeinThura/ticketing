@@ -1392,6 +1392,10 @@
               },
               "prerequisites": {
                 "type": "integer"
+              },
+              "closedLast30Days": {
+                "type": "integer",
+                "description": "Live work items resolved or moved to a completed or cancelled state in the last 30 days. Work items only: submissions declined in triage are excluded, although the portal home's closedLast30Days counts them."
               }
             },
             "required": [
@@ -1402,9 +1406,33 @@
               "done",
               "total",
               "blockingPrerequisitesOutstanding",
-              "prerequisites"
+              "prerequisites",
+              "closedLast30Days"
             ],
-            "description": "Live means not archived and not deleted. Counts cover the whole project, not only the caller's assigned work."
+            "description": "Live means not archived and not deleted. Counts cover the whole project, not only the caller's assigned work. They count work items only: submissions still awaiting triage (new or clarifying), which the portal home counts under outstanding and action required, are excluded, as is anything not yet a work item."
+          },
+          "averageFirstResponse": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "seconds": {
+                "type": "integer"
+              },
+              "sampleSize": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "seconds",
+              "sampleSize"
+            ],
+            "description": "Mean time to first response, from the SLA start or else creation, over every live work item of the project first answered in the last 30 days. The portal home applies the same formula to the cases its viewer can read only. Null when feature.sla is off for the project (see slaEnabled) or nothing was answered."
+          },
+          "slaEnabled": {
+            "type": "boolean",
+            "description": "Whether feature.sla is on for the project. When false, averageFirstResponse is null even if work items were answered."
           },
           "currentMilestone": {
             "type": [
@@ -1580,6 +1608,8 @@
           "health",
           "archived",
           "counts",
+          "averageFirstResponse",
+          "slaEnabled",
           "currentMilestone",
           "overdueMilestoneIds",
           "compositionWarnings",

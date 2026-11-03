@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
+  Button,
   Card,
   CardContent,
   CardHeader,
@@ -10,22 +11,82 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   ScrollArea,
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
 } from "@taskdesk/ui";
+import { Info } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { DashboardWidget } from "@/fetchers/report";
+import type { DashboardWidget, ReportEnvelope } from "@/fetchers/report";
 import { useWidgetData } from "@/hooks/queries/report";
+import { formatDateTime } from "@/lib/format";
 import { parseReportSearch } from "@/lib/report-search";
 import { routes } from "@/lib/routes";
+import { useElementSize } from "@/lib/use-element-width";
 import { ReportChart } from "./report-chart";
 import { ReportError } from "./report-detail";
 import { metricText } from "./report-format";
 import { ReportTable } from "./report-table";
-import { ReportContextLine, ReportEmpty } from "./report-view";
+import {
+  ReportContextLine,
+  ReportEmpty,
+  reportWindowText,
+} from "./report-view";
+
+/**
+ * A widget's caption (fit rule, 3 Nov): the report window and its as-of time (`RP-4`), always
+ * visible, in a line that wraps rather than being cut at the card's edge. The rest of the context
+ * (scope, boundary, where the numbers came from) is one tap away, in a popover that works with
+ * touch and keyboard.
+ */
+function WidgetContext({
+  report,
+  title,
+}: {
+  report: ReportEnvelope;
+  title: string;
+}) {
+  const { t } = useTranslation();
+  const about = t("reports:dashboard.aboutNumbers", { title });
+  return (
+    <div className="flex w-full min-w-0 items-start gap-1">
+      <p
+        className="min-w-0 flex-1 break-words text-muted-foreground text-xs leading-5"
+        data-testid="widget-context"
+      >
+        <span>{reportWindowText(report, t)}</span>
+        <span aria-hidden="true"> · </span>
+        <span data-testid="widget-as-of">
+          {t("reports:context.asOf", { time: formatDateTime(report.asOf) })}
+        </span>
+      </p>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            className="shrink-0 text-muted-foreground"
+            aria-label={about}
+          >
+            <Info aria-hidden="true" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="w-80 max-w-[calc(100vw-2rem)]"
+          aria-label={about}
+        >
+          <ReportContextLine report={report} />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 /**
  * One widget (`RP-13`): a fixed report or a saved view, run for the viewer. A chart has its table
@@ -57,6 +118,7 @@ export function DashboardWidgetCard({
   const { t } = useTranslation();
   const data = useWidgetData(workspaceId, dashboardId, widget.id, version);
   const [showing, setShowing] = useState<"chart" | "table">("chart");
+  const { size: contentSize, measureRef } = useElementSize();
   const report = data.data;
   const title = widget.reportKey
     ? t(`reports:catalogue.${widget.reportKey}.title`, {
@@ -77,19 +139,21 @@ export function DashboardWidgetCard({
     <Card
       className="flex h-full flex-col overflow-hidden"
       data-testid="dashboard-widget"
+      data-chart-type={widget.chartType}
     >
       <CardHeader
         className={
           editorActions
-            ? "flex flex-col gap-2 space-y-0 p-3"
-            : "flex flex-col gap-2 space-y-0 pb-2"
+            ? "flex flex-col gap-1 space-y-0 p-3"
+            : "flex flex-col gap-1 space-y-0 p-4 pb-2"
         }
       >
         {editorActions ? (
           <div className="flex w-full justify-end">{editorActions}</div>
         ) : null}
-        <div className="flex w-full items-center justify-between gap-2">
-          <CardTitle className="min-w-0 text-base">
+        <div className="flex w-full flex-wrap items-center justify-between gap-2">
+          {/* The title wraps rather than being cut short (fit rule, 3 Nov). */}
+          <CardTitle className="min-w-0 break-words text-base leading-6">
             {widget.reportKey ? (
               <Link
                 to={routes.reportDetail.path}
@@ -97,10 +161,10 @@ export function DashboardWidgetCard({
                 search={parseReportSearch(widget.filters)}
                 className="inline-flex min-h-6 max-w-full items-center rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <span className="truncate">{title}</span>
+                <span className="min-w-0 break-words">{title}</span>
               </Link>
             ) : (
-              <span className="block truncate">{title}</span>
+              <span className="block break-words">{title}</span>
             )}
           </CardTitle>
           <div className="flex shrink-0 items-center gap-1">
@@ -127,69 +191,77 @@ export function DashboardWidgetCard({
             {headerAction?.(title)}
           </div>
         </div>
+        {report ? <WidgetContext report={report} title={title} /> : null}
       </CardHeader>
       <CardContent className="min-h-0 flex-1 overflow-hidden pt-0">
-        {/* A KPI row is short: fade the edge that has more to read instead of cutting a line in half. */}
-        <ScrollArea role="region" aria-label={title} scrollFade>
-          <div className="space-y-2">
-            {footer}
-            {data.isLoading ? (
-              <Skeleton className="h-full min-h-16 w-full" />
-            ) : data.isError || !report ? (
-              <ReportError error={data.error} />
-            ) : report.empty ? (
-              <ReportEmpty report={report} className="p-2 md:p-2" />
-            ) : widget.chartType === "number" ? (
-              first ? (
-                <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm">
-                    {t(`reports:metrics.${first.key}`, {
-                      defaultValue: first.label,
-                    })}
-                  </p>
-                  <p className="font-semibold text-3xl tabular-nums">
-                    {metricText(first, t)}
-                  </p>
-                </div>
-              ) : (
-                <Alert variant="info">
-                  <AlertDescription>
-                    {t("reports:dashboard.noMetric")}
-                  </AlertDescription>
-                </Alert>
-              )
-            ) : noPlottableData ? (
-              <Empty
-                className="p-2 md:p-2"
-                data-testid="dashboard-widget-empty"
-              >
-                <EmptyHeader>
-                  <EmptyTitle>—</EmptyTitle>
-                  <EmptyDescription>
-                    {t("reports:empty.noData")}
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : showTable ? (
-              <ReportTable
-                columns={report.columns}
-                rows={report.rows}
-                label={t("reports:tableLabel", { title })}
-                onDrill={report.drill ? onDrill : undefined}
-              />
-            ) : report.chart ? (
-              <ReportChart
-                chart={report.chart}
-                label={t("reports:chartLabel", { title })}
-              />
-            ) : null}
-            {report ? (
-              <div className="text-xs">
-                <ReportContextLine report={report} />
-              </div>
-            ) : null}
-          </div>
-        </ScrollArea>
+        {/* Measured so a chart can fit the widget; the scroll frame stays as a last resort. */}
+        <div ref={measureRef} className="h-full min-h-0">
+          {/* The chart shrinks to fit after its first render, so the fade follows the content's
+              size, not only the frame's, and never stays over a fitted legend. */}
+          <ScrollArea
+            role="region"
+            aria-label={title}
+            scrollFade
+            observeContent
+          >
+            <div className="space-y-2">
+              {footer}
+              {data.isLoading ? (
+                <Skeleton className="h-full min-h-16 w-full" />
+              ) : data.isError || !report ? (
+                <ReportError error={data.error} />
+              ) : report.empty ? (
+                <ReportEmpty report={report} className="p-2 md:p-2" />
+              ) : widget.chartType === "number" ? (
+                first ? (
+                  // The figure and its name share a line when they fit, so a two-row KPI tile
+                  // shows both without scrolling, in the editor too.
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <p className="font-semibold text-3xl tabular-nums">
+                      {metricText(first, t)}
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      {t(`reports:metrics.${first.key}`, {
+                        defaultValue: first.label,
+                      })}
+                    </p>
+                  </div>
+                ) : (
+                  <Alert variant="info">
+                    <AlertDescription>
+                      {t("reports:dashboard.noMetric")}
+                    </AlertDescription>
+                  </Alert>
+                )
+              ) : noPlottableData ? (
+                <Empty
+                  className="p-2 md:p-2"
+                  data-testid="dashboard-widget-empty"
+                >
+                  <EmptyHeader>
+                    <EmptyTitle>—</EmptyTitle>
+                    <EmptyDescription>
+                      {t("reports:empty.noData")}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : showTable ? (
+                <ReportTable
+                  columns={report.columns}
+                  rows={report.rows}
+                  label={t("reports:tableLabel", { title })}
+                  onDrill={report.drill ? onDrill : undefined}
+                />
+              ) : report.chart ? (
+                <ReportChart
+                  chart={report.chart}
+                  label={t("reports:chartLabel", { title })}
+                  fitHeight={contentSize?.height}
+                />
+              ) : null}
+            </div>
+          </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
