@@ -103653,6 +103653,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/Link[0]::text-primary#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
@@ -103841,6 +103852,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/portal/index.tsx:/",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/Link[0]::text-primary#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/portal/cases/portal-case-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/div[0]/span[0]/Link[0]::text-primary#1",

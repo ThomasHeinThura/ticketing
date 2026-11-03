@@ -1963,6 +1963,60 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     ).json()) as PortalFile[];
     expect(bobFiles.map((file) => file.id)).toContain(guide);
 
+    // U-12 / CP-16: a staff public answer after the move reaches Bob's portal inbox as his
+    // direct request, and not Alice's.
+    mockAuthenticatedSession(s.contoso.requester.user);
+    const notifiedAnswer = await s.contoso.app.request(
+      `/api/work-items/${encodeURIComponent(accepted.key)}/comments`,
+      {
+        method: "POST",
+        headers: json,
+        body: JSON.stringify({
+          visibility: "public",
+          body: doc("Notified answer for Bob"),
+        }),
+      },
+    );
+    expect(notifiedAnswer.status, await notifiedAnswer.clone().text()).toBe(
+      200,
+    );
+    const { id: notifiedAnswerId } = (await notifiedAnswer.json()) as {
+      id: string;
+    };
+    const notifiedUsers = (
+      await db
+        .select({ userId: schema.notificationTable.userId })
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.resourceId, notifiedAnswerId))
+    ).map((row) => row.userId);
+    expect(notifiedUsers).toContain(s.bob.user.id);
+    expect(notifiedUsers).not.toContain(s.alice.user.id);
+    const inboxFor = async (customer: typeof s.alice) => {
+      const inbox = await portalRequest(
+        s.contoso,
+        customer,
+        "/api/portal/notification/inbox",
+      );
+      expect(inbox.status, await inbox.clone().text()).toBe(200);
+      return (
+        (await inbox.json()) as {
+          data: Array<{
+            targetKind: string;
+            requestRef: string | null;
+            commentId: string | null;
+          }>;
+        }
+      ).data.filter((row) => row.commentId === notifiedAnswerId);
+    };
+    expect(await inboxFor(s.bob)).toEqual([
+      expect.objectContaining({
+        targetKind: "request",
+        requestRef: accepted.key,
+        commentId: notifiedAnswerId,
+      }),
+    ]);
+    expect(await inboxFor(s.alice)).toEqual([]);
+
     // CP-16: what is said after the move is Bob's alone. A staff answer and Bob's reply never
     // reach Alice's submission page (nor, through it, her colleagues or participants).
     const staffAnswer = await staffComment(
@@ -2056,5 +2110,29 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
         .from(schema.satisfactionRatingTable)
         .where(eq(schema.satisfactionRatingTable.workItemId, accepted.id)),
     ).toEqual([]);
+
+    // Alice's request list shows none of the item's facts either: Bob's item is resolved, her
+    // accepted submission is not, and it carries no SLA of his item.
+    const own = await portalRequest(
+      s.contoso,
+      s.alice,
+      "/api/portal/submissions",
+    );
+    expect(own.status, await own.clone().text()).toBe(200);
+    const ownRow = (
+      (await own.json()) as {
+        submissions: Array<{
+          ref: string;
+          state: string;
+          customerStatus: string;
+          sla: unknown;
+        }>;
+      }
+    ).submissions.find((row) => row.ref === ref);
+    expect(ownRow).toMatchObject({
+      state: "accepted",
+      customerStatus: "in_progress",
+      sla: null,
+    });
   });
 });

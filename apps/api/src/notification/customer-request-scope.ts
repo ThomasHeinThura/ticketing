@@ -25,11 +25,16 @@ import {
 } from "../database/schema";
 
 /**
- * A staff-raised item that no submission was ever converted into or merged with. An item linked
- * to a submission keeps the submission rule alone, so moving the submission to another requester
- * still ends the first customer's notifications.
+ * The portal case list's direct-source condition: no submission of the item's current requester
+ * links the item, so the submission rule does not already cover it. An item converted from (or
+ * merged with) another customer's submission and then moved to this requester (A-03) is theirs
+ * as a direct request; the first customer's submission no longer owns it.
  */
-function notLinkedToSubmission(workItemId: SQLWrapper, executor: Executor) {
+function notLinkedToRequesterSubmission(
+  workItemId: SQLWrapper,
+  requesterId: SQLWrapper,
+  executor: Executor,
+) {
   const linked = alias(
     submissionTable,
     "notification_direct_linked_submission",
@@ -38,7 +43,12 @@ function notLinkedToSubmission(workItemId: SQLWrapper, executor: Executor) {
     executor
       .select({ one: sql`1` })
       .from(linked)
-      .where(eq(linked.workItemId, workItemId)),
+      .where(
+        and(
+          eq(linked.workItemId, workItemId),
+          eq(linked.requesterId, requesterId),
+        ),
+      ),
   );
 }
 
@@ -46,9 +56,9 @@ function notLinkedToSubmission(workItemId: SQLWrapper, executor: Executor) {
  * U-12 (D6, `CP-16`): a request staff raised for a customer (`direct`) belongs to its requester,
  * on the portal case list's direct-source conditions: the item's requester is this customer-side
  * person of the serving project's organisation, and the item, its live, unarchived project and
- * workspace still exist. Narrower than the list: only items never linked to a submission. Only
- * the requester owns it; a participant or an organisation colleague reads the request but is not
- * told about it, as on the submission side.
+ * workspace still exist, and no submission of this requester links the item (the submission
+ * rule covers that one). Only the requester owns it; a participant or an organisation colleague
+ * reads the request but is not told about it, as on the submission side.
  */
 function directOwnedRequestExists(
   personId: string,
@@ -82,7 +92,7 @@ function directOwnedRequestExists(
           isNull(project.deletedAt),
           isNull(project.archivedAt),
           isNull(workspace.deletedAt),
-          notLinkedToSubmission(item.id, executor),
+          notLinkedToRequesterSubmission(item.id, item.requesterId, executor),
           identity
             ? currentProjectReachPredicate(
                 identity,
@@ -352,7 +362,11 @@ export async function findLinkedRequestOwnerPersonIds(
         isNull(directProject.deletedAt),
         isNull(directProject.archivedAt),
         isNull(directWorkspace.deletedAt),
-        notLinkedToSubmission(directItem.id, executor),
+        notLinkedToRequesterSubmission(
+          directItem.id,
+          directItem.requesterId,
+          executor,
+        ),
       ),
     );
   const owners = new Map<string, string[]>();

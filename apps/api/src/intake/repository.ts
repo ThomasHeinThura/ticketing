@@ -2459,12 +2459,18 @@ export async function listOwnSubmissions(
       }),
     );
   }
-  const statusFacts = new Map<string, PortalStatusWorkItem>();
+  // A-03 / CP-16: an item's facts belong to its current requester; once staff name another
+  // requester, the submission keeps its own status and shows none of the item's.
+  const statusFacts = new Map<
+    string,
+    { requesterId: string | null; fact: PortalStatusWorkItem }
+  >();
   const itemIds = withItem.map((row) => row.submission.workItemId as string);
   if (itemIds.length > 0) {
     const facts = await db
       .select({
         id: schema.workItemTable.id,
+        requesterId: schema.workItemTable.requesterId,
         resolvedAt: schema.workItemTable.resolvedAt,
         stateGroup: schema.stateTemplateTable.group,
       })
@@ -2481,11 +2487,25 @@ export async function listOwnSubmissions(
     const waiting = await workItemsWaitingOnCustomer(itemIds);
     for (const fact of facts)
       statusFacts.set(fact.id, {
-        resolvedAt: fact.resolvedAt,
-        stateGroup: fact.stateGroup,
-        waitingOnCustomer: waiting.has(fact.id),
+        requesterId: fact.requesterId,
+        fact: {
+          resolvedAt: fact.resolvedAt,
+          stateGroup: fact.stateGroup,
+          waitingOnCustomer: waiting.has(fact.id),
+        },
       });
   }
+  const linkedFacts = (submission: {
+    workItemId: string | null;
+    requesterId: string;
+  }) => {
+    const linked = submission.workItemId
+      ? statusFacts.get(submission.workItemId)
+      : undefined;
+    return linked && linked.requesterId === submission.requesterId
+      ? linked.fact
+      : null;
+  };
   return {
     submissions: pageRows.map((row) => ({
       ...row,
@@ -2495,9 +2515,7 @@ export async function listOwnSubmissions(
       isRequester: row.submission.requesterId === identity.personId,
       customerStatus: portalCustomerStatus(
         row.submission.state,
-        row.submission.workItemId
-          ? (statusFacts.get(row.submission.workItemId) ?? null)
-          : null,
+        linkedFacts(row.submission),
       ) satisfies PortalCustomerStatus,
       sla: slas.get(row.submission.id) ?? null,
     })),

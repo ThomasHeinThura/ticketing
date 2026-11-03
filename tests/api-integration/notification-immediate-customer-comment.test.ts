@@ -144,7 +144,7 @@ describe("customer immediate comment email", () => {
         .returning(),
       "linked customer request type version",
     );
-    const linkedSubmission = requireRow(
+    requireRow(
       await db
         .insert(schema.submissionTable)
         .values({
@@ -318,10 +318,12 @@ describe("customer immediate comment email", () => {
     const secondEventId = secondEvent.rows[0]?.eventId;
     if (!secondEventId)
       throw new Error("second customer comment event missing");
+    // A-03: staff name another requester on the item; the request is no longer this customer's
+    // (neither through the submission nor as a direct request), so the queued email is dropped.
     await db
-      .update(schema.submissionTable)
+      .update(schema.workItemTable)
       .set({ requesterId: otherCustomerPerson.id })
-      .where(eq(schema.submissionTable.id, linkedSubmission.id));
+      .where(eq(schema.workItemTable.id, item.id));
     await expect(
       processNextNotificationDelivery(immediateNotificationRuntime(send)),
     ).resolves.toMatchObject({
