@@ -47,6 +47,7 @@ import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { HttpError } from "@/lib/http-error";
+import { formatPortalDuration } from "@/lib/portal-duration";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { ContractPanel } from "./contract-panel";
@@ -337,7 +338,7 @@ function ServiceLevelsPanel({ overview }: { overview: ProjectOverview }) {
  * `project:update` (summary, milestones) or `project:manage_settings` (contract).
  */
 export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
-  const { t } = useTranslation("projectOverview");
+  const { t, i18n } = useTranslation("projectOverview");
   const {
     project: listed,
     workspaceId,
@@ -566,7 +567,10 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
         </Alert>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* Six figures: two rows of three on wide screens, never a short orphan row. The last two
+          apply the portal home's work item rules (U-11) to every work item of the project;
+          submissions awaiting or declined in triage are not counted here. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <Kpi label={t("kpi.health")} testId="project-kpi-health">
           <HealthBadge health={data.health} />
         </Kpi>
@@ -615,6 +619,33 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
           >
             {counts.blockingPrerequisitesOutstanding}
           </span>
+        </Kpi>
+        <Kpi
+          label={t("kpi.closed")}
+          testId="project-kpi-closed"
+          hint={t("kpi.closedHint")}
+        >
+          {counts.closedLast30Days}
+        </Kpi>
+        <Kpi
+          label={t("kpi.firstResponse")}
+          testId="project-kpi-first-response"
+          hint={
+            !data.slaEnabled
+              ? t("kpi.firstResponseOff")
+              : data.averageFirstResponse
+                ? t("kpi.firstResponseHint")
+                : t("kpi.firstResponseNone")
+          }
+        >
+          {data.averageFirstResponse ? (
+            formatPortalDuration(
+              data.averageFirstResponse.seconds,
+              i18n?.resolvedLanguage || i18n?.language,
+            )
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
         </Kpi>
       </div>
 

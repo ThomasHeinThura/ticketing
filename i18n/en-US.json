@@ -4400,7 +4400,8 @@
 					"title": "Documents",
 					"none": "No documents are shared yet.",
 					"opensInNewTab": "opens in a new tab"
-				}
+				},
+				"figures": "Project figures"
 			},
 			"dashboard": {
 				"title": "Your projects",
@@ -8170,7 +8171,13 @@
 			"workComplete": "Work complete",
 			"workBreakdown": "{{inProgress}} in progress · {{waiting}} waiting",
 			"blocking": "Blocking prerequisites",
-			"blockingOf": "{{count}} recorded"
+			"blockingOf": "{{count}} recorded",
+			"closed": "Closed",
+			"closedHint": "In the last 30 days",
+			"firstResponse": "Average first response",
+			"firstResponseHint": "Last 30 days",
+			"firstResponseNone": "None in the last 30 days",
+			"firstResponseOff": "SLA tracking is off for this project"
 		},
 		"attention": {
 			"blocking_one": "{{count}} blocking prerequisite is outstanding.",

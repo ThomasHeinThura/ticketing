@@ -124,7 +124,9 @@ function renderPortal(initial: string) {
   };
   const router = createRouter({
     routeTree: root.addChildren(
-      ["/", "/requests", "/approvals", "/sign-in"].map(child),
+      ["/", "/requests", "/approvals", "/sign-in", "/projects/$projectKey"].map(
+        child,
+      ),
     ),
     history: createMemoryHistory({ initialEntries: [initial] }),
   });
@@ -197,6 +199,61 @@ describe("portal project selector", () => {
     await choose("shell.projectSelector.all");
     await waitFor(() => expect(router.state.location.search).toEqual({}));
     expect(router.state.location.pathname).toBe("/approvals");
+  });
+
+  it("scopes the dashboard to the chosen project and back to all (U-11)", async () => {
+    getPortalProjects.mockResolvedValue({
+      data: [
+        { key: "ALPHA", name: "Alpha" },
+        { key: "BETA", name: "Beta" },
+      ],
+    });
+    const router = renderPortal("/?scope=all");
+    await screen.findByText("/");
+    await choose("Alpha");
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({
+        scope: "all",
+        project: "ALPHA",
+      }),
+    );
+    expect(router.state.location.pathname).toBe("/");
+    await choose("shell.projectSelector.all");
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ scope: "all" }),
+    );
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("on Project Details shows that project and opens another project's details (U-11)", async () => {
+    getPortalProjects.mockResolvedValue({
+      data: [
+        { key: "ALPHA", name: "Alpha" },
+        { key: "BETA", name: "Beta" },
+      ],
+    });
+    // A stale `?project=` never wins over the project the page shows.
+    const router = renderPortal("/projects/ALPHA?project=BETA&scope=all");
+    await screen.findByText("/projects/$projectKey");
+    expect(
+      await screen.findByRole("button", {
+        name: "shell.projectSelector.label",
+      }),
+    ).toHaveTextContent("Alpha");
+
+    await choose("Beta");
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/projects/BETA"),
+    );
+    expect(router.state.location.search).toEqual({ project: "BETA" });
+    expect(
+      screen.getByRole("button", { name: "shell.projectSelector.label" }),
+    ).toHaveTextContent("Beta");
+
+    // "All projects" returns to the organisation's Dashboard, unscoped.
+    await choose("shell.projectSelector.all");
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(router.state.location.search).toEqual({});
   });
 
   it("drops the scope when leaving for the sign-in frame", async () => {

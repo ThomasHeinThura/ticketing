@@ -17,20 +17,39 @@ import {
   portalProjectKeys,
 } from "@/fetchers/portal/projects";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { parsePortalProjectSearch } from "@/lib/routes";
+import { parsePortalProjectSearch, routes } from "@/lib/routes";
 
 const ALL_PROJECTS = "";
+/** `routes.portalProject.path` (`/projects/$projectKey`) as a pathname match. */
+const PROJECT_DETAILS = /^\/projects\/([^/]+)\/?$/u;
+
+function projectDetailsKey(pathname: string) {
+  const match = PROJECT_DETAILS.exec(pathname);
+  if (!match?.[1]) return undefined;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Top-bar project scope (`?project=KEY`, registered in `routes.ts`). Rendered only while `portalCapabilities.projects` is
  * on; it hides itself when the organisation has fewer than two projects, since there is
  * nothing to choose.
+ *
+ * On Project Details (U-11) the page's own project is the scope: choosing another project opens
+ * that project's details, and "All projects" returns to the organisation's Dashboard. Anywhere
+ * else the current screen stays and is filtered (the Dashboard's figures and cases included).
  */
 export default function PortalProjectSelector() {
   const { t } = usePortalTranslation("portal");
   const navigate = useNavigate();
   const search = useLocation({ select: (location) => location.search });
-  const selected = parsePortalProjectSearch(search).project ?? ALL_PROJECTS;
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const detailKey = projectDetailsKey(pathname);
+  const selected =
+    detailKey ?? parsePortalProjectSearch(search).project ?? ALL_PROJECTS;
   const projects = useQuery({
     queryKey: portalProjectKeys.list(),
     queryFn: getPortalProjects,
@@ -44,6 +63,20 @@ export default function PortalProjectSelector() {
   // Every signed-in portal route registers `project` and keeps it across navigation
   // (`portalProjectSearchMiddlewares`); naming it `undefined` clears the scope.
   function choose(project: string) {
+    if (detailKey !== undefined) {
+      if (project === detailKey) return;
+      void (project
+        ? navigate({
+            to: routes.portalProject.path,
+            params: { projectKey: project },
+            search: { project },
+          })
+        : navigate({
+            to: routes.portalHome.path,
+            search: { project: undefined },
+          }));
+      return;
+    }
     void navigate({
       to: ".",
       search: (previous: Record<string, unknown>) => ({

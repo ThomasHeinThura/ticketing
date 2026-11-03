@@ -19,6 +19,7 @@ import {
   workspaceTable,
 } from "../database/schema";
 import { timeEntryTable } from "../database/schema-p5-time";
+import { projectsWithFeatureEnabled } from "../feature-flag/enforce";
 import {
   apiRouter,
   type BaseVariables,
@@ -165,11 +166,29 @@ export const projectOverviewSchema = z
         }),
         blockingPrerequisitesOutstanding: z.number().int(),
         prerequisites: z.number().int(),
+        closedLast30Days: z.number().int().openapi({
+          description:
+            "Live work items resolved or moved to a completed or cancelled state in the last 30 days. Work items only: submissions declined in triage are excluded, although the portal home's closedLast30Days counts them.",
+        }),
       })
       .openapi({
         description:
-          "Live means not archived and not deleted. Counts cover the whole project, not only the caller's assigned work.",
+          "Live means not archived and not deleted. Counts cover the whole project, not only the caller's assigned work. They count work items only: submissions still awaiting triage (new or clarifying), which the portal home counts under outstanding and action required, are excluded, as is anything not yet a work item.",
       }),
+    averageFirstResponse: z
+      .object({
+        seconds: z.number().int(),
+        sampleSize: z.number().int(),
+      })
+      .nullable()
+      .openapi({
+        description:
+          "Mean time to first response, from the SLA start or else creation, over every live work item of the project first answered in the last 30 days. The portal home applies the same formula to the cases its viewer can read only. Null when feature.sla is off for the project (see slaEnabled) or nothing was answered.",
+      }),
+    slaEnabled: z.boolean().openapi({
+      description:
+        "Whether feature.sla is on for the project. When false, averageFirstResponse is null even if work items were answered.",
+    }),
     currentMilestone: overviewMilestoneSchema.nullable().openapi({
       description: "The first milestone, by date, not yet reached.",
     }),
@@ -324,6 +343,66 @@ async function personName(personId: string | null) {
 
 const PRIORITY_ORDER = ["urgent", "high", "medium", "low"];
 
+/**
+ * U-11: the engagement's closed-in-30-days and average-first-response figures for staff, over
+ * every live work item of the project. The work item expressions are the portal home's
+ * (`portalHomeCounts`): a work item is closed when it is resolved or in a completed or cancelled
+ * state, at `resolved_at` or else `updated_at`; first response is measured from the SLA start
+ * (or creation) and averaged over items first answered in the last 30 days, only while
+ * `feature.sla` is on; `slaEnabled` tells "flag off" apart from "nothing answered". Work item
+ * columns are UTC timestamps without a zone.
+ *
+ * Decision (U-11 review): the Overview counts work items only. The portal home also counts
+ * submissions with no work item (declined ones as closed; new and clarifying ones as
+ * outstanding and action required) and only the cases its viewer can read, while staff also see
+ * internal work. The figures therefore agree only when every item is a work item the customer
+ * can read; `portal-project-status.test.ts` pins both the agreement and the difference.
+ */
+async function recentResponseFigures(projectId: string, workspaceId: string) {
+  const [[closed], [response], slaOn] = await Promise.all([
+    db
+      .execute<{
+        closed_recent: number;
+      }>(sql`SELECT count(*)::int AS closed_recent
+        FROM ${workItemTable} w
+        JOIN state s ON s.id = w.state_id
+        JOIN state_template st ON st.id = s.state_template_id
+        WHERE w.project_id = ${projectId} AND w.workspace_id = ${workspaceId}
+          AND w.deleted_at IS NULL AND w.archived_at IS NULL
+          AND (CASE
+            WHEN w.resolved_at IS NOT NULL THEN w.resolved_at AT TIME ZONE 'UTC'
+            WHEN st."group" IN ('completed', 'cancelled') THEN w.updated_at AT TIME ZONE 'UTC'
+            ELSE NULL
+          END) >= now() - interval '30 days'`)
+      .then((result) => result.rows),
+    db
+      .execute<{ samples: number; seconds: string | null }>(sql`SELECT
+          count(*)::int AS samples,
+          sum(EXTRACT(EPOCH FROM (w.first_response_at - COALESCE(w.sla_started_at, w.created_at))))::text AS seconds
+        FROM ${workItemTable} w
+        WHERE w.project_id = ${projectId} AND w.workspace_id = ${workspaceId}
+          AND w.deleted_at IS NULL AND w.archived_at IS NULL
+          AND w.first_response_at IS NOT NULL
+          AND w.first_response_at >= (now() AT TIME ZONE 'UTC') - interval '30 days'
+          AND w.first_response_at >= COALESCE(w.sla_started_at, w.created_at)`)
+      .then((result) => result.rows),
+    projectsWithFeatureEnabled("feature.sla", [projectId]),
+  ]);
+  const samples = Number(response?.samples ?? 0);
+  const slaEnabled = slaOn.has(projectId);
+  return {
+    closedLast30Days: Number(closed?.closed_recent ?? 0),
+    slaEnabled,
+    averageFirstResponse:
+      slaEnabled && samples > 0
+        ? {
+            seconds: Math.round(Number(response?.seconds ?? 0) / samples),
+            sampleSize: samples,
+          }
+        : null,
+  };
+}
+
 async function buildOverview(projectId: string, workspaceId: string) {
   const project = await loadProject(projectId, workspaceId);
   const now = new Date();
@@ -356,6 +435,8 @@ async function buildOverview(projectId: string, workspaceId: string) {
       waiting: Number(row.waiting),
     })),
   );
+
+  const recent = await recentResponseFigures(projectId, workspaceId);
 
   const [prerequisiteCounts] = await db
     .select({
@@ -476,7 +557,10 @@ async function buildOverview(projectId: string, workspaceId: string) {
         prerequisiteCounts?.blocking ?? 0,
       ),
       prerequisites: Number(prerequisiteCounts?.total ?? 0),
+      closedLast30Days: recent.closedLast30Days,
     },
+    averageFirstResponse: recent.averageFirstResponse,
+    slaEnabled: recent.slaEnabled,
     currentMilestone: current
       ? {
           id: current.id,

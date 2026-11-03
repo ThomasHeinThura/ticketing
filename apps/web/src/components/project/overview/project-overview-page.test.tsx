@@ -116,7 +116,10 @@ function overview(kind: "project" | "managed_service" = "project") {
       total: 6,
       blockingPrerequisitesOutstanding: 1,
       prerequisites: 3,
+      closedLast30Days: 2,
     },
+    averageFirstResponse: { seconds: 5400, sampleSize: 4 },
+    slaEnabled: true,
     currentMilestone: null,
     overdueMilestoneIds: [],
     compositionWarnings: [],
@@ -203,6 +206,13 @@ describe("ProjectOverviewPage", () => {
     expect(screen.getByTestId("project-kpi-work")).toHaveTextContent(
       'kpi.workBreakdown {"inProgress":1,"waiting":1}',
     );
+    // U-11: the portal home's closed-in-30-days and first-response figures, for staff.
+    expect(screen.getByTestId("project-kpi-closed")).toHaveTextContent(
+      "kpi.closed2kpi.closedHint",
+    );
+    expect(screen.getByTestId("project-kpi-first-response")).toHaveTextContent(
+      "kpi.firstResponse1.5 hrkpi.firstResponseHint",
+    );
     expect(screen.getByTestId("project-overview-attention")).toBeVisible();
     expect(screen.getByTestId("project-summary-panel")).toHaveTextContent(
       "Run first-line support",
@@ -220,6 +230,31 @@ describe("ProjectOverviewPage", () => {
     }
     // Delivery projects have no service-levels panel.
     expect(screen.queryByTestId("project-service-levels-panel")).toBeNull();
+  });
+
+  it("states that there was no first response in the last 30 days", async () => {
+    mocks.getProjectOverview.mockResolvedValue({
+      ...overview(),
+      averageFirstResponse: null,
+    });
+    renderPage();
+    expect(
+      await screen.findByTestId("project-kpi-first-response"),
+    ).toHaveTextContent("kpi.firstResponse—kpi.firstResponseNone");
+  });
+
+  it("says SLA tracking is off rather than that nothing was answered", async () => {
+    // U-11 review: the API returns no average while feature.sla is off, even when items were
+    // answered, so the tile must not claim there was no first response.
+    mocks.getProjectOverview.mockResolvedValue({
+      ...overview(),
+      averageFirstResponse: null,
+      slaEnabled: false,
+    });
+    renderPage();
+    const tile = await screen.findByTestId("project-kpi-first-response");
+    expect(tile).toHaveTextContent("kpi.firstResponse—kpi.firstResponseOff");
+    expect(tile).not.toHaveTextContent("kpi.firstResponseNone");
   });
 
   it("offers the edit controls to staff who may change them", async () => {

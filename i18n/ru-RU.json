@@ -4450,7 +4450,8 @@
 					"outOfScope": "Out of scope",
 					"successCriteria": "Success criteria",
 					"title": "About this project"
-				}
+				},
+				"figures": "Project figures"
 			},
 			"empty": {
 				"description": "Projects your team runs for your organisation appear here.",
@@ -10092,7 +10093,13 @@
 			"health": "Health",
 			"status": "Status",
 			"workBreakdown": "{{inProgress}} in progress · {{waiting}} waiting",
-			"workComplete": "Work complete"
+			"workComplete": "Work complete",
+			"closed": "Closed",
+			"closedHint": "In the last 30 days",
+			"firstResponse": "Average first response",
+			"firstResponseHint": "Last 30 days",
+			"firstResponseNone": "None in the last 30 days",
+			"firstResponseOff": "SLA tracking is off for this project"
 		},
 		"loadFailed": "The overview could not be loaded.",
 		"loading": "Loading the overview…",
