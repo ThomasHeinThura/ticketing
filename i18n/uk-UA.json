@@ -3705,6 +3705,7 @@
 			"importedOn": "Imported {{date}}",
 			"openSource": "Open the original in {{system}}",
 			"requester": "Заявник",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "Без заявника",
 			"requesterSearch": "Пошук клієнтів",
 			"noRequesterMatch": "Немає відповідних клієнтів.",

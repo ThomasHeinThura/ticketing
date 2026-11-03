@@ -3669,6 +3669,7 @@
 			"importedOn": "Imported {{date}}",
 			"openSource": "Open the original in {{system}}",
 			"requester": "依頼者",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "依頼者なし",
 			"requesterSearch": "顧客を検索",
 			"noRequesterMatch": "一致する顧客はいません。",

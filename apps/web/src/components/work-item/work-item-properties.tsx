@@ -9,6 +9,10 @@ import {
   Badge,
   Button,
   Calendar,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Fieldset,
   Input,
   Popover,
@@ -30,6 +34,7 @@ import {
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { TaskPropertiesPresentation } from "@/components/task/task-detail-presentation";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import { getWorkItemLabels } from "@/fetchers/work-item/get-work-item-labels";
@@ -65,6 +70,7 @@ import {
   isClosingCategory,
   useOpenChildrenGuard,
 } from "./open-children-warning";
+import { PropertyRadioMenu } from "./property-radio-menu";
 import WorkItemAgileRows from "./work-item-agile-rows";
 import {
   useHasWorkItemFeedback,
@@ -73,6 +79,7 @@ import {
 } from "./work-item-feedback";
 import WorkItemImportOrigin from "./work-item-import-origin";
 import WorkItemParentControl from "./work-item-parent-control";
+import { propertyTriggerProps } from "./work-item-property-row";
 import {
   useRefreshWorkItem,
   useSaveWorkItemFields,
@@ -81,10 +88,6 @@ import {
   writeWorkItemResponse,
 } from "./work-item-save";
 import UnavailableField from "./work-item-unavailable-field";
-
-/** Kaneo's property-row trigger (`task-properties-controls.tsx` `buttonClass`). */
-const rowClass = (compact: boolean) =>
-  cn("justify-start h-7 px-1.5 gap-1.5", !compact && "lg:w-full");
 
 /** A v2 state category drawn with kaneo's column icons. */
 const CATEGORY_ICON: Record<string, string> = {
@@ -201,10 +204,12 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  // The note step needs the chosen offer after the menu has closed.
   const transitions = useGetWorkItemTransitions({
     key: item.key,
-    enabled: open,
+    enabled: open || noteFor !== null,
   });
+  const triggerRef = useRef<HTMLButtonElement>(null);
   useAccessLostOnQueryError(transitions.error, onAccessLost);
   const refresh = useRefreshWorkItem(item);
   const offers = transitions.data ?? [];
@@ -243,7 +248,10 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
         onAccessLost();
         return;
       }
+      // Back to the offers, which show the error and the server's current moves.
       setNoteFor(null);
+      setNote("");
+      setOpen(true);
       setError(
         mutationError instanceof HttpError && mutationError.status === 409
           ? t("workItems:journey.transitionConflict")
@@ -279,9 +287,9 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
     // closes the children). Not asked again for the note step: the move is already chosen.
     const proceed = () => {
       if (offer.notePolicy && offer.notePolicy !== "none") {
-        // The warning dialog may have taken focus and closed the popover; reopen it so
-        // the note form is always reachable after "Close anyway".
-        setOpen(true);
+        // The note is written in its own popover on the same trigger, so it is reachable
+        // whether or not the warning dialog closed the menu.
+        setOpen(false);
         setNoteFor(offer.transitionId);
         return;
       }
@@ -331,9 +339,10 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   }
   const trigger = (
     <Button
+      ref={triggerRef}
       variant="ghost"
       size="sm"
-      className={rowClass(compact)}
+      {...propertyTriggerProps(canTransitionTasks(), compact)}
       data-testid="work-item-state-control"
     >
       {icon}
@@ -344,20 +353,83 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   const noteOffer = offers.find((offer) => offer.transitionId === noteFor);
   return (
     <>
-      <Popover
+      {/* The moves are menu items (arrow keys, typeahead, Escape, focus back to the
+          trigger). A move stays open until the server answers, as Kaneo's popover did. */}
+      <DropdownMenu
         open={open}
+        modal={false}
         onOpenChange={(next) => {
           setOpen(next);
-          if (!next) {
-            setNoteFor(null);
-            setNote("");
-            setError("");
-          }
+          if (!next) setError("");
         }}
       >
-        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-        <PopoverContent className="w-64 p-0" align="start">
+        <DropdownMenuTrigger render={trigger} />
+        <DropdownMenuContent className="w-64" align="start">
           {error ? <InlineMessage>{error}</InlineMessage> : null}
+          {transitions.isLoading ? (
+            <p className="p-2 text-muted-foreground text-sm" role="status">
+              {t("common:empty.loading")}
+            </p>
+          ) : transitions.isError ? (
+            <p className="p-2 text-muted-foreground text-sm" role="alert">
+              {t("workItems:journey.transitionsError")}
+            </p>
+          ) : offers.length === 0 ? (
+            <p className="p-2 text-muted-foreground text-sm">
+              {t("workItems:properties.noTransitions")}
+            </p>
+          ) : (
+            offers.map((offer, index) => {
+              // Blocked only for want of a note: runnable once the note is written.
+              const onlyNote =
+                offer.blockedBy.length > 0 &&
+                offer.blockedBy.every(
+                  (reason) => reason.reasonCode === "note.required",
+                );
+              const blocked = !offer.available && !onlyNote;
+              const reasons = offer.blockedBy.length
+                ? offer.blockedBy.map((reason) =>
+                    t(workItemTransitionReasonKey(reason.reasonCode)),
+                  )
+                : [t("workItems:journey.reasonUnknown")];
+              return (
+                <DropdownMenuItem
+                  key={offer.transitionId}
+                  label={offer.toStateName}
+                  closeOnClick={false}
+                  disabled={blocked || transition.isPending}
+                  className="h-auto min-h-8 flex-col items-start gap-0 py-1.5"
+                  onClick={() => chooseOffer(offer)}
+                >
+                  <span className="flex w-full items-center gap-2">
+                    <span className="text-sm">{offer.toStateName}</span>
+                    <ShortcutNumber number={index + 1} />
+                  </span>
+                  {blocked ? (
+                    <span className="text-muted-foreground text-xs">
+                      {reasons.join(", ")}
+                    </span>
+                  ) : null}
+                </DropdownMenuItem>
+              );
+            })
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Popover
+        open={Boolean(noteOffer)}
+        onOpenChange={(next) => {
+          if (next) return;
+          setNoteFor(null);
+          setNote("");
+        }}
+      >
+        <PopoverContent
+          className="w-64 p-0"
+          align="start"
+          anchor={triggerRef}
+          finalFocus={triggerRef}
+        >
           {noteOffer ? (
             <form
               className="flex flex-col gap-2 p-2"
@@ -389,56 +461,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
                 {t("workItems:properties.move")}
               </Button>
             </form>
-          ) : transitions.isLoading ? (
-            <p className="p-3 text-muted-foreground text-sm" role="status">
-              {t("common:empty.loading")}
-            </p>
-          ) : transitions.isError ? (
-            <p className="p-3 text-muted-foreground text-sm" role="alert">
-              {t("workItems:journey.transitionsError")}
-            </p>
-          ) : offers.length === 0 ? (
-            <p className="p-3 text-muted-foreground text-sm">
-              {t("workItems:properties.noTransitions")}
-            </p>
-          ) : (
-            <div>
-              {offers.map((offer, index) => {
-                // Blocked only for want of a note: runnable once the note is written.
-                const onlyNote =
-                  offer.blockedBy.length > 0 &&
-                  offer.blockedBy.every(
-                    (reason) => reason.reasonCode === "note.required",
-                  );
-                const blocked = !offer.available && !onlyNote;
-                const reasons = offer.blockedBy.length
-                  ? offer.blockedBy.map((reason) =>
-                      t(workItemTransitionReasonKey(reason.reasonCode)),
-                    )
-                  : [t("workItems:journey.reasonUnknown")];
-                return (
-                  <Button
-                    key={offer.transitionId}
-                    variant="ghost"
-                    size="sm"
-                    disabled={blocked || transition.isPending}
-                    className="h-auto min-h-8 w-full flex-col items-start gap-0 rounded-none px-2 py-1.5 first:rounded-t-md last:rounded-b-md"
-                    onClick={() => chooseOffer(offer)}
-                  >
-                    <span className="flex w-full items-center gap-2">
-                      <span className="text-sm">{offer.toStateName}</span>
-                      <ShortcutNumber number={index + 1} />
-                    </span>
-                    {blocked ? (
-                      <span className="text-muted-foreground text-xs">
-                        {reasons.join(", ")}
-                      </span>
-                    ) : null}
-                  </Button>
-                );
-              })}
-            </div>
-          )}
+          ) : null}
         </PopoverContent>
       </Popover>
       {childrenGuard.dialog}
@@ -498,7 +521,10 @@ function PriorityControl({ item, compact, onAccessLost }: ControlProps) {
     <Button
       variant="ghost"
       size="sm"
-      className={rowClass(compact)}
+      {...propertyTriggerProps(
+        canUpdateTasks() && canSetPriorityTasks(),
+        compact,
+      )}
       data-testid="work-item-priority-control"
     >
       {getPriorityIcon(current)}
@@ -511,34 +537,34 @@ function PriorityControl({ item, compact, onAccessLost }: ControlProps) {
   // `work_item:set_priority` (`rbac.md`).
   if (!canUpdateTasks() || !canSetPriorityTasks()) return trigger;
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-48 p-0" align="start">
-        <div>
-          {[null, ...PRIORITIES].map((priority, index) => {
-            const value = priority ?? "no-priority";
-            return (
-              <Button
-                key={value}
-                variant="ghost"
-                size="sm"
-                className="h-8 w-full justify-start gap-2 rounded-none px-2 first:rounded-t-md last:rounded-b-md"
-                disabled={update.isPending}
-                onClick={() => choosePriority(priority)}
-              >
-                {getPriorityIcon(value)}
-                <span className="text-sm">{getPriorityLabel(value)}</span>
-                {current === value ? (
-                  <Check className="ml-auto h-4 w-4" />
-                ) : (
-                  <ShortcutNumber number={index + 1} />
-                )}
-              </Button>
-            );
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
+    <PropertyRadioMenu
+      open={open}
+      onOpenChange={setOpen}
+      value={current}
+      onValueChange={(value) =>
+        choosePriority(
+          value === "no-priority"
+            ? null
+            : (value as (typeof PRIORITIES)[number]),
+        )
+      }
+      trigger={trigger}
+      options={[null, ...PRIORITIES].map((priority, index) => {
+        const value = priority ?? "no-priority";
+        return {
+          value,
+          label: getPriorityLabel(value),
+          disabled: update.isPending,
+          content: (
+            <>
+              {getPriorityIcon(value)}
+              <span className="text-sm">{getPriorityLabel(value)}</span>
+              {current === value ? null : <ShortcutNumber number={index + 1} />}
+            </>
+          ),
+        };
+      })}
+    />
   );
 }
 
@@ -632,11 +658,12 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
           inactive: t("workItems:detail.inactiveAssignee"),
           notOnProject: t("workItems:list.assigneeNotOnProject"),
         });
+  const canEdit = canUpdateTasks() || canAssignTasks();
   const trigger = (
     <Button
       variant="ghost"
       size="sm"
-      className={rowClass(compact)}
+      {...propertyTriggerProps(canEdit, compact)}
       data-testid="work-item-assignee-control"
     >
       {name ? (
@@ -665,7 +692,6 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
         list.some((person) => person.personId === item.assigneeId)));
   const confirmPerson = list.find((person) => person.personId === confirmFor);
   const dispatching = useRef(false);
-  const canEdit = canUpdateTasks() || canAssignTasks();
   const dispatchAssignment = (
     person: { personId: string; name: string | null } | null,
   ) => {
@@ -853,11 +879,18 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
     <Button
       variant="ghost"
       size="sm"
-      className={rowClass(compact)}
+      {...propertyTriggerProps(canEdit, compact)}
       data-testid="work-item-requester-control"
     >
       <Contact className="h-4 w-4 text-muted-foreground" />
+      {/* A second person row under Assignee: say which person this is. */}
+      <span className="sr-only">
+        {t("workItems:properties.requesterValue", {
+          name: name ?? t("workItems:properties.noRequester"),
+        })}
+      </span>
       <span
+        aria-hidden="true"
         className={cn(
           "truncate font-semibold text-xs",
           !name && "text-muted-foreground",
@@ -867,7 +900,12 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
       </span>
     </Button>
   );
-  if (!canEdit) return trigger;
+  if (!canEdit)
+    return (
+      <ActionTooltip label={t("workItems:properties.requester")}>
+        {trigger}
+      </ActionTooltip>
+    );
   const list = Array.isArray(candidates.data) ? candidates.data : [];
   const needle = query.trim().toLowerCase();
   const shown = needle
@@ -917,7 +955,9 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
         if (!next) setQuery("");
       }}
     >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <ActionTooltip label={t("workItems:properties.requester")}>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      </ActionTooltip>
       <PopoverContent className="w-64 p-0" align="start">
         <div className="border-b border-border p-1">
           <Input
@@ -1022,7 +1062,7 @@ function DateControl({
     <Button
       variant="ghost"
       size="sm"
-      className={rowClass(compact)}
+      {...propertyTriggerProps(canUpdateTasks(), compact)}
       data-testid={`work-item-${field}-control`}
     >
       {icon}
@@ -1333,7 +1373,9 @@ function WorkItemPropertiesPanel({
             disabled={readOnly}
             data-testid="work-item-property-controls"
             className={cn(
-              "flex w-full max-w-none flex-row flex-wrap items-center gap-1 p-2",
+              // `min-w-0`: a fieldset's UA min-inline-size is min-content, which pushed the
+              // strip off the left edge beside the copy-link button at phone width.
+              "flex w-full min-w-0 max-w-none flex-row flex-wrap items-center gap-1 p-2",
               !compact &&
                 "lg:flex-col lg:items-stretch lg:gap-2 lg:px-3 lg:py-3",
             )}

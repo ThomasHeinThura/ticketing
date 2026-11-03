@@ -3705,6 +3705,7 @@
 				"rollupBeside": "Σ {{value}} from children"
 			},
 			"requester": "Requester",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "No requester",
 			"requesterSearch": "Search customers",
 			"noRequesterMatch": "No customer matches.",

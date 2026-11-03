@@ -192,10 +192,9 @@ test("native work-item events invalidate a second authenticated browser session"
       await first.getByTestId("create-work-item-trigger").click();
       await expect(first.getByTestId("create-work-item-dialog")).toBeVisible();
       await first.getByTestId("create-work-item-type-trigger").click();
-      // The type picker is a Kaneo popover listing types as buttons.
+      // The type picker is a library radio menu listing types as menu items.
       await first
-        .locator('[data-slot="popover-popup"]')
-        .getByRole("button", { name: "Task", exact: true })
+        .getByRole("menuitemradio", { name: "Task", exact: true })
         .click();
       await first.getByTestId("create-work-item-title").fill(createdTitle);
       const createdResponse = settle(

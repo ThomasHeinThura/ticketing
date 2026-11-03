@@ -3669,6 +3669,7 @@
 			"importedOn": "Imported {{date}}",
 			"openSource": "Open the original in {{system}}",
 			"requester": "Pemohon",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "Tanpa pemohon",
 			"requesterSearch": "Cari pelanggan",
 			"noRequesterMatch": "Tidak ada pelanggan yang cocok.",

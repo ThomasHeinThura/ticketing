@@ -3761,6 +3761,7 @@
 			"importedOn": "Imported {{date}}",
 			"openSource": "Open the original in {{system}}",
 			"requester": "Заявитель",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "Без заявителя",
 			"requesterSearch": "Поиск клиентов",
 			"noRequesterMatch": "Нет подходящих клиентов.",

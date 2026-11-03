@@ -3705,6 +3705,7 @@
 			"importedOn": "Imported {{date}}",
 			"openSource": "Open the original in {{system}}",
 			"requester": "Zgłaszający",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "Brak zgłaszającego",
 			"requesterSearch": "Szukaj klientów",
 			"noRequesterMatch": "Żaden klient nie pasuje.",

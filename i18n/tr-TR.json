@@ -3681,6 +3681,7 @@
 			"importedOn": "Imported {{date}}",
 			"openSource": "Open the original in {{system}}",
 			"requester": "Talep eden",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "Talep eden yok",
 			"requesterSearch": "Müşteri ara",
 			"noRequesterMatch": "Eşleşen müşteri yok.",

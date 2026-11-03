@@ -3669,6 +3669,7 @@
 			"importedOn": "Imported {{date}}",
 			"openSource": "Open the original in {{system}}",
 			"requester": "Người yêu cầu",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "Không có người yêu cầu",
 			"requesterSearch": "Tìm khách hàng",
 			"noRequesterMatch": "Không có khách hàng phù hợp.",

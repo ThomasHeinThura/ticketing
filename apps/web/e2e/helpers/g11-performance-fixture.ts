@@ -1318,7 +1318,10 @@ export async function installPerformanceApiFixture(
       "click",
       (event) => {
         const target = event.target as Element | null;
-        const button = target?.closest("button");
+        // Property pickers are library menus: their options are menu items, not buttons.
+        const button = target?.closest(
+          'button,[role="menuitem"],[role="menuitemradio"]',
+        );
         const label = button?.textContent?.trim();
         if (label === "Create") {
           metrics.interactionStart = performance.now();
