@@ -9090,7 +9090,8 @@
 			"team": "Team",
 			"save": "Save report",
 			"update": "Save changes",
-			"saved": "Report saved"
+			"saved": "Report saved",
+			"readOnly": "Your role can run reports but not save them."
 		},
 		"dashboard": {
 			"title": "Dashboard",

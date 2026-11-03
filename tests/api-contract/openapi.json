@@ -198,6 +198,10 @@
           "manageServiceCalendars": {
             "type": "boolean"
           },
+          "createSavedViews": {
+            "type": "boolean",
+            "description": "Strict saved_view:create (also held through saved_view:share): may save a view or a custom report. Absent means denied."
+          },
           "shareSavedViews": {
             "type": "boolean"
           },
@@ -114762,6 +114766,25 @@
                     },
                     "costVisible": {
                       "type": "boolean"
+                    },
+                    "organisations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      },
+                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's."
                     }
                   },
                   "required": [
@@ -116877,6 +116900,25 @@
                     },
                     "costVisible": {
                       "type": "boolean"
+                    },
+                    "organisations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      },
+                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's."
                     }
                   },
                   "required": [
@@ -118625,6 +118667,25 @@
                     },
                     "costVisible": {
                       "type": "boolean"
+                    },
+                    "organisations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      },
+                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's."
                     }
                   },
                   "required": [

@@ -213,7 +213,23 @@ export function DashboardWidgetCard({
               ) : report.empty ? (
                 <ReportEmpty report={report} className="p-2 md:p-2" />
               ) : widget.chartType === "number" ? (
-                first ? (
+                first?.value === null ? (
+                  // RP-1's "Not enough data (n of m needed)" is a sentence, not a figure: body
+                  // size under its name, so a two-row KPI tile keeps both inside its frame.
+                  <div
+                    className="space-y-0.5"
+                    data-testid="dashboard-widget-insufficient"
+                  >
+                    <p className="font-medium text-sm">
+                      {t(`reports:metrics.${first.key}`, {
+                        defaultValue: first.label,
+                      })}
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      {metricText(first, t)}
+                    </p>
+                  </div>
+                ) : first ? (
                   // The figure and its name share a line when they fit, so a two-row KPI tile
                   // shows both without scrolling, in the editor too.
                   <div className="flex flex-wrap items-baseline gap-x-2">

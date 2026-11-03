@@ -62,7 +62,7 @@ export const PROJECT_ID = "project-g11";
 export const TYPE_ID = "type-g11";
 const PROJECT_KEY = "WLP";
 /** A fresh deployment's resolved switches (`FEATURE_FLAG_DEFAULTS` in @taskdesk/permissions). */
-const DEFAULT_RESOLVED_FEATURES = [
+export const DEFAULT_RESOLVED_FEATURES = [
   "feature.cycles",
   "feature.modules",
   "feature.estimates",
@@ -584,6 +584,8 @@ export async function installPerformanceApiFixture(
         removeMembers: false,
         createPublicComments: true,
         createInternalComments: true,
+        // A lead-like role (delete/assign): saved_view:share implies saved_view:create.
+        createSavedViews: true,
         ...(workflowCapabilities
           ? { transitionTasks: true, rankTasks: true }
           : {}),

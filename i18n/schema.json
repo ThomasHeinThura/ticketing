@@ -37417,6 +37417,9 @@
 						},
 						"saved": {
 							"type": "string"
+						},
+						"readOnly": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -37436,7 +37439,8 @@
 						"team",
 						"save",
 						"update",
-						"saved"
+						"saved",
+						"readOnly"
 					]
 				},
 				"dashboard": {
