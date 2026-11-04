@@ -251,6 +251,12 @@ export default function WorkItemCommentComposer({
     if (loadedDraftKey !== draftStorageKey) return;
     persistedDraftRef.current = snapshot;
     try {
+      // CA-2: an empty composer always opens on the project's default visibility, so a
+      // choice is remembered only alongside real draft text (CA-16).
+      if (!snapshot.text.trim()) {
+        window.localStorage.removeItem(draftStorageKey);
+        return;
+      }
       window.localStorage.setItem(
         draftStorageKey,
         JSON.stringify({ ...snapshot, visibility: nextVisibility }),
@@ -288,7 +294,11 @@ export default function WorkItemCommentComposer({
       };
       persistedDraftRef.current = savedDraft;
       setDraft(savedDraft);
-      if (record.visibility === "public" || record.visibility === "internal") {
+      // An empty saved draft (written before CA-2 was enforced here) keeps the default.
+      if (
+        savedDraft.text.trim() &&
+        (record.visibility === "public" || record.visibility === "internal")
+      ) {
         visibilityRef.current = record.visibility;
         setVisibility(record.visibility);
       }
@@ -348,6 +358,9 @@ export default function WorkItemCommentComposer({
       persistedDraftRef.current = emptyDraft;
       setDraft(emptyDraft);
       setShareFiles(false);
+      // The next comment starts from the project's default visibility (CA-2).
+      visibilityRef.current = defaultVisibility;
+      setVisibility(defaultVisibility);
       await queryClient.invalidateQueries({
         queryKey: ["work-items", "comment-mention-candidates", workItemKey],
       });

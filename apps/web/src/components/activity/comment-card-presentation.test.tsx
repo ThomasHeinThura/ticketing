@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  ActivityActorPresentation,
   ActivityEventPresentation,
   CommentCardPresentation,
 } from "./comment-card-presentation";
@@ -69,5 +70,20 @@ describe("shared original Kaneo activity presentation", () => {
       row.querySelector('[data-slot="timeline-content"]'),
     ).toHaveTextContent("Actor Changed state Now");
     expect(row).not.toHaveClass("border", "rounded-lg");
+  });
+  it("lets a long author name shrink and truncate inside the comment card", () => {
+    const name = "Katherine Johnson-Featherstonehaugh of the Customer Desk";
+    render(
+      <CommentCardPresentation
+        header={<ActivityActorPresentation name={name} />}
+      >
+        <p>Body</p>
+      </CommentCardPresentation>,
+    );
+    const chip = screen.getByRole("button", { name: new RegExp(name) });
+    // The library Button is shrink-0 and nowrap; without these it ran past the card at 375px.
+    // The full name stays in the button's accessible name and in its hover card.
+    expect(chip).toHaveClass("min-w-0", "max-w-full");
+    expect(screen.getByText(name)).toHaveClass("truncate");
   });
 });

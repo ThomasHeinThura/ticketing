@@ -447,6 +447,33 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canManageWorkspaceSettings()).toBe(false);
   });
 
+  it("exposes saved_view:create from its own key and fails closed when the server omits it", async () => {
+    capabilitiesGet.mockResolvedValueOnce({
+      ok: true,
+      json: async () => fullCapabilityMap({ createSavedViews: true }),
+    });
+    const allowed = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(allowed.result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(allowed.result.current.canCreateSavedViews()).toBe(true);
+
+    // A viewer: reads saved views, may not save one (`POST /api/views` answers 403).
+    capabilitiesGet.mockResolvedValueOnce({
+      ok: true,
+      json: async () => fullCapabilityMap({ shareSavedViews: false }),
+    });
+    const denied = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(denied.result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(denied.result.current.canCreateSavedViews()).toBe(false);
+  });
+
   it("keeps the saved-view audience capabilities bound to the view's workspace, not the active one", async () => {
     activeWorkspaceId.value = "active-workspace-A";
     capabilitiesGet.mockResolvedValue({

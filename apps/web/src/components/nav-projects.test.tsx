@@ -7,6 +7,12 @@ const mocks = vi.hoisted(() => ({
   dndContext: vi.fn(),
   sortable: vi.fn(),
   navigate: vi.fn(),
+  params: { workspaceId: "workspace-1", projectId: "project-1" } as Record<
+    string,
+    string
+  >,
+  workItemKey: undefined as string | undefined,
+  details: {} as Record<string, { projectId: string }>,
 }));
 
 afterEach(() => {
@@ -15,6 +21,9 @@ afterEach(() => {
   mocks.sortable.mockClear();
   mocks.navigate.mockClear();
   mocks.canReorder = false;
+  mocks.params = { workspaceId: "workspace-1", projectId: "project-1" };
+  mocks.workItemKey = undefined;
+  mocks.details = {};
 });
 
 vi.mock("@dnd-kit/core", () => {
@@ -86,11 +95,20 @@ vi.mock("@dnd-kit/utilities", () => ({
 
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  // Only the work-item detail cache is read here; it is never fetched by the sidebar.
+  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => ({
+    data: mocks.details[String(queryKey[2])],
+  }),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
-  useParams: () => ({ workspaceId: "workspace-1", projectId: "project-1" }),
+  useParams: () => mocks.params,
+  useMatch: ({ from }: { from: string }) =>
+    from === "/_layout/_authenticated/agent/work-items/$key" &&
+    mocks.workItemKey
+      ? { params: { key: mocks.workItemKey } }
+      : undefined,
 }));
 
 vi.mock("@/components/common/action-tooltip", () => ({
@@ -136,7 +154,24 @@ vi.mock("@taskdesk/ui", () => {
     SidebarMenu: ({ children }: { children: React.ReactNode }) => (
       <ul>{children}</ul>
     ),
-    SidebarMenuButton: button,
+    SidebarMenuButton: ({
+      children,
+      onClick,
+      isActive,
+    }: {
+      children: React.ReactNode;
+      onClick?: () => void;
+      isActive?: boolean;
+    }) => (
+      // ui-exempt: test double exposing the shared sidebar button's active state.
+      <button
+        type="button"
+        onClick={onClick}
+        data-active={isActive ? "true" : undefined}
+      >
+        {children}
+      </button>
+    ),
     SidebarMenuItem: ({ children }: { children: React.ReactNode }) => (
       <li>{children}</li>
     ),
@@ -178,6 +213,12 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
         name: "Visible Project",
         workspaceId: "workspace-1",
       },
+      {
+        id: "project-2",
+        slug: "OPS-EU",
+        name: "Operations EU",
+        workspaceId: "workspace-1",
+      },
     ],
   }),
 }));
@@ -214,7 +255,7 @@ describe("NavProjects drag-and-drop setup", () => {
     render(<NavProjects />);
 
     expect(screen.getByText("Visible Project")).toBeVisible();
-    expect(screen.getByRole("listitem")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expect(screen.queryByTestId("project-dnd-context")).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("project-sortable-context"),
@@ -234,7 +275,8 @@ describe("NavProjects drag-and-drop setup", () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId("project-sortable-context")).toBeInTheDocument();
     expect(mocks.dndContext).toHaveBeenCalledOnce();
-    expect(mocks.sortable).toHaveBeenCalledOnce();
+    // One sortable row per project.
+    expect(mocks.sortable).toHaveBeenCalledTimes(2);
   });
 
   it("cleans up an active drag if reordering capability is revoked", async () => {
@@ -250,5 +292,35 @@ describe("NavProjects drag-and-drop setup", () => {
     await screen.findByText("Visible Project");
     expect(document.body).not.toHaveClass("taskdesk-dragging");
     expect(screen.queryByTestId("project-dnd-context")).not.toBeInTheDocument();
+  });
+});
+
+describe("NavProjects current project", () => {
+  const active = () =>
+    screen
+      .getAllByRole("button")
+      .filter((button) => button.dataset.active === "true")
+      .map((button) => button.textContent);
+
+  it("highlights the work item's project from its key before the detail loads", () => {
+    mocks.params = { key: "OPS-EU-12" };
+    mocks.workItemKey = "OPS-EU-12";
+    render(<NavProjects />);
+    expect(active()).toEqual(["Operations EU"]);
+  });
+
+  it("prefers the loaded work item's project over the key prefix", () => {
+    mocks.params = { key: "VIS-3" };
+    mocks.workItemKey = "VIS-3";
+    // The item moved projects; its old key still resolves to it.
+    mocks.details = { "VIS-3": { projectId: "project-2" } };
+    render(<NavProjects />);
+    expect(active()).toEqual(["Operations EU"]);
+  });
+
+  it("does not treat a report's $key as a project", () => {
+    mocks.params = { key: "VIS-3" };
+    render(<NavProjects />);
+    expect(active()).toEqual([]);
   });
 });

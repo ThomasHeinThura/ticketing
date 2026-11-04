@@ -48,4 +48,17 @@ describe("shared Kaneo task presentation", () => {
       "[&_textarea]:leading-[1.15]",
     );
   });
+  it("shows a visible focus ring around the title while it has keyboard focus", () => {
+    render(<TaskTitlePresentation aria-label="Title" defaultValue="Title" />);
+    const wrapper = screen
+      .getByRole("textbox", { name: "Title" })
+      .closest("[data-slot=textarea-control]");
+    // Idle it keeps Kaneo's borderless title; focus-visible draws the library ring.
+    expect(wrapper).toHaveClass(
+      "has-focus-visible:ring-2",
+      "has-focus-visible:ring-ring",
+      "has-focus-visible:ring-offset-2",
+    );
+    expect(wrapper).not.toHaveClass("ring-2");
+  });
 });

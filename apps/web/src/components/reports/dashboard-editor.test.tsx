@@ -31,6 +31,10 @@ vi.mock("react-i18next", () => ({
       options && "title" in options ? `${key} ${options.title}` : key,
   }),
 }));
+// The feature gate has its own suite (`report-permissions.test.tsx`); here Reports are on.
+vi.mock("./reports-feature-gate", () => ({
+  ReportsFeatureGate: ({ children }: { children: React.ReactNode }) => children,
+}));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/lib/toast", () => ({
   toast: { error: mocks.toastError, success: vi.fn() },

@@ -1,4 +1,4 @@
-import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { BUILT_IN_ROLES, type ResolvedIdentity } from "@taskdesk/permissions";
 import {
   and,
   eq,
@@ -11,6 +11,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { isBuiltInWorkspaceRoleKey } from "../../permissions/resolve-identity";
 import db from "..";
 import type { Executor } from "../executor";
 import {
@@ -40,12 +41,75 @@ export function canonicalScopedRoleMembership(
     sql`length(${roleId}) > 0`,
     eq(roleWorkspaceId, scopeWorkspaceId),
     sql`length(${roleKey}) > 0`,
+    wellFormedRoleRow(roleRank, capabilities),
+  );
+}
+
+/** resolveIdentity's role-row shape check: a 32-bit rank and an array of string capabilities. */
+function wellFormedRoleRow(roleRank: SQLWrapper, capabilities: SQLWrapper) {
+  return and(
     sql`${roleRank} BETWEEN -2147483648 AND 2147483647`,
     sql`CASE WHEN jsonb_typeof(${capabilities}) = 'array' THEN NOT EXISTS (
       SELECT 1 FROM jsonb_array_elements(${capabilities}) AS scoped_capability(value)
       WHERE jsonb_typeof(scoped_capability.value) <> 'string'
     ) ELSE false END`,
   );
+}
+
+/**
+ * Does a `workspace_member.role` key grant a workspace role in `workspaceId`? The precedence of
+ * resolveIdentity's legacy membership branch, read from the current rows. The canonical row is
+ * keyed exactly as resolveIdentity's loader keys it (scope, workspace, key), so a malformed
+ * canonical row still blocks the legacy fallback.
+ */
+function legacyWorkspaceKeyAdmitted(
+  roleKey: string,
+  workspaceId: SQLWrapper,
+  executor: Executor,
+) {
+  if (roleKey === "owner") return sql`true`;
+  const isBuiltInKey = Object.hasOwn(BUILT_IN_ROLES, roleKey);
+  // `instance_admin` and `customer` are built-ins of another scope, never a workspace role.
+  if (isBuiltInKey && !isBuiltInWorkspaceRoleKey(roleKey)) return sql`false`;
+
+  const canonicalRow = and(
+    eq(roleTable.scope, "workspace"),
+    eq(roleTable.workspaceId, workspaceId),
+    eq(roleTable.key, roleKey),
+  );
+  const canonicalRowExists = exists(
+    executor.select({ one: sql`1` }).from(roleTable).where(canonicalRow),
+  );
+  // A custom row that shares a built-in key is never trusted as that built-in (issue #318).
+  const canonicalRowAdmits = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(roleTable)
+      .where(
+        and(
+          canonicalRow,
+          wellFormedRoleRow(roleTable.rank, roleTable.capabilities),
+          isBuiltInKey ? eq(roleTable.isSystem, true) : undefined,
+        ),
+      ),
+  );
+  // Only viewer, member and admin have a legacy row; a custom key never falls back to one.
+  const legacySystemRowAdmits = isBuiltInKey
+    ? exists(
+        executor
+          .select({ one: sql`1` })
+          .from(workspaceRoleTable)
+          .where(
+            and(
+              eq(workspaceRoleTable.workspaceId, workspaceId),
+              eq(workspaceRoleTable.role, roleKey),
+              eq(workspaceRoleTable.isSystem, true),
+            ),
+          ),
+      )
+    : sql`false`;
+
+  return sql`CASE WHEN ${canonicalRowExists} THEN ${canonicalRowAdmits} ELSE ${legacySystemRowAdmits} END`;
 }
 
 export function currentInstanceAdminPredicate(
@@ -209,8 +273,17 @@ export function currentProjectReachPredicate(
 
 /**
  * Current staff reach to a workspace: instance admin, a valid workspace-scope membership row,
- * or a single legacy `workspace_member` row whose built-in key is backed by a genuine system
- * row, exactly the rows resolveIdentity admits a workspace grant through.
+ * or a single legacy `workspace_member` row whose key resolveIdentity admits, with its
+ * precedence (Thomas, 4 November 2026: a custom role reaches exactly as its canonical row
+ * grants, the rule #1035 applied to lead and manager):
+ *
+ * - `owner` is compiled-in and needs no role row;
+ * - otherwise the canonical workspace-scope `role` row for (workspace, key) is authoritative
+ *   when it exists, system or custom: it admits only when well formed, and a built-in key only
+ *   through its system row;
+ * - the legacy `workspace_role` system row backs a built-in workspace key only when no
+ *   canonical row exists. A custom key has no legacy fallback, and `instance_admin` or
+ *   `customer` is never a workspace role.
  */
 export function currentWorkspaceReachPredicate(
   identity: ResolvedIdentity,
@@ -249,46 +322,11 @@ export function currentWorkspaceReachPredicate(
         workspaceUserTable,
         "duplicate_workspace_member",
       );
-      // A non-owner built-in key is backed by a genuine seeded row: the legacy
-      // `workspace_role` row (only viewer, member and admin have one) or the canonical
-      // workspace-scope system `role` row that resolveIdentity admits it through (every
-      // built-in, including manager and lead). A custom row (`is_system = false`) never
-      // backs a key here.
-      const roleIsCanonical =
-        grant.roleKey === "owner"
-          ? sql`true`
-          : or(
-              exists(
-                executor
-                  .select({ one: sql`1` })
-                  .from(workspaceRoleTable)
-                  .where(
-                    and(
-                      eq(workspaceRoleTable.workspaceId, workspaceId),
-                      eq(workspaceRoleTable.role, grant.roleKey),
-                      eq(workspaceRoleTable.isSystem, true),
-                    ),
-                  ),
-              ),
-              exists(
-                executor
-                  .select({ one: sql`1` })
-                  .from(roleTable)
-                  .where(
-                    and(
-                      eq(roleTable.scope, "workspace"),
-                      eq(roleTable.workspaceId, workspaceId),
-                      eq(roleTable.key, grant.roleKey),
-                      eq(roleTable.isSystem, true),
-                      sql`${roleTable.rank} BETWEEN -2147483648 AND 2147483647`,
-                      sql`CASE WHEN jsonb_typeof(${roleTable.capabilities}) = 'array' THEN NOT EXISTS (
-                        SELECT 1 FROM jsonb_array_elements(${roleTable.capabilities}) AS canonical_capability(value)
-                        WHERE jsonb_typeof(canonical_capability.value) <> 'string'
-                      ) ELSE false END`,
-                    ),
-                  ),
-              ),
-            );
+      const roleIsCanonical = legacyWorkspaceKeyAdmitted(
+        grant.roleKey,
+        workspaceId,
+        executor,
+      );
       return and(
         eq(workspaceUserTable.workspaceId, workspaceId),
         eq(workspaceUserTable.userId, identity.userId),

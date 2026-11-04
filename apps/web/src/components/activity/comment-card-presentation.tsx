@@ -66,14 +66,16 @@ export function ActivityActorPresentation({
           <Button
             variant="ghost"
             size="sm"
-            className="h-auto gap-2 px-0 py-0 font-medium text-foreground"
+            className="h-auto min-w-0 max-w-full gap-2 px-0 py-0 font-medium text-foreground"
           />
         }
       >
         {showAvatar ? (
           <ActivityAvatarPresentation name={name} image={image} />
         ) : null}
-        <span className="text-sm font-medium text-foreground">{name}</span>
+        <span className="truncate text-sm font-medium text-foreground">
+          {name}
+        </span>
       </HoverCardTrigger>
       <HoverCardContent className="w-64 p-3">
         <div className="flex items-center gap-3">

@@ -237,3 +237,75 @@ describe("A-07 share files with the customer", () => {
     );
   });
 });
+
+describe("CA-2 default visibility versus CA-16 drafts", () => {
+  const DRAFT_KEY = "taskdesk:comment-draft:user-1:OPS-17";
+  const shownVisibility = (composer: HTMLElement) =>
+    composer
+      .querySelector("[data-visibility]")
+      ?.getAttribute("data-visibility");
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    resetWorkItemUploads();
+    mocks.createComment.mockReset().mockResolvedValue({ id: "comment-1" });
+    mocks.presign
+      .mockReset()
+      .mockResolvedValue(new Response("refused", { status: 500 }));
+  });
+
+  afterEach(() => {
+    cleanup();
+    resetWorkItemUploads();
+    window.localStorage.clear();
+  });
+
+  it("does not remember Public for an empty composer across a reload", async () => {
+    const ui = renderComposer("internal");
+    await waitFor(() => expect(shownVisibility(ui.composer)).toBe("internal"));
+    ui.choose("public");
+    expect(shownVisibility(ui.composer)).toBe("public");
+    expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+
+    cleanup();
+    const reloaded = renderComposer("internal");
+    await waitFor(() =>
+      expect(shownVisibility(reloaded.composer)).toBe("internal"),
+    );
+  });
+
+  it("ignores the visibility of an empty saved draft but keeps it with draft text", async () => {
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ text: "", document: null, visibility: "public" }),
+    );
+    const empty = renderComposer("internal");
+    await waitFor(() =>
+      expect(shownVisibility(empty.composer)).toBe("internal"),
+    );
+
+    cleanup();
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ text: "Half written", visibility: "public" }),
+    );
+    const drafted = renderComposer("internal");
+    await waitFor(() =>
+      expect(shownVisibility(drafted.composer)).toBe("public"),
+    );
+  });
+
+  it("starts the next comment on the project default after posting", async () => {
+    const ui = renderComposer("internal");
+    ui.choose("public");
+    ui.stage("guide.pdf");
+    expect(await screen.findByText("guide.pdf")).toBeVisible();
+    await ui.send();
+    await waitFor(() =>
+      expect(mocks.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ visibility: "public" }),
+      ),
+    );
+    await waitFor(() => expect(shownVisibility(ui.composer)).toBe("internal"));
+  });
+});

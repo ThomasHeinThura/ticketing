@@ -125,6 +125,13 @@ describe("the honesty rule on screen", () => {
     expect(screen.queryByText("100%")).toBeNull();
   });
 
+  it("sets 'not enough data' as body copy, not at the size of a figure", () => {
+    render(<ReportMetrics metrics={report().metrics} empty={false} />);
+    const sentence = screen.getByText("reports:notEnoughData 3/10");
+    expect(sentence.className).not.toMatch(/text-(2|3)xl/);
+    expect(sentence.className).toContain("text-sm");
+  });
+
   it("shows an exact quarter-hour as 0.25 hours", () => {
     const data = report({
       metrics: [

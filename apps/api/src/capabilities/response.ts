@@ -27,6 +27,10 @@ export const capabilitiesResponseSchema = z
     manageTeam: z.boolean(),
     removeMembers: z.boolean(),
     manageServiceCalendars: z.boolean(),
+    createSavedViews: z.boolean().optional().openapi({
+      description:
+        "Strict saved_view:create (also held through saved_view:share): may save a view or a custom report. Absent means denied.",
+    }),
     shareSavedViews: z.boolean(),
     triageIntake: z
       .boolean()

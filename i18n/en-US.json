@@ -3715,6 +3715,7 @@
 				"rollupBeside": "Σ {{value}} from children"
 			},
 			"requester": "Requester",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "No requester",
 			"requesterSearch": "Search customers",
 			"noRequesterMatch": "No customer matches.",
@@ -9107,7 +9108,8 @@
 			"team": "Team",
 			"save": "Save report",
 			"update": "Save changes",
-			"saved": "Report saved"
+			"saved": "Report saved",
+			"readOnly": "Your role can run reports but not save them."
 		},
 		"dashboard": {
 			"title": "Dashboard",

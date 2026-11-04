@@ -31,7 +31,13 @@ vi.mock("./work-item-parent-control", () => ({
   default: () => <div data-testid="parent-control" />,
 }));
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    // The requester row label interpolates the person; keep the name visible to queries.
+    t: (key: string, options?: { name?: string }) =>
+      key === "workItems:properties.requesterValue" && options?.name
+        ? `${key}: ${options.name}`
+        : key,
+  }),
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
 vi.mock("@/fetchers/work-item/get-work-item-labels", () => ({
@@ -314,7 +320,9 @@ describe("WorkItemProperties", () => {
     mocks.update.mockResolvedValue({});
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /High/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /Urgent/ }));
+    fireEvent.click(
+      await screen.findByRole("menuitemradio", { name: /Urgent/ }),
+    );
     await waitFor(() =>
       expect(mocks.update).toHaveBeenCalledWith({
         key: "HELP-7",
@@ -328,7 +336,7 @@ describe("WorkItemProperties", () => {
     mocks.update.mockRejectedValue(new WorkItemVersionConflictError(4, 5));
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /High/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /Low/ }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: /Low/ }));
     const notice = await screen.findByTestId("work-item-conflict");
     expect(notice).toHaveTextContent("workItems:properties.conflict");
     expect(mocks.toastError).not.toHaveBeenCalled();
@@ -348,13 +356,17 @@ describe("WorkItemProperties", () => {
       current,
     );
     fireEvent.click(screen.getByTestId("work-item-priority-control"));
-    fireEvent.click(await screen.findByRole("button", { name: /Low/ }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: /Low/ }));
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: /Urgent/ })).toBeNull(),
+      expect(
+        screen.queryByRole("menuitemradio", { name: /Urgent/ }),
+      ).toBeNull(),
     );
     // The row still renders version 4 (no refetch has landed); the save must not.
     fireEvent.click(screen.getByTestId("work-item-priority-control"));
-    fireEvent.click(await screen.findByRole("button", { name: /Urgent/ }));
+    fireEvent.click(
+      await screen.findByRole("menuitemradio", { name: /Urgent/ }),
+    );
     await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
     expect(mocks.update.mock.calls[0]?.[0]).toMatchObject({ version: 4 });
     expect(mocks.update.mock.calls[1]?.[0]).toMatchObject({ version: 5 });
@@ -371,7 +383,7 @@ describe("WorkItemProperties", () => {
     );
     const detailKey = ["work-items", "detail", "HELP-7"];
     fireEvent.click(screen.getByTestId("work-item-priority-control"));
-    fireEvent.click(await screen.findByRole("button", { name: /Low/ }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: /Low/ }));
     await waitFor(() =>
       expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
         version: 5,
@@ -392,7 +404,9 @@ describe("WorkItemProperties", () => {
     // A refetch that left before the save lands late with the old version.
     client.setQueryData(detailKey, current);
     fireEvent.click(screen.getByTestId("work-item-priority-control"));
-    fireEvent.click(await screen.findByRole("button", { name: /Urgent/ }));
+    fireEvent.click(
+      await screen.findByRole("menuitemradio", { name: /Urgent/ }),
+    );
     await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
     expect(mocks.update.mock.calls[1]?.[0]).toMatchObject({
       version: 5,
@@ -404,7 +418,7 @@ describe("WorkItemProperties", () => {
     mocks.canSetPriority = false;
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     fireEvent.click(screen.getByTestId("work-item-priority-control"));
-    expect(screen.queryByRole("button", { name: /Urgent/ })).toBeNull();
+    expect(screen.queryByRole("menuitemradio", { name: /Urgent/ })).toBeNull();
   });
 
   it("shows an unavailable field read-only with its badge", () => {
@@ -434,6 +448,58 @@ describe("WorkItemProperties", () => {
     await waitFor(() => expect(onAccessLost).toHaveBeenCalled());
   });
 
+  it("opens the status moves from the keyboard and moves between them with the arrow keys", async () => {
+    mocks.transitions = ["In progress", "Review"].map((name, index) => ({
+      transitionId: `t${index}`,
+      toStateTemplateId: `tpl-${index}`,
+      toStateName: name,
+      notePolicy: "none",
+      available: true,
+      blockedBy: [],
+    }));
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    const trigger = screen.getByTestId("work-item-state-control");
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const first = await screen.findByRole("menuitem", { name: /In progress/ });
+    await waitFor(() => expect(first).toHaveFocus());
+    fireEvent.keyDown(first, { key: "ArrowDown" });
+    await waitFor(() =>
+      expect(screen.getByRole("menuitem", { name: /Review/ })).toHaveFocus(),
+    );
+    fireEvent.keyDown(document.activeElement as Element, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("returns focus to the status trigger when the note popover closes", async () => {
+    mocks.transitions = [
+      {
+        transitionId: "t-note",
+        toStateTemplateId: "tpl-review",
+        toStateName: "Review",
+        notePolicy: "required",
+        available: false,
+        blockedBy: [{ reasonCode: "note.required" }],
+      },
+    ];
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    const trigger = screen.getByTestId("work-item-state-control");
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Review/ }));
+    const note = await screen.findByLabelText(
+      "workItems:properties.transitionNote",
+    );
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    fireEvent.keyDown(note, { key: "Escape" });
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText("workItems:properties.transitionNote"),
+      ).toBeNull(),
+    );
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
   it("gives a refused transition its specific message", async () => {
     mocks.transition.mockRejectedValue(new HttpError(422, "blocked"));
     mocks.transitions = [
@@ -448,7 +514,9 @@ describe("WorkItemProperties", () => {
     ];
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     fireEvent.click(screen.getByTestId("work-item-state-control"));
-    fireEvent.click(await screen.findByRole("button", { name: /In progress/ }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: /In progress/ }),
+    );
     expect(
       await screen.findByText("workItems:journey.transitionUnavailable"),
     ).toBeInTheDocument();
@@ -467,8 +535,8 @@ describe("WorkItemProperties", () => {
     ];
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     fireEvent.click(screen.getByTestId("work-item-state-control"));
-    const held = await screen.findByRole("button", { name: /Held/ });
-    expect(held).toBeDisabled();
+    const held = await screen.findByRole("menuitem", { name: /Held/ });
+    expect(held).toHaveAttribute("aria-disabled", "true");
     expect(held).toHaveTextContent("workItems:journey.reasonUnknown");
   });
 
@@ -486,7 +554,7 @@ describe("WorkItemProperties", () => {
     ];
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     fireEvent.click(screen.getByTestId("work-item-state-control"));
-    fireEvent.click(await screen.findByRole("button", { name: /Review/ }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Review/ }));
     const move = screen.getByRole("button", {
       name: "workItems:properties.move",
     });
@@ -510,7 +578,7 @@ describe("WorkItemProperties", () => {
       <WorkItemProperties item={item()} onAccessLost={onAccessLost} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /High/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /Low/ }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: /Low/ }));
     await waitFor(() => expect(onAccessLost).toHaveBeenCalledTimes(1));
   });
 
@@ -536,12 +604,12 @@ describe("WorkItemProperties", () => {
     ];
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     fireEvent.click(screen.getByTestId("work-item-state-control"));
-    const blocked = await screen.findByRole("button", { name: /Done/ });
-    expect(blocked).toBeDisabled();
+    const blocked = await screen.findByRole("menuitem", { name: /Done/ });
+    expect(blocked).toHaveAttribute("aria-disabled", "true");
     expect(blocked).toHaveTextContent(
       "workItems:journey.reasonApprovalPending",
     );
-    fireEvent.click(screen.getByRole("button", { name: /In progress/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /In progress/ }));
     await waitFor(() =>
       expect(mocks.transition.mock.calls[0]?.[0]).toEqual({
         key: "HELP-7",
@@ -564,7 +632,7 @@ describe("WorkItemProperties", () => {
     ];
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     fireEvent.click(screen.getByTestId("work-item-state-control"));
-    fireEvent.click(await screen.findByRole("button", { name: /Closed/ }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Closed/ }));
     const move = screen.getByRole("button", {
       name: "workItems:properties.move",
     });
@@ -617,7 +685,7 @@ describe("WorkItemProperties", () => {
       mocks.transitions = closeOffer("none");
       renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
       fireEvent.click(screen.getByTestId("work-item-state-control"));
-      fireEvent.click(await screen.findByRole("button", { name: /Done/ }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: /Done/ }));
       expect(
         await screen.findByTestId("open-children-warning"),
       ).toHaveTextContent("workItems:openChildren.item");
@@ -638,7 +706,7 @@ describe("WorkItemProperties", () => {
       mocks.transitions = closeOffer("none");
       renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
       fireEvent.click(screen.getByTestId("work-item-state-control"));
-      fireEvent.click(await screen.findByRole("button", { name: /Done/ }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: /Done/ }));
       await screen.findByTestId("open-children-warning");
       fireEvent.click(
         screen.getByRole("button", { name: "common:actions.cancel" }),
@@ -655,7 +723,7 @@ describe("WorkItemProperties", () => {
       mocks.transitions = closeOffer("required");
       renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
       fireEvent.click(screen.getByTestId("work-item-state-control"));
-      fireEvent.click(await screen.findByRole("button", { name: /Done/ }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: /Done/ }));
       await screen.findByTestId("open-children-warning");
       fireEvent.click(
         screen.getByRole("button", { name: "workItems:openChildren.confirm" }),
@@ -674,7 +742,7 @@ describe("WorkItemProperties", () => {
       mocks.transitions = closeOffer("none");
       renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
       fireEvent.click(screen.getByTestId("work-item-state-control"));
-      fireEvent.click(await screen.findByRole("button", { name: /Done/ }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: /Done/ }));
       await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(1));
       expect(screen.queryByTestId("open-children-warning")).toBeNull();
     });
@@ -901,7 +969,14 @@ describe("WorkItemProperties", () => {
         onAccessLost={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Alice Customer/ }));
+    const requester = screen.getByTestId("work-item-requester-control");
+    // Plain text, labelled as the requester (it sits directly under Assignee).
+    expect(requester).toHaveTextContent(
+      "workItems:properties.requesterValue: Alice Customer",
+    );
+    expect(requester.tagName).toBe("DIV");
+    expect(screen.queryByRole("button", { name: /Alice Customer/ })).toBeNull();
+    fireEvent.click(requester);
     expect(
       screen.queryByRole("textbox", {
         name: "workItems:properties.requesterSearch",
@@ -909,15 +984,66 @@ describe("WorkItemProperties", () => {
     ).toBeNull();
   });
 
+  it("names the editable requester row as the requester", () => {
+    renderProps(
+      <WorkItemProperties
+        item={item({ requesterId: "cust-1", requesterName: "Alice Customer" })}
+        onAccessLost={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", {
+        name: "workItems:properties.requesterValue: Alice Customer",
+      }),
+    ).toBeEnabled();
+  });
+
   it("shows every property read-only to a role that cannot change them", () => {
     mocks.canUpdate = false;
     mocks.canAssign = false;
     mocks.canTransition = false;
-    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: /High/ }));
-    expect(screen.queryByRole("button", { name: /Urgent/ })).toBeNull();
+    renderProps(
+      <WorkItemProperties
+        item={item({ dueDate: "2026-11-20T00:00:00.000Z" })}
+        onAccessLost={vi.fn()}
+      />,
+    );
+    // Read-only rows are text, not enabled buttons that do nothing: no button role, no
+    // tab stop, no pointer.
+    for (const control of [
+      "state",
+      "priority",
+      "assignee",
+      "requester",
+      "startDate",
+      "dueDate",
+    ]) {
+      const row = screen.getByTestId(`work-item-${control}-control`);
+      expect(row.tagName).toBe("DIV");
+      expect(row).not.toHaveAttribute("tabindex");
+      expect(row).toHaveAttribute("data-read-only", "true");
+      expect(row).toHaveClass("cursor-default");
+    }
+    expect(screen.queryByRole("button", { name: /High/ })).toBeNull();
+    fireEvent.click(screen.getByTestId("work-item-priority-control"));
+    expect(screen.queryByRole("menuitemradio", { name: /Urgent/ })).toBeNull();
     fireEvent.click(screen.getByTestId("work-item-state-control"));
     expect(screen.queryByText("workItems:properties.noTransitions")).toBeNull();
+  });
+
+  it("keeps every property row within the strip at phone width", () => {
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    // A fieldset's UA min-inline-size is min-content; without min-w-0 the strip overflowed
+    // left of the viewport beside the copy-link button at 375px.
+    expect(screen.getByTestId("work-item-property-controls")).toHaveClass(
+      "min-w-0",
+    );
+    for (const control of ["state", "priority", "assignee", "requester"]) {
+      expect(screen.getByTestId(`work-item-${control}-control`)).toHaveClass(
+        "min-w-0",
+        "max-w-full",
+      );
+    }
   });
 });
 
@@ -934,7 +1060,7 @@ describe("original numbered property shortcuts", () => {
     fireEvent.keyDown(document.body, { key: "5" });
     expect(mocks.update).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId("work-item-priority-control"));
-    const urgent = await screen.findByRole("button", { name: /Urgent/ });
+    const urgent = await screen.findByRole("menuitemradio", { name: /Urgent/ });
     expect(
       urgent.querySelector('[aria-hidden="true"]:last-child'),
     ).toHaveTextContent("5");
@@ -987,7 +1113,7 @@ describe("original numbered property shortcuts", () => {
     mocks.transition.mockResolvedValue({});
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     fireEvent.click(screen.getByTestId("work-item-state-control"));
-    await screen.findByRole("button", { name: /CAB done/ });
+    await screen.findByRole("menuitem", { name: /CAB done/ });
     fireEvent.keyDown(document.body, { key: "1" });
     expect(mocks.transition).not.toHaveBeenCalled();
     fireEvent.keyDown(document.body, { key: "2" });
@@ -1073,7 +1199,7 @@ describe("original numbered property shortcuts", () => {
       <WorkItemProperties item={item()} onAccessLost={vi.fn()} />,
     );
     fireEvent.click(screen.getByTestId("work-item-priority-control"));
-    await screen.findByRole("button", { name: /Urgent/ });
+    await screen.findByRole("menuitemradio", { name: /Urgent/ });
     rerender(
       <QueryClientProvider client={client}>
         <WorkItemProperties
@@ -1085,7 +1211,7 @@ describe("original numbered property shortcuts", () => {
     fireEvent.keyDown(document.body, { key: "5" });
     expect(mocks.update).not.toHaveBeenCalled();
     expect(
-      screen.queryByRole("button", { name: /Urgent/ }),
+      screen.queryByRole("menuitemradio", { name: /Urgent/ }),
     ).not.toBeInTheDocument();
   });
 });

@@ -18,6 +18,10 @@ vi.mock("react-i18next", () => ({
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
 }));
+// The feature gate has its own suite (`report-permissions.test.tsx`); here Reports are on.
+vi.mock("./reports-feature-gate", () => ({
+  ReportsFeatureGate: ({ children }: { children: React.ReactNode }) => children,
+}));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 
 const exported = vi.hoisted(() => ({
