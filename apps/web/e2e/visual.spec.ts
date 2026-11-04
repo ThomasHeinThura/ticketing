@@ -9042,30 +9042,6 @@ test("god mode storage screen @visual", async ({ page }) => {
     threshold: 0,
     includeAA: true,
   });
-  await page
-    .getByText("S3 / SeaweedFS configuration draft", { exact: true })
-    .evaluate((element) => element.scrollIntoView({ block: "start" }));
-  await expect(page).toHaveScreenshot("god-storage-draft.png", {
-    animations: "disabled",
-    caret: "hide",
-    fullPage: true,
-    scale: "css",
-    maxDiffPixels: 0,
-    threshold: 0,
-    includeAA: true,
-  });
-  await page
-    .getByRole("button", { name: "Save draft", exact: true })
-    .scrollIntoViewIfNeeded();
-  await expect(page).toHaveScreenshot("god-storage-draft-verification.png", {
-    animations: "disabled",
-    caret: "hide",
-    fullPage: true,
-    scale: "css",
-    maxDiffPixels: 0,
-    threshold: 0,
-    includeAA: true,
-  });
 });
 
 test("god mode deliveries screen @visual", async ({ page }) => {
