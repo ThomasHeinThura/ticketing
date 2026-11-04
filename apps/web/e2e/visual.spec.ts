@@ -6927,6 +6927,11 @@ test("portal catalogue selected form @visual", async ({ page }) => {
   // The lazy shell is ready: navigation and the top bar have both painted.
   await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
   await expect(page.getByText("Get help", { exact: true })).toBeVisible();
+  // The fixture lists two projects, so the lazy top-bar project selector (named by its
+  // aria-label) shows; wait for it so the screenshot never races its projects read.
+  await expect(
+    page.getByRole("button", { name: "Project", exact: true }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("portal-catalogue-selected-form.png", {
     animations: "disabled",
     caret: "hide",
@@ -6966,9 +6971,16 @@ test("portal request detail @visual", async ({ page }) => {
 test("portal submission detail @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("http://127.0.0.1:4179/submissions/SUB-7");
+  // The request page's layout: back link, the title (the request type until the team
+  // accepts it) and the reference.
   await expect(
-    page.getByRole("heading", { name: "Request SUB-7", exact: true }),
+    page.getByRole("heading", {
+      level: 1,
+      name: "Access request",
+      exact: true,
+    }),
   ).toBeVisible();
+  await expect(page.getByText("SUB-7", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Your answers" }),
   ).toBeVisible();

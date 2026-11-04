@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@taskdesk/ui";
 import { ChevronDown, FolderKanban } from "lucide-react";
+import { useEffect } from "react";
 import {
   getPortalProjects,
   portalProjectKeys,
@@ -57,6 +58,24 @@ export default function PortalProjectSelector() {
     staleTime: 60_000,
   });
   const options = projects.data?.data ?? [];
+  // A `?project=` key the organisation does not have (mistyped, foreign or removed) would blank
+  // every scoped screen: once the list has loaded, drop it. Never while loading or after an error.
+  const scoped = parsePortalProjectSearch(search).project;
+  const unknownScope =
+    scoped !== undefined &&
+    projects.isSuccess &&
+    !projects.data.data.some((project) => project.key === scoped);
+  useEffect(() => {
+    if (!unknownScope) return;
+    void navigate({
+      to: ".",
+      search: (previous: Record<string, unknown>) => ({
+        ...previous,
+        project: undefined,
+      }),
+      replace: true,
+    });
+  }, [unknownScope, navigate]);
   if (options.length < 2) return null;
   const current = options.find((project) => project.key === selected);
 

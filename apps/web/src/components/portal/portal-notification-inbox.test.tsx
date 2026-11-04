@@ -159,6 +159,56 @@ describe("portal notification inbox", () => {
     expect(screen.queryByText(/staff|internal triage/iu)).toBeNull();
   });
 
+  it("reads a notification when it is opened and refreshes the unread count", async () => {
+    mocks.get
+      .mockReset()
+      .mockResolvedValueOnce(page)
+      .mockResolvedValue({
+        ...page,
+        data: [{ ...page.data[0], isRead: true }],
+        unreadCount: 0,
+      });
+    renderInbox();
+    const link = await screen.findByRole("link", {
+      name: "notifications.events.comment",
+    });
+    fireEvent.click(link);
+    await waitFor(() =>
+      expect(mocks.read).toHaveBeenCalledWith("notification-1"),
+    );
+    expect(mocks.unread).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(2));
+    // A read notification opened again is not toggled back to unread.
+    fireEvent.click(
+      await screen.findByRole("link", { name: "notifications.events.comment" }),
+    );
+    expect(mocks.read).toHaveBeenCalledTimes(1);
+    expect(mocks.unread).not.toHaveBeenCalled();
+  });
+
+  it("dates each notification like the rest of the portal and keeps its reference in the header", async () => {
+    renderInbox();
+    await screen.findByRole("link", { name: "notifications.events.comment" });
+    const time = document.querySelector("time");
+    expect(time).toHaveAttribute("dateTime", "2026-10-26T10:00:00.000Z");
+    const expected = new Intl.DateTimeFormat(undefined, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date("2026-10-26T10:00:00.000Z"));
+    expect(time).toHaveTextContent(expected);
+    expect(time?.textContent).not.toBe(
+      new Date("2026-10-26T10:00:00.000Z").toLocaleString(),
+    );
+    // The reference shares the header's description line (no separate, differently padded panel).
+    const description = time?.closest("[data-slot=card-description]");
+    expect(description).toHaveTextContent("notifications.requestReference");
+    expect(document.querySelector("[data-slot=card-panel]")).toBeNull();
+    expect(document.title).toBe("notifications.title · navigation.title");
+  });
+
   it("uses customer-scoped read controls and sends the selected filter to the API", async () => {
     renderInbox();
     await screen.findByRole("link", { name: "notifications.events.comment" });

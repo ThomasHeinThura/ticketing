@@ -1,5 +1,6 @@
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@taskdesk/ui";
 import { type CSSProperties, lazy, type ReactNode, Suspense } from "react";
+import PageTitle from "@/components/page-title";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import type { PortalShellUser } from "./portal-user-menu";
 
@@ -22,6 +23,8 @@ export default function PortalLayout({
   const { t } = usePortalTranslation("portal");
   return (
     <div className="flex w-full bg-background">
+      {/* Until a page names itself (every portal page renders a PortalPageTitle). */}
+      <PageTitle fallback hideAppName title={t("navigation.title")} />
       <SidebarProvider
         // WCAG 2.4.1: the first Tab stop skips the sidebar to the inset `main`.
         skipLinkLabel={t("common:a11y.skipToContent")}

@@ -36,6 +36,7 @@ import { type PortalHomeSearch, routes } from "@/lib/routes";
 import type { PortalCaseFilterPatch } from "../cases/portal-case-filters";
 import { PortalOutstandingCases } from "../cases/portal-outstanding-cases";
 import { PortalHomeKpis } from "../portal-home-kpis";
+import { PortalPageTitle } from "../portal-page-title";
 import {
   formatPortalCalendarDate,
   formatPortalHours,
@@ -542,6 +543,15 @@ export function PortalProjectDetails({
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+      <PortalPageTitle
+        title={
+          notFound
+            ? t("projects.detail.notFound.title")
+            : project
+              ? `${project.name} · ${project.key}`
+              : projectKey
+        }
+      />
       <div>
         <Button
           variant="ghost"
@@ -598,12 +608,7 @@ export function PortalProjectDetails({
             project={project.key}
             label={t("projects.detail.figures")}
           />
-          <PortalOutstandingCases
-            portalUserId={portalUserId}
-            filters={caseFilters}
-            project={project.key}
-            onChange={onCaseFiltersChange}
-          />
+          {/* The project's facts lead, as on the v1 project page; its cases follow. */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <InformationCard project={project} />
             <ContactsCard project={project} />
@@ -612,6 +617,12 @@ export function PortalProjectDetails({
             <SubscriptionCard project={project} />
             <HoursCard project={project} />
           </div>
+          <PortalOutstandingCases
+            portalUserId={portalUserId}
+            filters={caseFilters}
+            project={project.key}
+            onChange={onCaseFiltersChange}
+          />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <SummaryCard project={project} />
             <MilestonesCard project={project} />

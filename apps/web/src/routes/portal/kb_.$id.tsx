@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PortalKbArticleView } from "@/components/kb/portal/portal-kb-article";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
   parsePortalProjectSearch,
   portalProjectSearchMiddlewares,
@@ -13,7 +15,13 @@ export const Route = createFileRoute("/kb_/$id")({
 });
 
 function PortalKbArticle() {
+  const { t } = usePortalTranslation("portal");
   const { id } = Route.useParams();
   const { portalUserId } = Route.useRouteContext();
-  return <PortalKbArticleView id={id} scope={portalUserId} />;
+  return (
+    <>
+      <PortalPageTitle title={t("navigation.knowledgeBase")} />
+      <PortalKbArticleView id={id} scope={portalUserId} />
+    </>
+  );
 }

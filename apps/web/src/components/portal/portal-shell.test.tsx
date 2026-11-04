@@ -16,6 +16,13 @@ const navigate = vi.hoisted(() => vi.fn());
 const signOut = vi.hoisted(() => vi.fn());
 const getPortalProjects = vi.hoisted(() => vi.fn());
 const getPortalAnnouncements = vi.hoisted(() => vi.fn());
+const getPortalCases = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    cases: [],
+    page: { nextCursor: null, hasMore: false },
+    meta: { total: 0 },
+  }),
+);
 
 vi.mock("@tanstack/react-router", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
@@ -46,6 +53,10 @@ vi.mock("@/lib/i18n/portal-translation", () => ({
 
 vi.mock("@/fetchers/kb/portal", () => ({
   getPortalKb: vi.fn().mockResolvedValue({ data: [], total: 1 }),
+}));
+vi.mock("@/fetchers/portal/cases", () => ({ getPortalCases }));
+vi.mock("@/fetchers/intake", () => ({
+  getPortalCatalogue: vi.fn().mockResolvedValue({ requestTypes: [] }),
 }));
 vi.mock("@/fetchers/portal/announcements", () => ({
   getPortalAnnouncements,
@@ -133,8 +144,9 @@ describe("portal shell", () => {
       ["navigation.catalogue", "/catalogue"],
       ["navigation.approvals", "/approvals"],
       ["navigation.knowledgeBase", "/kb"],
-      ["navigation.updates", "/notifications"],
-      ["projects.navigation", "/projects"],
+      // Each entry reads like the heading of the page it opens.
+      ["notifications.title", "/notifications"],
+      ["projects.title", "/projects"],
       ["navigation.announcements", "/announcements"],
       ["navigation.settings", "/account"],
     ])
@@ -225,16 +237,10 @@ describe("portal shell", () => {
     ).toHaveAttribute("aria-current", "page");
   });
 
-  it("searches the catalogue and offers Get help", async () => {
+  it("opens the combined help results from the top-bar search and offers Get help", async () => {
     renderShell();
     const search = await screen.findByRole("searchbox", {
       name: "shell.search.label",
-    });
-    fireEvent.change(search, { target: { value: "  vpn access " } });
-    fireEvent.submit(search.closest("form") as HTMLFormElement);
-    expect(navigate).toHaveBeenCalledWith({
-      to: "/catalogue",
-      search: { q: "vpn access" },
     });
     expect(screen.getByRole("link", { name: "shell.getHelp" })).toHaveAttribute(
       "href",
@@ -243,6 +249,25 @@ describe("portal shell", () => {
     expect(
       screen.getByRole("switch", { name: "shell.theme" }),
     ).toBeInTheDocument();
+    fireEvent.change(search, { target: { value: "  vpn access " } });
+    fireEvent.submit(search.closest("form") as HTMLFormElement);
+    // Not the request-type filter alone: articles, request types and the customer's requests.
+    const dialog = await screen.findByRole("dialog", {
+      name: "shell.search.label",
+    });
+    expect(
+      within(dialog).getByRole("combobox", { name: "shell.search.label" }),
+    ).toHaveValue("vpn access");
+    await waitFor(() =>
+      expect(getPortalCases).toHaveBeenCalledWith({
+        scope: "mine",
+        q: "vpn access",
+        limit: 5,
+      }),
+    );
+    expect(navigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/catalogue" }),
+    );
   });
 
   it("shows the project selector only when the organisation has two or more projects", async () => {

@@ -10,6 +10,7 @@ import {
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { AnnouncementSeverityBadge } from "@/components/announcements/announcement-severity-badge";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import { getPortalAnnouncement } from "@/fetchers/portal/announcements";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
@@ -42,7 +43,8 @@ export function PortalAnnouncementDetail({
 
   if (announcement.isPending)
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+        <PortalPageTitle title={t("portal:announcements.title")} />
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -52,7 +54,8 @@ export function PortalAnnouncementDetail({
       announcement.error instanceof HttpError &&
       announcement.error.status === 404;
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+        <PortalPageTitle title={t("portal:announcements.title")} />
         {/* The page keeps one h1 while it shows only the error. */}
         <h1 className="sr-only">{t("portal:announcements.title")}</h1>
         {back}
@@ -69,7 +72,8 @@ export function PortalAnnouncementDetail({
 
   const entry = announcement.data;
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+      <PortalPageTitle title={entry.title} />
       {back}
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">

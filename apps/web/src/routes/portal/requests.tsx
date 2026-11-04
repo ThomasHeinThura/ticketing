@@ -32,6 +32,7 @@ import {
   PortalCaseFilters,
 } from "@/components/portal/cases/portal-case-filters";
 import { PortalCaseTable } from "@/components/portal/cases/portal-case-table";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
   type PortalCaseQuery,
   portalCaseExportUrl,
@@ -215,6 +216,9 @@ function PortalRequestsPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+      <PortalPageTitle
+        title={backlogMode ? t("requests.backlog") : t("cases.listTitle")}
+      />
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div>
           <h1 className="font-semibold text-xl">

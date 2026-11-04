@@ -8,6 +8,7 @@ import {
   getNotificationTitle,
   useNotificationClick,
 } from "@/components/notification/notification-dropdown";
+import PageTitle from "@/components/page-title";
 import useMarkAllNotificationsAsRead from "@/hooks/mutations/notification/use-mark-all-notifications-as-read";
 import useMarkNotificationAsRead from "@/hooks/mutations/notification/use-mark-notification-as-read";
 import useMarkNotificationAsUnread from "@/hooks/mutations/notification/use-mark-notification-as-unread";
@@ -64,6 +65,7 @@ export default function NotificationInbox({
 
   return (
     <div className="flex flex-col gap-4 p-4">
+      <PageTitle title={t("navigation:sidebar.inbox")} />
       <h1 className="sr-only">{t("navigation:sidebar.inbox")}</h1>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Tabs

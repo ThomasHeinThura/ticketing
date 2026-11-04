@@ -25,16 +25,27 @@ export function missingRequiredIntakeFields(
     .filter((key) => !(fileFields.has(key) && hasStagedFiles(key)));
 }
 
+/**
+ * The answers in the order the form asked them (the version's field order), then any answer
+ * the version no longer names (a legacy key), labelled by its key.
+ */
 export function submissionAnswerRows(
   fields: readonly { key: string; label: string }[] | undefined,
   answers: Readonly<Record<string, unknown>> | undefined,
 ) {
-  const labels = new Map(
-    (fields ?? []).map((field) => [field.key, field.label]),
+  const given = answers ?? {};
+  const known = (fields ?? []).filter((field) =>
+    Object.hasOwn(given, field.key),
   );
-  return Object.entries(answers ?? {}).map(([key, value]) => ({
-    key,
-    label: labels.get(key) || key,
-    value: String(value),
-  }));
+  const knownKeys = new Set(known.map((field) => field.key));
+  return [
+    ...known.map((field) => ({
+      key: field.key,
+      label: field.label || field.key,
+      value: String(given[field.key]),
+    })),
+    ...Object.entries(given)
+      .filter(([key]) => !knownKeys.has(key))
+      .map(([key, value]) => ({ key, label: key, value: String(value) })),
+  ];
 }

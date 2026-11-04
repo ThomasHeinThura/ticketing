@@ -32,6 +32,10 @@ const PRIORITY_TONE = {
   urgent: "error",
 } as const;
 
+/** A case reference link: the shared focus ring, like the other portal controls. */
+const CASE_LINK_CLASS =
+  "whitespace-nowrap rounded-sm font-medium text-primary tabular-nums outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
+
 /** The optional columns; the dashboard shows the compact set, the request list all of them. */
 export type PortalCaseColumn = "project" | "created";
 
@@ -133,7 +137,7 @@ export function PortalCaseTable({
                       <Link
                         to={routes.portalSubmission.path}
                         params={{ ref: item.ref }}
-                        className="whitespace-nowrap font-medium text-primary tabular-nums outline-none hover:underline focus-visible:underline"
+                        className={CASE_LINK_CLASS}
                       >
                         {item.ref}
                       </Link>
@@ -141,7 +145,7 @@ export function PortalCaseTable({
                       <Link
                         to={routes.portalRequest.path}
                         params={{ ref: item.ref }}
-                        className="whitespace-nowrap font-medium text-primary tabular-nums outline-none hover:underline focus-visible:underline"
+                        className={CASE_LINK_CLASS}
                       >
                         {item.ref}
                       </Link>
@@ -155,7 +159,7 @@ export function PortalCaseTable({
                   </span>
                   {item.source === "direct" ? (
                     <span className="text-muted-foreground text-xs">
-                      {t("cases.raisedByTeam")}
+                      {raisedByTeamLabel(item, t)}
                     </span>
                   ) : null}
                   {/* Narrow frames: the hidden columns' key facts, under the title. */}
@@ -224,6 +228,20 @@ export function PortalCaseTable({
       </Table>
     </Frame>
   );
+}
+
+/**
+ * Who a request the team raised (D6) was raised for: "for you" only for the requester; a
+ * colleague reads the requester's name (D5), or "a colleague" when the name is withheld.
+ */
+export function raisedByTeamLabel(
+  item: Pick<PortalCase, "isRequester" | "createdBy">,
+  t: ReturnType<typeof usePortalTranslation>["t"],
+) {
+  if (item.isRequester) return t("cases.raisedByTeam");
+  return item.createdBy.name
+    ? t("cases.raisedByTeamFor", { name: item.createdBy.name })
+    : t("cases.raisedByTeamForColleague");
 }
 
 export function PortalCaseSeverity({
