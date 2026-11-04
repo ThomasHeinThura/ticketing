@@ -635,6 +635,9 @@
 								"calendarNoneAvailable": {
 									"type": "string"
 								},
+								"calendarPlaceholder": {
+									"type": "string"
+								},
 								"calendarsLoading": {
 									"type": "string"
 								},
@@ -686,6 +689,7 @@
 								"calendarHint",
 								"calendarNoDefault",
 								"calendarNoneAvailable",
+								"calendarPlaceholder",
 								"calendarsLoading",
 								"calendarsError",
 								"calendarsRetry",

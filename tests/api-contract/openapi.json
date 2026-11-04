@@ -298,11 +298,19 @@
             },
             "name": {
               "type": "string"
+            },
+            "inheritedServiceCalendarId": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The service calendar a new project for this organisation inherits in the queried workspace when the create call names none: the organisation's workspace default if that default exists (null when it sets only an SLA policy), otherwise the workspace's default. Null means a managed service must name a calendar (PR-9)."
             }
           },
           "required": [
             "id",
-            "name"
+            "name",
+            "inheritedServiceCalendarId"
           ]
         }
       },
@@ -10403,7 +10411,7 @@
           "Projects"
         ],
         "summary": "List customer organisations a new project may serve",
-        "description": "Active, live customer organisations (never the internal one), for the create-project selector. Requires project:create in the workspace.",
+        "description": "Active, live customer organisations (never the internal one), for the create-project selector, each with the service calendar a new project for it inherits in this workspace. Requires project:create in the workspace.",
         "parameters": [
           {
             "schema": {

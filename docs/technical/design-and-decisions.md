@@ -3562,6 +3562,14 @@ The route answers only on the portal host, and the portal session must belong to
 
 The portal then lists the item as that customer's own request, under the existing case-list rules.
 
+## Managed-service calendar at creation — 4 November 2026
+
+Thomas decided on 4 November 2026: when a managed service is created and no service calendar resolves for the chosen organisation, the create dialog asks for one. Create stays disabled, with a hint, until a calendar is chosen. The server `PR-9` rule is unchanged.
+
+- **What resolves.** The organisation's per-workspace default row, when it exists, decides alone, even when it sets only an SLA policy (no calendar then resolves). The workspace default applies only when no such row exists, and for an internal project. This is the create route's own rule (`apps/api/src/project/inherited-calendar.ts`).
+- **How the dialog knows.** `GET /api/project/organisations` returns, per organisation, `inheritedServiceCalendarId` for the queried workspace (additive; same `project:create` policy). For an internal project the dialog reads the workspace default from project settings. When it cannot read it, the dialog does not block and `PR-9` decides.
+- **The picker** lists the workspace's service calendars and no "default" choice. While `feature.sla` is off the calendar list is unavailable, so the dialog says that none can be chosen and Create stays disabled.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.

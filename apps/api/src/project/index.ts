@@ -3,6 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
+  organisationProjectDefaultTable,
   organisationTable,
   projectTable,
   serviceCalendarTable,
@@ -69,6 +70,7 @@ import updateProjectOwnershipCtrl from "./controllers/update-project-ownership";
 import updateStakeholderCtrl from "./controllers/update-stakeholder";
 import { resolveProjectServiceCalendarId } from "./effective-settings";
 import { countProjectRosterRows } from "./hierarchy.repository";
+import { inheritedServiceCalendarId } from "./inherited-calendar";
 import {
   assertCanManageProspectiveParent,
   resolveRosterActor,
@@ -284,7 +286,8 @@ const listCustomerOrganisationsRoute = createRoute({
   summary: "List customer organisations a new project may serve",
   description:
     "Active, live customer organisations (never the internal one), for the create-project " +
-    "selector. Requires project:create in the workspace.",
+    "selector, each with the service calendar a new project for it inherits in this " +
+    "workspace. Requires project:create in the workspace.",
   middleware: [
     workspaceAccess.fromQuery(),
     // STRICT capability check, not the legacy `requireWorkspacePermission`: the legacy
@@ -1026,12 +1029,34 @@ const project = apiRouter<
   }
 >()
   .openapi(listCustomerOrganisationsRoute, async (c) => {
+    const workspaceId = c.get("workspaceId");
+    const [workspace] = await db
+      .select({
+        defaultServiceCalendarId: workspaceTable.defaultServiceCalendarId,
+      })
+      .from(workspaceTable)
+      .where(eq(workspaceTable.id, workspaceId))
+      .limit(1);
     const rows = await db
       .select({
         id: organisationTable.id,
         name: organisationTable.name,
+        // The left join's key column: non-null exactly when this workspace has a default row.
+        defaultWorkspaceId: organisationProjectDefaultTable.workspaceId,
+        defaultServiceCalendarId:
+          organisationProjectDefaultTable.serviceCalendarId,
       })
       .from(organisationTable)
+      .leftJoin(
+        organisationProjectDefaultTable,
+        and(
+          eq(
+            organisationProjectDefaultTable.organisationId,
+            organisationTable.id,
+          ),
+          eq(organisationProjectDefaultTable.workspaceId, workspaceId),
+        ),
+      )
       .where(
         and(
           eq(organisationTable.active, true),
@@ -1040,7 +1065,21 @@ const project = apiRouter<
         ),
       )
       .orderBy(organisationTable.name);
-    return c.json(rows, 200);
+    return c.json(
+      rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        inheritedServiceCalendarId: inheritedServiceCalendarId({
+          organisationDefault:
+            row.defaultWorkspaceId === null
+              ? undefined
+              : { serviceCalendarId: row.defaultServiceCalendarId },
+          workspaceDefaultCalendarId:
+            workspace?.defaultServiceCalendarId ?? null,
+        }),
+      })),
+      200,
+    );
   })
   .openapi(listProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
