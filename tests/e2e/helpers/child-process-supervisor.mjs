@@ -271,26 +271,30 @@ function spawnOwned(message) {
     });
     return;
   }
-  const stdoutFd = openSync(
-    resolve(message.evidenceDir, `${message.logPrefix}.stdout.log`),
-    "wx",
-    0o600,
-  );
-  const stderrFd = openSync(
-    resolve(message.evidenceDir, `${message.logPrefix}.stderr.log`),
-    "wx",
-    0o600,
-  );
+  let stdoutFd;
+  let stderrFd;
   let child;
   try {
+    if (message.discardChildOutput !== true) {
+      stdoutFd = openSync(
+        resolve(message.evidenceDir, `${message.logPrefix}.stdout.log`),
+        "wx",
+        0o600,
+      );
+      stderrFd = openSync(
+        resolve(message.evidenceDir, `${message.logPrefix}.stderr.log`),
+        "wx",
+        0o600,
+      );
+    }
     child = spawn(message.command, message.args, {
       cwd: message.cwd,
       env: message.env,
-      stdio: ["ignore", stdoutFd, stderrFd],
+      stdio: ["ignore", stdoutFd ?? "ignore", stderrFd ?? "ignore"],
     });
   } finally {
-    closeSync(stdoutFd);
-    closeSync(stderrFd);
+    if (stdoutFd !== undefined) closeSync(stdoutFd);
+    if (stderrFd !== undefined) closeSync(stderrFd);
   }
   children.set(message.id, child);
   let started = false;
