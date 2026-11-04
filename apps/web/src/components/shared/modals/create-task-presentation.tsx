@@ -25,8 +25,13 @@ export const CREATE_TASK_DIALOG_CLASS =
   "taskdesk-create-task-modal max-w-2xl max-h-[90vh] flex flex-col overflow-hidden";
 export const CREATE_TASK_PROPERTY_BUTTON_CLASS =
   "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors border border-border hover:bg-accent/50";
+/**
+ * Kaneo's option row, on the library Button: start-aligned (the Button base centres), with a
+ * trailing check icon pushed to the row's end (the Button base's svg margin would otherwise
+ * override its `ml-auto`).
+ */
 export const CREATE_TASK_PROPERTY_OPTION_CLASS =
-  "w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent/50 text-left transition-colors h-8";
+  "w-full flex items-center justify-start gap-2 px-2 py-1.5 text-sm hover:bg-accent/50 text-left transition-colors h-8 [&>svg:last-child:not(:first-child)]:ml-auto";
 
 export function CreateTaskHeader({
   projectLabel,

@@ -67,6 +67,7 @@ import {
   staffOnly,
 } from "./http";
 import { type ReportWindow, resolveWindow } from "./logic";
+import { reportOrganisations } from "./organisations";
 import { REPORTS, reportByKey } from "./registry";
 import { drillOf } from "./reports/drill-extra";
 import {
@@ -879,18 +880,30 @@ router
     const now = new Date();
     const window = windowOrThrow(query, now);
     const identity = await identityOf(c);
+    const workspaceId = c.get("workspaceId");
+    const caps = await callerCaps(c, filtersOf(query).projectId);
     try {
       const envelope = await runReport({
         def,
-        workspaceId: c.get("workspaceId"),
+        workspaceId,
         identity,
-        caps: await callerCaps(c, filtersOf(query).projectId),
+        caps,
         window,
         filters: filtersOf(query),
         options: queryOptions(query),
         now,
       });
-      return c.json(reportEnvelopeSchema.parse(envelope), 200);
+      // The organisation filter's choices come with the report, over the same reach, so a role
+      // without project:create still gets them (the create-project picker is not theirs).
+      const organisations = await reportOrganisations(
+        identity,
+        workspaceId,
+        caps.readAll,
+      );
+      return c.json(
+        reportEnvelopeSchema.parse({ ...envelope, organisations }),
+        200,
+      );
     } catch (error) {
       return disabled(error);
     }

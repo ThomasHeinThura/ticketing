@@ -11,6 +11,7 @@ import {
 import { enqueueOutboxEvent, eventScope } from "../../events/outbox";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { seedProjectStates } from "../../utils/seed-project-states";
+import { inheritedServiceCalendarId } from "../inherited-calendar";
 import {
   grantProjectCreatorLead,
   lockCreatorPerson,
@@ -179,9 +180,14 @@ async function createProjectRow(
         ? "override"
         : "inherit";
     const effectiveServiceCalendarId =
-      serviceCalendarMode === "override"
-        ? serviceCalendarId
-        : workspace.defaultServiceCalendarId;
+      configuration.serviceCalendarId !== undefined
+        ? configuration.serviceCalendarId
+        : inheritedServiceCalendarId({
+            organisationDefault: hasOrganisationDefaults
+              ? { serviceCalendarId: inheritedCalendarId }
+              : undefined,
+            workspaceDefaultCalendarId: workspace.defaultServiceCalendarId,
+          });
     if (
       configuration.kind === "managed_service" &&
       (!configuration.supportLevel || !effectiveServiceCalendarId)

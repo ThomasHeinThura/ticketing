@@ -1,4 +1,5 @@
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useMatch, useNavigate, useParams } from "@tanstack/react-router";
 import {
   Button,
   Collapsible,
@@ -51,6 +52,21 @@ type ProjectRecord = NonNullable<
   Awaited<ReturnType<typeof getProjects>>
 >[number];
 
+/**
+ * The project of the work item detail the page loads (same key as `workItemDetailKey`). The
+ * sidebar observes that query but never fetches it, and it passes no query function on
+ * purpose: TanStack keeps one options object per query, so a `skipToken` here replaced the
+ * page's fetcher and its refetch after a version conflict sent nothing. A query without a
+ * query function borrows the fetcher of the observer that has one.
+ */
+export function useCachedWorkItemProjectId(key: string | undefined) {
+  const { data } = useQuery<{ projectId?: string } | null>({
+    queryKey: ["work-items", "detail", key ?? ""],
+    enabled: false,
+  });
+  return key ? data?.projectId : undefined;
+}
+
 export function NavProjects() {
   const { t, i18n } = useAgentTranslation();
   const { isMobile } = useSidebar();
@@ -76,6 +92,17 @@ export function NavProjects() {
     strict: false,
   });
 
+  // A work item page (`/agent/work-items/$key`) carries no project param: its project is
+  // the loaded item's, or, before the detail has loaded, the key's prefix (`HELP-8` -> `HELP`;
+  // a project key may itself contain hyphens, so only the last segment is the number).
+  const workItemMatch = useMatch({
+    from: "/_layout/_authenticated/agent/work-items/$key",
+    shouldThrow: false,
+  });
+  const workItemKey = workItemMatch?.params.key;
+  const workItemProjectId = useCachedWorkItemProjectId(workItemKey);
+  const workItemProjectKey = workItemKey?.match(/^(.+)-\d+$/u)?.[1];
+
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
     useState(false);
   // The in-place approval dialog is the single confirmation (PA-3): no pre-confirm.
@@ -94,6 +121,10 @@ export function NavProjects() {
   };
 
   const isCurrentProject = (project: ProjectRecord) => {
+    if (workItemKey)
+      return workItemProjectId
+        ? workItemProjectId === project.id
+        : workItemProjectKey === project.slug;
     return (
       currentProjectKey === project.slug ||
       (currentProjectId === project.id && currentWorkspaceId === workspace?.id)

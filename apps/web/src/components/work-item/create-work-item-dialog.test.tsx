@@ -296,7 +296,7 @@ describe("CreateWorkItemDialog custom fields", () => {
       target: { value: "Replace the laptop" },
     });
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: "Task" }));
+    pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
 
     expect(screen.getByLabelText(/Asset tag/)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Bug only/)).toBeNull();
@@ -341,7 +341,7 @@ describe("CreateWorkItemDialog custom fields", () => {
     ];
     renderDialog();
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: "Task" }));
+    pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
     expect(screen.queryByLabelText(/Rollback plan/)).toBeNull();
     fireEvent.change(screen.getByLabelText(/Risk/), {
       target: { value: "high" },
@@ -409,7 +409,7 @@ describe("CreateWorkItemDialog", () => {
     expect(submit).toBeDisabled();
 
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: "Task" }));
+    pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
     expect(
       screen.getByTestId("create-work-item-type-trigger"),
     ).toHaveTextContent("Task");
@@ -424,11 +424,11 @@ describe("CreateWorkItemDialog", () => {
       target: { value: "Fix the login bug" },
     });
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: "Task" }));
+    pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
 
     fireEvent.click(screen.getByTestId("create-work-item-priority-trigger"));
     pickOption(
-      await screen.findByRole("button", {
+      await screen.findByRole("menuitemradio", {
         name: "workItems:list.priority.high",
       }),
     );
@@ -483,7 +483,7 @@ describe("CreateWorkItemDialog", () => {
       target: { value: "From the Doing column" },
     });
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: "Task" }));
+    pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:create.submit" }),
     );
@@ -506,7 +506,7 @@ describe("CreateWorkItemDialog", () => {
       target: { value: "From the Done column" },
     });
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: "Task" }));
+    pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:create.submit" }),
     );
@@ -524,7 +524,7 @@ describe("CreateWorkItemDialog", () => {
       target: { value: "Header create" },
     });
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: "Task" }));
+    pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:create.submit" }),
     );
@@ -540,7 +540,7 @@ describe("CreateWorkItemDialog", () => {
       target: { value: "No description here" },
     });
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: "Task" }));
+    pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:create.submit" }),
     );
@@ -563,7 +563,7 @@ describe("CreateWorkItemDialog", () => {
       target: { value: "Forbidden attempt" },
     });
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: "Task" }));
+    pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
     fireEvent.click(
       screen.getByRole("button", { name: "workItems:create.submit" }),
     );
@@ -632,7 +632,7 @@ describe("CreateWorkItemDialog", () => {
     ).toBeDisabled();
 
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: "Task" }));
+    pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
     expect(screen.queryByTestId("create-work-item-type-hint")).toBeNull();
   });
 
@@ -673,7 +673,9 @@ describe("CreateWorkItemDialog", () => {
     renderDialog();
 
     fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-    pickOption(await screen.findByRole("button", { name: maliciousName }));
+    pickOption(
+      await screen.findByRole("menuitemradio", { name: maliciousName }),
+    );
 
     const dialog = screen.getByTestId("create-work-item-dialog");
     expect(dialog.querySelector("img")).toBeNull();
@@ -688,7 +690,7 @@ async function fillRequired() {
     target: { value: "Visible persisted work" },
   });
   fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-  fireEvent.click(await screen.findByRole("button", { name: "Task" }));
+  fireEvent.click(await screen.findByRole("menuitemradio", { name: "Task" }));
 }
 
 it("uses the original title-first/editor/chips/footer composition with persisted property controls", async () => {
@@ -873,7 +875,7 @@ it("submits dates, roster assignee and catalogue labels in one atomic create pay
   fireEvent.click(due);
   const assignee = screen.getByTestId("create-work-item-assignee-trigger");
   fireEvent.click(assignee);
-  fireEvent.click(await screen.findByRole("button", { name: "Ada Agent" }));
+  pickOption(await screen.findByRole("menuitemradio", { name: "Ada Agent" }));
   fireEvent.click(assignee);
   const labels = screen.getByTestId("create-work-item-labels-trigger");
   fireEvent.click(labels);
@@ -1000,7 +1002,7 @@ it("clears optional assignee and labels on Create more and reports an empty draf
   await fillRequired();
   const assignee = screen.getByTestId("create-work-item-assignee-trigger");
   fireEvent.click(assignee);
-  fireEvent.click(await screen.findByRole("button", { name: "Ada Agent" }));
+  pickOption(await screen.findByRole("menuitemradio", { name: "Ada Agent" }));
   fireEvent.click(assignee);
   const labels = screen.getByTestId("create-work-item-labels-trigger");
   fireEvent.click(labels);
@@ -1154,7 +1156,7 @@ it("stages locally then retries failed files against one confirmed created item"
     target: { value: "Attachment batch" },
   });
   fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-  pickOption(await screen.findByRole("button", { name: "Task" }));
+  pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
   mocks.mutateAsync.mockResolvedValue({ key: "HELP-1" });
   mocks.uploadAttachment
     .mockResolvedValueOnce({ id: "a" })
@@ -1183,7 +1185,7 @@ it("hides staging for denied attachment authority and blocks repeat ambiguous cr
     target: { value: "Unknown outcome" },
   });
   fireEvent.click(screen.getByTestId("create-work-item-type-trigger"));
-  pickOption(await screen.findByRole("button", { name: "Task" }));
+  pickOption(await screen.findByRole("menuitemradio", { name: "Task" }));
   mocks.mutateAsync.mockRejectedValue(new Error("connection lost"));
   fireEvent.click(screen.getByTestId("create-work-item-submit"));
   await screen.findByText("workItems:create.attachments.createUnknown");

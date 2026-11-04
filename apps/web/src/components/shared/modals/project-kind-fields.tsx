@@ -75,21 +75,35 @@ export function useManagedServiceOptions(workspaceId: string, active: boolean) {
 }
 
 /**
- * True when the managed-service choice is known to be incomplete: no support level, or the
- * default calendar was chosen for an internal project in a workspace that has none. With a
- * customer organisation the organisation's own default may apply, so the API decides.
+ * The calendar a managed service inherits when none is chosen (decision 4 November 2026):
+ * a customer organisation's resolved default from the organisation list, or for an internal
+ * project the workspace default. `null` means nothing resolves, so a calendar must be chosen;
+ * `undefined` means unknown (the caller cannot read it), and the API's PR-9 check decides.
+ */
+export function inheritedCalendarFor(
+  options: Pick<
+    ReturnType<typeof useManagedServiceOptions>,
+    "workspaceDefaultCalendarId"
+  >,
+  organisation: { inheritedServiceCalendarId?: string | null } | undefined,
+): string | null | undefined {
+  return organisation
+    ? organisation.inheritedServiceCalendarId
+    : options.workspaceDefaultCalendarId;
+}
+
+/**
+ * True when the managed-service choice is known to be incomplete: no support level, or no
+ * calendar chosen while no default calendar resolves.
  */
 export function isManagedServiceIncomplete(
   values: ProjectKindValues,
-  workspaceDefaultCalendarId: string | null | undefined,
-  hasOrganisation: boolean,
+  inheritedCalendarId: string | null | undefined,
 ) {
   if (values.kind !== "managed_service") return false;
   if (!values.supportLevel) return true;
   return (
-    values.calendarChoice === INHERIT_CALENDAR &&
-    !hasOrganisation &&
-    workspaceDefaultCalendarId === null
+    values.calendarChoice === INHERIT_CALENDAR && inheritedCalendarId === null
   );
 }
 
@@ -97,23 +111,25 @@ export function ProjectKindFields({
   options,
   values,
   onChange,
-  hasOrganisation,
+  inheritedCalendarId,
   disabled,
 }: {
   options: ReturnType<typeof useManagedServiceOptions>;
   values: ProjectKindValues;
   onChange: (values: ProjectKindValues) => void;
-  hasOrganisation: boolean;
+  /** From `inheritedCalendarFor`. */
+  inheritedCalendarId: string | null | undefined;
   disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const managed = values.kind === "managed_service";
   const calendarList = options.calendars.data?.data ?? [];
+  // Nothing resolves: the default is not offered and a calendar must be chosen.
+  const mustChoose = inheritedCalendarId === null;
   const defaultCalendarName =
-    options.workspaceDefaultCalendarId != null
-      ? calendarList.find(
-          (calendar) => calendar.id === options.workspaceDefaultCalendarId,
-        )?.name
+    inheritedCalendarId != null
+      ? calendarList.find((calendar) => calendar.id === inheritedCalendarId)
+          ?.name
       : undefined;
   const inheritLabel = defaultCalendarName
     ? t("common:modals.createProject.calendarInheritNamed", {
@@ -121,7 +137,7 @@ export function ProjectKindFields({
       })
     : t("common:modals.createProject.calendarInherit");
   const calendarItems = [
-    { value: INHERIT_CALENDAR, label: inheritLabel },
+    ...(mustChoose ? [] : [{ value: INHERIT_CALENDAR, label: inheritLabel }]),
     ...(options.slaOn
       ? calendarList.map((calendar) => ({
           value: calendar.id,
@@ -138,10 +154,7 @@ export function ProjectKindFields({
     value: level,
     label: t("common:modals.createProject.supportLevelOption", { level }),
   }));
-  const noDefault =
-    selectedCalendar === INHERIT_CALENDAR &&
-    !hasOrganisation &&
-    options.workspaceDefaultCalendarId === null;
+  const noDefault = mustChoose && selectedCalendar === INHERIT_CALENDAR;
 
   return (
     <div className="space-y-3 px-3" data-testid="project-kind">
@@ -241,7 +254,7 @@ export function ProjectKindFields({
             <Select
               items={calendarItems}
               value={selectedCalendar}
-              disabled={disabled}
+              disabled={disabled || calendarItems.length === 0}
               onValueChange={(value) => {
                 if (value !== null)
                   onChange({ ...values, calendarChoice: value });
@@ -252,9 +265,16 @@ export function ProjectKindFields({
                 aria-invalid={noDefault ? true : undefined}
                 aria-describedby="project-service-calendar-hint"
               >
-                <SelectValue>
+                <SelectValue
+                  placeholder={t(
+                    "common:modals.createProject.calendarPlaceholder",
+                  )}
+                >
                   {calendarItems.find((item) => item.value === selectedCalendar)
-                    ?.label ?? inheritLabel}
+                    ?.label ??
+                    (mustChoose
+                      ? t("common:modals.createProject.calendarPlaceholder")
+                      : inheritLabel)}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>

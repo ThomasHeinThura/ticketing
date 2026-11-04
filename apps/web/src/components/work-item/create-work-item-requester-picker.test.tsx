@@ -53,6 +53,36 @@ describe("CreateWorkItemRequesterPicker (A-03)", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("start-aligns every option and lets a long email truncate inside its row", () => {
+    mocks.requesters = [
+      {
+        personId: "c1",
+        name: "Emma Clarke",
+        email: "emma.clarke@contoso.uat.taskdesk.example",
+      },
+    ];
+    render(
+      <CreateWorkItemRequesterPicker
+        projectId="p1"
+        requesterId=""
+        onChange={vi.fn()}
+        canUpdate
+        disabled={false}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("create-work-item-requester-trigger"));
+    const none = screen.getByRole("button", {
+      name: "workItems:properties.noRequester",
+    });
+    expect(none).toHaveClass("justify-start");
+    const person = screen.getByRole("button", { name: "Emma Clarke" });
+    expect(person).toHaveClass("justify-start", "overflow-hidden");
+    const email = screen.getByText("emma.clarke@contoso.uat.taskdesk.example");
+    expect(email).toHaveClass("truncate");
+    // The truncating children are width-bound only when their column takes the free space.
+    expect(email.parentElement).toHaveClass("min-w-0", "flex-1");
+  });
+
   it("picks a customer and clears the choice", () => {
     mocks.requesters = [
       { personId: "c1", name: "Alice", email: "alice@example.test" },

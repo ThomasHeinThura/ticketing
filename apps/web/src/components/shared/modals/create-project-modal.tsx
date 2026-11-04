@@ -39,6 +39,7 @@ import { toast } from "@/lib/toast";
 import {
   DEFAULT_PROJECT_KIND_VALUES,
   INHERIT_CALENDAR,
+  inheritedCalendarFor,
   isManagedServiceIncomplete,
   ProjectKindFields,
   type ProjectKindValues,
@@ -92,20 +93,22 @@ function CreateProjectModal({
     open && canBindOrganisation,
   );
   const customerOrganisations = organisations.data ?? [];
-  const selectedOrganisationId = customerOrganisations.some(
+  const selectedOrganisation = customerOrganisations.find(
     (organisation) => organisation.id === organisationId,
-  )
-    ? organisationId
-    : INTERNAL_PROJECT;
+  );
+  const selectedOrganisationId = selectedOrganisation?.id ?? INTERNAL_PROJECT;
   const isManagedService = kindValues.kind === "managed_service";
   const managedServiceOptions = useManagedServiceOptions(
     workspace?.id ?? "",
     open && isManagedService,
   );
+  const inheritedCalendarId = inheritedCalendarFor(
+    managedServiceOptions,
+    selectedOrganisation,
+  );
   const managedServiceIncomplete = isManagedServiceIncomplete(
     kindValues,
-    managedServiceOptions.workspaceDefaultCalendarId,
-    selectedOrganisationId !== INTERNAL_PROJECT,
+    inheritedCalendarId,
   );
   const { mutateAsync, isPending } = useCreateProject({
     name,
@@ -330,7 +333,7 @@ function CreateProjectModal({
               options={managedServiceOptions}
               values={kindValues}
               onChange={setKindValues}
-              hasOrganisation={selectedOrganisationId !== INTERNAL_PROJECT}
+              inheritedCalendarId={inheritedCalendarId}
               disabled={isPending}
             />
 

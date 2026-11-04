@@ -282,6 +282,35 @@ describe("WorkItemInlineFields", () => {
     );
   });
 
+  it("saves the inline title on Enter without adding a line break", async () => {
+    const row = item({ version: 4 });
+    renderInline(row, false, "table");
+
+    fireEvent.click(screen.getByTestId("work-item-inline-title-edit"));
+    const field = screen.getByLabelText("workItems:properties.titleLabel");
+    fireEvent.change(field, { target: { value: "Pasted\nline" } });
+    expect(field).toHaveValue("Pasted line");
+    const enter = fireEvent.keyDown(field, { key: "Enter" });
+
+    expect(enter).toBe(false);
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledExactlyOnceWith({
+        key: "HELP-7",
+        version: 4,
+        title: "Pasted line",
+      }),
+    );
+  });
+
+  it("does not save the inline title on an IME composition Enter", () => {
+    renderInline(item(), false, "table");
+    fireEvent.click(screen.getByTestId("work-item-inline-title-edit"));
+    const field = screen.getByLabelText("workItems:properties.titleLabel");
+    fireEvent.change(field, { target: { value: "Composed" } });
+    fireEvent.keyDown(field, { key: "Enter", isComposing: true });
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
   it.each(["Escape", "Cancel"])(
     "keeps the compact title trigger mounted and returns focus after %s",
     async (action) => {

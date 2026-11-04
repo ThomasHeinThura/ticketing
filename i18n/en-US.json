@@ -164,8 +164,9 @@
 				"calendarInherit": "Default calendar",
 				"calendarInheritNamed": "Default calendar ({{name}})",
 				"calendarHint": "Service hours for response and resolution targets. The default comes from the customer organisation or the workspace.",
-				"calendarNoDefault": "This workspace has no default service calendar. Choose a calendar.",
-				"calendarNoneAvailable": "This workspace has no default service calendar. Ask an admin to set one in workspace settings.",
+				"calendarNoDefault": "No default service calendar applies here. Choose a calendar.",
+				"calendarNoneAvailable": "No default service calendar applies here, and there is none to choose. Ask an admin to add a service calendar.",
+				"calendarPlaceholder": "Choose a calendar",
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsError": "Could not load service calendars.",
 				"calendarsRetry": "Retry",
@@ -3711,6 +3712,7 @@
 				"rollupBeside": "Σ {{value}} from children"
 			},
 			"requester": "Requester",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "No requester",
 			"requesterSearch": "Search customers",
 			"noRequesterMatch": "No customer matches.",
@@ -9097,7 +9099,8 @@
 			"team": "Team",
 			"save": "Save report",
 			"update": "Save changes",
-			"saved": "Report saved"
+			"saved": "Report saved",
+			"readOnly": "Your role can run reports but not save them."
 		},
 		"dashboard": {
 			"title": "Dashboard",

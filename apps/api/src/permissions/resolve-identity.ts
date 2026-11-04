@@ -296,7 +296,9 @@ function groupByWorkspace(
  * `BUILT_IN_ROLES[value].scope === "workspace"` is exactly the fix the review named: a
  * `workspace_member.role` can only ever honestly grant a workspace-scope built-in.
  */
-function isBuiltInWorkspaceRoleKey(value: string): value is BuiltInRoleKey {
+export function isBuiltInWorkspaceRoleKey(
+  value: string,
+): value is BuiltInRoleKey {
   return (
     Object.hasOwn(BUILT_IN_ROLES, value) &&
     BUILT_IN_ROLES[value as BuiltInRoleKey].scope === "workspace"

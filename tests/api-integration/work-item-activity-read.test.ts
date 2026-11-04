@@ -1024,4 +1024,79 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       expect(response.status).toBe(404);
     });
   });
+
+  describe("person actors on activity rows carry the resolved display name", () => {
+    it("names a portal customer who added an attachment, though they are not a workspace member", async () => {
+      const { creator, project, type } = await setupProjectWithDefaultState();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+      const created = (await (
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Customer upload",
+        })
+      ).json()) as { key: string; id: string };
+
+      const customerUserId = `cust-${randomUUID()}`;
+      await db.insert(schema.userTable).values({
+        id: customerUserId,
+        name: "Katherine Johnson",
+        email: `${customerUserId}@example.test`,
+      });
+      const [customer] = await db
+        .insert(schema.personTable)
+        .values({
+          userId: customerUserId,
+          organisationId: creator.workspace.organisationId,
+          side: "customer",
+          active: true,
+          isPlaceholder: false,
+        })
+        .returning();
+      if (!customer) throw new Error("customer person fixture missing");
+      await db.insert(schema.activityTable).values([
+        {
+          id: `act-${randomUUID()}`,
+          workItemId: created.id,
+          workspaceId: creator.workspace.id,
+          actorId: customer.id,
+          actorType: "person",
+          verb: "attachment.added",
+          payload: { attachmentId: "att-1", filename: "invoice.pdf" },
+          visibility: "public",
+          createdAt: new Date(Date.now() + 1_000),
+        },
+        {
+          id: `act-${randomUUID()}`,
+          workItemId: created.id,
+          workspaceId: creator.workspace.id,
+          actorId: null,
+          actorType: "system",
+          verb: "updated",
+          field: "title",
+          visibility: "internal",
+          createdAt: new Date(Date.now() + 2_000),
+        },
+      ]);
+
+      const response = await activityRequest(app, created.key);
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        data: Array<Record<string, unknown>>;
+      };
+      const upload = body.data.find((row) => row.verb === "attachment.added");
+      expect(upload).toMatchObject({
+        kind: "activity",
+        actorId: customer.id,
+        actorType: "person",
+        actorPersonId: customer.id,
+        actorDisplayName: "Katherine Johnson",
+      });
+      // Additive only: a non-person actor row gains no profile fields.
+      const system = body.data.find((row) => row.actorType === "system");
+      expect(system).toBeDefined();
+      expect(system).not.toHaveProperty("actorDisplayName");
+      expect(system).not.toHaveProperty("actorPersonId");
+    });
+  });
 });

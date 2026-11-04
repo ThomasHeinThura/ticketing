@@ -178,6 +178,114 @@ describe("API integration: project customer-organisation binding", () => {
     expect(internal.slaPolicyId).toBeNull();
   });
 
+  it("lists the calendar each organisation inherits, and create agrees: chosen calendar succeeds, none fails PR-9 (decision 4 Nov 2026)", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    const withCalendar = await makeOrganisation({ name: "A with calendar" });
+    const slaOnly = await makeOrganisation({ name: "B SLA only" });
+    const noDefaults = await makeOrganisation({ name: "C no defaults" });
+    mockAuthenticatedSession(admin.user);
+    const calendars = await db
+      .insert(schema.serviceCalendarTable)
+      .values(
+        ["Organisation hours", "Workspace hours"].map((name) => ({
+          workspaceId: admin.workspace.id,
+          name,
+          timezone: "UTC",
+          windows: {},
+          holidays: [],
+        })),
+      )
+      .returning();
+    const organisationCalendar = requireRow(
+      calendars.slice(0, 1),
+      "organisation calendar",
+    );
+    const workspaceCalendar = requireRow(
+      calendars.slice(1),
+      "workspace calendar",
+    );
+    const policy = requireRow(
+      await db
+        .insert(schema.slaPolicyTable)
+        .values({ workspaceId: admin.workspace.id, name: "Policy" })
+        .returning(),
+      "policy",
+    );
+    await db.insert(schema.organisationProjectDefaultTable).values([
+      {
+        organisationId: withCalendar.id,
+        workspaceId: admin.workspace.id,
+        serviceCalendarId: organisationCalendar.id,
+        slaPolicyId: null,
+      },
+      {
+        organisationId: slaOnly.id,
+        workspaceId: admin.workspace.id,
+        serviceCalendarId: null,
+        slaPolicyId: policy.id,
+      },
+    ]);
+    const { app } = createApp();
+    const listInherited = async () => {
+      const response = await app.request(
+        `/api/project/organisations?workspaceId=${admin.workspace.id}`,
+      );
+      expect(response.status).toBe(200);
+      const rows = (await response.json()) as {
+        id: string;
+        inheritedServiceCalendarId: string | null;
+      }[];
+      return Object.fromEntries(
+        rows.map((row) => [row.id, row.inheritedServiceCalendarId]),
+      );
+    };
+    const managed = (organisationId: string, body = {}) =>
+      createProjectRequest(admin.workspace.id, {
+        organisationId,
+        kind: "managed_service",
+        supportLevel: "L2",
+        ...body,
+      });
+
+    // No workspace default: only the organisation with its own calendar resolves.
+    await expect(listInherited()).resolves.toEqual({
+      [withCalendar.id]: organisationCalendar.id,
+      [slaOnly.id]: null,
+      [noDefaults.id]: null,
+    });
+    const inherits = await managed(withCalendar.id);
+    expect(inherits.status, await inherits.clone().text()).toBe(200);
+    for (const organisation of [slaOnly, noDefaults]) {
+      const refused = await managed(organisation.id);
+      expect(refused.status).toBe(422);
+      await expect(refused.text()).resolves.toContain("PR-9");
+      // The dialog's chosen calendar makes the same create succeed.
+      const chosen = await managed(organisation.id, {
+        serviceCalendarId: workspaceCalendar.id,
+      });
+      expect(chosen.status, await chosen.clone().text()).toBe(200);
+      expect(((await chosen.json()) as ProjectRow).serviceCalendarId).toBe(
+        workspaceCalendar.id,
+      );
+    }
+
+    // A workspace default applies only where no organisation default row exists: the
+    // SLA-only row still resolves no calendar, exactly as the create check does.
+    await db
+      .update(schema.workspaceTable)
+      .set({ defaultServiceCalendarId: workspaceCalendar.id })
+      .where(eq(schema.workspaceTable.id, admin.workspace.id));
+    await expect(listInherited()).resolves.toEqual({
+      [withCalendar.id]: organisationCalendar.id,
+      [slaOnly.id]: null,
+      [noDefaults.id]: workspaceCalendar.id,
+    });
+    expect((await managed(noDefaults.id)).status).toBe(200);
+    const stillRefused = await managed(slaOnly.id);
+    expect(stillRefused.status).toBe(422);
+    await expect(stillRefused.text()).resolves.toContain("PR-9");
+  });
+
   it("leaves a project internal (null) when no organisation is supplied or null is", async () => {
     const admin = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(admin.user);
@@ -493,7 +601,12 @@ describe("API integration: project customer-organisation binding", () => {
     expect(ok.status).toBe(200);
     const rows = (await ok.json()) as { id: string; name: string }[];
     expect(rows.map((row) => row.name)).toEqual(["Alpha", "Beta"]);
-    expect(Object.keys(rows[0] ?? {}).sort()).toEqual(["id", "name"]);
+    // Only what the create dialog needs: no profile, quota or other default fields.
+    expect(Object.keys(rows[0] ?? {}).sort()).toEqual([
+      "id",
+      "inheritedServiceCalendarId",
+      "name",
+    ]);
 
     mockAuthenticatedSession(viewer.user);
     const denied = await app.request(

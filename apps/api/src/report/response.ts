@@ -138,6 +138,13 @@ export const reportEnvelopeSchema = z.object({
   notes: z.array(z.string()),
   drill: z.boolean(),
   costVisible: z.boolean(),
+  organisations: z
+    .array(z.object({ id: z.string(), name: z.string() }))
+    .optional()
+    .openapi({
+      description:
+        "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's.",
+    }),
 });
 
 export const reportCatalogueSchema = z.object({

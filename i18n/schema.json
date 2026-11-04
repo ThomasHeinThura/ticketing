@@ -635,6 +635,9 @@
 								"calendarNoneAvailable": {
 									"type": "string"
 								},
+								"calendarPlaceholder": {
+									"type": "string"
+								},
 								"calendarsLoading": {
 									"type": "string"
 								},
@@ -686,6 +689,7 @@
 								"calendarHint",
 								"calendarNoDefault",
 								"calendarNoneAvailable",
+								"calendarPlaceholder",
 								"calendarsLoading",
 								"calendarsError",
 								"calendarsRetry",
@@ -15236,6 +15240,9 @@
 						"requester": {
 							"type": "string"
 						},
+						"requesterValue": {
+							"type": "string"
+						},
 						"noRequester": {
 							"type": "string"
 						},
@@ -15273,6 +15280,7 @@
 						"unsaved",
 						"agile",
 						"requester",
+						"requesterValue",
 						"noRequester",
 						"requesterSearch",
 						"noRequesterMatch",
@@ -37443,6 +37451,9 @@
 						},
 						"saved": {
 							"type": "string"
+						},
+						"readOnly": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -37462,7 +37473,8 @@
 						"team",
 						"save",
 						"update",
-						"saved"
+						"saved",
+						"readOnly"
 					]
 				},
 				"dashboard": {

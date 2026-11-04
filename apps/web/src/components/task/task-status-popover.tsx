@@ -1,14 +1,8 @@
-import {
-  Button,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  ShortcutNumber,
-} from "@taskdesk/ui";
-import { Check } from "lucide-react";
-import type { RefObject } from "react";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { ShortcutNumber } from "@taskdesk/ui";
+import type { ReactElement, RefObject } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PropertyRadioMenu } from "@/components/work-item/property-radio-menu";
 import { useUpdateTaskStatus } from "@/hooks/mutations/task/use-update-task-status";
 import type { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
@@ -24,46 +18,8 @@ type TaskStatusPopoverProps = {
   isLoading: boolean;
   isError: boolean;
   taskRef?: RefObject<Task | undefined>;
-  children: React.ReactNode;
+  children: ReactElement;
 };
-
-type StatusOption = {
-  value: string;
-  label: string;
-  icon: string | null;
-  isFinal: boolean;
-};
-
-const TaskStatusOption = memo(function TaskStatusOption({
-  status,
-  index,
-  selected,
-  onSelect,
-}: {
-  status: StatusOption;
-  index: number;
-  selected: boolean;
-  onSelect: (status: string) => void;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="w-full justify-start gap-2 h-8 px-2 rounded-none first:rounded-t-md last:rounded-b-md"
-      onClick={() => onSelect(status.value)}
-    >
-      {getColumnIcon(status.value, status.isFinal, status.icon)}
-      <span className="text-sm">
-        {getStatusDisplayLabel(status.value, status.label)}
-      </span>
-      {selected ? (
-        <Check className="ml-auto h-4 w-4" />
-      ) : (
-        <ShortcutNumber number={index + 1} />
-      )}
-    </Button>
-  );
-});
 
 export default function TaskStatusPopover({
   task,
@@ -124,36 +80,48 @@ export default function TaskStatusPopover({
 
   if (!canEdit) return <>{children}</>;
 
+  // Kaneo's status picker on the library radio menu: arrow keys, typeahead and focus back to
+  // the trigger, keeping the numbered shortcuts and the check on the current status.
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent
-        className="w-48 p-0"
-        align="start"
-        disableAnchorTracking={!open}
-      >
-        <div>
-          {isLoading ? (
-            <div className="p-3 text-center text-sm text-muted-foreground">
-              {t("common:empty.loading")}
-            </div>
-          ) : isError ? (
-            <div className="p-3 text-center text-sm text-destructive">
-              {t("common:error.title")}
-            </div>
-          ) : (
-            statusOptions.map((status, index) => (
-              <TaskStatusOption
-                key={status.value}
-                status={status}
-                index={index}
-                selected={task.status === status.value}
-                onSelect={handleStatusChange}
-              />
-            ))
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+    <PropertyRadioMenu
+      open={open}
+      onOpenChange={setOpen}
+      value={task.status}
+      onValueChange={(next) => {
+        if (next !== task.status) void handleStatusChange(next);
+        else setOpen(false);
+      }}
+      trigger={children}
+      header={
+        isLoading ? (
+          <div className="p-3 text-center text-sm text-muted-foreground">
+            {t("common:empty.loading")}
+          </div>
+        ) : isError ? (
+          <div className="p-3 text-center text-sm text-destructive">
+            {t("common:error.title")}
+          </div>
+        ) : null
+      }
+      options={
+        isLoading || isError
+          ? []
+          : statusOptions.map((status, index) => ({
+              value: status.value,
+              label: getStatusDisplayLabel(status.value, status.label),
+              content: (
+                <>
+                  {getColumnIcon(status.value, status.isFinal, status.icon)}
+                  <span className="text-sm">
+                    {getStatusDisplayLabel(status.value, status.label)}
+                  </span>
+                  {task.status === status.value ? null : (
+                    <ShortcutNumber number={index + 1} />
+                  )}
+                </>
+              ),
+            }))
+      }
+    />
   );
 }

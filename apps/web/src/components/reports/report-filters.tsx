@@ -1,9 +1,9 @@
 import { Button, Label, ToggleGroup, ToggleGroupItem } from "@taskdesk/ui";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
 import { DateField } from "@/components/time-tracking/date-field";
 import type { ReportEnvelope } from "@/fetchers/report";
-import useCustomerOrganisations from "@/hooks/queries/project/use-customer-organisations";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useTeams } from "@/hooks/queries/team/use-teams";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
@@ -16,6 +16,20 @@ import {
 const ALL = "__all__";
 
 type Option = { value: string; label: string };
+
+/** RP-7: the organisation choices `GET /reports/{key}` returns over the caller's report reach. */
+export type ReportOrganisationChoice = { id: string; name: string };
+
+/** The organisation choices of a report envelope, when the API sent them. */
+export function reportOrganisationChoices(
+  report: unknown,
+): ReportOrganisationChoice[] | undefined {
+  const organisations = (report as { organisations?: unknown } | undefined)
+    ?.organisations;
+  return Array.isArray(organisations)
+    ? (organisations as ReportOrganisationChoice[])
+    : undefined;
+}
 
 function FilterSelect({
   id,
@@ -71,6 +85,7 @@ export function ReportFilters({
   onChange,
   live,
   choices,
+  organisations,
 }: {
   workspaceId: string;
   search: ReportSearch;
@@ -78,10 +93,20 @@ export function ReportFilters({
   /** The report is always now: the window does not apply. */
   live: boolean;
   choices: ReportEnvelope["choices"];
+  /**
+   * The organisations of the report's own reach (the report envelope), never the create-project
+   * picker, which needs project:create. Undefined while a report loads: the last list is kept.
+   */
+  organisations: ReportOrganisationChoice[] | undefined;
 }) {
   const { t } = useTranslation();
   const projects = useGetProjects({ workspaceId });
-  const organisations = useCustomerOrganisations({ workspaceId });
+  // While the next report loads, the previous list stays (React's "previous render" pattern).
+  const [organisationOptions, setOrganisationOptions] = useState<
+    ReportOrganisationChoice[]
+  >(organisations ?? []);
+  if (organisations && organisations !== organisationOptions)
+    setOrganisationOptions(organisations);
   const teams = useTeams(workspaceId);
   const types = useGetWorkItemTypes({ workspaceId });
   const windowValue = search.window ?? "30";
@@ -160,7 +185,7 @@ export function ReportFilters({
         label={t("reports:filters.organisation")}
         allLabel={t("reports:filters.allOrganisations")}
         value={search.organisationId}
-        options={(organisations.data ?? []).map((organisation) => ({
+        options={organisationOptions.map((organisation) => ({
           value: organisation.id,
           label: organisation.name,
         }))}
