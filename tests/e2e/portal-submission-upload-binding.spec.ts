@@ -361,6 +361,16 @@ test("open submission file upload binds the real customer session", async ({
           for (const colorScheme of ["light", "dark"] as const) {
             await customerPage.setViewportSize({ width, height: 900 });
             await customerPage.emulateMedia({ colorScheme });
+            if (width >= 768) {
+              const sidebar = customerPage.locator(
+                '[data-slot="sidebar-container"]',
+              );
+              await expect(sidebar).toBeVisible();
+              await expect(sidebar).toHaveCSS("left", "0px");
+              await expect(
+                sidebar.locator('[data-slot="sidebar-inner"]'),
+              ).toBeVisible();
+            }
             await expect(customerPage.locator("html")).toHaveClass(
               new RegExp(`\\b${colorScheme}\\b`, "u"),
             );
