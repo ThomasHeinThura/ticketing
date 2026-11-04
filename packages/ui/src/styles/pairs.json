@@ -3017,8 +3017,8 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
-					"jsx:div[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
+					"jsx:RatesSettingsFrame[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -3032,8 +3032,8 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
-					"jsx:div[0]/form[0]/div[1]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
+					"jsx:RatesSettingsFrame[0]/form[0]/div[1]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -5815,8 +5815,8 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
-					"jsx:div[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
+					"jsx:RatesSettingsFrame[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -5830,8 +5830,8 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
-					"jsx:div[0]/form[0]/div[1]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
+					"jsx:RatesSettingsFrame[0]/form[0]/div[1]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -14099,7 +14099,7 @@
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]/Trash2[0]::text-destructive#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-destructive#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-destructive#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::DialogPanel[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::p[0]::text-destructive#0",
@@ -14332,10 +14332,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-destructive#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -14752,7 +14752,7 @@
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-destructive#0",
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]/Trash2[0]::text-destructive#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-destructive#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-destructive#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::DialogPanel[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]/p[0]::text-destructive#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::p[0]::text-destructive#0",
@@ -14985,10 +14985,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-destructive#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -20884,7 +20884,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -23674,7 +23674,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -26570,8 +26570,9 @@
 			"apps/web/src/components/custom-field/custom-field-value-input.tsx::CustomFieldValueInput::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SectionHeading::h3[0]::text-foreground#0",
 			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/div[0]/p[0]::text-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuLabel[0]::text-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::PersonList::div[0]/ul[0]/li[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::div[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/AlertDialogDescription[0]::text-foreground#0",
@@ -26783,10 +26784,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -26795,10 +26796,22 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuLabel[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuLabel[0]::text-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]",
+					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -27256,8 +27269,9 @@
 			"apps/web/src/components/custom-field/custom-field-value-input.tsx::CustomFieldValueInput::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SectionHeading::h3[0]::text-foreground#0",
 			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/div[0]/p[0]::text-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuLabel[0]::text-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::PersonList::div[0]/ul[0]/li[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::div[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/AlertDialogDescription[0]::text-foreground#0",
@@ -27469,10 +27483,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::data-highlighted:text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -27481,10 +27495,22 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuLabel[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuLabel[0]::text-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]",
+					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -28354,7 +28380,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:main[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -28365,7 +28391,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:main[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -28643,7 +28669,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:main[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -28654,7 +28680,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:main[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -33853,8 +33879,8 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::main[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::main[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/activity/comment-card-presentation.tsx::ActivityEventPresentation::TimelineItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/burndown-chart.tsx::BurndownChart::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/burndown-chart.tsx::BurndownChart::div[0]/svg[0]::text-muted-foreground#0",
@@ -33961,7 +33987,7 @@
 			"apps/web/src/components/kb/agent/kb-list.tsx::ArticlesView::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/agent/kb-list.tsx::KbList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/kb-article-content.tsx::KbTableOfContents::nav[0]/ul[0]/li[0]/a[0]::text-muted-foreground#0",
-			"apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::main[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/Bell[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
@@ -34080,9 +34106,9 @@
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ServiceReference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::WorkItemChangeSection::p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/header[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ReleaseDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::DependenciesCard::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[0]::text-muted-foreground#0",
@@ -34128,10 +34154,10 @@
 			"apps/web/src/components/time-tracking/cost-types-settings.tsx::CostTypesSection::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/project-budget.tsx::ProjectBudget::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/project-budget.tsx::ProjectBudget::div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/time-tracking/time-activities-settings.tsx::TimeActivitiesSettings::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsContent::RatesSettingsFrame[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsContent::RatesSettingsFrame[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsFrame::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/time-tracking/time-activities-settings.tsx::TimeActivitiesSettingsFrame::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/time-settings.tsx::AvailableHoursSetting::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/time-settings.tsx::AvailableHoursSetting::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/time-settings.tsx::BackdateLimitSetting::form[0]/p[0]::text-muted-foreground#0",
@@ -34142,7 +34168,7 @@
 			"apps/web/src/components/time-tracking/timesheet.tsx::MyGrid::div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/time-tracking/timesheet.tsx::MyGrid::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/timesheet.tsx::MyGrid::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#1",
-			"apps/web/src/components/time-tracking/timesheet.tsx::Timesheet::TimesheetFrame[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/time-tracking/timesheet.tsx::TimesheetContent::TimesheetFrame[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/timesheet.tsx::TimesheetFrame::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/work-item-costs.tsx::WorkItemCosts::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/work-item-costs.tsx::WorkItemCosts::section[0]/p[0]::text-muted-foreground#1",
@@ -34393,7 +34419,7 @@
 					"apps/web/src/routes/portal/account.tsx:/account",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
 			},
@@ -34404,7 +34430,7 @@
 					"apps/web/src/routes/portal/account.tsx:/account",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::main[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
 			},
@@ -36535,7 +36561,7 @@
 					"apps/web/src/routes/portal/kb.tsx:/kb",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::div[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/kb/portal/portal-kb-browse.tsx"
 			},
@@ -38504,7 +38530,7 @@
 					"apps/web/src/routes/portal/releases_.$id.tsx:/releases_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -38515,7 +38541,7 @@
 					"apps/web/src/routes/portal/releases_.$id.tsx:/releases_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/header[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -38526,7 +38552,7 @@
 					"apps/web/src/routes/portal/releases.tsx:/releases",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::div[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-releases-list.tsx"
 			},
@@ -39264,7 +39290,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsContent::RatesSettingsFrame[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/time-tracking/rates-settings.tsx"
 			},
@@ -39280,7 +39306,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsContent::RatesSettingsFrame[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/time-tracking/rates-settings.tsx"
 			},
@@ -39296,7 +39322,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsFrame::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/time-tracking/rates-settings.tsx"
 			},
@@ -39312,7 +39338,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/time-tracking/time-activities-settings.tsx::TimeActivitiesSettings::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/time-tracking/time-activities-settings.tsx::TimeActivitiesSettingsFrame::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/time-tracking/time-activities-settings.tsx"
 			},
@@ -39474,7 +39500,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/time-tracking/timesheet.tsx::Timesheet::TimesheetFrame[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/time-tracking/timesheet.tsx::TimesheetContent::TimesheetFrame[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/time-tracking/timesheet.tsx"
 			},
@@ -44566,7 +44592,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -45452,8 +45478,8 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::main[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::main[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/activity/comment-card-presentation.tsx::ActivityEventPresentation::TimelineItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/burndown-chart.tsx::BurndownChart::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/burndown-chart.tsx::BurndownChart::div[0]/svg[0]::text-muted-foreground#0",
@@ -45560,7 +45586,7 @@
 			"apps/web/src/components/kb/agent/kb-list.tsx::ArticlesView::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/agent/kb-list.tsx::KbList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/kb-article-content.tsx::KbTableOfContents::nav[0]/ul[0]/li[0]/a[0]::text-muted-foreground#0",
-			"apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::main[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/Bell[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
@@ -45679,9 +45705,9 @@
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ServiceReference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::WorkItemChangeSection::p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/header[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ReleaseDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::DependenciesCard::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[0]::text-muted-foreground#0",
@@ -45727,10 +45753,10 @@
 			"apps/web/src/components/time-tracking/cost-types-settings.tsx::CostTypesSection::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/project-budget.tsx::ProjectBudget::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/project-budget.tsx::ProjectBudget::div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/time-tracking/time-activities-settings.tsx::TimeActivitiesSettings::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsContent::RatesSettingsFrame[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsContent::RatesSettingsFrame[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsFrame::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/time-tracking/time-activities-settings.tsx::TimeActivitiesSettingsFrame::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/time-settings.tsx::AvailableHoursSetting::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/time-settings.tsx::AvailableHoursSetting::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/time-settings.tsx::BackdateLimitSetting::form[0]/p[0]::text-muted-foreground#0",
@@ -45741,7 +45767,7 @@
 			"apps/web/src/components/time-tracking/timesheet.tsx::MyGrid::div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/time-tracking/timesheet.tsx::MyGrid::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/timesheet.tsx::MyGrid::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/span[0]::text-muted-foreground#1",
-			"apps/web/src/components/time-tracking/timesheet.tsx::Timesheet::TimesheetFrame[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/time-tracking/timesheet.tsx::TimesheetContent::TimesheetFrame[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/timesheet.tsx::TimesheetFrame::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/work-item-costs.tsx::WorkItemCosts::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/work-item-costs.tsx::WorkItemCosts::section[0]/p[0]::text-muted-foreground#1",
@@ -45993,7 +46019,7 @@
 					"apps/web/src/routes/portal/account.tsx:/account",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
 			},
@@ -46004,7 +46030,7 @@
 					"apps/web/src/routes/portal/account.tsx:/account",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::main[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
 			},
@@ -48135,7 +48161,7 @@
 					"apps/web/src/routes/portal/kb.tsx:/kb",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::div[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/kb/portal/portal-kb-browse.tsx"
 			},
@@ -50104,7 +50130,7 @@
 					"apps/web/src/routes/portal/releases_.$id.tsx:/releases_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -50115,7 +50141,7 @@
 					"apps/web/src/routes/portal/releases_.$id.tsx:/releases_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/header[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -50126,7 +50152,7 @@
 					"apps/web/src/routes/portal/releases.tsx:/releases",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::main[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::div[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-releases-list.tsx"
 			},
@@ -50864,7 +50890,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsContent::RatesSettingsFrame[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/time-tracking/rates-settings.tsx"
 			},
@@ -50880,7 +50906,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsContent::RatesSettingsFrame[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/time-tracking/rates-settings.tsx"
 			},
@@ -50896,7 +50922,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettings::div[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/time-tracking/rates-settings.tsx::RatesSettingsFrame::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/time-tracking/rates-settings.tsx"
 			},
@@ -50912,7 +50938,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/time-tracking/time-activities-settings.tsx::TimeActivitiesSettings::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/time-tracking/time-activities-settings.tsx::TimeActivitiesSettingsFrame::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/time-tracking/time-activities-settings.tsx"
 			},
@@ -51074,7 +51100,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/time-tracking/timesheet.tsx::Timesheet::TimesheetFrame[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/time-tracking/timesheet.tsx::TimesheetContent::TimesheetFrame[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/time-tracking/timesheet.tsx"
 			},
@@ -56245,7 +56271,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -58108,7 +58134,7 @@
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChangesCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChecklistCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::DetailsCard::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
@@ -60960,10 +60986,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/service-management/portal/portal-release-detail.tsx:PortalReleaseDetail",
-					"jsx:main[0]/Card[0]/CardContent[0]/p[0]",
+					"jsx:div[0]/Card[0]/CardContent[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -62984,6 +63010,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/service-management/shared.tsx:CatalogueOff",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/service-management/shared.tsx:QueryFailure",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -63018,6 +63055,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/role-detail.tsx:RoleDetailView",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -63083,6 +63131,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessDenied",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/teams/teams-list.tsx:TeamsList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -63094,7 +63153,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/timesheet.tsx:Timesheet",
+					"apps/web/src/components/time-tracking/timesheet.tsx:TimesheetContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -63764,7 +63823,7 @@
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChangesCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChecklistCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::DetailsCard::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
@@ -66616,10 +66675,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/service-management/portal/portal-release-detail.tsx:PortalReleaseDetail",
-					"jsx:main[0]/Card[0]/CardContent[0]/p[0]",
+					"jsx:div[0]/Card[0]/CardContent[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::main[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -68700,6 +68759,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/service-management/shared.tsx:CatalogueOff",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/service-management/shared.tsx:QueryFailure",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -68734,6 +68804,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/role-detail.tsx:RoleDetailView",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -68799,6 +68880,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessDenied",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/teams/teams-list.tsx:TeamsList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -68810,7 +68902,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/timesheet.tsx:Timesheet",
+					"apps/web/src/components/time-tracking/timesheet.tsx:TimesheetContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -71816,6 +71908,112 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/timesheet.tsx:/_layout/_authenticated/agent/timesheet",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/budget.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/budget",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/features.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/features",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/automations.tsx:/_layout/_authenticated/dashboard/settings/workspace/automations",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/rates.tsx:/_layout/_authenticated/dashboard/settings/workspace/rates",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/time-activities.tsx:/_layout/_authenticated/dashboard/settings/workspace/time-activities",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/teams/team-detail.tsx:TeamDetailView",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/teams/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/teams/$id",
@@ -71960,7 +72158,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/rates.tsx:/_layout/_authenticated/dashboard/settings/workspace/rates",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -71978,7 +72176,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/timesheet.tsx:Timesheet",
+					"apps/web/src/components/time-tracking/timesheet.tsx:TimesheetContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/timesheet.tsx:/_layout/_authenticated/agent/timesheet",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -76548,6 +76746,112 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/timesheet.tsx:/_layout/_authenticated/agent/timesheet",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/budget.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/budget",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/features.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/features",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/automations.tsx:/_layout/_authenticated/dashboard/settings/workspace/automations",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/rates.tsx:/_layout/_authenticated/dashboard/settings/workspace/rates",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/time-activities.tsx:/_layout/_authenticated/dashboard/settings/workspace/time-activities",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/teams/team-detail.tsx:TeamDetailView",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/teams/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/teams/$id",
@@ -76692,7 +76996,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/rates.tsx:/_layout/_authenticated/dashboard/settings/workspace/rates",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -76710,7 +77014,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/timesheet.tsx:Timesheet",
+					"apps/web/src/components/time-tracking/timesheet.tsx:TimesheetContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/timesheet.tsx:/_layout/_authenticated/agent/timesheet",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -80268,7 +80572,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/rates.tsx:/_layout/_authenticated/dashboard/settings/workspace/rates",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -80286,7 +80590,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/time-activities-settings.tsx:TimeActivitiesSettings",
+					"apps/web/src/components/time-tracking/time-activities-settings.tsx:TimeActivitiesSettingsContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/time-activities.tsx:/_layout/_authenticated/dashboard/settings/workspace/time-activities",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -81524,7 +81828,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettings",
+					"apps/web/src/components/time-tracking/rates-settings.tsx:RatesSettingsContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/rates.tsx:/_layout/_authenticated/dashboard/settings/workspace/rates",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -81542,7 +81846,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/time-activities-settings.tsx:TimeActivitiesSettings",
+					"apps/web/src/components/time-tracking/time-activities-settings.tsx:TimeActivitiesSettingsContent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/time-activities.tsx:/_layout/_authenticated/dashboard/settings/workspace/time-activities",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -86511,14 +86815,14 @@
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]/Folder[0]::text-muted-foreground#0",
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[1]/Forward[0]::text-muted-foreground#0",
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[2]/Settings[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#1",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/Bell[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#1",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/Bell[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]/div[0]/p[0]::text-muted-foreground#1",
@@ -87921,10 +88225,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -87933,10 +88237,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -87945,10 +88249,10 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/Bell[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/Bell[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/Bell[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/Bell[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -87957,10 +88261,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -87969,10 +88273,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[1]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -87981,10 +88285,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -87993,10 +88297,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -88005,10 +88309,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[1]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -92077,14 +92381,14 @@
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]/Folder[0]::text-muted-foreground#0",
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[1]/Forward[0]::text-muted-foreground#0",
 			"apps/web/src/components/nav-projects.tsx::NavProjects::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[2]/Settings[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#1",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/Bell[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#1",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/Bell[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]/div[0]/p[0]::text-muted-foreground#1",
@@ -93487,10 +93791,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -93499,10 +93803,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[0]/DropdownMenuItem[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -93511,10 +93815,10 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/Bell[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/Bell[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/Bell[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/Bell[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -93523,10 +93827,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -93535,10 +93839,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[1]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/div[0]/p[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -93547,10 +93851,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -93559,10 +93863,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[0]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -93571,10 +93875,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
-					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[1]",
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
-				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -98960,7 +99264,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:main[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -98971,7 +99275,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:main[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -100207,7 +100511,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:main[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -100218,7 +100522,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:main[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -101329,22 +101633,6 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/service-management/services-list.tsx:ServicesList",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services.tsx:/_layout/_authenticated/agent/service-management/services",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/settings/custom-fields/custom-fields-list.tsx:CustomFieldsList",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/custom-fields.tsx:/_layout/_authenticated/dashboard/settings/workspace/custom-fields",
@@ -102705,22 +102993,6 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/service-management/services-list.tsx:ServicesList",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services.tsx:/_layout/_authenticated/agent/service-management/services",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/settings/custom-fields/custom-fields-list.tsx:CustomFieldsList",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/custom-fields.tsx:/_layout/_authenticated/dashboard/settings/workspace/custom-fields",
@@ -103647,6 +103919,7 @@
 			"packages/ui/src/components/popover.tsx::PopoverPopup::PopoverPrimitive.Portal[0]/PopoverPrimitive.Positioner[0]/PopoverPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/preview-card.tsx::PreviewCardPopup::PreviewCardPrimitive.Portal[0]/PreviewCardPrimitive.Positioner[0]/PreviewCardPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/sheet.tsx::SheetPopup::SheetPortal[0]/SheetViewport[0]/SheetPrimitive.Popup[0]::text-popover-foreground#0",
+			"packages/ui/src/components/sidebar-shell.tsx::SkipToMainLink::a[0]::text-popover-foreground#0",
 			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
 			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]::text-popover-foreground#0",
 			"packages/ui/src/components/tooltip.tsx::TooltipPopup::TooltipPrimitive.Portal[0]/TooltipPrimitive.Positioner[0]/TooltipPrimitive.Popup[0]::text-popover-foreground#0"
@@ -103728,6 +104001,17 @@
 				"id": "packages/ui/src/components/sheet.tsx::SheetPopup::SheetPortal[0]/SheetViewport[0]/SheetPrimitive.Popup[0]::text-popover-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "packages/ui/src/components/sheet.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/sidebar-shell.tsx:SkipToMainLink",
+					"jsx:a[0]>bg-popover"
+				],
+				"id": "packages/ui/src/components/sidebar-shell.tsx::SkipToMainLink::a[0]::text-popover-foreground#0",
+				"surfaceContext": "same-element",
+				"usage": "packages/ui/src/components/sidebar-shell.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -103785,6 +104069,7 @@
 			"packages/ui/src/components/popover.tsx::PopoverPopup::PopoverPrimitive.Portal[0]/PopoverPrimitive.Positioner[0]/PopoverPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/preview-card.tsx::PreviewCardPopup::PreviewCardPrimitive.Portal[0]/PreviewCardPrimitive.Positioner[0]/PreviewCardPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/sheet.tsx::SheetPopup::SheetPortal[0]/SheetViewport[0]/SheetPrimitive.Popup[0]::text-popover-foreground#0",
+			"packages/ui/src/components/sidebar-shell.tsx::SkipToMainLink::a[0]::text-popover-foreground#0",
 			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
 			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]::text-popover-foreground#0",
 			"packages/ui/src/components/tooltip.tsx::TooltipPopup::TooltipPrimitive.Portal[0]/TooltipPrimitive.Positioner[0]/TooltipPrimitive.Popup[0]::text-popover-foreground#0"
@@ -103866,6 +104151,17 @@
 				"id": "packages/ui/src/components/sheet.tsx::SheetPopup::SheetPortal[0]/SheetViewport[0]/SheetPrimitive.Popup[0]::text-popover-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "packages/ui/src/components/sheet.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/sidebar-shell.tsx:SkipToMainLink",
+					"jsx:a[0]>bg-popover"
+				],
+				"id": "packages/ui/src/components/sidebar-shell.tsx::SkipToMainLink::a[0]::text-popover-foreground#0",
+				"surfaceContext": "same-element",
+				"usage": "packages/ui/src/components/sidebar-shell.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -105026,6 +105322,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/service-management/shared.tsx:CatalogueOff",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/service-management/shared.tsx:QueryFailure",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -105060,6 +105367,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/role-detail.tsx:RoleDetailView",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -105125,6 +105443,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessDenied",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/teams/teams-list.tsx:TeamsList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -105136,7 +105465,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/timesheet.tsx:Timesheet",
+					"apps/web/src/components/time-tracking/timesheet.tsx:TimesheetContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -105853,6 +106182,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/service-management/shared.tsx:CatalogueOff",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/service-management/shared.tsx:QueryFailure",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -105887,6 +106227,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/role-detail.tsx:RoleDetailView",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -105952,6 +106303,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessDenied",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/teams/teams-list.tsx:TeamsList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -105963,7 +106325,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/time-tracking/timesheet.tsx:Timesheet",
+					"apps/web/src/components/time-tracking/timesheet.tsx:TimesheetContent",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -106760,10 +107122,10 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx::RouteComponent::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
@@ -106772,11 +107134,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -106785,11 +107147,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -106798,11 +107160,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/instance-settings-frame.tsx:InstanceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/instance-settings-frame.tsx:InstanceSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/instance-settings-frame.tsx"
 			},
@@ -106811,11 +107173,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/workspace-settings-frame.tsx:WorkspaceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/workspace-settings-frame.tsx:WorkspaceSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/workspace-settings-frame.tsx"
 			},
@@ -106977,10 +107339,10 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx::RouteComponent::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
@@ -106989,11 +107351,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -107002,11 +107364,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -107015,11 +107377,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/instance-settings-frame.tsx:InstanceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/instance-settings-frame.tsx:InstanceSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/instance-settings-frame.tsx"
 			},
@@ -107028,11 +107390,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/workspace-settings-frame.tsx:WorkspaceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/workspace-settings-frame.tsx:WorkspaceSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/workspace-settings-frame.tsx"
 			},
@@ -107648,10 +108010,10 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx::RouteComponent::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0"
 		],
 		"occurrences": [
@@ -107660,11 +108022,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -107673,11 +108035,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -107686,11 +108048,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/instance-settings-frame.tsx:InstanceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/instance-settings-frame.tsx:InstanceSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/instance-settings-frame.tsx"
 			},
@@ -107699,11 +108061,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/workspace-settings-frame.tsx:WorkspaceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/workspace-settings-frame.tsx:WorkspaceSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/workspace-settings-frame.tsx"
 			},
@@ -107737,10 +108099,10 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx::RouteComponent::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0"
 		],
 		"occurrences": [
@@ -107749,11 +108111,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -107762,11 +108124,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -107775,11 +108137,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/instance-settings-frame.tsx:InstanceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/instance-settings-frame.tsx:InstanceSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/instance-settings-frame.tsx"
 			},
@@ -107788,11 +108150,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/workspace-settings-frame.tsx:WorkspaceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]>bg-sidebar-accent",
 					"apps/web/src/components/settings/workspace-settings-frame.tsx:WorkspaceSettingsFrame",
 					"SidebarMenuItem->packages/ui/src/components/sidebar.tsx:SidebarMenuItem"
 				],
-				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupContent[0]/SidebarMenu[0]/SidebarMenuItem[0]/Button[0]::text-sidebar-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/workspace-settings-frame.tsx"
 			},
@@ -107827,11 +108189,11 @@
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
 			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/div[0]/div[0]/p[1]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/div[0]/div[0]/p[1]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 			"apps/web/src/components/SettingsSidebar.tsx::SettingsSidebar::Sheet[0]/SheetPopup[0]::text-sidebar-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx::RouteComponent::div[0]/SettingsSidebar[0]/div[0]/div[0]/div[0]/p[1]::text-sidebar-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx::RouteComponent::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
@@ -107859,10 +108221,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
 					"SettingsSidebar->apps/web/src/components/SettingsSidebar.tsx:default>bg-sidebar"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -107871,10 +108233,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupLabel[0]",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupLabel[0]",
 					"SettingsSidebar->apps/web/src/components/SettingsSidebar.tsx:default>bg-sidebar"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -107883,10 +108245,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/instance-settings-frame.tsx:InstanceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
+					"jsx:div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
 					"SettingsSidebar->apps/web/src/components/SettingsSidebar.tsx:default>bg-sidebar"
 				],
-				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/instance-settings-frame.tsx"
 			},
@@ -107907,10 +108269,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/workspace-settings-frame.tsx:WorkspaceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
 					"SettingsSidebar->apps/web/src/components/SettingsSidebar.tsx:default>bg-sidebar"
 				],
-				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/workspace-settings-frame.tsx"
 			},
@@ -108022,11 +108384,11 @@
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
 			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/div[0]/div[0]/p[1]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/div[0]/div[0]/p[1]::text-sidebar-foreground#0",
-			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+			"apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 			"apps/web/src/components/SettingsSidebar.tsx::SettingsSidebar::Sheet[0]/SheetPopup[0]::text-sidebar-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx::RouteComponent::div[0]/SettingsSidebar[0]/div[0]/div[0]/div[0]/p[1]::text-sidebar-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx::RouteComponent::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
@@ -108054,10 +108416,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
 					"SettingsSidebar->apps/web/src/components/SettingsSidebar.tsx:default>bg-sidebar"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -108066,10 +108428,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/account-settings-frame.tsx:AccountSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupLabel[0]",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupLabel[0]",
 					"SettingsSidebar->apps/web/src/components/SettingsSidebar.tsx:default>bg-sidebar"
 				],
-				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[1]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/account-settings-frame.tsx::AccountSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[1]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/account-settings-frame.tsx"
 			},
@@ -108078,10 +108440,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/instance-settings-frame.tsx:InstanceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
+					"jsx:div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
 					"SettingsSidebar->apps/web/src/components/SettingsSidebar.tsx:default>bg-sidebar"
 				],
-				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/instance-settings-frame.tsx::InstanceSettingsFrame::div[0]/SettingsSidebar[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/instance-settings-frame.tsx"
 			},
@@ -108102,10 +108464,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/workspace-settings-frame.tsx:WorkspaceSettingsFrame",
-					"jsx:div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
+					"jsx:div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]",
 					"SettingsSidebar->apps/web/src/components/SettingsSidebar.tsx:default>bg-sidebar"
 				],
-				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
+				"id": "apps/web/src/components/settings/workspace-settings-frame.tsx::WorkspaceSettingsFrame::div[0]/SettingsSidebar[0]/div[0]/nav[0]/SidebarGroup[0]/SidebarGroupLabel[0]::text-sidebar-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/workspace-settings-frame.tsx"
 			},
