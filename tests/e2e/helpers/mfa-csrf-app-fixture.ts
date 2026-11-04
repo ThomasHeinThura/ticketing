@@ -652,6 +652,8 @@ async function runMfaCsrfApp<T>(
         ...process.env,
         NODE_ENV: "test",
         TASKDESK_AUTH_SECRET: secret,
+        TASKDESK_ENCRYPTION_KEY: randomBytes(32).toString("hex"),
+        TASKDESK_ENCRYPTION_KEY_PREVIOUS: "",
         TASKDESK_AGENT_URL: origin,
         TASKDESK_PORTAL_URL: `http://portal.localhost:${port}`,
         KANEO_API_URL: origin,

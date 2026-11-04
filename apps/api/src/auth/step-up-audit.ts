@@ -30,7 +30,9 @@ export type StepUpOperation =
   | "workspace_ownership_transfer"
   | "change_freeze_override"
   | "audit_export"
-  | "auth_local_methods_update";
+  | "auth_local_methods_update"
+  | "storage_config_save"
+  | "storage_config_test";
 
 export type StepUpAuditAction =
   | "auth.step_up_issued"
@@ -73,6 +75,8 @@ export const STEP_UP_OPERATION_ROUTES: Record<StepUpOperation, string> = {
   change_freeze_override: "POST /api/work-items/{key}/change/override-freeze",
   audit_export: "POST /api/instance/audit/export",
   auth_local_methods_update: "PUT /api/instance/auth/local-methods",
+  storage_config_save: "PUT /api/instance/storage/s3-draft",
+  storage_config_test: "POST /api/instance/storage/s3-draft/test",
 };
 
 /**

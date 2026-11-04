@@ -42,6 +42,7 @@
     "portal-projects-journey.spec.ts",
     "portal-request-conversation-journey.spec.ts",
     "storage-probe-retention-journey.spec.ts",
+    "s3-draft-settings-journey.spec.ts",
     "../api/mfa-csrf-app-fixture.test.ts"
   ]
 }

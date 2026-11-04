@@ -2044,6 +2044,51 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"jsx:Card[0]/CardContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"jsx:Card[0]/CardContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[1]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"jsx:Card[0]/CardContent[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
 					"jsx:form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -4829,6 +4874,51 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/god-mode/organisation-profile-editor.tsx:OrganisationProfileEditor",
 					"jsx:Card[0]/CardContent[0]/div[0]/section[1]/div[0]/fieldset[0]/div[1]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"jsx:Card[0]/CardContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"jsx:Card[0]/CardContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[1]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"jsx:Card[0]/CardContent[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -12683,6 +12773,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
@@ -13331,6 +13432,17 @@
 				"id": "apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/notification-provider-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -20455,6 +20567,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -23247,6 +23370,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/god-mode/organisation-profile-editor.tsx:OrganisationProfileEditor",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -44266,6 +44400,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -55974,6 +56119,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -58184,6 +58340,8 @@
 			"apps/web/src/components/god-mode/plugins/plugins-catalog.tsx::PluginsCatalog::div[0]/Card[0]/CardContent[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/plugins/plugins-catalog.tsx::PluginsCatalog::div[0]/Card[0]/CardContent[0]/div[0]/p[2]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/plugins/schema-settings-form.tsx::SchemaSettingsForm::div[0]/fieldset[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
@@ -59563,6 +59721,41 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/s3-draft-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/s3-draft-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
@@ -59578,6 +59771,17 @@
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
@@ -62681,6 +62885,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/storage-usage-panel.tsx:StorageUsagePanel",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
@@ -63886,6 +64101,8 @@
 			"apps/web/src/components/god-mode/plugins/plugins-catalog.tsx::PluginsCatalog::div[0]/Card[0]/CardContent[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/plugins/plugins-catalog.tsx::PluginsCatalog::div[0]/Card[0]/CardContent[0]/div[0]/p[2]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/plugins/schema-settings-form.tsx::SchemaSettingsForm::div[0]/fieldset[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
@@ -65265,6 +65482,41 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/s3-draft-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"jsx:Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/s3-draft-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/webhook/webhook-editor.tsx:StatusCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
@@ -65280,6 +65532,17 @@
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
@@ -68385,6 +68648,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/god-mode/organisation-profile-editor.tsx:OrganisationProfileEditor",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -71022,6 +71296,22 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftPanel",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/storage.tsx:/_layout/_authenticated/god-mode/storage",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
@@ -73563,6 +73853,19 @@
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -75911,6 +76214,22 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftPanel",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/storage.tsx:/_layout/_authenticated/god-mode/storage",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/scim-group-mappings-settings.tsx:MappingForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:/_layout/_authenticated/god-mode/authentication/$id",
@@ -78452,6 +78771,19 @@
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -81131,6 +81463,19 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/storage-usage-panel.tsx:StorageUsagePanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/storage-usage-panel.tsx:StorageUsagePanel",
@@ -82377,6 +82722,19 @@
 					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:LocalSignInMethodsCard",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -101164,6 +101522,19 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/portal/portal-request-actions.tsx:PortalSatisfaction",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/portal/portal-request-actions.tsx:PortalSatisfaction",
@@ -101401,6 +101772,19 @@
 					"apps/web/src/components/god-mode/imports/wizard/execute-progress.tsx:ExecuteStep",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/imports/wizard/execute-progress.tsx:ExecuteStep",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",

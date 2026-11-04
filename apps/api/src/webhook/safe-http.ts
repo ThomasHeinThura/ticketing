@@ -305,6 +305,244 @@ function errorLabel(error: unknown): string {
   return "request_failed";
 }
 
+export type GuardedOutboundResponse = {
+  statusCode: number;
+  headers: Record<string, string>;
+  body: Buffer;
+};
+
+type SharedRequest = {
+  url: URL;
+  path: string;
+  method: string;
+  headers: Record<string, string>;
+  body?: Uint8Array | string | undefined;
+  timeoutMs: number;
+  maxResponseBytes: number;
+  resolver: AddressResolver;
+  relaxed: boolean;
+  responseMode: "truncate" | "reject";
+  rejectRedirect: boolean;
+  signal?: AbortSignal | undefined;
+};
+
+/**
+ * The socket-owning transport shared by webhooks and strict S3 probes. DNS is
+ * checked before opening a socket and again by the connection's lookup, while
+ * the deadline and abort signal apply to the entire operation, including DNS.
+ */
+function performGuardedRequest(
+  input: SharedRequest,
+): Promise<GuardedOutboundResponse> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let request: http.ClientRequest | undefined;
+    let response: http.IncomingMessage | undefined;
+    const finish = (error?: unknown, result?: GuardedOutboundResponse) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(deadline);
+      input.signal?.removeEventListener("abort", onAbort);
+      if (error !== undefined) reject(error);
+      else if (result) resolve(result);
+      else reject(new Error("outbound_request_failed"));
+    };
+    const fail = (error: unknown) => {
+      if (settled) return;
+      // Settle before destroying: a synchronous mock may emit an error or close.
+      finish(error);
+      response?.destroy();
+      request?.destroy();
+    };
+    const onAbort = () => fail(new Error("outbound_request_aborted"));
+    const deadline = setTimeout(
+      () => fail(new Error("webhook_timeout")),
+      input.timeoutMs,
+    );
+    input.signal?.addEventListener("abort", onAbort, { once: true });
+    if (input.signal?.aborted) {
+      onAbort();
+      return;
+    }
+
+    void resolvePermittedAddresses(
+      input.url.hostname,
+      input.resolver,
+      input.relaxed,
+    )
+      .then(() => {
+        if (settled) return;
+        const transport = input.url.protocol === "https:" ? https : http;
+        try {
+          request = transport.request(
+            {
+              protocol: input.url.protocol,
+              hostname: input.url.hostname.replace(/^\[|\]$/g, ""),
+              port: input.url.port || undefined,
+              path: input.path,
+              method: input.method,
+              headers: input.headers,
+              lookup: createGuardedLookup(
+                input.resolver,
+                input.relaxed,
+              ) as unknown as net.LookupFunction,
+              agent: false,
+            },
+            (incoming) => {
+              response = incoming;
+              const statusCode = incoming.statusCode ?? 0;
+              if (
+                input.rejectRedirect &&
+                statusCode >= 300 &&
+                statusCode < 400
+              ) {
+                fail(new Error("outbound_redirect_refused"));
+                return;
+              }
+              const headers: Record<string, string> = {};
+              for (const [key, value] of Object.entries(incoming.headers)) {
+                if (value !== undefined)
+                  headers[key] = Array.isArray(value)
+                    ? value.join(",")
+                    : String(value);
+              }
+              const chunks: Buffer[] = [];
+              let received = 0;
+              let ended = false;
+              const done = () => {
+                const body = Buffer.concat(chunks).subarray(
+                  0,
+                  input.maxResponseBytes,
+                );
+                finish(undefined, { statusCode, headers, body });
+              };
+              incoming.on("data", (chunk: Buffer) => {
+                received += chunk.length;
+                if (
+                  input.responseMode === "reject" &&
+                  received > input.maxResponseBytes
+                ) {
+                  fail(new Error("outbound_response_too_large"));
+                  return;
+                }
+                chunks.push(Buffer.from(chunk));
+                if (
+                  input.responseMode === "truncate" &&
+                  received >= input.maxResponseBytes
+                )
+                  incoming.destroy();
+              });
+              incoming.on("end", () => {
+                ended = true;
+                done();
+              });
+              incoming.on("close", () => {
+                if (input.responseMode === "truncate") done();
+                else if (!ended)
+                  fail(new Error("outbound_response_incomplete"));
+              });
+              incoming.on("error", () => {
+                if (input.responseMode === "truncate") done();
+                else fail(new Error("outbound_response_failed"));
+              });
+              incoming.on("aborted", () => {
+                if (input.responseMode === "reject")
+                  fail(new Error("outbound_response_incomplete"));
+              });
+            },
+          );
+          request.on("socket", (socket) => {
+            socket.once("connect", () => {
+              if (
+                !input.relaxed &&
+                (!socket.remoteAddress ||
+                  isForbiddenWebhookAddress(socket.remoteAddress))
+              )
+                fail(new Error("webhook_connected_to_forbidden_address"));
+            });
+          });
+          request.on("error", (error) => fail(error));
+          request.end(input.body);
+        } catch (error) {
+          fail(error);
+        }
+      })
+      .catch(fail);
+  });
+}
+
+/**
+ * Strict outbound request for an already signed S3 operation. `path` includes
+ * the raw signed query; it and the supplied headers/body are never rewritten.
+ * The origin, host header, body length and policy are checked independently.
+ */
+export async function sendGuardedOutboundRequest(input: {
+  origin: string;
+  path: string;
+  method: string;
+  headers: Record<string, string>;
+  body?: Uint8Array | string | undefined;
+  policy: "strict-public-https" | "bundled-seaweedfs";
+  timeoutMs: number;
+  maxResponseBytes: number;
+  signal?: AbortSignal | undefined;
+  resolver?: AddressResolver | undefined;
+}): Promise<GuardedOutboundResponse> {
+  let url: URL;
+  try {
+    url = new URL(input.origin);
+  } catch {
+    throw new Error("outbound_invalid_request");
+  }
+  const fields = Object.entries(input.headers);
+  const hosts = fields.filter(([key]) => key.toLowerCase() === "host");
+  const lengths = fields.filter(
+    ([key]) => key.toLowerCase() === "content-length",
+  );
+  const bodyLength =
+    input.body === undefined ? 0 : Buffer.byteLength(input.body);
+  const bundled = input.policy === "bundled-seaweedfs";
+  if (
+    (bundled
+      ? input.origin !== "http://seaweedfs:8333"
+      : input.policy !== "strict-public-https" || url.protocol !== "https:") ||
+    (input.origin !== url.origin && input.origin !== `${url.origin}/`) ||
+    url.username ||
+    url.password ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash ||
+    (!bundled && net.isIP(url.hostname.replace(/^\[|\]$/g, ""))) ||
+    !input.path.startsWith("/") ||
+    /[^\x21-\x7e]|[#\\]/u.test(input.path) ||
+    !/^[A-Z]+$/u.test(input.method) ||
+    hosts.length !== 1 ||
+    hosts[0]?.[1].toLowerCase() !== url.host.toLowerCase() ||
+    lengths.length > 1 ||
+    (input.body !== undefined && lengths.length !== 1) ||
+    (lengths.length === 1 && lengths[0]?.[1] !== String(bodyLength)) ||
+    !Number.isFinite(input.timeoutMs) ||
+    input.timeoutMs <= 0 ||
+    !Number.isSafeInteger(input.maxResponseBytes) ||
+    input.maxResponseBytes < 1
+  )
+    throw new Error("outbound_invalid_request");
+  return performGuardedRequest({
+    url,
+    path: input.path,
+    method: input.method,
+    headers: input.headers,
+    body: input.body,
+    timeoutMs: input.timeoutMs,
+    maxResponseBytes: input.maxResponseBytes,
+    signal: input.signal,
+    resolver: input.resolver ?? systemResolver,
+    relaxed: bundled,
+    responseMode: "reject",
+    rejectRedirect: true,
+  });
+}
+
 /**
  * POSTs one webhook delivery. Never throws: every outcome, including a refused destination,
  * is a `WebhookSendResult` so the caller records it. Only a `2xx` is success (`WH-5`).
@@ -324,12 +562,6 @@ export async function sendWebhookRequest(input: {
   let parsed: ParsedWebhookUrl;
   try {
     parsed = parseWebhookUrl(input.url, env);
-    // WH-9: fail fast before opening a socket.
-    await resolvePermittedAddresses(
-      parsed.url.hostname,
-      input.resolver ?? systemResolver,
-      relaxed,
-    );
   } catch (error) {
     return {
       statusCode: null,
@@ -340,97 +572,41 @@ export async function sendWebhookRequest(input: {
     };
   }
 
-  const timeoutMs = input.timeoutMs ?? WEBHOOK_TIMEOUT_MS;
   const body = Buffer.from(input.rawBody, "utf8");
-  const transport = parsed.secure ? https : http;
-
-  return new Promise<WebhookSendResult>((resolve) => {
-    let settled = false;
-    const finish = (result: Omit<WebhookSendResult, "durationMs">) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(deadline);
-      resolve({ ...result, durationMs: elapsed() });
+  try {
+    const response = await performGuardedRequest({
+      url: parsed.url,
+      path: `${parsed.url.pathname}${parsed.url.search}`,
+      method: "POST",
+      headers: { ...input.headers, "Content-Length": String(body.length) },
+      body,
+      timeoutMs: input.timeoutMs ?? WEBHOOK_TIMEOUT_MS,
+      maxResponseBytes: WEBHOOK_RESPONSE_BODY_LIMIT,
+      resolver: input.resolver ?? systemResolver,
+      relaxed,
+      responseMode: "truncate",
+      rejectRedirect: false,
+    });
+    const success = response.statusCode >= 200 && response.statusCode < 300;
+    const redirect = response.statusCode >= 300 && response.statusCode < 400;
+    return {
+      statusCode: response.statusCode,
+      durationMs: elapsed(),
+      responseBody: response.body.toString("utf8"),
+      error: success
+        ? null
+        : redirect
+          ? "redirect_not_followed"
+          : `http_${response.statusCode}`,
+      success,
     };
-
-    const request = transport.request(
-      {
-        protocol: parsed.url.protocol,
-        hostname: parsed.url.hostname.replace(/^\[|\]$/g, ""),
-        port: parsed.url.port || undefined,
-        path: `${parsed.url.pathname}${parsed.url.search}`,
-        method: "POST",
-        headers: {
-          ...input.headers,
-          "Content-Length": String(body.length),
-        },
-        // WH-10: every connection attempt resolves through the guard.
-        lookup: createGuardedLookup(
-          input.resolver ?? systemResolver,
-          relaxed,
-        ) as unknown as net.LookupFunction,
-        // No connection reuse: each delivery re-resolves and re-checks.
-        agent: false,
-      },
-      (response) => {
-        const status = response.statusCode ?? 0;
-        const chunks: Buffer[] = [];
-        let received = 0;
-        response.on("data", (chunk: Buffer) => {
-          if (received < WEBHOOK_RESPONSE_BODY_LIMIT) {
-            chunks.push(chunk);
-            received += chunk.length;
-          }
-          if (received >= WEBHOOK_RESPONSE_BODY_LIMIT) {
-            response.destroy();
-          }
-        });
-        const done = () => {
-          const text = Buffer.concat(chunks)
-            .subarray(0, WEBHOOK_RESPONSE_BODY_LIMIT)
-            .toString("utf8");
-          const success = status >= 200 && status < 300;
-          const redirect = status >= 300 && status < 400;
-          finish({
-            statusCode: status,
-            responseBody: text,
-            error: success
-              ? null
-              : redirect
-                ? "redirect_not_followed"
-                : `http_${status}`,
-            success,
-          });
-        };
-        response.on("end", done);
-        response.on("close", done);
-        response.on("error", done);
-      },
-    );
-
-    // WH-10: verify the address the TCP connection actually landed on.
-    request.on("socket", (socket) => {
-      socket.once("connect", () => {
-        const remote = socket.remoteAddress;
-        if (
-          !relaxed &&
-          (remote === undefined || isForbiddenWebhookAddress(remote))
-        ) {
-          request.destroy(new Error("webhook_connected_to_forbidden_address"));
-        }
-      });
-    });
-    request.on("error", (error) => {
-      finish({
-        statusCode: null,
-        responseBody: null,
-        error: errorLabel(error),
-        success: false,
-      });
-    });
-    const deadline = setTimeout(() => {
-      request.destroy(new Error("webhook_timeout"));
-    }, timeoutMs);
-    request.end(body);
-  });
+  } catch (error) {
+    return {
+      statusCode: null,
+      durationMs: elapsed(),
+      responseBody: null,
+      error: errorLabel(error),
+      success: false,
+    };
+  }
 }

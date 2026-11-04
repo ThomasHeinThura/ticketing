@@ -6023,6 +6023,14 @@ async function installAuthenticatedFixture(page: Page) {
       body = vGmBOrgCustomerVisibility;
     } else if (path === "/api/instance/storage/usage") {
       body = vGmBStorageUsage;
+    } else if (path === "/api/instance/storage/s3-draft") {
+      body = {
+        version: 0,
+        config: null,
+        credentialConfigured: false,
+        accessKeyIdConfigured: false,
+        secretAccessKeyConfigured: false,
+      };
     } else if (path === "/api/instance/deliveries") {
       body = vGmBDeliveries;
     } else if (path === "/api/instance/jobs") {
@@ -9022,7 +9030,34 @@ test("god mode storage screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Configuration ready", { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByText("S3 / SeaweedFS configuration draft", { exact: true }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("god-storage.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+  await page
+    .getByText("S3 / SeaweedFS configuration draft", { exact: true })
+    .evaluate((element) => element.scrollIntoView({ block: "start" }));
+  await expect(page).toHaveScreenshot("god-storage-draft.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+  await page
+    .getByRole("button", { name: "Save draft", exact: true })
+    .scrollIntoViewIfNeeded();
+  await expect(page).toHaveScreenshot("god-storage-draft-verification.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

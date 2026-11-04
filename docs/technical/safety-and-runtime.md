@@ -4054,6 +4054,19 @@ collisions remain uncertain because a retried write may already have committed. 
 states that cleanup is unverified and that diagnostics are excluded from attachment
 metadata totals. Partial or timed-out writes may also leave an object.
 
+The inactive S3 draft is a separate encrypted, disabled configuration row. Saving
+and testing use distinct one-use PA-15 proofs bound to the exact normalized settings,
+draft CAS version and credential intents. Supplied credential values are represented
+by server-derived, domain-separated HMACs; kept values are protected by the locked
+version. Neither credentials nor their digests enter the audit trail. Stale versions
+are refused before proof consumption. A test commits its proof and attempt audit
+before outbound I/O, with the existing five-per-minute actor limit.
+
+External draft tests require public HTTPS and DNS/socket validation without redirects.
+The bundled connector accepts no endpoint input and uses only the fixed SeaweedFS
+service. A successful test verifies server-side write/read only. It does not verify
+browser transfers, activate a backend or migrate existing bytes (#166/#167).
+
 The diagnostic payload is 32 bytes. Existing concurrency and per-actor cooldown
 limits are process-local; they are not a global retained-storage quota or automatic
 retention policy. Provider metadata overhead is not included in the payload size.

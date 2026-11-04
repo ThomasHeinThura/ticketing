@@ -38995,6 +38995,150 @@
 				},
 				"physicalUsageUnavailable": {
 					"type": "string"
+				},
+				"draft": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"inactive": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"notice": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"connector": {
+							"type": "string"
+						},
+						"external": {
+							"type": "string"
+						},
+						"bundled": {
+							"type": "string"
+						},
+						"endpoint": {
+							"type": "string"
+						},
+						"publicBaseUrl": {
+							"type": "string"
+						},
+						"region": {
+							"type": "string"
+						},
+						"bucket": {
+							"type": "string"
+						},
+						"keyPrefix": {
+							"type": "string"
+						},
+						"forcePathStyle": {
+							"type": "string"
+						},
+						"maxImageUploadBytes": {
+							"type": "string"
+						},
+						"presignTtlSeconds": {
+							"type": "string"
+						},
+						"access": {
+							"type": "string"
+						},
+						"secret": {
+							"type": "string"
+						},
+						"configured": {
+							"type": "string"
+						},
+						"notConfigured": {
+							"type": "string"
+						},
+						"keep": {
+							"type": "string"
+						},
+						"replace": {
+							"type": "string"
+						},
+						"clear": {
+							"type": "string"
+						},
+						"accessValue": {
+							"type": "string"
+						},
+						"secretValue": {
+							"type": "string"
+						},
+						"endpointCredentials": {
+							"type": "string"
+						},
+						"operationFailed": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"browserUnverified": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"test": {
+							"type": "string"
+						},
+						"reload": {
+							"type": "string"
+						},
+						"verifyEach": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"inactive",
+						"description",
+						"notice",
+						"loading",
+						"loadFailed",
+						"connector",
+						"external",
+						"bundled",
+						"endpoint",
+						"publicBaseUrl",
+						"region",
+						"bucket",
+						"keyPrefix",
+						"forcePathStyle",
+						"maxImageUploadBytes",
+						"presignTtlSeconds",
+						"access",
+						"secret",
+						"configured",
+						"notConfigured",
+						"keep",
+						"replace",
+						"clear",
+						"accessValue",
+						"secretValue",
+						"endpointCredentials",
+						"operationFailed",
+						"saved",
+						"browserUnverified",
+						"save",
+						"test",
+						"reload",
+						"verifyEach"
+					]
 				}
 			},
 			"required": [
@@ -39027,7 +39171,8 @@
 				"limits",
 				"columns",
 				"states",
-				"physicalUsageUnavailable"
+				"physicalUsageUnavailable",
+				"draft"
 			]
 		},
 		"godModeOrganisations": {

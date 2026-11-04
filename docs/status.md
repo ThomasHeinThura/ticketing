@@ -1,5 +1,12 @@
 # Current status — 31 October 2026, evening
 
+**5 Nov source work:** storage diagnostic retention is in draft PR #1052. A dependent
+S3/SeaweedFS draft form passed local encrypted-persistence, configuration-bound
+save/test proof and real-provider browser checks (26 integration tests; one
+persisted journey; three widths and both themes). Hosted CI is pending. Neither
+change is merged or deployed. Active storage switching, byte migration, full role/browser coverage and the release chain
+remain open; current release evidence is in [handover](handover.md).
+
 **Goal: UAT launch on Friday 6 November 2026 on the Technexus hosts.** Claude is the only version 2 implementer from 30 Oct; Codex works on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
 
 - **Deployed:** `main` cbd076c (signed digest `sha256:aa96614708b2…`, attestation verified).

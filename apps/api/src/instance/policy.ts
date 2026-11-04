@@ -82,6 +82,41 @@ export const instancePolicies = {
       "RT-8a and the God Mode API table require current instance administrator authority for catalogue assignment; it is not an elevated action in permissions.md",
     sessionOnly: true,
   },
+  "GET /api/instance/storage/s3-draft": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide inactive storage configuration",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only inactive draft and credential presence flags; no secrets or networking",
+    sessionOnly: true,
+  },
+  "PUT /api/instance/storage/s3-draft": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide inactive storage configuration",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
+  "POST /api/instance/storage/s3-draft/test": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide inactive storage verification",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
   "GET /api/instance/storage/usage": {
     capability: "instance:admin",
     scope: "instance",

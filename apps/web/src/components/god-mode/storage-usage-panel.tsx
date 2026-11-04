@@ -27,6 +27,7 @@ import {
 } from "@/fetchers/god-mode/storage-usage";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
+import { S3DraftPanel } from "./s3-draft-panel";
 
 function formatBytes(raw: string) {
   let value: number;
@@ -203,6 +204,7 @@ export function StorageUsagePanel() {
           </p>
         </CardContent>
       </Card>
+      <S3DraftPanel />
     </div>
   );
 }

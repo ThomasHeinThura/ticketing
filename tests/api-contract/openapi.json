@@ -67100,6 +67100,356 @@
                       "expectedRevision"
                     ],
                     "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "storage_config_save"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483646
+                      },
+                      "config": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean"
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "endpoint",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "bundled_seaweedfs"
+                                ]
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "credentials": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "accessKeyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "secretAccessKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "config"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "storage_config_test"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483646
+                      },
+                      "config": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean"
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "endpoint",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "bundled_seaweedfs"
+                                ]
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "credentials": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "accessKeyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "secretAccessKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "config"
+                    ],
+                    "additionalProperties": false
                   }
                 ]
               }
@@ -73419,6 +73769,1192 @@
                       "operation": {
                         "type": "string",
                         "enum": [
+                          "storage_config_save"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483646
+                      },
+                      "config": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean"
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "endpoint",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "bundled_seaweedfs"
+                                ]
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "credentials": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "accessKeyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "secretAccessKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "config",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "storage_config_save"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483646
+                      },
+                      "config": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean"
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "endpoint",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "bundled_seaweedfs"
+                                ]
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "credentials": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "accessKeyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "secretAccessKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "config",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "storage_config_save"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483646
+                      },
+                      "config": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean"
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "endpoint",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "bundled_seaweedfs"
+                                ]
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "credentials": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "accessKeyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "secretAccessKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "config",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "storage_config_test"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483646
+                      },
+                      "config": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean"
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "endpoint",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "bundled_seaweedfs"
+                                ]
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "credentials": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "accessKeyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "secretAccessKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "config",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "storage_config_test"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483646
+                      },
+                      "config": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean"
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "endpoint",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "bundled_seaweedfs"
+                                ]
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "credentials": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "accessKeyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "secretAccessKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "config",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "storage_config_test"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483646
+                      },
+                      "config": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean"
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "endpoint",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "bundled_seaweedfs"
+                                ]
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "credentials": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "accessKeyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "secretAccessKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "config",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
                           "impersonation_start"
                         ]
                       },
@@ -74349,6 +75885,390 @@
                       "agent",
                       "customer",
                       "expectedRevision",
+                      "challengeId",
+                      "nonce",
+                      "method"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "storage_config_save"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483646
+                      },
+                      "config": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean"
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "endpoint",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "bundled_seaweedfs"
+                                ]
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "credentials": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "accessKeyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "secretAccessKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "sso_prompt_login"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "config",
+                      "challengeId",
+                      "nonce",
+                      "method"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "storage_config_test"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483646
+                      },
+                      "config": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean"
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "endpoint",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "connector": {
+                                "type": "string",
+                                "enum": [
+                                  "bundled_seaweedfs"
+                                ]
+                              },
+                              "forcePathStyle": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "publicBaseUrl": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2048
+                              },
+                              "region": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[a-zA-Z0-9-]+$/u"
+                              },
+                              "bucket": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 63,
+                                "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                              },
+                              "keyPrefix": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "maxImageUploadBytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 10485760
+                              },
+                              "presignTtlSeconds": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "default": 300
+                              }
+                            },
+                            "required": [
+                              "connector",
+                              "forcePathStyle",
+                              "publicBaseUrl",
+                              "region",
+                              "bucket",
+                              "keyPrefix"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "credentials": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "accessKeyId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "secretAccessKey": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "sso_prompt_login"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "config",
                       "challengeId",
                       "nonce",
                       "method"
@@ -87902,6 +89822,935 @@
           },
           "503": {
             "description": "Storage probe unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/storage/s3-draft": {
+      "get": {
+        "operationId": "getInstanceS3Draft",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Read the inactive S3 storage draft without credentials",
+        "responses": {
+          "200": {
+            "description": "Inactive S3 draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "config": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "connector": {
+                              "type": "string",
+                              "enum": [
+                                "external"
+                              ]
+                            },
+                            "endpoint": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2048
+                            },
+                            "forcePathStyle": {
+                              "type": "boolean"
+                            },
+                            "publicBaseUrl": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2048
+                            },
+                            "region": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128,
+                              "pattern": "^[a-zA-Z0-9-]+$/u"
+                            },
+                            "bucket": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 63,
+                              "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                            },
+                            "keyPrefix": {
+                              "type": "string",
+                              "maxLength": 1024
+                            },
+                            "maxImageUploadBytes": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "default": 10485760
+                            },
+                            "presignTtlSeconds": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "default": 300
+                            }
+                          },
+                          "required": [
+                            "connector",
+                            "endpoint",
+                            "forcePathStyle",
+                            "publicBaseUrl",
+                            "region",
+                            "bucket",
+                            "keyPrefix"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "connector": {
+                              "type": "string",
+                              "enum": [
+                                "bundled_seaweedfs"
+                              ]
+                            },
+                            "forcePathStyle": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            },
+                            "publicBaseUrl": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2048
+                            },
+                            "region": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128,
+                              "pattern": "^[a-zA-Z0-9-]+$/u"
+                            },
+                            "bucket": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 63,
+                              "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                            },
+                            "keyPrefix": {
+                              "type": "string",
+                              "maxLength": 1024
+                            },
+                            "maxImageUploadBytes": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "default": 10485760
+                            },
+                            "presignTtlSeconds": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "default": 300
+                            }
+                          },
+                          "required": [
+                            "connector",
+                            "forcePathStyle",
+                            "publicBaseUrl",
+                            "region",
+                            "bucket",
+                            "keyPrefix"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "credentialConfigured": {
+                      "type": "boolean"
+                    },
+                    "accessKeyIdConfigured": {
+                      "type": "boolean"
+                    },
+                    "secretAccessKeyConfigured": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "config",
+                    "credentialConfigured",
+                    "accessKeyIdConfigured",
+                    "secretAccessKeyConfigured"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Draft unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveInstanceS3Draft",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Save encrypted inactive S3 settings with a separate one-use proof",
+        "description": "Current instance administrators and agent sessions only. The proof binds the exact normalized configuration, draft version and credential changes. Saving never changes the active backend or migrates files.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 43,
+              "maxLength": 43
+            },
+            "required": false,
+            "name": "x-taskdesk-step-up-token",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483646
+                  },
+                  "config": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "connector": {
+                            "type": "string",
+                            "enum": [
+                              "external"
+                            ]
+                          },
+                          "endpoint": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "forcePathStyle": {
+                            "type": "boolean"
+                          },
+                          "publicBaseUrl": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "region": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "pattern": "^[a-zA-Z0-9-]+$/u"
+                          },
+                          "bucket": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 63,
+                            "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                          },
+                          "keyPrefix": {
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          "maxImageUploadBytes": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "default": 10485760
+                          },
+                          "presignTtlSeconds": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "default": 300
+                          }
+                        },
+                        "required": [
+                          "connector",
+                          "endpoint",
+                          "forcePathStyle",
+                          "publicBaseUrl",
+                          "region",
+                          "bucket",
+                          "keyPrefix"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "connector": {
+                            "type": "string",
+                            "enum": [
+                              "bundled_seaweedfs"
+                            ]
+                          },
+                          "forcePathStyle": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "publicBaseUrl": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "region": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "pattern": "^[a-zA-Z0-9-]+$/u"
+                          },
+                          "bucket": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 63,
+                            "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                          },
+                          "keyPrefix": {
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          "maxImageUploadBytes": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "default": 10485760
+                          },
+                          "presignTtlSeconds": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "default": 300
+                          }
+                        },
+                        "required": [
+                          "connector",
+                          "forcePathStyle",
+                          "publicBaseUrl",
+                          "region",
+                          "bucket",
+                          "keyPrefix"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "credentials": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "accessKeyId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      "secretAccessKey": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 2048
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "version",
+                  "config"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved inactive S3 draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "config": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "connector": {
+                              "type": "string",
+                              "enum": [
+                                "external"
+                              ]
+                            },
+                            "endpoint": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2048
+                            },
+                            "forcePathStyle": {
+                              "type": "boolean"
+                            },
+                            "publicBaseUrl": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2048
+                            },
+                            "region": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128,
+                              "pattern": "^[a-zA-Z0-9-]+$/u"
+                            },
+                            "bucket": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 63,
+                              "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                            },
+                            "keyPrefix": {
+                              "type": "string",
+                              "maxLength": 1024
+                            },
+                            "maxImageUploadBytes": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "default": 10485760
+                            },
+                            "presignTtlSeconds": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "default": 300
+                            }
+                          },
+                          "required": [
+                            "connector",
+                            "endpoint",
+                            "forcePathStyle",
+                            "publicBaseUrl",
+                            "region",
+                            "bucket",
+                            "keyPrefix"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "connector": {
+                              "type": "string",
+                              "enum": [
+                                "bundled_seaweedfs"
+                              ]
+                            },
+                            "forcePathStyle": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            },
+                            "publicBaseUrl": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2048
+                            },
+                            "region": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128,
+                              "pattern": "^[a-zA-Z0-9-]+$/u"
+                            },
+                            "bucket": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 63,
+                              "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                            },
+                            "keyPrefix": {
+                              "type": "string",
+                              "maxLength": 1024
+                            },
+                            "maxImageUploadBytes": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "default": 10485760
+                            },
+                            "presignTtlSeconds": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "default": 300
+                            }
+                          },
+                          "required": [
+                            "connector",
+                            "forcePathStyle",
+                            "publicBaseUrl",
+                            "region",
+                            "bucket",
+                            "keyPrefix"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "credentialConfigured": {
+                      "type": "boolean"
+                    },
+                    "accessKeyIdConfigured": {
+                      "type": "boolean"
+                    },
+                    "secretAccessKeyConfigured": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "config",
+                    "credentialConfigured",
+                    "accessKeyIdConfigured",
+                    "secretAccessKeyConfigured"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden or fresh verification required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Draft version changed; reload before retrying",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Draft unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/storage/s3-draft/test": {
+      "post": {
+        "operationId": "testInstanceS3Draft",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Verify a candidate S3 draft with a separate one-use proof",
+        "description": "Commits the test proof and attempt audit before bounded write/read networking. Public external HTTPS targets use DNS and socket guards; the bundled connector uses only its fixed internal service. A small diagnostic object may remain. No cleanup, browser transfer, file migration or backend activation is claimed.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 43,
+              "maxLength": 43
+            },
+            "required": false,
+            "name": "x-taskdesk-step-up-token",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483646
+                  },
+                  "config": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "connector": {
+                            "type": "string",
+                            "enum": [
+                              "external"
+                            ]
+                          },
+                          "endpoint": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "forcePathStyle": {
+                            "type": "boolean"
+                          },
+                          "publicBaseUrl": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "region": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "pattern": "^[a-zA-Z0-9-]+$/u"
+                          },
+                          "bucket": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 63,
+                            "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                          },
+                          "keyPrefix": {
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          "maxImageUploadBytes": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "default": 10485760
+                          },
+                          "presignTtlSeconds": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "default": 300
+                          }
+                        },
+                        "required": [
+                          "connector",
+                          "endpoint",
+                          "forcePathStyle",
+                          "publicBaseUrl",
+                          "region",
+                          "bucket",
+                          "keyPrefix"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "connector": {
+                            "type": "string",
+                            "enum": [
+                              "bundled_seaweedfs"
+                            ]
+                          },
+                          "forcePathStyle": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "publicBaseUrl": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2048
+                          },
+                          "region": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "pattern": "^[a-zA-Z0-9-]+$/u"
+                          },
+                          "bucket": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 63,
+                            "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u"
+                          },
+                          "keyPrefix": {
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          "maxImageUploadBytes": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "default": 10485760
+                          },
+                          "presignTtlSeconds": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "default": 300
+                          }
+                        },
+                        "required": [
+                          "connector",
+                          "forcePathStyle",
+                          "publicBaseUrl",
+                          "region",
+                          "bucket",
+                          "keyPrefix"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "credentials": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "accessKeyId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      "secretAccessKey": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 2048
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "version",
+                  "config"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Server-side write/read result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "verified",
+                        "write_failed",
+                        "read_failed",
+                        "content_mismatch",
+                        "timed_out",
+                        "cleanup_failed",
+                        "cleanup_indeterminate"
+                      ]
+                    },
+                    "cleanup": {
+                      "type": "string",
+                      "enum": [
+                        "confirmed",
+                        "failed",
+                        "indeterminate",
+                        "not_attempted"
+                      ]
+                    },
+                    "diagnosticObjectMayRemain": {
+                      "type": "boolean"
+                    },
+                    "durationMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "browserPathVerified": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "cleanup",
+                    "diagnosticObjectMayRemain",
+                    "durationMs",
+                    "browserPathVerified"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden or fresh verification required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Draft version changed; reload before retrying",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Test temporarily rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Draft unavailable",
             "content": {
               "application/json": {
                 "schema": {
