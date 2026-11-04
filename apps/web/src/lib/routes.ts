@@ -1001,7 +1001,56 @@ export type PortalSignInSearch = {
   stage: PortalSignInStage;
   factor: "totp" | "backup";
   invitationId?: string;
+  /** The portal page to open after sign-in: a same-origin path and query only. */
+  redirect?: string;
 };
+
+const PORTAL_REDIRECT_BASE = "https://portal.invalid";
+const PORTAL_REDIRECT_MAX_LENGTH = 2048;
+
+/**
+ * The portal page a sign-in returns to, or `undefined`. Only a same-origin relative path is kept
+ * (it starts with one `/`, has no protocol, host, backslash or control character), the hash is
+ * dropped (a signed preference token travels there and must never reach a sign-in URL), and a
+ * sign-in page is never a target.
+ */
+function isRelativePortalPath(value: string): boolean {
+  return (
+    value.length <= PORTAL_REDIRECT_MAX_LENGTH &&
+    value.startsWith("/") &&
+    !value.startsWith("//") &&
+    !value.includes("\\") &&
+    ![...value].some((character) => {
+      const code = character.charCodeAt(0);
+      return code < 32 || code === 127;
+    })
+  );
+}
+
+export function safePortalRedirect(value: unknown): string | undefined {
+  if (typeof value !== "string" || !isRelativePortalPath(value))
+    return undefined;
+  let url: URL;
+  try {
+    url = new URL(value, PORTAL_REDIRECT_BASE);
+  } catch {
+    return undefined;
+  }
+  if (url.origin !== PORTAL_REDIRECT_BASE) return undefined;
+  const { pathname } = url;
+  // Sign-in itself and the agent app's paths are never a portal destination.
+  if (
+    pathname === "/sign-in" ||
+    pathname === "/portal/sign-in" ||
+    pathname === "/agent" ||
+    pathname.startsWith("/agent/") ||
+    pathname.startsWith("/auth/")
+  )
+    return undefined;
+  const result = `${pathname}${url.search}`;
+  // Dot segments can normalise into `//host`: check the value that is actually returned.
+  return isRelativePortalPath(result) ? result : undefined;
+}
 
 export function parseWorkflowSettingsSearch(
   raw: unknown,
@@ -1110,6 +1159,7 @@ export function parsePortalCatalogueSearch(
 
 export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
+  const redirect = safePortalRedirect(value.redirect);
   const stage = ["email", "password", "factor", "otp"].find(
     (candidate) => candidate === value.stage,
   ) as PortalSignInStage | undefined;
@@ -1120,6 +1170,7 @@ export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
     /^[A-Za-z0-9_-]{1,128}$/.test(value.invitationId)
       ? { invitationId: value.invitationId }
       : {}),
+    ...(redirect ? { redirect } : {}),
   };
 }
 
@@ -1369,6 +1420,7 @@ export const routes = {
         query.set("invitationId", resolved.invitationId);
       if (resolved.stage === "factor" && resolved.factor === "backup")
         query.set("factor", "backup");
+      if (resolved.redirect) query.set("redirect", resolved.redirect);
       return `/sign-in?${query.toString()}`;
     },
   },

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -417,6 +418,26 @@ describe("ProjectOverviewPage", () => {
     expect(rows[0]?.querySelectorAll("dd")[0]).toHaveTextContent(
       'serviceLevels.firstResponse serviceLevels.minutes {"count":15}',
     );
+  });
+
+  it("offers Retry when a contract or milestone panel could not load, and reloads only that panel", async () => {
+    mocks.getProjectContract.mockRejectedValueOnce(new Error("dropped"));
+    mocks.listMilestones.mockRejectedValueOnce(new Error("dropped"));
+    renderPage();
+    const contract = await screen.findByTestId("project-contract-panel");
+    await within(contract).findByText("contract.loadFailed");
+    fireEvent.click(
+      within(contract).getByRole("button", { name: "common.retry" }),
+    );
+    await within(contract).findByText("contract.none");
+
+    const milestones = screen.getByTestId("project-milestones-panel");
+    await within(milestones).findByText("milestones.loadFailed");
+    fireEvent.click(
+      within(milestones).getByRole("button", { name: "common.retry" }),
+    );
+    await within(milestones).findByText("milestones.empty");
+    expect(mocks.getProjectOverview).toHaveBeenCalledTimes(1);
   });
 
   it("shows the hour bank of a contract", async () => {

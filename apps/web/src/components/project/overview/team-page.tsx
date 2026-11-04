@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Alert,
+  AlertAction,
   AlertDescription,
   AlertDialog,
   AlertDialogClose,
@@ -111,6 +112,17 @@ export function TeamPage({ projectKey }: { projectKey: string }) {
           <AlertDescription>
             {project ? t("team.loadFailed") : t("notFound")}
           </AlertDescription>
+          {project ? (
+            <AlertAction>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void stakeholders.refetch()}
+              >
+                {t("common.retry")}
+              </Button>
+            </AlertAction>
+          ) : null}
         </Alert>
       </div>
     );

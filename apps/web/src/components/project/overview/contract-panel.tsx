@@ -114,9 +114,18 @@ export function ContractPanel({
           <Skeleton className="h-2 w-full" />
         </div>
       ) : query.isError || !data ? (
-        <p className="text-destructive-foreground text-sm">
-          {t("contract.loadFailed")}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-destructive-foreground text-sm">
+            {t("contract.loadFailed")}
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void query.refetch()}
+          >
+            {t("common.retry")}
+          </Button>
+        </div>
       ) : !contract || !data.hourBank ? (
         <p className="text-muted-foreground text-sm">{t("contract.none")}</p>
       ) : (

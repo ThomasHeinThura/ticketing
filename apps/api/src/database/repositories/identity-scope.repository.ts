@@ -207,7 +207,11 @@ export function currentProjectReachPredicate(
   );
 }
 
-/** Current staff reach to a workspace, including only canonical legacy workspace roles. */
+/**
+ * Current staff reach to a workspace: instance admin, a valid workspace-scope membership row,
+ * or a single legacy `workspace_member` row whose built-in key is backed by a genuine system
+ * row, exactly the rows resolveIdentity admits a workspace grant through.
+ */
 export function currentWorkspaceReachPredicate(
   identity: ResolvedIdentity,
   workspaceId: SQLWrapper,
@@ -245,20 +249,45 @@ export function currentWorkspaceReachPredicate(
         workspaceUserTable,
         "duplicate_workspace_member",
       );
+      // A non-owner built-in key is backed by a genuine seeded row: the legacy
+      // `workspace_role` row (only viewer, member and admin have one) or the canonical
+      // workspace-scope system `role` row that resolveIdentity admits it through (every
+      // built-in, including manager and lead). A custom row (`is_system = false`) never
+      // backs a key here.
       const roleIsCanonical =
         grant.roleKey === "owner"
           ? sql`true`
-          : exists(
-              executor
-                .select({ one: sql`1` })
-                .from(workspaceRoleTable)
-                .where(
-                  and(
-                    eq(workspaceRoleTable.workspaceId, workspaceId),
-                    eq(workspaceRoleTable.role, grant.roleKey),
-                    eq(workspaceRoleTable.isSystem, true),
+          : or(
+              exists(
+                executor
+                  .select({ one: sql`1` })
+                  .from(workspaceRoleTable)
+                  .where(
+                    and(
+                      eq(workspaceRoleTable.workspaceId, workspaceId),
+                      eq(workspaceRoleTable.role, grant.roleKey),
+                      eq(workspaceRoleTable.isSystem, true),
+                    ),
                   ),
-                ),
+              ),
+              exists(
+                executor
+                  .select({ one: sql`1` })
+                  .from(roleTable)
+                  .where(
+                    and(
+                      eq(roleTable.scope, "workspace"),
+                      eq(roleTable.workspaceId, workspaceId),
+                      eq(roleTable.key, grant.roleKey),
+                      eq(roleTable.isSystem, true),
+                      sql`${roleTable.rank} BETWEEN -2147483648 AND 2147483647`,
+                      sql`CASE WHEN jsonb_typeof(${roleTable.capabilities}) = 'array' THEN NOT EXISTS (
+                        SELECT 1 FROM jsonb_array_elements(${roleTable.capabilities}) AS canonical_capability(value)
+                        WHERE jsonb_typeof(canonical_capability.value) <> 'string'
+                      ) ELSE false END`,
+                    ),
+                  ),
+              ),
             );
       return and(
         eq(workspaceUserTable.workspaceId, workspaceId),

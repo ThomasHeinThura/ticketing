@@ -10,8 +10,8 @@ import { configureNotifyScheduler } from "./notify-scheduler";
 configureNotifyScheduler();
 
 // TanStack raises these before any fetcher-level message exists; CORS rejections
-// from the browser also surface here. Used both to skip auto-retry and to tag
-// the captured event so offline-tab reloads don't drown the queue.
+// from the browser also surface here. Used to limit auto-retry to online tabs and
+// to tag the captured event so offline-tab reloads don't drown the queue.
 function isNetworkError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   return (
@@ -36,9 +36,18 @@ function isCancellationError(error: Error): boolean {
 const NETWORK_REPORT_COOLDOWN_MS = 60_000;
 const networkErrorCooldowns = new Map<string, number>();
 
+/**
+ * A module switched off answers `feature_disabled` (A-11: Reports, Pages, agile, time tracking).
+ * Each screen shows that as its own "off" state, so it is not an error worth logging.
+ */
+function isFeatureDisabledError(error: Error): boolean {
+  return error instanceof HttpError && error.message === "feature_disabled";
+}
+
 function captureCacheError(error: unknown, context: "query" | "mutation") {
   if (!(error instanceof Error)) return;
   if (isCancellationError(error)) return;
+  if (isFeatureDisabledError(error)) return;
 
   const isNetwork = isNetworkError(error);
   const area = `${isNetwork ? "network" : "api"}.${context}`;
@@ -78,18 +87,30 @@ function isFinalClientError(error: unknown): boolean {
   );
 }
 
-export function shouldRetryQuery(failureCount: number, error: unknown) {
-  return isNetworkError(error) ||
-    isUnauthorizedError(error) ||
-    isFinalClientError(error)
-    ? false
-    : failureCount < 2;
+function isOnline(): boolean {
+  return typeof navigator === "undefined" || navigator.onLine !== false;
 }
+
+/**
+ * One dropped request (a closed connection, a 5xx) is retried twice with TanStack's backoff
+ * (1 s, then 2 s) before a screen shows its error state. A dropped request is retried only while
+ * the browser is online, so an offline tab does not keep trying. A 4xx refusal is final.
+ */
+export function shouldRetryQuery(failureCount: number, error: unknown) {
+  if (isUnauthorizedError(error) || isFinalClientError(error)) return false;
+  if (isNetworkError(error)) return isOnline() && failureCount < 2;
+  return failureCount < 2;
+}
+
+/** The portal root's cached session read (`routes/portal/__root.tsx`). */
+export const portalSessionQueryKey = ["portal", "session"] as const;
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error) => {
       if (isUnauthorizedError(error)) {
+        // The session is gone: never answer the next navigation from the cached session.
+        queryClient.removeQueries({ queryKey: portalSessionQueryKey });
         handleUnauthorized();
         return;
       }

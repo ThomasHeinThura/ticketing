@@ -9204,9 +9204,9 @@
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
 			"apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/span[0]::text-destructive-foreground#0",
+			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[1]/span[0]::text-destructive-foreground#0",
-			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/p[0]::text-destructive-foreground#0",
-			"apps/web/src/components/project/overview/milestones-panel.tsx::MilestonesPanel::Panel[0]/p[0]::text-destructive-foreground#0",
+			"apps/web/src/components/project/overview/milestones-panel.tsx::MilestonesPanel::Panel[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/Card[0]/div[0]/div[0]/div[0]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-destructive-foreground#0",
 			"apps/web/src/components/webhook/webhook-editor.tsx::WebhookForm::form[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-destructive-foreground#0",
@@ -9236,6 +9236,18 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/overview/contract-panel.tsx:ContractPanel",
+					"jsx:Panel[0]/div[0]/p[0]",
+					"Panel->apps/web/src/components/project/overview/overview-shared.tsx:Panel>bg-card"
+				],
+				"id": "apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/p[0]::text-destructive-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/project/overview/contract-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/overview/contract-panel.tsx:ContractPanel",
 					"jsx:Panel[0]/div[1]/span[0]",
 					"Panel->apps/web/src/components/project/overview/overview-shared.tsx:Panel>bg-card"
 				],
@@ -9247,23 +9259,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/project/overview/contract-panel.tsx:ContractPanel",
-					"jsx:Panel[0]/p[0]",
-					"Panel->apps/web/src/components/project/overview/overview-shared.tsx:Panel>bg-card"
-				],
-				"id": "apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/p[0]::text-destructive-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/project/overview/contract-panel.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/project/overview/milestones-panel.tsx:MilestonesPanel",
-					"jsx:Panel[0]/p[0]",
+					"jsx:Panel[0]/div[0]/p[0]",
 					"Panel->apps/web/src/components/project/overview/overview-shared.tsx:Panel>bg-card"
 				],
-				"id": "apps/web/src/components/project/overview/milestones-panel.tsx::MilestonesPanel::Panel[0]/p[0]::text-destructive-foreground#0",
+				"id": "apps/web/src/components/project/overview/milestones-panel.tsx::MilestonesPanel::Panel[0]/div[0]/p[0]::text-destructive-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project/overview/milestones-panel.tsx"
 			},
@@ -9413,9 +9413,9 @@
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
 			"apps/web/src/components/portal/projects/portal-project-details.tsx::HoursCard::Section[0]/span[0]::text-destructive-foreground#0",
+			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[1]/span[0]::text-destructive-foreground#0",
-			"apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/p[0]::text-destructive-foreground#0",
-			"apps/web/src/components/project/overview/milestones-panel.tsx::MilestonesPanel::Panel[0]/p[0]::text-destructive-foreground#0",
+			"apps/web/src/components/project/overview/milestones-panel.tsx::MilestonesPanel::Panel[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/Card[0]/div[0]/div[0]/div[0]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-destructive-foreground#0",
 			"apps/web/src/components/webhook/webhook-editor.tsx::WebhookForm::form[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-destructive-foreground#0",
@@ -9445,6 +9445,18 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/overview/contract-panel.tsx:ContractPanel",
+					"jsx:Panel[0]/div[0]/p[0]",
+					"Panel->apps/web/src/components/project/overview/overview-shared.tsx:Panel>bg-card"
+				],
+				"id": "apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/div[0]/p[0]::text-destructive-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/project/overview/contract-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/overview/contract-panel.tsx:ContractPanel",
 					"jsx:Panel[0]/div[1]/span[0]",
 					"Panel->apps/web/src/components/project/overview/overview-shared.tsx:Panel>bg-card"
 				],
@@ -9456,23 +9468,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/project/overview/contract-panel.tsx:ContractPanel",
-					"jsx:Panel[0]/p[0]",
-					"Panel->apps/web/src/components/project/overview/overview-shared.tsx:Panel>bg-card"
-				],
-				"id": "apps/web/src/components/project/overview/contract-panel.tsx::ContractPanel::Panel[0]/p[0]::text-destructive-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/project/overview/contract-panel.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/project/overview/milestones-panel.tsx:MilestonesPanel",
-					"jsx:Panel[0]/p[0]",
+					"jsx:Panel[0]/div[0]/p[0]",
 					"Panel->apps/web/src/components/project/overview/overview-shared.tsx:Panel>bg-card"
 				],
-				"id": "apps/web/src/components/project/overview/milestones-panel.tsx::MilestonesPanel::Panel[0]/p[0]::text-destructive-foreground#0",
+				"id": "apps/web/src/components/project/overview/milestones-panel.tsx::MilestonesPanel::Panel[0]/div[0]/p[0]::text-destructive-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project/overview/milestones-panel.tsx"
 			},
