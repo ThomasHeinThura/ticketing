@@ -4049,7 +4049,8 @@ bytes and reads them back. Thomas approved retaining small diagnostic objects on
 The current filesystem and S3 adapters therefore never delete a probe by key,
 including after a timeout or late completion. `verified` means only that write/read
 bytes matched; `cleanup` is `not_attempted`, and `diagnosticObjectMayRemain` reports
-possible residue (false only for a confirmed exclusive-create collision). The UI
+possible residue (false only for a filesystem exclusive-create collision). S3
+collisions remain uncertain because a retried write may already have committed. The UI
 states that cleanup is unverified and that diagnostics are excluded from attachment
 metadata totals. Partial or timed-out writes may also leave an object.
 

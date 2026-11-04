@@ -69,7 +69,13 @@ export async function runStorageProbe(
     (error) => error instanceof StorageProbeCollisionError,
   );
   let status: StorageProbeResult["status"];
-  const diagnosticObjectMayRemain = write.kind !== "failed" || !write.collision;
+  // S3 may commit a PUT, lose its response, then return a collision on retry.
+  // Only the filesystem's exclusive-create failure proves no object was written.
+  const creationExcluded =
+    adapter.driver === "filesystem" &&
+    write.kind === "failed" &&
+    write.collision;
+  const diagnosticObjectMayRemain = !creationExcluded;
 
   if (write.kind === "timed_out") {
     status = "timed_out";

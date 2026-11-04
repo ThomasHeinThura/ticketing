@@ -99,6 +99,27 @@ describe("storage probe orchestration", () => {
     },
   );
 
+  it("reports possible residue when an S3 retry returns a collision", async () => {
+    const storage = memoryAdapter({
+      driver: "s3",
+      write: vi.fn(async () => {
+        storage.replace("committed before response was lost");
+        throw new StorageProbeCollisionError();
+      }),
+    });
+    const result = await runStorageProbe(storage.adapter, {
+      createId: () => ID,
+    });
+    expect(result).toMatchObject({
+      status: "write_failed",
+      cleanup: "not_attempted",
+      diagnosticObjectMayRemain: true,
+    });
+    expect(storage.getObject()).toBeDefined();
+    expect(storage.adapter.read).not.toHaveBeenCalled();
+    expect(storage.adapter.delete).not.toHaveBeenCalled();
+  });
+
   it.each(["resolve", "reject"] as const)(
     "never deletes after a late write %s",
     async (outcome) => {
