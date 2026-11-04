@@ -16,14 +16,13 @@ import {
  *    ownership and reach check. The token has its own key derivation (an agent-minted URL is
  *    never accepted) and binds the key, the customer person and a five-minute expiry. The route
  *    also requires the portal session on the request to be that same person.
- * 2. **Uploads**: a pending submission key through the generic signed
- *    `PUT /api/storage/filesystem-attachment-upload` (its HMAC binds the exact key, size ceiling
- *    and expiry); a pending work-item key only through the portal-bound
+ * 2. **Uploads**: pending submission and work-item keys only through the portal-bound
  *    `PUT /api/storage/portal-attachment-upload`, which also binds the customer person.
  *
  * Every other agent route stays denied on the portal host, including the generic
  * `GET /api/storage/filesystem-download` for every key, so an unbound download link is refused
- * there. The agent host keeps serving the generic routes to staff unchanged.
+ * there. Staff work-item uploads and downloads keep their generic agent-host routes; old generic
+ * submission-upload links are refused on both hosts.
  */
 const SEGMENT = "[A-Za-z0-9_-]+";
 const FILE = "[A-Za-z0-9_.-]+";
@@ -52,19 +51,34 @@ const WORK_ITEM_FINAL_KEY = attachmentKeyPattern("work-item", FINAL_FILE);
 export const PORTAL_UPLOAD_PATH = "/api/storage/portal-attachment-upload";
 export const PORTAL_DOWNLOAD_PATH = "/api/storage/portal-download";
 
-function isSubmissionDownloadKey(key: string): boolean {
+/** Match filesystem path safety: embedded dots are safe; whole dot segments are not. */
+function hasUnsafeKeySegments(key: string): boolean {
+  return key
+    .split("/")
+    .some((segment) => segment === "" || segment === "." || segment === "..");
+}
+
+export function isSubmissionAttachmentKey(key: string): boolean {
   return SUBMISSION_PENDING_KEY.test(key) || SUBMISSION_FINAL_KEY.test(key);
 }
 
-/** A pending work-item attachment key: the only key a portal upload token is minted for. */
+/** A pending work-item attachment key. */
 export function isWorkItemUploadKey(key: string): boolean {
-  return !key.includes("..") && WORK_ITEM_PENDING_KEY.test(key);
+  return !hasUnsafeKeySegments(key) && WORK_ITEM_PENDING_KEY.test(key);
+}
+
+/** Only pending submission or work-item keys may be uploaded on the portal. */
+export function isPortalUploadKey(key: string): boolean {
+  return (
+    !hasUnsafeKeySegments(key) &&
+    (SUBMISSION_PENDING_KEY.test(key) || WORK_ITEM_PENDING_KEY.test(key))
+  );
 }
 
 /** A work-item attachment key (pending or final). */
 function isWorkItemDownloadKey(key: string): boolean {
   return (
-    !key.includes("..") &&
+    !hasUnsafeKeySegments(key) &&
     (WORK_ITEM_PENDING_KEY.test(key) || WORK_ITEM_FINAL_KEY.test(key))
   );
 }
@@ -75,8 +89,8 @@ function isWorkItemDownloadKey(key: string): boolean {
  */
 export function isPortalDownloadKey(key: string): boolean {
   return (
-    !key.includes("..") &&
-    (isSubmissionDownloadKey(key) || isWorkItemDownloadKey(key))
+    !hasUnsafeKeySegments(key) &&
+    (isSubmissionAttachmentKey(key) || isWorkItemDownloadKey(key))
   );
 }
 
@@ -86,11 +100,9 @@ export function isPortalStorageRequest(
   path: string,
   key: string | undefined,
 ): boolean {
-  if (key === undefined || key.includes("..")) return false;
-  if (method === "PUT" && path === "/api/storage/filesystem-attachment-upload")
-    return SUBMISSION_PENDING_KEY.test(key);
+  if (key === undefined || hasUnsafeKeySegments(key)) return false;
   if (method === "PUT" && path === PORTAL_UPLOAD_PATH)
-    return isWorkItemUploadKey(key);
+    return isPortalUploadKey(key);
   // Downloads only through the person-bound route; the generic, unbound
   // `GET /api/storage/filesystem-download` is never admitted here.
   if ((method === "GET" || method === "HEAD") && path === PORTAL_DOWNLOAD_PATH)
@@ -137,8 +149,8 @@ export async function createPortalAttachmentDownloadUrl(input: {
 }
 
 /**
- * The upload URL a portal presign hands the customer. On the filesystem driver a work-item key
- * gets a portal-bound PUT for `personId`; anything else keeps the driver's own presign.
+ * The upload URL a portal presign hands the customer. On the filesystem driver a pending
+ * submission or work-item key gets a portal-bound PUT for `personId`; S3 keeps its own presign.
  */
 export async function createPortalAttachmentUploadUrl(input: {
   objectKey: string;
@@ -152,10 +164,9 @@ export async function createPortalAttachmentUploadUrl(input: {
   uploadUrl: string;
   headers: Record<string, string>;
 }> {
-  if (
-    getStorageDriver() === "filesystem" &&
-    isWorkItemUploadKey(input.objectKey)
-  )
+  if (getStorageDriver() === "filesystem") {
+    if (!isPortalUploadKey(input.objectKey))
+      throw new Error("Invalid portal attachment upload key.");
     return filesystemDriver.createPortalAttachmentUploadUrl(
       input.objectKey,
       input.contentType,
@@ -163,6 +174,7 @@ export async function createPortalAttachmentUploadUrl(input: {
       input.personId,
       input.apiBaseUrl,
     );
+  }
   return createAttachmentUploadUrl(
     input.objectKey,
     input.contentType,

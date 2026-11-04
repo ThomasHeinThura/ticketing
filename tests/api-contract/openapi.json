@@ -9453,7 +9453,7 @@
           "Assets"
         ],
         "summary": "Upload a customer's attachment bytes on the portal host",
-        "description": "The portal-bound equivalent of a presigned PUT on the filesystem storage driver, minted by the portal request and submission presign routes for a work-item attachment key. Portal host only. The signed token binds the key, the customer person, the size ceiling and a five-minute expiry; the portal session must be that person.",
+        "description": "The portal-bound equivalent of a presigned PUT on the filesystem storage driver, minted by the portal request and submission presign routes for a pending attachment key. Portal host only. The signed token binds the key, the customer person, the size ceiling and a five-minute expiry; the portal session must be that person.",
         "security": [],
         "parameters": [
           {

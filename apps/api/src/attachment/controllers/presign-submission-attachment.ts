@@ -3,7 +3,6 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
   buildAttachmentStorageKey,
-  createAttachmentUploadUrl,
   getFileExtension,
   sanitizePathSegment,
 } from "../../storage";
@@ -260,22 +259,14 @@ export async function presignSubmissionAttachment(input: {
     throw new HTTPException(500, {
       message: "Could not create the pending attachment",
     });
-  const upload = acceptedParent
-    ? await createPortalAttachmentUploadUrl({
-        objectKey,
-        contentType: input.contentType,
-        maxBytes,
-        personId: input.requesterId,
-        apiBaseUrl: input.apiBaseUrl,
-        declaredSize: input.size,
-      })
-    : await createAttachmentUploadUrl(
-        objectKey,
-        input.contentType,
-        maxBytes,
-        input.apiBaseUrl,
-        input.size,
-      );
+  const upload = await createPortalAttachmentUploadUrl({
+    objectKey,
+    contentType: input.contentType,
+    maxBytes,
+    personId: input.requesterId,
+    apiBaseUrl: input.apiBaseUrl,
+    declaredSize: input.size,
+  });
   return {
     attachmentId: row.id,
     uploadUrl: upload.uploadUrl,

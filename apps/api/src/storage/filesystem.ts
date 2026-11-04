@@ -832,8 +832,8 @@ export async function readAttachmentDownloadObject(params: {
 }
 
 // ---------------------------------------------------------------------------
-// CP-19 (Thomas, 3 November 2026): portal-bound signed links. Uploads cover work-item attachment
-// objects; downloads cover work-item and submission attachment objects.
+// CP-19: portal-bound signed links cover work-item and submission attachment objects for
+// uploads and downloads. Submission uploads were added with Thomas's approval on 4 November 2026.
 //
 // The portal `own_request` / `own_submission` routes mint these after their own ownership and
 // reach checks. Their HKDF info strings differ from the agent tokens above, so an agent-minted

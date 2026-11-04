@@ -229,7 +229,8 @@ import {
 import {
   isPortalDownloadKey,
   isPortalStorageRequest,
-  isWorkItemUploadKey,
+  isPortalUploadKey,
+  isSubmissionAttachmentKey,
 } from "./storage/portal-servable";
 import { portalSessionPersonId } from "./storage/portal-session-person";
 import task, { taskV2 } from "./task";
@@ -1435,6 +1436,10 @@ export function createApp(
 
       const { key, maxBytes, expires, token } = c.req.valid("query");
 
+      // Submission uploads are customer-bound; old generic links must not work on either host.
+      if (isSubmissionAttachmentKey(key))
+        throw new HTTPException(400, { message: "Invalid upload key." });
+
       try {
         await writeAttachmentUploadedObject({
           key,
@@ -1543,9 +1548,9 @@ export function createApp(
     },
   );
 
-  // CP-19 (Thomas, 3 November 2026): the portal-bound siblings of the two routes above. The
-  // upload takes work-item attachment keys; the download takes work-item and submission
-  // attachment keys, and is the portal host's only download route (the generic one above is
+  // CP-19: the portal-bound siblings of the two routes above. Upload and download accept
+  // work-item and submission attachment keys; download is the portal host's only download
+  // route (the generic one above is
   // refused there). Minted only by the portal own_request / own_submission routes after their
   // ownership and reach check (`storage/portal-servable.ts`). Answered only on the portal host
   // (the host guard admits nothing else here, and the handler re-checks); the signed token binds
@@ -1572,7 +1577,7 @@ export function createApp(
       summary: "Upload a customer's attachment bytes on the portal host",
       description:
         "The portal-bound equivalent of a presigned PUT on the filesystem storage driver, " +
-        "minted by the portal request and submission presign routes for a work-item " +
+        "minted by the portal request and submission presign routes for a pending " +
         "attachment key. Portal host only. The signed token binds the key, the customer " +
         "person, the size ceiling and a five-minute expiry; the portal session must be that " +
         "person.",
@@ -1605,7 +1610,7 @@ export function createApp(
     async (c) => {
       assertPortalStorageRequest(c);
       const { key, maxBytes, expires, token } = c.req.valid("query");
-      if (!isWorkItemUploadKey(key))
+      if (!isPortalUploadKey(key))
         throw new HTTPException(400, { message: "Invalid upload key." });
       const personId = await portalSessionPersonId(c.req.raw.headers);
       if (!personId) throw new HTTPException(401, { message: "Unauthorized" });
