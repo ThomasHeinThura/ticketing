@@ -350,7 +350,9 @@ test.describe("settings when the capability read fails", () => {
     });
   }
 
-  test("unknown project features: the 404 ends the check with Retry", async ({
+  // #1038: a project id that is neither listed nor archived shows the shared project
+  // not-found state instead of each settings panel failing on its own.
+  test("unknown project features: shows the project not-found state", async ({
     page,
   }) => {
     await installPerformanceApiFixture(page);
@@ -358,9 +360,10 @@ test.describe("settings when the capability read fails", () => {
       route.fulfill({ status: 404, json: { message: "Project not found" } }),
     );
     await page.goto("/dashboard/settings/projects/bogus/features");
-    await expect(page.getByTestId("settings-access-error")).toBeVisible({
+    await expect(page.getByTestId("project-not-found")).toBeVisible({
       timeout: 15_000,
     });
+    await expect(page.getByTestId("settings-access-error")).toHaveCount(0);
     await expect(
       page.getByRole("status", { name: "Checking your access" }),
     ).toHaveCount(0);
