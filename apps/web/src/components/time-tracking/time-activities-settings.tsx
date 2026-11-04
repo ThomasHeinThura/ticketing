@@ -21,6 +21,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
+  isForbiddenError,
+  SettingsAccessDenied,
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
+import {
   createTimeActivity,
   type TimeActivity,
   TimeTrackingDisabledError,
@@ -107,7 +113,7 @@ function ActivityRow({
 }
 
 /** `docs/screens.md` "Workspace — time activities" (P5, `TC-2`): the types a time entry must carry. */
-export function TimeActivitiesSettings() {
+function TimeActivitiesSettingsContent() {
   const { t } = useTranslation();
   const invalidate = useInvalidateTime();
   const message = useTimeErrorMessage();
@@ -132,6 +138,99 @@ export function TimeActivitiesSettings() {
   const loading = workspaceLoading || activities.isLoading;
   const disabled = activities.error instanceof TimeTrackingDisabledError;
   return (
+    <TimeActivitiesSettingsFrame>
+      {loading ? (
+        <Skeleton className="h-32 w-full" role="status" />
+      ) : disabled ? (
+        <Alert variant="info">
+          <AlertTitle>{t("timeTracking:timesheet.disabledTitle")}</AlertTitle>
+          <AlertDescription>
+            {t("timeTracking:timesheet.disabledDescription")}
+          </AlertDescription>
+        </Alert>
+      ) : isForbiddenError(activities.error) ? (
+        <SettingsAccessDenied />
+      ) : activities.isError || !activities.data ? (
+        <Alert variant="error">
+          <AlertTitle>{t("timeTracking:activities.loadError")}</AlertTitle>
+        </Alert>
+      ) : (
+        <>
+          <BackdateLimitSetting />
+          <AvailableHoursSetting />
+          {canManage ? (
+            <form
+              className="flex flex-wrap items-end gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (name.trim() && !add.isPending) add.mutate();
+              }}
+            >
+              <div className="w-64 space-y-1">
+                <Label htmlFor="activity-new" className="text-xs">
+                  {t("timeTracking:activities.newLabel")}
+                </Label>
+                <Input
+                  id="activity-new"
+                  maxLength={80}
+                  value={name}
+                  disabled={add.isPending}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </div>
+              <Button type="submit" disabled={!name.trim() || add.isPending}>
+                <Plus aria-hidden="true" />
+                {t("timeTracking:activities.add")}
+              </Button>
+            </form>
+          ) : null}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("timeTracking:fields.activity")}</TableHead>
+                <TableHead className="w-40">
+                  {t("timeTracking:activities.status")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {activities.data.map((activity) => (
+                <ActivityRow
+                  key={`${activity.id}:${activity.name}:${activity.archived}`}
+                  activity={activity}
+                  workspaceId={workspace?.id ?? ""}
+                  canManage={canManage}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </>
+      )}
+    </TimeActivitiesSettingsFrame>
+  );
+}
+
+/**
+ * `GET /api/time-activities` needs `time_entry:create`: a role without it (reached by URL only)
+ * sees one access notice and the screen never sends the requests the server would refuse.
+ */
+export function TimeActivitiesSettings() {
+  const access = useSettingsAccess((permission) => permission.canLogTime());
+  if (access === "allowed") return <TimeActivitiesSettingsContent />;
+  return (
+    <TimeActivitiesSettingsFrame>
+      <SettingsAccessGate access={access}>{null}</SettingsAccessGate>
+    </TimeActivitiesSettingsFrame>
+  );
+}
+
+function TimeActivitiesSettingsFrame({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { t } = useTranslation();
+  return (
     <>
       <PageTitle title={t("timeTracking:activities.title")} />
       <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
@@ -143,71 +242,7 @@ export function TimeActivitiesSettings() {
             {t("timeTracking:activities.description")}
           </p>
         </div>
-        {loading ? (
-          <Skeleton className="h-32 w-full" role="status" />
-        ) : disabled ? (
-          <Alert variant="info">
-            <AlertTitle>{t("timeTracking:timesheet.disabledTitle")}</AlertTitle>
-            <AlertDescription>
-              {t("timeTracking:timesheet.disabledDescription")}
-            </AlertDescription>
-          </Alert>
-        ) : activities.isError || !activities.data ? (
-          <Alert variant="error">
-            <AlertTitle>{t("timeTracking:activities.loadError")}</AlertTitle>
-          </Alert>
-        ) : (
-          <>
-            <BackdateLimitSetting />
-            <AvailableHoursSetting />
-            {canManage ? (
-              <form
-                className="flex flex-wrap items-end gap-2"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (name.trim() && !add.isPending) add.mutate();
-                }}
-              >
-                <div className="w-64 space-y-1">
-                  <Label htmlFor="activity-new" className="text-xs">
-                    {t("timeTracking:activities.newLabel")}
-                  </Label>
-                  <Input
-                    id="activity-new"
-                    maxLength={80}
-                    value={name}
-                    disabled={add.isPending}
-                    onChange={(event) => setName(event.target.value)}
-                  />
-                </div>
-                <Button type="submit" disabled={!name.trim() || add.isPending}>
-                  <Plus aria-hidden="true" />
-                  {t("timeTracking:activities.add")}
-                </Button>
-              </form>
-            ) : null}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("timeTracking:fields.activity")}</TableHead>
-                  <TableHead className="w-40">
-                    {t("timeTracking:activities.status")}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activities.data.map((activity) => (
-                  <ActivityRow
-                    key={`${activity.id}:${activity.name}:${activity.archived}`}
-                    activity={activity}
-                    workspaceId={workspace?.id ?? ""}
-                    canManage={canManage}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          </>
-        )}
+        {children}
       </div>
     </>
   );

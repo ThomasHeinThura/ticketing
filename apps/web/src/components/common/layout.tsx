@@ -1,6 +1,7 @@
 import { SidebarInset, SidebarProvider } from "@taskdesk/ui";
 import type React from "react";
 import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { cn } from "@/lib/cn";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -68,6 +69,7 @@ function LayoutContent({ children, className }: ContentProps) {
 let sidebarReady = false;
 
 function Layout({ children, className }: LayoutProps) {
+  const { t } = useTranslation();
   const { sidebarDefaultOpen } = useUserPreferencesStore();
   // The page paints first (on the work list and boards, its rows); the sidebar mounts once
   // the main thread is idle after that (G11).
@@ -106,6 +108,8 @@ function Layout({ children, className }: LayoutProps) {
     <div className="flex w-full bg-background">
       <SidebarProvider
         defaultOpen={sidebarDefaultOpen}
+        // WCAG 2.4.1: the first Tab stop skips the sidebar to the inset `main`.
+        skipLinkLabel={t("common:a11y.skipToContent")}
         style={
           {
             "--sidebar-width": "calc(var(--spacing) * 60)",

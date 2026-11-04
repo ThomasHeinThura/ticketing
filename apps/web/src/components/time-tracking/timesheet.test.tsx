@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   requestTimeEntryDeletion: vi.fn(),
   openPendingAction: vi.fn(),
   toastError: vi.fn(),
+  canLogTime: true,
+  checking: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -37,6 +39,12 @@ vi.mock("@/lib/format", () => ({
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "w1" }, isLoading: false }),
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canLogTime: () => mocks.canLogTime,
+    isCheckingPermissions: mocks.checking,
+  }),
 }));
 vi.mock("@/hooks/use-open-pending-action", () => ({
   useOpenPendingAction: () => mocks.openPendingAction,
@@ -114,13 +122,12 @@ function list(
   } as TimeEntryList;
 }
 
-function renderSheet(search = { week: "2026-10-19" }) {
+function renderSheet(
+  search = { week: "2026-10-19" },
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
+    <QueryClientProvider client={client}>
       <Timesheet search={search} onSearchChange={vi.fn()} />
     </QueryClientProvider>,
   );
@@ -130,6 +137,8 @@ const cell = (item: string, day: string) =>
   screen.getByLabelText(`${item} ${day}`) as HTMLInputElement;
 
 beforeEach(() => {
+  mocks.canLogTime = true;
+  mocks.checking = false;
   mocks.getTimer.mockResolvedValue({
     timer: null,
     serverNow: "2026-10-21T10:00:00Z",
@@ -265,5 +274,63 @@ describe("Timesheet grid", () => {
     expect(
       await screen.findByText("timeTracking:timesheet.disabledTitle"),
     ).toBeTruthy();
+  });
+});
+
+describe("Timesheet without the log-time permission (UAT re-audit)", () => {
+  it("shows the permission notice and never requests the timesheet", async () => {
+    mocks.canLogTime = false;
+    renderSheet();
+    expect(
+      await screen.findByText("timeTracking:timesheet.deniedTitle"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("timeTracking:timesheet.loadErrorTitle"),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "common:actions.retry" }),
+    ).toBeNull();
+    expect(mocks.getTimeEntries).not.toHaveBeenCalled();
+    expect(mocks.getTimer).not.toHaveBeenCalled();
+    expect(mocks.getTimeActivities).not.toHaveBeenCalled();
+  });
+
+  it("maps a 403 that still arrives to the same notice, not Retry", async () => {
+    mocks.getTimeEntries.mockRejectedValue(
+      Object.assign(new Error("Forbidden"), { status: 403 }),
+    );
+    renderSheet();
+    expect(
+      await screen.findByText("timeTracking:timesheet.deniedTitle"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "common:actions.retry" }),
+    ).toBeNull();
+  });
+});
+
+describe("Timesheet when the capability read fails (UAT re-audit)", () => {
+  it("shows the access error with Retry instead of a permanent skeleton", async () => {
+    mocks.checking = true;
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    // The `/api/capabilities` read the permission hook waits on has failed and settled.
+    client
+      .getQueryCache()
+      .build(client, { queryKey: ["workspace-capabilities", "w1", "admin"] })
+      .setState({
+        status: "error",
+        fetchStatus: "idle",
+        error: new Error("Failed to get capabilities"),
+      });
+    renderSheet(undefined, client);
+    expect(
+      await screen.findByTestId("settings-access-error"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "common:actions.retry" }),
+    ).toBeInTheDocument();
+    expect(mocks.getTimeEntries).not.toHaveBeenCalled();
   });
 });

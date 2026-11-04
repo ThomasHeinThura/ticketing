@@ -109,7 +109,7 @@ function renderShell(children: ReactNode = <h1>Page</h1>) {
           image: null,
         }}
       >
-        <main>{children}</main>
+        <div>{children}</div>
       </PortalLayout>
     </QueryClientProvider>,
   );
@@ -345,6 +345,26 @@ describe("portal shell", () => {
     expect(
       await screen.findByRole("link", { name: "navigation.dashboard" }),
     ).toBeVisible();
+  });
+
+  it("starts with a skip link to the shell's one main and names the navigation", async () => {
+    renderShell();
+    await screen.findByRole("link", { name: "navigation.dashboard" });
+    // WCAG 2.4.1: the first focusable element bypasses the sidebar.
+    const skip = screen.getByRole("link", {
+      name: "common:a11y.skipToContent",
+    });
+    const firstFocusable = document.querySelector<HTMLElement>(
+      "a[href], button:not([disabled]), [tabindex]:not([tabindex='-1'])",
+    );
+    expect(firstFocusable).toBe(skip);
+    // Pages render inside the inset, so the shell's inset is the page's only main.
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    const main = screen.getByRole("main");
+    skip.focus();
+    fireEvent.click(skip);
+    expect(main).toHaveFocus();
+    expect(screen.getAllByRole("navigation").length).toBeGreaterThan(0);
   });
 
   it("has no serious or critical axe violations (G4)", async () => {

@@ -6,6 +6,10 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   Skeleton,
   Tabs,
   TabsList,
@@ -23,6 +27,7 @@ import {
   useRole,
 } from "@/hooks/queries/workspace-roles/use-role-queries";
 import { useCallerRoleAuthority } from "@/hooks/use-caller-role-authority";
+import { HttpError } from "@/lib/http-error";
 import {
   type RoleDetailSearch,
   type RoleDetailTab,
@@ -174,6 +179,15 @@ export function RoleDetailView({
           <div role="status" aria-label={t("roles:detail.loading")}>
             <Skeleton className="h-48 w-full" />
           </div>
+        ) : role.error instanceof HttpError && role.error.status === 404 ? (
+          <Empty data-testid="role-not-found">
+            <EmptyHeader>
+              <EmptyTitle>{t("roles:detail.notFoundTitle")}</EmptyTitle>
+              <EmptyDescription>
+                {t("roles:detail.notFoundDescription")}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : role.isError || !role.data || !workspace ? (
           <Alert variant="error">
             <AlertTitle>{t("roles:detail.loadErrorTitle")}</AlertTitle>

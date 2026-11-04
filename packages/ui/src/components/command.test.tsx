@@ -31,7 +31,7 @@ describe("Command", () => {
     expect(screen.getByText("Banana")).toBeInTheDocument();
     expect(screen.queryByText("No results")).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Search"), {
+    fireEvent.change(screen.getByRole("combobox", { name: "Search" }), {
       target: { value: "zzz" },
     });
 
@@ -114,7 +114,7 @@ describe("Command", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByText("Projects")).toBeInTheDocument();
     expect(document.activeElement).not.toBe(
-      screen.getByLabelText("Search commands"),
+      screen.getByRole("combobox", { name: "Search commands", hidden: true }),
     );
 
     rerender(
@@ -134,6 +134,145 @@ describe("Command", () => {
     expect(
       document.querySelector('[data-slot="command-dialog-backdrop"]'),
     ).toHaveClass("backdrop-blur-sm");
+  });
+
+  // UAT re-audit: the command palette was an unnamed `role="dialog"` (axe aria-dialog-name) with
+  // an unnamed listbox (axe aria-input-field-name). With no name of their own, both take the
+  // input's label, and a name the caller passes still wins.
+  it.each([
+    ["aria-label", { "aria-label": "Search commands" }],
+    ["placeholder", { placeholder: "Search commands" }],
+  ])(
+    "names the dialog and its list from the input's %s",
+    async (_, inputProps) => {
+      const { baseElement } = render(
+        <CommandDialog open>
+          <CommandDialogPopup>
+            <Command items={["Projects", "Search"]}>
+              <CommandInput autoFocus={false} {...inputProps} />
+              <CommandList>
+                {(item: string) => (
+                  <CommandItem key={item} value={item}>
+                    {item}
+                  </CommandItem>
+                )}
+              </CommandList>
+            </Command>
+          </CommandDialogPopup>
+        </CommandDialog>,
+      );
+
+      expect(
+        await screen.findByRole("dialog", { name: "Search commands" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("listbox", { name: "Search commands" }),
+      ).toBeInTheDocument();
+      await expectNoA11yViolations(baseElement);
+    },
+  );
+
+  it("names a list outside a dialog from its input", () => {
+    render(
+      <Command items={["Apple", "Banana"]}>
+        <CommandInput aria-label="Search fruit" autoFocus={false} />
+        <CommandList>
+          {(item: string) => <CommandItem key={item}>{item}</CommandItem>}
+        </CommandList>
+      </Command>,
+    );
+
+    expect(
+      screen.getByRole("listbox", { name: "Search fruit" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the names a caller gives the dialog and the list", async () => {
+    render(
+      <CommandDialog open>
+        <CommandDialogPopup aria-label="Command palette">
+          <Command items={["Projects"]}>
+            <CommandInput aria-label="Search commands" autoFocus={false} />
+            <CommandList aria-label="Commands">
+              {(item: string) => (
+                <CommandItem key={item} value={item}>
+                  {item}
+                </CommandItem>
+              )}
+            </CommandList>
+          </Command>
+        </CommandDialogPopup>
+      </CommandDialog>,
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: "Command palette" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("listbox", { name: "Commands" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the dialog named by its own input when a nested command has another", async () => {
+    render(
+      <CommandDialog open>
+        <CommandDialogPopup>
+          <Command items={["Projects"]}>
+            <CommandInput autoFocus={false} placeholder="Search commands" />
+            <CommandList>
+              {(item: string) => (
+                <CommandItem key={item} value={item}>
+                  {item}
+                </CommandItem>
+              )}
+            </CommandList>
+            <Command items={["Low"]}>
+              <CommandInput autoFocus={false} placeholder="Filter priority" />
+              <CommandList>
+                {(item: string) => (
+                  <CommandItem key={item} value={item}>
+                    {item}
+                  </CommandItem>
+                )}
+              </CommandList>
+            </Command>
+          </Command>
+        </CommandDialogPopup>
+      </CommandDialog>,
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: "Search commands" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("listbox", { name: "Filter priority" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names a kept-mounted dialog on its first open", async () => {
+    const tree = (open: boolean) => (
+      <CommandDialog open={open}>
+        <CommandDialogPopup keepMounted>
+          <Command items={["Projects"]}>
+            <CommandInput autoFocus={false} placeholder="Search commands" />
+            <CommandList>
+              {(item: string) => (
+                <CommandItem key={item} value={item}>
+                  {item}
+                </CommandItem>
+              )}
+            </CommandList>
+          </Command>
+        </CommandDialogPopup>
+      </CommandDialog>
+    );
+    const { baseElement, rerender } = render(tree(false));
+    rerender(tree(true));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Search commands" }),
+    ).toBeInTheDocument();
+    await expectNoA11yViolations(baseElement);
   });
 
   it("preserves the dim backdrop when full-screen blur is disabled", () => {

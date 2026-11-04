@@ -56,6 +56,8 @@ export function PortalAnnouncementDetail({
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
         <PortalPageTitle title={t("portal:announcements.title")} />
+        {/* The page keeps one h1 while it shows only the error. */}
+        <h1 className="sr-only">{t("portal:announcements.title")}</h1>
         {back}
         <Alert variant={unavailable ? "default" : "error"}>
           <AlertDescription>

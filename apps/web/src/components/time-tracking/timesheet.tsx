@@ -27,6 +27,12 @@ import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
+  isForbiddenError,
+  SettingsAccessDenied,
+  SettingsAccessError,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
+import {
   createTimeEntry,
   requestTimeEntryDeletion,
   type TimeActivity,
@@ -77,7 +83,39 @@ type Props = {
 };
 
 /** `docs/screens.md` "Timesheet" (P5, `TC-*`): the week as a Kaneo table, typed straight into the cells. */
-export function Timesheet({ search, onSearchChange }: Props) {
+export function Timesheet(props: Props) {
+  // `GET /api/time-entries` needs `time_entry:create`: a role without it (reached by URL only, the
+  // nav hides it) sees the permission notice and the timesheet never fires the 403s.
+  const access = useSettingsAccess((permission) => permission.canLogTime());
+  if (access === "checking")
+    return (
+      <TimesheetFrame>
+        <TimesheetLoading />
+      </TimesheetFrame>
+    );
+  if (access === "error")
+    return (
+      <TimesheetFrame>
+        <SettingsAccessError />
+      </TimesheetFrame>
+    );
+  if (access === "denied") return <TimesheetDenied />;
+  return <TimesheetContent {...props} />;
+}
+
+function TimesheetDenied() {
+  const { t } = useTranslation();
+  return (
+    <TimesheetFrame>
+      <SettingsAccessDenied
+        title={t("timeTracking:timesheet.deniedTitle")}
+        description={t("timeTracking:timesheet.deniedDescription")}
+      />
+    </TimesheetFrame>
+  );
+}
+
+function TimesheetContent({ search, onSearchChange }: Props) {
   const { t } = useTranslation();
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
   const workspaceId = workspace?.id;
@@ -121,6 +159,8 @@ export function Timesheet({ search, onSearchChange }: Props) {
         </Empty>
       </TimesheetFrame>
     );
+  if (isForbiddenError(probe.error) || isForbiddenError(entries.error))
+    return <TimesheetDenied />;
   if (
     !workspaceId ||
     !start ||

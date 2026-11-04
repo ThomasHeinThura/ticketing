@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceSettingsFrame } from "./workspace-settings-frame";
 
@@ -198,5 +198,15 @@ describe("WorkspaceSettingsFrame", () => {
     hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("/dashboard/settings/workspace/sla-policies");
     expect(hrefs).toContain("/dashboard/settings/workspace/calendars");
+  });
+
+  it("puts the settings menu in a named navigation landmark (UAT re-audit)", () => {
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    const nav = screen.getByRole("navigation", {
+      name: "navigation:page.settingsWorkspaceTab",
+    });
+    expect(within(nav).getAllByRole("link").length).toBe(
+      screen.getAllByRole("link").length,
+    );
   });
 });

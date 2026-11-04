@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   openPendingAction: vi.fn(),
   canManage: true,
+  catalogueEnabled: true,
+  announcementsEnabled: vi.fn(),
   canAddressWorkspace: true,
   rows: [] as Announcement[],
 }));
@@ -41,18 +43,24 @@ vi.mock("@/hooks/use-open-pending-action", () => ({
 }));
 vi.mock("@/hooks/queries/service-management", () => ({
   useCatalogueStatus: () => ({
-    data: { canManageServices: mocks.canManage },
+    data: {
+      enabled: mocks.catalogueEnabled,
+      canManageServices: mocks.canManage,
+    },
     isLoading: false,
   }),
   useInvalidateServiceManagement: () => vi.fn(),
   isFeatureDisabled: () => false,
 }));
 vi.mock("@/hooks/queries/announcements", () => ({
-  useAnnouncements: () => ({
-    data: mocks.rows,
-    isLoading: false,
-    isError: false,
-  }),
+  useAnnouncements: (_workspaceId: string, enabled: boolean) => {
+    mocks.announcementsEnabled(enabled);
+    return {
+      data: mocks.rows,
+      isLoading: false,
+      isError: false,
+    };
+  },
   useAnnouncementAudienceOptions: () => ({
     data: {
       canAddressWorkspace: mocks.canAddressWorkspace,
@@ -111,6 +119,7 @@ function setup() {
 
 beforeEach(() => {
   mocks.canManage = true;
+  mocks.catalogueEnabled = true;
   mocks.canAddressWorkspace = true;
   mocks.rows = [draft];
   mocks.create.mockResolvedValue(draft);
@@ -335,5 +344,25 @@ describe("announcements management", () => {
     expect(
       screen.getByText("You cannot manage announcements"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("announcements with the catalogue off (UAT re-audit)", () => {
+  it("shows the off state once, offers no New announcement and asks for no list", () => {
+    mocks.catalogueEnabled = false;
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AnnouncementsList />
+      </QueryClientProvider>,
+    );
+    expect(screen.getAllByTestId("service-catalogue-off")).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", {
+        name: translate("serviceManagement:announcements.list.new"),
+      }),
+    ).toBeNull();
+    expect(mocks.announcementsEnabled).toHaveBeenCalled();
+    for (const [enabled] of mocks.announcementsEnabled.mock.calls)
+      expect(enabled).toBe(false);
   });
 });

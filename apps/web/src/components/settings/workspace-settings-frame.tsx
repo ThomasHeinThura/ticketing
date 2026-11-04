@@ -207,32 +207,34 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <SidebarGroup className="gap-1 p-1">
-            <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
-              {t("navigation:page.settingsWorkspaceTab")}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                {menuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <Button
-                      render={<Link to={item.url} />}
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
-                        isActivePath(item.url) &&
-                          "bg-sidebar-accent text-sidebar-accent-foreground",
-                      )}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Button>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <nav aria-label={t("navigation:page.settingsWorkspaceTab")}>
+            <SidebarGroup className="gap-1 p-1">
+              <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
+                {t("navigation:page.settingsWorkspaceTab")}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0.5">
+                  {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <Button
+                        render={<Link to={item.url} />}
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
+                          isActivePath(item.url) &&
+                            "bg-sidebar-accent text-sidebar-accent-foreground",
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Button>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </nav>
         </div>
       </SettingsSidebar>
 

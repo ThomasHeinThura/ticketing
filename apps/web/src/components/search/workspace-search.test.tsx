@@ -178,3 +178,18 @@ describe("WorkspaceSearch (P1R1-1)", () => {
     expect(screen.getByText("workspace:search.noResultsTitle")).toBeTruthy();
   });
 });
+
+describe("WorkspaceSearch page heading", () => {
+  it("gives the search page one h1 (axe page-has-heading-one)", () => {
+    render(
+      <WorkspaceSearch workspaceId="w1" search={{}} onSearchChange={vi.fn()} />,
+    );
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "workspace:search.pageTitle",
+      }),
+    ).toBeInTheDocument();
+  });
+});

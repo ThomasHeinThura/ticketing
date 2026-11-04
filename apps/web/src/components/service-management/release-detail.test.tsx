@@ -10,7 +10,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReleaseDetail } from "@/fetchers/service-management";
 import { translate } from "@/test/en-translation";
 
-const mocks = vi.hoisted(() => ({ update: vi.fn(), canManage: true }));
+const mocks = vi.hoisted(() => ({
+  update: vi.fn(),
+  canManage: true,
+  releaseError: null as unknown,
+}));
 vi.mock("react-i18next", async () => ({
   ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
   useTranslation: (namespace?: string) => ({
@@ -28,8 +32,18 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 }));
 vi.mock("@/hooks/queries/service-management", () => ({
   useCatalogueStatus: () => ({ data: { canManageReleases: mocks.canManage } }),
-  useRelease: () => ({ data: release, isLoading: false, isError: false }),
+  useRelease: () =>
+    mocks.releaseError
+      ? {
+          data: undefined,
+          isLoading: false,
+          isError: true,
+          error: mocks.releaseError,
+          refetch: vi.fn(),
+        }
+      : { data: release, isLoading: false, isError: false },
   useInvalidateServiceManagement: () => vi.fn(),
+  isFeatureDisabled: () => false,
 }));
 vi.mock("@/fetchers/service-management", () => ({
   RELEASE_STATUSES: ["planned", "in_progress", "released", "cancelled"],
@@ -71,6 +85,7 @@ function setup() {
 }
 beforeEach(() => {
   mocks.canManage = true;
+  mocks.releaseError = null;
   mocks.update.mockResolvedValue(release);
 });
 afterEach(() => {
@@ -105,5 +120,32 @@ describe("release detail calendar", () => {
     setup();
     expect(screen.getByRole("button", { name: "Planned date" })).toBeDisabled();
     expect(mocks.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("ReleaseDetailView unknown release", () => {
+  it("shows not-found without Retry when the release id does not exist (404)", async () => {
+    const { HttpError } = await import("@/lib/http-error");
+    mocks.releaseError = new HttpError(404, "Release not found");
+    setup();
+    expect(
+      screen.getByText(translate("serviceManagement:releases.detail.notFound")),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: translate("serviceManagement:common.retry"),
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps Retry for other load failures", async () => {
+    const { HttpError } = await import("@/lib/http-error");
+    mocks.releaseError = new HttpError(500, "boom");
+    setup();
+    expect(
+      screen.getByRole("button", {
+        name: translate("serviceManagement:common.retry"),
+      }),
+    ).toBeInTheDocument();
   });
 });

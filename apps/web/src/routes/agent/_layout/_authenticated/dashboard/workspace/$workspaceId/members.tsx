@@ -43,6 +43,7 @@ function RouteComponent() {
           ) : null
         }
       >
+        <h1 className="sr-only">{t("team:members.pageTitle")}</h1>
         <MembersTable
           workspaceId={workspaceId}
           users={workspace?.members ?? []}

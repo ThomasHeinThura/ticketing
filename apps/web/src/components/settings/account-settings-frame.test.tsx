@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccountSettingsFrame } from "./account-settings-frame";
 
@@ -66,5 +66,11 @@ describe("AccountSettingsFrame (L-03)", () => {
     expect(
       screen.getByRole("link", { name: "settings:information" }).className,
     ).not.toContain("bg-sidebar-accent");
+  });
+
+  it("puts the settings menu in a named navigation landmark (UAT re-audit)", () => {
+    render(<AccountSettingsFrame>content</AccountSettingsFrame>);
+    const nav = screen.getByRole("navigation", { name: "settings:account" });
+    expect(within(nav).getAllByRole("link")).toHaveLength(6);
   });
 });

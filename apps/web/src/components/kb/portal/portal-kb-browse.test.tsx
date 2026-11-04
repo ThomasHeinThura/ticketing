@@ -49,14 +49,17 @@ describe("PortalKbBrowse layout", () => {
   // page's own width (a container query), and stack below it. jsdom has no layout, so the
   // classes are the contract; the e2e spec checks the real boxes.
   it("places categories beside the articles only when the page itself is wide", async () => {
-    render(
+    const { container } = render(
       <QueryClientProvider client={new QueryClient()}>
         <PortalKbBrowse search={{}} scope="customer-1" />
       </QueryClientProvider>,
     );
 
-    const main = screen.getByRole("main");
-    expect(main.className.split(/\s+/)).toContain("@container");
+    // The portal shell's inset is the page's one `main`; the page root is a plain container.
+    expect(screen.queryByRole("main")).toBeNull();
+    const pageRoot = container.firstElementChild;
+    if (!pageRoot) throw new Error("page rendered nothing");
+    expect(pageRoot.className.split(/\s+/)).toContain("@container");
     const nav = await screen.findByRole("navigation", {
       name: "kb:portal.categories",
     });

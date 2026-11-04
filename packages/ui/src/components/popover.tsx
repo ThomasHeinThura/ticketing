@@ -33,6 +33,42 @@ function PopoverTrigger({
   );
 }
 
+/**
+ * A popover is a `role="dialog"` popup, and a dialog needs an accessible name (axe
+ * `aria-dialog-name`). A caller should pass `aria-label`, `aria-labelledby` or a `PopoverTitle`;
+ * when none is given the popup is named by the trigger that opened it (Base UI points the trigger's
+ * `aria-controls` at the popup), so an unlabelled option picker still reads as, say, "Priority".
+ * Returns false while the popup's id or the trigger's `aria-controls` has not landed yet.
+ */
+function nameFromTrigger(popup: HTMLElement) {
+  if (
+    !popup.isConnected ||
+    popup.hasAttribute("aria-labelledby") ||
+    popup.hasAttribute("aria-label")
+  )
+    return true;
+  if (!popup.id) return false;
+  const trigger = popup.ownerDocument.querySelector(
+    `[aria-controls="${CSS.escape(popup.id)}"][aria-expanded="true"]`,
+  );
+  if (!trigger) return false;
+  // A trigger rendered through `render` can lose Base UI's id; give it a stable one to point at.
+  if (!trigger.id) trigger.id = `${popup.id}-trigger`;
+  popup.setAttribute("aria-labelledby", trigger.id);
+  return true;
+}
+
+/** The popup mounts in the portal's own commit; its id and the trigger catch up within frames. */
+function nameFromTriggerSoon(popup: HTMLElement, attemptsLeft = 5) {
+  if (nameFromTrigger(popup) || attemptsLeft === 0) return;
+  requestAnimationFrame(() => nameFromTriggerSoon(popup, attemptsLeft - 1));
+}
+
+function assignRef<T>(ref: React.Ref<T> | undefined, value: T) {
+  if (typeof ref === "function") ref(value);
+  else if (ref) (ref as React.RefObject<T>).current = value;
+}
+
 function PopoverPopup({
   children,
   className,
@@ -43,6 +79,7 @@ function PopoverPopup({
   tooltipStyle = false,
   anchor,
   disableAnchorTracking = false,
+  ref,
   ...props
 }: PopoverPrimitive.Popup.Props & {
   side?: PopoverPrimitive.Positioner.Props["side"];
@@ -53,6 +90,14 @@ function PopoverPopup({
   anchor?: PopoverPrimitive.Positioner.Props["anchor"];
   disableAnchorTracking?: PopoverPrimitive.Positioner.Props["disableAnchorTracking"];
 }) {
+  const named = props["aria-label"] != null || props["aria-labelledby"] != null;
+  const setPopupRef = React.useCallback(
+    (element: HTMLDivElement | null) => {
+      assignRef(ref, element);
+      if (element && !named) nameFromTriggerSoon(element);
+    },
+    [ref, named],
+  );
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
@@ -73,6 +118,7 @@ function PopoverPopup({
             className,
           )}
           data-slot="popover-popup"
+          ref={setPopupRef}
           {...props}
         >
           <PopoverPrimitive.Viewport

@@ -58,6 +58,8 @@ function Sidebar({
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
+  // The sidebar is the page's main navigation, so it is a named `nav` landmark (UAT re-audit:
+  // agent and portal pages had no navigation landmark). `mobileTitle` is its translated name.
   if (collapsible === "none") {
     return (
       <div
@@ -68,7 +70,9 @@ function Sidebar({
         data-slot="sidebar"
         {...props}
       >
-        {children}
+        <nav aria-label={mobileTitle} className="flex h-full w-full flex-col">
+          {children}
+        </nav>
       </div>
     );
   }
@@ -93,7 +97,9 @@ function Sidebar({
             description={mobileDescription}
             title={mobileTitle}
           />
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <nav aria-label={mobileTitle} className="flex h-full w-full flex-col">
+            {children}
+          </nav>
         </SheetPopup>
       </Sheet>
     );
@@ -135,13 +141,14 @@ function Sidebar({
         data-slot="sidebar-container"
         {...props}
       >
-        <div
+        <nav
+          aria-label={mobileTitle}
           className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm/5"
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
         >
           {children}
-        </div>
+        </nav>
       </div>
     </div>
   );
