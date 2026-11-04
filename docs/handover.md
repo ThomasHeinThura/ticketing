@@ -4,7 +4,7 @@ Read [AGENTS.md](../AGENTS.md), [status](status.md), [roadmap](roadmap.md) and [
 
 ## Who works on version 2
 
-From 4 Nov Thomas hands version 2 back to **Codex**. Claude stops after this release. Codex owns `main`, the worktrees it creates and the release chain. Model tiers and review rules are in AGENTS.md.
+From 4 Nov Thomas hands version 2 back to **Codex**. Claude stops after this release. Codex owns `main` and the release chain. Model tiers and review rules are in AGENTS.md.
 
 ## Goal
 

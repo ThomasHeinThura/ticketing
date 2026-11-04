@@ -1,6 +1,10 @@
-# Current status — 31 October 2026, evening
+# Current status
 
-**Goal: UAT launch on Friday 6 November 2026 on the Technexus hosts.** Claude is the only version 2 implementer from 30 Oct; Codex works on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
+The latest recorded handover and release instructions are in [handover](handover.md). Verify the running environments before acting; dated checkpoints below are historical.
+
+## Historical checkpoint — 31 October 2026, evening
+
+**Goal at this checkpoint: UAT launch on Friday 6 November 2026 on Technexus.** Claude was the version 2 implementer from 30 Oct; Codex worked on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
 
 - **Deployed:** `main` cbd076c (signed digest `sha256:aa96614708b2…`, attestation verified).
   - **Local SIT (Docker Desktop):** wiped and reinstalled with the SIT seed. Smoke 43/43.

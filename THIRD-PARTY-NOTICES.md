@@ -9,14 +9,14 @@ came from.
 **This file exists before any third-party code is in the repository, deliberately.** The
 provenance boundary is that TaskDesk's own licence is committed first and the inherited
 code second, so that at no point does upstream code sit in this repository without its
-notice ([licensing-and-attribution.md](docs/00-overview/licensing-and-attribution.md)).
+notice ([licensing and attribution](docs/technical/design-and-decisions.md#licensing-and-attribution)).
 
 ## 1. kaneo — the foundation
 
 `apps/api`, `apps/web`, `packages/*` and the build tooling of this repository descend from
 **kaneo**, taken **once** as a source snapshot and maintained from then on as TaskDesk's own
 code. There is no upstream relationship, no merges from upstream, and no expectation of
-receiving upstream fixes ([ADR 0001](docs/01-architecture/adr/0001-kaneo-as-foundation.md)).
+receiving upstream fixes ([ADR 0001](docs/technical/design-and-decisions.md#0001-kaneo-as-foundation)).
 
 | | |
 | --- | --- |
@@ -39,7 +39,7 @@ place where every fact that depends on the snapshot commit is stated.
 
 Files taken from kaneo verbatim keep their original copyright headers. A file rewritten so
 completely that nothing of kaneo's remains may lose its header, and the rewrite is recorded
-in the [decision log](docs/07-planning/decision-log.md).
+in the [decision log](docs/technical/retained-constraints.md#decision-log).
 
 ### kaneo licence, verbatim
 
@@ -81,7 +81,7 @@ and the ITSM systems below were read for their product decisions only.
 | Chatwoot, FreeScout, GLPI, NocoBase, osTicket, Zammad | MIT / AGPL-3.0 / GPL-3.0 / Apache-2.0 / GPL-2.0 / AGPL-3.0 | Ideas only |
 | TaskDesk v1 | Ours | Domain logic, reimplemented from its tests in TypeScript |
 
-Detail, and the reasoning behind each: [licensing-and-attribution.md](docs/00-overview/licensing-and-attribution.md).
+Detail, and the reasoning behind each: [licensing and attribution](docs/technical/design-and-decisions.md#licensing-and-attribution).
 
 ## 3. Runtime and build dependencies
 
