@@ -245,5 +245,20 @@ export const documentLinkSchema = z
   .openapi("DocumentLink");
 
 export const customerOrganisationListSchema = z
-  .array(z.object({ id: z.string(), name: z.string() }))
+  .array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      inheritedServiceCalendarId: z
+        .string()
+        .nullable()
+        .openapi({
+          description:
+            "The service calendar a new project for this organisation inherits in the queried " +
+            "workspace when the create call names none: the organisation's workspace default " +
+            "if that default exists (null when it sets only an SLA policy), otherwise the " +
+            "workspace's default. Null means a managed service must name a calendar (PR-9).",
+        }),
+    }),
+  )
   .openapi("ProjectCustomerOrganisationList");

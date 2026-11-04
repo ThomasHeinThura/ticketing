@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   createProjectArgs: vi.fn(),
   navigate: vi.fn(),
   canBind: true,
+  canManageSettings: true,
   slaOn: true,
   workspaceDefaultCalendarId: "calendar-default" as string | null,
   calendars: {
@@ -65,7 +66,7 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canBindProjectOrganisation: () => mocks.canBind,
-    canManageWorkspaceSettings: () => true,
+    canManageWorkspaceSettings: () => mocks.canManageSettings,
   }),
 }));
 
@@ -89,7 +90,13 @@ vi.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: vi.fn() },
 }));
 
-const loaded = (data: { id: string; name: string }[]) => ({
+const loaded = (
+  data: {
+    id: string;
+    name: string;
+    inheritedServiceCalendarId?: string | null;
+  }[],
+) => ({
   data,
   isPending: false,
   isError: false,
@@ -120,6 +127,7 @@ function fillAndSubmit() {
 
 beforeEach(() => {
   mocks.canBind = true;
+  mocks.canManageSettings = true;
   mocks.slaOn = true;
   mocks.workspaceDefaultCalendarId = "calendar-default";
   mocks.createProject.mockResolvedValue({ id: "project-1" });
@@ -442,24 +450,154 @@ describe("CreateProjectModal kind (S5)", () => {
     );
   });
 
-  it("explains and blocks the default calendar when the workspace has none", async () => {
-    mocks.workspaceDefaultCalendarId = null;
-    render(
+  function calendarTrigger() {
+    return screen.getByLabelText("common:modals.createProject.calendarLabel");
+  }
+
+  async function chooseSupportLevel() {
+    await choose(
+      screen.getByLabelText("common:modals.createProject.supportLevelLabel"),
+      "common:modals.createProject.supportLevelOption",
+    );
+  }
+
+  async function chooseOrganisation(name: string) {
+    fireEvent.click(
+      screen.getByLabelText("common:modals.createProject.organisationLabel"),
+    );
+    const option = await screen.findByRole("option", { name });
+    fireEvent.pointerDown(option);
+    fireEvent.mouseDown(option);
+    fireEvent.pointerUp(option);
+    fireEvent.mouseUp(option);
+    fireEvent.click(option);
+  }
+
+  function renderManaged() {
+    return render(
       <CreateProjectModal
         open
         onClose={vi.fn()}
         defaultKind="managed_service"
       />,
     );
+  }
+
+  it("asks for a calendar when an internal managed service has no workspace default", async () => {
+    mocks.workspaceDefaultCalendarId = null;
+    renderManaged();
     typeProject();
-    await choose(
-      screen.getByLabelText("common:modals.createProject.supportLevelLabel"),
-      "common:modals.createProject.supportLevelOption",
-    );
+    await chooseSupportLevel();
     expect(screen.getByTestId("project-calendar-no-default").textContent).toBe(
       "common:modals.createProject.calendarNoDefault",
     );
+    expect(calendarTrigger().textContent).toContain(
+      "common:modals.createProject.calendarPlaceholder",
+    );
+    expect(calendarTrigger().getAttribute("aria-invalid")).toBe("true");
     expect(createButton().disabled).toBe(true);
+
+    // The default is not offered: only real calendars.
+    const trigger = calendarTrigger();
+    fireEvent.click(trigger);
+    const options = await screen.findAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Office hours",
+      "Around the clock",
+    ]);
+    const [, aroundTheClock] = options;
+    fireEvent.pointerDown(aroundTheClock);
+    fireEvent.mouseDown(aroundTheClock);
+    fireEvent.pointerUp(aroundTheClock);
+    fireEvent.mouseUp(aroundTheClock);
+    fireEvent.click(aroundTheClock);
+    await waitFor(() => expect(createButton().disabled).toBe(false));
+    expect(screen.queryByTestId("project-calendar-no-default")).toBeNull();
+    expect(lastCreateArgs().serviceCalendarId).toBe("calendar-247");
+    fireEvent.click(createButton());
+    await waitFor(() => expect(mocks.createProject).toHaveBeenCalledTimes(1));
+  });
+
+  it("asks for a calendar when the chosen organisation's default resolves to none", async () => {
+    // Workspace default exists, but the organisation's default row sets only an SLA policy,
+    // so the API resolves no calendar (PR-9) and the dialog must ask.
+    mocks.canBind = true;
+    mocks.organisations.mockReturnValue(
+      loaded([
+        { id: "org-1", name: "Acme Ltd", inheritedServiceCalendarId: null },
+        {
+          id: "org-2",
+          name: "Globex",
+          inheritedServiceCalendarId: "calendar-247",
+        },
+      ]),
+    );
+    renderManaged();
+    typeProject();
+    await chooseSupportLevel();
+    // Internal: the workspace default resolves.
+    await waitFor(() => expect(createButton().disabled).toBe(false));
+
+    await chooseOrganisation("Acme Ltd");
+    await waitFor(() => expect(createButton().disabled).toBe(true));
+    expect(screen.getByTestId("project-calendar-no-default")).toBeTruthy();
+
+    await choose(calendarTrigger(), "Office hours");
+    await waitFor(() => expect(createButton().disabled).toBe(false));
+    expect(lastCreateArgs()).toMatchObject({
+      organisationId: "org-1",
+      serviceCalendarId: "calendar-default",
+    });
+  });
+
+  it("names and inherits the organisation's resolved default calendar", async () => {
+    mocks.canBind = true;
+    mocks.workspaceDefaultCalendarId = null;
+    mocks.organisations.mockReturnValue(
+      loaded([
+        {
+          id: "org-2",
+          name: "Globex",
+          inheritedServiceCalendarId: "calendar-247",
+        },
+      ]),
+    );
+    renderManaged();
+    typeProject();
+    await chooseSupportLevel();
+    expect(createButton().disabled).toBe(true);
+
+    await chooseOrganisation("Globex");
+    await waitFor(() => expect(createButton().disabled).toBe(false));
+    expect(calendarTrigger().textContent).toContain(
+      "common:modals.createProject.calendarInheritNamed",
+    );
+    expect(screen.queryByTestId("project-calendar-no-default")).toBeNull();
+    expect(lastCreateArgs().serviceCalendarId).toBeNull();
+  });
+
+  it("explains that nothing can be chosen while feature.sla is off and nothing resolves", async () => {
+    mocks.slaOn = false;
+    mocks.workspaceDefaultCalendarId = null;
+    renderManaged();
+    typeProject();
+    await chooseSupportLevel();
+    expect(screen.getByTestId("project-calendar-no-default").textContent).toBe(
+      "common:modals.createProject.calendarNoneAvailable",
+    );
+    expect(calendarTrigger().hasAttribute("disabled")).toBe(true);
+    expect(createButton().disabled).toBe(true);
+  });
+
+  it("leaves the decision to the API when the default calendar cannot be read", async () => {
+    mocks.canManageSettings = false;
+    mocks.workspaceDefaultCalendarId = null;
+    renderManaged();
+    typeProject();
+    await chooseSupportLevel();
+    await waitFor(() => expect(createButton().disabled).toBe(false));
+    expect(screen.queryByTestId("project-calendar-no-default")).toBeNull();
+    expect(lastCreateArgs().serviceCalendarId).toBeNull();
   });
 
   it("offers only the default calendar while feature.sla is off", async () => {
