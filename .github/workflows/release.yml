@@ -237,6 +237,26 @@ jobs:
       # with no vendor-supplied fix at this pinned digest is not an actionable finding, and
       # blocking on it indefinitely does not reduce risk. A finding WITH a fix available
       # still blocks exactly as before -- severity and exit-code are unchanged.
+      # 4 Nov 2026 (Thomas): trivy-action's own setup step runs Trivy's install script from the
+      # tip of Trivy's default branch, and an upstream change there (#9962) broke it, so every
+      # release failed before scanning. Install the same pinned v0.73.0 binary from its release
+      # tarball, verified against the published SHA-256, and let both scans use it. What is
+      # scanned and what blocks publication are unchanged.
+      - name: Install Trivy v0.73.0 (pinned tarball, checksum verified)
+        env:
+          TRIVY_VERSION: 0.73.0
+          TRIVY_SHA256: 2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b
+        run: |
+          set -euo pipefail
+          archive="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${archive}"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/trivy-bin" trivy
+          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/trivy-bin/trivy" --version
+
       - name: Scan amd64 image — HIGH and CRITICAL with a fix available block publication
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -247,6 +267,7 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
           cache: false
+          skip-setup-trivy: true
 
       - name: Scan arm64 image — HIGH and CRITICAL with a fix available block publication
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -258,6 +279,7 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
           cache: false
+          skip-setup-trivy: true
 
       - name: Generate CycloneDX SBOM for amd64
         uses: anchore/sbom-action@d8a2c0130026bf585de5c176ab8f7ce62d75bf04 # v0.20.7
