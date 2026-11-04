@@ -430,6 +430,8 @@ function WorkItemActivity({
     id: string | null,
     actorType: string,
     payload?: unknown,
+    /** The server-resolved name of a person actor (a customer is in neither list here). */
+    serverName?: string | null,
   ) {
     const candidate =
       actorType === "person"
@@ -442,7 +444,10 @@ function WorkItemActivity({
         ? users.find((entry) => entry.userId === id)
         : undefined;
     return {
-      name: displayName(id, actorType, payload),
+      name:
+        actorType === "person" && serverName
+          ? serverName
+          : displayName(id, actorType, payload),
       image: candidate?.image ?? member?.user?.image,
       email: member?.user?.email,
     };
@@ -569,7 +574,12 @@ function WorkItemActivity({
                   image: undefined,
                   email: undefined,
                 }
-              : actorProfile(row.actorId, row.actorType, row.payload);
+              : actorProfile(
+                  row.actorId,
+                  row.actorType,
+                  row.payload,
+                  row.actorDisplayName,
+                );
           const timestamp = (
             <time
               className="whitespace-nowrap text-xs text-muted-foreground"

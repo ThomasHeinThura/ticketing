@@ -47,6 +47,9 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   logTime?: boolean;
   createAttachments?: boolean;
   triageIntake?: boolean;
+  // Strict saved_view:create, exactly what `POST /api/views` enforces (the built-in Viewer role
+  // lacks it). Optional so an older server fails closed.
+  createSavedViews?: boolean;
 };
 
 // Mirrors apps/api/src/capabilities/response.ts's capabilitiesResponseSchema
@@ -169,6 +172,7 @@ export function useWorkspacePermission(
       canManageTeam: () => can.manageTeam,
       canRemoveMembers: () => can.removeMembers,
       canManageServiceCalendars: () => can.manageServiceCalendars,
+      canCreateSavedViews: () => can.createSavedViews === true,
       canShareSavedViews: () => can.shareSavedViews,
       canTriageIntake: () => can.triageIntake === true,
       canManageWorkspaceSettings: () => can.manageWorkspaceSettings,

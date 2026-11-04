@@ -11,6 +11,9 @@ import { CAPABILITY_CHECKS, type CapabilityName } from "../capability-checks";
 
 export type CapabilityMap = Record<CapabilityName, boolean> & {
   manageServiceCalendars: boolean;
+  // Strict saved_view:create (held through saved_view:share too), exactly what
+  // `POST /api/views` enforces: the built-in Viewer role lacks it.
+  createSavedViews: boolean;
   shareSavedViews: boolean;
   triageIntake: boolean;
   manageWorkspaceSettings: boolean;
@@ -53,6 +56,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
   const [
     results,
     manageServiceCalendars,
+    createSavedViews,
     shareSavedViews,
     triageIntake,
     manageWorkspaceSettings,
@@ -98,6 +102,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
       }),
     ),
     hasServiceCalendarManageCapability(c),
+    hasCanonicalCapability(c, "saved_view:create"),
     hasCanonicalCapability(c, "saved_view:share"),
     hasCanonicalCapability(c, "intake:triage"),
     hasCanonicalCapability(c, "workspace:manage_settings"),
@@ -132,6 +137,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
   return {
     ...flags,
     manageServiceCalendars,
+    createSavedViews,
     shareSavedViews,
     triageIntake: agentOnly(triageIntake),
     manageWorkspaceSettings,
@@ -161,6 +167,7 @@ async function hasCanonicalCapability(
   c: Context,
   capability:
     | "intake:triage"
+    | "saved_view:create"
     | "saved_view:share"
     | "workspace:manage_settings"
     | "work_item:transition"

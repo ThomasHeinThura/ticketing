@@ -288,9 +288,10 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
       await expect(status).toHaveCount(1);
       await expect(status).toHaveText("Backlog");
       await status.click();
+      // The state moves are library menu items, not popover buttons.
       await page
-        .getByRole("button", { name: /^In progress/ })
-        .last()
+        .locator('[data-slot="menu-popup"]')
+        .getByRole("menuitem", { name: /^In progress/ })
         .click();
       await expect(status).toHaveText("In progress");
       await expect(status).toHaveAttribute("aria-expanded", "false");

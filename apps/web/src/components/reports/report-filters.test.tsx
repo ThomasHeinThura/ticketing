@@ -18,8 +18,12 @@ vi.mock("react-i18next", () => ({
 vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   default: () => ({ data: [{ id: "project-one", name: "Example project" }] }),
 }));
+// The create-project picker needs project:create: the report filter must never call it.
+const createProjectOrganisations = vi.hoisted(() =>
+  vi.fn(() => ({ data: [] })),
+);
 vi.mock("@/hooks/queries/project/use-customer-organisations", () => ({
-  default: () => ({ data: [] }),
+  default: createProjectOrganisations,
 }));
 vi.mock("@/hooks/queries/team/use-teams", () => ({
   useTeams: () => ({ data: [] }),
@@ -54,6 +58,7 @@ describe("report calendar filters", () => {
         onChange={onChange}
         live={false}
         choices={[]}
+        organisations={[]}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "From" }));
@@ -74,6 +79,7 @@ describe("report calendar filters", () => {
         onChange={onChange}
         live={false}
         choices={[]}
+        organisations={[]}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "30 days" }));
@@ -89,9 +95,61 @@ describe("report calendar filters", () => {
         onChange={vi.fn()}
         live
         choices={[]}
+        organisations={[]}
       />,
     );
     expect(screen.queryByRole("button", { name: "From" })).toBeNull();
     expect(screen.queryByRole("button", { name: "To" })).toBeNull();
+  });
+});
+
+describe("report organisation filter (RP-7)", () => {
+  it("offers the organisations of the report's own reach, not the create-project picker", () => {
+    render(
+      <ReportFilters
+        workspaceId="workspace-one"
+        search={{ window: "30" }}
+        onChange={vi.fn()}
+        live={false}
+        choices={[]}
+        organisations={[
+          { id: "org-acme", name: "Acme Ltd" },
+          { id: "org-globex", name: "Globex" },
+        ]}
+      />,
+    );
+    expect(createProjectOrganisations).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Organisation" }));
+    expect(
+      screen.getByRole("button", { name: "Acme Ltd" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Globex" })).toBeInTheDocument();
+  });
+
+  it("keeps the last organisations while the next report loads", () => {
+    const view = render(
+      <ReportFilters
+        workspaceId="workspace-one"
+        search={{ window: "30" }}
+        onChange={vi.fn()}
+        live={false}
+        choices={[]}
+        organisations={[{ id: "org-acme", name: "Acme Ltd" }]}
+      />,
+    );
+    view.rerender(
+      <ReportFilters
+        workspaceId="workspace-one"
+        search={{ window: "30", organisationId: "org-acme" }}
+        onChange={vi.fn()}
+        live={false}
+        choices={[]}
+        organisations={undefined}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Organisation" }));
+    expect(
+      screen.getByRole("button", { name: "Acme Ltd" }),
+    ).toBeInTheDocument();
   });
 });

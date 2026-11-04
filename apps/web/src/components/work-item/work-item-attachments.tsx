@@ -58,6 +58,14 @@ export default function WorkItemAttachments({
     (!workspaceId ||
       (!permissions.isCheckingPermissions &&
         permissions.canCreateAttachments()));
+  // Restoring a deleted file needs attachment:delete_own or delete_any, and both imply
+  // attachment:create (packages/permissions capabilities.ts). A caller without create, such
+  // as a viewer, can therefore restore nothing and is not offered "Recently deleted".
+  const canRecover =
+    !readOnly &&
+    (!workspaceId ||
+      (!permissions.isCheckingPermissions &&
+        permissions.canCreateAttachments()));
   const removalBusy = useRef(false);
   const lifecycle = useIntentLifecycle(workItemKey, () => setError(null));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -213,7 +221,7 @@ export default function WorkItemAttachments({
             />
           </>
         ) : null}
-        {!readOnly ? (
+        {canRecover || showRecoverable ? (
           <Button
             variant="outline"
             size="sm"

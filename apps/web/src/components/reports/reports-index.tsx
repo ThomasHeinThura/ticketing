@@ -22,6 +22,7 @@ import type { ReportCatalogueEntry } from "@/fetchers/report";
 import { getSavedViews } from "@/fetchers/saved-views";
 import { useReport, useReportCatalogue } from "@/hooks/queries/report";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import {
   REPORT_CATEGORIES,
   type ReportsIndexSearch,
@@ -30,6 +31,7 @@ import { routes } from "@/lib/routes";
 import { savedViewKeys } from "@/lib/saved-view-keys";
 import { ReportError } from "./report-detail";
 import { metricText } from "./report-format";
+import { ReportsFeatureGate } from "./reports-feature-gate";
 
 /** The headline numbers: four reports, each a link to its own screen. */
 const KPIS = [
@@ -66,6 +68,11 @@ function Kpi({
           </p>
           {result.isLoading ? (
             <Skeleton className="h-8 w-20" />
+          ) : found?.value === null ? (
+            // RP-1's sentence is body copy, not a figure, so the tile keeps its size.
+            <p className="text-muted-foreground text-sm">
+              {metricText(found, t)}
+            </p>
           ) : found ? (
             <p className="font-semibold text-2xl tabular-nums">
               {result.data?.empty && found.value === 0
@@ -134,7 +141,20 @@ function ReportCard({ entry }: { entry: ReportCatalogueEntry }) {
  * `docs/screens.md` "Reports index": a directory, not a dashboard. Category chips, a KPI strip, the
  * fixed reports of tier 1, and the saved table and chart reports of tiers 2 and 3.
  */
-export function ReportsIndex({
+export function ReportsIndex(props: {
+  search: ReportsIndexSearch;
+  onSearchChange: (next: ReportsIndexSearch) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ReportsFeatureGate title={t("reports:index.title")}>
+      <ReportsIndexScreen {...props} />
+    </ReportsFeatureGate>
+  );
+}
+
+// Rendered once `feature.reports` is on, or its read failed and the APIs answer (the gate).
+function ReportsIndexScreen({
   search,
   onSearchChange,
 }: {
@@ -145,6 +165,8 @@ export function ReportsIndex({
   const { data: workspace } = useActiveWorkspace();
   const { user } = useAuth();
   const workspaceId = workspace?.id ?? "";
+  // A saved custom report is a saved view: only offered to a role that may create one.
+  const canCreateReport = useWorkspacePermission().canCreateSavedViews();
   const catalogue = useReportCatalogue(workspaceId);
   const views = useQuery({
     queryKey: savedViewKeys.list(workspaceId, user?.id),
@@ -179,10 +201,12 @@ export function ReportsIndex({
               <LayoutDashboard aria-hidden="true" />
               {t("reports:index.dashboards")}
             </Button>
-            <Button render={<Link to={routes.reportBuilder.path} />}>
-              <Plus aria-hidden="true" />
-              {t("reports:index.newCustom")}
-            </Button>
+            {canCreateReport ? (
+              <Button render={<Link to={routes.reportBuilder.path} />}>
+                <Plus aria-hidden="true" />
+                {t("reports:index.newCustom")}
+              </Button>
+            ) : null}
           </div>
         </div>
         {catalogue.isLoading || !workspace ? (
