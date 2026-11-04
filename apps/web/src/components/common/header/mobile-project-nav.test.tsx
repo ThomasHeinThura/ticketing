@@ -112,3 +112,51 @@ describe("MobileProjectNav wording", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("MobileProjectNav current view", () => {
+  for (const [activeView, label] of [
+    ["backlog", "Backlog"],
+    ["board", "Work items"],
+    ["calendar", "Calendar"],
+    ["gantt", "Timeline"],
+    ["cycles", "Cycles"],
+    ["modules", "Modules"],
+    ["pages", "Pages"],
+    ["overview", "Overview"],
+    ["documents", "Documents"],
+  ] as const)
+    it(`marks ${label} as the current page, like the tab strip, and no other view`, async () => {
+      render(
+        <MobileProjectNav
+          workspaceId="workspace-1"
+          projectId="project-1"
+          activeView={activeView}
+          onSelectOverview={vi.fn()}
+          onSelectPrerequisites={vi.fn()}
+          onSelectTeam={vi.fn()}
+          onSelectDocuments={vi.fn()}
+          onSelectBoard={vi.fn()}
+          onSelectBacklog={vi.fn()}
+          onSelectCalendar={vi.fn()}
+          onSelectGantt={vi.fn()}
+          onSelectCycles={vi.fn()}
+          onSelectModules={vi.fn()}
+          onSelectPages={vi.fn()}
+          onSelectProject={vi.fn()}
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: translate("navigation:mobileProjectNav.menuLabel"),
+        }),
+      );
+      expect(
+        await screen.findByRole("button", { name: label }),
+      ).toHaveAttribute("aria-current", "page");
+      expect(
+        screen
+          .getAllByRole("button")
+          .filter((button) => button.getAttribute("aria-current") === "page"),
+      ).toHaveLength(1);
+    });
+});

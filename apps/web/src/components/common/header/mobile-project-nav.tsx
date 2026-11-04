@@ -146,6 +146,7 @@ export default function MobileProjectNav({
                 variant="ghost"
                 type="button"
                 onClick={onSelectBacklog}
+                aria-current={activeView === "backlog" ? "page" : undefined}
                 className={cn(
                   "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
                   activeView === "backlog"
@@ -159,6 +160,7 @@ export default function MobileProjectNav({
                 variant="ghost"
                 type="button"
                 onClick={onSelectBoard}
+                aria-current={activeView === "board" ? "page" : undefined}
                 className={cn(
                   "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
                   activeView === "board"
@@ -174,6 +176,7 @@ export default function MobileProjectNav({
                   variant="ghost"
                   type="button"
                   onClick={onSelectCalendar}
+                  aria-current={activeView === "calendar" ? "page" : undefined}
                   className={cn(
                     "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
                     activeView === "calendar"
@@ -190,6 +193,7 @@ export default function MobileProjectNav({
                   variant="ghost"
                   type="button"
                   onClick={onSelectGantt}
+                  aria-current={activeView === "gantt" ? "page" : undefined}
                   className={cn(
                     "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
                     activeView === "gantt"
@@ -206,6 +210,7 @@ export default function MobileProjectNav({
                   variant="ghost"
                   type="button"
                   onClick={onSelectCycles}
+                  aria-current={activeView === "cycles" ? "page" : undefined}
                   className={cn(
                     "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
                     activeView === "cycles"
@@ -222,6 +227,7 @@ export default function MobileProjectNav({
                   variant="ghost"
                   type="button"
                   onClick={onSelectModules}
+                  aria-current={activeView === "modules" ? "page" : undefined}
                   className={cn(
                     "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
                     activeView === "modules"
@@ -238,6 +244,7 @@ export default function MobileProjectNav({
                   variant="ghost"
                   type="button"
                   onClick={onSelectPages}
+                  aria-current={activeView === "pages" ? "page" : undefined}
                   className={cn(
                     "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
                     activeView === "pages"

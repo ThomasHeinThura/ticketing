@@ -100,6 +100,33 @@ async function mockBackend(page: Page) {
     if (path.endsWith("/api/me/csrf-token")) {
       return route.fulfill(json({ token: "e2e", expiresAt: "2027-01-01" }));
     }
+    // GET /api/project lists every project the caller reaches, so the project whose settings
+    // are open is in it (project settings show the not-found denial for one that is not).
+    if (path === "/api/project") {
+      return route.fulfill(
+        json([
+          {
+            id: projectId,
+            workspaceId,
+            name: "Persisted Project",
+            slug: "PERSIST",
+            description: "Persisted project description",
+            icon: "Layout",
+            createdAt: now,
+            archivedAt: null,
+            deletedAt: null,
+            statistics: {
+              completionPercentage: 0,
+              totalTasks: 0,
+              dueDate: null,
+            },
+            columns: [],
+            archivedTasks: [],
+            plannedTasks: [],
+          },
+        ]),
+      );
+    }
     if (path === `/api/task/tasks/${projectId}`) {
       return route.fulfill(
         json({

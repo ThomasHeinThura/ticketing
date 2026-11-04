@@ -433,6 +433,25 @@ describe("ProjectLayoutControls tab strip overflow", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the strip's slot at least as wide as the widest tab plus both fade margins", async () => {
+    layOutStrip(450, 120);
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+    const more = await screen.findByRole("button", {
+      name: "More Project views",
+    });
+    const strip = screen.getByLabelText(
+      translate("navigation:projectViews.workItems"),
+    );
+    // jsdom reorders the calc() terms, so each term is checked on its own.
+    const minWidth = strip.parentElement?.style.minWidth ?? "";
+    expect(minWidth).toMatch(/^calc\(/);
+    expect(minWidth).toContain("120px");
+    expect(minWidth).toContain("3rem");
+    expect(minWidth).toContain("2px");
+    // The "More" menu sits beside the slot, so its room is never taken from the strip.
+    expect(strip.parentElement?.contains(more)).toBe(false);
+  });
+
   it("shows no More menu when every tab fits", () => {
     layOutStrip(2000);
     render(<ProjectLayoutControls {...props} showViewSwitcher />);
@@ -491,8 +510,10 @@ describe("ProjectLayoutControls tab strip overflow", () => {
     const strip = screen.getByLabelText(
       translate("navigation:projectViews.workItems"),
     );
-    expect(strip.parentElement).toHaveClass("hidden", "lg:flex");
-    expect(strip.parentElement).not.toHaveClass("sm:block");
+    // The strip's slot and the "More" menu share one wrapper that is hidden below lg.
+    const stripGroup = strip.parentElement?.parentElement;
+    expect(stripGroup).toHaveClass("hidden", "lg:flex");
+    expect(stripGroup).not.toHaveClass("sm:block");
   });
 
   it("keeps the strip and no project menu at lg and wider", () => {

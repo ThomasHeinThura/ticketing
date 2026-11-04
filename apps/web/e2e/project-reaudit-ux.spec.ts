@@ -15,17 +15,15 @@ import { installProjectOverviewFixture } from "./helpers/project-overview-fixtur
 // at phone width, the triage queue, the contract card, Documents and workflow rules for a
 // caller without project:update (the fixture's default capabilities).
 
-const SHOTS = process.env.REAUDIT_SHOT_DIR;
-
+/** Saves review evidence in the test's own output folder (test-results/…). */
 async function shot(page: Page, name: string) {
-  if (!SHOTS) return;
   // Let open/close animations settle so the picture shows the resting state.
   await page.waitForFunction(() =>
     document
       .getAnimations()
       .every((animation) => animation.playState !== "running"),
   );
-  await page.screenshot({ path: `${SHOTS}/${name}.png` });
+  await page.screenshot({ path: test.info().outputPath(`${name}.png`) });
 }
 
 /** The agent app keeps its own theme preference (dark by default), not the OS scheme. */
@@ -232,7 +230,7 @@ test("project overview contract card at 375 shows whole dates", async ({
   );
   expect(clipped).toEqual([]);
   await panel.screenshot({
-    path: SHOTS ? `${SHOTS}/overview-375-contract.png` : undefined,
+    path: test.info().outputPath("overview-375-contract.png"),
   });
 });
 

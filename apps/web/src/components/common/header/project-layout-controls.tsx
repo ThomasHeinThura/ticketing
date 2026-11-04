@@ -25,6 +25,9 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
+// Loaded with the strip, not lazily: the "More" menu then paints in the same commit as the
+// measurement that shows it, so the header never settles without it and shifts afterwards.
+import ProjectViewOverflowMenu from "@/components/common/header/project-view-overflow-menu";
 import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
 import useProjectPagesFeature, {
   useProjectFeature,
@@ -37,9 +40,6 @@ import { routes } from "@/lib/routes";
 
 const MobileProjectNav = lazy(
   () => import("@/components/common/header/mobile-project-nav"),
-);
-const ProjectViewOverflowMenu = lazy(
-  () => import("@/components/common/header/project-view-overflow-menu"),
 );
 
 /** Below `lg` the header has no room for the tab strip; the project menu lists the views. */
@@ -189,8 +189,13 @@ export default function ProjectLayoutControls({
   ]);
   // Tabs that are not fully inside the strip's visible frame (scrolled away or under the edge
   // fade) are listed in the "More" menu, so none is out of reach at a glance. Every tab stays
-  // in the strip, so the menu never changes the strip's width and cannot cause a resize loop.
+  // in the strip. The menu appears only while the strip overflows, and the room it takes can only
+  // hide more tabs, never bring them all back, so it cannot cause a resize loop.
   const [hiddenViews, setHiddenViews] = useState<string[]>([]);
+  // The widest tab's width in px, measured in the user's language: the strip's slot never gets
+  // narrower than that tab plus its 24 px scroll margin on each side, so every tab can be
+  // scrolled clear of the edge fade. Tab widths do not depend on the slot, so this cannot loop.
+  const [widestTab, setWidestTab] = useState(0);
   useLayoutEffect(() => {
     const tabs = tabsRef.current;
     const viewport = tabs?.parentElement;
@@ -201,14 +206,17 @@ export default function ProjectLayoutControls({
     const measure = () => {
       const frame = viewport.getBoundingClientRect();
       const hidden: string[] = [];
+      let widest = 0;
       if (frame.width > 0)
         for (const tab of tabs.querySelectorAll<HTMLElement>(
           "[data-project-view]",
         )) {
           const box = tab.getBoundingClientRect();
+          widest = Math.max(widest, Math.ceil(box.width));
           if (box.left < frame.left - 1 || box.right > frame.right + 1)
             hidden.push(tab.dataset.projectView ?? "");
         }
+      if (widest > 0) setWidestTab(widest);
       setHiddenViews((current) =>
         current.length === hidden.length &&
         current.every((view, index) => view === hidden[index])
@@ -519,51 +527,62 @@ export default function ProjectLayoutControls({
       ) : null}
 
       {showViewSwitcher && (
-        // The slot takes the room left after the crumb but never less than min-w-44, which leaves
-        // the widest tab its 24 px scroll margin on each side, clear of the fade. Inline-size
-        // containment keeps the tabs' full width out of the header's minimum size, so the
-        // workspace crumb truncates first. The strip itself stays as wide as its tabs, and the
-        // "More" menu after it keeps its own room.
-        <div className="hidden min-w-44 flex-1 items-center gap-1 contain-inline-size lg:flex">
-          {/* The fade's mask clips anything drawn outside the scroll frame, so the frame's
-              focus ring is drawn on the strip's root instead. */}
-          <ScrollArea
-            scrollFade
-            aria-label={t("navigation:projectViews.workItems")}
-            className="h-8 w-max min-w-0 max-w-full shrink rounded-lg border border-border/80 bg-background has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-2 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-ring has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-1 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-background"
-            onFocusCapture={(event) => {
-              const target = event.target;
-              if (
-                target instanceof HTMLElement &&
-                tabsRef.current?.contains(target)
-              )
-                target.scrollIntoView?.({
-                  block: "nearest",
-                  inline: "nearest",
-                });
-            }}
+        // The "More" menu sits beside the strip's slot, not inside it, so its width is added to
+        // the header's minimum size instead of being taken from the strip's.
+        <div className="hidden flex-1 items-center gap-1 lg:flex">
+          {/* The slot takes the room left after the crumb and the "More" menu but never less
+              than the widest tab plus its 24 px scroll margin on each side (3rem) and the
+              strip's 1 px borders, so every tab can sit clear of the fade; min-w-44 holds that
+              room until the tabs are measured. Inline-size containment keeps the tabs' full
+              width out of the header's minimum size, so the workspace crumb truncates first.
+              The strip itself stays as wide as its tabs; the menu shows only while the strip
+              overflows, so it always sits right after the strip. */}
+          <div
+            className="flex min-w-44 flex-1 items-center contain-inline-size"
+            style={
+              widestTab > 0
+                ? { minWidth: `calc(${widestTab}px + 3rem + 2px)` }
+                : undefined
+            }
           >
-            <div
-              ref={tabsRef}
-              className="inline-flex h-full w-max min-w-max items-center gap-0.5 p-0.5"
+            {/* The fade's mask clips anything drawn outside the scroll frame, so the frame's
+              focus ring is drawn on the strip's root instead. */}
+            <ScrollArea
+              scrollFade
+              aria-label={t("navigation:projectViews.workItems")}
+              className="h-8 w-max min-w-0 max-w-full shrink rounded-lg border border-border/80 bg-background has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-2 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-ring has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-1 has-[[data-slot=scroll-area-viewport]:focus-visible]:ring-offset-background"
+              onFocusCapture={(event) => {
+                const target = event.target;
+                if (
+                  target instanceof HTMLElement &&
+                  tabsRef.current?.contains(target)
+                )
+                  target.scrollIntoView?.({
+                    block: "nearest",
+                    inline: "nearest",
+                  });
+              }}
             >
-              {viewTabs.map((tab) => (
-                <ViewTab
-                  key={tab.view}
-                  view={tab.view}
-                  active={resolvedView === tab.view}
-                  icon={tab.icon}
-                  onClick={tab.onSelect}
-                >
-                  {tab.label}
-                </ViewTab>
-              ))}
-            </div>
-          </ScrollArea>
+              <div
+                ref={tabsRef}
+                className="inline-flex h-full w-max min-w-max items-center gap-0.5 p-0.5"
+              >
+                {viewTabs.map((tab) => (
+                  <ViewTab
+                    key={tab.view}
+                    view={tab.view}
+                    active={resolvedView === tab.view}
+                    icon={tab.icon}
+                    onClick={tab.onSelect}
+                  >
+                    {tab.label}
+                  </ViewTab>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
           {overflowItems.length > 0 ? (
-            <Suspense fallback={null}>
-              <ProjectViewOverflowMenu items={overflowItems} />
-            </Suspense>
+            <ProjectViewOverflowMenu items={overflowItems} />
           ) : null}
         </div>
       )}
