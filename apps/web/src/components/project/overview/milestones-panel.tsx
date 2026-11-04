@@ -131,9 +131,18 @@ export function MilestonesPanel({
           <Skeleton className="h-5 w-2/3" />
         </div>
       ) : query.isError ? (
-        <p className="text-destructive-foreground text-sm">
-          {t("milestones.loadFailed")}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-destructive-foreground text-sm">
+            {t("milestones.loadFailed")}
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void query.refetch()}
+          >
+            {t("common.retry")}
+          </Button>
+        </div>
       ) : milestones.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("milestones.empty")}</p>
       ) : (

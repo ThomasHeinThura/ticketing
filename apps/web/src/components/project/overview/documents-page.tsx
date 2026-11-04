@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Alert,
+  AlertAction,
   AlertDescription,
   Badge,
   Button,
@@ -110,6 +111,17 @@ export function DocumentsPage({ projectKey }: { projectKey: string }) {
           <AlertDescription>
             {project ? t("documents.loadFailed") : t("notFound")}
           </AlertDescription>
+          {project ? (
+            <AlertAction>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void query.refetch()}
+              >
+                {t("common.retry")}
+              </Button>
+            </AlertAction>
+          ) : null}
         </Alert>
       </div>
     );
