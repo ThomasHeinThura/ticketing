@@ -2489,6 +2489,7 @@
 			"urgent": "Επείγουσα"
 		},
 		"boardSearchPlaceholder": "Αναζήτηση αιτημάτων...",
+		"boardSearchActive": "Η αναζήτηση είναι ενεργή",
 		"view": {
 			"board": "Πίνακας",
 			"list": "Λίστα"

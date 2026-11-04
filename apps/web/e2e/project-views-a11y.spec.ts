@@ -577,6 +577,7 @@ for (const width of [768, 900, 1024])
     }
 
     await expect(trigger).toBeVisible();
+    await expect(trigger).toHaveAccessibleDescription("");
     await expect(field).toBeHidden();
     await page.keyboard.press("ControlOrMeta+f");
     const popoverField = page
@@ -591,11 +592,23 @@ for (const width of [768, 900, 1024])
     await expect(
       trigger.getByTestId("project-task-search-active"),
     ).toBeAttached();
+    await expect(trigger).toHaveAccessibleDescription("Search active");
 
+    await page.reload();
+    await expect(trigger).toBeVisible();
+    await expect(trigger).toHaveAccessibleDescription("Search active");
+
+    await trigger.focus();
     await page.keyboard.press("Enter");
     await expect(popoverField).toBeFocused();
     await expect(popoverField).toHaveValue("fixture");
     expect(await seriousOrCriticalViolations(page)).toEqual([]);
+    await popoverField.clear();
+    await page.keyboard.press("Escape");
+    await expect(trigger).toHaveAccessibleDescription("");
+    await expect(trigger.getByTestId("project-task-search-active")).toHaveCount(
+      0,
+    );
   });
 
 test("mobile project navigation retains keyboard calendar and Timeline (Gantt) journeys @a11y", async ({
