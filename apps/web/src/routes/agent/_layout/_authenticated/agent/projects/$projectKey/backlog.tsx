@@ -27,6 +27,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import ProjectNotFound from "@/components/project/project-not-found";
 import {
   loadWorkItemCreateDialogShell,
   preloadWorkItemCreateDialogShell,
@@ -291,6 +292,22 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
   const isLoading =
     isWorkspaceLoading || isProjectsLoading || itemsQuery.isLoading;
   const isError = isProjectsError || itemsQuery.isError;
+  // The list loaded and this key is not in it: the Project does not exist or is out of reach.
+  // A failed list keeps the Retry alert below, since a retry may then help.
+  const projectNotFound =
+    !isWorkspaceLoading && !isProjectsLoading && !!projects && !project;
+
+  if (projectNotFound)
+    return (
+      <>
+        <PageTitle
+          title={t("navigation:projectList.backlog", {
+            defaultValue: "Backlog",
+          })}
+        />
+        <ProjectNotFound />
+      </>
+    );
 
   return (
     <>
@@ -548,7 +565,9 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" size="sm">
-                            {t(`workItems:priority.${row.priority}`)}
+                            {row.priority
+                              ? t(`workItems:priority.${row.priority}`)
+                              : t("workItems:list.noPriority")}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm">
@@ -563,6 +582,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
                                 disabled={rankingBusy || index === 0}
                                 aria-label={t("workItems:board.moveUp", {
                                   key: row.key,
+                                  state: group.stateName,
                                 })}
                                 data-testid={`backlog-move-up-${row.key}`}
                                 onClick={() =>
@@ -585,6 +605,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
                                 }
                                 aria-label={t("workItems:board.moveDown", {
                                   key: row.key,
+                                  state: group.stateName,
                                 })}
                                 data-testid={`backlog-move-down-${row.key}`}
                                 onClick={() =>

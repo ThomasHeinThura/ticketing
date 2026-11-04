@@ -6534,6 +6534,9 @@
 						"giteaHint": {
 							"type": "string"
 						},
+						"readOnly": {
+							"type": "string"
+						},
 						"selectColumnPlaceholder": {
 							"type": "string"
 						},
@@ -6579,6 +6582,7 @@
 						"githubHint",
 						"giteaHeading",
 						"giteaHint",
+						"readOnly",
 						"selectColumnPlaceholder",
 						"toastUpdated",
 						"toastError",
@@ -8287,6 +8291,15 @@
 						},
 						"documents": {
 							"type": "string"
+						},
+						"moreLabel": {
+							"type": "string"
+						},
+						"notFound": {
+							"type": "string"
+						},
+						"backToProjects": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8302,7 +8315,10 @@
 						"timeline",
 						"prerequisites",
 						"team",
-						"documents"
+						"documents",
+						"moreLabel",
+						"notFound",
+						"backToProjects"
 					]
 				},
 				"commandPalette": {
@@ -8723,9 +8739,15 @@
 					"properties": {
 						"menuLabel": {
 							"type": "string"
+						},
+						"viewHeading": {
+							"type": "string"
+						},
+						"projectsHeading": {
+							"type": "string"
 						}
 					},
-					"required": ["menuLabel"]
+					"required": ["menuLabel", "viewHeading", "projectsHeading"]
 				},
 				"keyboardShortcuts": {
 					"type": "object",
@@ -35014,6 +35036,9 @@
 						"emptyDescription": {
 							"type": "string"
 						},
+						"emptyDescriptionReadOnly": {
+							"type": "string"
+						},
 						"pageStaffOnly": {
 							"type": "string"
 						}
@@ -35047,6 +35072,7 @@
 						"updated",
 						"emptyTitle",
 						"emptyDescription",
+						"emptyDescriptionReadOnly",
 						"pageStaffOnly"
 					]
 				},

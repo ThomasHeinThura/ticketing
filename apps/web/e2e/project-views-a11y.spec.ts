@@ -328,17 +328,20 @@ function stripInset(page: Page, selector: string) {
   );
 }
 
-/** Boxes of the project header's crumbs, view strip, left row and actions. */
-function headerGeometry(page: Page) {
-  return page.evaluate(() => {
+/**
+ * Boxes of the project header's crumbs, its view navigation (`navSelector`: the view strip at lg
+ * and up, the project menu below), the left row and the actions.
+ */
+function headerGeometry(page: Page, navSelector = '[aria-label="Work items"]') {
+  return page.evaluate((navSelector) => {
     const box = (element: Element | null | undefined) => {
       if (!element) throw new Error("header element missing");
       const { left, right, width } = element.getBoundingClientRect();
       return { left, right, width };
     };
     const header = document.querySelector("header");
-    const strip = header?.querySelector('[aria-label="Work items"]');
-    let row = strip as HTMLElement | null | undefined;
+    const nav = header?.querySelector(navSelector);
+    let row = nav as HTMLElement | null | undefined;
     while (
       row?.parentElement &&
       !row.parentElement.classList.contains("justify-between")
@@ -351,21 +354,39 @@ function headerGeometry(page: Page) {
       project: box(
         header?.querySelector('button[aria-label^="Select project: " i]'),
       ),
-      strip: box(strip),
+      nav: box(nav),
       leftRow: box(row),
       actions: box(row?.nextElementSibling),
     };
-  });
+  }, navSelector);
 }
 
-for (const [name, path, activeLabel] of [
+const STRIP_VIEWS = [
   ["board", "/agent/projects/WLP/work?layout=board", "Work items"],
   ["prerequisites", "/agent/projects/WLP/prerequisites", "Prerequisites"],
   ["documents", "/agent/projects/WLP/documents", "Documents"],
   // Calendar also puts its search in the header's right-hand actions.
   ["calendar", `${PROJECT_VIEW}/calendar`, "Calendar"],
-] as const)
-  for (const width of [1280, 1024, 960, 900, 800, 768])
+] as const;
+
+/** Every view the fixture turns on, in the strip's order. */
+const ALL_VIEW_LABELS = [
+  "Overview",
+  "Backlog",
+  "Work items",
+  "Calendar",
+  "Timeline",
+  "Cycles",
+  "Modules",
+  "Pages",
+  "Prerequisites",
+  "Team",
+  "Documents",
+];
+
+// The strip shows from lg (1024 px) up; below lg the project menu replaces it (next loop).
+for (const [name, path, activeLabel] of STRIP_VIEWS)
+  for (const width of [1280, 1024])
     test(`project view strip keeps the ${name} tab clear of its fade at ${width}px @a11y`, async ({
       page,
     }) => {
@@ -406,13 +427,20 @@ for (const [name, path, activeLabel] of [
           (element) => getComputedStyle(element).maskImage,
         ),
       ).not.toBe("none");
-      // Nothing in the header overflows: the strip stays inside the left row, the row ends
-      // before the actions, and both crumbs keep their own room (no overlap, and the
-      // workspace crumb stays a 24 px target).
+      // Nothing in the header overflows: the strip and its "More" menu stay inside the left
+      // row, the row ends before the actions, and both crumbs keep their own room (no
+      // overlap, and the workspace crumb stays a 24 px target).
       const geometry = await headerGeometry(page);
-      expect(geometry.strip.right).toBeLessThanOrEqual(
+      expect(geometry.nav.right).toBeLessThanOrEqual(
         geometry.leftRow.right + 0.5,
       );
+      const more = header.getByRole("button", { name: "More Project views" });
+      if (await more.isVisible()) {
+        const moreBox = await more.boundingBox();
+        expect((moreBox?.x ?? 0) + (moreBox?.width ?? 0)).toBeLessThanOrEqual(
+          geometry.leftRow.right + 0.5,
+        );
+      }
       expect(geometry.leftRow.right).toBeLessThanOrEqual(
         geometry.actions.left + 0.5,
       );
@@ -440,6 +468,82 @@ for (const [name, path, activeLabel] of [
           .poll(() => stripInset(page, "header :focus"))
           .toMatchObject({ clearOfFade: true });
       }
+
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    });
+
+// Below lg the header has no room for the strip: the project menu replaces it, lists every
+// view and marks the current one, and the header still fits.
+for (const [name, path, activeLabel] of STRIP_VIEWS)
+  for (const width of [960, 900, 800, 768])
+    test(`project menu replaces the view strip on the ${name} view at ${width}px @a11y`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await mountAllProjectViews(page);
+      await page.goto(path);
+      const header = page.locator("header");
+      const menu = header.getByRole("button", { name: "Project navigation" });
+      await expect(menu).toBeVisible();
+      await expect(header.locator('[aria-label="Work items"]')).toBeHidden();
+
+      // The project crumb shows its whole label, not just the chevron.
+      const crumb = header.getByRole("button", {
+        name: "Select project: Performance fixture",
+      });
+      await expect(crumb).toContainText("Performance fixture");
+      expect(
+        await crumb
+          .locator("span")
+          .first()
+          .evaluate(
+            (label) =>
+              label.clientWidth > 0 && label.scrollWidth <= label.clientWidth,
+          ),
+      ).toBe(true);
+
+      // Nothing in the header overflows: the menu stays inside the left row, the row ends
+      // before the actions, and both crumbs keep their own room.
+      const geometry = await headerGeometry(
+        page,
+        'button[aria-label="Project navigation"]',
+      );
+      expect(geometry.nav.right).toBeLessThanOrEqual(
+        geometry.leftRow.right + 0.5,
+      );
+      expect(geometry.leftRow.right).toBeLessThanOrEqual(
+        geometry.actions.left + 0.5,
+      );
+      expect(geometry.workspace.right).toBeLessThanOrEqual(
+        geometry.project.left + 0.5,
+      );
+      expect(geometry.workspace.width).toBeGreaterThanOrEqual(24);
+
+      // The menu is the next Tab stop after the project crumb, with a visible focus ring, and
+      // opens from the keyboard.
+      await crumb.focus();
+      await page.keyboard.press("Tab");
+      await expect(menu).toBeFocused();
+      expect(
+        await menu.evaluate((element) => element.matches(":focus-visible")),
+      ).toBe(true);
+      await page.keyboard.press("Enter");
+      const popup = page.locator('[data-slot="popover-popup"]');
+      await expect(popup).toBeVisible();
+      for (const label of ALL_VIEW_LABELS)
+        await expect(
+          popup.getByRole("button", { name: label, exact: true }),
+        ).toBeVisible();
+      await expect(
+        popup.getByRole("button", { name: activeLabel, exact: true }),
+      ).toHaveAttribute("aria-current", "page");
+      await expect(popup.locator('[aria-current="page"]')).toHaveCount(1);
+      await page.keyboard.press("Escape");
+      await expect(popup).toBeHidden();
 
       expect(
         await page.evaluate(

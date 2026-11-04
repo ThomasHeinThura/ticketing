@@ -1550,6 +1550,7 @@
 			"githubHint": "当 GitHub 事件发生时，将关联{{term_work_item_one}}移动到指定列。",
 			"giteaHeading": "Gitea",
 			"giteaHint": "当 Gitea Webhook 事件发生时，将关联{{term_work_item_one}}移动到指定列。",
+			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
 			"selectColumnPlaceholder": "选择列…",
 			"toastUpdated": "工作流规则已更新",
 			"toastError": "更新规则失败",
@@ -2035,6 +2036,9 @@
 			"pages": "Pages",
 			"backlog": "Backlog",
 			"documents": "Documents",
+			"moreLabel": "More {{term_project_one}} views",
+			"notFound": "This {{term_project_one}} does not exist or is out of reach.",
+			"backToProjects": "Back to {{term_project_other}}",
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
@@ -2147,7 +2151,9 @@
 			"projectLabel": "{{term_project_one}}"
 		},
 		"mobileProjectNav": {
-			"menuLabel": "{{term_project_other}}导航"
+			"menuLabel": "{{term_project_other}}导航",
+			"viewHeading": "View",
+			"projectsHeading": "{{term_project_other}}"
 		},
 		"keyboardShortcuts": {
 			"title": "键盘快捷键",
@@ -9815,6 +9821,7 @@
 			"updated": "Document saved.",
 			"emptyTitle": "No documents yet",
 			"emptyDescription": "Add the contract, statement of work, designs or handover packs as links to where they live. Pages are different: they are long-form staff notes written in TaskDesk and are never shown to customers.",
+			"emptyDescriptionReadOnly": "No documents are registered for this {{term_project_one}} yet. A {{term_project_one}} admin or lead adds them.",
 			"pageStaffOnly": "Customers cannot open Pages, so keep this entry staff only. To share it with a customer, add a link they can open, such as an exported copy on SharePoint, and make that entry visible to customers."
 		},
 		"editSummary": {

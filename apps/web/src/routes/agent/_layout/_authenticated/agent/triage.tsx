@@ -164,16 +164,20 @@ function IntakeRoute() {
           <h1 className="px-2 font-medium text-sm">{t("title")}</h1>
         </Layout.Header>
         <Layout.Content className="overflow-y-auto">
-          {permissions.isCheckingPermissions === true && !deniedByServer ? (
-            <p role="status">{t("loading")}</p>
-          ) : (
-            <Empty>
-              <EmptyHeader>
-                <EmptyTitle>{t("noAccessTitle")}</EmptyTitle>
-                <EmptyDescription>{t("noAccessDescription")}</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
+          <div className="flex flex-col gap-3 px-4 py-3">
+            {permissions.isCheckingPermissions === true && !deniedByServer ? (
+              <p role="status">{t("loading")}</p>
+            ) : (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>{t("noAccessTitle")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("noAccessDescription")}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </div>
         </Layout.Content>
       </div>
     );
@@ -227,143 +231,159 @@ function IntakeRoute() {
         </div>
       </Layout.Header>
       <Layout.Content className="overflow-y-auto">
-        <p className="sr-only">{t("description")}</p>
-        <TriageFilterChips
-          filters={filters}
-          requestTypes={requestTypeOptions}
-          onChange={changeFilters}
-        />
-        {workspace.data?.id && (
-          <IntakeQueuePicker
-            workspaceId={workspace.data.id}
-            queueId={queuePair}
-            canCreate={
-              permissions.canTriageIntake() &&
-              !workItemDefinition.invalid &&
-              !pending &&
-              !residual.requestType
-            }
-            canShare={permissions.canShareSavedViews()}
-            currentSubmissionQuery={
-              state || requestType || assignee || age
-                ? {
-                    entity: "submission",
-                    filter: { ...(state ? { state } : {}), ...server },
-                  }
-                : undefined
-            }
-            currentWorkItemQuery={workItemDefinition.query}
-            onSelect={(id) =>
-              void navigate({
-                search: { queue: id, ...(id ? {} : { state: "new" as const }) },
-              })
-            }
+        {/* The content keeps the header's 16 px gutter, so the queue picker, chips and table
+            line up with the page title instead of sitting on the panel edge. */}
+        <div
+          className="flex min-w-0 flex-col gap-3 px-4 py-3"
+          data-testid="triage-content"
+        >
+          <p className="sr-only">{t("description")}</p>
+          <TriageFilterChips
+            filters={filters}
+            requestTypes={requestTypeOptions}
+            onChange={changeFilters}
           />
-        )}
-        {!workspace.data?.id && <p role="status">{t("selectWorkspace")}</p>}
-        {queuePair && pending ? (
-          <p role="status">{t("loading")}</p>
-        ) : queuePair && residual.requestType ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>{t("filters.noMatch")}</EmptyTitle>
-              <EmptyDescription>{t("filters.noMatchHint")}</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : queuePair && workspace.data?.id ? (
-          <IntakeQueuePanel
-            workspaceId={workspace.data.id}
-            queueId={queuePair}
-            state={state}
-            requestTypeKey={server.requestTypeKey}
-            assignee={assignee}
-            olderThanDays={server.olderThanDays}
-            workItemQuery={{
-              filter: workItemFilter,
-              sorts: workItemSorts,
-              columns: workItemColumns,
-              filterMode: workItemFilterMode,
-            }}
-            onWorkItemQueryChange={(change) =>
-              void navigate({
-                search: searchWith({
-                  ...("filter" in change
-                    ? { workItemFilter: change.filter }
-                    : {}),
-                  ...("sorts" in change ? { workItemSorts: change.sorts } : {}),
-                  ...("columns" in change
-                    ? { workItemColumns: change.columns }
-                    : {}),
-                  ...("filterMode" in change
-                    ? { workItemFilterMode: change.filterMode }
-                    : {}),
-                }),
-              })
-            }
-            selectedRef={ref}
-            onOpenSubmission={(nextRef) =>
-              void navigate({ search: searchWith({ ref: nextRef }) })
-            }
-            onOpenWorkItem={(key) =>
-              void navigate({ to: routes.workItemDetail.path, params: { key } })
-            }
-          />
-        ) : queue.isError ? (
-          <Alert variant="error" role="alert">
-            <AlertDescription>{t("loadError")}</AlertDescription>
-            <Button variant="outline" onClick={() => void queue.refetch()}>
-              {t("retry", { defaultValue: "Retry" })}
+          {workspace.data?.id && (
+            <IntakeQueuePicker
+              workspaceId={workspace.data.id}
+              queueId={queuePair}
+              canCreate={
+                permissions.canTriageIntake() &&
+                !workItemDefinition.invalid &&
+                !pending &&
+                !residual.requestType
+              }
+              canShare={permissions.canShareSavedViews()}
+              currentSubmissionQuery={
+                state || requestType || assignee || age
+                  ? {
+                      entity: "submission",
+                      filter: { ...(state ? { state } : {}), ...server },
+                    }
+                  : undefined
+              }
+              currentWorkItemQuery={workItemDefinition.query}
+              onSelect={(id) =>
+                void navigate({
+                  search: {
+                    queue: id,
+                    ...(id ? {} : { state: "new" as const }),
+                  },
+                })
+              }
+            />
+          )}
+          {!workspace.data?.id && <p role="status">{t("selectWorkspace")}</p>}
+          {queuePair && pending ? (
+            <p role="status">{t("loading")}</p>
+          ) : queuePair && residual.requestType ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>{t("filters.noMatch")}</EmptyTitle>
+                <EmptyDescription>{t("filters.noMatchHint")}</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : queuePair && workspace.data?.id ? (
+            <IntakeQueuePanel
+              workspaceId={workspace.data.id}
+              queueId={queuePair}
+              state={state}
+              requestTypeKey={server.requestTypeKey}
+              assignee={assignee}
+              olderThanDays={server.olderThanDays}
+              workItemQuery={{
+                filter: workItemFilter,
+                sorts: workItemSorts,
+                columns: workItemColumns,
+                filterMode: workItemFilterMode,
+              }}
+              onWorkItemQueryChange={(change) =>
+                void navigate({
+                  search: searchWith({
+                    ...("filter" in change
+                      ? { workItemFilter: change.filter }
+                      : {}),
+                    ...("sorts" in change
+                      ? { workItemSorts: change.sorts }
+                      : {}),
+                    ...("columns" in change
+                      ? { workItemColumns: change.columns }
+                      : {}),
+                    ...("filterMode" in change
+                      ? { workItemFilterMode: change.filterMode }
+                      : {}),
+                  }),
+                })
+              }
+              selectedRef={ref}
+              onOpenSubmission={(nextRef) =>
+                void navigate({ search: searchWith({ ref: nextRef }) })
+              }
+              onOpenWorkItem={(key) =>
+                void navigate({
+                  to: routes.workItemDetail.path,
+                  params: { key },
+                })
+              }
+            />
+          ) : queue.isError ? (
+            <Alert variant="error" role="alert">
+              <AlertDescription>{t("loadError")}</AlertDescription>
+              <Button variant="outline" onClick={() => void queue.refetch()}>
+                {t("retry", { defaultValue: "Retry" })}
+              </Button>
+            </Alert>
+          ) : queue.isLoading || pending ? (
+            <p role="status">{t("loading")}</p>
+          ) : visibleRows.length === 0 && hasFilters ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>
+                  {t("filters.noMatch", {
+                    defaultValue: "No submissions match the filters",
+                  })}
+                </EmptyTitle>
+                <EmptyDescription>
+                  {t("filters.noMatchHint", {
+                    defaultValue:
+                      "No submission in this state matches every filter. Remove one to see more.",
+                  })}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : rows.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>{t("noState", { state })}</EmptyTitle>
+                <EmptyDescription>{t("newRequests")}</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <SubmissionQueueTable
+              rows={visibleRows}
+              now={queueNow}
+              selectedRef={ref}
+              onOpenSubmission={(nextRef) =>
+                void navigate({ search: searchWith({ ref: nextRef }) })
+              }
+            />
+          )}
+          {!queuePair && queue.data?.page?.hasMore && (
+            <Button
+              variant="outline"
+              className="self-start"
+              onClick={() =>
+                void navigate({
+                  search: searchWith({
+                    cursor: queue.data?.page.nextCursor ?? undefined,
+                  }),
+                })
+              }
+            >
+              {t("nextPage", { defaultValue: "Next page" })}
             </Button>
-          </Alert>
-        ) : queue.isLoading || pending ? (
-          <p role="status">{t("loading")}</p>
-        ) : visibleRows.length === 0 && hasFilters ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>
-                {t("filters.noMatch", {
-                  defaultValue: "No submissions match the filters",
-                })}
-              </EmptyTitle>
-              <EmptyDescription>
-                {t("filters.noMatchHint", {
-                  defaultValue:
-                    "No submission in this state matches every filter. Remove one to see more.",
-                })}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : rows.length === 0 ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>{t("noState", { state })}</EmptyTitle>
-              <EmptyDescription>{t("newRequests")}</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <SubmissionQueueTable
-            rows={visibleRows}
-            now={queueNow}
-            selectedRef={ref}
-            onOpenSubmission={(nextRef) =>
-              void navigate({ search: searchWith({ ref: nextRef }) })
-            }
-          />
-        )}
-        {!queuePair && queue.data?.page?.hasMore && (
-          <Button
-            variant="outline"
-            onClick={() =>
-              void navigate({
-                search: searchWith({
-                  cursor: queue.data?.page.nextCursor ?? undefined,
-                }),
-              })
-            }
-          >
-            {t("nextPage", { defaultValue: "Next page" })}
-          </Button>
-        )}
+          )}
+        </div>
       </Layout.Content>
       {/* One sheet for the plain queue and saved queues: both select through `?ref=`. */}
       <SubmissionDetailSheet

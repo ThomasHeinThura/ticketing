@@ -20,6 +20,7 @@ import {
 import { useEffect, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
+import ProjectNotFound from "@/components/project/project-not-found";
 import SettingsSidebar from "@/components/SettingsSidebar";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -45,21 +46,40 @@ function RouteComponent() {
     /^\/dashboard\/settings\/projects\/([^/]+)\//,
   );
   const selectedProjectId = selectedProjectMatch?.[1] || "";
+  const { data: projects, isSuccess: projectsLoaded } = useGetProjects({
+    workspaceId: workspace?.id || "",
+  });
+  const selectedProject = projects?.find(
+    (project) => project.id === selectedProjectId,
+  );
+  // The default list leaves archived projects out, so a miss is confirmed against the list
+  // with archived projects before the URL is treated as missing or out of reach. That second
+  // read runs only on a miss.
+  const missingFromList =
+    Boolean(selectedProjectId) && projectsLoaded && !selectedProject;
+  const { data: listWithArchived, isSuccess: listWithArchivedLoaded } =
+    useGetProjects(
+      { workspaceId: workspace?.id || "", includeArchived: true },
+      missingFromList,
+    );
+  const archivedProject = missingFromList
+    ? listWithArchived?.find((project) => project.id === selectedProjectId)
+    : undefined;
+  const projectNotFound =
+    missingFromList && listWithArchivedLoaded && !archivedProject;
+  const knownProjectId = (selectedProject ?? archivedProject)?.id;
   // The budget API is project-scoped, so the Budget entry follows the selected project's own
-  // capabilities (grants and ancestors) once a project is chosen; the workspace read is the
-  // fallback until then.
+  // capabilities (grants and ancestors) once the project is known; the workspace read is the
+  // fallback until then, and for a project id that resolves to nothing.
   const projectAccess = useWorkspacePermission(
-    selectedProjectId ? workspace?.id : undefined,
-    selectedProjectId || undefined,
+    knownProjectId ? workspace?.id : undefined,
+    knownProjectId,
   );
   const menuItems = getProjectSettingsMenuItems(t, {
     canManageProjectSettings: canManageProjectSettings(),
-    canReadBudgets: selectedProjectId
+    canReadBudgets: knownProjectId
       ? projectAccess.canReadBudgets()
       : canReadBudgets(),
-  });
-  const { data: projects } = useGetProjects({
-    workspaceId: workspace?.id || "",
   });
 
   const workspaceInitials = getInitials(workspace?.name, "WS");
@@ -84,10 +104,6 @@ function RouteComponent() {
       replace: true,
     });
   }, [location.pathname, navigate, projects]);
-
-  const selectedProject = projects?.find(
-    (project) => project.id === selectedProjectId,
-  );
 
   return (
     <div className="flex gap-6 h-full">
@@ -169,45 +185,49 @@ function RouteComponent() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarGroup className="gap-1 p-1">
-            <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
-              {t("navigation:page.settingsTitle")}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                {menuItems.map((item) => {
-                  const toUrl = selectedProject
-                    ? `/dashboard/settings/projects/${selectedProject.id}/${item.segment}`
-                    : "/dashboard/settings/projects";
-                  const isActive = selectedSegment === item.segment;
+          {projectNotFound ? null : (
+            <SidebarGroup className="gap-1 p-1">
+              <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
+                {t("navigation:page.settingsTitle")}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0.5">
+                  {menuItems.map((item) => {
+                    const toUrl = selectedProject
+                      ? `/dashboard/settings/projects/${selectedProject.id}/${item.segment}`
+                      : "/dashboard/settings/projects";
+                    const isActive = selectedSegment === item.segment;
 
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <Button
-                        render={<Link to={toUrl} />}
-                        variant="ghost"
-                        size="sm"
-                        disabled={!selectedProject}
-                        className={cn(
-                          "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
-                          isActive &&
-                            "bg-sidebar-accent text-sidebar-accent-foreground",
-                        )}
-                      >
-                        <item.icon className="h-3.5 w-3.5" />
-                        <span>{item.title}</span>
-                      </Button>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <Button
+                          render={<Link to={toUrl} />}
+                          variant="ghost"
+                          size="sm"
+                          disabled={!selectedProject}
+                          className={cn(
+                            "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
+                            isActive &&
+                              "bg-sidebar-accent text-sidebar-accent-foreground",
+                          )}
+                        >
+                          <item.icon className="h-3.5 w-3.5" />
+                          <span>{item.title}</span>
+                        </Button>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </div>
       </SettingsSidebar>
 
       <div className="flex-1 min-w-0 overflow-y-auto">
-        <Outlet />
+        {/* A project id that is neither listed nor archived is missing or out of reach: one
+            denial instead of each settings panel failing its own way. */}
+        {projectNotFound ? <ProjectNotFound /> : <Outlet />}
       </div>
     </div>
   );

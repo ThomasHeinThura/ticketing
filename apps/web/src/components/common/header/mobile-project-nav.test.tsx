@@ -74,10 +74,89 @@ describe("MobileProjectNav project settings (L-03)", () => {
       }),
     );
     expect(
-      await screen.findByRole("button", { name: /Board/ }),
+      await screen.findByRole("button", { name: "Work items" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Project settings" }),
     ).toBeNull();
   });
+});
+
+describe("MobileProjectNav wording", () => {
+  it("names the views and sections in the app's language, matching the tab strip", async () => {
+    render(
+      <MobileProjectNav
+        workspaceId="workspace-1"
+        projectId="project-1"
+        activeView="backlog"
+        onSelectBoard={vi.fn()}
+        onSelectBacklog={vi.fn()}
+        onSelectProject={vi.fn()}
+        onAddProject={vi.fn()}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("navigation:mobileProjectNav.menuLabel"),
+      }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Work items" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Backlog" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Board/ })).toBeNull();
+    expect(screen.getByText("View")).toBeInTheDocument();
+    expect(screen.getByText("Projects")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add Project" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("MobileProjectNav current view", () => {
+  for (const [activeView, label] of [
+    ["backlog", "Backlog"],
+    ["board", "Work items"],
+    ["calendar", "Calendar"],
+    ["gantt", "Timeline"],
+    ["cycles", "Cycles"],
+    ["modules", "Modules"],
+    ["pages", "Pages"],
+    ["overview", "Overview"],
+    ["documents", "Documents"],
+  ] as const)
+    it(`marks ${label} as the current page, like the tab strip, and no other view`, async () => {
+      render(
+        <MobileProjectNav
+          workspaceId="workspace-1"
+          projectId="project-1"
+          activeView={activeView}
+          onSelectOverview={vi.fn()}
+          onSelectPrerequisites={vi.fn()}
+          onSelectTeam={vi.fn()}
+          onSelectDocuments={vi.fn()}
+          onSelectBoard={vi.fn()}
+          onSelectBacklog={vi.fn()}
+          onSelectCalendar={vi.fn()}
+          onSelectGantt={vi.fn()}
+          onSelectCycles={vi.fn()}
+          onSelectModules={vi.fn()}
+          onSelectPages={vi.fn()}
+          onSelectProject={vi.fn()}
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: translate("navigation:mobileProjectNav.menuLabel"),
+        }),
+      );
+      expect(
+        await screen.findByRole("button", { name: label }),
+      ).toHaveAttribute("aria-current", "page");
+      expect(
+        screen
+          .getAllByRole("button")
+          .filter((button) => button.getAttribute("aria-current") === "page"),
+      ).toHaveLength(1);
+    });
 });

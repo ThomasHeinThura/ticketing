@@ -264,7 +264,10 @@ export default function WorkItemBoard({
               <AlertDescription>{notice.text}</AlertDescription>
             </Alert>
           ) : null}
-          <div className="min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch]">
+          {/* Below md one column fits the screen and the board snaps to column starts; md and
+              up keep Kaneo's widths and free scrolling. Proximity snapping never fights the
+              drag autoscroll. */}
+          <div className="min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch] max-md:snap-x max-md:snap-proximity max-md:scroll-px-4">
             <div className="flex h-full min-w-max gap-4 px-4 py-4 md:px-5">
               {states.map((state) => {
                 const stateItems = itemsByState.get(state.id) ?? [];
@@ -578,7 +581,7 @@ function BoardColumn({
       {...(combined
         ? { "data-template-id": state.id }
         : { "data-state-id": state.id })}
-      className="m-0 h-full min-h-0 max-w-96 min-w-80 shrink-0 flex-1 border-0 p-0"
+      className="m-0 h-full min-h-0 max-w-96 min-w-80 shrink-0 flex-1 border-0 p-0 max-md:min-w-[calc(100vw-4rem)] max-md:max-w-[calc(100vw-4rem)] max-md:snap-start"
     >
       <ColumnShell header={header} isOver={isOver}>
         {children}
@@ -701,7 +704,18 @@ export function BoardCard({
         isFocused={false}
         selectionEnabled={canSelect && actionable}
         onToggleSelection={() => onSelectionChange(item.key, !selected)}
-        badges={item.sla ? <WorkItemSlaBadge sla={item.sla} /> : undefined}
+        badges={
+          // The SLA and Blocked badges share the card's metadata row, inside its border. The
+          // slot stays empty without either, so a card never gets an empty metadata row.
+          item.sla || (item.blockedByOpenCount ?? 0) > 0 ? (
+            <>
+              {item.sla ? <WorkItemSlaBadge sla={item.sla} /> : null}
+              <WorkItemBlockedBadge
+                blockedByOpenCount={item.blockedByOpenCount}
+              />
+            </>
+          ) : undefined
+        }
         onContextMenuTask={() => {}}
         openTaskOnLinkClick={Boolean(onOpenItem)}
         onOpenTask={() => {
@@ -713,10 +727,6 @@ export function BoardCard({
             );
         }}
         t={t}
-      />
-      <WorkItemBlockedBadge
-        blockedByOpenCount={item.blockedByOpenCount}
-        className="self-start"
       />
       {!actionable || item.unavailableFields.includes("priority") ? (
         <span className="sr-only">{t("workItems:list.unavailable")}</span>
