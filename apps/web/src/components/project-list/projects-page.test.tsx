@@ -132,6 +132,37 @@ describe("ProjectsPage recovery mode", () => {
     ).toBeInTheDocument();
   });
 
+  it("names every progress bar and gives the page one h1 (axe aria-progressbar-name, page-has-heading-one)", () => {
+    mocks.projects = [
+      {
+        ...deletedProject,
+        name: "Customer Support Desk",
+        deletedAt: null,
+        purgeAfter: null,
+        statistics: { completionPercentage: 13, totalTasks: 8, dueDate: null },
+        descendantStatistics: {
+          completionPercentage: 40,
+          totalTasks: 10,
+          dueDate: null,
+        },
+      },
+    ];
+
+    render(<ProjectsPage workspaceId="workspace-1" />);
+
+    const bars = screen.getAllByRole("progressbar");
+    expect(bars).toHaveLength(2);
+    for (const bar of bars) expect(bar).toHaveAccessibleName();
+    expect(
+      screen.getByRole("progressbar", {
+        name: translate("workspace:projects.completion", {
+          name: "Customer Support Desk",
+        }),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
   it("shows deleted projects without opening them and offers the authorized restore action", async () => {
     mocks.projects = [deletedProject];
     const onRecoveryModeChange = vi.fn();

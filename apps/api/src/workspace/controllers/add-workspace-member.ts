@@ -26,6 +26,7 @@ export type AddedWorkspaceMember = {
   email: string;
   image: string | null;
   role: string;
+  joinedAt: Date;
 };
 
 /**
@@ -105,15 +106,16 @@ async function addWorkspaceMember(
       throw new UserAlreadyMemberError();
     }
 
+    const joinedAt = new Date();
     await tx.insert(schema.workspaceUserTable).values({
       workspaceId: input.workspaceId,
       userId: input.userId,
       role: input.role,
-      joinedAt: new Date(),
+      joinedAt,
     });
     await syncWorkspaceAdminReach(tx, input.workspaceId, input.userId);
 
-    return { ...user, role: input.role };
+    return { ...user, role: input.role, joinedAt };
   });
 }
 

@@ -33,7 +33,8 @@
 			},
 			"taskContainerLabel": "{{term_work_item_one}} {{key}}: {{title}}",
 			"taskOpenAndDragHint": "Press Enter to open. Press Space to start dragging, then use the arrow keys to move.",
-			"taskOpenHint": "Press Enter or Space to open."
+			"taskOpenHint": "Press Enter or Space to open.",
+			"skipToContent": "Skip to main content"
 		},
 		"sidebar": {
 			"title": "Zijbalk",
@@ -2018,6 +2019,13 @@
 			"forbidden": "You do not have permission to view or change these project settings.",
 			"stale": "Project or workspace settings changed elsewhere. Reload before saving.",
 			"generic": "Could not save project inheritance settings."
+		},
+		"accessDenied": {
+			"title": "Your role cannot view this setting",
+			"description": "Ask a workspace owner or admin if you need access.",
+			"checking": "Checking your access",
+			"loadErrorTitle": "Could not check your access",
+			"loadErrorDescription": "Your permissions could not be loaded. Try again."
 		}
 	},
 	"navigation": {
@@ -2055,7 +2063,8 @@
 				"navigate": "Navigeren",
 				"open": "Openen",
 				"close": "Sluiten"
-			}
+			},
+			"dialogLabel": "Command palette"
 		},
 		"notifications": "Meldingen",
 		"sidebar": {
@@ -2981,7 +2990,8 @@
 			"managedServiceBadge": "Managed service",
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
-			"archived": "Archived"
+			"archived": "Archived",
+			"completion": "{{name}} completion"
 		},
 		"search": {
 			"pageTitle": "Zoeken",
@@ -6752,7 +6762,9 @@
 			"loadErrorDescription": "The role could not be loaded. Try again.",
 			"loadErrorTitle": "Could not load the role",
 			"loading": "Loading the role",
-			"pageTitle": "Role"
+			"pageTitle": "Role",
+			"notFoundTitle": "Role not found",
+			"notFoundDescription": "This role does not exist or you cannot reach it."
 		},
 		"details": {
 			"title": "Details",
@@ -7522,7 +7534,8 @@
 			"loading": "Loading",
 			"retry": "Retry",
 			"save": "Save",
-			"requestFailed": "The request failed"
+			"requestFailed": "The request failed",
+			"notFoundTitle": "Not found"
 		},
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
@@ -7640,7 +7653,8 @@
 					"help": "Off by default. Once the release is marked released it appears on the portal.",
 					"label": "Show on the customer portal",
 					"published": "Published {{when}}."
-				}
+				},
+				"notFound": "This release does not exist or you cannot reach it."
 			},
 			"fields": {
 				"changes": "{{term_change_other}}",
@@ -7752,7 +7766,8 @@
 					"note": "Note",
 					"submit": "Set status",
 					"title": "Status"
-				}
+				},
+				"notFound": "This service does not exist or you cannot reach it."
 			},
 			"fields": {
 				"calendar": "{{term_service_one}} calendar",
@@ -8006,7 +8021,9 @@
 			"title": "Timesheet",
 			"total": "Total",
 			"workItem": "{{term_work_item_one}}",
-			"workItemNotFound": "No {{term_work_item_one}} with that key that you can reach."
+			"workItemNotFound": "No {{term_work_item_one}} with that key that you can reach.",
+			"deniedTitle": "You cannot log time",
+			"deniedDescription": "Logging time needs the log-time permission. Ask a workspace owner or admin if you need it."
 		},
 		"settings": {
 			"backdateHelp": "People can log time this many days back; further back needs the backdating permission. 0 means today only.",

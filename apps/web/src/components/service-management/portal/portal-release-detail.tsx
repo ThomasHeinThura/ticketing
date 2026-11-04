@@ -34,16 +34,18 @@ export function PortalReleaseDetail({
 
   if (release.isPending)
     return (
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-32 w-full" />
-      </main>
+      </div>
     );
   if (release.isError) {
     const unavailable =
       release.error instanceof HttpError && release.error.status === 404;
     return (
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+        {/* The page keeps one h1 while it shows only the error. */}
+        <h1 className="sr-only">{t("portal:releases.title")}</h1>
         <Button
           variant="ghost"
           className="w-fit"
@@ -58,13 +60,13 @@ export function PortalReleaseDetail({
               : t("portal:releases.loadFailed")}
           </AlertDescription>
         </Alert>
-      </main>
+      </div>
     );
   }
 
   const entry = release.data;
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <Button
         variant="ghost"
         className="w-fit"
@@ -104,6 +106,6 @@ export function PortalReleaseDetail({
           )}
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

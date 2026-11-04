@@ -51,7 +51,14 @@ vi.mock("@/hooks/queries/service-management", () => ({
   useServices: vi.fn(),
 }));
 
-import { LinksCard } from "./service-detail";
+vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
+  default: () => ({ data: { id: "w1" } }),
+}));
+vi.mock("@/components/page-title", () => ({ default: () => null }));
+
+import * as serviceQueries from "@/hooks/queries/service-management";
+import { HttpError } from "@/lib/http-error";
+import { LinksCard, ServiceDetailView } from "./service-detail";
 
 function projectLink(id: string, name: string) {
   return {
@@ -103,5 +110,31 @@ describe("Service detail project links (S5)", () => {
   it("loads the project list for readers who cannot manage links", () => {
     renderCard(false);
     expect(mocks.getProjectsArgs).toHaveBeenCalledWith({ workspaceId: "w1" });
+  });
+});
+
+describe("Service detail unknown service", () => {
+  it("shows not-found without Retry when the service id does not exist (404)", () => {
+    vi.mocked(serviceQueries.useCatalogueStatus).mockReturnValue({
+      data: { canManageServices: false },
+    } as never);
+    vi.mocked(serviceQueries.useService).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new HttpError(404, "Service not found"),
+      refetch: vi.fn(),
+    } as never);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ServiceDetailView serviceId="bogus" />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.getByTestId("service-management-not-found"),
+    ).toHaveTextContent("services.detail.notFound");
+    expect(
+      screen.queryByRole("button", { name: /common.retry/ }),
+    ).not.toBeInTheDocument();
   });
 });

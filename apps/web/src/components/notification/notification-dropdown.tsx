@@ -10,7 +10,9 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   KbdSequence,
   Tooltip,
@@ -386,11 +388,13 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
           </TooltipProvider>
 
           <DropdownMenuContent align="end" className="w-88 p-0">
-            <div className="overflow-hidden rounded-lg">
+            {/* A menu may own only groups, items and separators (axe aria-required-children): the
+                header is the group's label and the empty state a disabled item, not loose text. */}
+            <DropdownMenuGroup className="overflow-hidden rounded-lg">
               <div className="flex h-10 items-center justify-between border-border/50 border-b pr-2 pl-3">
-                <h3 className="font-medium text-sm">
+                <DropdownMenuLabel className="p-0 font-medium text-foreground text-sm">
                   {t("notifications:title")}
-                </h3>
+                </DropdownMenuLabel>
                 {unreadCount > 0 && (
                   <DropdownMenuItem
                     closeOnClick={false}
@@ -404,15 +408,22 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
 
               <div className="relative max-h-80 overflow-y-auto p-1">
                 {!hasNotifications ? (
-                  <div className="flex flex-col items-center gap-1 py-10 text-center">
-                    <Bell className="mb-1 size-5 text-muted-foreground" />
-                    <p className="text-muted-foreground text-sm">
+                  <DropdownMenuItem
+                    disabled
+                    data-testid="notifications-empty"
+                    className="flex-col items-center gap-1 py-10 text-center data-disabled:opacity-100"
+                  >
+                    <Bell
+                      aria-hidden="true"
+                      className="mb-1 size-5 text-muted-foreground opacity-100"
+                    />
+                    <span className="block text-muted-foreground text-sm">
                       {t("notifications:emptyTitle")}
-                    </p>
-                    <p className="text-muted-foreground text-xs">
+                    </span>
+                    <span className="block text-muted-foreground text-xs">
                       {t("notifications:emptySubtitle")}
-                    </p>
-                  </div>
+                    </span>
+                  </DropdownMenuItem>
                 ) : (
                   notifications.map((notification) => {
                     const content = getNotificationContent(notification, t);
@@ -469,7 +480,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                   </DropdownMenuItem>
                 </div>
               )}
-            </div>
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
 

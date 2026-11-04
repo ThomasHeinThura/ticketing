@@ -122,35 +122,37 @@ export function InstanceSettingsFrame({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-full gap-6">
       <SettingsSidebar>
-        <SidebarGroup className="gap-1 p-1">
-          <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
-            {t("navigation:sidebar.godMode")}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
-              {items.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <Button
-                    render={<Link to={item.path} />}
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
-                      (pathname === item.path ||
-                        pathname === `${item.path}/` ||
-                        (!("exact" in item) &&
-                          pathname.startsWith(`${item.path}/`))) &&
-                        "bg-sidebar-accent text-sidebar-accent-foreground",
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </Button>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <nav aria-label={t("navigation:sidebar.godMode")}>
+          <SidebarGroup className="gap-1 p-1">
+            <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
+              {t("navigation:sidebar.godMode")}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
+                {items.map((item) => (
+                  <SidebarMenuItem key={item.path}>
+                    <Button
+                      render={<Link to={item.path} />}
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
+                        (pathname === item.path ||
+                          pathname === `${item.path}/` ||
+                          (!("exact" in item) &&
+                            pathname.startsWith(`${item.path}/`))) &&
+                          "bg-sidebar-accent text-sidebar-accent-foreground",
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Button>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </nav>
       </SettingsSidebar>
       {children}
     </div>

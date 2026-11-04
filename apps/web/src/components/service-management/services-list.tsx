@@ -1,8 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  Alert,
-  AlertDescription,
   Badge,
   Button,
   Card,
@@ -51,6 +49,7 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import { routes } from "@/lib/routes";
 import {
+  CatalogueOff,
   LoadingRows,
   MutationError,
   PageFrame,
@@ -278,7 +277,11 @@ export function ServicesList({ q }: { q?: string }) {
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
   const status = useCatalogueStatus(workspaceId);
-  const services = useServices(workspaceId, q);
+  // With the catalogue off `GET /api/services` answers 409: ask only once the status says it is on
+  // (or could not be read, so a real failure still shows), and show the off state once.
+  const catalogueOff = status.data?.enabled === false;
+  const listReady = status.data?.enabled === true || status.isError;
+  const services = useServices(listReady ? workspaceId : "", q);
   const [creating, setCreating] = useState(false);
   const [creatingManagedService, setCreatingManagedService] = useState(false);
   // The strict project:create capability, the one `POST /api/project` checks (the legacy
@@ -286,7 +289,7 @@ export function ServicesList({ q }: { q?: string }) {
   const { canBindProjectOrganisation } = useWorkspacePermission();
   const canCreateManagedService = canBindProjectOrganisation();
   const [draft, setDraft] = useState(q ?? "");
-  const loading = workspaceLoading || services.isLoading;
+  const loading = workspaceLoading || status.isLoading || services.isLoading;
   return (
     <>
       <PageTitle title={t("services.list.title")} />
@@ -298,7 +301,8 @@ export function ServicesList({ q }: { q?: string }) {
         }
         description={t("services.list.catalogueDescription")}
         actions={
-          canCreateManagedService || status.data?.canManageServices ? (
+          canCreateManagedService ||
+          (status.data?.canManageServices && !catalogueOff) ? (
             <div className="flex flex-wrap items-center gap-2">
               {canCreateManagedService ? (
                 <Button
@@ -310,7 +314,7 @@ export function ServicesList({ q }: { q?: string }) {
                   {t("services.list.createManagedService")}
                 </Button>
               ) : null}
-              {status.data?.canManageServices ? (
+              {status.data?.canManageServices && !catalogueOff ? (
                 <Button onClick={() => setCreating(true)} disabled={!workspace}>
                   <Plus aria-hidden="true" />
                   {t("services.list.new")}
@@ -320,88 +324,91 @@ export function ServicesList({ q }: { q?: string }) {
           ) : null
         }
       >
-        <SectionNav active="services" />
-        <search>
-          <form
-            className="flex max-w-md gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void navigate({
-                href: routes.serviceManagementServices.build({
-                  q: draft.trim() || undefined,
-                }),
-              });
-            }}
-          >
-            <Input
-              aria-label={t("services.list.searchLabel")}
-              placeholder={t("services.list.searchPlaceholder")}
-              value={draft}
-              maxLength={120}
-              onChange={(event) => setDraft(event.target.value)}
-            />
-            <Button type="submit" variant="outline">
-              {t("services.list.search")}
-            </Button>
-          </form>
-        </search>
-        {loading ? (
-          <LoadingRows />
-        ) : services.isError ? (
-          <QueryFailure
-            error={services.error}
-            onRetry={() => void services.refetch()}
-          />
-        ) : services.data?.length ? (
-          <CardFrame>
-            {services.data.map((service) => (
-              <Card key={service.id}>
-                <CardHeader>
-                  <CardTitle className="truncate">
-                    <Link
-                      className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      to={routes.serviceManagementServiceDetail.path}
-                      params={{ id: service.id }}
-                    >
-                      {service.name}
-                    </Link>
-                  </CardTitle>
-                  <CardDescription>
-                    {service.ownerTeamName ?? t("services.list.noOwner")}
-                    {" · "}
-                    {t("services.list.incidents", {
-                      count: service.incidentCount,
-                    })}
-                    {" · "}
-                    {t("services.list.openChanges", {
-                      count: service.openChangeCount,
-                    })}
-                  </CardDescription>
-                  <CardAction className="flex items-center gap-2">
-                    <Badge variant="outline">{service.supportLevel}</Badge>
-                    <ServiceStatusBadge status={service.status} />
-                  </CardAction>
-                </CardHeader>
-              </Card>
-            ))}
-          </CardFrame>
+        {catalogueOff ? (
+          <CatalogueOff />
         ) : (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>
-                {q ? t("services.list.noMatch") : t("services.list.emptyTitle")}
-              </EmptyTitle>
-              <EmptyDescription>
-                {q ? "" : t("services.list.emptyDescription")}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+          <>
+            <SectionNav active="services" />
+            <search>
+              <form
+                className="flex max-w-md gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void navigate({
+                    href: routes.serviceManagementServices.build({
+                      q: draft.trim() || undefined,
+                    }),
+                  });
+                }}
+              >
+                <Input
+                  aria-label={t("services.list.searchLabel")}
+                  placeholder={t("services.list.searchPlaceholder")}
+                  value={draft}
+                  maxLength={120}
+                  onChange={(event) => setDraft(event.target.value)}
+                />
+                <Button type="submit" variant="outline">
+                  {t("services.list.search")}
+                </Button>
+              </form>
+            </search>
+            {loading ? (
+              <LoadingRows />
+            ) : services.isError ? (
+              <QueryFailure
+                error={services.error}
+                onRetry={() => void services.refetch()}
+              />
+            ) : services.data?.length ? (
+              <CardFrame>
+                {services.data.map((service) => (
+                  <Card key={service.id}>
+                    <CardHeader>
+                      <CardTitle className="truncate">
+                        <Link
+                          className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          to={routes.serviceManagementServiceDetail.path}
+                          params={{ id: service.id }}
+                        >
+                          {service.name}
+                        </Link>
+                      </CardTitle>
+                      <CardDescription>
+                        {service.ownerTeamName ?? t("services.list.noOwner")}
+                        {" · "}
+                        {t("services.list.incidents", {
+                          count: service.incidentCount,
+                        })}
+                        {" · "}
+                        {t("services.list.openChanges", {
+                          count: service.openChangeCount,
+                        })}
+                      </CardDescription>
+                      <CardAction className="flex items-center gap-2">
+                        <Badge variant="outline">{service.supportLevel}</Badge>
+                        <ServiceStatusBadge status={service.status} />
+                      </CardAction>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </CardFrame>
+            ) : (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>
+                    {q
+                      ? t("services.list.noMatch")
+                      : t("services.list.emptyTitle")}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {q ? "" : t("services.list.emptyDescription")}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </>
         )}
-        {status.data && !status.data.enabled ? (
-          <Alert variant="warning">
-            <AlertDescription>{t("disabled.description")}</AlertDescription>
-          </Alert>
-        ) : null}
       </PageFrame>
       {creating && workspace ? (
         <CreateServiceDialog

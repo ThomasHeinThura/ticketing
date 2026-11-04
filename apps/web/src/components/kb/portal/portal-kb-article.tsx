@@ -132,15 +132,17 @@ export function PortalKbArticleView({
   });
   if (article.isLoading)
     return (
-      <main className="mx-auto w-full max-w-3xl p-6">
+      <div className="mx-auto w-full max-w-3xl p-6">
         <Skeleton className="h-40 w-full" />
-      </main>
+      </div>
     );
   if (article.isError || !article.data) {
     const missing =
       article.error instanceof HttpError && article.error.status === 404;
     return (
-      <main className="mx-auto w-full max-w-3xl p-6">
+      <div className="mx-auto w-full max-w-3xl p-6">
+        {/* The page keeps one h1 while it shows only the error. */}
+        <h1 className="sr-only">{t("kb:portal.title")}</h1>
         <Alert variant="error">
           <AlertTitle>
             {missing
@@ -160,12 +162,12 @@ export function PortalKbArticleView({
             </Button>
           </AlertDescription>
         </Alert>
-      </main>
+      </div>
     );
   }
   const data = article.data;
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <Button
         variant="ghost"
         className="w-fit"
@@ -202,6 +204,6 @@ export function PortalKbArticleView({
           </ul>
         </section>
       ) : null}
-    </main>
+    </div>
   );
 }

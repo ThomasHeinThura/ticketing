@@ -259,7 +259,9 @@ function apiBody(pathname: string): unknown {
     case "/api/portal/submissions":
       return { submissions: [], page: { hasMore: false, nextCursor: null } };
     case "/api/portal/kb":
-      return { data: [], hasMore: false, nextCursor: null };
+      return { articles: [], total: 0 };
+    case "/api/portal/kb/categories":
+      return { categories: [] };
     case "/api/portal/releases":
       return { data: [] };
     case "/api/portal/announcements":
@@ -549,5 +551,103 @@ for (const [viewportName, viewport] of VIEWPORTS)
       await expect(page).toHaveURL(/\/projects\/INFRA\?.*scope=all/);
       await expect(all).toBeFocused();
       expect(unmatched).toEqual([]);
+    });
+  }
+
+/**
+ * WCAG 2.4.1 and landmarks: every customer screen inside the shell has exactly one `main` (the
+ * shell's inset) and a named navigation; the first Tab stop from page load is the skip link, and
+ * Enter moves focus into that `main` without adding a hash to the URL.
+ */
+const SHELL_SCREENS = [
+  "/",
+  "/requests",
+  "/requests/OPS-12",
+  "/projects",
+  "/projects/INFRA",
+  "/approvals",
+  "/catalogue",
+  "/kb",
+  "/kb/missing-article",
+  "/releases",
+  "/releases/missing-release",
+  "/announcements",
+  "/announcements/missing-announcement",
+  "/account",
+] as const;
+
+test("every portal screen in the shell has one main and a named navigation @a11y", async ({
+  page,
+}) => {
+  const unmatched = await mountPortal(page);
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  for (const screen of SHELL_SCREENS) {
+    await page.goto(`${PORTAL_ORIGIN}${screen}`);
+    await page.waitForLoadState("networkidle");
+    // The shell's inset is the only `main`: a page inside it never renders another.
+    await expect.soft(page.locator("main, [role=main]"), screen).toHaveCount(1);
+    await expect
+      .soft(page.locator("main"), screen)
+      .toHaveAttribute("id", "main-content");
+    await expect
+      .soft(
+        page.getByRole("navigation", { name: "Customer portal" }).first(),
+        screen,
+      )
+      .toBeAttached();
+    await expect
+      .soft(page.getByRole("heading", { level: 1 }), screen)
+      .toHaveCount(1);
+  }
+  expect(pageErrors).toEqual([]);
+  test.info().annotations.push({
+    type: "unmatched fixture reads",
+    description: unmatched.join(", ") || "none",
+  });
+});
+
+for (const [viewportName, viewport] of [
+  ["desktop", { width: 1280, height: 800 }],
+  ["mobile", { width: 390, height: 844 }],
+] as const)
+  for (const theme of THEMES) {
+    test(`portal skip link (${viewportName}, ${theme}): first Tab, then Enter focuses the one main @a11y`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.emulateMedia({ colorScheme: theme });
+      await mountPortal(page);
+      await page.goto(`${PORTAL_ORIGIN}/`);
+      await expectTheme(page, theme);
+      await expect(page.getByText("Average first response")).toBeVisible();
+      await page.keyboard.press("Tab");
+      const skip = page.getByRole("link", { name: "Skip to main content" });
+      await expect(skip).toBeFocused();
+      // Shown on focus: sr-only (clipped) until then, a fixed, unclipped box while focused.
+      await expect(skip).toHaveCSS("position", "fixed");
+      await expect(skip).toHaveCSS("clip-path", "none");
+      // A padded box, not bare text (not-sr-only resets padding).
+      await expect(skip).toHaveCSS("padding-left", "12px");
+      expect(await seriousOrCriticalViolations(page)).toEqual([]);
+      await page.screenshot({
+        path: test
+          .info()
+          .outputPath(`portal-skip-link-${viewportName}-${theme}.png`),
+      });
+      await page.keyboard.press("Enter");
+      const main = page.getByRole("main");
+      await expect(main).toBeFocused();
+      await expect(main).toHaveAttribute("id", "main-content");
+      expect(new URL(page.url()).hash).toBe("");
+      await expect(skip).toHaveCSS("position", "absolute");
+      await expect(skip).not.toHaveCSS("clip-path", "none");
+      // The next Tab continues inside the page, past the sidebar.
+      await page.keyboard.press("Tab");
+      expect(
+        await page.evaluate(() =>
+          Boolean(document.activeElement?.closest("main")),
+        ),
+      ).toBe(true);
     });
   }

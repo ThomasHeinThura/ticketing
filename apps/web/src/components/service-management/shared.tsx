@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChangeRisk, ServiceStatus } from "@/fetchers/service-management";
 import { isFeatureDisabled } from "@/hooks/queries/service-management";
+import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 
 const STATUS_VARIANT = {
@@ -92,23 +93,40 @@ export function LoadingRows() {
 }
 
 /** A failed read: a disabled feature gets its own explanation, anything else offers a retry. */
+/** The one "Service catalogue is off" state a catalogue page shows instead of its list. */
+export function CatalogueOff() {
+  const { t } = useTranslation("serviceManagement");
+  return (
+    <Empty data-testid="service-catalogue-off">
+      <EmptyHeader>
+        <EmptyTitle>{t("disabled.title")}</EmptyTitle>
+        <EmptyDescription>{t("disabled.description")}</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
+}
+
 export function QueryFailure({
   error,
   onRetry,
+  notFoundDescription,
 }: {
   error: unknown;
   onRetry: () => void;
+  /** A detail page's "does not exist or you cannot reach it" text; a 404 then shows it, not Retry. */
+  notFoundDescription?: string;
 }) {
   const { t } = useTranslation("serviceManagement");
-  if (isFeatureDisabled(error))
+  if (notFoundDescription && error instanceof HttpError && error.status === 404)
     return (
-      <Empty>
+      <Empty data-testid="service-management-not-found">
         <EmptyHeader>
-          <EmptyTitle>{t("disabled.title")}</EmptyTitle>
-          <EmptyDescription>{t("disabled.description")}</EmptyDescription>
+          <EmptyTitle>{t("common.notFoundTitle")}</EmptyTitle>
+          <EmptyDescription>{notFoundDescription}</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
+  if (isFeatureDisabled(error)) return <CatalogueOff />;
   return (
     <Alert variant="error">
       <AlertTitle>{t("common.loadErrorTitle")}</AlertTitle>

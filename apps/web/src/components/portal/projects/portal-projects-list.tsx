@@ -98,7 +98,7 @@ export function PortalProjectsList({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-col gap-1 border-b border-border pb-4">
         <h1 className="font-semibold text-2xl">{t("projects.title")}</h1>
         <p className="text-muted-foreground text-sm">
@@ -265,6 +265,6 @@ export function PortalProjectsList({
           </Table>
         </div>
       )}
-    </main>
+    </div>
   );
 }

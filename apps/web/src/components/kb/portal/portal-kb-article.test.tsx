@@ -106,6 +106,9 @@ describe("PortalKbArticleView", () => {
     mocks.get.mockRejectedValue(new HttpError(404, "Article not found"));
     renderView();
     expect(await screen.findByText("kb:portal.notFoundTitle")).toBeTruthy();
-    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    // The page's one h1 names the section, never the unavailable item.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      /^kb:portal.title$/,
+    );
   });
 });

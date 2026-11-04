@@ -75,13 +75,21 @@ describe("SettingsShell scoped heading", () => {
 
   it.each(scopes)("shows only the %s scope", (pathname, scope, title) => {
     renderSettings(pathname, scope);
-    expect(
-      screen.getAllByText(title).some((element) => element.tagName === "H1"),
-    ).toBe(true);
+    expect(screen.getAllByText(title).length).toBeGreaterThan(0);
     expect(screen.queryByRole("tablist")).toBeNull();
     expect(
       screen.getByRole("button", { name: "Open settings menu" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("SettingsShell headings (UAT re-audit: one h1 per page)", () => {
+  it("leaves the page's h1 to the settings page itself", () => {
+    renderSettings("/dashboard/settings/projects/project-1/general");
+    // The shell names the settings area but is not a heading, so a page's own
+    // "General Settings" h1 is the only one (axe page-has-heading-one / one-h1 rule).
+    expect(screen.queryAllByRole("heading", { level: 1 })).toHaveLength(0);
+    expect(screen.getAllByText("Project settings").length).toBeGreaterThan(0);
   });
 });
 

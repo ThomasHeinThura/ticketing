@@ -435,6 +435,7 @@ export function ReleaseDetailView({ releaseId }: { releaseId: string }) {
           <QueryFailure
             error={release.error}
             onRetry={() => void release.refetch()}
+            notFoundDescription={t("releases.detail.notFound")}
           />
         ) : (
           <>

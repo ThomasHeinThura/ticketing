@@ -121,7 +121,7 @@ export function PortalRequestDetails({
     ]);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
       <div>
         <Button
           variant="ghost"
@@ -202,7 +202,7 @@ export function PortalRequestDetails({
           ) : null}
         </>
       )}
-    </main>
+    </div>
   );
 }
 

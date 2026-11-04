@@ -1096,6 +1096,7 @@ export function ServiceDetailView({ serviceId }: { serviceId: string }) {
           <QueryFailure
             error={service.error}
             onRetry={() => void service.refetch()}
+            notFoundDescription={t("services.detail.notFound")}
           />
         ) : (
           <>

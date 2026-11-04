@@ -98,7 +98,7 @@ export function SettingsShell({
 
               <div className="flex items-center gap-1 md:hidden">
                 <ChevronLeft className="size-4 text-muted-foreground" />
-                <h1 className="text-lg font-semibold">{title}</h1>
+                <p className="text-lg font-semibold">{title}</p>
               </div>
 
               <Button
@@ -119,9 +119,11 @@ export function SettingsShell({
               </Button>
             </div>
 
-            <h1 className="mt-4 hidden pl-1 text-2xl font-semibold md:block">
+            {/* The settings area's name, not the page's heading: each settings page renders its
+                own h1, so the page has exactly one (axe page-has-heading-one). */}
+            <p className="mt-4 hidden pl-1 text-2xl font-semibold md:block">
               {title}
-            </h1>
+            </p>
           </div>
 
           {/* Each settings area owns its existing sidebar; mobile opens that same scoped menu. */}

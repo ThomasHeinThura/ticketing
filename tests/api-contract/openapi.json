@@ -4989,6 +4989,11 @@
           "role": {
             "type": "string",
             "description": "The member's workspace role: a built-in role (owner, admin, member, guest) or a custom role name."
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the member joined this workspace."
           }
         },
         "required": [
@@ -4996,7 +5001,8 @@
           "name",
           "email",
           "image",
-          "role"
+          "role",
+          "joinedAt"
         ]
       },
       "WorkspaceInvitation": {

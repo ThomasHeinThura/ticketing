@@ -309,14 +309,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                   )}
                 </TableCell>
                 <TableCell className="py-3 text-sm text-muted-foreground tabular-nums">
-                  {/* S3 (issue #6, retrofit plan §3) gap: the native member
-                      read (apps/api/src/workspace/response.ts's
-                      workspaceMemberSchema) has no join/created timestamp --
-                      the plugin's `workspace_member.joinedAt` never made it
-                      into the S2 response shape. Reported in the S3 report
-                      as an API gap; not fixed here (apps/api is out of
-                      scope for this lane). */}
-                  –
+                  {member.joinedAt ? formatDateMedium(member.joinedAt) : "–"}
                 </TableCell>
                 <TableCell className="pe-6 py-3 text-right">
                   {!isSelf && canRemove ? (

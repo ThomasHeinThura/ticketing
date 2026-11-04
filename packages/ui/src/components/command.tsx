@@ -2,7 +2,7 @@
 
 import { Dialog as CommandDialogPrimitive } from "@base-ui/react/dialog";
 import { SearchIcon } from "lucide-react";
-import type * as React from "react";
+import * as React from "react";
 import { cn } from "../lib/cn";
 import {
   Autocomplete,
@@ -15,6 +15,33 @@ import {
   AutocompleteList,
   AutocompleteSeparator,
 } from "./autocomplete";
+
+/**
+ * A command dialog is a `role="dialog"` and its list a `role="listbox"`; both need an accessible
+ * name (axe `aria-dialog-name`, `aria-input-field-name`). A caller should pass `aria-label` or
+ * `aria-labelledby` to each. When it does not, both take the label of the `CommandInput` that
+ * drives them (its `aria-label`, else its placeholder), so a palette is never announced unnamed.
+ * Each `Command` keeps its own scope, so a nested `Command` never renames the outer dialog.
+ */
+type CommandNameScope = {
+  kind: "dialog" | "command";
+  name: string | undefined;
+  setName: (name: string | undefined) => void;
+};
+
+const CommandNameContext = React.createContext<CommandNameScope | null>(null);
+
+function useCommandNameScope(kind: CommandNameScope["kind"]) {
+  const [name, setName] = React.useState<string>();
+  return React.useMemo(() => ({ kind, name, setName }), [kind, name]);
+}
+
+function hasOwnName(props: {
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+}) {
+  return props["aria-label"] != null || props["aria-labelledby"] != null;
+}
 
 const CommandDialog = CommandDialogPrimitive.Root;
 
@@ -75,6 +102,7 @@ function CommandDialogPopup({
   keepMounted?: boolean;
   blurBackdrop?: boolean;
 }) {
+  const nameScope = useCommandNameScope("dialog");
   return (
     <CommandDialogPortal keepMounted={keepMounted}>
       <CommandDialogBackdrop
@@ -92,10 +120,13 @@ function CommandDialogPopup({
               "transition-none data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:scale-100 data-ending-style:opacity-100",
             className,
           )}
+          aria-label={hasOwnName(props) ? undefined : nameScope.name}
           data-slot="command-dialog-popup"
           {...props}
         >
-          {children}
+          <CommandNameContext.Provider value={nameScope}>
+            {children}
+          </CommandNameContext.Provider>
         </CommandDialogPrimitive.Popup>
       </CommandDialogViewport>
     </CommandDialogPortal>
@@ -107,14 +138,26 @@ function Command({
   keepHighlight = true,
   ...props
 }: React.ComponentProps<typeof Autocomplete>) {
+  const parentScope = React.useContext(CommandNameContext);
+  const nameScope = useCommandNameScope("command");
+  // Only the dialog's own `Command` names the dialog; one nested deeper keeps its name to itself.
+  const setDialogName =
+    parentScope?.kind === "dialog" ? parentScope.setName : undefined;
+  React.useEffect(() => {
+    if (!setDialogName) return;
+    setDialogName(nameScope.name);
+    return () => setDialogName(undefined);
+  }, [setDialogName, nameScope.name]);
   return (
-    <Autocomplete
-      autoHighlight={autoHighlight}
-      inline
-      keepHighlight={keepHighlight}
-      open
-      {...props}
-    />
+    <CommandNameContext.Provider value={nameScope}>
+      <Autocomplete
+        autoHighlight={autoHighlight}
+        inline
+        keepHighlight={keepHighlight}
+        open
+        {...props}
+      />
+    </CommandNameContext.Provider>
   );
 }
 
@@ -123,6 +166,15 @@ function CommandInput({
   placeholder = undefined,
   ...props
 }: React.ComponentProps<typeof AutocompleteInput>) {
+  const setScopeName = React.useContext(CommandNameContext)?.setName;
+  const label =
+    props["aria-label"] ??
+    (typeof placeholder === "string" ? placeholder : undefined);
+  React.useEffect(() => {
+    if (!setScopeName) return;
+    setScopeName(label);
+    return () => setScopeName(undefined);
+  }, [setScopeName, label]);
   return (
     <div className="px-2.5 py-1.5">
       <AutocompleteInput
@@ -144,8 +196,10 @@ function CommandList({
   className,
   ...props
 }: React.ComponentProps<typeof AutocompleteList>) {
+  const scopeName = React.useContext(CommandNameContext)?.name;
   return (
     <AutocompleteList
+      aria-label={hasOwnName(props) ? undefined : scopeName}
       className={cn("not-empty:scroll-py-2 not-empty:p-2", className)}
       data-slot="command-list"
       {...props}

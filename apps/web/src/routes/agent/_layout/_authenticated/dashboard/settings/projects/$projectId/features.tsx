@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { FeatureFlagsPanel } from "@/components/settings/feature-flags-panel";
+import {
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/projects/$projectId/features",
@@ -12,6 +16,10 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { t } = useTranslation();
   const { projectId } = Route.useParams();
+  const access = useSettingsAccess(
+    (permission) => permission.canManageProjectSettings(),
+    projectId,
+  );
 
   return (
     <>
@@ -25,7 +33,10 @@ function RouteComponent() {
             {t("settings:projectFeatures.subtitle")}
           </p>
         </div>
-        <FeatureFlagsPanel target={{ level: "project", projectId }} />
+        {/* `GET /api/projects/{id}/features` needs `project:manage_settings` at this project. */}
+        <SettingsAccessGate access={access}>
+          <FeatureFlagsPanel target={{ level: "project", projectId }} />
+        </SettingsAccessGate>
       </div>
     </>
   );

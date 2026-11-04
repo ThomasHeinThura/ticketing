@@ -67,6 +67,7 @@ import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { formatDateTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import {
+  CatalogueOff,
   LoadingRows,
   MutationError,
   PageFrame,
@@ -598,7 +599,9 @@ export function AnnouncementsList() {
   const { data: workspace } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
   const status = useCatalogueStatus(workspaceId);
-  const canManage = status.data?.canManageServices === true;
+  // With the catalogue off `GET /api/announcements` answers 409: no request, no New button.
+  const catalogueOff = status.data?.enabled === false;
+  const canManage = status.data?.canManageServices === true && !catalogueOff;
   const announcements = useAnnouncements(workspaceId, canManage);
   const [editing, setEditing] = useState<Announcement | "new" | null>(null);
   return (
@@ -619,6 +622,8 @@ export function AnnouncementsList() {
         <SectionNav active="announcements" />
         {status.isLoading || !workspace ? (
           <LoadingRows />
+        ) : catalogueOff ? (
+          <CatalogueOff />
         ) : !canManage ? (
           <Empty>
             <EmptyHeader>

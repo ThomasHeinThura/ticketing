@@ -161,4 +161,78 @@ describe("Sidebar", () => {
 
     await expectNoA11yViolations(baseElement);
   });
+
+  // UAT re-audit: no skip link, the sidebar was not a nav landmark, one main per page.
+  it("is a named nav landmark beside exactly one main", () => {
+    render(
+      <SidebarProvider>
+        <Sidebar
+          closeLabel="Close navigation"
+          mobileDescription="Navigate TaskDesk sections."
+          mobileTitle="Main navigation"
+        >
+          <SidebarContent nativeScroll>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton>Work items</SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarContent>
+        </Sidebar>
+        <SidebarInset>content</SidebarInset>
+      </SidebarProvider>,
+    );
+    expect(
+      screen.getByRole("navigation", { name: "Main navigation" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+  });
+
+  it("puts a skip link first that moves focus to main without touching the URL", async () => {
+    const { baseElement } = render(
+      <SidebarProvider skipLinkLabel="Skip to main content">
+        <Sidebar
+          closeLabel="Close navigation"
+          mobileDescription="Navigate TaskDesk sections."
+          mobileTitle="Main navigation"
+        >
+          <SidebarContent nativeScroll>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton>Work items</SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarContent>
+        </Sidebar>
+        <SidebarInset>
+          <h1>Work items</h1>
+        </SidebarInset>
+      </SidebarProvider>,
+    );
+    const skip = screen.getByRole("link", { name: "Skip to main content" });
+    const firstFocusable = baseElement.querySelector(
+      'a[href], button, input, [tabindex]:not([tabindex="-1"])',
+    );
+    expect(firstFocusable).toBe(skip);
+
+    const hashBefore = window.location.hash;
+    skip.focus();
+    fireEvent.click(skip);
+    const main = screen.getByRole("main");
+    expect(main).toHaveFocus();
+    expect(window.location.hash).toBe(hashBefore);
+    // The temporary tabindex goes away once focus leaves, so clicks never focus main.
+    fireEvent.blur(main);
+    expect(main).not.toHaveAttribute("tabindex");
+    await expectNoA11yViolations(baseElement);
+  });
+
+  it("renders no skip link unless the shell passes a label", () => {
+    render(
+      <SidebarProvider>
+        <SidebarInset>content</SidebarInset>
+      </SidebarProvider>,
+    );
+    expect(screen.queryByRole("link")).toBeNull();
+  });
 });

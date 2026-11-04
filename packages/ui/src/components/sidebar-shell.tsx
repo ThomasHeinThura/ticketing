@@ -15,6 +15,8 @@ const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
+/** The id `SidebarInset` gives its `main`, which the shell's skip link targets. */
+const SIDEBAR_MAIN_ID = "main-content";
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
@@ -37,6 +39,45 @@ function useSidebar() {
   return context;
 }
 
+/**
+ * WCAG 2.4.1 bypass block: the first focusable element of the shell, visually hidden until it has
+ * keyboard focus, that moves focus past the sidebar to the page's `main`. Focus is moved by script
+ * (no `#main-content` in the URL, which would disturb router URL state) and the temporary
+ * `tabindex` is dropped again on blur so clicks inside `main` never focus it.
+ */
+function SkipToMainLink({
+  label,
+  targetId = SIDEBAR_MAIN_ID,
+}: {
+  label: string;
+  targetId?: string;
+}) {
+  return (
+    <a
+      className="sr-only rounded-md border bg-popover font-medium text-popover-foreground text-sm shadow-md outline-none focus-visible:not-sr-only focus-visible:fixed focus-visible:top-2 focus-visible:left-2 focus-visible:z-100 focus-visible:px-3 focus-visible:py-2 focus-visible:ring-2 focus-visible:ring-ring"
+      data-slot="skip-link"
+      href={`#${targetId}`}
+      onClick={(event) => {
+        const target =
+          event.currentTarget.ownerDocument.getElementById(targetId);
+        if (!target) return;
+        event.preventDefault();
+        if (!target.hasAttribute("tabindex")) {
+          target.setAttribute("tabindex", "-1");
+          target.addEventListener(
+            "blur",
+            () => target.removeAttribute("tabindex"),
+            { once: true },
+          );
+        }
+        target.focus();
+      }}
+    >
+      {label}
+    </a>
+  );
+}
+
 function SidebarProvider({
   defaultOpen = true,
   open: openProp,
@@ -44,11 +85,17 @@ function SidebarProvider({
   className,
   style,
   children,
+  skipLinkLabel,
   ...props
 }: React.ComponentProps<"div"> & {
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Translated "Skip to main content". When given, the shell's first focusable element is a skip
+   * link to `SidebarInset`'s `main`; every shell with a sidebar should pass it.
+   */
+  skipLinkLabel?: string;
 }) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
@@ -142,6 +189,7 @@ function SidebarProvider({
         }
         {...props}
       >
+        {skipLinkLabel ? <SkipToMainLink label={skipLinkLabel} /> : null}
         {children}
       </div>
     </SidebarContext.Provider>
@@ -175,10 +223,17 @@ function SidebarTrigger({
   );
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+/** The page's one `main` landmark; pages inside it must not render another `main`. */
+function SidebarInset({
+  className,
+  id = SIDEBAR_MAIN_ID,
+  ...props
+}: React.ComponentProps<"main">) {
   return (
     <main
+      id={id}
       className={cn(
+        "outline-none",
         "relative flex w-full flex-1 flex-col bg-background",
         "md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ms-2 md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ms-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm/5",
         className,

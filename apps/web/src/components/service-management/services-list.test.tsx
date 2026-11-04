@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   status: { data: undefined as unknown },
   canCreateProjects: true,
   modalProps: vi.fn(),
+  servicesWorkspace: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -42,7 +43,10 @@ vi.mock("@/hooks/queries/service-calendar/use-service-calendars", () => ({
 vi.mock("@/hooks/queries/service-management", () => ({
   serviceManagementKeys: { all: ["service-management"] },
   useCatalogueStatus: () => mocks.status,
-  useServices: () => mocks.services,
+  useServices: (workspaceId: string) => {
+    mocks.servicesWorkspace(workspaceId);
+    return mocks.services;
+  },
   isFeatureDisabled: (error: unknown) =>
     error instanceof HttpError && error.status === 409,
 }));
@@ -178,5 +182,28 @@ describe("ServicesList", () => {
         name: "services.list.createManagedService",
       }),
     ).toBeNull();
+  });
+});
+
+describe("ServicesList with the catalogue off (UAT re-audit)", () => {
+  it("shows the off state once, offers no New Service, search or tabs, and asks for no list", () => {
+    mocks.servicesWorkspace.mockClear();
+    setup({}, { enabled: false });
+    expect(screen.getAllByTestId("service-catalogue-off")).toHaveLength(1);
+    expect(screen.getAllByText("disabled.description")).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", { name: /services.list.new/u }),
+    ).toBeNull();
+    expect(screen.queryByLabelText("services.list.searchLabel")).toBeNull();
+    // An empty workspace id leaves the services query disabled: no 409 is fetched.
+    expect(mocks.servicesWorkspace).toHaveBeenCalled();
+    for (const [workspaceId] of mocks.servicesWorkspace.mock.calls)
+      expect(workspaceId).toBe("");
+  });
+
+  it("asks for the list once the catalogue is on", () => {
+    mocks.servicesWorkspace.mockClear();
+    setup({ data: [service()] });
+    expect(mocks.servicesWorkspace).toHaveBeenLastCalledWith("w1");
   });
 });

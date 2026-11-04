@@ -78,57 +78,61 @@ export function AccountSettingsFrame({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <SidebarGroup className="gap-1 p-1">
-            <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
-              {t("settings:account")}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                {menuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
+          <nav aria-label={t("settings:account")}>
+            <SidebarGroup className="gap-1 p-1">
+              <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
+                {t("settings:account")}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0.5">
+                  {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <Button
+                        render={<Link to={item.url} />}
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
+                          isActivePath(item.url) &&
+                            "bg-sidebar-accent text-sidebar-accent-foreground",
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Button>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup className="gap-1 p-1">
+              <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
+                {t("settings:developer")}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0.5">
+                  <SidebarMenuItem>
                     <Button
-                      render={<Link to={item.url} />}
+                      render={
+                        <Link to="/dashboard/settings/account/developer" />
+                      }
                       variant="ghost"
                       size="sm"
                       className={cn(
                         "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
-                        isActivePath(item.url) &&
+                        isActivePath("/dashboard/settings/account/developer") &&
                           "bg-sidebar-accent text-sidebar-accent-foreground",
                       )}
                     >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <Code className="h-4 w-4" />
+                      <span>{t("settings:apiKeys")}</span>
                     </Button>
                   </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          <SidebarGroup className="gap-1 p-1">
-            <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
-              {t("settings:developer")}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                <SidebarMenuItem>
-                  <Button
-                    render={<Link to="/dashboard/settings/account/developer" />}
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
-                      isActivePath("/dashboard/settings/account/developer") &&
-                        "bg-sidebar-accent text-sidebar-accent-foreground",
-                    )}
-                  >
-                    <Code className="h-4 w-4" />
-                    <span>{t("settings:apiKeys")}</span>
-                  </Button>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </nav>
         </div>
       </SettingsSidebar>
 

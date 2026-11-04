@@ -123,6 +123,9 @@ describe("portal release notes", () => {
     mocks.detail.mockRejectedValue(new HttpError(404, "Release not found"));
     renderWithQuery(<PortalReleaseDetail id={release.id} scope="customer-b" />);
     expect(await screen.findByText("portal:releases.unavailable")).toBeTruthy();
-    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    // The page's one h1 names the section, never the unavailable item.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      /^portal:releases.title$/,
+    );
   });
 });

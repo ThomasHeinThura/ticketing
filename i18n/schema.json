@@ -234,6 +234,9 @@
 						},
 						"taskOpenHint": {
 							"type": "string"
+						},
+						"skipToContent": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -241,7 +244,8 @@
 						"dnd",
 						"taskContainerLabel",
 						"taskOpenAndDragHint",
-						"taskOpenHint"
+						"taskOpenHint",
+						"skipToContent"
 					]
 				},
 				"sidebar": {
@@ -8154,6 +8158,34 @@
 						"stale",
 						"generic"
 					]
+				},
+				"accessDenied": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"checking": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"checking",
+						"loadErrorTitle",
+						"loadErrorDescription"
+					]
 				}
 			},
 			"required": [
@@ -8201,7 +8233,8 @@
 				"terminology",
 				"workspaceProjectDefaults",
 				"workspaceStateTemplates",
-				"projectInheritance"
+				"projectInheritance",
+				"accessDenied"
 			]
 		},
 		"navigation": {
@@ -8329,6 +8362,9 @@
 								}
 							},
 							"required": ["navigate", "open", "close"]
+						},
+						"dialogLabel": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8346,7 +8382,8 @@
 						"keyboardShortcuts",
 						"inputPlaceholder",
 						"empty",
-						"footer"
+						"footer",
+						"dialogLabel"
 					]
 				},
 				"notifications": {
@@ -12274,6 +12311,9 @@
 						},
 						"archived": {
 							"type": "string"
+						},
+						"completion": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12311,7 +12351,8 @@
 						"filteredEmptyDescription",
 						"showAllKinds",
 						"actions",
-						"archived"
+						"archived",
+						"completion"
 					]
 				},
 				"search": {
@@ -27779,6 +27820,12 @@
 						},
 						"pageTitle": {
 							"type": "string"
+						},
+						"notFoundTitle": {
+							"type": "string"
+						},
+						"notFoundDescription": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -27786,7 +27833,9 @@
 						"loadErrorDescription",
 						"loadErrorTitle",
 						"loading",
-						"pageTitle"
+						"pageTitle",
+						"notFoundTitle",
+						"notFoundDescription"
 					]
 				},
 				"details": {
@@ -30848,6 +30897,9 @@
 						},
 						"requestFailed": {
 							"type": "string"
+						},
+						"notFoundTitle": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -30859,7 +30911,8 @@
 						"loading",
 						"loadErrorTitle",
 						"loadErrorDescription",
-						"requestFailed"
+						"requestFailed",
+						"notFoundTitle"
 					]
 				},
 				"status": {
@@ -31327,6 +31380,9 @@
 										}
 									},
 									"required": ["title", "description", "blockedTitle", "action"]
+								},
+								"notFound": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -31341,7 +31397,8 @@
 								"dependencies",
 								"links",
 								"checklist",
-								"delete"
+								"delete",
+								"notFound"
 							]
 						}
 					},
@@ -32058,6 +32115,9 @@
 										"lockedTitle",
 										"lockedDescription"
 									]
+								},
+								"notFound": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -32067,7 +32127,8 @@
 								"publish",
 								"changes",
 								"checklist",
-								"notes"
+								"notes",
+								"notFound"
 							]
 						}
 					},
@@ -33259,6 +33320,12 @@
 						},
 						"workItemNotFound": {
 							"type": "string"
+						},
+						"deniedTitle": {
+							"type": "string"
+						},
+						"deniedDescription": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -33287,7 +33354,9 @@
 						"title",
 						"total",
 						"workItem",
-						"workItemNotFound"
+						"workItemNotFound",
+						"deniedTitle",
+						"deniedDescription"
 					]
 				}
 			},

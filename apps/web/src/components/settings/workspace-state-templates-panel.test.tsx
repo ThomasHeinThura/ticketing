@@ -29,6 +29,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
+vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
+  default: () => ({ data: { id: "ws-1" } }),
+}));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canManageWorkspaceSettings: () => mocks.canEdit,
@@ -82,21 +85,24 @@ describe("WorkspaceStateTemplatesPanel", () => {
     ).toHaveLength(1);
   });
 
-  it("makes the template catalog read-only without workspace settings capability", async () => {
+  it("shows one access notice and never asks for the catalog without workspace settings capability (UAT re-audit)", async () => {
+    // `GET /api/workspace/{id}/state-templates` requires `workspace:manage_settings`, so a role
+    // without it could never load a read-only catalog; it used to meet a 403 and a Retry.
+    const { getWorkspaceStateTemplates } = await import(
+      "@/fetchers/project-settings-inheritance"
+    );
+    vi.mocked(getWorkspaceStateTemplates).mockClear();
     mocks.canEdit = false;
     renderPanel();
     expect(
-      await screen.findByTestId("workspace-state-templates"),
+      await screen.findByTestId("settings-access-denied"),
     ).toBeInTheDocument();
+    expect(screen.queryByTestId("workspace-state-templates")).toBeNull();
     expect(
       screen.queryByRole("button", {
-        name: "settings:workspaceStateTemplates.create",
+        name: "settings:workspaceStateTemplates.retry",
       }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: "settings:workspaceStateTemplates.disable",
-      }),
-    ).not.toBeInTheDocument();
+    ).toBeNull();
+    expect(getWorkspaceStateTemplates).not.toHaveBeenCalled();
   });
 });

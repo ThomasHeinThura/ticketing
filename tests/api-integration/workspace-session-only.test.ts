@@ -188,5 +188,13 @@ describe("session-only enforcement on GET /api/workspace/{workspaceId}/members",
     const response = await app.request(path(workspace.id));
 
     expect(response.status).toBe(200);
+    // The members table's Joined column reads this (UAT re-audit: it was always "–").
+    const members = (await response.json()) as Array<{
+      id: string;
+      joinedAt?: string;
+    }>;
+    const self = members.find((member) => member.id === user.id);
+    expect(self?.joinedAt).toEqual(expect.any(String));
+    expect(Number.isNaN(Date.parse(self?.joinedAt ?? ""))).toBe(false);
   });
 });

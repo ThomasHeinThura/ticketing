@@ -370,6 +370,7 @@ export default function ProjectsPage({
           </TableBody>
         </Table>
         <PageTitle title={t("workspace:projects.pageTitle")} />
+        <h1 className="sr-only">{t("workspace:projects.pageTitle")}</h1>
       </WorkspaceLayout>
     );
   }
@@ -464,6 +465,7 @@ export default function ProjectsPage({
           </Table>
         )}
         <PageTitle title={t("workspace:projects.pageTitle")} />
+        <h1 className="sr-only">{t("workspace:projects.pageTitle")}</h1>
       </WorkspaceLayout>
     );
   }
@@ -529,6 +531,7 @@ export default function ProjectsPage({
             </EmptyContent>
           </Empty>
           <PageTitle title={t("workspace:projects.pageTitle")} />
+          <h1 className="sr-only">{t("workspace:projects.pageTitle")}</h1>
         </WorkspaceLayout>
 
         <CreateProjectModal
@@ -696,6 +699,9 @@ export default function ProjectsPage({
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                               <Progress
+                                aria-label={t("workspace:projects.completion", {
+                                  name: project.name,
+                                })}
                                 value={project.statistics.completionPercentage}
                                 className="w-16 h-2"
                               />
@@ -759,6 +765,7 @@ export default function ProjectsPage({
           </DndContext>
         )}
         <PageTitle title={t("workspace:projects.pageTitle")} />
+        <h1 className="sr-only">{t("workspace:projects.pageTitle")}</h1>
       </WorkspaceLayout>
 
       <CreateProjectModal

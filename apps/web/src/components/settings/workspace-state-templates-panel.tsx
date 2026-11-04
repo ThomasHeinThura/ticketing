@@ -24,6 +24,12 @@ import {
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
+import {
+  isForbiddenError,
+  SettingsAccessDenied,
+  SettingsAccessError,
+  useCapabilityCheckFailed,
+} from "./settings-access";
 
 const GROUPS: WorkspaceStateTemplate["group"][] = [
   "backlog",
@@ -46,12 +52,18 @@ export function WorkspaceStateTemplatesPanel({
   const queryClient = useQueryClient();
   const { canManageWorkspaceSettings, isCheckingPermissions } =
     useWorkspacePermission(workspaceId);
+  // Without this the panel stays on its skeleton forever when `/api/capabilities` fails.
+  const capabilityCheckFailed = useCapabilityCheckFailed(
+    isCheckingPermissions ? workspaceId : undefined,
+  );
   const canEdit = canManageWorkspaceSettings();
   const queryKey = ["workspace", workspaceId, "state-templates"] as const;
+  // `GET .../state-templates` needs `workspace:manage_settings`: ask only once that is known.
+  const canRead = canEdit === true && !isCheckingPermissions;
   const templatesQuery = useQuery({
     queryKey,
     queryFn: () => getWorkspaceStateTemplates(workspaceId),
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId && canRead),
   });
   const [drafts, setDrafts] = useState<Record<string, TemplateDraft>>({});
   const [hydratedVersion, setHydratedVersion] = useState<string | null>(null);
@@ -214,7 +226,15 @@ export function WorkspaceStateTemplatesPanel({
     }
   };
 
-  if (templatesQuery.isLoading) {
+  if (!isCheckingPermissions && !canEdit) {
+    return <SettingsAccessDenied />;
+  }
+
+  if (isCheckingPermissions && capabilityCheckFailed) {
+    return <SettingsAccessError />;
+  }
+
+  if (isCheckingPermissions || templatesQuery.isLoading) {
     return (
       <section
         className="space-y-3"
@@ -226,6 +246,10 @@ export function WorkspaceStateTemplatesPanel({
         <Skeleton className="h-10 w-full" />
       </section>
     );
+  }
+
+  if (isForbiddenError(templatesQuery.error)) {
+    return <SettingsAccessDenied />;
   }
 
   if (templatesQuery.isError || !templatesQuery.data) {

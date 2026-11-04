@@ -11,7 +11,7 @@ const PortalAnnouncementBanner = lazy(
   () => import("./announcements/portal-announcement-banner"),
 );
 
-/** Kaneo sidebar/inset shell with the customer top bar. */
+/** Kaneo sidebar/inset shell with the customer top bar; the inset is the page's one `main`. */
 export default function PortalLayout({
   children,
   user,
@@ -23,6 +23,8 @@ export default function PortalLayout({
   return (
     <div className="flex w-full bg-background">
       <SidebarProvider
+        // WCAG 2.4.1: the first Tab stop skips the sidebar to the inset `main`.
+        skipLinkLabel={t("common:a11y.skipToContent")}
         style={
           { "--sidebar-width": "calc(var(--spacing) * 60)" } as CSSProperties
         }

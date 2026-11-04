@@ -42,17 +42,19 @@ export function PortalAnnouncementDetail({
 
   if (announcement.isPending)
     return (
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-32 w-full" />
-      </main>
+      </div>
     );
   if (announcement.isError) {
     const unavailable =
       announcement.error instanceof HttpError &&
       announcement.error.status === 404;
     return (
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+        {/* The page keeps one h1 while it shows only the error. */}
+        <h1 className="sr-only">{t("portal:announcements.title")}</h1>
         {back}
         <Alert variant={unavailable ? "default" : "error"}>
           <AlertDescription>
@@ -61,13 +63,13 @@ export function PortalAnnouncementDetail({
               : t("portal:announcements.loadFailed")}
           </AlertDescription>
         </Alert>
-      </main>
+      </div>
     );
   }
 
   const entry = announcement.data;
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       {back}
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -92,6 +94,6 @@ export function PortalAnnouncementDetail({
           )}
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

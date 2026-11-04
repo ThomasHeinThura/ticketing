@@ -133,4 +133,76 @@ describe("Popover", () => {
 
     await expectNoA11yViolations(baseElement);
   });
+
+  // UAT re-audit: option pickers rendered unnamed role=dialog popups (axe aria-dialog-name).
+  it("names an unlabelled popup by the trigger that opened it", async () => {
+    const { baseElement } = render(
+      <Popover>
+        <PopoverTrigger aria-label="Priority">High</PopoverTrigger>
+        <PopoverPopup>
+          <span>Urgent</span>
+        </PopoverPopup>
+      </Popover>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Priority" }));
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(dialog).toHaveAccessibleName("Priority"));
+    await expectNoA11yViolations(baseElement);
+  });
+
+  it("keeps an explicit aria-label or title over the trigger name", async () => {
+    render(
+      <Popover>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverPopup aria-label="Choose a status">
+          <span>Todo</span>
+        </PopoverPopup>
+      </Popover>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveAccessibleName("Choose a status");
+    expect(dialog).not.toHaveAttribute("aria-labelledby");
+    cleanup();
+
+    render(
+      <Popover>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverPopup>
+          <PopoverTitle>Notifications</PopoverTitle>
+        </PopoverPopup>
+      </Popover>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(await screen.findByRole("dialog")).toHaveAccessibleName(
+      "Notifications",
+    );
+  });
+
+  it("forwards its ref to the popup element", () => {
+    const ref = { current: null as HTMLDivElement | null };
+    render(
+      <Popover open>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverPopup ref={ref}>content</PopoverPopup>
+      </Popover>,
+    );
+    expect(ref.current?.getAttribute("data-slot")).toBe("popover-popup");
+  });
+
+  it("names the popup even when the rendered trigger carries no id", async () => {
+    render(
+      <Popover>
+        <PopoverTrigger aria-label="Filter activity">Everything</PopoverTrigger>
+        <PopoverPopup>
+          <span>All activity</span>
+        </PopoverPopup>
+      </Popover>,
+    );
+    const trigger = screen.getByRole("button", { name: "Filter activity" });
+    trigger.removeAttribute("id");
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(dialog).toHaveAccessibleName("Filter activity"));
+  });
 });

@@ -60,7 +60,7 @@ export function PortalAnnouncementsList({
   const entries = announcements.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
       <header className="space-y-1">
         <h1 className="font-semibold text-2xl">
           {t("portal:announcements.title")}
@@ -138,6 +138,6 @@ export function PortalAnnouncementsList({
           ) : null}
         </div>
       )}
-    </main>
+    </div>
   );
 }

@@ -247,3 +247,24 @@ describe("MembersTable pending invitation row menu", () => {
     ).toBeNull();
   });
 });
+
+describe("MembersTable joined column", () => {
+  it("shows each member's join date instead of a dash (UAT re-audit)", () => {
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[] as WorkspaceUserInvitation[]}
+        users={[
+          {
+            ...member,
+            joinedAt: "2026-09-01T10:00:00.000Z",
+          } as unknown as WorkspaceUser,
+        ]}
+      />,
+    );
+    const row = screen.getByText("Removable Member").closest("tr");
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getByText("Sep 1, 2026")).toBeVisible();
+    expect(within(row as HTMLElement).queryByText("–")).toBeNull();
+  });
+});

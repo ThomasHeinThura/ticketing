@@ -51,6 +51,7 @@ function RouteComponent() {
   return (
     <div className="max-w-4xl mx-auto">
       <PageTitle title={t("estimates.pageTitle")} />
+      <h1 className="sr-only">{t("estimates.pageTitle")}</h1>
       <EstimateSettings
         projectKey={project.slug}
         canManage={canManageProjectSettings()}

@@ -313,7 +313,7 @@ function PortalSubmissionContent() {
     return "name" in author ? author.name : t(`portal:${author.key}`);
   };
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-semibold text-2xl">
@@ -854,7 +854,7 @@ function PortalSubmissionContent() {
           if (!open) setPreviewAttachment(undefined);
         }}
       />
-    </main>
+    </div>
   );
 }
 

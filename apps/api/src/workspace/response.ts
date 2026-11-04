@@ -14,6 +14,9 @@ export const workspaceMemberSchema = z
       description:
         "The member's workspace role: a built-in role (owner, admin, member, guest) or a custom role name.",
     }),
+    joinedAt: responseTimestamp.openapi({
+      description: "When the member joined this workspace.",
+    }),
   })
   .openapi("WorkspaceMember");
 
