@@ -47,14 +47,18 @@ export function TaskPropertiesPresentation({
   );
 }
 
-/** Original title typography with wrapping for long persisted titles. */
+/**
+ * Original title typography with wrapping for long persisted titles. Idle it stays Kaneo's
+ * borderless title; while the field has keyboard-visible focus the wrapper shows the same ring
+ * the library's buttons use, so the edit state is visible (WCAG 2.4.7).
+ */
 export function TaskTitlePresentation(props: TextareaProps) {
   return (
     <Textarea
       {...props}
       unstyled
       rows={1}
-      className="block w-full [&_textarea]:min-h-0 [&_textarea]:resize-none [&_textarea]:border-0 [&_textarea]:bg-transparent [&_textarea]:p-0 [&_textarea]:font-heading [&_textarea]:font-semibold [&_textarea]:text-[2rem] [&_textarea]:text-foreground [&_textarea]:leading-[1.15] [&_textarea]:tracking-[-0.02em] [&_textarea]:outline-none"
+      className="block w-full rounded-md ring-offset-background transition-shadow has-focus-visible:ring-2 has-focus-visible:ring-ring has-focus-visible:ring-offset-2 [&_textarea]:min-h-0 [&_textarea]:resize-none [&_textarea]:border-0 [&_textarea]:bg-transparent [&_textarea]:p-0 [&_textarea]:font-heading [&_textarea]:font-semibold [&_textarea]:text-[2rem] [&_textarea]:text-foreground [&_textarea]:leading-[1.15] [&_textarea]:tracking-[-0.02em] [&_textarea]:outline-none"
     />
   );
 }

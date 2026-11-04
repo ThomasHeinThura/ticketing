@@ -415,11 +415,16 @@ export async function listWorkItemActivity(
             workItemId: item.id,
           })
         : null;
+      // Comment authors and person actors of activity rows resolve through the same lookup,
+      // under the same viewer gate: a reader of the item sees who acted on it, including a
+      // portal customer who is in neither the mention candidates nor the workspace members.
       const authors = options.viewer
-        ? await resolveCommentAuthorProfiles(
-            tx,
-            commentRows.map((row) => row.authorId),
-          )
+        ? await resolveCommentAuthorProfiles(tx, [
+            ...commentRows.map((row) => row.authorId),
+            ...activityRows
+              .filter((row) => row.actorType === "person")
+              .map((row) => row.actorId),
+          ])
         : new Map<
             string,
             { personId: string; displayName: string | null } | null
@@ -439,9 +444,19 @@ export async function listWorkItemActivity(
           actorDisplayName: profile?.displayName ?? null,
         };
       };
+      // Additive: only a person actor gets a resolved profile; system/agent rows are unchanged.
+      const activityActor = (row: (typeof activityRows)[number]) => {
+        if (!options.viewer || row.actorType !== "person") return {};
+        const profile = row.actorId ? authors.get(row.actorId) : null;
+        return {
+          actorPersonId: profile?.personId ?? null,
+          actorDisplayName: profile?.displayName ?? null,
+        };
+      };
       const merged: ActivityStreamRow[] = [
         ...activityRows.map((row) => ({
           ...row,
+          ...activityActor(row),
           kind: "activity" as const,
           body: null,
           activityId: null,

@@ -406,12 +406,9 @@ async function collectCreateInteraction(page: Page, resetFixture: () => void) {
   await page.getByTestId("create-work-item-trigger").click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await captureScreen(page, "create-dialog");
-  // The type is a Kaneo picker popover, not a select.
+  // The type is a library radio menu, not a select.
   await page.getByRole("dialog").getByRole("button", { name: "Type" }).click();
-  await page
-    .locator('[data-slot="popover-popup"]')
-    .getByRole("button", { name: "Task", exact: true })
-    .click();
+  await page.getByRole("menuitemradio", { name: "Task", exact: true }).click();
   await page
     .getByLabel("Title", { exact: true })
     .fill("G11 interaction sample");
@@ -593,8 +590,8 @@ async function collectTaskStateChange(page: Page) {
   await captureScreen(page, "work-item-state");
   await page.getByTestId("work-item-state-control").click();
   await page
-    .locator('[data-slot="popover-popup"]')
-    .getByRole("button", { name: /^In progress/ })
+    .locator('[data-slot="menu-popup"]')
+    .getByRole("menuitem", { name: /^In progress/ })
     .click();
   await page.waitForFunction(
     () => (window as G11Window).__g11Metrics.statePaint > 0,

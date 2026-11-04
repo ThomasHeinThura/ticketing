@@ -15214,6 +15214,9 @@
 						"requester": {
 							"type": "string"
 						},
+						"requesterValue": {
+							"type": "string"
+						},
 						"noRequester": {
 							"type": "string"
 						},
@@ -15251,6 +15254,7 @@
 						"unsaved",
 						"agile",
 						"requester",
+						"requesterValue",
 						"noRequester",
 						"requesterSearch",
 						"noRequesterMatch",

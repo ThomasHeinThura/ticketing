@@ -3681,6 +3681,7 @@
 			"importedOn": "Imported {{date}}",
 			"openSource": "Open the original in {{system}}",
 			"requester": "Барател",
+			"requesterValue": "Requester: {{name}}",
 			"noRequester": "Нема барател",
 			"requesterSearch": "Пребарај клиенти",
 			"noRequesterMatch": "Ниеден клиент не одговара.",
