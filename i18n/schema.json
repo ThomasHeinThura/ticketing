@@ -26574,6 +26574,9 @@
 							},
 							"required": ["off", "hourly", "daily"]
 						},
+						"save": {
+							"type": "string"
+						},
 						"saved": {
 							"type": "string"
 						},
@@ -26587,6 +26590,7 @@
 						"enabled",
 						"digest",
 						"digestCadence",
+						"save",
 						"saved",
 						"saveFailed"
 					]

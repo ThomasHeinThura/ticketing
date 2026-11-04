@@ -5803,6 +5803,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "保存团队通知偏好设置",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

@@ -5824,6 +5824,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "टीम सूचना प्राथमिकताएँ सहेजें",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

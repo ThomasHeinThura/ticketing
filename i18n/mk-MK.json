@@ -5824,6 +5824,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Зачувај ги поставките за тимски известувања",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},
