@@ -6,13 +6,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@taskdesk/ui";
-import { CalendarIcon, Check, UserIcon } from "lucide-react";
+import { CalendarIcon, UserIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
 import {
   CREATE_TASK_PROPERTY_BUTTON_CLASS,
-  CREATE_TASK_PROPERTY_OPTION_CLASS,
   CreateTaskPropertyRow,
 } from "@/components/shared/modals/create-task-presentation";
 import { cn } from "@/lib/cn";
@@ -22,6 +21,7 @@ import { resolveLabelColor } from "@/lib/label-color";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import CreateWorkItemLabelPicker from "./create-work-item-label-picker";
 import CreateWorkItemRequesterPicker from "./create-work-item-requester-picker";
+import { PropertyRadioMenu } from "./property-radio-menu";
 import type {
   CreateWorkItemLabel,
   CreateWorkItemOptions,
@@ -170,8 +170,43 @@ export default function CreateWorkItemProperties(props: Props) {
         {props.typeControl}
         {dateChip("startDate", props.startDate, props.onStartDateChange)}
         {props.priorityControl}
-        <Popover>
-          <PopoverTrigger asChild>
+        <PropertyRadioMenu
+          value={assigneeId}
+          onValueChange={props.onAssigneeChange}
+          contentClassName="w-56"
+          options={[
+            {
+              value: "",
+              label: t("common:modals.createTask.assignUnassigned"),
+              disabled,
+              content: (
+                <>
+                  <UserIcon className="w-3.5 h-3.5" />
+                  <span className="truncate">
+                    {t("common:modals.createTask.assignUnassigned")}
+                  </span>
+                </>
+              ),
+            },
+            ...options.people.map((person) => ({
+              value: person.personId,
+              label: person.name ?? t("workItems:journey.unnamedPerson"),
+              disabled,
+              content: (
+                <>
+                  <Avatar className="h-6 w-6" aria-hidden="true">
+                    <AvatarFallback className="text-xs font-medium border border-border/30">
+                      {getInitials(person.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm truncate">
+                    {person.name ?? t("workItems:journey.unnamedPerson")}
+                  </span>
+                </>
+              ),
+            })),
+          ]}
+          trigger={
             <Button
               type="button"
               variant="ghost"
@@ -209,48 +244,8 @@ export default function CreateWorkItemProperties(props: Props) {
                 </>
               )}
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-48 p-1" align="start">
-            <div className="space-y-1">
-              <Button
-                type="button"
-                variant="ghost"
-                className={CREATE_TASK_PROPERTY_OPTION_CLASS}
-                disabled={disabled}
-                onClick={() => props.onAssigneeChange("")}
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                {t("common:modals.createTask.assignUnassigned")}
-                {!assigneeId ? <Check className="ml-auto h-4 w-4" /> : null}
-              </Button>
-              {options.people.map((person) => (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  key={person.personId}
-                  aria-label={
-                    person.name ?? t("workItems:journey.unnamedPerson")
-                  }
-                  className={CREATE_TASK_PROPERTY_OPTION_CLASS}
-                  disabled={disabled}
-                  onClick={() => props.onAssigneeChange(person.personId)}
-                >
-                  <Avatar className="h-6 w-6">
-                    <AvatarFallback className="text-xs font-medium border border-border/30">
-                      {getInitials(person.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm truncate">
-                    {person.name ?? t("workItems:journey.unnamedPerson")}
-                  </span>
-                  {person.personId === assigneeId ? (
-                    <Check className="ml-auto h-4 w-4" />
-                  ) : null}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+          }
+        />
         <CreateWorkItemRequesterPicker
           projectId={props.projectId}
           requesterId={props.requesterId}

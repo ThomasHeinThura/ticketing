@@ -69,11 +69,14 @@ describe("TaskStatusPopover", () => {
       </TaskStatusPopover>,
     );
 
-    expect(screen.queryByRole("button", { name: /Ready/ })).toBeNull();
+    expect(screen.queryByRole("menuitemradio", { name: /Ready/ })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Status" }));
 
-    expect(await screen.findByRole("button", { name: /Ready/ })).toBeVisible();
+    // A radio menu: arrow keys move between statuses and the current one is checked.
+    const ready = await screen.findByRole("menuitemradio", { name: "Ready" });
+    expect(ready).toBeVisible();
+    expect(ready).toHaveAttribute("aria-checked", "true");
   });
 
   it("shows loading feedback while status options are loading", async () => {

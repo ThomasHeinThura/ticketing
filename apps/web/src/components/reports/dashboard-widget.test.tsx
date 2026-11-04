@@ -184,6 +184,35 @@ describe("a dashboard widget (RP-13)", () => {
     expect(screen.getByText("reports:notEnoughData 3/10")).toBeTruthy();
   });
 
+  it("words a missing number as body copy under its name, never at KPI size (fit rule, 3 Nov)", () => {
+    show(
+      {
+        ...base,
+        metrics: [
+          {
+            key: "attainment",
+            label: "Attainment",
+            unit: "percent",
+            value: null,
+            n: 1,
+            needed: 10,
+          },
+        ],
+      },
+      "number",
+    );
+    const sentence = screen.getByText("reports:notEnoughData 1/10");
+    expect(sentence.className).not.toMatch(/text-(2|3)xl/);
+    expect(sentence.className).toContain("text-sm");
+    const label = screen.getByText("Attainment");
+    expect(label.className).not.toMatch(/text-(2|3)xl/);
+    // The name comes first, so a frame too short for both still shows what the tile is.
+    expect(
+      label.compareDocumentPosition(sentence) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("gives a chart widget its table equivalent (RP-11)", () => {
     const { container } = show(base, "bar");
     expect(container.querySelector('svg[role="img"]')).not.toBeNull();

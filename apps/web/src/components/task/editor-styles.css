@@ -715,7 +715,8 @@
 
   .taskdesk-attachment-card-meta {
     margin-top: 0.18rem;
-    color: color-mix(in srgb, var(--foreground) 58%, transparent);
+    /* The contrast-gated muted token: a 58% foreground mix measured 3.9:1 on the card. */
+    color: var(--muted-foreground);
     font-size: 0.76rem;
     line-height: 1.2;
     white-space: nowrap;

@@ -192,7 +192,14 @@ export function ReportMetrics({
                   defaultValue: metric.label,
                 })}
               </dt>
-              <dd className="font-semibold text-2xl tabular-nums">
+              {/* RP-1's "Not enough data" is a sentence, not a figure: body size. */}
+              <dd
+                className={
+                  metric.value === null
+                    ? "text-muted-foreground text-sm"
+                    : "font-semibold text-2xl tabular-nums"
+                }
+              >
                 {empty && metric.value === 0 ? "—" : metricText(metric, t)}
               </dd>
             </dl>

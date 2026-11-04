@@ -96,6 +96,7 @@ import {
 } from "./dashboard-grid";
 import { DashboardWidgetCard } from "./dashboard-widget";
 import { ReportError } from "./report-detail";
+import { ReportsFeatureGate } from "./reports-feature-gate";
 
 type Draft = DashboardWidget;
 let draftCounter = 0;
@@ -862,7 +863,17 @@ function EditorBody({
  * widgets, then save the whole layout in one go (`RP-15`). Workspace dashboards need
  * `workspace:manage_settings`; anyone else can copy one to their own.
  */
-export function DashboardEditor({ search }: { search: DashboardSearch }) {
+export function DashboardEditor(props: { search: DashboardSearch }) {
+  const { t } = useTranslation();
+  return (
+    <ReportsFeatureGate title={t("reports:editor.title")}>
+      <DashboardEditorScreen {...props} />
+    </ReportsFeatureGate>
+  );
+}
+
+// Rendered once `feature.reports` is on, or its read failed and the APIs answer (the gate).
+function DashboardEditorScreen({ search }: { search: DashboardSearch }) {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";

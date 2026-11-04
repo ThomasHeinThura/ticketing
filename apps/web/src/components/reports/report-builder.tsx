@@ -32,6 +32,7 @@ import {
   useReportCatalogue,
 } from "@/hooks/queries/report";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import type { ReportBuilderSearch } from "@/lib/report-search";
 import { routes } from "@/lib/routes";
 import { savedViewKeys } from "@/lib/saved-view-keys";
@@ -46,6 +47,7 @@ import {
   ReportNotes,
   ReportVisual,
 } from "./report-view";
+import { ReportsFeatureGate } from "./reports-feature-gate";
 
 type Entity = CustomQueryInput["entity"];
 type ChartType = "bar" | "line" | "table" | "number";
@@ -102,7 +104,17 @@ function Pick({
  * choose a chart, with a live preview. A saved result is a saved view with the `chart` layout:
  * one endpoint saves every report, not one per tier.
  */
-export function ReportBuilder({ search }: { search: ReportBuilderSearch }) {
+export function ReportBuilder(props: { search: ReportBuilderSearch }) {
+  const { t } = useTranslation();
+  return (
+    <ReportsFeatureGate title={t("reports:builder.title")}>
+      <ReportBuilderScreen {...props} />
+    </ReportsFeatureGate>
+  );
+}
+
+// Rendered once `feature.reports` is on, or its read failed and the APIs answer (the gate).
+function ReportBuilderScreen({ search }: { search: ReportBuilderSearch }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -110,6 +122,13 @@ export function ReportBuilder({ search }: { search: ReportBuilderSearch }) {
   const { data: workspace } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
   const fields = useCustomFields(workspaceId);
+  const permissions = useWorkspacePermission();
+  // `POST`/`PATCH /api/views` need saved_view:create; a team audience needs saved_view:share and
+  // a workspace one workspace:manage_settings (SV-15, SV-18). A role without them still runs and
+  // previews reports (report:read); it is never offered a save the server would refuse.
+  const canSave = permissions.canCreateSavedViews();
+  const canShare = permissions.canShareSavedViews();
+  const canShareWorkspace = permissions.canManageWorkspaceSettings();
   const [name, setName] = useState("");
   const [entity, setEntity] = useState<Entity>("work_item");
   const [groupBy, setGroupBy] = useState("priority");
@@ -128,7 +147,7 @@ export function ReportBuilder({ search }: { search: ReportBuilderSearch }) {
   const teams = useQuery({
     queryKey: savedViewKeys.teamAudiences(workspaceId, user?.id),
     queryFn: () => getShareableViewTeams(workspaceId),
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId) && canShare && visibility === "team",
   });
 
   // A saved report opens with its own definition, once.
@@ -232,6 +251,18 @@ export function ReportBuilder({ search }: { search: ReportBuilderSearch }) {
     onError: (error) => toast.error(error.message),
   });
   const timeOnly = entity === "time_entry";
+  // A stored audience the caller may not grant stays listed, so an opened report shows its own.
+  const visibilityOptions = (["private", "team", "workspace"] as const)
+    .filter(
+      (candidate) =>
+        candidate === "private" ||
+        candidate === visibility ||
+        (candidate === "team" ? canShare : canShareWorkspace),
+    )
+    .map((candidate) => ({
+      value: candidate,
+      label: t(`reports:builder.visibilities.${candidate}`),
+    }));
   return (
     <>
       <PageTitle title={t("reports:builder.title")} />
@@ -420,65 +451,58 @@ export function ReportBuilder({ search }: { search: ReportBuilderSearch }) {
             onClose={() => setDrilling(null)}
           />
         ) : null}
-        <Card>
-          <CardContent className="flex flex-wrap items-end gap-4 p-4">
-            <Pick
-              id="builder-visibility"
-              label={t("reports:builder.visibility")}
-              value={visibility}
-              options={[
-                {
-                  value: "private",
-                  label: t("reports:builder.visibilities.private"),
-                },
-                {
-                  value: "team",
-                  label: t("reports:builder.visibilities.team"),
-                },
-                {
-                  value: "workspace",
-                  label: t("reports:builder.visibilities.workspace"),
-                },
-              ]}
-              onChange={(next) =>
-                setVisibility(
-                  next === "team" || next === "workspace" ? next : "private",
-                )
-              }
-            />
-            {visibility === "team" ? (
+        {permissions.isCheckingPermissions ? null : canSave ? (
+          <Card>
+            <CardContent className="flex flex-wrap items-end gap-4 p-4">
               <Pick
-                id="builder-team"
-                label={t("reports:builder.team")}
-                value={teamId}
-                options={(teams.data ?? []).map((team) => ({
-                  value: team.id,
-                  label: team.name,
-                }))}
-                onChange={setTeamId}
+                id="builder-visibility"
+                label={t("reports:builder.visibility")}
+                value={visibility}
+                options={visibilityOptions}
+                onChange={(next) =>
+                  setVisibility(
+                    next === "team" || next === "workspace" ? next : "private",
+                  )
+                }
               />
-            ) : null}
-            <Button
-              disabled={
-                save.isPending ||
-                !name.trim() ||
-                !workspace ||
-                (visibility === "team" && !teamId)
-              }
-              onClick={() => save.mutate()}
-            >
-              <Save aria-hidden="true" />
-              {search.view
-                ? t("reports:builder.update")
-                : t("reports:builder.save")}
-            </Button>
-            {save.error ? (
-              <Alert variant="error" className="w-full">
-                <AlertDescription>{save.error.message}</AlertDescription>
-              </Alert>
-            ) : null}
-          </CardContent>
-        </Card>
+              {visibility === "team" ? (
+                <Pick
+                  id="builder-team"
+                  label={t("reports:builder.team")}
+                  value={teamId}
+                  options={(teams.data ?? []).map((team) => ({
+                    value: team.id,
+                    label: team.name,
+                  }))}
+                  onChange={setTeamId}
+                />
+              ) : null}
+              <Button
+                disabled={
+                  save.isPending ||
+                  !name.trim() ||
+                  !workspace ||
+                  (visibility === "team" && !teamId)
+                }
+                onClick={() => save.mutate()}
+              >
+                <Save aria-hidden="true" />
+                {search.view
+                  ? t("reports:builder.update")
+                  : t("reports:builder.save")}
+              </Button>
+              {save.error ? (
+                <Alert variant="error" className="w-full">
+                  <AlertDescription>{save.error.message}</AlertDescription>
+                </Alert>
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : (
+          <Alert variant="info" data-testid="report-builder-read-only">
+            <AlertDescription>{t("reports:builder.readOnly")}</AlertDescription>
+          </Alert>
+        )}
       </div>
     </>
   );

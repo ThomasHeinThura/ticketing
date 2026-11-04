@@ -18,7 +18,7 @@ import type { ReportSearch } from "@/lib/report-search";
 import { routes } from "@/lib/routes";
 import { ReportDrillDialog } from "./report-drill";
 import { useExportAction } from "./report-export";
-import { ReportFilters } from "./report-filters";
+import { ReportFilters, reportOrganisationChoices } from "./report-filters";
 import {
   ReportContextLine,
   ReportEmpty,
@@ -26,6 +26,7 @@ import {
   ReportNotes,
   ReportVisual,
 } from "./report-view";
+import { ReportsFeatureGate } from "./reports-feature-gate";
 
 /** Why a report did not load, in words: the feature is off, it is not yours, or the window is bad. */
 export function ReportError({ error }: { error: unknown }) {
@@ -52,7 +53,25 @@ export function ReportError({ error }: { error: unknown }) {
 }
 
 /** `docs/screens.md` "Report detail": filters, chart, table, drill-down and export. */
-export function ReportDetail({
+export function ReportDetail(props: {
+  reportKey: string;
+  search: ReportSearch;
+  onSearchChange: (next: ReportSearch) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ReportsFeatureGate
+      title={t(`reports:catalogue.${props.reportKey}.title`, {
+        defaultValue: props.reportKey,
+      })}
+    >
+      <ReportDetailScreen {...props} />
+    </ReportsFeatureGate>
+  );
+}
+
+// Rendered once `feature.reports` is on, or its read failed and the APIs answer (the gate).
+function ReportDetailScreen({
   reportKey,
   search,
   onSearchChange,
@@ -122,6 +141,7 @@ export function ReportDetail({
           onChange={onSearchChange}
           live={report.data?.window.live ?? entry?.live ?? false}
           choices={report.data?.choices ?? []}
+          organisations={reportOrganisationChoices(report.data)}
         />
         {report.isLoading || !workspace ? (
           <Skeleton className="h-48 w-full" />

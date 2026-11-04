@@ -316,6 +316,18 @@ describe("AT-7 attachment recovery", () => {
       await screen.findByRole("link", { name: "Proof.pdf" }),
     ).toBeInTheDocument();
   });
+  it("offers no Recently deleted view to a caller without attachment rights, such as a viewer", async () => {
+    mocks.canAttach.value = false;
+    mocks.list.mockResolvedValue([row]);
+    mount("workspace-1");
+    expect(await screen.findByText("Proof.pdf")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "workItems:detail.attachments.recoverDeleted",
+      }),
+    ).toBeNull();
+    expect(mocks.list).not.toHaveBeenCalledWith("HELP-4", "recoverable");
+  });
   it("keeps recoverable rows without current restore authority non-interactive", async () => {
     mocks.list.mockImplementation((_key: string, lifecycle?: string) =>
       Promise.resolve(

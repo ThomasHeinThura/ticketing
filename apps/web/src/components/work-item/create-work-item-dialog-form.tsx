@@ -4,12 +4,9 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Skeleton,
 } from "@taskdesk/ui";
-import { Check, Layers, TriangleAlert } from "lucide-react";
+import { Layers, TriangleAlert } from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -21,7 +18,6 @@ import {
 import { useTranslation } from "react-i18next";
 import {
   CREATE_TASK_PROPERTY_BUTTON_CLASS,
-  CREATE_TASK_PROPERTY_OPTION_CLASS,
   CreateTaskBody,
   CreateTaskFooter,
   CreateTaskTitleInput,
@@ -48,6 +44,7 @@ import CreateWorkItemProperties from "./create-work-item-properties";
 import CreateWorkItemStagedAttachments from "./create-work-item-staged-attachments";
 import CreateWorkItemTemplatePicker from "./create-work-item-template-picker";
 import { moveCreatedWorkItemToState } from "./move-created-work-item";
+import { PropertyRadioMenu } from "./property-radio-menu";
 import { useCreateWorkItemAttachments } from "./use-create-work-item-attachments";
 import {
   type CreateWorkItemLabel,
@@ -109,8 +106,6 @@ export default function CreateWorkItemDialogForm({
     Record<string, unknown>
   >({});
   const [createMore, setCreateMore] = useState(false);
-  const [typeOpen, setTypeOpen] = useState(false);
-  const [priorityOpen, setPriorityOpen] = useState(false);
   const [submitError, setSubmitError] = useState<SubmitError | null>(null);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
@@ -447,8 +442,21 @@ export default function CreateWorkItemDialogForm({
                   );
                 }}
               />
-              <Popover open={typeOpen} onOpenChange={setTypeOpen}>
-                <PopoverTrigger asChild>
+              <PropertyRadioMenu
+                value={typeId ?? ""}
+                onValueChange={(next) => {
+                  // A template is bound to its type; choosing another type drops it.
+                  if (next !== typeId) setTemplateId(null);
+                  setTypeId(next);
+                }}
+                options={(types ?? []).map((type) => ({
+                  value: type.id,
+                  label: type.name,
+                  content: (
+                    <span className="truncate text-sm">{type.name}</span>
+                  ),
+                }))}
+                trigger={
                   <Button
                     type="button"
                     variant="ghost"
@@ -470,36 +478,34 @@ export default function CreateWorkItemDialogForm({
                           : t("workItems:create.typePlaceholder"))}
                     </span>
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-1" align="start">
-                  <div className="space-y-1">
-                    {(types ?? []).map((type) => (
-                      <Button
-                        key={type.id}
-                        type="button"
-                        variant="ghost"
-                        className={CREATE_TASK_PROPERTY_OPTION_CLASS}
-                        onClick={() => {
-                          setTypeId(type.id);
-                          // A template is bound to its type; choosing another type drops it.
-                          if (type.id !== typeId) setTemplateId(null);
-                          setTypeOpen(false);
-                        }}
-                      >
-                        <span className="text-sm truncate">{type.name}</span>
-                        {typeId === type.id ? (
-                          <Check className="ml-auto h-4 w-4 shrink-0" />
-                        ) : null}
-                      </Button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                }
+              />
             </>
           }
           priorityControl={
-            <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
-              <PopoverTrigger asChild>
+            <PropertyRadioMenu
+              value={priority}
+              onValueChange={(next) =>
+                setPriority(next as Priority | typeof NO_PRIORITY)
+              }
+              options={[NO_PRIORITY, ...PRIORITY_OPTIONS].map((value) => ({
+                value,
+                label:
+                  value === NO_PRIORITY
+                    ? t("workItems:create.priorityNone")
+                    : t(`workItems:list.priority.${value}`),
+                content: (
+                  <>
+                    {getPriorityIcon(value)}
+                    <span>
+                      {value === NO_PRIORITY
+                        ? t("workItems:create.priorityNone")
+                        : t(`workItems:list.priority.${value}`)}
+                    </span>
+                  </>
+                ),
+              }))}
+              trigger={
                 <Button
                   type="button"
                   variant="ghost"
@@ -516,34 +522,8 @@ export default function CreateWorkItemDialogForm({
                   {getPriorityIcon(priority)}
                   <span>{priorityLabel}</span>
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-1" align="start">
-                <div className="space-y-1">
-                  {[NO_PRIORITY, ...PRIORITY_OPTIONS].map((value) => (
-                    <Button
-                      key={value}
-                      type="button"
-                      variant="ghost"
-                      className={CREATE_TASK_PROPERTY_OPTION_CLASS}
-                      onClick={() => {
-                        setPriority(value as Priority | typeof NO_PRIORITY);
-                        setPriorityOpen(false);
-                      }}
-                    >
-                      {getPriorityIcon(value)}
-                      <span>
-                        {value === NO_PRIORITY
-                          ? t("workItems:create.priorityNone")
-                          : t(`workItems:list.priority.${value}`)}
-                      </span>
-                      {priority === value ? (
-                        <Check className="ml-auto h-4 w-4" />
-                      ) : null}
-                    </Button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+              }
+            />
           }
           startDate={startDate}
           dueDate={dueDate}

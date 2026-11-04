@@ -877,8 +877,8 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17") ??
         "null",
     ) as { text?: string; document?: unknown } | null;
-    expect(saved?.text).toBe("");
-    expect(JSON.stringify(saved?.document)).not.toContain("person-mention");
+    // CA-2: a cleared composer keeps no stored draft, so nothing is restored on reload.
+    expect(saved).toBeNull();
   });
 
   it("does not claim the timeline is empty while it failed to load", () => {
@@ -1367,5 +1367,29 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     expect(screen.getByRole("button", { name: /Unknown/ })).toBeInTheDocument();
     expect(screen.queryByText("Alice")).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+  });
+  it("names a customer's attachment with the server-resolved actor name", () => {
+    mocks.mentionCandidates = [];
+    mocks.rows = [
+      {
+        id: "customer-upload",
+        kind: "activity",
+        actorId: "customer-person",
+        actorPersonId: "customer-person",
+        actorDisplayName: "Katherine Johnson",
+        actorType: "person",
+        createdAt: "2026-10-08T10:00:00.000Z",
+        visibility: "public",
+        verb: "attachment.added",
+        field: null,
+        payload: { attachmentId: "att-1", filename: "invoice.pdf" },
+      },
+    ];
+    renderActivity();
+    expect(
+      screen.getByRole("button", { name: /Katherine Johnson/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("common:people.unknown")).toBeNull();
+    expect(screen.queryByText("Unknown")).toBeNull();
   });
 });

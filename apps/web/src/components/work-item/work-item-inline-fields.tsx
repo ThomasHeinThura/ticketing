@@ -508,6 +508,11 @@ export default function WorkItemInlineFields({
     notOnProject: t("workItems:list.assigneeNotOnProject"),
   });
 
+  const saveTitle = () => {
+    const value = titleDraft.trim();
+    if (canEditTitle && !mutation.isPending && value && value !== item.title)
+      run({ kind: "title", value });
+  };
   const titleEditor = titleEditing ? (
     <div
       ref={titleRef}
@@ -523,8 +528,18 @@ export default function WorkItemInlineFields({
         placeholder={t("workItems:properties.titlePlaceholder")}
         value={titleDraft}
         readOnly={!canEditTitle || mutation.isPending}
-        onChange={(event) => setTitleDraft(event.target.value)}
+        // A title is one line: a pasted line break becomes a space.
+        onChange={(event) =>
+          setTitleDraft(event.target.value.replace(/\r?\n/g, " "))
+        }
         onKeyDown={(event) => {
+          // A title has no line breaks: Enter saves, as the Save button does. An IME
+          // composition's Enter only confirms the composed text.
+          if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+            event.preventDefault();
+            saveTitle();
+            return;
+          }
           if (event.key === "Escape") {
             event.preventDefault();
             if (compactTitle && mutation.isPending) return;
@@ -546,11 +561,7 @@ export default function WorkItemInlineFields({
             !titleDraft.trim() ||
             titleDraft.trim() === item.title
           }
-          onClick={() => {
-            const value = titleDraft.trim();
-            if (canEditTitle && value && value !== item.title)
-              run({ kind: "title", value });
-          }}
+          onClick={saveTitle}
         >
           {t("common:actions.save")}
         </Button>

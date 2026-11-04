@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
-import { Check, Layers, Repeat, Ruler } from "lucide-react";
+import { Button } from "@taskdesk/ui";
+import { Layers, Repeat, Ruler } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { agileFieldsOf } from "@/components/agile/work-item-agile-fields";
@@ -19,6 +19,8 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
 import type { WorkItemDetailRow } from "@/types/work-item";
+import { PropertyRadioMenu } from "./property-radio-menu";
+import { propertyTriggerProps } from "./work-item-property-row";
 import { useRefreshWorkItem } from "./work-item-save";
 
 type Option = { id: string; label: string };
@@ -54,45 +56,37 @@ function PickerRow({
   onChange: (id: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const rowClass = cn(
-    "h-7 justify-start gap-1.5 px-1.5",
-    !compact && "lg:w-full",
-  );
   const trigger = (
-    <Button variant="ghost" size="sm" className={rowClass} data-testid={testId}>
+    <Button
+      variant="ghost"
+      size="sm"
+      {...propertyTriggerProps(canEdit, compact)}
+      data-testid={testId}
+    >
       {icon}
       <span className="truncate font-semibold text-xs">{label}</span>
       {trailing}
     </Button>
   );
   if (!canEdit) return trigger;
+  // A single choice on the library radio menu: arrow keys, typeahead, focus back to the row.
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-56 p-0" align="start">
-        <div className="max-h-64 overflow-y-auto">
-          {[{ id: "", label: noneLabel }, ...options].map((option) => {
-            const selected = (currentId ?? "") === option.id;
-            return (
-              <Button
-                key={option.id || "none"}
-                variant="ghost"
-                size="sm"
-                className="h-8 w-full justify-start gap-2 rounded-none px-2"
-                disabled={busy}
-                onClick={() => {
-                  setOpen(false);
-                  if (!selected) onChange(option.id === "" ? null : option.id);
-                }}
-              >
-                <span className="truncate text-sm">{option.label}</span>
-                {selected ? <Check className="ml-auto size-4" /> : null}
-              </Button>
-            );
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
+    <PropertyRadioMenu
+      open={open}
+      onOpenChange={setOpen}
+      value={currentId ?? ""}
+      onValueChange={(id) => {
+        if (id !== (currentId ?? "")) onChange(id === "" ? null : id);
+      }}
+      contentClassName="w-56"
+      trigger={trigger}
+      options={[{ id: "", label: noneLabel }, ...options].map((option) => ({
+        value: option.id,
+        label: option.label,
+        disabled: busy,
+        content: <span className="truncate text-sm">{option.label}</span>,
+      }))}
+    />
   );
 }
 

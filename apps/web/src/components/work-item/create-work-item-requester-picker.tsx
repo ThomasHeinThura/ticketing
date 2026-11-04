@@ -101,7 +101,10 @@ export default function CreateWorkItemRequesterPicker({
               variant="ghost"
               key={person.personId}
               aria-label={label(person)}
-              className={CREATE_TASK_PROPERTY_OPTION_CLASS}
+              className={cn(
+                CREATE_TASK_PROPERTY_OPTION_CLASS,
+                "h-auto min-h-8 overflow-hidden",
+              )}
               disabled={disabled}
               onClick={() => onChange(person.personId)}
             >
@@ -110,7 +113,7 @@ export default function CreateWorkItemRequesterPicker({
                   {getInitials(label(person))}
                 </AvatarFallback>
               </Avatar>
-              <span className="flex min-w-0 flex-col items-start">
+              <span className="flex min-w-0 flex-1 flex-col items-stretch text-left">
                 <span className="truncate text-sm">{label(person)}</span>
                 {person.name && person.email ? (
                   <span className="truncate text-muted-foreground text-xs">
