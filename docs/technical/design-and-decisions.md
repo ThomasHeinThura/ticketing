@@ -3545,7 +3545,7 @@ Each link is signed with a key derived from `TASKDESK_AUTH_SECRET` (nothing new 
 - for an upload, the size ceiling;
 - an expiry, five minutes after minting (the existing filesystem link lifetime).
 
-The route answers only on the portal host, and the portal session must belong to that same person. A link cannot be replayed for another key, by another person or after expiry. An agent-signed link for a work-item key is refused on the portal host. Agent-host behaviour is unchanged. On S3 the links point at the bucket.
+The route answers only on the portal host, and the portal session must belong to that same person. A link cannot be replayed for another key, by another person or after expiry. An agent-signed link for a work-item key is refused on the portal host. Staff work-item uploads and downloads retain their agent-host routes. On S3 the links point at the bucket.
 
 **Submission files are bound too (CP-19, AT-5; Thomas approved 3 November 2026).** A portal download of a submission's own file (a form-field file the customer attached before acceptance) uses the same person-bound `GET /api/storage/portal-download` link, minted only by the portal `own_submission` download route after its own check. No portal download is a bearer link any more:
 - The generic `GET /api/storage/filesystem-download` is refused on the portal host for every key, so an older unbound link for a submission file stops working there.

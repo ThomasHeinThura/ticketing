@@ -248,7 +248,8 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   (upload) and a five-minute expiry, and the portal session must be that person. The generic
   `GET /api/storage/filesystem-download` is refused on the portal host for every key, so an
   unbound download link never works there, and the agent host does not serve the portal routes.
-  Staff keep the generic signed routes for their work-item uploads and downloads on the agent host. Every
+  Staff keep the generic signed routes for work-item uploads and for work-item and submission
+  downloads on the agent host. Every
   websocket upgrade on the portal host remains denied until its own reviewed policy exists.
   A syntactically valid unknown Host is accepted only for these exact `GET`/`HEAD` health
   requests, preserving loopback Docker and deploy readiness probes; malformed, missing,
