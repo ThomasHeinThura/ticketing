@@ -3562,6 +3562,18 @@ The route answers only on the portal host, and the portal session must belong to
 
 The portal then lists the item as that customer's own request, under the existing case-list rules.
 
+## Custom workspace role reach — 4 November 2026
+
+Thomas decided on 4 November 2026: a custom workspace role reaches its workspace exactly as its canonical role row grants. This is the rule #1035 applied to lead and manager.
+
+The SQL workspace reach check (`currentWorkspaceReachPredicate`) follows `resolveIdentity`'s order for a person's `workspace_member.role` key:
+
+- `owner` needs no role row.
+- The canonical workspace-scope `role` row for that workspace and key decides when it exists, whether system or custom. It must have a 32-bit rank and an array of string capabilities. A built-in key counts only through its system row.
+- The legacy `workspace_role` system row backs a built-in key (viewer, member, admin) only when no canonical row exists. A custom key never falls back to it, and `instance_admin` or `customer` is never a workspace role.
+
+Nothing widens beyond `resolveIdentity`. A role row in another workspace grants nothing. Customers never reach a workspace, and instance-admin reach is unchanged. Capability checks still apply: a custom role without `intake:triage` cannot open submissions.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.
