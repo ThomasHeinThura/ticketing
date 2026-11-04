@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
@@ -13,8 +13,6 @@ const PORTAL_DIST = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../dist/portal",
 );
-/** Optional folder for the screenshots a reviewer reads (the PR's browser evidence). */
-const EVIDENCE_DIR = process.env.PORTAL_EVIDENCE_DIR;
 
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -519,11 +517,10 @@ async function mountPortal(page: Page) {
   return fixture;
 }
 
+/** The screenshots a reviewer reads (the PR's browser evidence), in the test's output folder. */
 async function evidence(page: Page, name: string) {
-  if (!EVIDENCE_DIR) return;
-  mkdirSync(EVIDENCE_DIR, { recursive: true });
   await page.screenshot({
-    path: path.join(EVIDENCE_DIR, `${name}.png`),
+    path: test.info().outputPath(`${name}.png`),
     fullPage: true,
   });
 }

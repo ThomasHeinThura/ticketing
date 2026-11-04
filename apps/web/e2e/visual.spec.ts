@@ -6926,6 +6926,11 @@ test("portal catalogue selected form @visual", async ({ page }) => {
   // The lazy shell is ready: navigation and the top bar have both painted.
   await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
   await expect(page.getByText("Get help", { exact: true })).toBeVisible();
+  // The fixture lists two projects, so the lazy top-bar project selector (named by its
+  // aria-label) shows; wait for it so the screenshot never races its projects read.
+  await expect(
+    page.getByRole("button", { name: "Project", exact: true }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("portal-catalogue-selected-form.png", {
     animations: "disabled",
     caret: "hide",
