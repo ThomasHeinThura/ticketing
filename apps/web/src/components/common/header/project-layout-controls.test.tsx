@@ -1,6 +1,6 @@
 import { Button } from "@taskdesk/ui";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 import ProjectLayoutControls, {
   projectViewFromPath,
@@ -17,6 +17,7 @@ const featureState = vi.hoisted(() => ({
   calendar: true,
   timeline: true,
 }));
+const viewportState = vi.hoisted(() => ({ width: 1440 }));
 const routerState = vi.hoisted(() => ({
   pathname: "/agent/projects/ENG/work",
   searchStr: "?q=urgent",
@@ -47,7 +48,10 @@ vi.mock("react-i18next", () => ({
 vi.mock("@taskdesk/ui", async () => {
   const actual =
     await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
-  return { ...actual, useIsMobile: () => false };
+  return {
+    ...actual,
+    useIsMobile: (breakpoint = 768) => viewportState.width < breakpoint,
+  };
 });
 
 vi.mock("@/hooks/use-workspace-permission", () => ({
@@ -118,7 +122,12 @@ const props = {
   onAddProject: vi.fn(),
 };
 
+vi.mock("@/components/common/header/mobile-project-nav", () => ({
+  default: () => <div data-testid="mobile-project-nav" />,
+}));
+
 beforeEach(() => {
+  viewportState.width = 1440;
   routerState.pathname = "/agent/projects/ENG/work";
   routerState.searchStr = "?q=urgent";
   routerState.navigate.mockReset();
@@ -354,5 +363,162 @@ describe("ProjectLayoutControls permissions", () => {
     expect(projectViewFromPath("/dashboard/workspace/w/project/p/gantt")).toBe(
       "gantt",
     );
+  });
+});
+
+describe("ProjectLayoutControls tab strip overflow", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Lays the strip out at `frameWidth` px with every tab `tabWidth` px wide. */
+  function layOutStrip(frameWidth: number, tabWidth = 100) {
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: HTMLElement) {
+        if (this.dataset.slot === "scroll-area-viewport")
+          return DOMRect.fromRect({
+            x: 0,
+            y: 0,
+            width: frameWidth,
+            height: 32,
+          });
+        const view = this.dataset.projectView;
+        if (view) {
+          const tabs = [
+            ...(this.parentElement?.querySelectorAll<HTMLElement>(
+              "[data-project-view]",
+            ) ?? []),
+          ];
+          const index = tabs.indexOf(this);
+          return DOMRect.fromRect({
+            x: index * tabWidth,
+            y: 0,
+            width: tabWidth,
+            height: 24,
+          });
+        }
+        return original.call(this);
+      },
+    );
+  }
+
+  it("lists the tabs that do not fit in a More menu and navigates from it", async () => {
+    featureState.cycles = false;
+    featureState.modules = false;
+    featureState.pages = false;
+    layOutStrip(450);
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+
+    const more = await screen.findByRole("button", {
+      name: "More Project views",
+    });
+    expect(more).toHaveTextContent("More");
+    fireEvent.click(more);
+    const items = await screen.findAllByRole("menuitem");
+    // Overview, Backlog, Work items and Calendar fit; the rest are listed.
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Timeline",
+      "Prerequisites",
+      "Team",
+      "Documents",
+    ]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Documents" }));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/agent/projects/ENG/documents",
+    });
+    // Every tab stays in the strip, so the menu never changes its width.
+    expect(
+      screen.getByRole("button", { name: "Documents" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the strip's slot at least as wide as the widest tab plus both fade margins", async () => {
+    layOutStrip(450, 120);
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+    const more = await screen.findByRole("button", {
+      name: "More Project views",
+    });
+    const strip = screen.getByLabelText(
+      translate("navigation:projectViews.workItems"),
+    );
+    // jsdom reorders the calc() terms, so each term is checked on its own.
+    const minWidth = strip.parentElement?.style.minWidth ?? "";
+    expect(minWidth).toMatch(/^calc\(/);
+    expect(minWidth).toContain("120px");
+    expect(minWidth).toContain("3rem");
+    expect(minWidth).toContain("2px");
+    // The "More" menu sits beside the slot, so its room is never taken from the strip.
+    expect(strip.parentElement?.contains(more)).toBe(false);
+  });
+
+  it("shows no More menu when every tab fits", () => {
+    layOutStrip(2000);
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+    expect(
+      screen.queryByRole("button", { name: "More Project views" }),
+    ).toBeNull();
+  });
+
+  it("scrolls the strip sideways with a vertical wheel until it reaches an end", () => {
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+    const viewport = screen
+      .getByRole("button", { name: "Overview" })
+      .closest<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!viewport) throw new Error("no strip viewport");
+    Object.defineProperty(viewport, "scrollWidth", { value: 900 });
+    Object.defineProperty(viewport, "clientWidth", { value: 300 });
+
+    const down = new WheelEvent("wheel", {
+      deltaY: 120,
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      viewport.dispatchEvent(down);
+    });
+    expect(viewport.scrollLeft).toBe(120);
+    expect(down.defaultPrevented).toBe(true);
+
+    viewport.scrollLeft = 600;
+    const pastEnd = new WheelEvent("wheel", {
+      deltaY: 120,
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      viewport.dispatchEvent(pastEnd);
+    });
+    expect(pastEnd.defaultPrevented).toBe(false);
+
+    const sideways = new WheelEvent("wheel", {
+      deltaX: 50,
+      deltaY: 10,
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      viewport.dispatchEvent(sideways);
+    });
+    expect(sideways.defaultPrevented).toBe(false);
+  });
+
+  it("swaps the strip for the project menu below lg, including a 768 px tablet", async () => {
+    viewportState.width = 768;
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+    expect(await screen.findByTestId("mobile-project-nav")).toBeInTheDocument();
+    const strip = screen.getByLabelText(
+      translate("navigation:projectViews.workItems"),
+    );
+    // The strip's slot and the "More" menu share one wrapper that is hidden below lg.
+    const stripGroup = strip.parentElement?.parentElement;
+    expect(stripGroup).toHaveClass("hidden", "lg:flex");
+    expect(stripGroup).not.toHaveClass("sm:block");
+  });
+
+  it("keeps the strip and no project menu at lg and wider", () => {
+    viewportState.width = 1024;
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+    expect(screen.queryByTestId("mobile-project-nav")).toBeNull();
   });
 });

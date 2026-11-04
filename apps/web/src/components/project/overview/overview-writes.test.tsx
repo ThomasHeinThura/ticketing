@@ -480,6 +480,16 @@ describe("DocumentsPage writes", () => {
     expect(screen.getByText("documents.emptyDescription")).toBeTruthy();
   });
 
+  it("does not tell a reader without project:update to add documents", async () => {
+    mocks.canUpdate = false;
+    mocks.listDocumentLinks.mockResolvedValue([]);
+    renderWith(<DocumentsPage projectKey="HELP" />);
+    expect(await screen.findByText("documents.emptyTitle")).toBeTruthy();
+    expect(screen.getByText("documents.emptyDescriptionReadOnly")).toBeTruthy();
+    expect(screen.queryByText("documents.emptyDescription")).toBeNull();
+    expect(screen.queryByRole("button", { name: "documents.add" })).toBeNull();
+  });
+
   it("edits an entry with its current values prefilled", async () => {
     mocks.updateDocumentLink.mockResolvedValue({ ...sow, title: "SOW v2" });
     renderWith(<DocumentsPage projectKey="HELP" />);

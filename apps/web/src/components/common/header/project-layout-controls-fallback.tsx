@@ -36,12 +36,12 @@ export default function ProjectLayoutControlsFallback({
           <Skeleton className="h-7 w-28" />
         )}
       </div>
-      <Skeleton className="size-7 md:hidden" />
+      <Skeleton className="size-7 lg:hidden" />
       {showViewSwitcher ? (
         // Same slot geometry as the loaded view strip, so nothing shifts when it swaps in.
         <div
           aria-hidden="true"
-          className="hidden min-w-44 flex-1 contain-inline-size sm:block"
+          className="hidden min-w-44 flex-1 contain-inline-size lg:block"
         >
           <div className="h-8 w-max max-w-full overflow-hidden rounded-lg border border-border/80 bg-background">
             <div className="inline-flex h-full w-max min-w-max items-center gap-0.5 p-0.5">

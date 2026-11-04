@@ -339,6 +339,59 @@ describe("WorkItemBoard layout (VW-8)", () => {
     ).toBeNull();
   });
 
+  it("draws the Blocked badge inside the card's own frame, beside the SLA badge", () => {
+    board({
+      workItems: [
+        item("WLP-1", "s-open", "1", {
+          blockedByOpenCount: 2,
+          sla: {
+            metric: "resolution",
+            state: "at_risk",
+            remainingMinutes: 90,
+            dueAt: null,
+            consumedPct: 80,
+          },
+        } as Partial<WorkItemRow>),
+        item("WLP-2", "s-open", "2", {
+          blockedByOpenCount: 1,
+        } as Partial<WorkItemRow>),
+        item("WLP-3", "s-open", "3"),
+      ],
+    });
+    for (const key of ["WLP-1", "WLP-2"]) {
+      const frame = card(key).querySelector(".kanban-board-task-card");
+      if (!frame) throw new Error(`no card frame for ${key}`);
+      expect(
+        within(frame as HTMLElement).getByTestId("work-item-blocked-badge"),
+      ).toBeInTheDocument();
+    }
+    const slaRow = within(card("WLP-1")).getByTestId(
+      "work-item-sla-badge",
+    ).parentElement;
+    expect(
+      within(slaRow as HTMLElement).getByTestId("work-item-blocked-badge"),
+    ).toBeInTheDocument();
+    expect(
+      within(card("WLP-3")).queryByTestId("work-item-blocked-badge"),
+    ).toBeNull();
+  });
+
+  it("caps each column to the screen below md and snaps to column starts there, keeping Kaneo's widths from md up", () => {
+    board();
+    const open = column("Open");
+    expect(open).toHaveClass(
+      "max-w-96",
+      "min-w-80",
+      "max-md:min-w-[calc(100vw-4rem)]",
+      "max-md:max-w-[calc(100vw-4rem)]",
+      "max-md:snap-start",
+    );
+    expect(open.closest(".overflow-x-auto")).toHaveClass(
+      "max-md:snap-x",
+      "max-md:snap-proximity",
+    );
+  });
+
   it("orders cards by position numerically within each column", () => {
     board({
       workItems: [
