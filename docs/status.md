@@ -7,6 +7,13 @@ persisted journey; three widths and both themes). Hosted CI is pending. Neither
 change is merged or deployed. Active storage switching, byte migration, full role/browser coverage and the release chain
 remain open; current release evidence is in [handover](handover.md).
 
+**5 Nov visual follow-up:** the shared info-alert border now derives an sRGB-safe
+color without changing the existing info background, icon or geometry. Local
+Chromium, Firefox and WebKit checks passed at three widths in both themes (18
+cases). The combined 116-screen visual sweep and real-provider storage journey passed.
+Hosted CI and release validation remain open; this is not deployed.
+
+
 **Goal: UAT launch on Friday 6 November 2026 on the Technexus hosts.** Claude is the only version 2 implementer from 30 Oct; Codex works on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
 
 - **Deployed:** `main` cbd076c (signed digest `sha256:aa96614708b2…`, attestation verified).
