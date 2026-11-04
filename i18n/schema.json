@@ -38862,6 +38862,12 @@
 				"connectivityDescription": {
 					"type": "string"
 				},
+				"probeRetentionNotice": {
+					"type": "string"
+				},
+				"probeObjectMayRemain": {
+					"type": "string"
+				},
 				"runProbe": {
 					"type": "string"
 				},
@@ -39008,6 +39014,8 @@
 				"configuration",
 				"connectivityTitle",
 				"connectivityDescription",
+				"probeRetentionNotice",
+				"probeObjectMayRemain",
 				"runProbe",
 				"probing",
 				"probeRequestFailed",

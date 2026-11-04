@@ -7,32 +7,28 @@ const ID = "e21a9b3f-8a77-42be-9864-63d35c925735";
 
 function memoryAdapter(overrides: Partial<StorageProbeAdapter> = {}) {
   let object: Buffer | undefined;
-  const calls: string[] = [];
   const adapter: StorageProbeAdapter = {
     driver: "filesystem",
-    async write(key, bytes, signal) {
-      calls.push(`write:${key}`);
-      if (signal.aborted) throw signal.reason;
+    write: vi.fn(async (_key, bytes) => {
       object = Buffer.from(bytes);
-    },
-    async read(key, maxBytes, signal) {
-      calls.push(`read:${key}`);
-      if (signal.aborted || !object || object.length > maxBytes)
-        throw signal.reason ?? new Error("unavailable");
-      return Buffer.from(object);
-    },
-    async delete(key, signal) {
-      calls.push(`delete:${key}`);
-      if (signal.aborted) throw signal.reason;
+    }),
+    read: vi.fn(async () => Buffer.from(object ?? "")),
+    delete: vi.fn(async () => {
       object = undefined;
-    },
+    }),
     ...overrides,
   };
-  return { adapter, calls, getObject: () => object };
+  return {
+    adapter,
+    getObject: () => object,
+    replace: (bytes: string) => {
+      object = Buffer.from(bytes);
+    },
+  };
 }
 
 describe("storage probe orchestration", () => {
-  it("writes, verifies, and deletes one generated reserved key", async () => {
+  it("verifies bytes and retains the diagnostic object", async () => {
     const storage = memoryAdapter();
     const result = await runStorageProbe(storage.adapter, {
       createId: () => ID,
@@ -40,73 +36,131 @@ describe("storage probe orchestration", () => {
     });
     expect(result).toEqual({
       status: "verified",
-      cleanup: "confirmed",
+      cleanup: "not_attempted",
+      diagnosticObjectMayRemain: true,
       durationMs: 37,
     });
-    expect(storage.calls).toEqual([
-      `write:taskdesk-storage-probe-${ID}`,
-      `read:taskdesk-storage-probe-${ID}`,
-      `delete:taskdesk-storage-probe-${ID}`,
-    ]);
-    expect(storage.getObject()).toBeUndefined();
+    expect(storage.getObject()).toBeDefined();
+    expect(storage.adapter.delete).not.toHaveBeenCalled();
   });
 
-  it("never reports verified when stored bytes differ", async () => {
-    const storage = memoryAdapter({
-      async read() {
-        return Buffer.from("different");
+  it.each([
+    ["content_mismatch", async () => Buffer.from("different")],
+    [
+      "read_failed",
+      async () => {
+        throw new Error("secret key");
       },
-    });
-    const result = await runStorageProbe(storage.adapter, {
-      createId: () => ID,
-    });
-    expect(result.status).toBe("content_mismatch");
-    expect(result.cleanup).toBe("confirmed");
-    expect(storage.getObject()).toBeUndefined();
+    ],
+  ] as const)(
+    "reports %s without deleting a replacement or exposing errors",
+    async (status, read) => {
+      const storage = memoryAdapter({
+        read: vi.fn(async () => {
+          storage.replace("replacement");
+          return read();
+        }),
+      });
+      const result = await runStorageProbe(storage.adapter, {
+        createId: () => ID,
+      });
+      expect(result).toMatchObject({
+        status,
+        cleanup: "not_attempted",
+        diagnosticObjectMayRemain: true,
+      });
+      expect(JSON.stringify(result)).not.toContain("secret key");
+      expect(storage.getObject()?.toString()).toBe("replacement");
+      expect(storage.adapter.delete).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    [new StorageProbeCollisionError(), false],
+    [new Error("secret key"), true],
+  ])(
+    "reports write failure conservatively",
+    async (error, diagnosticObjectMayRemain) => {
+      const storage = memoryAdapter({
+        write: vi.fn(async () => {
+          throw error;
+        }),
+      });
+      const result = await runStorageProbe(storage.adapter, {
+        createId: () => ID,
+      });
+      expect(result).toMatchObject({
+        status: "write_failed",
+        cleanup: "not_attempted",
+        diagnosticObjectMayRemain,
+      });
+      expect(JSON.stringify(result)).not.toContain("secret key");
+      expect(storage.adapter.delete).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["resolve", "reject"] as const)(
+    "never deletes after a late write %s",
+    async (outcome) => {
+      vi.useFakeTimers();
+      try {
+        let finish!: () => void;
+        const pending = new Promise<void>((resolve, reject) => {
+          finish = () =>
+            outcome === "resolve"
+              ? resolve()
+              : reject(new Error("late failure"));
+        });
+        const storage = memoryAdapter({ write: vi.fn(() => pending) });
+        const resultPromise = runStorageProbe(storage.adapter, {
+          createId: () => ID,
+        });
+        await vi.advanceTimersByTimeAsync(2_000);
+        expect(await resultPromise).toMatchObject({
+          status: "timed_out",
+          cleanup: "not_attempted",
+          diagnosticObjectMayRemain: true,
+        });
+        storage.replace("replacement");
+        finish();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(storage.getObject()?.toString()).toBe("replacement");
+        expect(storage.adapter.delete).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it("bounds a stalled read and retains the diagnostic object", async () => {
+    vi.useFakeTimers();
+    try {
+      const storage = memoryAdapter({
+        read: vi.fn(() => new Promise<Buffer>(() => {})),
+      });
+      const result = runStorageProbe(storage.adapter, {
+        createId: () => ID,
+        now: vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(20_000),
+      });
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(await result).toMatchObject({
+        status: "timed_out",
+        cleanup: "not_attempted",
+        diagnosticObjectMayRemain: true,
+        durationMs: 15_000,
+      });
+      expect(storage.getObject()).toBeDefined();
+      expect(storage.adapter.delete).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it("reports cleanup uncertainty after a write timeout", async () => {
-    let finishWrite: (() => void) | undefined;
-    const lateWrite = new Promise<void>((resolve) => {
-      finishWrite = resolve;
-    });
-    const storage = memoryAdapter({
-      async write() {
-        await lateWrite;
-      },
-    });
-    const result = await runStorageProbe(storage.adapter, {
-      createId: () => ID,
-    });
-    expect(result.status).toBe("cleanup_indeterminate");
-    expect(result.cleanup).toBe("indeterminate");
-    finishWrite?.();
-    await vi.waitFor(() =>
-      expect(storage.calls).toContain(`delete:taskdesk-storage-probe-${ID}`),
-    );
-  }, 5_000);
-
-  it("does not delete a key after an exclusive-create failure", async () => {
-    const storage = memoryAdapter({
-      async write() {
-        throw new StorageProbeCollisionError();
-      },
-    });
-    const result = await runStorageProbe(storage.adapter, {
-      createId: () => ID,
-    });
-    expect(result).toMatchObject({
-      status: "write_failed",
-      cleanup: "not_attempted",
-    });
-    expect(storage.calls).toHaveLength(0);
-  });
-
-  it("rejects a malformed generated id before touching the adapter", async () => {
+  it("rejects malformed generated ids without touching storage", async () => {
     const storage = memoryAdapter();
     await expect(
       runStorageProbe(storage.adapter, { createId: () => "bad" }),
     ).rejects.toThrow("Storage probe identifier generation failed.");
-    expect(storage.calls).toHaveLength(0);
+    expect(storage.adapter.write).not.toHaveBeenCalled();
   });
 });

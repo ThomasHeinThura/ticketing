@@ -9393,7 +9393,7 @@
 			"confirmed": "confirmed",
 			"failed": "failed",
 			"indeterminate": "indeterminate",
-			"not_attempted": "not attempted"
+			"not_attempted": "not verified (not attempted)"
 		},
 		"columns": {
 			"count": "Records",
@@ -9406,7 +9406,7 @@
 			"unavailable": "Storage directory unavailable",
 			"unsupported": "Unsupported driver"
 		},
-		"connectivityDescription": "Readiness checks configuration only. Run the probe to test a temporary write, read, verification, and cleanup on the active backend.",
+		"connectivityDescription": "Readiness checks configuration only. Run the probe to test writing and reading on the active backend.",
 		"connectivityTitle": "Provider connectivity is not checked",
 		"description": "Review the active storage backend, attachment limits, and recorded attachment metadata.",
 		"driver": "Driver",
@@ -9433,11 +9433,13 @@
 			"content_mismatch": "Stored bytes did not match",
 			"read_failed": "Storage read failed",
 			"timed_out": "Storage operation timed out",
-			"verified": "Storage write, read, and cleanup verified",
+			"verified": "Storage write and read verified",
 			"write_failed": "Storage write failed"
 		},
 		"probing": "Checking storage…",
 		"retry": "Try again",
+		"probeRetentionNotice": "Each test attempts to write a small diagnostic object. Diagnostic objects may remain in storage and are excluded from attachment metadata totals.",
+		"probeObjectMayRemain": "A diagnostic object may remain in storage.",
 		"runProbe": "Run storage probe",
 		"source": "Configuration source",
 		"states": {

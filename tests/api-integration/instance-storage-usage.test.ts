@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 
 const apiRequire = createRequire(
@@ -117,5 +121,93 @@ describe("instance storage usage HTTP API", () => {
       headers: { cookie },
     });
     expect(response.status).toBe(403);
+  });
+});
+
+describe("instance storage probe HTTP API", () => {
+  let storageRoot: string;
+
+  beforeEach(async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), "taskdesk-storage-probe-http-"));
+    vi.stubEnv("TASKDESK_STORAGE_DRIVER", "filesystem");
+    vi.stubEnv("TASKDESK_STORAGE_FILESYSTEM_ROOT", storageRoot);
+  });
+
+  afterEach(async () => {
+    vi.unstubAllEnvs();
+    await rm(storageRoot, { recursive: true, force: true });
+  });
+
+  async function probe(
+    app: ReturnType<typeof createApp>["app"],
+    cookie: string,
+  ) {
+    return csrfRequest(
+      app,
+      "/api/instance/storage/test",
+      {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: "{}",
+      },
+      cookie,
+    );
+  }
+
+  it("retains fixed diagnostic bytes, reports unverified cleanup and leaves metadata totals unchanged", async () => {
+    const user = await makeUser("admin");
+    const { app } = createApp();
+    const cookie = await signIn(app, user.email);
+    const response = await probe(app, cookie);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    const body = await response.json();
+    expect(body).toEqual({
+      status: "verified",
+      cleanup: "not_attempted",
+      diagnosticObjectMayRemain: true,
+      durationMs: expect.any(Number),
+    });
+    const files = await readdir(storageRoot);
+    expect(files).toHaveLength(1);
+    const name = files[0];
+    if (!name) throw new Error("Diagnostic fixture was not retained");
+    expect(name).toMatch(/^taskdesk-storage-probe-[0-9a-f-]{36}$/u);
+    expect(await readFile(join(storageRoot, name), "utf8")).toBe(
+      "taskdesk-storage-probe-v1-check!",
+    );
+    expect(JSON.stringify(body)).not.toContain(name);
+    const usage = await app.request("/api/instance/storage/usage", {
+      headers: { cookie },
+    });
+    expect(usage.status).toBe(200);
+    expect((await usage.json()).attachments).toEqual({
+      ready: { count: 0, bytes: "0" },
+      pending: { count: 0, bytes: "0" },
+      deleted: { count: 0, bytes: "0" },
+    });
+    const throttled = await probe(app, cookie);
+    expect(throttled.status).toBe(429);
+    expect(Number(throttled.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(await readdir(storageRoot)).toEqual(files);
+  });
+
+  it("denies a signed-in non-admin without writing diagnostic bytes", async () => {
+    const user = await makeUser(null);
+    const { app } = createApp();
+    const cookie = await signIn(app, user.email);
+    expect((await probe(app, cookie)).status).toBe(403);
+    expect(await readdir(storageRoot)).toEqual([]);
+  });
+
+  it("denies an unauthenticated probe without writing diagnostic bytes", async () => {
+    const { app } = createApp();
+    const response = await app.request("/api/instance/storage/test", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    expect(response.status).toBe(401);
+    expect(await readdir(storageRoot)).toEqual([]);
   });
 });

@@ -58188,6 +58188,7 @@
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/dl[0]/div[1]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[1]/CardContent[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[1]/CardContent[0]/dl[0]/div[1]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[1]/CardContent[0]/dl[0]/div[2]/dt[0]::text-muted-foreground#0",
@@ -59623,6 +59624,18 @@
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
 				"id": "apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/dl[0]/div[1]/dt[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/storage-usage-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/storage-usage-panel.tsx:StorageUsagePanel",
+					"jsx:div[0]/Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/storage-usage-panel.tsx"
 			},
@@ -63877,6 +63890,7 @@
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/dl[0]/div[1]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[1]/CardContent[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[1]/CardContent[0]/dl[0]/div[1]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[1]/CardContent[0]/dl[0]/div[2]/dt[0]::text-muted-foreground#0",
@@ -65312,6 +65326,18 @@
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
 				"id": "apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/dl[0]/div[1]/dt[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/storage-usage-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/storage-usage-panel.tsx:StorageUsagePanel",
+					"jsx:div[0]/Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/storage-usage-panel.tsx::StorageUsagePanel::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/storage-usage-panel.tsx"
 			},

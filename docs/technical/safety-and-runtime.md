@@ -4043,8 +4043,19 @@ interface StorageBackend {
 }
 ```
 
-Configured in God Mode with a **Test** button that writes, reads and deletes a probe
-object. Nobody should discover their storage is misconfigured when a user loses a file.
+Configured in God Mode with a **Test** button that writes fixed, nonsecret diagnostic
+bytes and reads them back. Thomas approved retaining small diagnostic objects on
+5 November 2026 when deletion by immutable object identity cannot be guaranteed.
+The current filesystem and S3 adapters therefore never delete a probe by key,
+including after a timeout or late completion. `verified` means only that write/read
+bytes matched; `cleanup` is `not_attempted`, and `diagnosticObjectMayRemain` reports
+possible residue (false only for a confirmed exclusive-create collision). The UI
+states that cleanup is unverified and that diagnostics are excluded from attachment
+metadata totals. Partial or timed-out writes may also leave an object.
+
+The diagnostic payload is 32 bytes. Existing concurrency and per-actor cooldown
+limits are process-local; they are not a global retained-storage quota or automatic
+retention policy. Provider metadata overhead is not included in the payload size.
 
 <a id="storage-and-attachments-object-keys"></a>
 ### Object keys

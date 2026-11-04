@@ -4,7 +4,6 @@ import { StorageProbeCollisionError } from "../../storage/probe-error";
 
 const PROBE_BYTES = Buffer.from("taskdesk-storage-probe-v1-check!", "utf8");
 const OPERATION_TIMEOUT_MS = 2_000;
-const CLEANUP_TIMEOUT_MS = 2_000;
 
 export type StorageProbeResult = {
   status:
@@ -16,16 +15,14 @@ export type StorageProbeResult = {
     | "cleanup_failed"
     | "cleanup_indeterminate";
   cleanup: "confirmed" | "failed" | "indeterminate" | "not_attempted";
+  diagnosticObjectMayRemain: boolean;
   durationMs: number;
 };
 
 type CallResult<T> =
   | { kind: "completed"; value: T }
   | { kind: "failed"; collision: boolean }
-  | {
-      kind: "timed_out";
-      settled: Promise<"completed" | "failed" | "collision">;
-    };
+  | { kind: "timed_out" };
 
 async function boundedCall<T>(
   timeoutMs: number,
@@ -43,17 +40,10 @@ async function boundedCall<T>(
         collision: isCollision(error),
       }),
     );
-  const settled: Promise<"completed" | "failed" | "collision"> = operation.then(
-    (result) => {
-      if (result.kind === "completed") return "completed";
-      if (result.kind === "failed" && result.collision) return "collision";
-      return "failed";
-    },
-  );
   const timeout = new Promise<CallResult<T>>((resolve) => {
     timer = setTimeout(() => {
       controller.abort(new Error("Storage operation timed out."));
-      resolve({ kind: "timed_out", settled });
+      resolve({ kind: "timed_out" });
     }, timeoutMs);
   });
   const result = await Promise.race([operation, timeout]);
@@ -79,28 +69,12 @@ export async function runStorageProbe(
     (error) => error instanceof StorageProbeCollisionError,
   );
   let status: StorageProbeResult["status"];
-  let cleanup: StorageProbeResult["cleanup"] = "not_attempted";
+  const diagnosticObjectMayRemain = write.kind !== "failed" || !write.collision;
 
   if (write.kind === "timed_out") {
     status = "timed_out";
-    // If the write eventually confirms creation, retry exact-key cleanup. If it failed (for
-    // example, an exclusive-create collision), never delete an object this probe did not own.
-    void write.settled
-      .then((outcome) => {
-        if (outcome === "collision") return undefined;
-        return boundedCall(CLEANUP_TIMEOUT_MS, (signal) =>
-          adapter.delete(key, signal),
-        );
-      })
-      .catch(() => {});
-    cleanup = "indeterminate";
   } else if (write.kind === "failed") {
-    if (write.collision) {
-      status = "write_failed";
-    } else {
-      status = "cleanup_indeterminate";
-      cleanup = "indeterminate";
-    }
+    status = "write_failed";
   } else {
     const read = await boundedCall(OPERATION_TIMEOUT_MS, (signal) =>
       adapter.read(key, PROBE_BYTES.byteLength, signal),
@@ -109,26 +83,12 @@ export async function runStorageProbe(
     else if (read.kind === "failed") status = "read_failed";
     else
       status = read.value.equals(PROBE_BYTES) ? "verified" : "content_mismatch";
-
-    const deleted = await boundedCall(CLEANUP_TIMEOUT_MS, (signal) =>
-      adapter.delete(key, signal),
-    );
-    cleanup =
-      deleted.kind === "completed"
-        ? "confirmed"
-        : deleted.kind === "failed"
-          ? "failed"
-          : "indeterminate";
   }
-
-  if (cleanup === "indeterminate") status = "cleanup_indeterminate";
-  else if (cleanup === "failed") status = "cleanup_failed";
-  if (status === "verified" && cleanup !== "confirmed")
-    status = cleanup === "failed" ? "cleanup_failed" : "cleanup_indeterminate";
 
   return {
     status,
-    cleanup,
+    cleanup: "not_attempted",
+    diagnosticObjectMayRemain,
     durationMs: Math.min(15_000, Math.max(0, Math.round(now() - startedAt))),
   };
 }

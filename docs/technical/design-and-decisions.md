@@ -3582,6 +3582,22 @@ Thomas decided on 4 November 2026: when a managed service is created and no serv
 - **How the dialog knows.** `GET /api/project/organisations` returns, per organisation, `inheritedServiceCalendarId` for the queried workspace (additive; same `project:create` policy). For an internal project the dialog reads the workspace default from project settings. When it cannot read it, the dialog does not block and `PR-9` decides.
 - **The picker** lists the workspace's service calendars and no "default" choice. While `feature.sla` is off the calendar list is unavailable, so the dialog says that none can be chosen and Create stays disabled.
 
+## Storage diagnostic safety and S3 configuration — 5 November 2026
+
+Thomas approved both changes on 5 November 2026:
+
+- Storage tests may retain small diagnostic objects and report cleanup unverified
+  when exact-object deletion cannot be guaranteed. The current adapters delete by
+  key only, so probes perform bounded write/read checks without deletion; they must
+  preserve failure/timeout information and disclose possible residue separately.
+- Saving and testing S3 configuration require separate one-use, operation-bound
+  step-up proofs tied to the selected configuration revision, destination and
+  credential changes. This is approval to implement those operations, not evidence
+  that the draft configuration flow or a backend migration is complete.
+
+Neither approval constitutes a merge or deployment approval. Existing tenant,
+session, audit, encryption and secret-redaction boundaries remain required.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.

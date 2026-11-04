@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, mkdtemp } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -48,7 +48,17 @@ type DockerInspectClient = {
 type DockerInspectConstructor = new () => DockerInspectClient;
 
 class LoopbackPostgreSqlContainer extends PostgreSqlContainer {
+  private readonly discardOutput: boolean;
+
+  constructor(image: string, discardOutput: boolean) {
+    super(image);
+    this.discardOutput = discardOutput;
+  }
+
   protected override async beforeContainerCreated() {
+    if (this.discardOutput) {
+      this.hostConfig.LogConfig = { Type: "none", Config: {} };
+    }
     this.hostConfig.PortBindings = {
       ...this.hostConfig.PortBindings,
       "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: "0" }],
@@ -77,6 +87,7 @@ async function assertPostgreSqlLoopbackBinding(
     active?.HostIp !== "127.0.0.1" ||
     !/^\d+$/u.test(active.HostPort) ||
     active.HostPort === "0" ||
+    active.HostPort === "62870" ||
     Number(active.HostPort) !== container.getMappedPort(5432) ||
     !new Set(["127.0.0.1", "localhost"]).has(container.getHost())
   ) {
@@ -92,7 +103,7 @@ export type MfaCsrfAppFixture = {
   password: string;
   /** Private disposable DB URL, for isolated data setup by real-runtime journeys only. */
   databaseUrl: string;
-  /** Private mode-0700 directory for runtime setup state and private child logs. */
+  /** Private runtime directory; removed after teardown when child output is discarded. */
   fixtureDir: string;
   /** Starts a child that the fixture supervisor will terminate on worker death. */
   spawnChild: SupervisedProcessManager["spawn"];
@@ -146,6 +157,7 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
   private closePromise: Promise<void> | undefined;
   private readonly ready: Promise<void>;
   private readonly onLockContention?: () => void;
+  private readonly discardChildOutput: boolean;
 
   private constructor(
     ready: Promise<void>,
@@ -153,7 +165,9 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
     waitMs: number,
     pollMs: number,
     onLockContention?: () => void,
+    discardChildOutput = false,
   ) {
+    this.discardChildOutput = discardChildOutput;
     this.ready = ready;
     this.onLockContention = onLockContention;
     this.child = spawn(
@@ -195,11 +209,13 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
     waitMs = 180_000,
     pollMs = 100,
     onLockContention,
+    discardChildOutput = false,
   }: {
     lockPath?: string;
     waitMs?: number;
     pollMs?: number;
     onLockContention?: () => void;
+    discardChildOutput?: boolean;
   } = {}) {
     let resolveReady!: () => void;
     let rejectReady!: (error: Error) => void;
@@ -213,6 +229,7 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
       waitMs,
       pollMs,
       onLockContention,
+      discardChildOutput,
     );
     supervisor.child.on("message", (raw: unknown) => {
       if (!raw || typeof raw !== "object") return;
@@ -270,6 +287,7 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
       env,
       evidenceDir,
       logPrefix,
+      discardChildOutput: this.discardChildOutput,
     });
     await new Promise<void>((resolveSpawn, rejectSpawn) => {
       const onMessage = (raw: unknown) => {
@@ -354,6 +372,7 @@ export async function withExclusiveMetricsListener<T>(
     waitMs?: number;
     pollMs?: number;
     onLockContention?: () => void;
+    discardChildOutput?: boolean;
   } = {},
 ): Promise<T> {
   const supervisor = await FixtureProcessSupervisor.start(options);
@@ -517,11 +536,13 @@ async function terminate(child: SupervisedChild | undefined) {
  * Runs a callback against an isolated PostgreSQL 18 database and the real API
  * serving both compiled web entries. Child output is kept in a private
  * temporary directory so bootstrap credentials cannot enter public test logs.
+ * Set discardChildOutput to avoid creating child output files entirely.
  */
 export async function withMfaCsrfApp<T>(
   run: (fixture: MfaCsrfAppFixture) => Promise<T>,
   options: {
     beforeStart?: (fixture: MfaCsrfAppFixtureSetup) => Promise<void>;
+    discardChildOutput?: boolean;
   } = {},
 ): Promise<T> {
   if (
@@ -534,130 +555,205 @@ export async function withMfaCsrfApp<T>(
     );
   }
 
-  return withExclusiveMetricsListener((supervisor) =>
-    runMfaCsrfApp(run, options, supervisor),
-  );
+  const supervisor = await FixtureProcessSupervisor.start({
+    discardChildOutput: options.discardChildOutput,
+  });
+  const cleanup: { directory?: string; teardownComplete: boolean } = {
+    teardownComplete: false,
+  };
+  const outcome = await Promise.allSettled([
+    runMfaCsrfApp(run, options, supervisor, cleanup),
+  ]);
+  const primary = outcome[0];
+  const errors: unknown[] = [];
+  if (primary.status === "rejected") errors.push(primary.reason);
+  let supervisorClosed = false;
+  try {
+    // Wait for all supervisor-owned children before removing their directory.
+    await supervisor.close();
+    supervisorClosed = true;
+  } catch {
+    errors.push(
+      new Error(
+        "Fixture supervisor teardown failed; the private fixture directory was retained.",
+      ),
+    );
+  }
+  if (
+    supervisorClosed &&
+    options.discardChildOutput &&
+    cleanup.teardownComplete &&
+    cleanup.directory
+  ) {
+    try {
+      await rm(cleanup.directory, { recursive: true, force: true });
+    } catch {
+      errors.push(
+        new Error(
+          "Fixture directory cleanup failed; the private fixture directory may remain.",
+        ),
+      );
+    }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1)
+    throw new AggregateError(errors, "Fixture execution and cleanup failed.");
+  if (primary.status === "rejected") throw primary.reason;
+  return primary.value;
 }
 
 async function runMfaCsrfApp<T>(
   run: (fixture: MfaCsrfAppFixture) => Promise<T>,
   options: {
     beforeStart?: (fixture: MfaCsrfAppFixtureSetup) => Promise<void>;
+    discardChildOutput?: boolean;
   },
   supervisor: SupervisedProcessManager,
+  cleanup: { directory?: string; teardownComplete: boolean },
 ): Promise<T> {
   let container: PostgreSqlContainerInstance | undefined;
   let apiProcess: SupervisedChild | undefined;
-  try {
-    const evidenceDir = await mkdtemp(resolve(tmpdir(), "td-mfa-csrf-"));
-    await chmod(evidenceDir, 0o700);
-    // The filesystem storage driver defaults to the Docker volume path /app/data/attachments,
-    // which does not exist for a host-run API; every attachment PUT would fail with 400
-    // "Upload failed." Give this private fixture its own writable root.
-    const storageRoot = resolve(evidenceDir, "attachments");
-    await mkdir(storageRoot, { recursive: true });
-    const databaseName = `mfa_csrf_${randomUUID().replaceAll("-", "")}`;
-    const postgres = new LoopbackPostgreSqlContainer("postgres:18-alpine")
-      .withDatabase(databaseName)
-      .withUsername("postgres")
-      .withPassword(randomPassword());
-    container = await postgres.start();
-    await assertPostgreSqlLoopbackBinding(container);
+  let evidenceDir: string | undefined;
+  const [outcome] = await Promise.allSettled([
+    (async () => {
+      evidenceDir = await mkdtemp(resolve(tmpdir(), "td-mfa-csrf-"));
+      cleanup.directory = evidenceDir;
+      await chmod(evidenceDir, 0o700);
+      // The filesystem storage driver defaults to the Docker volume path /app/data/attachments,
+      // which does not exist for a host-run API; every attachment PUT would fail with 400
+      // "Upload failed." Give this private fixture its own writable root.
+      const storageRoot = resolve(evidenceDir, "attachments");
+      await mkdir(storageRoot, { recursive: true });
+      const databaseName = `mfa_csrf_${randomUUID().replaceAll("-", "")}_test`;
+      const postgres = new LoopbackPostgreSqlContainer(
+        "postgres:18-alpine",
+        options.discardChildOutput === true,
+      )
+        .withDatabase(databaseName)
+        .withUsername("postgres")
+        .withPassword(randomPassword());
+      container = await postgres.start();
+      await assertPostgreSqlLoopbackBinding(container);
 
-    const migrationUrl = container.getConnectionUri();
-    const appUrl = new URL(migrationUrl);
-    appUrl.username = "taskdesk_e2e_app";
-    appUrl.password = randomPassword();
-    const applicationUrl = appUrl.toString();
-    const port = await reserveLoopbackPort();
-    // `localhost` is a trustworthy development host, so Chromium accepts the
-    // app's real Secure `__Host-` session cookie while the service remains
-    // bound to loopback. The origin stays same-site for the real auth flow.
-    const origin = `http://localhost:${port}`;
-    const email = `mfa-csrf-${randomUUID()}@example.test`;
-    const password = randomPassword();
-    const secret = randomBytes(48).toString("base64url");
-    const bootstrapEnv: NodeJS.ProcessEnv = {
-      ...process.env,
-      NODE_ENV: "test",
-      TASKDESK_AUTH_SECRET: secret,
-      TASKDESK_AGENT_URL: origin,
-      TASKDESK_PORTAL_URL: `http://portal.localhost:${port}`,
-      KANEO_API_URL: origin,
-      TASKDESK_BOOTSTRAP_ADMIN_EMAIL: email,
-      TASKDESK_DATABASE_URL: applicationUrl,
-      TASKDESK_ROLE: "migrate",
-      TASKDESK_STORAGE_FILESYSTEM_ROOT: storageRoot,
-      DISABLE_REGISTRATION: "false",
-      DISABLE_PASSWORD_REGISTRATION: "false",
-      DISABLE_EMAIL_OTP_SIGN_IN: "true",
-      DISABLE_LOGIN_FORM: "false",
-      DEMO_MODE: "false",
-      SMTP_HOST: "",
-      SMTP_PORT: "",
-      SMTP_SECURE: "",
-      SMTP_USER: "",
-      SMTP_PASSWORD: "",
-      GITHUB_OAUTH_CLIENT_ID: "",
-      GITHUB_OAUTH_CLIENT_SECRET: "",
-      GOOGLE_CLIENT_ID: "",
-      GOOGLE_CLIENT_SECRET: "",
-      DISCORD_CLIENT_ID: "",
-      DISCORD_CLIENT_SECRET: "",
-      CUSTOM_OAUTH_CLIENT_ID: "",
-      CUSTOM_OAUTH_CLIENT_SECRET: "",
-      CUSTOM_OAUTH_AUTHORIZATION_URL: "",
-      CUSTOM_OAUTH_TOKEN_URL: "",
-      CUSTOM_OAUTH_USER_INFO_URL: "",
-      CUSTOM_OAUTH_SCOPES: "",
-      CUSTOM_OAUTH_RESPONSE_TYPE: "",
-      CUSTOM_OAUTH_DISCOVERY_URL: "",
-      CUSTOM_OAUTH_AUTO_LOGIN: "",
-    };
-
-    await runMigration(
-      migrationUrl,
-      applicationUrl,
-      bootstrapEnv,
-      evidenceDir,
-      supervisor,
-    );
-    await options.beforeStart?.({
-      databaseUrl: applicationUrl,
-      fixtureDir: evidenceDir,
-      origin,
-      spawnChild: supervisor.spawn.bind(supervisor),
-    });
-    const apiEntrypointUrl = pathToFileURL(apiEntrypoint).href;
-    apiProcess = await spawnWithPrivateLogs(
-      supervisor,
-      process.execPath,
-      [
-        "--input-type=module",
-        "-e",
-        `import { startServer } from ${JSON.stringify(apiEntrypointUrl)}; void startServer(Number(process.env.TASKDESK_PORT), { hostname: "127.0.0.1" });`,
-      ],
-      {
-        ...bootstrapEnv,
-        TASKDESK_ROLE: "web",
-        TASKDESK_PORT: String(port),
+      const migrationUrl = container.getConnectionUri();
+      const appUrl = new URL(migrationUrl);
+      appUrl.username = "taskdesk_e2e_app";
+      appUrl.password = randomPassword();
+      const applicationUrl = appUrl.toString();
+      const port = await reserveLoopbackPort();
+      // `localhost` is a trustworthy development host, so Chromium accepts the
+      // app's real Secure `__Host-` session cookie while the service remains
+      // bound to loopback. The origin stays same-site for the real auth flow.
+      const origin = `http://localhost:${port}`;
+      const email = `mfa-csrf-${randomUUID()}@example.test`;
+      const password = randomPassword();
+      const secret = randomBytes(48).toString("base64url");
+      const bootstrapEnv: NodeJS.ProcessEnv = {
+        ...process.env,
+        NODE_ENV: "test",
+        TASKDESK_AUTH_SECRET: secret,
+        TASKDESK_AGENT_URL: origin,
+        TASKDESK_PORTAL_URL: `http://portal.localhost:${port}`,
+        KANEO_API_URL: origin,
+        TASKDESK_BOOTSTRAP_ADMIN_EMAIL: email,
         TASKDESK_DATABASE_URL: applicationUrl,
-        TASKDESK_MIGRATION_DATABASE_URL: undefined,
-      },
-      "api",
-      evidenceDir,
-    );
-    await waitForHealth(apiProcess, origin);
-    return await run({
-      origin,
-      email,
-      password,
-      databaseUrl: applicationUrl,
-      fixtureDir: evidenceDir,
-      spawnChild: supervisor.spawn.bind(supervisor),
-    });
-  } finally {
+        TASKDESK_ROLE: "migrate",
+        TASKDESK_STORAGE_DRIVER: "filesystem",
+        TASKDESK_STORAGE_FILESYSTEM_ROOT: storageRoot,
+        DISABLE_REGISTRATION: "false",
+        DISABLE_PASSWORD_REGISTRATION: "false",
+        DISABLE_EMAIL_OTP_SIGN_IN: "true",
+        DISABLE_LOGIN_FORM: "false",
+        DEMO_MODE: "false",
+        SMTP_HOST: "",
+        SMTP_PORT: "",
+        SMTP_SECURE: "",
+        SMTP_USER: "",
+        SMTP_PASSWORD: "",
+        GITHUB_OAUTH_CLIENT_ID: "",
+        GITHUB_OAUTH_CLIENT_SECRET: "",
+        GOOGLE_CLIENT_ID: "",
+        GOOGLE_CLIENT_SECRET: "",
+        DISCORD_CLIENT_ID: "",
+        DISCORD_CLIENT_SECRET: "",
+        CUSTOM_OAUTH_CLIENT_ID: "",
+        CUSTOM_OAUTH_CLIENT_SECRET: "",
+        CUSTOM_OAUTH_AUTHORIZATION_URL: "",
+        CUSTOM_OAUTH_TOKEN_URL: "",
+        CUSTOM_OAUTH_USER_INFO_URL: "",
+        CUSTOM_OAUTH_SCOPES: "",
+        CUSTOM_OAUTH_RESPONSE_TYPE: "",
+        CUSTOM_OAUTH_DISCOVERY_URL: "",
+        CUSTOM_OAUTH_AUTO_LOGIN: "",
+      };
+
+      await runMigration(
+        migrationUrl,
+        applicationUrl,
+        bootstrapEnv,
+        evidenceDir,
+        supervisor,
+      );
+      await options.beforeStart?.({
+        databaseUrl: applicationUrl,
+        fixtureDir: evidenceDir,
+        origin,
+        spawnChild: supervisor.spawn.bind(supervisor),
+      });
+      const apiEntrypointUrl = pathToFileURL(apiEntrypoint).href;
+      apiProcess = await spawnWithPrivateLogs(
+        supervisor,
+        process.execPath,
+        [
+          "--input-type=module",
+          "-e",
+          `import { startServer } from ${JSON.stringify(apiEntrypointUrl)}; void startServer(Number(process.env.TASKDESK_PORT), { hostname: "127.0.0.1" });`,
+        ],
+        {
+          ...bootstrapEnv,
+          TASKDESK_ROLE: "web",
+          TASKDESK_PORT: String(port),
+          TASKDESK_DATABASE_URL: applicationUrl,
+          TASKDESK_MIGRATION_DATABASE_URL: undefined,
+        },
+        "api",
+        evidenceDir,
+      );
+      await waitForHealth(apiProcess, origin);
+      return await run({
+        origin,
+        email,
+        password,
+        databaseUrl: applicationUrl,
+        fixtureDir: evidenceDir,
+        spawnChild: supervisor.spawn.bind(supervisor),
+      });
+    })(),
+  ]);
+  let teardownFailed = false;
+  try {
     await terminate(apiProcess);
-    if (container) await container.stop();
+  } catch {
+    teardownFailed = true;
   }
+  try {
+    if (container) await container.stop();
+  } catch {
+    teardownFailed = true;
+  }
+  if (teardownFailed) {
+    const error = new Error(
+      "Fixture teardown failed; the private fixture directory was retained.",
+    );
+    if (outcome.status === "rejected") {
+      throw new AggregateError(
+        [outcome.reason, error],
+        "Fixture execution and teardown failed.",
+      );
+    }
+    throw error;
+  }
+  cleanup.teardownComplete = true;
+  if (outcome.status === "rejected") throw outcome.reason;
+  return outcome.value;
 }
