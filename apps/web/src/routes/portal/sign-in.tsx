@@ -13,7 +13,7 @@ import {
   Skeleton,
 } from "@taskdesk/ui";
 import type { FormEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getPortalAuthMethods } from "@/fetchers/customer-invitation";
 import { portalAuthClient } from "@/lib/portal-auth-client";
@@ -58,6 +58,16 @@ function PortalSignIn() {
     queryFn: getPortalAuthMethods,
     staleTime: 60_000,
   });
+  // The invitation and the page to return to survive every stage change.
+  const carriedSearch = useMemo(
+    () => ({
+      ...(search.invitationId ? { invitationId: search.invitationId } : {}),
+      ...(search.redirect ? { redirect: search.redirect } : {}),
+    }),
+    [search.invitationId, search.redirect],
+  );
+  // After sign-in: the requested portal page, else the Dashboard.
+  const returnTo = search.redirect ?? routes.portalHome.path;
   const [stage, setStage] = useState<PortalSignInStage>(search.stage);
   const [factor, setFactor] = useState(search.factor);
   const [email, setEmail] = useState(readStoredEmail);
@@ -90,12 +100,12 @@ function PortalSignIn() {
         search: {
           stage: "email",
           factor: "totp",
-          ...(search.invitationId ? { invitationId: search.invitationId } : {}),
+          ...carriedSearch,
         },
         replace: true,
       });
     }
-  }, [email, navigate, search.invitationId, stage]);
+  }, [carriedSearch, email, navigate, stage]);
 
   useEffect(() => {
     if (!moveFocus.current) return;
@@ -127,7 +137,7 @@ function PortalSignIn() {
       search: {
         stage: next,
         factor: nextFactor,
-        ...(search.invitationId ? { invitationId: search.invitationId } : {}),
+        ...carriedSearch,
       },
       replace: true,
     });
@@ -148,7 +158,7 @@ function PortalSignIn() {
         });
         return;
       }
-      await navigate({ to: "/catalogue" });
+      await navigate({ href: returnTo });
     } finally {
       storeEmail(null);
     }
@@ -292,7 +302,7 @@ function PortalSignIn() {
         email,
         callbackURL: search.invitationId
           ? routes.portalInvite.build({ id: search.invitationId })
-          : "/catalogue",
+          : returnTo,
         fetchOptions: search.invitationId
           ? { headers: { "x-taskdesk-invitation-id": search.invitationId } }
           : undefined,

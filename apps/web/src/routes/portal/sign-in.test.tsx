@@ -13,8 +13,13 @@ import { Route } from "./sign-in";
 const mocks = vi.hoisted(() => ({
   search: {
     stage: "email",
-    factor: "totp" as "totp" | "backup",
-    invitationId: undefined as string | undefined,
+    factor: "totp",
+    invitationId: undefined,
+  } as {
+    stage: string;
+    factor: "totp" | "backup";
+    invitationId: string | undefined;
+    redirect?: string;
   },
   navigate: vi.fn(),
   signIn: vi.fn(),
@@ -85,6 +90,7 @@ describe("portal sign-in", () => {
       stage: "email",
       factor: "totp",
       invitationId: undefined,
+      redirect: undefined,
     };
     mocks.navigate.mockReset();
     mocks.signIn.mockReset();
@@ -145,6 +151,103 @@ describe("portal sign-in", () => {
       });
     });
     expect(window.location.search).toBe("");
+  });
+
+  it("keeps the requested page through the email to password step and returns to it", async () => {
+    mocks.search = {
+      stage: "email",
+      factor: "totp",
+      invitationId: undefined,
+      redirect: "/requests/HELP-6?tab=activity",
+    };
+    const view = renderSignIn();
+    fireEvent.change(screen.getByLabelText("auth:forms.email"), {
+      target: { value: "customer@example.test" },
+    });
+    fireEvent.submit(
+      screen
+        .getByRole("button", { name: "auth:signInForm.signIn" })
+        .closest("form") as HTMLFormElement,
+    );
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: "/sign-in",
+        search: {
+          stage: "password",
+          factor: "totp",
+          redirect: "/requests/HELP-6?tab=activity",
+        },
+        replace: true,
+      }),
+    );
+    view.unmount();
+
+    mocks.search = { ...mocks.search, stage: "password" };
+    mocks.signIn.mockResolvedValue({ data: { token: "opaque" } });
+    mocks.getSession.mockResolvedValue({
+      data: { session: { id: "session" } },
+    });
+    renderSignIn();
+    fireEvent.change(await screen.findByLabelText("auth:forms.password"), {
+      target: { value: "valid-password" },
+    });
+    fireEvent.submit(
+      screen
+        .getByLabelText("auth:forms.password")
+        .closest("form") as HTMLFormElement,
+    );
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        href: "/requests/HELP-6?tab=activity",
+      }),
+    );
+    expect(mocks.navigate).not.toHaveBeenCalledWith({ href: "/" });
+  });
+
+  it("sends a magic link back to the requested page, else to the Dashboard", async () => {
+    mocks.authMethods.mockResolvedValue({
+      password: false,
+      magicLink: true,
+      emailOtp: false,
+    });
+    mocks.magicLink.mockResolvedValue({ data: { status: true } });
+    mocks.search = {
+      stage: "email",
+      factor: "totp",
+      invitationId: undefined,
+      redirect: "/kb?q=vpn",
+    };
+    const view = renderSignIn();
+    fireEvent.change(screen.getByLabelText("auth:forms.email"), {
+      target: { value: "customer@example.test" },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "auth:signInForm.sendMagicLink",
+      }),
+    );
+    await waitFor(() =>
+      expect(mocks.magicLink).toHaveBeenCalledWith(
+        expect.objectContaining({ callbackURL: "/kb?q=vpn" }),
+      ),
+    );
+    view.unmount();
+    mocks.magicLink.mockClear();
+    mocks.search = { ...mocks.search, redirect: undefined };
+    renderSignIn();
+    fireEvent.change(screen.getByLabelText("auth:forms.email"), {
+      target: { value: "customer@example.test" },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "auth:signInForm.sendMagicLink",
+      }),
+    );
+    await waitFor(() =>
+      expect(mocks.magicLink).toHaveBeenCalledWith(
+        expect.objectContaining({ callbackURL: "/" }),
+      ),
+    );
   });
 
   it("sends only the public invitation id through home-realm discovery", async () => {
@@ -256,7 +359,7 @@ describe("portal sign-in", () => {
       expect(await screen.findByText(message)).toBeVisible();
       expect(screen.queryByText("auth:signInForm.failedSignIn")).toBeNull();
       expect(mocks.getSession).not.toHaveBeenCalled();
-      expect(mocks.navigate).not.toHaveBeenCalledWith({ to: "/catalogue" });
+      expect(mocks.navigate).not.toHaveBeenCalledWith({ href: "/" });
     },
   );
 
@@ -370,7 +473,7 @@ describe("portal sign-in", () => {
     );
   });
 
-  it("sends an admitted password session to the catalogue", async () => {
+  it("sends an admitted password session to the Dashboard when no page was requested", async () => {
     window.sessionStorage.setItem(
       "taskdesk:portal-sign-in-email",
       "customer@example.test",
@@ -395,7 +498,7 @@ describe("portal sign-in", () => {
     );
 
     await waitFor(() =>
-      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/catalogue" }),
+      expect(mocks.navigate).toHaveBeenCalledWith({ href: "/" }),
     );
     expect(
       window.sessionStorage.getItem("taskdesk:portal-sign-in-email"),
@@ -437,7 +540,7 @@ describe("portal sign-in", () => {
     );
 
     await waitFor(() =>
-      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/catalogue" }),
+      expect(mocks.navigate).toHaveBeenCalledWith({ href: "/" }),
     );
     expect(window.sessionStorage.getItem("taskdesk:portal-sign-in-email")).toBe(
       "customer@example.test",
@@ -673,10 +776,10 @@ describe("portal sign-in", () => {
     expect(
       await screen.findByText("auth:signInForm.failedSignIn"),
     ).toBeTruthy();
-    expect(mocks.navigate).not.toHaveBeenCalledWith({ to: "/catalogue" });
+    expect(mocks.navigate).not.toHaveBeenCalledWith({ href: "/" });
   });
 
-  it("completes a TOTP challenge to the catalogue using the existing portal client", async () => {
+  it("completes a TOTP challenge to the Dashboard using the existing portal client", async () => {
     window.sessionStorage.setItem(
       "taskdesk:portal-sign-in-email",
       "customer@example.test",
@@ -704,7 +807,7 @@ describe("portal sign-in", () => {
     );
     expect(mocks.getSession).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("auth:twoFactor.title")).toBeTruthy();
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/catalogue" });
+    expect(mocks.navigate).toHaveBeenCalledWith({ href: "/" });
   });
 
   it("completes a backup-code challenge through the existing portal verifier", async () => {
@@ -738,7 +841,7 @@ describe("portal sign-in", () => {
     );
     expect(mocks.getSession).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("auth:twoFactor.title")).toBeTruthy();
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/catalogue" });
+    expect(mocks.navigate).toHaveBeenCalledWith({ href: "/" });
   });
   it.each(["password", "totp", "backup"] as const)(
     "clears customer A's queries and pending results before customer B enters via %s",
@@ -768,9 +871,8 @@ describe("portal sign-in", () => {
           user: { id: "customer-b" },
         },
       });
-      mocks.navigate.mockImplementation(async ({ to }) => {
-        if (to === "/catalogue")
-          expect(client.getQueryCache().getAll()).toEqual([]);
+      mocks.navigate.mockImplementation(async ({ href }) => {
+        if (href === "/") expect(client.getQueryCache().getAll()).toEqual([]);
       });
       renderSignIn(client);
       const field = await screen.findByLabelText(
@@ -785,7 +887,7 @@ describe("portal sign-in", () => {
       });
       fireEvent.submit(field.closest("form") as HTMLFormElement);
       await waitFor(() =>
-        expect(mocks.navigate).toHaveBeenCalledWith({ to: "/catalogue" }),
+        expect(mocks.navigate).toHaveBeenCalledWith({ href: "/" }),
       );
       expect(
         client.getQueryCache().findAll({ queryKey: ["portal", "customer-a"] }),
