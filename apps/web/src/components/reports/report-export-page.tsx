@@ -29,6 +29,7 @@ import { useReportExport } from "@/hooks/queries/report";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { saveBlob } from "./report-export";
+import { ReportsFeatureGate } from "./reports-feature-gate";
 
 type PageState =
   | "loading"
@@ -68,7 +69,17 @@ function downloadProblem(
  * here; the page then shows the export's status and offers the authenticated download. The file
  * is fetched only when the requester presses Download, so each download is audited once.
  */
-export function ReportExportPage({ exportId }: { exportId: string }) {
+export function ReportExportPage(props: { exportId: string }) {
+  const { t } = useTranslation();
+  return (
+    <ReportsFeatureGate title={t("reports:exportPage.title")}>
+      <ReportExportPageScreen {...props} />
+    </ReportsFeatureGate>
+  );
+}
+
+// Rendered once `feature.reports` is on, or its read failed and the APIs answer (the gate).
+function ReportExportPageScreen({ exportId }: { exportId: string }) {
   const { t } = useTranslation();
   const exported = useReportExport(exportId);
   const download = useMutation({

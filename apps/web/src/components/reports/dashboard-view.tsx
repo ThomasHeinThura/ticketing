@@ -30,12 +30,26 @@ import {
 } from "./dashboard-grid";
 import { LiveWidgetCard } from "./dashboard-widget-live";
 import { ReportError } from "./report-detail";
+import { ReportsFeatureGate } from "./reports-feature-gate";
 
 /**
  * `docs/screens.md` "Dashboard": the viewer's dashboards and the workspace's, a grid of widgets
  * (`RP-13`). A new person lands on the default dashboard, not an empty grid (`RP-16`).
  */
-export function DashboardView({
+export function DashboardView(props: {
+  search: DashboardSearch;
+  onSearchChange: (next: DashboardSearch) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ReportsFeatureGate title={t("reports:dashboard.title")}>
+      <DashboardViewScreen {...props} />
+    </ReportsFeatureGate>
+  );
+}
+
+// Rendered once `feature.reports` is on, or its read failed and the APIs answer (the gate).
+function DashboardViewScreen({
   search,
   onSearchChange,
 }: {

@@ -472,6 +472,7 @@ const visualOwnerCapabilities = {
   manageTeam: true,
   removeMembers: true,
   manageServiceCalendars: true,
+  createSavedViews: true,
   shareSavedViews: true,
   manageWorkspaceSettings: true,
   createPublicComments: true,

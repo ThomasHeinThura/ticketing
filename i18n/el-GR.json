@@ -8282,6 +8282,7 @@
 			"name": "Name",
 			"save": "Save report",
 			"saved": "Report saved",
+			"readOnly": "Your role can run reports but not save them.",
 			"team": "Team",
 			"title": "Report builder",
 			"update": "Save changes",

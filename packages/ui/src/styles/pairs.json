@@ -34033,23 +34033,23 @@
 			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#1",
 			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/Link[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::EditorBody::div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-builder.tsx::ReportBuilder::div[0]/div[0]/Link[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-builder.tsx::ReportBuilder::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/Link[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/Link[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-view.tsx::DashboardViewScreen::div[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-view.tsx::DashboardViewScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-builder.tsx::ReportBuilderScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-builder.tsx::ReportBuilderScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-detail.tsx::ReportDetailScreen::div[0]/div[0]/div[0]/Link[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-detail.tsx::ReportDetailScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPageScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPageScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-table.tsx::ReportTable::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-table.tsx::ReportTable::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::ReportContextLine::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::ReportVisual::div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/reports-index.tsx::ReportsIndex::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/reports-index.tsx::ReportsIndex::div[0]/section[1]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/reports-index.tsx::ReportsIndexScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/reports-index.tsx::ReportsIndexScreen::div[0]/section[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/saved-view/saved-view-detail.tsx::SavedViewDetail::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]::placeholder:text-muted-foreground#0",
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]/kbd[0]::text-muted-foreground#0",
@@ -37759,7 +37759,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
 			},
@@ -37773,7 +37773,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
 			},
@@ -37801,7 +37801,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/dashboard-view.tsx::DashboardViewScreen::div[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/dashboard-view.tsx"
 			},
@@ -37815,7 +37815,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/dashboard-view.tsx::DashboardViewScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/dashboard-view.tsx"
 			},
@@ -37829,7 +37829,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-builder.tsx::ReportBuilder::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-builder.tsx::ReportBuilderScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-builder.tsx"
 			},
@@ -37843,7 +37843,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-builder.tsx::ReportBuilder::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-builder.tsx::ReportBuilderScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-builder.tsx"
 			},
@@ -37857,7 +37857,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/Link[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-detail.tsx::ReportDetailScreen::div[0]/div[0]/div[0]/Link[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-detail.tsx"
 			},
@@ -37871,7 +37871,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-detail.tsx::ReportDetailScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-detail.tsx"
 			},
@@ -37885,7 +37885,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPageScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-export-page.tsx"
 			},
@@ -37899,7 +37899,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPageScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-export-page.tsx"
 			},
@@ -38025,7 +38025,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/reports-index.tsx::ReportsIndex::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/reports-index.tsx::ReportsIndexScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/reports-index.tsx"
 			},
@@ -38039,7 +38039,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/reports-index.tsx::ReportsIndex::div[0]/section[1]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/reports-index.tsx::ReportsIndexScreen::div[0]/section[1]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/reports-index.tsx"
 			},
@@ -43668,6 +43668,20 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.exports.$id.tsx:/_layout/_authenticated/agent/reports_/exports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.new.tsx:/_layout/_authenticated/agent/reports_/new",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -45536,23 +45550,23 @@
 			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#1",
 			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/Link[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::EditorBody::div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-builder.tsx::ReportBuilder::div[0]/div[0]/Link[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-builder.tsx::ReportBuilder::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/Link[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/Link[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-view.tsx::DashboardViewScreen::div[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-view.tsx::DashboardViewScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-builder.tsx::ReportBuilderScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-builder.tsx::ReportBuilderScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-detail.tsx::ReportDetailScreen::div[0]/div[0]/div[0]/Link[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-detail.tsx::ReportDetailScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPageScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-export-page.tsx::ReportExportPageScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-table.tsx::ReportTable::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-table.tsx::ReportTable::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::ReportContextLine::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::ReportVisual::div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/reports-index.tsx::ReportsIndex::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/reports/reports-index.tsx::ReportsIndex::div[0]/section[1]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/reports-index.tsx::ReportsIndexScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/reports-index.tsx::ReportsIndexScreen::div[0]/section[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/saved-view/saved-view-detail.tsx::SavedViewDetail::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]::placeholder:text-muted-foreground#0",
 			"apps/web/src/components/search.tsx::Search::SidebarGroup[0]/Button[0]/kbd[0]::text-muted-foreground#0",
@@ -49263,7 +49277,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
 			},
@@ -49277,7 +49291,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/dashboard-editor.tsx"
 			},
@@ -49305,7 +49319,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/dashboard-view.tsx::DashboardViewScreen::div[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/dashboard-view.tsx"
 			},
@@ -49319,7 +49333,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/dashboard-view.tsx::DashboardView::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/dashboard-view.tsx::DashboardViewScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/dashboard-view.tsx"
 			},
@@ -49333,7 +49347,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-builder.tsx::ReportBuilder::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-builder.tsx::ReportBuilderScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-builder.tsx"
 			},
@@ -49347,7 +49361,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-builder.tsx::ReportBuilder::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-builder.tsx::ReportBuilderScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-builder.tsx"
 			},
@@ -49361,7 +49375,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/Link[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-detail.tsx::ReportDetailScreen::div[0]/div[0]/div[0]/Link[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-detail.tsx"
 			},
@@ -49375,7 +49389,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-detail.tsx::ReportDetail::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-detail.tsx::ReportDetailScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-detail.tsx"
 			},
@@ -49389,7 +49403,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/Link[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPageScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-export-page.tsx"
 			},
@@ -49403,7 +49417,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPage::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/report-export-page.tsx::ReportExportPageScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/report-export-page.tsx"
 			},
@@ -49529,7 +49543,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/reports-index.tsx::ReportsIndex::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/reports-index.tsx::ReportsIndexScreen::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/reports-index.tsx"
 			},
@@ -49543,7 +49557,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/reports/reports-index.tsx::ReportsIndex::div[0]/section[1]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/reports/reports-index.tsx::ReportsIndexScreen::div[0]/section[1]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/reports/reports-index.tsx"
 			},
@@ -55188,6 +55202,20 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.exports.$id.tsx:/_layout/_authenticated/agent/reports_/exports/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.new.tsx:/_layout/_authenticated/agent/reports_/new",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -57883,17 +57911,20 @@
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/Panel[1]/ul[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::EditorBody::div[0]/DndContext[0]/div[0]/DashboardGrid[0]/DraggableWidget[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-widget.tsx::DashboardWidgetCard::Card[0]/CardContent[0]/div[0]/ScrollArea[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-widget.tsx::DashboardWidgetCard::Card[0]/CardContent[0]/div[0]/ScrollArea[0]/div[0]/div[0]/p[1]::text-muted-foreground#1",
 			"apps/web/src/components/reports/dashboard-widget.tsx::WidgetContext::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-widget.tsx::WidgetContext::div[0]/Popover[0]/PopoverTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-chart.tsx::ReportChart::figure[0]/figcaption[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-chart.tsx::ReportChart::figure[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-table.tsx::ReportTable::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-table.tsx::ReportTable::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-view.tsx::ReportMetrics::div[0]/Card[0]/CardContent[0]/dl[0]/dd[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::ReportMetrics::div[0]/Card[0]/CardContent[0]/dl[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::TrendLine::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::TrendLine::p[0]::text-muted-foreground#1",
 			"apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
 			"apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/saved-view/saved-view-editor.tsx::SavedViewEditor::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -60351,6 +60382,18 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/reports/dashboard-widget.tsx:DashboardWidgetCard",
+					"jsx:Card[0]/CardContent[0]/div[0]/ScrollArea[0]/div[0]/div[0]/p[1]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/reports/dashboard-widget.tsx::DashboardWidgetCard::Card[0]/CardContent[0]/div[0]/ScrollArea[0]/div[0]/div[0]/p[1]::text-muted-foreground#1",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/reports/dashboard-widget.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/dashboard-widget.tsx:DashboardWidgetCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "apps/web/src/components/reports/dashboard-widget.tsx::WidgetContext::div[0]/p[0]::text-muted-foreground#0",
@@ -60439,6 +60482,18 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/reports/report-view.tsx:ReportMetrics",
+					"jsx:div[0]/Card[0]/CardContent[0]/dl[0]/dd[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/reports/report-view.tsx::ReportMetrics::div[0]/Card[0]/CardContent[0]/dl[0]/dd[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/reports/report-view.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/report-view.tsx:ReportMetrics",
 					"jsx:div[0]/Card[0]/CardContent[0]/dl[0]/dt[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
@@ -60489,6 +60544,18 @@
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
 				"id": "apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/reports/reports-index.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/reports-index.tsx:Kpi",
+					"jsx:Link[0]/Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/reports/reports-index.tsx"
 			},
@@ -62645,7 +62712,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/dashboard-view.tsx:DashboardView",
+					"apps/web/src/components/reports/dashboard-view.tsx:DashboardViewScreen",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -63502,17 +63569,20 @@
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/Panel[1]/ul[0]/li[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::EditorBody::div[0]/DndContext[0]/div[0]/DashboardGrid[0]/DraggableWidget[0]/Card[0]/CardContent[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-widget.tsx::DashboardWidgetCard::Card[0]/CardContent[0]/div[0]/ScrollArea[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/reports/dashboard-widget.tsx::DashboardWidgetCard::Card[0]/CardContent[0]/div[0]/ScrollArea[0]/div[0]/div[0]/p[1]::text-muted-foreground#1",
 			"apps/web/src/components/reports/dashboard-widget.tsx::WidgetContext::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-widget.tsx::WidgetContext::div[0]/Popover[0]/PopoverTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-chart.tsx::ReportChart::figure[0]/figcaption[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-chart.tsx::ReportChart::figure[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-table.tsx::ReportTable::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-table.tsx::ReportTable::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
+			"apps/web/src/components/reports/report-view.tsx::ReportMetrics::div[0]/Card[0]/CardContent[0]/dl[0]/dd[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::ReportMetrics::div[0]/Card[0]/CardContent[0]/dl[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::TrendLine::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/report-view.tsx::TrendLine::p[0]::text-muted-foreground#1",
 			"apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
 			"apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/saved-view/saved-view-editor.tsx::SavedViewEditor::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/calendar-details-card.tsx::CalendarDetailsCard::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -65970,6 +66040,18 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/reports/dashboard-widget.tsx:DashboardWidgetCard",
+					"jsx:Card[0]/CardContent[0]/div[0]/ScrollArea[0]/div[0]/div[0]/p[1]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/reports/dashboard-widget.tsx::DashboardWidgetCard::Card[0]/CardContent[0]/div[0]/ScrollArea[0]/div[0]/div[0]/p[1]::text-muted-foreground#1",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/reports/dashboard-widget.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/dashboard-widget.tsx:DashboardWidgetCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "apps/web/src/components/reports/dashboard-widget.tsx::WidgetContext::div[0]/p[0]::text-muted-foreground#0",
@@ -66058,6 +66140,18 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/reports/report-view.tsx:ReportMetrics",
+					"jsx:div[0]/Card[0]/CardContent[0]/dl[0]/dd[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/reports/report-view.tsx::ReportMetrics::div[0]/Card[0]/CardContent[0]/dl[0]/dd[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/reports/report-view.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/report-view.tsx:ReportMetrics",
 					"jsx:div[0]/Card[0]/CardContent[0]/dl[0]/dt[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
@@ -66108,6 +66202,18 @@
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
 				"id": "apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/reports/reports-index.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/reports-index.tsx:Kpi",
+					"jsx:Link[0]/Card[0]/CardContent[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/reports/reports-index.tsx::Kpi::Link[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/reports/reports-index.tsx"
 			},
@@ -68324,7 +68430,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/dashboard-view.tsx:DashboardView",
+					"apps/web/src/components/reports/dashboard-view.tsx:DashboardViewScreen",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -71107,7 +71213,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/report-export-page.tsx:ReportExportPage",
+					"apps/web/src/components/reports/report-export-page.tsx:ReportExportPageScreen",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.exports.$id.tsx:/_layout/_authenticated/agent/reports_/exports/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -72908,9 +73014,9 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/report-builder.tsx:ReportBuilder",
+					"apps/web/src/components/reports/report-builder.tsx:ReportBuilderScreen",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/reports/report-builder.tsx:ReportBuilder",
+					"apps/web/src/components/reports/report-builder.tsx:ReportBuilderScreen",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -75826,7 +75932,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/report-export-page.tsx:ReportExportPage",
+					"apps/web/src/components/reports/report-export-page.tsx:ReportExportPageScreen",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.exports.$id.tsx:/_layout/_authenticated/agent/reports_/exports/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -77627,9 +77733,9 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/report-builder.tsx:ReportBuilder",
+					"apps/web/src/components/reports/report-builder.tsx:ReportBuilderScreen",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/reports/report-builder.tsx:ReportBuilder",
+					"apps/web/src/components/reports/report-builder.tsx:ReportBuilderScreen",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -79659,9 +79765,25 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/dashboard-view.tsx:DashboardView",
+					"apps/web/src/components/reports/dashboard-view.tsx:DashboardViewScreen",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/dashboard.tsx:/_layout/_authenticated/agent/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/report-builder.tsx:ReportBuilderScreen",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.new.tsx:/_layout/_authenticated/agent/reports_/new",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
@@ -79707,7 +79829,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/reports-index.tsx:ReportsIndex",
+					"apps/web/src/components/reports/reports-index.tsx:ReportsIndexScreen",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports.tsx:/_layout/_authenticated/agent/reports",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -80899,9 +81021,25 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/dashboard-view.tsx:DashboardView",
+					"apps/web/src/components/reports/dashboard-view.tsx:DashboardViewScreen",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/dashboard.tsx:/_layout/_authenticated/agent/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/reports/report-builder.tsx:ReportBuilderScreen",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.new.tsx:/_layout/_authenticated/agent/reports_/new",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
@@ -80947,7 +81085,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/reports-index.tsx:ReportsIndex",
+					"apps/web/src/components/reports/reports-index.tsx:ReportsIndexScreen",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports.tsx:/_layout/_authenticated/agent/reports",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -104598,7 +104736,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/dashboard-view.tsx:DashboardView",
+					"apps/web/src/components/reports/dashboard-view.tsx:DashboardViewScreen",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -105425,7 +105563,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/reports/dashboard-view.tsx:DashboardView",
+					"apps/web/src/components/reports/dashboard-view.tsx:DashboardViewScreen",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",

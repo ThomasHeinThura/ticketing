@@ -1,9 +1,15 @@
 import type { Page } from "@playwright/test";
+import {
+  DEFAULT_RESOLVED_FEATURES,
+  WORKSPACE_ID,
+} from "./g11-performance-fixture";
 
 /**
  * Network-edge fixture for the Reports area and the agent Dashboard, on top of
- * `installPerformanceApiFixture` (session, shell, features with `feature.reports` on). Registered
- * after it, so these routes answer first and everything else falls back to the base fixture.
+ * `installPerformanceApiFixture` (session, shell). Registered after it, so these routes answer
+ * first and everything else falls back to the base fixture. The base fixture resolves every P5
+ * flag off; this one answers the same resolved-flag reads with `feature.reports` on, which is what
+ * `ReportsFeatureGate` and the navigation read for the active workspace.
  *
  * The data is chosen to stress the fit rules (3 Nov): a 26-bucket weekly chart that is wider than
  * a phone, a three-series chart whose legend wraps, a seven-column table, and the full
@@ -442,7 +448,19 @@ const EXPORT = {
   },
 };
 
+/** A fresh deployment's resolved switches with Reports turned on. */
+const RESOLVED_FEATURES = {
+  features: DEFAULT_RESOLVED_FEATURES.map((feature) =>
+    feature.key === "feature.reports" ? { ...feature, enabled: true } : feature,
+  ),
+};
+
 function bodyFor(path: string): unknown {
+  if (
+    path === "/api/features/resolved" ||
+    path === `/api/workspaces/${WORKSPACE_ID}/features/resolved`
+  )
+    return RESOLVED_FEATURES;
   if (path === "/api/reports") return CATALOGUE;
   if (path === "/api/reports/custom/preview") return CUSTOM_PREVIEW;
   const report = /^\/api\/reports\/([a-z_]+)$/u.exec(path);
