@@ -3882,7 +3882,6 @@
 			"signOutFailed": "Could not sign out. Try again.",
 			"dashboard": "Dashboard",
 			"support": "Support",
-			"updates": "Updates",
 			"announcements": "Announcements",
 			"settings": "Settings"
 		},
@@ -4189,7 +4188,19 @@
 			"theme": "Toggle theme",
 			"search": {
 				"label": "Search",
-				"placeholder": "Search for help"
+				"placeholder": "Search for help",
+				"dialogPlaceholder": "Search articles, {{term_request_one}} types and your {{term_request_other}}",
+				"hint": "Type to search articles, {{term_request_one}} types and your {{term_request_other}}.",
+				"empty": "No articles, {{term_request_one}} types or {{term_request_other}} match “{{q}}”.",
+				"searching": "Searching…",
+				"groups": {
+					"articles": "Articles",
+					"requestTypes": "{{term_request_one}} types",
+					"cases": "Your {{term_request_other}}",
+					"more": "More results"
+				},
+				"allArticles": "Search all articles for “{{q}}”",
+				"allRequestTypes": "Browse {{term_request_one}} types for “{{q}}”"
 			},
 			"userMenu": {
 				"label": "Account menu for {{name}}",
@@ -4292,10 +4303,11 @@
 				"closedHint": "In the last 30 days",
 				"averageResponse": "Average first response",
 				"averageResponseHint": "Last 30 days"
-			}
+			},
+			"raisedByTeamFor": "Raised by our team for {{name}}",
+			"raisedByTeamForColleague": "Raised by our team for a colleague"
 		},
 		"projects": {
-			"navigation": "Project details",
 			"title": "Projects",
 			"description": "Your organisation's projects and managed services.",
 			"tabs": {
@@ -4442,7 +4454,9 @@
 			"filesToSend": "Files to send with your reply",
 			"removeFile": "Remove {{name}}",
 			"sending": "Sending…",
-			"uploadFailed": "Your reply was sent, but these files could not be attached:"
+			"uploadFailed": "Your reply was sent, but these files could not be attached:",
+			"replySent": "Reply sent",
+			"fileUploadPending": "Upload not finished"
 		}
 	},
 	"instanceUsers": {

@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import { PortalReleaseDetail } from "@/components/service-management/portal/portal-release-detail";
+import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
   parsePortalProjectSearch,
   portalProjectSearchMiddlewares,
@@ -12,7 +14,13 @@ export const Route = createFileRoute("/releases_/$id")({
 });
 
 function Release() {
+  const { t } = usePortalTranslation("portal");
   const { id } = Route.useParams();
   const { portalUserId } = Route.useRouteContext();
-  return <PortalReleaseDetail id={id} scope={portalUserId} />;
+  return (
+    <>
+      <PortalPageTitle title={t("releases.title")} />
+      <PortalReleaseDetail id={id} scope={portalUserId} />
+    </>
+  );
 }

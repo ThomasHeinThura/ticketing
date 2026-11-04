@@ -228,6 +228,103 @@ describe("PortalRequestDetails", () => {
     ).toBeVisible();
   });
 
+  it("tells a colleague whom the team raised the request for, not 'for you'", async () => {
+    getPortalRequest.mockResolvedValue(
+      detail({
+        isRequester: false,
+        createdBy: { name: "Bob Colleague", isYou: false },
+        canReply: false,
+        canViewAttachments: false,
+        canUpload: false,
+      }),
+    );
+    render(<PortalRequestDetails portalUserId="u1" requestRef="SUP-12" />, {
+      wrapper,
+    });
+    expect(
+      await screen.findByText(
+        "Service request · cases.raisedByTeamFor(Bob Colleague)",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/cases\.raisedByTeam$/)).toBeNull();
+  });
+
+  it("keeps focus in the reply box after sending and announces the reply", async () => {
+    getPortalRequest.mockResolvedValue(detail());
+    getPortalRequestFiles.mockResolvedValue([]);
+    let finish: (value: unknown) => void = () => undefined;
+    replyToPortalRequest.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    render(<PortalRequestDetails portalUserId="u1" requestRef="SUP-12" />, {
+      wrapper,
+    });
+    const box = await screen.findByLabelText("intake.reply");
+    fireEvent.change(box, { target: { value: "Tested, it works." } });
+    const send = screen.getByRole("button", { name: "intake.sendReply" });
+    send.focus();
+    fireEvent.click(send);
+    // While the reply is on its way the focused button stays focusable (no `disabled`).
+    const pending = await screen.findByRole("button", {
+      name: "requestPage.sending",
+    });
+    expect(pending).not.toBeDisabled();
+    expect(pending).toHaveAttribute("aria-disabled", "true");
+    expect(pending).toHaveFocus();
+    expect(box).not.toBeDisabled();
+    finish({ ref: "SUP-12", message: { id: "c2" } });
+    await waitFor(() => expect(box).toHaveValue(""));
+    expect(box).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "requestPage.replySent",
+    );
+  });
+
+  it("moves focus to the next file, then to Attach files, when a staged file is removed", async () => {
+    getPortalRequest.mockResolvedValue(detail());
+    getPortalRequestFiles.mockResolvedValue([]);
+    render(<PortalRequestDetails portalUserId="u1" requestRef="SUP-12" />, {
+      wrapper,
+    });
+    await screen.findByLabelText("intake.reply");
+    const first = new File(["a"], "a.txt", { type: "text/plain" });
+    const second = new File(["bb"], "b.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByLabelText("requestPage.attach"), {
+      target: { files: [first, second] },
+    });
+    const removeFirst = screen.getByRole("button", {
+      name: "requestPage.removeFile(a.txt)",
+    });
+    removeFirst.focus();
+    fireEvent.click(removeFirst);
+    const removeSecond = await screen.findByRole("button", {
+      name: "requestPage.removeFile(b.txt)",
+    });
+    await waitFor(() => expect(removeSecond).toHaveFocus());
+    fireEvent.click(removeSecond);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "requestPage.attach" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("is not wrapped in its own main landmark (the portal shell owns <main>)", async () => {
+    getPortalRequest.mockResolvedValue(detail());
+    getPortalRequestFiles.mockResolvedValue([]);
+    const { container } = render(
+      <PortalRequestDetails portalUserId="u1" requestRef="SUP-12" />,
+      { wrapper },
+    );
+    await screen.findByRole("heading", { name: "Confirm the new VPN profile" });
+    expect(container.querySelector("main")).toBeNull();
+    expect(document.title).toBe(
+      "Confirm the new VPN profile · SUP-12 · navigation.title",
+    );
+  });
+
   it("says the request is not available on a 404", async () => {
     getPortalRequest.mockRejectedValue(new HttpError(404, "Request not found"));
     render(<PortalRequestDetails portalUserId="u1" requestRef="SUP-99" />, {

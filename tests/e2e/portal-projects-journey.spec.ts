@@ -275,7 +275,7 @@ async function runJourney(
       page.getByRole("heading", { level: 1, name: "Projects" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Project details", exact: true }),
+      page.getByRole("link", { name: "Projects", exact: true }),
     ).toHaveAttribute("aria-current", "page");
     const row = page.getByRole("row", { name: /Portal rollout/u });
     await expect(row).toContainText(projects.projectKey);

@@ -35,7 +35,16 @@ vi.mock("@tanstack/react-router", () => ({
     useRouteContext: () => ({ portalUserId: "customer-a" }),
     useParams: () => ({ ref: "SUB-7" }),
   }),
+  Link: ({ children, to, ...props }: { children?: unknown; to: string }) => (
+    <a href={to} {...(props as object)}>
+      {children as never}
+    </a>
+  ),
   useLocation: () => ({ hash: "" }),
+}));
+
+vi.mock("@/components/portal/requests/portal-submission-fetch", () => ({
+  getPortalSubmissionDetail: mocks.getSubmission,
 }));
 
 vi.mock("@/fetchers/intake", () => ({
@@ -224,7 +233,7 @@ describe("reopen (CP-8)", () => {
     };
     mocks.getSubmission.mockResolvedValue(closed);
     const hidden = renderPage();
-    await screen.findByText(/Hardware ·/u);
+    await screen.findByRole("heading", { level: 1 });
     expect(
       screen.queryByRole("button", { name: "Reopen request" }),
     ).not.toBeInTheDocument();
@@ -339,7 +348,9 @@ describe("customer status, service target metric and colleague view (CP-5, CP-6,
       workItem: { ...accepted.workItem, state: "Waiting for L2" },
     });
     const { container } = renderPage();
-    expect(await screen.findByText("Hardware · Resolved")).toBeVisible();
+    expect(await screen.findByText("Resolved")).toBeVisible();
+    // The status shows once, in the details card, not again in the subtitle.
+    expect(screen.getByText("Hardware").tagName).toBe("P");
     expect(screen.getAllByText("Resolved").length).toBeGreaterThan(0);
     expect(container.textContent).not.toMatch(/Waiting for L2|In progress/u);
   });
@@ -350,7 +361,7 @@ describe("customer status, service target metric and colleague view (CP-5, CP-6,
       workItem: { ...accepted.workItem, state: "Triage" },
     });
     const { container } = renderPage();
-    expect(await screen.findByText("Hardware · In progress")).toBeVisible();
+    expect(await screen.findByText("In progress")).toBeVisible();
     expect(container.textContent).not.toContain("Triage");
   });
 

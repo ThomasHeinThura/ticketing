@@ -4,6 +4,7 @@ import type { PortalCaseFilterPatch } from "@/components/portal/cases/portal-cas
 import { PortalOutstandingCases } from "@/components/portal/cases/portal-outstanding-cases";
 import { PortalHomeKpis } from "@/components/portal/portal-home-kpis";
 import { PortalOrientation } from "@/components/portal/portal-orientation";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import { PortalProjectsCards } from "@/components/portal/projects/portal-projects-cards";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
@@ -37,7 +38,8 @@ function PortalHome() {
     });
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+      <PortalPageTitle title={t("home.dashboardTitle")} />
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-semibold text-xl">{t("home.dashboardTitle")}</h1>
@@ -62,6 +64,6 @@ function PortalHome() {
         project={project}
         onChange={update}
       />
-    </main>
+    </div>
   );
 }

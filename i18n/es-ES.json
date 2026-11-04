@@ -3897,8 +3897,7 @@
 			"announcements": "Announcements",
 			"dashboard": "Dashboard",
 			"settings": "Settings",
-			"support": "Support",
-			"updates": "Updates"
+			"support": "Support"
 		},
 		"home": {
 			"title": "How can we help?",
@@ -4207,7 +4206,19 @@
 			},
 			"search": {
 				"label": "Search",
-				"placeholder": "Search for help"
+				"placeholder": "Search for help",
+				"dialogPlaceholder": "Search articles, {{term_request_one}} types and your {{term_request_other}}",
+				"hint": "Type to search articles, {{term_request_one}} types and your {{term_request_other}}.",
+				"empty": "No articles, {{term_request_one}} types or {{term_request_other}} match “{{q}}”.",
+				"searching": "Searching…",
+				"groups": {
+					"articles": "Articles",
+					"requestTypes": "{{term_request_one}} types",
+					"cases": "Your {{term_request_other}}",
+					"more": "More results"
+				},
+				"allArticles": "Search all articles for “{{q}}”",
+				"allRequestTypes": "Browse {{term_request_one}} types for “{{q}}”"
 			},
 			"theme": "Toggle theme",
 			"userMenu": {
@@ -4307,7 +4318,9 @@
 			},
 			"summary": "Showing {{shown}} of {{total}}",
 			"viewAll": "View all {{term_request_other}}",
-			"yourTeam": "Your team"
+			"yourTeam": "Your team",
+			"raisedByTeamFor": "Raised by our team for {{name}}",
+			"raisedByTeamForColleague": "Raised by our team for a colleague"
 		},
 		"projects": {
 			"columns": {
@@ -4416,7 +4429,6 @@
 				"project": "Project"
 			},
 			"loadFailed": "Projects could not be loaded.",
-			"navigation": "Project details",
 			"noMatches": {
 				"description": "Try another search or type.",
 				"title": "No matching projects"
@@ -4458,7 +4470,9 @@
 			"sending": "Sending…",
 			"sharedByTeam": "Shared by our team",
 			"fileNotDownloadable": "Not available to download here yet. Ask the team if you need it.",
-			"uploadFailed": "Your reply was sent, but these files could not be attached:"
+			"uploadFailed": "Your reply was sent, but these files could not be attached:",
+			"replySent": "Reply sent",
+			"fileUploadPending": "Upload not finished"
 		}
 	},
 	"instanceUsers": {

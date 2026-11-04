@@ -17,6 +17,7 @@ import {
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { AnnouncementSeverityBadge } from "@/components/announcements/announcement-severity-badge";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
   getPortalAnnouncements,
   type PortalAnnouncement,
@@ -60,7 +61,8 @@ export function PortalAnnouncementsList({
   const entries = announcements.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+      <PortalPageTitle title={t("portal:announcements.title")} />
       <header className="space-y-1">
         <h1 className="font-semibold text-2xl">
           {t("portal:announcements.title")}
@@ -138,6 +140,6 @@ export function PortalAnnouncementsList({
           ) : null}
         </div>
       )}
-    </main>
+    </div>
   );
 }

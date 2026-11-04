@@ -92,4 +92,16 @@ describe("immutable submission answer labels", () => {
       { key: "legacy_key", label: "legacy_key", value: "Other" },
     ]);
   });
+
+  it("lists answers in the form's field order, not the order they were stored in", () => {
+    expect(
+      submissionAnswerRows(
+        [
+          { key: "summary", label: "Short summary" },
+          { key: "details", label: "What happened?" },
+        ],
+        { details: "It stopped", legacy: "x", summary: "VPN down" },
+      ).map((row) => row.label),
+    ).toEqual(["Short summary", "What happened?", "legacy"]);
+  });
 });

@@ -252,12 +252,8 @@ describe("portal catalogue route", () => {
       "Draft answer",
     );
 
-    fireEvent.change(screen.getByLabelText("Search"), {
-      target: { value: "does-not-match" },
-    });
-    expect(mocks.navigate).toHaveBeenCalledWith({
-      search: { q: "does-not-match", key: "access" },
-    });
+    // An open form hides the list's filter; `q` can still change through the URL.
+    expect(screen.queryByLabelText("Search")).toBeNull();
     mocks.search = { q: "does-not-match", key: "access" };
     view.rerender(
       <QueryClientProvider client={view.queryClient}>

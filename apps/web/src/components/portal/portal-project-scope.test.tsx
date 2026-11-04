@@ -201,6 +201,39 @@ describe("portal project selector", () => {
     expect(router.state.location.pathname).toBe("/approvals");
   });
 
+  it("drops an unknown or foreign ?project= key once the projects have loaded", async () => {
+    getPortalProjects.mockResolvedValue({
+      data: [
+        { key: "ALPHA", name: "Alpha" },
+        { key: "BETA", name: "Beta" },
+      ],
+    });
+    const router = renderPortal("/?project=ZZZQ&scope=all");
+    await screen.findByText("/");
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ scope: "all" }),
+    );
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("drops an unknown ?project= key even when there is only one project to choose", async () => {
+    getPortalProjects.mockResolvedValue({
+      data: [{ key: "ALPHA", name: "Alpha" }],
+    });
+    const router = renderPortal("/requests?project=ZZZQ");
+    await screen.findByText("/requests");
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+  });
+
+  it("keeps the ?project= key when the projects list fails to load", async () => {
+    getPortalProjects.mockRejectedValue(new Error("offline"));
+    const router = renderPortal("/?project=ALPHA");
+    await screen.findByText("/");
+    await waitFor(() => expect(getPortalProjects).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(router.state.location.search).toEqual({ project: "ALPHA" });
+  });
+
   it("scopes the dashboard to the chosen project and back to all (U-11)", async () => {
     getPortalProjects.mockResolvedValue({
       data: [

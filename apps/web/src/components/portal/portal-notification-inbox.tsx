@@ -12,7 +12,6 @@ import {
   CardAction,
   CardDescription,
   CardHeader,
-  CardPanel,
   CardTitle,
   Empty,
   EmptyDescription,
@@ -22,6 +21,8 @@ import {
   TabsTrigger,
 } from "@taskdesk/ui";
 import { useState } from "react";
+import { formatPortalDateTime } from "@/components/portal/portal-format";
+import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
   getPortalNotifications,
   markAllPortalNotificationsRead,
@@ -82,6 +83,12 @@ export function PortalNotificationInbox({
         : markPortalNotificationRead(id),
     onSuccess: invalidate,
   });
+  // Opening a notification reads it (the agent dropdown does the same); never toggles back.
+  // Hook-level callbacks still run after the link navigates away, so the bell refreshes.
+  const markOpened = useMutation({
+    mutationFn: (id: string) => markPortalNotificationRead(id),
+    onSettled: invalidate,
+  });
   const updateAll = useMutation({
     mutationFn: markAllPortalNotificationsRead,
     onSuccess: invalidate,
@@ -92,8 +99,9 @@ export function PortalNotificationInbox({
   return (
     <section
       aria-labelledby="portal-notifications-title"
-      className="flex min-w-0 flex-col gap-4 p-4 md:p-6"
+      className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 p-4 sm:p-6"
     >
+      <PortalPageTitle title={t("notifications.title")} />
       <header className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h1
@@ -164,6 +172,9 @@ export function PortalNotificationInbox({
             onToggleRead={(id) =>
               updateOne.mutate({ id, unread: notification.isRead })
             }
+            onOpen={(id) => {
+              if (!notification.isRead) markOpened.mutate(id);
+            }}
           />
         ))}
       </ol>
@@ -186,12 +197,15 @@ function PortalNotificationCard({
   notification,
   pending,
   onToggleRead,
+  onOpen,
 }: {
   notification: PortalNotification;
   pending: boolean;
   onToggleRead(id: string): void;
+  onOpen(id: string): void;
 }) {
-  const { t } = usePortalTranslation("portal");
+  const { t, i18n } = usePortalTranslation("portal");
+  const locale = i18n?.resolvedLanguage || i18n?.language || undefined;
   return (
     <li>
       <Card
@@ -214,18 +228,33 @@ function PortalNotificationCard({
                       : undefined
                   }
                   className={linkClassName}
+                  onClick={() => onOpen(notification.id)}
                 >
                   {t(eventTranslation[notification.kind])}
                 </Link>
               ) : (
                 // AP-21: an approval event opens the Approvals screen (AP-19).
-                <Link to="/approvals" className={linkClassName}>
+                <Link
+                  to="/approvals"
+                  className={linkClassName}
+                  onClick={() => onOpen(notification.id)}
+                >
                   {t(eventTranslation[notification.kind])}
                 </Link>
               )}
             </CardTitle>
             <CardDescription>
-              {new Date(notification.createdAt).toLocaleString()}
+              {notification.requestRef ? (
+                <>
+                  {t("notifications.requestReference", {
+                    ref: notification.requestRef,
+                  })}
+                  {" · "}
+                </>
+              ) : null}
+              <time dateTime={notification.createdAt}>
+                {formatPortalDateTime(notification.createdAt, locale)}
+              </time>
             </CardDescription>
           </div>
           <CardAction>
@@ -241,15 +270,6 @@ function PortalNotificationCard({
             </Button>
           </CardAction>
         </CardHeader>
-        {notification.requestRef ? (
-          <CardPanel>
-            <p className="text-sm text-muted-foreground">
-              {t("notifications.requestReference", {
-                ref: notification.requestRef,
-              })}
-            </p>
-          </CardPanel>
-        ) : null}
       </Card>
     </li>
   );
