@@ -2489,6 +2489,7 @@
 			"urgent": "Urgent"
 		},
 		"boardSearchPlaceholder": "Search tickets...",
+		"boardSearchActive": "Search active",
 		"view": {
 			"board": "Board",
 			"list": "List"

@@ -1,6 +1,6 @@
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@taskdesk/ui";
 import { Search } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import ProjectTaskSearchInput from "@/components/common/project-task-search-input";
 
 interface ProjectTaskSearchHeaderProps {
@@ -8,6 +8,7 @@ interface ProjectTaskSearchHeaderProps {
   onValueChange: (value: string) => void;
   placeholder: string;
   clearLabel: string;
+  activeLabel: string;
 }
 
 /**
@@ -23,10 +24,13 @@ export default function ProjectTaskSearchHeader({
   onValueChange,
   placeholder,
   clearLabel,
+  activeLabel,
 }: ProjectTaskSearchHeaderProps) {
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const popoverInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
+  const activeDescriptionId = useId();
+  const isSearchActive = value.trim().length > 0;
 
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
@@ -61,18 +65,26 @@ export default function ProjectTaskSearchHeader({
               variant="ghost"
               size="icon-xs"
               aria-label={placeholder}
+              aria-describedby={
+                isSearchActive ? activeDescriptionId : undefined
+              }
               className="relative hidden size-7 border border-transparent text-muted-foreground hover:text-foreground md:max-lg:inline-flex"
             />
           }
         >
           <Search className="size-4" />
           {/* An active query stays visible while the field is collapsed. */}
-          {value.length > 0 ? (
-            <span
-              aria-hidden="true"
-              data-testid="project-task-search-active"
-              className="absolute top-1 right-1 size-1.5 rounded-full bg-primary"
-            />
+          {isSearchActive ? (
+            <>
+              <span
+                aria-hidden="true"
+                data-testid="project-task-search-active"
+                className="absolute top-1 right-1 size-1.5 rounded-full bg-primary"
+              />
+              <span id={activeDescriptionId} className="sr-only">
+                {activeLabel}
+              </span>
+            </>
           ) : null}
         </PopoverTrigger>
         <PopoverContent

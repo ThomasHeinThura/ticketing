@@ -2480,6 +2480,7 @@
 			"urgent": "Mendesak"
 		},
 		"boardSearchPlaceholder": "Cari tiket...",
+		"boardSearchActive": "Pencarian aktif",
 		"view": {
 			"board": "Papan",
 			"list": "Daftar"

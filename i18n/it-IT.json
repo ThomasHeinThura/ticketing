@@ -2498,6 +2498,7 @@
 			"urgent": "Urgente"
 		},
 		"boardSearchPlaceholder": "Cerca ticket...",
+		"boardSearchActive": "Ricerca attiva",
 		"view": {
 			"board": "Board",
 			"list": "Elenco"

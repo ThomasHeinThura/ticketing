@@ -10131,6 +10131,9 @@
 				"boardSearchPlaceholder": {
 					"type": "string"
 				},
+				"boardSearchActive": {
+					"type": "string"
+				},
 				"view": {
 					"type": "object",
 					"additionalProperties": false,
@@ -12063,6 +12066,7 @@
 				"status",
 				"priority",
 				"boardSearchPlaceholder",
+				"boardSearchActive",
 				"view",
 				"common",
 				"detail",

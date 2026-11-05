@@ -2507,6 +2507,7 @@
 			"urgent": "Терміновий"
 		},
 		"boardSearchPlaceholder": "Пошук тікетів...",
+		"boardSearchActive": "Пошук активний",
 		"view": {
 			"board": "Дошка",
 			"list": "Список"

@@ -2480,6 +2480,7 @@
 			"urgent": "긴급"
 		},
 		"boardSearchPlaceholder": "티켓 검색...",
+		"boardSearchActive": "검색 활성화됨",
 		"view": {
 			"board": "보드",
 			"list": "목록"

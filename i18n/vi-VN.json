@@ -2480,6 +2480,7 @@
 			"urgent": "Khẩn cấp"
 		},
 		"boardSearchPlaceholder": "Tìm phiếu...",
+		"boardSearchActive": "Tìm kiếm đang hoạt động",
 		"view": {
 			"board": "Bảng",
 			"list": "Danh sách"

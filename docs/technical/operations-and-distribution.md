@@ -232,10 +232,8 @@ product is more effective than a paragraph in a manual.
 One image serves the API, the agent bundle, the portal bundle, the scheduler and the CLI.
 This is its distribution contract; [CI/release gates](ci-gates.md) define the protected build path.
 
-The image includes `apps/api/dist/seed-sit-users.js`, bundled with the application build
-and using the installed production dependencies. `scripts/deploy.sh local` invokes it
-inside the application container; the explicit `--sit` argument is required. It is never
-invoked by normal application startup or production deployment.
+The image includes a SIT seed utility, but the local release path never invokes it.
+Never rerun the SIT account seeder or overwrite existing SIT records.
 
 <a id="container-image-stages"></a>
 ### Stages
@@ -305,8 +303,8 @@ before the serving process starts, never inside it. In compose that is the `migr
 service; in Kubernetes (the Helm chart) it is an initContainer on the same Pod. A
 single-container deployment with no orchestrator support for either shape runs the image
 twice: once with `TASKDESK_ROLE=migrate` and the owner URL, then normally with the
-application URL only — see [configuration-reference.md](configuration.md)'s
-Local development section for the exact two commands.
+application URL only. Canonical local SIT uses the verified Compose release path
+instead of this single-container approach.
 
 `HEALTHCHECK` uses `/api/public/health/live` on `web` and `all`, and a fixed Unix socket at
 `/tmp/taskdesk-liveness.sock` on `jobs`. Both checks report process liveness only and touch
@@ -426,82 +424,48 @@ The public docs site has its own `docs.<domain>` origin and static image, separa
 `taskdesk` application image and from the conditional files origin. The target image is
 `nginxinc/nginx-unprivileged:1.30.5-alpine3.24@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e`, subject to digest/platform verification at implementation. It serves only exported static `out/` files on port 8080 as non-root, returns a real 404 for unknown paths, and probes a static `/healthz`. It joins the proxy network only; production publishes no host port.
 
-The router and docs service are added to local and production overlays separately. Add a UAT route only after confirming its CloudFront-to-Traefik path and web entrypoint. Build, scan, generate an SBOM, sign and publish the separate image from protected-main release automation; CI does not deploy it. A changed docs digest must trigger its own UAT pull, which verifies the signature and expected workflow identity before pulling the immutable digest and updating only the docs service. The existing app-image updater does not deploy the docs image. Verify docs container health, HTTPS through the confirmed proxy path, search against a published page and a genuine 404 for an unknown path. Retain the prior known-good docs digest for rollback without changing the application image. Production promotion manually pins the independently verified immutable docs digest after UAT verification. These are target requirements, not evidence that a docs updater, image, service, router, hostname or deployment exists. See the [docs-site contract](architecture-and-experience.md#plan).
+The target router and docs service are added to the applicable local and production configurations separately; canonical local SIT continues to use only `deploy/compose.testing.yml`. Add a UAT route only after confirming its CloudFront-to-Traefik path and web entrypoint. Build, scan, generate an SBOM, sign and publish the separate image from protected-main release automation; CI does not deploy it. A changed docs digest must trigger its own UAT pull, which verifies the signature and expected workflow identity before pulling the immutable digest and updating only the docs service. The existing app-image updater does not deploy the docs image. Verify docs container health, HTTPS through the confirmed proxy path, search against a published page and a genuine 404 for an unknown path. Retain the prior known-good docs digest for rollback without changing the application image. Production promotion manually pins the independently verified immutable docs digest after UAT verification. These are target requirements, not evidence that a docs updater, image, service, router, hostname or deployment exists. See the [docs-site contract](architecture-and-experience.md#plan).
 
 <a id="deployment-first-run"></a>
 ### First run
 
-The short path, on any machine with a shell and outbound HTTPS:
+For canonical local SIT, an operator must first verify the backup and restored copy,
+including the database and filesystem attachments. The existing
+`taskdesk-codex-testing` project must already have its canonical volumes and healthy
+Postgres and Valkey services. Do not create or import data implicitly, overwrite an
+existing volume, or stop another project to free a port. Initial copy and port cutover
+are separate operator work.
 
-```bash
-curl -fsSL https://get.taskdesk.dev | bash
-```
+Set `SIT_COMPOSE_ENV` and `SIT_PRIVATE_DIR` to absolute paths to the existing private
+Compose environment file and configuration directory. The private Compose environment
+must select the signed immutable image through `SIT_IMAGE` and its signed release tag
+through `TASKDESK_IMAGE_TAG`. These are operator inputs, not application bootstrap
+variables. Then run `scripts/deploy.sh local` from the checkout.
 
-See [One-line install](#one-line-install) for what that actually does, its flags, its
-trust model, and the offline alternative. It is a thin bootstrapper around exactly the
-manual steps below — running it is never required, only shorter.
+The local path uses only `deploy/compose.testing.yml` and a local Docker Unix socket.
+It checks the existing project, database roles and targets, filesystem storage and volume
+bindings; verifies both the GitHub attestation and cosign signature against the release
+workflow; pulls the pinned image; runs the one-shot migration; checks the running image,
+attachment mount and unpublished app port; probes internal readiness; and starts the
+proxy. It does not generate root secrets or certificates, seed accounts, display setup
+logs, or accept verification, probe or profile bypass flags. A migration can change the
+restored database: retain a verified backup and stop on any failure.
 
-The manual path it wraps:
+Proxy startup and internal readiness do not establish public HTTPS or browser behaviour.
+Check readiness on both canonical hosts and run the signed-in release smoke before accepting
+the release. See [handover](../handover.md) and [testing](../testing.md).
 
-```bash
-git clone <repo> && cd Ticketing.v2
-cp deploy/.env.example .env
-$EDITOR .env                          # domain, DB password, secrets
-scripts/deploy.sh local
-```
-
-The script is **idempotent** — safe to re-run, and it never regenerates a secret that
-already exists. Existing deployment secrets and data are preserved.
-
-Local deployment runs the bundled SIT seed inside the healthy application container with
-`node apps/api/dist/seed-sit-users.js --sit --credentials-file <container /tmp path>`. No host Node/pnpm installation or published
-database port is required. A seed failure fails deployment. The seed creates the four
-interactive test accounts, turns intake and the customer portal on for the SIT workspace
-(both default off, so a fresh install's catalogue would otherwise be empty), two published
-customer request forms and two real submissions (one private, one organisation-visible).
-The generated passwords are copied to `~/.taskdesk/sit-credentials.json` (0600) and removed
-from the container. Re-running preserves existing submissions and
-their triage progress. Production, upgrade and rollback never run this seed.
-
-It:
-
-1. Generates any missing secrets.
-2. Generates a self-signed certificate (local only).
-3. Starts Postgres and Valkey — plus SeaweedFS and its bucket-create step when
-   `--profile s3` is in play — and waits for health.
-4. Runs the one-shot `migrate` service (`TASKDESK_ROLE=migrate`), which applies
-   migrations under an advisory lock and creates/repairs the non-superuser application
-   role and its grants — the only step that ever uses the owner/migration credential
-   (issue #296, S1). Then starts the application itself, which connects only as that
-   application role and refuses to start if it can ever reach the owner credential or
-   turns out to be privileged.
-5. Prints the one-time **setup URL** (agent origin + the token from the container log) at
-   which the first administrator is created — or, for headless installs, creates it from
-   `TASKDESK_BOOTSTRAP_ADMIN_EMAIL`.
-6. Seeds demo data, if permitted.
-7. **Probes the API** — signs in, lists projects — and fails loudly if it cannot.
-8. Prints the URLs.
-
-Step 7 is mandatory: a running container is not evidence that the application works.
-
-Then: sign in at `https://ticket.localhost`, open God Mode, and configure everything else
-through the UI. **No further environment variables.** See
-[plugin architecture](architecture-and-experience.md#plugin-architecture).
-
-**On a host that already runs another reverse proxy on 80/443** (Dokploy, nginx, another
-app), the bundled local Traefik can't publish those ports too. `scripts/deploy.sh
-local` checks for this before starting anything and fails with the fix rather than a bare
-Docker port-in-use error: set `TASKDESK_LOCAL_HTTP_PORT` / `TASKDESK_LOCAL_HTTPS_PORT` in
-`.env` (e.g. `8080` / `8443`) and include the HTTPS port in `TASKDESK_AGENT_URL` /
-`TASKDESK_PORTAL_URL` — see [traefik-and-domains.md § Local development](#traefik-and-domains-local-development).
+For other installation modes, see [One-line install](#one-line-install) and the
+production guidance below; those modes have separate requirements.
 
 <a id="deployment-compose-files"></a>
 ### Compose files
 
 | File | Purpose |
 | --- | --- |
+| `deploy/compose.testing.yml` | Canonical local SIT project and services; no application port published |
 | `compose.yml` | Base — at the repository root. Services, images, volumes, networks. **Publishes no application port** |
-| `deploy/compose.local.yml` | Overlay — local development: local settings, Mailpit, Postgres on loopback. Publishes no application port (#752) |
+| `deploy/compose.local.yml` | Legacy local development overlay; not used for canonical local SIT |
 | `deploy/compose.prod.yml` | Overlay — Traefik labels, resource limits, external proxy network |
 | `deploy/compose.uat.yml` | Overlay — as production, different hostnames, and the bimats.com host's real topology: CloudFront terminates TLS, so the routers use the plain `web` entrypoint with no certificate resolver ([proxy topology evidence](#proxy-topology-evidence)) |
 | `deploy/compose.traefik.yml` | Local Traefik, so production labels can be tested locally |
@@ -512,13 +476,13 @@ Docker port-in-use error: set `TASKDESK_LOCAL_HTTP_PORT` / `TASKDESK_LOCAL_HTTPS
 # production
 docker compose -f compose.yml -f deploy/compose.prod.yml up -d --wait
 
-# local development — the local overlay plus its own Traefik (use scripts/deploy.sh local)
-docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml up -d --wait
+# canonical local SIT: use the verified local release path after the preflight above
+scripts/deploy.sh local
 ```
 
 **No file publishes the application port, and this is deliberate.** It never lived in the
-base file, and the local overlay stopped publishing it in #752; locally, the bundled Traefik
-reaches it over the Docker network. Compose *concatenates* `ports:` across files — an overlay can add a published port but
+base file, and the legacy local overlay stopped publishing it in #752. Canonical local SIT
+uses the testing file and reaches the application through its private Traefik configuration. Compose *concatenates* `ports:` across files — an overlay can add a published port but
 cannot take one away — so a base file that published 5173 would publish it in production
 too, and the "never published" premise that `TASKDESK_TRUST_PROXY=1` rests on
 ([traefik-and-domains.md](#traefik-and-domains)) would be false. `scripts/deploy.sh
@@ -694,16 +658,16 @@ brief outage into a long one. Hence the separation.
 
 <a id="environments"></a>
 ## Environments
-Local, verification and production environments use the same application image. Current execution order is laptop SIT first, then verified Technexus cloud SIT; named examples below are topology conventions, not evidence of an active endpoint.
+Local, verification and production environments use the same application image. Current execution order is laptop SIT first, then verified Technexus cloud SIT. The table states operating requirements, not evidence that scheduled backups, mail or monitoring are configured; current verified state is in [handover](../handover.md).
 
 | | Local | UAT | Production |
 | --- | --- | --- | --- |
-| Purpose | Development | Verification | Real work |
-| Deploy | `scripts/deploy.sh local` | Automatic on merge to `main` | Manual promotion by digest |
-| Data | Seeded | Anonymised copy of production | Real |
+| Purpose | SIT verification | UAT verification | Real work |
+| Deploy | `scripts/deploy.sh local` | Thomas-approved promotion of a signed digest | Manual promotion by digest |
+| Data | Verified existing copy; never reseed | Anonymised copy of production | Real |
 | TLS | Self-signed | Real certificate | Real certificate |
-| Mail | Optional capture inbox with explicit sender configuration | Real SMTP, restricted recipients | Real SMTP |
-| Backups | None | Daily | Hourly, offsite |
+| Mail | Optional isolated capture transport; runtime support must be verified | No email provider for this UAT; testers use seeded passwords | Real SMTP |
+| Backups | Verified before copy and cutover | Daily target plus verified backup before every deployment | Hourly, offsite |
 | Monitoring | None | Full | Full, alerting |
 | Quality bar | — | **Production standard** | — |
 
@@ -723,25 +687,10 @@ real test of a change is production. So:
 <a id="environments-local"></a>
 ### Local
 
-```bash
-cp deploy/.env.example .env
-scripts/deploy.sh local
-```
-
-Runs at `https://ticket.localhost` and `https://portal.localhost` via local Traefik with a
-self-signed certificate.
-
-**Example alternate-port laptop topology:** configure the agent at `https://ticketing.localhost:8443`
-and the portal at `https://portal.localhost:8443` (loopback only), when another proxy
-holds 443. Its `.env` sets `TASKDESK_LOCAL_HTTP_PORT=8080`, `TASKDESK_LOCAL_HTTPS_PORT=8443`
-and both public URLs with `:8443`. `scripts/deploy.sh local` seeds the SIT accounts, the
-Acme customer organisation, and two published request types, with intake enabled.
-
-Two hostnames means either `/etc/hosts` entries or `dnsmasq` for `*.localhost`. The script
-prints exactly what to add.
-
-**Use the verified deploy path.** The script generates secrets, waits for health, applies migrations and probes the result.
-Skipping it produces a stack that appears to be running and is not.
+The canonical agent and portal origins are `https://ticketing.localhost` and
+`https://portal.localhost` on port 443. Use the verified local release path and
+pre-existing private configuration described under [First run](#deployment-first-run).
+The old local overlays and alternate-port examples are not the canonical SIT deployment.
 
 <a id="environments-seed-data"></a>
 #### Seed data
@@ -752,8 +701,8 @@ pnpm seed realistic    # 5 orgs, 50 projects, 10k items, 200 people
 pnpm seed hostile      # empty strings, 500-char titles, CJK, RTL, emoji, deep nesting
 ```
 
-The hostile dataset finds more layout bugs than any other single technique. Use it before
-declaring a screen done.
+These datasets are for explicitly isolated test databases only. Never run seed commands
+against canonical local SIT or the protected live database.
 
 <a id="environments-uat"></a>
 ### UAT
@@ -823,7 +772,7 @@ construction rather than by convention.
 
 | | Agent | Portal | Files |
 | --- | --- | --- | --- |
-| Local | `ticket.localhost` | `portal.localhost` | `files.localhost` |
+| Local SIT | `ticketing.localhost` | `portal.localhost` | Not used by the filesystem-only release path |
 | UAT | `ticket-uat.<domain>` | `portal-uat.<domain>` | `files-uat.<domain>` |
 | Production | `ticket.<domain>` | `portal.<domain>` | `files.<domain>` |
 
@@ -1054,10 +1003,10 @@ copy of `install.sh` and pass `--version` for a published release.
    version resolves to its signed image. It only changes hostname settings when the
    corresponding flags are supplied. A new `.env` is created from `deploy/.env.example`
    with mode `0600`.
-6. **Delegate deployment.** The installer runs `scripts/deploy.sh` in the selected mode. That
-   script generates only missing secrets, verifies the image signature, waits for health,
-   runs migrations through its one-shot role, probes the API, and prints the first-run setup
-   URL and token.
+6. **Delegate deployment.** The installer runs `scripts/deploy.sh` in the selected mode.
+   Non-local modes retain their own setup behaviour. Canonical local SIT instead requires
+   the existing verified project and private inputs described in [First run](#deployment-first-run);
+   it does not generate secrets or print setup tokens.
 
 The install is repeatable. Running it again with a new `--version` updates deployment files
 and image selection without replacing existing secret values or data.
@@ -1080,9 +1029,10 @@ cannot establish which public host owns an address; the operator must ensure the
 to this deployment host before proceeding. The preflight prints the record names that need
 attention when resolution fails. Production does not publish the application port.
 
-For local installs, host overrides are included in the generated local certificate SANs.
-The installer leaves the local mode's application port and certificate behavior to
-`scripts/deploy.sh`.
+For a fresh installation using the installer, select the non-local production mode explicitly.
+The default/local installer invocation is not the initial-copy procedure for canonical local
+SIT: it requires the existing verified project and canonical private inputs above. Local proxy
+configuration and certificates must already exist in the private configuration directory.
 
 <a id="one-line-install-flags"></a>
 ### Flags
@@ -1146,7 +1096,7 @@ sha256sum -c "$archive.sha256"
 
 The installer cannot be used on the air-gapped host because it fetches its release assets
 from GitHub. After transferring the four verified files, extract the archive and deploy from
-the versioned directory. The example below distinguishes a new installation from an upgrade.
+the versioned directory. The production example below distinguishes a new installation from an upgrade.
 An upgrade must carry the previous installation's `.env` into the new version directory
 before running the deploy script. It contains database, authentication, and encryption keys;
 in particular, replacing `TASKDESK_ENCRYPTION_KEY` makes stored encrypted plugin credentials
@@ -1193,7 +1143,7 @@ case "$install_kind" in
     ;;
 esac
 ${EDITOR:-vi} .env
-scripts/deploy.sh local
+scripts/deploy.sh production
 ```
 
 For a fresh installation, set `install_kind=fresh`; this is the only path that copies the
@@ -1202,8 +1152,8 @@ version is verified and backed up. The guarded copy fails before deployment if t
 is missing, a symlink, or differs after copying. Do not proceed by switching a failed upgrade
 to `fresh`.
 
-For production, configure the required host and secrets in `.env` and run
-`scripts/deploy.sh production` instead. The signed archive contains deployment assets and
+Configure the required production host and secrets in `.env` before that command.
+Canonical local SIT uses its separate existing-copy procedure. The signed archive contains deployment assets and
 `scripts/deploy.sh`; it does not contain application source or secrets. See
 [Deployment](#deployment) for the manual setup details.
 
@@ -1257,7 +1207,7 @@ The application owns correct configured-hop selection and must ignore unrelated 
 <a id="proxy-topology-evidence-the-shipped-topology--traefik-terminating-tls"></a>
 ### The shipped topology — Traefik terminating TLS
 
-`deploy/compose.prod.yml` and `deploy/compose.local.yml` set
+`deploy/compose.prod.yml` and the legacy `deploy/compose.local.yml` set
 `TASKDESK_TRUST_PROXY=1`, which is the documented default and correct for the
 arrangement they describe: one Traefik, terminating TLS, directly in front, with
 the application port unpublished so nothing else can reach the container.
@@ -1284,8 +1234,9 @@ host, select the same base and production overlay as `scripts/deploy.sh`:
 dc() { docker compose -f compose.yml -f deploy/compose.prod.yml "$@"; }
 ```
 
-For local development, use `dc() { docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml "$@"; }`.
-The first-run `scripts/deploy.sh local` command sets up the local certificate and secrets.
+For canonical local SIT, select only the testing file and the existing private environment:
+`dc() { docker compose --project-name taskdesk-codex-testing --env-file "$SIT_COMPOSE_ENV" -f deploy/compose.testing.yml "$@"; }`.
+The operator supplies the existing private proxy configuration and certificates.
 
 **Metrics endpoint:** the serving API role starts a dedicated listener on port `9464` at
 `GET /metrics`. Scrapes require the current bearer token; the listener reads its SHA-256
@@ -1349,7 +1300,7 @@ of an instance's whole life happens.
 | Setup page says setup is already complete | Someone else claimed the first administrator. Sign in as them, or use break-glass below |
 | Headless install created no administrator | `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` was unset. Set it and restart, or use the setup page |
 | Certificate not issued on the first `up` | DNS did not point here when ACME ran. Fix the record and restart Traefik; the installer's pre-flight exists to catch exactly this ([one-line-install.md](#one-line-install)) |
-| `scripts/deploy.sh local` dies with "port 80/443 is already bound" | The host already runs something else on that port (Dokploy, nginx, another app). Set `TASKDESK_LOCAL_HTTP_PORT` / `TASKDESK_LOCAL_HTTPS_PORT` in `.env` to free ports and re-run — see [traefik-and-domains.md § Local development](#traefik-and-domains-local-development) |
+| Local proxy cannot bind its ports | Identify the current owner and coordinate port cutover; do not automatically stop another project or change the canonical SIT hosts |
 
 <a id="runbook-site-is-down"></a>
 #### Site is down
@@ -1360,7 +1311,7 @@ dc logs --tail=200 taskdesk
 curl -sf "https://ticket.${DOMAIN}/api/public/health/live"
 ```
 
-For a local stack, use `https://ticket.localhost/api/public/health/live` (the local
+For a local stack, use `https://ticketing.localhost/api/public/health/live` (the local
 self-signed certificate must be trusted by the client).
 
 | Cause | Fix |
@@ -1454,7 +1405,7 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 | Presign rejected by the storage endpoint | **The configured public endpoint is not the browser-facing origin.** A SigV4 signature covers the `Host` header, so a URL signed for the internal endpoint fails when the browser fetches it at the files origin. God Mode → Storage → public endpoint must equal what the browser sees ([deployment.md](#deployment)) |
 | Presign accepted, browser upload blocked | The **bucket's** CORS does not allow the agent and portal origins. This is bucket configuration, not a Traefik middleware |
 | Presign failing | Clock skew between the app and the object store breaks signatures |
-| Bucket does not exist | The `--profile s3` bucket-create step did not run. Re-run `scripts/deploy.sh` |
+| Bucket does not exist | Check the configured S3 provider and bucket through its authorized administration path. Canonical local SIT is filesystem-only; do not rerun deployment or seeding as a bucket-creation remedy |
 
 ---
 
@@ -2318,8 +2269,9 @@ labels:
   - traefik.http.services.taskdesk-prod-files.loadbalancer.server.port=8333
 ```
 
-(`deploy/compose.local.yml` uses the same shape with a `taskdesk-local-*` prefix, and
-`deploy/compose.uat.yml` with `taskdesk-uat-*` — see those files for the exact labels.)
+(The legacy `deploy/compose.local.yml` uses the same shape with a `taskdesk-local-*`
+prefix, and `deploy/compose.uat.yml` uses `taskdesk-uat-*`. Canonical local SIT uses the
+private file-provider configuration instead.)
 
 `files-headers@file` adds `Content-Disposition: attachment` for anything not an image and a
 restrictive `Content-Security-Policy: default-src 'none'; sandbox`. **On a real S3 backend
@@ -2339,8 +2291,8 @@ Both hostnames reach the same container. The application selects the bundle from
 
 **The application port is never published in production.** Neither the base `compose.yml`
 nor `deploy/compose.prod.yml` declares `ports:` on the `taskdesk` service, and since #752
-neither does `deploy/compose.local.yml`; the local stack reaches 5173 through its own
-Traefik. It has to be that way round — Compose concatenates `ports:` across files, so an overlay can add a published port
+neither does the legacy `deploy/compose.local.yml`. Canonical local SIT also leaves the
+application port unpublished and reaches it through Traefik. It has to be that way round — Compose concatenates `ports:` across files, so an overlay can add a published port
 but cannot remove one ([deployment.md](#deployment)). In production, port 5173 is reachable
 only on the Docker network Traefik shares with the container.
 
@@ -2362,7 +2314,7 @@ what arrives — never inferred from the number of boxes in the diagram. Method 
 ### TLS
 
 Everything in this section describes Traefik terminating TLS itself, which is
-what `deploy/compose.prod.yml` and `deploy/compose.local.yml` configure. **It is
+what `deploy/compose.prod.yml` and the legacy `deploy/compose.local.yml` configure. **It is
 not true of every host we run.** Where a CDN or load balancer sits in front,
 TLS terminates there and Traefik receives plain HTTP on its `web` entrypoint —
 no certificate resolver runs, an ACME challenge is never answered, and a
@@ -2433,54 +2385,15 @@ identity-aware and enforce policy. Both are wanted.
 <a id="traefik-and-domains-local-development"></a>
 ### Local development
 
-Local Traefik with a self-signed certificate, so the production label configuration is
-exercised rather than being first tested in UAT.
+Canonical local SIT uses `deploy/compose.testing.yml` and an existing private Traefik
+configuration and certificate. The agent and portal use `ticketing.localhost` and
+`portal.localhost` on 443. Traefik's published ports bind to loopback; the application
+port is unpublished. The helper checks the running app's port bindings and readiness,
+but the operator must separately verify HTTPS and browser smoke on both hosts.
 
-`*.localhost` resolves to `127.0.0.1` in most browsers. Where it does not, add:
-
-```
-127.0.0.1  ticket.localhost portal.localhost
-```
-
-Add `files.localhost` too when running the `s3` profile locally.
-
-**Port conflict with an existing reverse proxy.** The bundled local Traefik publishes
-80/443, and a "clean machine" is the target, but plenty of real development hosts already
-run something else on those ports (Dokploy, nginx, another app). Compose fails the whole
-`up` when a published port is already bound, so `scripts/deploy.sh local` checks both ports
-before starting anything and fails with instructions rather than a bare Docker "address
-already in use". Fix: set `TASKDESK_LOCAL_HTTP_PORT` and/or `TASKDESK_LOCAL_HTTPS_PORT` in
-`.env` to free ports (e.g. `8080` / `8443`), and add the HTTPS port to `TASKDESK_AGENT_URL` /
-`TASKDESK_PORTAL_URL` and to the browser URL (host-file entries contain hostnames, not ports), e.g.
-`https://ticket.localhost:8443`. `scripts/deploy.sh` prints this same reminder in its final
-URLs when a non-default port is in play ([configuration-reference.md](configuration.md)).
-
-This check is a best-effort pre-flight, not exhaustive — every case below fails open to the
-same raw Docker error this exists to improve on, never to a silent skip of a real conflict:
-it only probes `127.0.0.1`, so a listener bound only to `::` (with no dual-stack) or to a
-specific non-loopback address is missed; and it does **not** catch a second checkout of
-*this same repository* — `compose.yml` pins `name: taskdesk`, so a second checkout's
-already-running local Traefik shares that Compose project, `docker compose port traefik`
-succeeds against it, and `up` reads it as this stack's own and adopts it rather than
-flagging a conflict This can adopt/recreate another checkout's containers; verify project ownership explicitly and do not treat it as a safe conflict detector.
-
-**Loopback only (#752).** The local overlays bind every published port to loopback:
-Traefik's HTTP and HTTPS ports on IPv4 `127.0.0.1` and IPv6 `[::1]`, and Postgres on
-`127.0.0.1:5432`. The
-application port `5173` is not published at all. Traefik reaches it over the `taskdesk`
-network, `scripts/deploy.sh` probes it from inside the container, and the container health
-check runs inside the container too. A host-published `5173` would bypass Traefik, and with
-`TASKDESK_TRUST_PROXY=1` anything that reached it could forge `X-Forwarded-For`. A local
-stack is therefore not reachable from another machine. To reach it from one deliberately,
-add your own untracked Compose overlay that re-publishes Traefik's ports on the address you
-choose (`ports: !override`), and only Traefik's ports: never the application, database,
-cache or mail ports.
-
-`scripts/deploy.sh local` prints this. It creates a self-signed **leaf** certificate for
-the local routes in `deploy/local/certs/`; it is not a certificate authority. Trust
-`local.crt` on the development machine to stop browser warnings. `DOMAIN` must be a valid
-DNS name. If the certificate is missing a route name or expires within 30 days, the script
-preserves the existing certificate/key in a private `replaced-*` directory before renewal.
+Do not stop an existing proxy automatically when ports conflict. Coordinate cutover only
+after the copied project and its backup are verified. The local release helper neither
+generates nor renews certificates, and it does not support the S3 profile.
 
 <a id="traefik-and-domains-dns"></a>
 ### DNS
