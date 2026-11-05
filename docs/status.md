@@ -1,8 +1,31 @@
-# Current status — 31 October 2026, evening
+# Current status
 
-**Goal: UAT launch on Friday 6 November 2026 on the Technexus hosts.** Claude is the only version 2 implementer from 30 Oct; Codex works on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
+**5 Nov release:** PR #1055 merged as `62edb6e`; the release build, scans and
+signing passed for index digest `sha256:876f831d6e1d…`. Canonical local SIT is
+accepted with smoke 46/46 and journal 217; its verified copy has 184 tables,
+46,764 rows and eight files. Source deployments are stopped and their volumes
+preserved.
 
-- **Deployed:** `main` cbd076c (signed digest `sha256:aa96614708b2…`, attestation verified).
+Technexus runs `62edb6e` and is healthy, with both public HTTPS readiness checks
+passing. Signed-in smoke is accepted at 108/110: the only misses are the two
+instance admins without workspaces. All 54 browser checks passed, and the
+operator lock was released. An earlier 26-check run was incomplete; its cause
+was not established. The completed instrumented run reported no transport codes. Database, files, environment, Compose and HBA backups were verified
+before deployment; the database had 184 tables and 68,634 rows. Only
+`instance_job_run` grew in the count comparison; journal 217 is unchanged.
+
+The macOS first-bootstrap port-probe fix in #1056 passed real Docker occupied-port
+denial and cold-start validation, preserving the app identity, journal 217 and all
+eight attachment hashes, followed by smoke 46/46. CI and merge remain pending. G11 remains report-only; the other 17 required
+checks, G13 and bundle budgets remain in force, with no budget changes.
+
+Codex owns version 2 from 4 Nov; the current release chain is in [handover](handover.md).
+
+## Historical checkpoint — 31 October 2026, evening
+
+**Goal at this checkpoint: UAT launch on Friday 6 November 2026 on Technexus.** Claude was the version 2 implementer from 30 Oct; Codex worked on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
+
+- **Deployed at this checkpoint:** `main` cbd076c (signed digest `sha256:aa96614708b2…`, attestation verified).
   - **Local SIT (Docker Desktop):** wiped and reinstalled with the SIT seed. Smoke 43/43.
   - **Technexus:** wiped (backup first) and reinstalled through first-run setup and the UAT seed (`uat-ws`, Northwind Service Desk: owner, admin, lead, two agents, viewer, customers at Contoso and Fabrikam, two instance admins). Signed-in smoke 108/110; the two misses are the instance admins, who belong to no workspace by design.
 - **Workaround on Technexus:** customer password sign-in was enabled with a direct database row, because no God Mode setting exists (A-14, fix U-6).
