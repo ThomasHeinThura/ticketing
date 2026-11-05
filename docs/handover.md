@@ -4,7 +4,7 @@ Read [AGENTS.md](../AGENTS.md), [status](status.md), [roadmap](roadmap.md) and [
 
 ## Who works on version 2
 
-From 4 Nov Thomas hands version 2 back to **Codex**. Claude stops after this release. Codex owns `main`, the worktrees it creates and the release chain. Model tiers and review rules are in AGENTS.md.
+From 4 Nov Thomas hands version 2 back to **Codex**. Codex owns the release chain and works in the main checkout without creating worktrees. Model tiers and review rules are in AGENTS.md.
 
 ## Goal
 
@@ -12,8 +12,10 @@ From 4 Nov Thomas hands version 2 back to **Codex**. Claude stops after this rel
 
 ## State now
 
-- `main` `2dc5b75` is deployed on **local SIT (Docker Desktop)** and **Technexus**. Signed digest: `sha256:e56bca9bc5b9…`. Smoke results: local SIT 46/46; Technexus signed-in 108/110. The 2 expected Technexus misses are the instance-admin accounts, which have no workspace by design.
-- Technexus migrations are at 217, with row counts unchanged across every deploy. Each deploy took a backup first: `backups/pre-<sha>-<timestamp>` on the host.
+- **5 Nov release:** PR #1055 merged as `62edb6e`; the release build, scans and signing passed for index digest `sha256:876f831d6e1d…`.
+- **Local SIT:** the canonical deployment is accepted at `62edb6e`, with smoke 46/46 and migration journal 217. The verified copy contains 184 tables, 46,764 rows and eight files; source deployments are stopped and their volumes preserved.
+- **Technexus:** `62edb6e` is running and healthy, and both public HTTPS readiness checks pass. Signed-in smoke is accepted at 108/110, with only the two expected empty-workspace instance-admin misses; all 54 browser checks passed and the operator lock was released. An earlier run stopped after 26 passing checks; its cause was not established. The completed instrumented run reported no transport error codes. Before deployment, database, files, environment, Compose and HBA backups were verified; the database had 184 tables and 68,634 rows. Only `instance_job_run` grew in the count comparison; journal 217 is unchanged.
+- **First bootstrap:** the macOS port-probe fix in #1056 passed real Docker validation: occupied-port denial before migration, cold start, journal 217, eight unchanged attachment hashes and smoke 46/46. Application identity was preserved; CI and merge remain pending.
 - UAT items U-1 to U-15 in the [roadmap](roadmap.md) are done and live:
   - Overview tab;
   - portal redesign: dashboard, cases, Projects and Project Details, Announcements;
