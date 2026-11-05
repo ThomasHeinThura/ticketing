@@ -2480,6 +2480,7 @@
 			"urgent": "紧急"
 		},
 		"boardSearchPlaceholder": "搜索工单…",
+		"boardSearchActive": "搜索已启用",
 		"view": {
 			"board": "看板",
 			"list": "列表"

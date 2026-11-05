@@ -17,6 +17,8 @@ GitHub CI is a required gate. All required checks must pass; a failing gate is f
 
 Locally before opening the PR: run the affected targeted tests first, then the gates above that the change touches, then open every affected screen on local SIT (below). Integration tests use a fresh dedicated `_test` database — never the live `taskdesk_browser_journey_1022_test` (62870).
 
+If calibration stops the performance job before G13 runs, G13 remains unmeasured. Qualify it with the unchanged test cases and budgets; report-only G11 status does not establish a G13 pass.
+
 ## Level 2 — every release (merge to `main`), before deploying
 
 1. **Release smoke** — `pnpm sit:smoke` (read-only; signs in every account in `~/.taskdesk/sit-credentials.json`, checks the API and opens the main agent and portal screens in Chromium, failing on HTTP 5xx/429, page or console errors and error boundaries). Against Technexus: `NODE_EXTRA_CA_CERTS= pnpm sit:smoke -- --agent https://<agent host> --portal https://<portal host> --credentials <file>`.
