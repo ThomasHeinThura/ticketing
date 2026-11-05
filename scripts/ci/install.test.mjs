@@ -6,6 +6,7 @@ import {
   link,
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   rm,
   stat,
@@ -56,6 +57,8 @@ async function fixture(
     "scripts/lib/local-certificate.sh",
     "scripts/lib/deploy-checks.sh",
     "deploy/.env.example",
+    "deploy/local-release.mjs",
+    "deploy/compose.testing.yml",
     "deploy/compose.local.yml",
     "deploy/compose.prod.yml",
     "deploy/compose.traefik.yml",
@@ -63,11 +66,12 @@ async function fixture(
   ]) {
     const target = path.join(content, file);
     await mkdir(path.dirname(target), { recursive: true });
-    const contents = realDeployment
-      ? await readFile(path.join(root, file))
-      : file === "scripts/deploy.sh"
-        ? '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$DEPLOY_LOG"\n'
-        : `fixture ${file}\n`;
+    const contents =
+      realDeployment || file === "scripts/lib/deploy-checks.sh"
+        ? await readFile(path.join(root, file))
+        : file === "scripts/deploy.sh"
+          ? `#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$DEPLOY_LOG"\nif [[ "\${FAKE_DEPLOY_FAIL:-0}" == 1 ]]; then printf 'migration complete\\napp started\\nproxy failed\\n' >> "$DEPLOY_LOG"; exit 1; fi\n`
+          : `fixture ${file}\n`;
     await writeFile(target, contents);
   }
   await chmod(path.join(content, "scripts/deploy.sh"), 0o755);
@@ -132,6 +136,7 @@ if [[ "$1" == buildx && "$2" == version ]]; then
   if [[ "\${FAKE_BUILDX_MISSING:-0}" == 1 ]]; then printf "docker: unknown command: docker buildx\\n" >&2; exit 1; fi
   printf 'github.com/docker/buildx v0.38.0 0dbe87f36ed472fe36b6796c3f70b4210a731fc5\\n'; exit 0
 fi
+if [[ "$1" == buildx && "$2" == imagetools && "$3" == inspect && "\${FAKE_DOCKER_FULL:-0}" != 1 ]]; then printf '%s' "\${FAKE_RAW:-}"; exit 0; fi
 if [[ "\${FAKE_DOCKER_FULL:-0}" == 1 ]]; then
   printf 'env-digest=%s args=%s\\n' "\${TASKDESK_IMAGE_DIGEST:-}" "$*" >> "$FAKE_DOCKER_LOG"
   if [[ "$1" == buildx && "$2" == imagetools && "$3" == inspect ]]; then
@@ -225,7 +230,25 @@ exec '${realTar}' "$@"
     );
     await chmod(path.join(bin, "tar"), 0o755);
   }
-  return { temp, bin, assets, archive, path: path.join(temp, "taskdesk") };
+  const privateDir = path.join(temp, "private");
+  await mkdir(privateDir);
+  await mkdir(path.join(privateDir, "proxy"));
+  for (const file of ["postgres.env", "migrate.env", "app.env", "valkey.env"])
+    await writeFile(path.join(privateDir, file), "EXAMPLE=value\n");
+  const sitEnv = path.join(privateDir, "compose.env");
+  await writeFile(
+    sitEnv,
+    "SIT_IMAGE=old\nTASKDESK_IMAGE_TAG=v9.8.7\nKEEP=unchanged\n",
+  );
+  return {
+    temp,
+    bin,
+    assets,
+    archive,
+    privateDir,
+    sitEnv,
+    path: path.join(temp, "taskdesk"),
+  };
 }
 
 function run(f, args, extraEnv = {}, input = "") {
@@ -238,6 +261,9 @@ function run(f, args, extraEnv = {}, input = "") {
       PATH: `${f.bin}:${process.env.PATH}`,
       HOME: f.temp,
       FAKE_ASSETS: f.assets,
+      SIT_PRIVATE_DIR: f.privateDir,
+      SIT_COMPOSE_ENV: f.sitEnv,
+      FAKE_RAW: RAW_MANIFEST,
       COSIGN_LOG: path.join(f.temp, "cosign.log"),
       DEPLOY_LOG: path.join(f.temp, "deploy.log"),
       ...extraEnv,
@@ -289,81 +315,51 @@ exec /bin/mv "$@"
   await chmod(mvPath, 0o755);
 }
 
-test("installer verifies both release signatures, digest, paths, prompts, preserves .env, and delegates deployment", async (t) => {
+test("local installer verifies archive signatures and selects requested digest without changing root environment", async (t) => {
   const f = await fixture(t);
+  await mkdir(f.path, { recursive: true });
+  const rootEnv = "TASKDESK_IMAGE_DIGEST=stale\nTASKDESK_AUTH_SECRET=keep\n";
+  await writeFile(path.join(f.path, ".env"), rootEnv);
   const first = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"]);
   assert.equal(first.status, 0, first.stderr);
   const cosignArgs = await readFile(path.join(f.temp, "cosign.log"), "utf8");
-  assert.match(
-    cosignArgs,
-    /taskdesk-v1\.2\.3\.tar\.gz\.sigstore\.json.*--certificate-oidc-issuer https:\/\/token\.actions\.githubusercontent\.com.*--certificate-identity https:\/\/github\.com\/ThomasHeinThura\/ticketing\/\.github\/workflows\/release\.yml@refs\/heads\/main/,
-  );
   assert.equal((cosignArgs.match(/verify-blob/g) ?? []).length, 2);
+  assert.match(cosignArgs, /release\.yml@refs\/heads\/main/);
+  const selection = await readFile(f.sitEnv, "utf8");
+  assert.match(
+    selection,
+    new RegExp(
+      `^SIT_IMAGE=ghcr.io/thomasheinthura/taskdesk@${RAW_DIGEST}$`,
+      "m",
+    ),
+  );
+  assert.match(selection, /^TASKDESK_IMAGE_TAG=v1\.2\.3$/m);
+  assert.match(selection, /^KEEP=unchanged$/m);
+  assert.equal(await readFile(path.join(f.path, ".env"), "utf8"), rootEnv);
   assert.match(
     await readFile(path.join(f.temp, "deploy.log"), "utf8"),
     /^local$/m,
   );
-  const envPath = path.join(f.path, ".env");
-  const envMode = (await stat(envPath)).mode & 0o777;
-  assert.equal(envMode, 0o600);
-  let env = await readFile(envPath, "utf8");
-  assert.match(env, /^TASKDESK_IMAGE_TAG=v1\.2\.3$/m);
-  assert.match(env, /^TASKDESK_AGENT_URL=https:\/\/ticket\.localhost$/m);
-  assert.match(env, /^TASKDESK_PORTAL_HOST=portal\.localhost$/m);
-  env += "\nTASKDESK_AUTH_SECRET=retained-test-secret\n";
-  env = env.replace("DOMAIN=localhost", "DOMAIN=keep.example.test");
-  env = env.replace(
-    "TASKDESK_AGENT_URL=https://ticket.localhost",
-    "TASKDESK_AGENT_URL=https://custom.example.test:8443",
-  );
-  const retainedRollbackDigest = `sha256:${"c".repeat(64)}`;
-  env = env.replace(
-    /^TASKDESK_IMAGE_DIGEST=.*$/m,
-    `TASKDESK_IMAGE_DIGEST=${retainedRollbackDigest}`,
-  );
-  await writeFile(envPath, env, { mode: 0o600 });
-  const second = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"]);
-  assert.equal(second.status, 0, second.stderr);
-  env = await readFile(envPath, "utf8");
-  assert.match(env, /^TASKDESK_AUTH_SECRET=retained-test-secret$/m);
-  assert.match(env, /^DOMAIN=keep\.example\.test$/m);
-  assert.match(
-    env,
-    /^TASKDESK_AGENT_URL=https:\/\/custom\.example\.test:8443$/m,
-  );
-  assert.match(
-    env,
-    new RegExp(`^TASKDESK_IMAGE_DIGEST=${retainedRollbackDigest}$`, "m"),
-  );
 });
 
-test("installer local mode reaches the real deploy script with rollback digest cleared", async (t) => {
+test("archive contains the real local helper and extracted local help works without Docker", async (t) => {
   const f = await fixture(t, { realDeployment: true });
-  const oldDigest = `sha256:${"b".repeat(64)}`;
-  await writeExistingEnv(f.path, { tag: "v9.8.7", digest: oldDigest });
-  const result = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"], {
-    FAKE_DOCKER_FULL: "1",
-    FAKE_ASSUME_LOCAL_PROXY: "1",
-    FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+  const extracted = path.join(f.temp, "extracted");
+  await mkdir(extracted);
+  execFileSync("tar", ["-xzf", f.archive, "-C", extracted]);
+  const result = spawnSync("bash", ["scripts/deploy.sh", "local", "--help"], {
+    cwd: path.join(extracted, "taskdesk-v1.2.3"),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      PATH: `${path.dirname(process.execPath)}:/usr/bin:/bin`,
+    },
   });
-
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /certificate in deploy\/local\/certs/);
-  assert.match(result.stdout, /TaskDesk is up/);
-  const env = await readFile(path.join(f.path, ".env"), "utf8");
-  assert.match(env, /^TASKDESK_IMAGE_TAG=v1\.2\.3$/m);
-  assert.match(env, /^TASKDESK_IMAGE_DIGEST=$/m);
-  assert.match(env, /^TASKDESK_AUTH_SECRET=test-auth-secret$/m);
-  const dockerLog = await readFile(path.join(f.temp, "docker.log"), "utf8");
-  assert.doesNotMatch(dockerLog, new RegExp(oldDigest));
-  assert.match(dockerLog, /args=compose .* ps -q traefik/);
-  assert.match(dockerLog, /args=inspect .*PortBindings "80\/tcp".* traefikid/);
-  assert.doesNotMatch(dockerLog, / port traefik /);
-  assert.match(dockerLog, /args=compose .* up -d --wait/);
-  assert.equal(
-    (await stat(path.join(f.path, "deploy/local/certs/local.crt"))).isFile(),
-    true,
-  );
+  assert.match(result.stdout, /SIT_COMPOSE_ENV/);
+  const listed = execFileSync("tar", ["-tzf", f.archive], { encoding: "utf8" });
+  assert.match(listed, /deploy\/local-release\.mjs/);
+  assert.match(listed, /deploy\/compose\.testing\.yml/);
 });
 
 test("production repeat install resolves and verifies the selected tag, not a rollback digest", async (t) => {
@@ -586,18 +582,21 @@ for (const mode of ["production", "upgrade", "rollback"]) {
   });
 }
 
-test("local mode treats traefik's own port binding as ours and ignores compose port's exit code", async (t) => {
-  const f = await fixture(t, { realDeployment: true });
-  const result = run(
-    f,
-    ["--env", "local", "--version", "1.2.3", "--dir", f.path, "--yes"],
-    {
-      FAKE_DOCKER_FULL: "1",
-      FAKE_ASSUME_LOCAL_PROXY: "1",
-      FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
-    },
-  );
-  assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+test("local installer rejects profile flags before writing", async (t) => {
+  const f = await fixture(t);
+  const before = await readFile(f.sitEnv, "utf8");
+  const result = run(f, [
+    "--version",
+    "1.2.3",
+    "--dir",
+    f.path,
+    "--yes",
+    "--profile",
+    "s3",
+  ]);
+  assert.notEqual(result.status, 0);
+  assert.equal(await readFile(f.sitEnv, "utf8"), before);
+  assert.equal(await stat(f.path).catch(() => null), null);
 });
 
 test("deploy.sh requires buildx up front, with a message naming the cause", async () => {
@@ -667,8 +666,17 @@ test("release tag and rollback digest commit atomically and retry after rename i
   const originalEnv = await readFile(envPath, "utf8");
   await failFirstEnvSelectionRename(f);
 
-  const installArgs = ["--version", "1.2.3", "--dir", f.path, "--yes"];
+  const installArgs = [
+    "--env",
+    "production",
+    "--version",
+    "1.2.3",
+    "--dir",
+    f.path,
+    "--yes",
+  ];
   const injected = {
+    FAKE_PRODUCTION_HOST: "1",
     FAKE_DOCKER_FULL: "1",
     FAKE_ASSUME_LOCAL_PROXY: "1",
     FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
@@ -746,14 +754,22 @@ test("cosign rejection stops before creating or changing the install directory",
 
 test("checksum mismatch is rejected even when signatures are explicitly skipped", async (t) => {
   const f = await fixture(t, { badChecksum: true });
-  const result = run(f, [
-    "--version",
-    "1.2.3",
-    "--dir",
-    f.path,
-    "--yes",
-    "--skip-verify",
-  ]);
+  const result = run(
+    f,
+    [
+      "--version",
+      "1.2.3",
+      "--dir",
+      f.path,
+      "--yes",
+      "--skip-verify",
+      "--env",
+      "production",
+      "--domain",
+      "example.test",
+    ],
+    { FAKE_PRODUCTION_HOST: "1" },
+  );
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /SHA-256 does not match/);
   assert.equal(await stat(f.path).catch(() => null), null);
@@ -786,6 +802,8 @@ test("unsupported release tags and host injection fail before downloads", async 
     "--dir",
     f.path,
     "--yes",
+    "--env",
+    "production",
     "--domain",
     "good.test;touch-pwned",
   ]);
@@ -848,7 +866,21 @@ test("a symbolic-link .env is rejected without replacing it or copying deploymen
   const outside = path.join(f.temp, "outside-env");
   await writeFile(outside, "TASKDESK_AUTH_SECRET=do-not-touch\n");
   await symlink(outside, path.join(f.path, ".env"));
-  const result = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"]);
+  const result = run(
+    f,
+    [
+      "--env",
+      "production",
+      "--domain",
+      "example.test",
+      "--version",
+      "1.2.3",
+      "--dir",
+      f.path,
+      "--yes",
+    ],
+    { FAKE_PRODUCTION_HOST: "1" },
+  );
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /symbolic links/);
   assert.equal(
@@ -861,36 +893,28 @@ test("a symbolic-link .env is rejected without replacing it or copying deploymen
   );
 });
 
-test("custom local route hosts are kept in .env and credentials never appear in installer output", async (t) => {
-  const f = await fixture(t);
-  const result = run(f, [
-    "--version",
-    "1.2.3",
-    "--dir",
-    f.path,
-    "--yes",
-    "--domain",
-    "dev.example.test",
-    "--agent-host",
-    "agent.custom.test",
-    "--portal-host",
-    "portal.custom.test",
-    "--profile",
-    "s3",
-  ]);
-  assert.equal(result.status, 0, result.stderr);
-  const env = await readFile(path.join(f.path, ".env"), "utf8");
-  assert.match(env, /^TASKDESK_AGENT_URL=https:\/\/agent\.custom\.test$/m);
-  assert.match(env, /^TASKDESK_PORTAL_URL=https:\/\/portal\.custom\.test$/m);
-  assert.match(env, /^TASKDESK_FILES_HOST=files\.dev\.example\.test$/m);
-  assert.doesNotMatch(
-    `${result.stdout}\n${result.stderr}`,
-    /do-not-touch|TASKDESK_AUTH_SECRET=|POSTGRES_PASSWORD=/,
-  );
-  assert.match(
-    await readFile(path.join(f.temp, "deploy.log"), "utf8"),
-    /local --profile s3/,
-  );
+test("local installer rejects custom hosts and verification bypass without changing private configuration", async (t) => {
+  for (const args of [
+    ["--domain", "dev.example.test"],
+    ["--agent-host", "agent.example.test"],
+    ["--portal-host", "portal.example.test"],
+    ["--files-host", "files.example.test"],
+    ["--skip-verify"],
+  ]) {
+    const f = await fixture(t);
+    const before = await readFile(f.sitEnv, "utf8");
+    const result = run(f, [
+      "--version",
+      "1.2.3",
+      "--dir",
+      f.path,
+      "--yes",
+      ...args,
+    ]);
+    assert.notEqual(result.status, 0);
+    assert.equal(await readFile(f.sitEnv, "utf8"), before);
+    assert.equal(await stat(f.path).catch(() => null), null);
+  }
 });
 
 test("release workflow packages only versioned releases and signs checksum plus archive", async () => {
@@ -985,4 +1009,61 @@ test("maintained source installer hash matches install.sh byte-for-byte", async 
     guide.includes(digest),
     "installer source hash must be refreshed when install.sh changes",
   );
+});
+
+test("local private preconditions fail without persistent writes", async (t) => {
+  for (const missing of ["SIT_COMPOSE_ENV", "SIT_PRIVATE_DIR"]) {
+    const f = await fixture(t);
+    const before = await readFile(f.sitEnv, "utf8");
+    const result = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"], {
+      [missing]: "",
+    });
+    assert.notEqual(result.status, 0);
+    assert.equal(await readFile(f.sitEnv, "utf8"), before);
+    assert.equal(await stat(f.path).catch(() => null), null);
+  }
+});
+
+test("late local deployment failure keeps selected image and recoverable previous selection", async (t) => {
+  const f = await fixture(t);
+  const before = await readFile(f.sitEnv, "utf8");
+  const args = ["--version", "1.2.3", "--dir", f.path, "--yes"];
+  const failed = run(f, args, { FAKE_DEPLOY_FAIL: "1" });
+  assert.notEqual(failed.status, 0, failed.stderr);
+  assert.match(failed.stderr, /runtime and database state are uncertain/i);
+  assert.match(failed.stderr, /manually reconciling/i);
+  assert.match(await readFile(f.sitEnv, "utf8"), new RegExp(RAW_DIGEST));
+  assert.match(
+    await readFile(path.join(f.temp, "deploy.log"), "utf8"),
+    /migration complete\napp started\nproxy failed/,
+  );
+  const backups = (await readdir(f.privateDir)).filter((name) =>
+    name.startsWith(".sit-selection-backup."),
+  );
+  assert.equal(backups.length, 1);
+  const backup = path.join(f.privateDir, backups[0]);
+  assert.equal(await readFile(backup, "utf8"), before);
+  assert.equal((await stat(backup)).mode & 0o777, 0o600);
+});
+
+test("local image selection rename failure preserves prior bytes and retry succeeds", async (t) => {
+  const f = await fixture(t);
+  const before = await readFile(f.sitEnv, "utf8");
+  const mvPath = path.join(f.bin, "mv");
+  await writeFile(
+    mvPath,
+    `#!/usr/bin/env bash
+if [[ "\${@: -1}" == "$SIT_COMPOSE_ENV" && ! -e "$FAIL_ONCE" ]]; then touch "$FAIL_ONCE"; exit 1; fi
+exec /bin/mv "$@"
+`,
+  );
+  await chmod(mvPath, 0o755);
+  const args = ["--version", "1.2.3", "--dir", f.path, "--yes"];
+  const env = { FAIL_ONCE: path.join(f.temp, "failed-once") };
+  const failed = run(f, args, env);
+  assert.notEqual(failed.status, 0);
+  assert.equal(await readFile(f.sitEnv, "utf8"), before);
+  const retried = run(f, args, env);
+  assert.equal(retried.status, 0, retried.stderr);
+  assert.match(await readFile(f.sitEnv, "utf8"), new RegExp(RAW_DIGEST));
 });

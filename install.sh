@@ -42,6 +42,15 @@ done
 
 [[ "$MODE" == local || "$MODE" == production ]] || die '--env must be local or production'
 [[ -n "$INSTALL_DIR" && "$INSTALL_DIR" != / ]] || die '--dir must be a non-root path'
+if [[ "$MODE" == local ]]; then
+  ((PROFILE_S3 == 0 && SKIP_VERIFY == 0 && DOMAIN_SET == 0 && AGENT_HOST_SET == 0 && PORTAL_HOST_SET == 0 && FILES_HOST_SET == 0)) || die 'local SIT does not accept profile, verification bypass or host override flags'
+  [[ "${SIT_COMPOSE_ENV:-}" == /* && -f "$SIT_COMPOSE_ENV" && ! -L "$SIT_COMPOSE_ENV" ]] || die 'local SIT requires an existing absolute SIT_COMPOSE_ENV regular file'
+  [[ "${SIT_PRIVATE_DIR:-}" == /* && -d "$SIT_PRIVATE_DIR" && ! -L "$SIT_PRIVATE_DIR" ]] || die 'local SIT requires an existing absolute SIT_PRIVATE_DIR directory'
+  for private_file in postgres.env migrate.env app.env valkey.env; do
+    [[ -f "$SIT_PRIVATE_DIR/$private_file" && ! -L "$SIT_PRIVATE_DIR/$private_file" ]] || die 'local SIT private configuration is incomplete'
+  done
+  [[ -d "$SIT_PRIVATE_DIR/proxy" && ! -L "$SIT_PRIVATE_DIR/proxy" ]] || die 'local SIT private proxy configuration is missing'
+fi
 valid_dns_name() {
   local name="$1" label
   [[ "$name" =~ ^[A-Za-z0-9.-]+$ && "$name" != .* && "$name" != *. && "$name" != *..* && ${#name} -le 253 ]] || return 1
@@ -57,12 +66,12 @@ read_env_value() {
 }
 EXISTING_ENV=0
 [[ ! -f "$INSTALL_DIR/.env" ]] || EXISTING_ENV=1
-if ((DOMAIN_SET == 0)); then DOMAIN="$(read_env_value DOMAIN)"; fi
-if ((AGENT_HOST_SET == 0)); then AGENT_HOST="$(read_env_value TASKDESK_AGENT_HOST)"; fi
+if [[ "$MODE" == production ]] && ((DOMAIN_SET == 0)); then DOMAIN="$(read_env_value DOMAIN)"; fi
+if [[ "$MODE" == production ]] && ((AGENT_HOST_SET == 0)); then AGENT_HOST="$(read_env_value TASKDESK_AGENT_HOST)"; fi
 if ((DOMAIN_SET)); then ((AGENT_HOST_SET)) || AGENT_HOST=""; fi
-if ((PORTAL_HOST_SET == 0)); then PORTAL_HOST="$(read_env_value TASKDESK_PORTAL_HOST)"; fi
+if [[ "$MODE" == production ]] && ((PORTAL_HOST_SET == 0)); then PORTAL_HOST="$(read_env_value TASKDESK_PORTAL_HOST)"; fi
 if ((DOMAIN_SET)); then ((PORTAL_HOST_SET)) || PORTAL_HOST=""; fi
-if ((FILES_HOST_SET == 0)); then FILES_HOST="$(read_env_value TASKDESK_FILES_HOST)"; fi
+if [[ "$MODE" == production ]] && ((FILES_HOST_SET == 0)); then FILES_HOST="$(read_env_value TASKDESK_FILES_HOST)"; fi
 if [[ -n "$DOMAIN" ]]; then valid_dns_name "$DOMAIN" || die '--domain or existing DOMAIN must be a valid DNS name'; fi
 for host in "$AGENT_HOST" "$PORTAL_HOST" "$FILES_HOST"; do [[ -z "$host" ]] || valid_dns_name "$host" || die 'host overrides must be valid DNS names'; done
 if [[ "$MODE" == production ]]; then
@@ -190,7 +199,13 @@ RELEASE_ROOT="${TMP_ROOT}/unpacked/taskdesk-${VERSION}"
 for required in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/traefik/dynamic/middlewares.yml; do
   [[ -f "${RELEASE_ROOT}/${required}" && ! -L "${RELEASE_ROOT}/${required}" ]] || die "release archive is missing a required regular file: ${required}"
 done
-[[ ! -L "$INSTALL_DIR" && ! -L "$INSTALL_DIR/.env" ]] || die 'installation directory and .env must not be symbolic links'
+if [[ "$MODE" == local ]]; then
+  for required in deploy/local-release.mjs deploy/compose.testing.yml; do
+    [[ -f "${RELEASE_ROOT}/${required}" && ! -L "${RELEASE_ROOT}/${required}" ]] || die "release archive is missing a required regular file: ${required}"
+  done
+fi
+[[ ! -L "$INSTALL_DIR" ]] || die 'installation directory must not be a symbolic link'
+if [[ "$MODE" == production ]]; then [[ ! -L "$INSTALL_DIR/.env" ]] || die 'installation directory and .env must not be symbolic links'; fi
 if ((YES == 0)); then
   if [[ "$EXISTING_ENV" == 1 ]]; then
     read -r -p "Update TaskDesk deployment files in ${INSTALL_DIR} and run the deploy script? [y/N] " answer
@@ -223,7 +238,7 @@ fi
 docker info >/dev/null 2>&1 || die 'Docker daemon is not reachable; start Docker and ensure the invoking user can access it before rerunning'
 mkdir -p "$INSTALL_DIR"
 [[ -d "$INSTALL_DIR" && ! -L "$INSTALL_DIR" ]] || die '--dir must be a real directory'
-for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/compose.uat.yml deploy/compose.keycloak.yml deploy/compose.observability.yml deploy/entrypoint.sh deploy/seaweedfs/README.md deploy/traefik/dynamic/middlewares.yml; do
+for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/compose.uat.yml deploy/compose.keycloak.yml deploy/compose.observability.yml deploy/compose.testing.yml deploy/local-release.mjs deploy/entrypoint.sh deploy/seaweedfs/README.md deploy/traefik/dynamic/middlewares.yml; do
   [[ -f "${RELEASE_ROOT}/${member}" ]] || continue
   parent="$INSTALL_DIR"
   IFS=/ read -r -a parts <<< "$(dirname "$member")"
@@ -237,6 +252,35 @@ for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scr
   cp -p "${RELEASE_ROOT}/${member}" "$tmp_file"
   mv -f "$tmp_file" "${INSTALL_DIR}/${member}"
 done
+if [[ "$MODE" == local ]]; then
+  # Resolve the requested tag from registry bytes, never a retained root .env digest.
+  . "${RELEASE_ROOT}/scripts/lib/deploy-checks.sh"
+  selected_digest="$(resolve_image_digest "ghcr.io/thomasheinthura/taskdesk:${VERSION}" 2>/dev/null)" || die 'could not resolve requested release to an immutable digest'
+  private_dir="$(dirname "$SIT_COMPOSE_ENV")"
+  private_backup="$(mktemp "${private_dir}/.sit-selection-backup.XXXXXX")"
+  private_candidate="$(mktemp "${private_dir}/.sit-selection-candidate.XXXXXX")"
+  cp -p "$SIT_COMPOSE_ENV" "$private_backup"
+  chmod 0600 "$private_backup"
+  awk -v image="ghcr.io/thomasheinthura/taskdesk@${selected_digest}" -v tag="$VERSION" '
+    BEGIN { image_found=0; tag_found=0 }
+    index($0, "SIT_IMAGE=")==1 { if (!image_found++) print "SIT_IMAGE=" image; next }
+    index($0, "TASKDESK_IMAGE_TAG=")==1 { if (!tag_found++) print "TASKDESK_IMAGE_TAG=" tag; next }
+    { print }
+    END { if (!image_found) print "SIT_IMAGE=" image; if (!tag_found) print "TASKDESK_IMAGE_TAG=" tag }
+  ' "$SIT_COMPOSE_ENV" > "$private_candidate"
+  chmod 0600 "$private_candidate"
+  if ! mv -f "$private_candidate" "$SIT_COMPOSE_ENV"; then
+    rm -f "$private_candidate" "$private_backup"
+    die 'could not atomically select the local release'
+  fi
+  say "starting TaskDesk ${VERSION} in local mode"
+  if (cd "$INSTALL_DIR" && ./scripts/deploy.sh local); then
+    rm -f "$private_backup"
+    say 'local proxy started; HTTPS readiness and browser smoke remain pending'
+    exit 0
+  fi
+  die 'local deployment failed; runtime and database state are uncertain. Inspect both before manually reconciling the selected image. The previous selection remains in a private .sit-selection-backup file beside SIT_COMPOSE_ENV.'
+fi
 if [[ ! -f "${INSTALL_DIR}/.env" ]]; then
   cp "${INSTALL_DIR}/deploy/.env.example" "${INSTALL_DIR}/.env"
   chmod 0600 "${INSTALL_DIR}/.env"

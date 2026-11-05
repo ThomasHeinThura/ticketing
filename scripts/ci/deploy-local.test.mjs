@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { deployLocal } from "../lib/deploy-local.mjs";
+import { deployLocal } from "../../deploy/local-release.mjs";
 
 const image = `ghcr.io/thomasheinthura/taskdesk@sha256:${"a".repeat(64)}`;
 function fixture() {
@@ -40,6 +40,14 @@ function fixture() {
         },
       },
       traefik: {
+        ports: [80, 443].flatMap((target) =>
+          ["127.0.0.1", "::1"].map((host_ip) => ({
+            target,
+            published: String(target),
+            host_ip,
+            protocol: "tcp",
+          })),
+        ),
         volumes: [
           {
             type: "bind",
@@ -71,7 +79,7 @@ function fixture() {
     if (args[0] === "context" && args[1] === "show") value = "local";
     else if (args[0] === "context" && args[1] === "inspect")
       value = JSON.stringify([
-        { Endpoints: { Docker: { Host: "unix:///var/run/docker.sock" } } },
+        { Endpoints: { docker: { Host: "unix:///var/run/docker.sock" } } },
       ]);
     else if (has("--environment")) value = "TASKDESK_IMAGE_TAG=v2.0.0";
     else if (has("run")) value = "a".repeat(64);
@@ -260,6 +268,10 @@ test("signed repeat release uses one canonical file, ordered commands and no set
       first.findIndex((x) => x.includes(" pull ")),
   );
   assert.ok(
+    first.findIndex((x) => x.startsWith("cosign verify ")) <
+      first.findIndex((x) => x.includes(" pull ")),
+  );
+  assert.ok(
     first.findIndex((x) => x.includes(" pull ")) <
       first.findIndex((x) => x.includes(" run ")),
   );
@@ -431,7 +443,7 @@ test("remote Docker endpoints and invalid tag fail before mutation", () => {
         return {
           status: 0,
           stdout: JSON.stringify([
-            { Endpoints: { Docker: { Host: "tcp://remote:2375" } } },
+            { Endpoints: { docker: { Host: "tcp://remote:2375" } } },
           ]),
         };
       if (mode === "tag" && args.includes("--environment"))
@@ -489,4 +501,69 @@ test("wait timeout is bounded and removes only owned container", () => {
     f.calls.some((c) => c.includes("up")),
     false,
   );
+});
+
+test("proxy port preflight rejects busy external bindings and inspect failures, accepts its own binding", () => {
+  for (const mode of ["busy", "inspect-fails", "own"]) {
+    const f = fixture();
+    const base = f.run;
+    f.run = (bin, args, opts) => {
+      const r = base(bin, args, opts);
+      if (args.includes("ps") && args.includes("traefik") && mode !== "busy")
+        return { status: 0, stdout: "proxyid" };
+      if (args[0] === "inspect" && args.includes("proxyid")) {
+        if (mode === "inspect-fails") return { status: 1 };
+        const bindings = Object.fromEntries(
+          [80, 443].map((p) => [
+            `${p}/tcp`,
+            ["127.0.0.1", "::1"].map((host) => ({
+              HostIp: host,
+              HostPort: String(p),
+            })),
+          ]),
+        );
+        return {
+          status: 0,
+          stdout: JSON.stringify([
+            {
+              Config: {
+                Labels: {
+                  "com.docker.compose.project": "taskdesk-codex-testing",
+                  "com.docker.compose.service": "traefik",
+                },
+              },
+              State: { Running: true },
+              HostConfig: { PortBindings: bindings },
+              NetworkSettings: { Ports: bindings },
+            },
+          ]),
+        };
+      }
+      if (bin === process.execPath && mode === "busy") return { status: 1 };
+      return r;
+    };
+    if (mode === "own") assert.doesNotThrow(() => deploy(f));
+    else {
+      assert.throws(() => deploy(f));
+      assert.equal(mutates(f.calls), false);
+    }
+  }
+});
+
+test("Docker context requires the actual lowercase docker endpoint schema", () => {
+  const f = fixture();
+  const base = f.run;
+  f.run = (bin, args, opts) => {
+    const result = base(bin, args, opts);
+    if (args[0] === "context" && args[1] === "inspect")
+      return {
+        status: 0,
+        stdout: JSON.stringify([
+          { Endpoints: { Docker: { Host: "unix:///var/run/docker.sock" } } },
+        ]),
+      };
+    return result;
+  };
+  assert.throws(() => deploy(f));
+  assert.equal(mutates(f.calls), false);
 });

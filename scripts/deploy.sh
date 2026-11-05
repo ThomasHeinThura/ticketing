@@ -38,7 +38,7 @@ cd "$REPO_ROOT"
 # Local SIT has its own fail-closed release path; do not load or generate root secrets.
 if [ "${1:-}" = local ]; then
   shift
-  exec node "$REPO_ROOT/scripts/lib/deploy-local.mjs" "$@"
+  exec node "$REPO_ROOT/deploy/local-release.mjs" "$@"
 fi
 
 ENV_FILE="$REPO_ROOT/.env"

@@ -4,7 +4,7 @@ import { existsSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const project = "taskdesk-codex-testing";
 const imagePattern =
   /^ghcr\.io\/thomasheinthura\/taskdesk@sha256:[0-9a-f]{64}$/;
@@ -114,7 +114,7 @@ export function deployLocal({
   );
   if (
     contexts.length !== 1 ||
-    !localSocket(contexts[0].Endpoints?.Docker?.Host)
+    !localSocket(contexts[0].Endpoints?.docker?.Host)
   )
     fail("Docker context must use a local Unix socket.");
   const interpolation = dc(
@@ -240,6 +240,77 @@ export function deployLocal({
     realpath(proxyMount.source) !== realpath(resolve(privateDir, "proxy"))
   )
     fail("Unexpected proxy configuration binding.");
+  const proxyPorts = services.traefik?.ports;
+  if (!Array.isArray(proxyPorts) || proxyPorts.length !== 4)
+    fail("Unexpected proxy port configuration.");
+  const endpoints = proxyPorts.map((binding) => {
+    const host = binding.host_ip;
+    const published = String(binding.published || "");
+    const target = Number(binding.target);
+    if (
+      !["127.0.0.1", "::1"].includes(host) ||
+      !/^[0-9]{1,5}$/.test(published) ||
+      Number(published) < 1 ||
+      Number(published) > 65535 ||
+      ![80, 443].includes(target) ||
+      (binding.protocol || "tcp") !== "tcp"
+    )
+      fail("Unexpected proxy port configuration.");
+    return { host, published, target };
+  });
+  if (new Set(endpoints.map((e) => `${e.host}/${e.target}`)).size !== 4)
+    fail("Unexpected proxy port configuration.");
+  const proxyIds = dc(["ps", "-q", "traefik"], "Existing proxy inspection")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const ownedBindings = new Set();
+  if (proxyIds.length) {
+    const proxies = json(
+      command("docker", ["inspect", ...proxyIds], "Existing proxy inspection"),
+      "Invalid proxy inspection.",
+    );
+    if (proxies.length !== proxyIds.length)
+      fail("Existing proxy inspection failed.");
+    for (const proxy of proxies) {
+      if (
+        proxy.Config?.Labels?.["com.docker.compose.project"] !== project ||
+        proxy.Config?.Labels?.["com.docker.compose.service"] !== "traefik" ||
+        !proxy.State?.Running
+      )
+        fail("Existing proxy ownership is unexpected.");
+      for (const endpoint of endpoints) {
+        const key = `${endpoint.target}/tcp`;
+        const matches = (entries) =>
+          Array.isArray(entries) &&
+          entries.some(
+            (entry) =>
+              entry.HostIp === endpoint.host &&
+              entry.HostPort === endpoint.published,
+          );
+        if (
+          matches(proxy.HostConfig?.PortBindings?.[key]) &&
+          matches(proxy.NetworkSettings?.Ports?.[key])
+        )
+          ownedBindings.add(
+            `${endpoint.host}/${endpoint.published}/${endpoint.target}`,
+          );
+      }
+    }
+  }
+  const unownedPorts = endpoints.filter(
+    (e) => !ownedBindings.has(`${e.host}/${e.published}/${e.target}`),
+  );
+  if (unownedPorts.length)
+    command(
+      process.execPath,
+      [
+        "-e",
+        `const net=require("node:net");const ports=JSON.parse(process.argv[1]);(async()=>{for(const p of ports){const server=net.createServer();await new Promise((resolve,reject)=>server.once("error",reject).listen({host:p.host,port:Number(p.published),ipv6Only:p.host==="::1"},resolve));await new Promise(resolve=>server.close(resolve));}})().catch(()=>process.exit(1));`,
+        JSON.stringify(unownedPorts),
+      ],
+      "Proxy port availability",
+    );
   for (const [key, name] of [
     ["postgres-data", `${project}_postgres-data`],
     ["attachments", `${project}_attachments`],
