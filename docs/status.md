@@ -1,23 +1,42 @@
 # Current status
 
-**5 Nov release:** PR #1055 merged as `62edb6e`; the release build, scans and
-signing passed for index digest `sha256:876f831d6e1d…`. Canonical local SIT is
-accepted with smoke 46/46 and journal 217; its verified copy has 184 tables,
-46,764 rows and eight files. Source deployments are stopped and their volumes
-preserved.
+**5 Nov release:** `e08c7063ae9a384252066407193662bca8740c24` is accepted on
+local SIT and Technexus with signed index `sha256:d34875df206d7c0b3acad20d8ee37911e740fc093df077aa120f4d776c931989`.
+Release run 41989194302 passed both jobs; source provenance and cosign were
+verified. Release-path fixes #1055 and #1057 shipped, and #1056 is closed.
 
-Technexus runs `62edb6e` and is healthy, with both public HTTPS readiness checks
-passing. Signed-in smoke is accepted at 108/110: the only misses are the two
-instance admins without workspaces. All 54 browser checks passed, and the
-operator lock was released. An earlier 26-check run was incomplete; its cause
-was not established. The completed instrumented run reported no transport codes. Database, files, environment, Compose and HBA backups were verified
-before deployment; the database had 184 tables and 68,634 rows. Only
-`instance_job_run` grew in the count comparison; journal 217 is unchanged.
+Local smoke passed 68/68 across six roles and both HTTPS hosts; journal 217 and
+eight attachment hashes were verified. The quiesced backup contained 184 tables
+and 48,279 rows. The QA workspace, project and lead/viewer accounts were created
+through product APIs; the original four credential entries were preserved, and setup did not change
+existing workspace or project grants. A private operator hit a name-shadowing
+`TypeError` after the signed helper verified the new app. Independent read-only
+acceptance checked that same candidate, backup, HBA, configuration and counts,
+then released the held lock; no second migration or data restore ran.
 
-The macOS first-bootstrap port-probe fix in #1056 passed real Docker occupied-port
-denial and cold-start validation, preserving the app identity, journal 217 and all
-eight attachment hashes, followed by smoke 46/46. CI and merge remain pending. G11 remains report-only; the other 17 required
-checks, G13 and bundle budgets remain in force, with no budget changes.
+The Technexus quiesced backup contained 184 tables, 69,976 rows and four files;
+initial post-deploy counts were identical. The new image is healthy, both hosts
+passed normal macOS TLS checks before and after smoke, and signed-in smoke was
+108/110 with two expected instance-admin misses and all 54 browser checks
+passing. The operator lock was released.
+
+G11 remains report-only; G13, bundle budgets and the other 17 required checks
+remain in force. The current calendar CI calibration fails, leaving G13
+unmeasured and requiring separate qualification. Budgets were not changed.
+
+The read-only browser audit covered 30 owner desktop-dark rows, with 24 screenshots
+independently inspected: 17 observations, four redirects, two design observations,
+one runtime observation and six fixture blocks. A 403 was expected and the Inbox
+result was a Chrome focus boundary, so neither is a confirmed medium bug. The
+agent not-found heading/recovery gap is open as #1059. The 154-row route
+inventory is static: 68 canonical, 47 fixtures, 15 redirects, seven stale and
+17 context-dependent; it is not full browser verification.
+
+Filesystem storage remains active; approved SeaweedFS configuration work #1052
+and #1053 is inactive and no bytes were cut over. The dependency audit found
+three advisories: one low and three moderate instances, with no high or critical
+findings. Production `deepmerge` remains #909; development upgrade #1058 needs
+approval for new transitive packages. No dependency changed.
 
 Codex owns version 2 from 4 Nov; the current release chain is in [handover](handover.md).
 
