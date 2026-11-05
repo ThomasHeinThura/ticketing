@@ -8135,7 +8135,7 @@ test("project settings budget screen @visual", async ({ page }) => {
   await page.goto("/agent/projects/help/settings/budget");
   // This URL opens kaneo's real project settings page; assert that page's own content.
   await expect(
-    page.getByRole("heading", { name: "Budget", exact: true }),
+    page.getByRole("heading", { name: "Budget", exact: true, level: 2 }),
   ).toBeVisible();
   await expect(
     page.getByText("Q4 2026 support", { exact: true }),

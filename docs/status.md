@@ -1,8 +1,22 @@
-# Current status — 31 October 2026, evening
+# Current status
 
-**Goal: UAT launch on Friday 6 November 2026 on the Technexus hosts.** Claude is the only version 2 implementer from 30 Oct; Codex works on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
+**5 Nov release preflight:** both running environments were verified at `2dc5b75`;
+fresh Technexus smoke is 108/110, with only the two expected empty-workspace
+instance-admin checks failing. A local release-path correction is under review:
+the legacy invocation selected other Compose files and reseeded accounts. The
+canonical signed-digest path uses only `deploy/compose.testing.yml`; initial
+database restore rehearsal matched 184 tables and 45,059 rows with ACLs intact.
+The temporary restore database/container were removed. Final database/file copy,
+public cutover, CI and release execution remain open. G11 is
+now report-only in branch protection; the other 17 required checks are retained.
 
-- **Deployed:** `main` cbd076c (signed digest `sha256:aa96614708b2…`, attestation verified).
+Codex owns version 2 from 4 Nov; the current release chain is in [handover](handover.md).
+
+## Historical checkpoint — 31 October 2026, evening
+
+**Goal at this checkpoint: UAT launch on Friday 6 November 2026 on Technexus.** Claude was the version 2 implementer from 30 Oct; Codex worked on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
+
+- **Deployed at this checkpoint:** `main` cbd076c (signed digest `sha256:aa96614708b2…`, attestation verified).
   - **Local SIT (Docker Desktop):** wiped and reinstalled with the SIT seed. Smoke 43/43.
   - **Technexus:** wiped (backup first) and reinstalled through first-run setup and the UAT seed (`uat-ws`, Northwind Service Desk: owner, admin, lead, two agents, viewer, customers at Contoso and Fabrikam, two instance admins). Signed-in smoke 108/110; the two misses are the instance admins, who belong to no workspace by design.
 - **Workaround on Technexus:** customer password sign-in was enabled with a direct database row, because no God Mode setting exists (A-14, fix U-6).
