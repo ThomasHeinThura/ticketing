@@ -41,7 +41,7 @@ Load test (k6, realistic data), backup → isolated restore rehearsal, upgrade f
 
 ## Setup
 
-Use the pinned pnpm and Node 24+. Local SIT: one deployment, `docker compose --env-file "$SIT_COMPOSE_ENV" -f deploy/compose.testing.yml up -d --wait`, image built with `VITE_API_URL=''`. Never rerun the SIT account seeder or reset customer data. Integration databases: scratch PostgreSQL 62871 or Testcontainers, one new `_test` database per run, dropped afterwards. Generators (`openapi:write`, matrix regen, `generate:route-metadata`, web builds) run one at a time; `pnpm check:tokens` rebuilds `dist`, so never run it during a bench.
+Use the pinned pnpm and Node 24+. Local SIT: one deployment using only `deploy/compose.testing.yml`. After independently verifying the initial restored database/files, set absolute private `SIT_COMPOSE_ENV` and `SIT_PRIVATE_DIR` paths and run `scripts/deploy.sh local`; its private Compose inputs must pin `SIT_IMAGE` to a signed release digest and set `TASKDESK_IMAGE_TAG` to the matching signed tag. It verifies both provenance and the cosign signature before pulling, runs the isolated migration and checks readiness without seeding or generating secrets. Images are built with `VITE_API_URL=''`. Never rerun the SIT account seeder or reset customer data. Integration databases: scratch PostgreSQL 62871 or Testcontainers, one new `_test` database per run, dropped afterwards. Generators (`openapi:write`, matrix regen, `generate:route-metadata`, web builds) run one at a time; `pnpm check:tokens` rebuilds `dist`, so never run it during a bench.
 
 ## Honest evidence
 
