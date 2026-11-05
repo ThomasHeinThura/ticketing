@@ -393,16 +393,6 @@ function deployLocalLocked({
   const unownedPorts = endpoints.filter(
     (e) => !ownedBindings.has(`${e.host}/${e.published}/${e.target}`),
   );
-  if (unownedPorts.length)
-    command(
-      process.execPath,
-      [
-        "-e",
-        `const net=require("node:net");const ports=JSON.parse(process.argv[1]);(async()=>{for(const p of ports){const server=net.createServer();await new Promise((resolve,reject)=>server.once("error",reject).listen({host:p.host,port:Number(p.published),ipv6Only:p.host==="::1"},resolve));await new Promise(resolve=>server.close(resolve));}})().catch(()=>process.exit(1));`,
-        JSON.stringify(unownedPorts),
-      ],
-      "Proxy port availability",
-    );
   for (const [key, name] of [
     ["postgres-data", `${project}_postgres-data`],
     ["attachments", `${project}_attachments`],
@@ -542,6 +532,178 @@ function deployLocalLocked({
     !/^sha256:[0-9a-f]{64}$/.test(imageDetails[0].Id || "")
   )
     fail("Pinned image ID could not be confirmed.");
+  if (unownedPorts.length) {
+    if (
+      !imageDetails[0].Config ||
+      Object.keys(imageDetails[0].Config.Volumes || {}).length
+    )
+      fail("Pinned image declares volumes and cannot be used for port proof.");
+    const labelKey = "info.taskdesk.local-port-proof";
+    const existingProofs = command(
+      "docker",
+      ["ps", "-a", "-q", "--no-trunc", "--filter", `label=${labelKey}`],
+      "Prior port proof inspection",
+      30000,
+    ).trim();
+    if (existingProofs)
+      fail("A previous port proof requires inspection before retrying.");
+    const marker = randomBytes(24).toString("hex");
+    const proofName = `taskdesk-port-proof-${marker}`;
+    const label = `${labelKey}=${marker}`;
+    const probeCode =
+      "setInterval(() => {}, 60000); setTimeout(() => process.exit(0), 60000)";
+    const createArgs = [
+      "create",
+      "--name",
+      proofName,
+      "--label",
+      label,
+      "--network",
+      "bridge",
+      "--read-only",
+      "--no-healthcheck",
+      "--security-opt",
+      "no-new-privileges:true",
+      "--cap-drop",
+      "ALL",
+      "--entrypoint",
+      "node",
+    ];
+    for (const endpoint of unownedPorts) {
+      const host = endpoint.host === "::1" ? "[::1]" : endpoint.host;
+      createArgs.push(
+        "--publish",
+        `${host}:${endpoint.published}:${endpoint.target}/tcp`,
+      );
+    }
+    createArgs.push(image, "-e", probeCode);
+    const inspectProof = (id) => {
+      const result = json(
+        command("docker", ["inspect", id], "Port proof inspection", 30000),
+        "Invalid port proof inspection.",
+      );
+      if (
+        result.length !== 1 ||
+        result[0].Id !== id ||
+        result[0].Name !== `/${proofName}` ||
+        result[0].Config?.Labels?.[labelKey] !== marker ||
+        result[0].Config?.Image !== image ||
+        result[0].Image !== imageDetails[0].Id
+      )
+        fail("Port proof container ownership is not confirmed.");
+      return result[0];
+    };
+    const findProof = () =>
+      command(
+        "docker",
+        ["ps", "-a", "-q", "--no-trunc", "--filter", `label=${label}`],
+        "Port proof recovery",
+        30000,
+      )
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+    let proofId;
+    report(`Port proof ownership marker: ${marker}`);
+    try {
+      const created = command(
+        "docker",
+        createArgs,
+        "Port proof creation",
+        30000,
+      ).trim();
+      if (!/^[0-9a-f]{64}$/.test(created))
+        fail("Port proof container ID is invalid.");
+      proofId = created;
+    } catch {
+      // A daemon may create the container even when the client gets an error.
+      // Only a unique unpredictable label plus inspected name/image is removable.
+      const candidates = findProof();
+      if (candidates.length === 1 && /^[0-9a-f]{64}$/.test(candidates[0])) {
+        inspectProof(candidates[0]);
+        proofId = candidates[0];
+        report(`Port proof container created: ${proofId}`);
+        command("docker", ["rm", "-f", proofId], "Port proof cleanup", 30000);
+        if (findProof().length)
+          fail("Port proof cleanup could not be confirmed.");
+        report(`Port proof container removed: ${proofId}`);
+      } else if (candidates.length)
+        fail("Port proof creation is ambiguous; inspect the private ledger.");
+      fail("Port proof creation failed; no migration was run.");
+    }
+    report(`Port proof container created: ${proofId}`);
+    let ownershipConfirmed = false;
+    try {
+      const created = inspectProof(proofId);
+      ownershipConfirmed = true;
+      if (
+        created.HostConfig?.NetworkMode !== "bridge" ||
+        created.HostConfig?.ReadonlyRootfs !== true ||
+        created.HostConfig?.Privileged !== false ||
+        created.HostConfig?.AutoRemove !== false ||
+        !created.HostConfig?.SecurityOpt?.includes("no-new-privileges:true") ||
+        JSON.stringify(created.Config?.Healthcheck?.Test) !==
+          JSON.stringify(["NONE"]) ||
+        created.HostConfig?.PublishAllPorts !== false ||
+        !created.HostConfig?.CapDrop?.includes("ALL") ||
+        (created.HostConfig?.CapAdd || []).length ||
+        !Array.isArray(created.Mounts) ||
+        created.Mounts.length ||
+        (created.HostConfig?.Binds || []).length ||
+        (created.HostConfig?.VolumesFrom || []).length ||
+        JSON.stringify([...(created.Config?.Env || [])].sort()) !==
+          JSON.stringify([...(imageDetails[0].Config.Env || [])].sort()) ||
+        JSON.stringify(created.Config?.Entrypoint) !==
+          JSON.stringify(["node"]) ||
+        JSON.stringify(created.Config?.Cmd) !==
+          JSON.stringify(["-e", probeCode])
+      )
+        fail("Port proof isolation is not confirmed.");
+      command("docker", ["start", proofId], "Port proof start", 30000);
+      report(`Port proof container started: ${proofId}`);
+      ownershipConfirmed = false;
+      const running = inspectProof(proofId);
+      ownershipConfirmed = true;
+      if (
+        !running.State?.Running ||
+        running.HostConfig?.NetworkMode !== "bridge" ||
+        !running.NetworkSettings?.Networks?.bridge
+      )
+        fail("Port proof network or state is not confirmed.");
+      const expected = unownedPorts
+        .map((e) => `${e.target}/tcp|${e.host}|${e.published}`)
+        .sort();
+      const bindings = (ports) =>
+        Object.entries(ports || {})
+          .flatMap(([key, entries]) =>
+            (entries || []).map(
+              (entry) => `${key}|${entry.HostIp}|${entry.HostPort}`,
+            ),
+          )
+          .sort();
+      if (
+        JSON.stringify(bindings(running.HostConfig?.PortBindings)) !==
+          JSON.stringify(expected) ||
+        JSON.stringify(bindings(running.NetworkSettings?.Ports)) !==
+          JSON.stringify(expected)
+      )
+        fail("Port proof bindings are not confirmed.");
+    } finally {
+      if (!ownershipConfirmed)
+        fail(
+          "Port proof ownership is uncertain; inspect its marker and container ID manually.",
+        );
+      command("docker", ["rm", "-f", proofId], "Port proof cleanup", 30000);
+      const remaining = command(
+        "docker",
+        ["ps", "-a", "-q", "--no-trunc", "--filter", `id=${proofId}`],
+        "Port proof cleanup inspection",
+        30000,
+      ).trim();
+      if (remaining) fail("Port proof cleanup could not be confirmed.");
+      report(`Port proof container removed: ${proofId}`);
+    }
+  }
   const migrationId = dc(
     ["run", "-d", "--no-deps", "migrate"],
     "Migration start",

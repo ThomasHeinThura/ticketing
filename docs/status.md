@@ -1,14 +1,23 @@
 # Current status
 
-**5 Nov release preflight:** both running environments were verified at `2dc5b75`;
-fresh Technexus smoke is 108/110, with only the two expected empty-workspace
-instance-admin checks failing. A local release-path correction is under review:
-the legacy invocation selected other Compose files and reseeded accounts. The
-canonical signed-digest path uses only `deploy/compose.testing.yml`; initial
-database restore rehearsal matched 184 tables and 45,059 rows with ACLs intact.
-The temporary restore database/container were removed. Final database/file copy,
-public cutover, CI and release execution remain open. G11 is
-now report-only in branch protection; the other 17 required checks are retained.
+**5 Nov release:** PR #1055 merged as `62edb6e`; the release build, scans and
+signing passed for index digest `sha256:876f831d6e1d…`. Canonical local SIT is
+accepted with smoke 46/46 and journal 217; its verified copy has 184 tables,
+46,764 rows and eight files. Source deployments are stopped and their volumes
+preserved.
+
+Technexus runs `62edb6e` and is healthy, with both public HTTPS readiness checks
+passing. Signed-in smoke is accepted at 108/110: the only misses are the two
+instance admins without workspaces. All 54 browser checks passed, and the
+operator lock was released. An earlier 26-check run was incomplete; its cause
+was not established. The completed instrumented run reported no transport codes. Database, files, environment, Compose and HBA backups were verified
+before deployment; the database had 184 tables and 68,634 rows. Only
+`instance_job_run` grew in the count comparison; journal 217 is unchanged.
+
+The macOS first-bootstrap port-probe fix in #1056 passed real Docker occupied-port
+denial and cold-start validation, preserving the app identity, journal 217 and all
+eight attachment hashes, followed by smoke 46/46. CI and merge remain pending. G11 remains report-only; the other 17 required
+checks, G13 and bundle budgets remain in force, with no budget changes.
 
 Codex owns version 2 from 4 Nov; the current release chain is in [handover](handover.md).
 
