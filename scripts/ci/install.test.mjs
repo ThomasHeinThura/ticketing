@@ -67,10 +67,13 @@ async function fixture(
     const target = path.join(content, file);
     await mkdir(path.dirname(target), { recursive: true });
     const contents =
-      realDeployment || file === "scripts/lib/deploy-checks.sh"
+      realDeployment ||
+      ["scripts/lib/deploy-checks.sh", "deploy/local-release.mjs"].includes(
+        file,
+      )
         ? await readFile(path.join(root, file))
         : file === "scripts/deploy.sh"
-          ? `#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$DEPLOY_LOG"\nif [[ "\${FAKE_DEPLOY_FAIL:-0}" == 1 ]]; then printf 'migration complete\\napp started\\nproxy failed\\n' >> "$DEPLOY_LOG"; exit 1; fi\n`
+          ? `#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$DEPLOY_LOG"\nif [[ "\${FAKE_VALIDATE_LOCK:-0}" == 1 ]]; then exec node --input-type=module -e 'import {acquireLocalReleaseLock} from "./deploy/local-release.mjs"; acquireLocalReleaseLock(process.env)();'; fi\nif [[ "\${FAKE_DEPLOY_FAIL:-0}" == 1 ]]; then printf 'migration complete\\napp started\\nproxy failed\\n' >> "$DEPLOY_LOG"; exit 1; fi\n`
           : `fixture ${file}\n`;
     await writeFile(target, contents);
   }
@@ -1044,6 +1047,15 @@ test("late local deployment failure keeps selected image and recoverable previou
   const backup = path.join(f.privateDir, backups[0]);
   assert.equal(await readFile(backup, "utf8"), before);
   assert.equal((await stat(backup)).mode & 0o777, 0o600);
+  const priorLog = await readFile(path.join(f.temp, "deploy.log"), "utf8");
+  const retry = run(f, args);
+  assert.notEqual(retry.status, 0);
+  assert.match(retry.stderr, /unresolved private selection backup/i);
+  assert.equal(await readFile(backup, "utf8"), before);
+  assert.equal(
+    await readFile(path.join(f.temp, "deploy.log"), "utf8"),
+    priorLog,
+  );
 });
 
 test("local image selection rename failure preserves prior bytes and retry succeeds", async (t) => {
@@ -1066,4 +1078,24 @@ exec /bin/mv "$@"
   const retried = run(f, args, env);
   assert.equal(retried.status, 0, retried.stderr);
   assert.match(await readFile(f.sitEnv, "utf8"), new RegExp(RAW_DIGEST));
+});
+
+test("installer refuses an existing shared release lock without changing selection", async (t) => {
+  const f = await fixture(t);
+  const before = await readFile(f.sitEnv, "utf8");
+  await mkdir(`${f.sitEnv}.lock`);
+  const result = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /release lock exists/);
+  assert.equal(await readFile(f.sitEnv, "utf8"), before);
+  assert.equal(await stat(f.path).catch(() => null), null);
+});
+
+test("installer securely hands its live lock to its direct release child", async (t) => {
+  const f = await fixture(t);
+  const result = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"], {
+    FAKE_VALIDATE_LOCK: "1",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await stat(`${f.sitEnv}.lock`).catch(() => null), null);
 });

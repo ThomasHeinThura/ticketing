@@ -51,6 +51,33 @@ if [[ "$MODE" == local ]]; then
   done
   [[ -d "$SIT_PRIVATE_DIR/proxy" && ! -L "$SIT_PRIVATE_DIR/proxy" ]] || die 'local SIT private proxy configuration is missing'
 fi
+
+TMP_ROOT='' LOCAL_LOCK_DIR='' LOCAL_LOCK_TOKEN=''
+cleanup() {
+  [[ -z "$TMP_ROOT" ]] || rm -rf "$TMP_ROOT"
+  if [[ -n "$LOCAL_LOCK_DIR" && -f "$LOCAL_LOCK_DIR/owner" && ! -L "$LOCAL_LOCK_DIR/owner" ]]; then
+    read -r lock_pid lock_token < "$LOCAL_LOCK_DIR/owner" || return 0
+    if [[ "$lock_pid" == "$$" && "$lock_token" == "$LOCAL_LOCK_TOKEN" ]]; then
+      rm -f "$LOCAL_LOCK_DIR/owner"
+      rmdir "$LOCAL_LOCK_DIR" 2>/dev/null || true
+    fi
+  fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+if [[ "$MODE" == local && "$DRY_RUN" == 0 ]]; then
+  SIT_COMPOSE_ENV="$(cd "$(dirname "$SIT_COMPOSE_ENV")" && pwd -P)/$(basename "$SIT_COMPOSE_ENV")"
+  export SIT_COMPOSE_ENV
+  LOCAL_LOCK_DIR="${SIT_COMPOSE_ENV}.lock"
+  (umask 077; mkdir "$LOCAL_LOCK_DIR") 2>/dev/null || die 'local release lock exists or cannot be acquired; inspect it before retrying'
+  LOCAL_LOCK_TOKEN="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')" || { rmdir "$LOCAL_LOCK_DIR"; LOCAL_LOCK_DIR=''; die 'could not initialize local release lock'; }
+  (umask 077; printf '%s %s\n' "$$" "$LOCAL_LOCK_TOKEN" > "$LOCAL_LOCK_DIR/owner") || die 'could not record local release lock owner'
+  for previous_backup in "$(dirname "$SIT_COMPOSE_ENV")"/.sit-selection-backup.*; do
+    [[ ! -e "$previous_backup" && ! -L "$previous_backup" ]] || die 'unresolved private selection backup exists; inspect runtime and database before retrying'
+  done
+fi
 valid_dns_name() {
   local name="$1" label
   [[ "$name" =~ ^[A-Za-z0-9.-]+$ && "$name" != .* && "$name" != *. && "$name" != *..* && ${#name} -le 253 ]] || return 1
@@ -159,8 +186,6 @@ RELEASE_URL="${RELEASE_BASE}/${VERSION}"
 
 TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/taskdesk-install.XXXXXX")" || die 'could not create a private temporary directory'
 chmod 0700 "$TMP_ROOT"
-cleanup() { rm -rf "$TMP_ROOT"; }
-trap cleanup EXIT HUP INT TERM
 for asset in "$ARCHIVE" "$CHECKSUM" "$BUNDLE" "$CHECKSUM_BUNDLE"; do
   say "downloading ${asset}"
   curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 300 "${RELEASE_URL}/${asset}" -o "${TMP_ROOT}/${asset}" || die "could not download release asset ${asset}"
@@ -274,7 +299,8 @@ if [[ "$MODE" == local ]]; then
     die 'could not atomically select the local release'
   fi
   say "starting TaskDesk ${VERSION} in local mode"
-  if (cd "$INSTALL_DIR" && ./scripts/deploy.sh local); then
+  cd "$INSTALL_DIR"
+  if TASKDESK_LOCAL_LOCK_PID="$$" TASKDESK_LOCAL_LOCK_TOKEN="$LOCAL_LOCK_TOKEN" ./scripts/deploy.sh local; then
     rm -f "$private_backup"
     say 'local proxy started; HTTPS readiness and browser smoke remain pending'
     exit 0

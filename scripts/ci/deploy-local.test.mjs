@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { test } from "node:test";
-import { deployLocal } from "../../deploy/local-release.mjs";
+import {
+  acquireLocalReleaseLock,
+  deployLocal,
+} from "../../deploy/local-release.mjs";
 
 const image = `ghcr.io/thomasheinthura/taskdesk@sha256:${"a".repeat(64)}`;
 function fixture() {
@@ -156,6 +169,7 @@ function fixture() {
     realpath: (x) => x,
     args: [],
     report: () => {},
+    acquireLock: () => () => {},
   };
 }
 const deploy = (f) => deployLocal(f);
@@ -566,4 +580,57 @@ test("Docker context requires the actual lowercase docker endpoint schema", () =
   };
   assert.throws(() => deploy(f));
   assert.equal(mutates(f.calls), false);
+});
+
+test("real private lock rejects concurrent releases and validates parent handoff", (t) => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "taskdesk-lock-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const envFile = path.join(dir, "compose.env");
+  writeFileSync(envFile, "SIT_IMAGE=x\n");
+  const env = { SIT_COMPOSE_ENV: envFile };
+  const release = acquireLocalReleaseLock(env);
+  assert.throws(() => acquireLocalReleaseLock(env), /lock exists/);
+  const [pid, token] = readFileSync(`${envFile}.lock/owner`, "utf8")
+    .trim()
+    .split(" ");
+  const modulePath = new URL("../../deploy/local-release.mjs", import.meta.url)
+    .href;
+  const source = `import {acquireLocalReleaseLock} from ${JSON.stringify(modulePath)}; acquireLocalReleaseLock(process.env)();`;
+  const handoff = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", source],
+    {
+      env: {
+        ...process.env,
+        SIT_COMPOSE_ENV: envFile,
+        TASKDESK_LOCAL_LOCK_PID: pid,
+        TASKDESK_LOCAL_LOCK_TOKEN: token,
+      },
+      encoding: "utf8",
+    },
+  );
+  assert.equal(handoff.status, 0, handoff.stderr);
+  assert.equal(existsSync(`${envFile}.lock/owner`), true);
+  const invalid = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", source],
+    {
+      env: {
+        ...process.env,
+        SIT_COMPOSE_ENV: envFile,
+        TASKDESK_LOCAL_LOCK_PID: pid,
+        TASKDESK_LOCAL_LOCK_TOKEN: "0".repeat(64),
+      },
+      encoding: "utf8",
+    },
+  );
+  assert.notEqual(invalid.status, 0);
+  release();
+  assert.equal(existsSync(`${envFile}.lock`), false);
+  writeFileSync(path.join(dir, ".sit-selection-backup.abc"), "previous");
+  assert.throws(
+    () => acquireLocalReleaseLock(env),
+    /Unresolved private selection/,
+  );
+  assert.equal(existsSync(`${envFile}.lock`), false);
 });

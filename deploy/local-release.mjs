@@ -1,6 +1,16 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmdirSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,7 +22,89 @@ const fail = (message) => {
   throw new Error(message);
 };
 
-export function deployLocal({
+export function acquireLocalReleaseLock(env) {
+  const file = realpathSync(env.SIT_COMPOSE_ENV);
+  const directory = `${file}.lock`;
+  const ownerFile = `${directory}/owner`;
+  const supplied = env.TASKDESK_LOCAL_LOCK_TOKEN;
+  if (supplied || env.TASKDESK_LOCAL_LOCK_PID) {
+    const pid = Number(env.TASKDESK_LOCAL_LOCK_PID);
+    if (
+      !/^[a-f0-9]{64}$/.test(supplied || "") ||
+      pid !== process.ppid ||
+      readFileSync(ownerFile, "utf8") !== `${pid} ${supplied}\n`
+    )
+      fail("Local release lock handoff is invalid.");
+    return () => {};
+  }
+  const token = randomBytes(32).toString("hex");
+  try {
+    mkdirSync(directory, { mode: 0o700 });
+  } catch {
+    fail(
+      "Local release lock exists or cannot be acquired; inspect it before retrying.",
+    );
+  }
+  try {
+    writeFileSync(ownerFile, `${process.pid} ${token}\n`, {
+      mode: 0o600,
+      flag: "wx",
+    });
+  } catch {
+    try {
+      rmdirSync(directory);
+    } catch {}
+    fail("Local release lock could not be initialized.");
+  }
+  const release = () => {
+    try {
+      if (readFileSync(ownerFile, "utf8") === `${process.pid} ${token}\n`) {
+        unlinkSync(ownerFile);
+        rmdirSync(directory);
+      }
+    } catch {
+      /* A changed or inaccessible lock is left for operator inspection. */
+    }
+  };
+  try {
+    if (
+      readdirSync(dirname(file)).some((name) =>
+        name.startsWith(".sit-selection-backup."),
+      )
+    )
+      fail(
+        "Unresolved private selection backup exists; inspect runtime and database before retrying.",
+      );
+  } catch (error) {
+    release();
+    throw error;
+  }
+  return release;
+}
+
+export function deployLocal(options = {}) {
+  const args = options.args ?? process.argv.slice(2);
+  const env = options.env ?? process.env;
+  const exists = options.exists ?? existsSync;
+  if (
+    args.length ||
+    !env.SIT_COMPOSE_ENV ||
+    !isAbsolute(env.SIT_COMPOSE_ENV) ||
+    !exists(env.SIT_COMPOSE_ENV) ||
+    !env.SIT_PRIVATE_DIR ||
+    !isAbsolute(env.SIT_PRIVATE_DIR) ||
+    !exists(env.SIT_PRIVATE_DIR)
+  )
+    return deployLocalLocked(options);
+  const release = (options.acquireLock ?? acquireLocalReleaseLock)(env);
+  try {
+    return deployLocalLocked(options);
+  } finally {
+    release();
+  }
+}
+
+function deployLocalLocked({
   args = process.argv.slice(2),
   env = process.env,
   run = spawnSync,
