@@ -21,14 +21,25 @@ passed normal macOS TLS checks before and after smoke, and signed-in smoke was
 passing. The operator lock was released.
 
 G11 remains report-only; G13, bundle budgets and the other 17 required checks
-remain in force. The current calendar CI calibration fails, leaving G13
-unmeasured and requiring separate qualification. Budgets were not changed.
+remain in force. Calendar source head `6bfdd0a6` passed all 17 required checks
+and all six hosted G13 cases. Earlier calibration failures left G13 unmeasured
+on those runs; no budget or calibration changed.
+G11 remained failed on that head: LCP 3,180.5 ms, board render 542.4 ms and the
+board-drag CSRF-request assertion (no drag p95 result). Local source-built production
+browser checks passed 30 role/width/theme cases and 12 supplemental cases with
+real persisted API data. The supplement verified no-match filtering, restoration,
+keyboard clearing, tablet reopen-empty and settled screenshots; independent
+Terra review found no introduced defect. These are bounded source checks, not
+a release or a complete product audit.
 
-The read-only browser audit covered 30 owner desktop-dark rows, with 24 screenshots
+The Technexus browser audit covered 30 owner desktop-dark rows, with 24 screenshots
 independently inspected: 17 observations, four redirects, two design observations,
 one runtime observation and six fixture blocks. A 403 was expected and the Inbox
 result was a Chrome focus boundary, so neither is a confirmed medium bug. The
-agent not-found heading/recovery gap is open as #1059. The 154-row route
+agent not-found heading/recovery gap is open as #1059. Keyboard clearing loses
+search-field focus (#1060); the mobile Calendar toolbar requires horizontal
+scrolling of the work area when selection controls are present (#1061). Both
+predate the calendar description fix and remain open. The 154-row route
 inventory is static: 68 canonical, 47 fixtures, 15 redirects, seven stale and
 17 context-dependent; it is not full browser verification.
 
