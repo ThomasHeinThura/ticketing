@@ -1040,11 +1040,13 @@ export function safePortalRedirect(value: unknown): string | undefined {
   const { pathname } = url;
   // Sign-in itself and the agent app's paths are never a portal destination. The router decodes
   // the path and matches case-insensitively when it navigates, so compare the decoded, lower-case
-  // path without trailing slashes (`/%61gent/x`, `/SIGN-IN` and `/auth` are all blocked).
+  // path with repeated and trailing slashes collapsed (`/%61gent/x`, `/SIGN-IN`, `/auth` and
+  // `/portal//sign-in` are all blocked).
   let comparable: string;
   try {
     comparable = decodeURIComponent(pathname)
       .toLowerCase()
+      .replace(/\/{2,}/gu, "/")
       .replace(/\/+$/u, "");
   } catch {
     return undefined;
