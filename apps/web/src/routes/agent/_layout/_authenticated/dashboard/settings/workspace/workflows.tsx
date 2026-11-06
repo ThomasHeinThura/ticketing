@@ -211,7 +211,10 @@ function WorkflowListView({
       ) : list.data?.length ? (
         <Card>
           <CardContent className="p-0">
-            <Table aria-label={t("settings:workflows.title")}>
+            <Table
+              aria-label={t("settings:workflows.title")}
+              scrollLabel={t("settings:workflows.title")}
+            >
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("settings:workflows.list.name")}</TableHead>
