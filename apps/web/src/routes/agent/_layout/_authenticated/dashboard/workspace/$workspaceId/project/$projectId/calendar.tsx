@@ -304,6 +304,7 @@ function RouteComponent() {
           onValueChange={updateQuery}
           placeholder={t("tasks:boardSearchPlaceholder")}
           clearLabel={t("common:actions.clearAll")}
+          activeLabel={t("tasks:boardSearchActive")}
         />
       }
     >

@@ -25,6 +25,7 @@ function Harness({ initial = "" }: { initial?: string }) {
       onValueChange={setValue}
       placeholder={PLACEHOLDER}
       clearLabel="Clear all"
+      activeLabel="Search active"
     />
   );
 }
@@ -37,6 +38,7 @@ describe("ProjectTaskSearchHeader", () => {
     const trigger = screen.getByRole("button", { name: PLACEHOLDER });
     expect(trigger).toHaveClass("hidden", "size-7", "md:max-lg:inline-flex");
     expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).not.toHaveAccessibleDescription();
     expect(
       screen.queryByTestId("project-task-search-active"),
     ).not.toBeInTheDocument();
@@ -44,10 +46,28 @@ describe("ProjectTaskSearchHeader", () => {
 
   it("marks the collapsed button while a query is active", () => {
     render(<Harness initial="urgent" />);
+    expect(
+      screen.getByRole("button", { name: PLACEHOLDER }),
+    ).toHaveAccessibleDescription("Search active");
     expect(screen.getByTestId("project-task-search-active")).toHaveAttribute(
       "aria-hidden",
       "true",
     );
+  });
+
+  it("announces an active search when entered and clears the announcement", () => {
+    render(<Harness />);
+    const trigger = screen.getByRole("button", { name: PLACEHOLDER });
+    const field = screen.getByPlaceholderText(PLACEHOLDER);
+    fireEvent.change(field, { target: { value: "urgent" } });
+    expect(trigger).toHaveAccessibleDescription("Search active");
+    fireEvent.change(field, { target: { value: "   " } });
+    expect(trigger).not.toHaveAccessibleDescription();
+    expect(
+      screen.queryByTestId("project-task-search-active"),
+    ).not.toBeInTheDocument();
+    fireEvent.change(field, { target: { value: "" } });
+    expect(trigger).not.toHaveAccessibleDescription();
   });
 
   it("focuses the inline field on Cmd/Ctrl+F when it is shown", () => {

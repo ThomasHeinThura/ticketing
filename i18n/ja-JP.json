@@ -2480,6 +2480,7 @@
 			"urgent": "緊急"
 		},
 		"boardSearchPlaceholder": "チケットを検索...",
+		"boardSearchActive": "検索が有効です",
 		"view": {
 			"board": "ボード",
 			"list": "リスト"
