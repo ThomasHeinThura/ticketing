@@ -268,3 +268,80 @@ describe("MembersTable joined column", () => {
     expect(within(row as HTMLElement).queryByText("–")).toBeNull();
   });
 });
+
+describe("MembersTable narrow widths (finding #4)", () => {
+  const longMember = {
+    ...member,
+    name: "A Very Long Member Name That Would Otherwise Widen The Column",
+    email: "a.very.long.address.for.layout@subdomain.example.com",
+    joinedAt: "2026-09-01T10:00:00.000Z",
+  } as unknown as WorkspaceUser;
+
+  it("lets the Name column absorb the free width and truncate, with full text in a title", () => {
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[pendingInvitation]}
+        users={[longMember]}
+      />,
+    );
+
+    const nameHeader = screen.getByRole("columnheader", {
+      name: "team:membersTable.columns.name",
+    });
+    expect(nameHeader).toHaveClass("w-full");
+
+    const name = screen.getByText(longMember.name as string);
+    expect(name).toHaveClass("truncate");
+    expect(name).toHaveAttribute("title", longMember.name);
+    expect(name.closest("td")).toHaveClass("max-w-0");
+
+    const email = screen.getByText(longMember.email);
+    expect(email).toHaveClass("truncate");
+    expect(email).toHaveAttribute("title", longMember.email);
+
+    const inviteEmail = screen.getByText(pendingInvitation.email);
+    expect(inviteEmail).toHaveClass("truncate");
+    expect(inviteEmail).toHaveAttribute("title", pendingInvitation.email);
+    expect(inviteEmail.closest("td")).toHaveClass("max-w-0");
+  });
+
+  it("hides the Joined column below sm and repeats the date under the email", () => {
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[] as WorkspaceUserInvitation[]}
+        users={[longMember]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", {
+        name: "team:membersTable.columns.joined",
+      }),
+    ).toHaveClass("max-sm:hidden");
+    expect(screen.getByText("Sep 1, 2026").closest("td")).toHaveClass(
+      "max-sm:hidden",
+    );
+    expect(screen.getByText("team:membersTable.joinedOn")).toHaveClass(
+      "sm:hidden",
+    );
+  });
+
+  it("keeps the remove action a named, focusable button in the row", () => {
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[] as WorkspaceUserInvitation[]}
+        users={[longMember]}
+      />,
+    );
+
+    const remove = screen.getByRole("button", {
+      name: "team:membersTable.ariaRemoveMember",
+    });
+    expect(remove.closest("td")).not.toHaveClass("max-sm:hidden");
+    remove.focus();
+    expect(remove).toHaveFocus();
+  });
+});

@@ -3,6 +3,12 @@ import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -163,6 +169,10 @@ function PortalSubmissionContent() {
     ]);
     setSentReplyId(postedReply.current);
   };
+  // A withdrawn request cannot be reopened by the customer, so withdrawing asks first.
+  const [withdrawConfirmOpen, setWithdrawConfirmOpen] = useState(false);
+  const withdrawnRef = useRef(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const withdraw = useMutation({
     mutationFn: () => withdrawPortalSubmission(ref),
     onSuccess: async () =>
@@ -425,7 +435,13 @@ function PortalSubmissionContent() {
           <header className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="break-words font-semibold text-2xl">{title}</h1>
+                <h1
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="break-words rounded-md font-semibold text-2xl focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  {title}
+                </h1>
                 <Badge variant="outline" className="font-mono">
                   {ref}
                 </Badge>
@@ -451,7 +467,7 @@ function PortalSubmissionContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => withdraw.mutate()}
+                    onClick={() => setWithdrawConfirmOpen(true)}
                     disabled={withdraw.isPending}
                   >
                     {t("portal:intake.withdraw", {
@@ -462,6 +478,72 @@ function PortalSubmissionContent() {
               </div>
             ) : null}
           </header>
+          <AlertDialog
+            open={withdrawConfirmOpen}
+            onOpenChange={(open) => {
+              // The dialog stays open while the withdrawal is being sent.
+              if (!open && withdraw.isPending) return;
+              setWithdrawConfirmOpen(open);
+            }}
+          >
+            <AlertDialogContent
+              // After a withdrawal the Withdraw button is gone, so focus moves to the heading.
+              finalFocus={() =>
+                withdrawnRef.current ? headingRef.current : true
+              }
+            >
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t("portal:intake.withdrawConfirm.title", {
+                    defaultValue: "Withdraw this request?",
+                  })}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("portal:intake.withdrawConfirm.description", {
+                    ref,
+                    defaultValue:
+                      "{{ref}} will be closed and the team will not work on it. You cannot undo this; to continue later, submit a new request.",
+                  })}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setWithdrawConfirmOpen(false)}
+                  disabled={withdraw.isPending}
+                >
+                  {t("common:actions.cancel", { defaultValue: "Cancel" })}
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={withdraw.isPending}
+                  onClick={() =>
+                    withdraw.mutate(undefined, {
+                      onSuccess: () => {
+                        withdrawnRef.current = true;
+                        setWithdrawConfirmOpen(false);
+                        setPageAnnouncement(
+                          t("portal:intake.withdrawConfirm.done", {
+                            ref,
+                            defaultValue: "{{ref}} was withdrawn.",
+                          }),
+                        );
+                      },
+                      onError: () => setWithdrawConfirmOpen(false),
+                    })
+                  }
+                >
+                  {withdraw.isPending
+                    ? t("portal:intake.withdrawConfirm.pending", {
+                        defaultValue: "Withdrawing…",
+                      })
+                    : t("portal:intake.withdraw", {
+                        defaultValue: "Withdraw request",
+                      })}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           {withdraw.isError ? (
             <Alert variant="error">
               <AlertDescription>

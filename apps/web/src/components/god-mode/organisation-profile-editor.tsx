@@ -373,7 +373,7 @@ export function OrganisationProfileEditor({
   return (
     <Card className="min-w-0">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle render={(props) => <h2 {...props} />}>{title}</CardTitle>
         <CardDescription>{t("profileDescription")}</CardDescription>
       </CardHeader>
       <CardContent>

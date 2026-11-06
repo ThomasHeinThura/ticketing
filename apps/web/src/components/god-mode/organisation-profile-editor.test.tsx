@@ -273,3 +273,24 @@ describe("organisation project default labels", () => {
     expect(document.body).not.toHaveTextContent("sla-unpublished-id");
   });
 });
+
+describe("organisation profile heading order", () => {
+  it("titles the card with an h2 so its h3 sections follow the page h1 in order", () => {
+    renderWithQuery(
+      <OrganisationProfileEditor
+        organisation={null}
+        projectDefaultOptions={[]}
+        requestTypeOptions={[]}
+        onSaved={vi.fn()}
+        onReload={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "createTitle" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 3, name: "quotaTitle" }),
+    ).toBeInTheDocument();
+  });
+});

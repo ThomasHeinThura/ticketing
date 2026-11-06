@@ -132,7 +132,9 @@ function GodModeOrganisationsRoute() {
           <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.6fr)]">
             <Card className="min-w-0">
               <CardHeader>
-                <CardTitle>{t("organisations")}</CardTitle>
+                <CardTitle render={(props) => <h2 {...props} />}>
+                  {t("organisations")}
+                </CardTitle>
                 <CardDescription>{t("selectOrganisation")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -313,7 +315,7 @@ function DeletedOrganisationCard({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>
+          <CardTitle render={(props) => <h2 {...props} />}>
             {t("restoreTitle", { defaultValue: "Restore organisation" })}
           </CardTitle>
           <CardDescription>
@@ -392,7 +394,7 @@ function DeletedOrganisationCard({
       </Card>
       <Card className="border-destructive/32">
         <CardHeader>
-          <CardTitle>
+          <CardTitle render={(props) => <h2 {...props} />}>
             {t("purgeTitle", {
               defaultValue: "Permanently delete organisation",
             })}
@@ -535,7 +537,9 @@ function CatalogueEditor({
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <CardTitle>{organisation.name}</CardTitle>
+            <CardTitle render={(props) => <h2 {...props} />}>
+              {organisation.name}
+            </CardTitle>
             <CardDescription>{t("catalogueDescription")}</CardDescription>
           </div>
           <Button

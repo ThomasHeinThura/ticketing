@@ -3096,7 +3096,8 @@
 			"cancelInviteError": "Einladung konnte nicht abgebrochen werden",
 			"ariaInvitationActions": "Einladungsaktionen",
 			"roleUpdateSuccess": "Rolle aktualisiert",
-			"roleUpdateError": "Rolle konnte nicht aktualisiert werden"
+			"roleUpdateError": "Rolle konnte nicht aktualisiert werden",
+			"joinedOn": "Joined {{date}}"
 		}
 	},
 	"publicProject": {
@@ -4010,7 +4011,13 @@
 				"clarification_window_expired": "No reply was received within {{days}} days of our request for clarification, so this {{term_request_one}} was closed. Contact us if you would like to continue."
 			},
 			"filesNotAttached": "Your {{term_request_one}} {{ref}} was sent, but these files could not be attached:",
-			"openSentRequest": "Open {{ref}}"
+			"openSentRequest": "Open {{ref}}",
+			"withdrawConfirm": {
+				"title": "Withdraw this {{term_request_one}}?",
+				"description": "{{ref}} will be closed and the team will not work on it. You cannot undo this; to continue later, submit a new {{term_request_one}}.",
+				"done": "{{ref}} was withdrawn.",
+				"pending": "Withdrawing…"
+			}
 		},
 		"orientation": {
 			"body": "Raise a new {{term_request_one}} from the {{term_request_one}} catalogue. You can follow its progress, reply to our team and see what is due under My {{term_request_other}}.",
@@ -4210,7 +4217,6 @@
 			"search": {
 				"label": "Search",
 				"placeholder": "Search for help",
-				"dialogPlaceholder": "Search articles, {{term_request_one}} types and your {{term_request_other}}",
 				"hint": "Type to search articles, {{term_request_one}} types and your {{term_request_other}}.",
 				"empty": "No articles, {{term_request_one}} types or {{term_request_other}} match “{{q}}”.",
 				"searching": "Searching…",

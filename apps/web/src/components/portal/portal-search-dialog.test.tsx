@@ -85,6 +85,14 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("portal help search", () => {
+  it("uses the short placeholder and keeps the full scope as the input's description", () => {
+    renderDialog("");
+    const input = screen.getByRole("combobox", { name: "shell.search.label" });
+    // The long scope text was clipped at 390 px; the short trigger text fits.
+    expect(input).toHaveAttribute("placeholder", "shell.search.placeholder");
+    expect(input).toHaveAccessibleDescription("shell.search.hint");
+  });
+
   it("finds knowledge-base articles, request types and the customer's own requests", async () => {
     renderDialog();
     expect(

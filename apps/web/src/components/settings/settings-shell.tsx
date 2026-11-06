@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { Button, useIsMobile } from "@taskdesk/ui";
+import { Button, SkipToMainLink, useIsMobile } from "@taskdesk/ui";
 import { ChevronLeft, PanelLeftIcon } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -77,11 +77,14 @@ export function SettingsShell({
 
   return (
     <>
+      {/* WCAG 2.4.1 bypass block: the agent shell's skip link, first in Tab order, to `main`. */}
+      <SkipToMainLink label={t("common:a11y.skipToContent")} />
       <PageTitle title={title} />
 
       <div className="flex h-full w-full flex-col bg-sidebar p-2 sm:p-4">
         <div className="relative flex h-full min-h-0 flex-col gap-6 overflow-hidden rounded-md border border-border bg-card p-3 md:gap-4 sm:p-4">
-          <div className="shrink-0">
+          {/* The banner landmark holds the back button and the area title (axe region). */}
+          <header className="shrink-0">
             <div className="flex items-center">
               <ActionTooltip label="Open settings menu">
                 <Button
@@ -124,10 +127,11 @@ export function SettingsShell({
             <p className="mt-4 hidden pl-1 text-2xl font-semibold md:block">
               {title}
             </p>
-          </div>
+          </header>
 
-          {/* Each settings area owns its existing sidebar; mobile opens that same scoped menu. */}
-          <main className="min-h-0 flex-1 overflow-y-auto">
+          {/* Each settings area owns its existing sidebar; mobile opens that same scoped menu.
+              `main-content` is the id the skip link targets (SidebarInset's id). */}
+          <main id="main-content" className="min-h-0 flex-1 overflow-y-auto">
             <SettingsSidebarProvider
               workspaceId={workspace?.id}
               menuOpen={settingsMenuOpen}

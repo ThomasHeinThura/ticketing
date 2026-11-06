@@ -488,6 +488,7 @@ export {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
+  SkipToMainLink,
   useSidebar,
 } from "./components/sidebar-shell";
 export { Skeleton } from "./components/skeleton";

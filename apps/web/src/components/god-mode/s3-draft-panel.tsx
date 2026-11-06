@@ -45,6 +45,16 @@ const emptyConfig: S3DraftConfig = {
   presignTtlSeconds: 300,
 };
 type CredentialMode = "keep" | "replace" | "clear";
+type NumericField = "maxImageUploadBytes" | "presignTtlSeconds";
+const isNumericField = (field: string): field is NumericField =>
+  field === "maxImageUploadBytes" || field === "presignTtlSeconds";
+// A number field's text only becomes a value once it parses; blank or partial text never turns into 0.
+const parseNumber = (raw: string) => {
+  const trimmed = raw.trim();
+  if (trimmed === "") return null;
+  const value = Number(trimmed);
+  return Number.isFinite(value) ? value : null;
+};
 // The bundled connector always uses path-style requests.
 const effectivePathStyle = (value: S3DraftConfig) =>
   value.connector === "bundled_seaweedfs" || value.forcePathStyle;
@@ -111,6 +121,10 @@ function S3DraftForm({
   const [probe, setProbe] = useState<S3DraftProbe | null>(null);
   const [stale, setStale] = useState(false);
   const [reloading, setReloading] = useState(false);
+  // Raw text of number fields while they are being edited, so a cleared field stays empty.
+  const [numberDrafts, setNumberDrafts] = useState<
+    Partial<Record<NumericField, string>>
+  >({});
   const patch = (change: Partial<S3DraftConfig>) =>
     setConfig((current) => ({ ...current, ...change }));
   const origin = (value: string | undefined) => {
@@ -185,6 +199,7 @@ function S3DraftForm({
         const saved = result.value as S3DraftResponse;
         setBase(saved);
         setConfig(saved.config ?? emptyConfig);
+        setNumberDrafts({});
         setAccessMode("keep");
         setSecretMode("keep");
         setNotice(true);
@@ -202,6 +217,7 @@ function S3DraftForm({
       const fresh = await reload();
       setBase(fresh);
       setConfig(fresh.config ?? emptyConfig);
+      setNumberDrafts({});
       setAccessMode("keep");
       setSecretMode("keep");
       setStale(false);
@@ -281,22 +297,27 @@ function S3DraftForm({
               <Input
                 id={`s3-${field}`}
                 disabled={editingDisabled}
-                type={
-                  field === "maxImageUploadBytes" ||
-                  field === "presignTtlSeconds"
-                    ? "number"
-                    : "text"
+                type={isNumericField(field) ? "number" : "text"}
+                value={
+                  isNumericField(field)
+                    ? (numberDrafts[field] ?? String(config[field]))
+                    : config[field]
                 }
-                value={config[field]}
-                onChange={(e) =>
-                  patch({
-                    [field]:
-                      field === "maxImageUploadBytes" ||
-                      field === "presignTtlSeconds"
-                        ? Number(e.currentTarget.value)
-                        : e.currentTarget.value,
-                  })
-                }
+                onChange={(e) => {
+                  const raw = e.currentTarget.value;
+                  if (!isNumericField(field)) {
+                    patch({ [field]: raw });
+                    return;
+                  }
+                  setNumberDrafts((current) => ({ ...current, [field]: raw }));
+                  const parsed = parseNumber(raw);
+                  if (parsed !== null) patch({ [field]: parsed });
+                }}
+                onBlur={() => {
+                  // Leaving the field shows the last value that parsed; blank text never becomes 0.
+                  if (isNumericField(field))
+                    setNumberDrafts(({ [field]: _left, ...rest }) => rest);
+                }}
               />
             </div>
           ))}

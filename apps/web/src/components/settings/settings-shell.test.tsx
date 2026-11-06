@@ -44,9 +44,22 @@ import { type SettingsScope, SettingsShell } from "./settings-shell";
 
 beforeEach(() => {
   mocks.navigate.mockReset();
+  // The skip link's SidebarProvider reads the viewport through matchMedia (absent in jsdom).
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 function renderSettings(pathname: string, scope?: SettingsScope) {
   mocks.pathname = pathname;
@@ -108,5 +121,39 @@ describe("SettingsShell back link (L-03)", () => {
     renderSettings("/dashboard/settings/workspace/general");
     fireEvent.click(screen.getByRole("button", { name: "Back to Workspace" }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" });
+  });
+});
+
+describe("SettingsShell landmarks (a11y #11, #13)", () => {
+  it.each([
+    ["/dashboard/settings/workspace/general", undefined],
+    ["/god-mode/organisations", "instance" as const],
+  ])("starts %s with a skip link to its one main", (pathname, scope) => {
+    renderSettings(pathname, scope);
+    const skipLink = screen.getByRole("link", {
+      name: "common:a11y.skipToContent",
+    });
+    const mains = screen.getAllByRole("main");
+    expect(mains).toHaveLength(1);
+    expect(skipLink).toHaveAttribute("href", `#${mains[0]?.id}`);
+    expect(mains[0]).toHaveTextContent("Settings content");
+
+    // First Tab stop: nothing focusable precedes the skip link.
+    const focusables = document.querySelectorAll<HTMLElement>(
+      "a[href], button:not([disabled]), [tabindex]:not([tabindex='-1'])",
+    );
+    expect(focusables[0]).toBe(skipLink);
+
+    fireEvent.click(skipLink);
+    expect(document.activeElement).toBe(mains[0]);
+  });
+
+  it("keeps the area title inside the banner landmark", () => {
+    renderSettings("/god-mode/organisations", "instance");
+    const banner = screen.getByRole("banner");
+    expect(banner).toHaveTextContent("God Mode");
+    expect(banner).toContainElement(
+      screen.getByRole("button", { name: "Open settings menu" }),
+    );
   });
 });

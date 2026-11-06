@@ -244,4 +244,10 @@ function SidebarInset({
   );
 }
 
-export { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar };
+export {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+  SkipToMainLink,
+  useSidebar,
+};
