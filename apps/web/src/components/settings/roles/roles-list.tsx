@@ -82,9 +82,9 @@ export function RolesList() {
         ) : roles.data?.length ? (
           <CardFrame>
             {roles.data.map((role) => (
-              <Card key={role.id}>
+              <Card key={role.id} className="@container">
                 <CardHeader>
-                  <CardTitle className="truncate">
+                  <CardTitle className="min-w-0 break-words @md:truncate">
                     <Link
                       className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       to={routes.workspaceRoleDetail.path}
@@ -93,7 +93,7 @@ export function RolesList() {
                       {role.name}
                     </Link>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="col-span-2 row-start-3 min-w-0 break-words @md:col-span-1 @md:row-start-2">
                     {role.description ? `${role.description} · ` : ""}
                     {t("roles:list.rank", { rank: role.rank })}
                     {" · "}
@@ -102,7 +102,7 @@ export function RolesList() {
                       ? ` · ${t("roles:list.modified", { date: formatDate(role.updatedAt) })}`
                       : ""}
                   </CardDescription>
-                  <CardAction className="flex flex-wrap items-center gap-2">
+                  <CardAction className="col-start-1 row-span-1 row-start-2 flex flex-wrap items-center justify-self-start gap-2 @md:col-start-2 @md:row-span-2 @md:row-start-1 @md:justify-self-end">
                     {role.isSystem ? (
                       <Badge variant="info">{t("roles:badges.system")}</Badge>
                     ) : (
