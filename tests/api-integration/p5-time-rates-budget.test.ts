@@ -60,6 +60,29 @@ async function log(
   return (await response.json()) as Entry;
 }
 
+/**
+ * Field names matching `keyPattern` and numeric leaves equal to one of `amounts`, anywhere in a
+ * response. Ids and other random strings are deliberately not searched: a generated id can contain
+ * "rate", "cost" or "6000" by chance, which made the old whole-text match flaky.
+ */
+function exposedFields(
+  value: unknown,
+  keyPattern: RegExp,
+  amounts: number[] = [],
+  path = "$",
+): string[] {
+  if (Array.isArray(value))
+    return value.flatMap((item, index) =>
+      exposedFields(item, keyPattern, amounts, `${path}[${index}]`),
+    );
+  if (value && typeof value === "object")
+    return Object.entries(value).flatMap(([key, child]) => [
+      ...(keyPattern.test(key) ? [`${path}.${key}`] : []),
+      ...exposedFields(child, keyPattern, amounts, `${path}.${key}`),
+    ]);
+  return typeof value === "number" && amounts.includes(value) ? [path] : [];
+}
+
 describe("the rate is captured on the entry (D4, TC-9)", () => {
   it("prices an entry at the rate effective on its date and keeps it when rates change later", async () => {
     expect(
@@ -164,29 +187,29 @@ describe("rates are invisible without time_entry:manage_rates (TC-11)", () => {
   it("strips rate and cost from create, patch, list and summary responses", async () => {
     const created = await w.logTime(w.member.user);
     const createdBody = await created.json();
-    expect(JSON.stringify(createdBody)).not.toMatch(/rate|cost|6000|9000/i);
+    expect(exposedFields(createdBody, /rate|cost/i, [6000, 9000])).toEqual([]);
     const id = (createdBody as Entry).id;
     const patched = await w.agent(w.member.user, `/api/time-entries/${id}`, {
       method: "PATCH",
       body: { minutes: 120 },
     });
-    expect(JSON.stringify(await patched.json())).not.toMatch(/"rate"|cost/i);
+    expect(exposedFields(await patched.json(), /^rate$|cost/i)).toEqual([]);
     for (const user of [w.member.user, w.lead.user]) {
       const list = await w.agent(
         user,
         `/api/time-entries?workspaceId=${w.workspaceId}${user === w.lead.user ? "&person=all" : ""}`,
       );
       expect(list.status).toBe(200);
-      const text = JSON.stringify(await list.json());
-      expect(text, text).not.toMatch(/"rate"|cost/i);
+      expect(exposedFields(await list.json(), /^rate$|cost/i)).toEqual([]);
     }
     const summary = await w.agent(
       w.lead.user,
       `/api/time-entries/summary?workspaceId=${w.workspaceId}&projectId=${w.projectA.id}`,
     );
     expect(summary.status).toBe(200);
-    const text = JSON.stringify(await summary.json());
-    expect(text).not.toMatch(/cost|rate|byCurrency/i);
+    expect(
+      exposedFields(await summary.json(), /cost|rate|byCurrency/i),
+    ).toEqual([]);
   });
 
   it("shows cost per currency, never summed, to a rate manager", async () => {
@@ -216,7 +239,7 @@ describe("rates are invisible without time_entry:manage_rates (TC-11)", () => {
     await log(w.member.user);
     await setTimeFlags(w.workspaceId, { cost: false });
     const { body } = await listEntries(w.owner.user);
-    expect(JSON.stringify(body)).not.toMatch(/"rate"|cost/i);
+    expect(exposedFields(body, /^rate$|cost/i)).toEqual([]);
   });
 
   it("keeps the rate out of the entry's audit rows", async () => {
@@ -226,9 +249,13 @@ describe("rates are invisible without time_entry:manage_rates (TC-11)", () => {
       .from(schema.auditLogTable)
       .where(eq(schema.auditLogTable.action, "time_entry.created"));
     expect(rows.length).toBeGreaterThan(0);
-    expect(JSON.stringify(rows.map((row) => row.after))).not.toMatch(
-      /rate|6000|cost/i,
-    );
+    expect(
+      exposedFields(
+        rows.map((row) => row.after),
+        /rate|cost/i,
+        [6000],
+      ),
+    ).toEqual([]);
   });
 
   it("refuses the rates API to everyone without the capability", async () => {
