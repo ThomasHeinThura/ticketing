@@ -7,21 +7,17 @@ import {
   Button,
 } from "@taskdesk/ui";
 import { RefreshCw } from "lucide-react";
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorDisplay } from "@/components/errors/error-display";
-import { isChunkLoadError, reloadOnceForChunkError } from "@/lib/lazy-retry";
+import { isChunkLoadError } from "@/lib/lazy-retry";
 
 /**
  * A code chunk failed to load. `React.lazy` keeps that failure, so clearing the error boundary
- * would show it again: the page reloads once on its own (once per failing chunk, so it cannot
- * loop), and Try again reloads it on request.
+ * would show it again: Try again reloads the page. There is no automatic reload, so a lasting
+ * failure stays on this screen instead of a page stuck loading.
  */
-export function ChunkLoadErrorState({ error }: { error: unknown }) {
+export function ChunkLoadErrorState(_props: { error: unknown }) {
   const { t } = useTranslation();
-  useEffect(() => {
-    reloadOnceForChunkError(error);
-  }, [error]);
   return (
     <main className="flex min-h-svh w-full items-center justify-center bg-background p-6">
       <div className="w-full max-w-lg">

@@ -1,9 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  importWithRetry,
-  isChunkLoadError,
-  reloadOnceForChunkError,
-} from "./lazy-retry";
+import { describe, expect, it, vi } from "vitest";
+import { importWithRetry, isChunkLoadError } from "./lazy-retry";
 
 const chunkError = () =>
   new TypeError(
@@ -64,62 +60,5 @@ describe("importWithRetry", () => {
     const load = vi.fn().mockRejectedValue(new Error("boom"));
     await expect(importWithRetry(load, [0, 0])).rejects.toThrow("boom");
     expect(load).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("reloadOnceForChunkError", () => {
-  beforeEach(() => sessionStorage.clear());
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    window.history.replaceState(null, "", "/");
-  });
-
-  it("does not reload again for a chunk TanStack Router already reloaded for", () => {
-    const error = chunkError();
-    sessionStorage.setItem(`tanstack_router_reload:${error.message}`, "1");
-    const reload = vi.fn();
-    expect(reloadOnceForChunkError(error, reload)).toBe(false);
-    expect(reload).not.toHaveBeenCalled();
-  });
-
-  it("scopes Safari's message, which names no chunk, by the page path", () => {
-    const safari = () => new TypeError("Importing a module script failed.");
-    // TanStack's record for this message is not chunk-specific, so it does not block.
-    sessionStorage.setItem(`tanstack_router_reload:${safari().message}`, "1");
-    const reload = vi.fn();
-    window.history.replaceState(null, "", "/agent/work-items");
-    expect(reloadOnceForChunkError(safari(), reload)).toBe(true);
-    expect(reloadOnceForChunkError(safari(), reload)).toBe(false);
-    window.history.replaceState(null, "", "/agent/kb");
-    expect(reloadOnceForChunkError(safari(), reload)).toBe(true);
-    expect(reloadOnceForChunkError(safari(), reload)).toBe(false);
-    expect(reload).toHaveBeenCalledTimes(2);
-  });
-
-  it("reloads once for a failing chunk, then refuses that chunk again", () => {
-    const reload = vi.fn();
-    expect(reloadOnceForChunkError(chunkError(), reload)).toBe(true);
-    expect(reloadOnceForChunkError(chunkError(), reload)).toBe(false);
-    expect(reload).toHaveBeenCalledTimes(1);
-  });
-
-  it("still reloads once for a different chunk", () => {
-    const reload = vi.fn();
-    reloadOnceForChunkError(chunkError(), reload);
-    const other = new TypeError(
-      "Failed to fetch dynamically imported module: https://ticketing.localhost/assets/y.js",
-    );
-    expect(reloadOnceForChunkError(other, reload)).toBe(true);
-    expect(reload).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not reload when session storage cannot record the attempt", () => {
-    const blocked = () => {
-      throw new DOMException("blocked", "SecurityError");
-    };
-    vi.stubGlobal("sessionStorage", { getItem: blocked, setItem: blocked });
-    const reload = vi.fn();
-    expect(reloadOnceForChunkError(chunkError(), reload)).toBe(false);
-    expect(reload).not.toHaveBeenCalled();
   });
 });

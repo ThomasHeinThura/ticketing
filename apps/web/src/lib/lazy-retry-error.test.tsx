@@ -38,29 +38,20 @@ const chunkError = new TypeError(
 );
 
 describe("AgentRouteError", () => {
-  it("shows the styled chunk screen, reloads once on its own and again on Try again", () => {
+  it("shows the styled chunk screen, never reloads on its own, and reloads on Try again", () => {
     render(<AgentRouteError error={chunkError} reset={vi.fn()} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(
       "common:error.messages.chunkLoad",
     );
     expect(screen.queryByText("Something went wrong!")).toBeNull();
-    // One automatic reload per failing chunk.
-    expect(reload).toHaveBeenCalledTimes(1);
+    // A lasting failure must stay on this screen, not reload into a page stuck loading.
+    expect(reload).not.toHaveBeenCalled();
 
     fireEvent.click(
       screen.getByRole("button", { name: "common:error.tryAgain" }),
     );
-    expect(reload).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not reload on its own a second time for the same chunk", () => {
-    render(<AgentRouteError error={chunkError} reset={vi.fn()} />);
-    cleanup();
-    reload.mockClear();
-    render(<AgentRouteError error={chunkError} reset={vi.fn()} />);
-    expect(reload).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it("shows the styled error card for other errors and re-runs the route before clearing it", async () => {

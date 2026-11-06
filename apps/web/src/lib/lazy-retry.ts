@@ -2,7 +2,9 @@
  * Recovery for code chunks that fail to load (a dropped connection, or a new release that
  * replaced the hashed file names). `React.lazy` keeps a rejected loader for good, so a page
  * that failed once cannot recover in place: a short in-page retry covers a brief network blip,
- * and a full page reload is the recovery that always works.
+ * and the error screen's Try again (a full page reload) is the recovery that always works. The
+ * page never reloads on its own: if the failure persists, an automatic reload would land on a
+ * worse state (a page stuck loading) instead of the error screen.
  */
 
 import { type ComponentType, type LazyExoticComponent, lazy } from "react";
@@ -42,7 +44,8 @@ const wait = (ms: number) =>
  * Runs `load`, and runs it again after each delay while it fails to import a JavaScript module.
  * Any other error, or the last import error, is passed on unchanged. A failed CSS preload is not
  * retried here: Vite records each stylesheet as requested before it loads, so a second import
- * would skip the missing stylesheet and render the page unstyled. It goes straight to the reload.
+ * would skip the missing stylesheet and render the page unstyled. It goes straight to the error
+ * screen.
  */
 export async function importWithRetry<T>(
   load: () => Promise<T>,
@@ -57,49 +60,6 @@ export async function importWithRetry<T>(
       await wait(delay);
     }
   }
-}
-
-const CHUNK_RELOAD_STORAGE_PREFIX = "taskdesk:chunk-reload:";
-/** The key TanStack Router's `lazyRouteComponent` sets when it reloads for a failed route chunk. */
-const TANSTACK_RELOAD_STORAGE_PREFIX = "tanstack_router_reload:";
-/** Chromium, Firefox and Vite name the failing file; Safari's message names none. */
-const NAMES_A_URL = /(?:https?:\/\/|\/)\S/u;
-
-/**
- * Reloads the page once per failing chunk per tab session (the error message names the chunk's
- * URL, and a new release renames its chunks). Returns false, without reloading, when this chunk
- * already caused a reload, or when session storage cannot record the attempt: without that
- * record a lasting failure would reload forever. A slow failure cannot slip past this guard the
- * way it could past a time window.
- *
- * A message that names the chunk also honours TanStack Router's own reload record for it, so a
- * route chunk that keeps failing reloads once, not twice. Safari's message names no chunk, so
- * its record is scoped by the page path as well; TanStack's record for that message is not
- * chunk-specific and is not honoured, or one failure would block every later one in the tab.
- */
-export function reloadOnceForChunkError(
-  error: unknown,
-  reload: () => void = () => window.location.reload(),
-): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  const namesChunk = NAMES_A_URL.test(message);
-  try {
-    if (
-      namesChunk &&
-      sessionStorage.getItem(`${TANSTACK_RELOAD_STORAGE_PREFIX}${message}`) !==
-        null
-    )
-      return false;
-    const key = namesChunk
-      ? `${CHUNK_RELOAD_STORAGE_PREFIX}${message}`
-      : `${CHUNK_RELOAD_STORAGE_PREFIX}${message}@${window.location.pathname}`;
-    if (sessionStorage.getItem(key) !== null) return false;
-    sessionStorage.setItem(key, "1");
-  } catch {
-    return false;
-  }
-  reload();
-  return true;
 }
 
 /**
