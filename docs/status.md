@@ -20,8 +20,8 @@ passed normal macOS TLS checks before and after smoke, and signed-in smoke was
 108/110 with two expected instance-admin misses and all 54 browser checks
 passing. The operator lock was released.
 
-G11 remains report-only; G13, bundle budgets and the other 17 required checks
-remain in force. Calendar source head `6bfdd0a6` passed all 17 required checks
+G11 and G13 run in one non-required job and are report-only; bundle budgets and the 17 required
+checks remain in force. Calendar source head `6bfdd0a6` passed all 17 required checks
 and all six hosted G13 cases. Earlier calibration failures left G13 unmeasured
 on those runs; no budget or calibration changed.
 G11 remained failed on that head: LCP 3,180.5 ms, board render 542.4 ms and the
