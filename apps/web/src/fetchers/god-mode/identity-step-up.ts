@@ -7,6 +7,7 @@ import type {
 } from "./identity-connections";
 import type { StepUpMethod } from "./instance-users";
 import type { LocalAuthMethodsRequest } from "./local-auth-methods";
+import type { S3DraftRequest } from "./s3-draft";
 
 /**
  * The only operations this screen binds, exactly as the accepted API defines them. The proof is
@@ -14,6 +15,9 @@ import type { LocalAuthMethodsRequest } from "./local-auth-methods";
  * the same request object is sent to the challenge, the proof and the mutation.
  */
 export type IdentityOperationBinding =
+  | ({
+      operation: "storage_config_save" | "storage_config_test";
+    } & S3DraftRequest)
   | {
       operation: "instance_admin_grant";
       targetUserId: string;
