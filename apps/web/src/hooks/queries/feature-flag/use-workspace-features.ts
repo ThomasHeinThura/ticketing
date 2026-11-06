@@ -4,7 +4,8 @@ import { getWorkspaceResolvedFeatures } from "@/fetchers/feature-flags";
 /**
  * The workspace's effective feature values for navigation (`feature.knowledge_base`, `reports`,
  * `time_tracking`, ...). Readable by every workspace member, unlike the admin switch list. A
- * failed or pending read hides the gated entries: every P5 flag is off by default.
+ * failed or pending read hides the gated entries: every P5 flag is off by default. A screen that
+ * would otherwise say a feature is off checks `isError` first and offers `refetch`.
  */
 export default function useWorkspaceFeatures(
   workspaceId: string | undefined,
@@ -20,5 +21,10 @@ export default function useWorkspaceFeatures(
   const isOn = (key: string) =>
     query.data?.some((feature) => feature.key === key && feature.enabled) ??
     false;
-  return { isOn, isLoading: query.isLoading };
+  return {
+    isOn,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+  };
 }

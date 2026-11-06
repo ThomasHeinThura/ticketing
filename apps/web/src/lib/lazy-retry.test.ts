@@ -47,6 +47,19 @@ describe("importWithRetry", () => {
     expect(load).toHaveBeenCalledTimes(3);
   });
 
+  it("does not retry a failed CSS preload in place, so it goes on to the reload", async () => {
+    const cssError = new Error(
+      "Unable to preload CSS for /assets/editor-styles.css",
+    );
+    const load = vi
+      .fn()
+      .mockRejectedValueOnce(cssError)
+      .mockResolvedValueOnce({ default: "module" });
+    await expect(importWithRetry(load, [0, 0])).rejects.toBe(cssError);
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(isChunkLoadError(cssError)).toBe(true);
+  });
+
   it("does not retry an error that is not a chunk load error", async () => {
     const load = vi.fn().mockRejectedValue(new Error("boom"));
     await expect(importWithRetry(load, [0, 0])).rejects.toThrow("boom");
@@ -56,7 +69,32 @@ describe("importWithRetry", () => {
 
 describe("reloadOnceForChunkError", () => {
   beforeEach(() => sessionStorage.clear());
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("does not reload again for a chunk TanStack Router already reloaded for", () => {
+    const error = chunkError();
+    sessionStorage.setItem(`tanstack_router_reload:${error.message}`, "1");
+    const reload = vi.fn();
+    expect(reloadOnceForChunkError(error, reload)).toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("scopes Safari's message, which names no chunk, by the page path", () => {
+    const safari = () => new TypeError("Importing a module script failed.");
+    // TanStack's record for this message is not chunk-specific, so it does not block.
+    sessionStorage.setItem(`tanstack_router_reload:${safari().message}`, "1");
+    const reload = vi.fn();
+    window.history.replaceState(null, "", "/agent/work-items");
+    expect(reloadOnceForChunkError(safari(), reload)).toBe(true);
+    expect(reloadOnceForChunkError(safari(), reload)).toBe(false);
+    window.history.replaceState(null, "", "/agent/kb");
+    expect(reloadOnceForChunkError(safari(), reload)).toBe(true);
+    expect(reloadOnceForChunkError(safari(), reload)).toBe(false);
+    expect(reload).toHaveBeenCalledTimes(2);
+  });
 
   it("reloads once for a failing chunk, then refuses that chunk again", () => {
     const reload = vi.fn();

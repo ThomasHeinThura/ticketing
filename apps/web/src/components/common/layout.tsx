@@ -1,10 +1,10 @@
 import { SidebarInset, SidebarProvider } from "@taskdesk/ui";
 import type React from "react";
-import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import { type ReactNode, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { cn } from "@/lib/cn";
-import { importWithRetry } from "@/lib/lazy-retry";
+import { importWithRetry, resettableLazy } from "@/lib/lazy-retry";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 // The sidebar (workspace switcher, navigation, projects, notifications) loads beside the
@@ -30,7 +30,8 @@ export function loadSidebarModule() {
   }
   return sidebarModule;
 }
-const AppSidebar = lazy(() =>
+// A failed import replaces the lazy component too, so the next render imports afresh.
+const AppSidebar = resettableLazy(() =>
   loadSidebarModule().then((module) => ({
     default: module.AppSidebar,
   })),
@@ -126,7 +127,7 @@ function Layout({ children, className }: LayoutProps) {
       >
         {showSidebar ? (
           <Suspense fallback={placeholder}>
-            <AppSidebar />
+            <AppSidebar.Component />
           </Suspense>
         ) : (
           placeholder

@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   checkingPermissions: false,
   intakeOn: true,
   featuresLoading: false,
+  featuresError: false,
+  refetchFeatures: vi.fn(),
   queuePanelProps: undefined as Record<string, unknown> | undefined,
   queuePickerProps: undefined as Record<string, unknown> | undefined,
   workItemTypes: [] as Array<{ id: string; name: string }>,
@@ -78,6 +80,8 @@ vi.mock("@/hooks/queries/feature-flag/use-workspace-features", () => ({
   default: () => ({
     isOn: (key: string) => key === "feature.intake" && mocks.intakeOn,
     isLoading: mocks.featuresLoading,
+    isError: mocks.featuresError,
+    refetch: mocks.refetchFeatures,
   }),
 }));
 vi.mock("@/components/intake/queue-picker", () => ({
@@ -177,6 +181,8 @@ describe("intake triage route", () => {
     mocks.checkingPermissions = false;
     mocks.intakeOn = true;
     mocks.featuresLoading = false;
+    mocks.featuresError = false;
+    mocks.refetchFeatures.mockReset();
     mocks.queuePanelProps = undefined;
     mocks.queuePickerProps = undefined;
     mocks.workItemTypes = [];
@@ -218,6 +224,19 @@ describe("intake triage route", () => {
     expect(mocks.getSubmissions).not.toHaveBeenCalled();
     expect(mocks.getRequestTypes).not.toHaveBeenCalled();
     expect(mocks.queuePickerProps).toBeUndefined();
+  });
+
+  it("offers Retry, not the Intake-off state, when the feature read fails", async () => {
+    mocks.intakeOn = false;
+    mocks.featuresError = true;
+    renderTriage();
+    expect(screen.queryByTestId("feature-off-intake")).toBeNull();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("The submissions could not be loaded.");
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    expect(mocks.refetchFeatures).toHaveBeenCalledTimes(1);
+    await act(async () => {});
+    expect(mocks.getSubmissions).not.toHaveBeenCalled();
   });
 
   it("waits for the resolved features before fetching the queue", async () => {

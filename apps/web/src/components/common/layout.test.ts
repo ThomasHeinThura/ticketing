@@ -3,7 +3,10 @@ import { loadSidebarModule } from "./layout";
 
 const importWithRetry = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/lazy-retry", () => ({ importWithRetry }));
+vi.mock("@/lib/lazy-retry", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/lazy-retry")>()),
+  importWithRetry,
+}));
 vi.mock("@/components/nav-projects", () => ({}));
 
 describe("loadSidebarModule", () => {

@@ -173,6 +173,17 @@ function IntakeRoute() {
           <div className="flex flex-col gap-3 px-4 py-3">
             {features.isLoading ? (
               <p role="status">{t("loading")}</p>
+            ) : features.isError ? (
+              // A failed read is not "off": offer Retry instead of the off notice.
+              <Alert variant="error" role="alert">
+                <AlertDescription>{t("loadError")}</AlertDescription>
+                <Button
+                  variant="outline"
+                  onClick={() => void features.refetch()}
+                >
+                  {t("retry", { defaultValue: "Retry" })}
+                </Button>
+              </Alert>
             ) : (
               // The same empty state as the other switched-off features (`FeatureOff`).
               <Empty data-testid="feature-off-intake">

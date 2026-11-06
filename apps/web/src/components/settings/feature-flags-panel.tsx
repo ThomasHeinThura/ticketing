@@ -44,7 +44,14 @@ export function FeatureFlagsPanel({ target }: { target: FeatureLevel }) {
   });
   const save = useMutation({
     mutationFn: (change: FeatureChange) => patchFeatures(target, [change]),
-    onSuccess: (features) => queryClient.setQueryData(queryKey, features),
+    onSuccess: (features) => {
+      queryClient.setQueryData(queryKey, features);
+      // The effective values every screen reads: the workspace's (navigation, Knowledge base,
+      // Triage, Reports) and each project's (Pages, agile tabs). An instance or workspace change
+      // reaches every workspace and project below it, so both are refreshed by prefix.
+      void queryClient.invalidateQueries({ queryKey: ["features"] });
+      void queryClient.invalidateQueries({ queryKey: ["agile", "features"] });
+    },
     onError: (error) => {
       if (error instanceof FeatureConflictError)
         void queryClient.invalidateQueries({ queryKey });
