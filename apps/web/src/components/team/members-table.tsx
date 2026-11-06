@@ -203,7 +203,10 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="ps-6 text-foreground font-medium">
+            {/* The Name column takes the remaining width and its text truncates
+                (cells pair `w-full` here with `max-w-0` below), so a long name or
+                email never pushes Role, Joined and the actions off-screen. */}
+            <TableHead className="w-full ps-6 text-foreground font-medium">
               {t("team:membersTable.columns.name", {
                 defaultValue: "Member",
               })}
@@ -211,7 +214,9 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             <TableHead className="text-foreground font-medium">
               {t("team:membersTable.columns.role", { defaultValue: "Role" })}
             </TableHead>
-            <TableHead className="text-foreground font-medium">
+            {/* Below sm the Joined column is hidden and its value is shown
+                under the email instead, so nothing is lost at 390 px. */}
+            <TableHead className="max-sm:hidden text-foreground font-medium">
               {t("team:membersTable.columns.joined", {
                 defaultValue: "Joined",
               })}
@@ -227,9 +232,9 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             const tone = toneFor(member.email);
             return (
               <TableRow key={member.id}>
-                <TableCell className="ps-6 py-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar className={cn("size-8", tone)}>
+                <TableCell className="max-w-0 ps-6 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar className={cn("size-8 shrink-0", tone)}>
                       <AvatarImage
                         src={member.image ?? ""}
                         alt={member.name ?? ""}
@@ -238,20 +243,34 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         {getInitials(member.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className="truncate text-sm font-medium"
+                          title={member.name ?? undefined}
+                        >
                           {member.name}
                         </span>
                         {isSelf ? (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="shrink-0 text-xs text-muted-foreground">
                             ({t("team:members.you", { defaultValue: "You" })})
                           </span>
                         ) : null}
                       </div>
-                      <div className="truncate text-xs text-muted-foreground">
+                      <div
+                        className="truncate text-xs text-muted-foreground"
+                        title={member.email}
+                      >
                         {member.email}
                       </div>
+                      {member.joinedAt ? (
+                        <div className="truncate text-xs text-muted-foreground tabular-nums sm:hidden">
+                          {t("team:membersTable.joinedOn", {
+                            defaultValue: "Joined {{date}}",
+                            date: formatDateMedium(member.joinedAt),
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </TableCell>
@@ -270,7 +289,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                       ariaLabel={t(`team:roles.${member.role}`, {
                         defaultValue: capitalize(member.role),
                       })}
-                      className="h-8 w-32"
+                      className="h-8 w-28 sm:w-32"
                       options={[
                         {
                           value: "viewer",
@@ -308,7 +327,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell className="py-3 text-sm text-muted-foreground tabular-nums">
+                <TableCell className="max-sm:hidden py-3 text-sm text-muted-foreground tabular-nums">
                   {member.joinedAt ? formatDateMedium(member.joinedAt) : "–"}
                 </TableCell>
                 <TableCell className="pe-6 py-3 text-right">
@@ -354,20 +373,23 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
 
             return (
               <TableRow key={`invite-${invitation.id}`}>
-                <TableCell className="ps-6 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <TableCell className="max-w-0 ps-6 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                       <MailIcon className="size-4" />
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className="truncate text-sm font-medium"
+                          title={invitation.email}
+                        >
                           {invitation.email}
                         </span>
                         <Badge
                           variant="outline"
                           size="sm"
-                          className="font-mono text-[9px] uppercase tracking-wider"
+                          className="shrink-0 font-mono text-[9px] uppercase tracking-wider"
                         >
                           {isExpired
                             ? t("team:invitations.expiredBadge", {
@@ -378,7 +400,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                               })}
                         </Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="truncate text-xs text-muted-foreground">
                         {invitation.expiresAt
                           ? t(
                               isExpired
@@ -403,7 +425,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                     })}
                   </Badge>
                 </TableCell>
-                <TableCell className="py-3 text-sm text-muted-foreground">
+                <TableCell className="max-sm:hidden py-3 text-sm text-muted-foreground">
                   –
                 </TableCell>
                 <TableCell className="pe-6 py-3 text-right">

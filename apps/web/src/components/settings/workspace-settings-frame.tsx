@@ -30,6 +30,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SettingsSidebar from "@/components/SettingsSidebar";
+import { SETTINGS_CONTENT_ID } from "@/components/settings/settings-content-id";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
@@ -238,7 +239,9 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
         </div>
       </SettingsSidebar>
 
-      <div className="flex-1 min-w-0 overflow-y-auto">{children}</div>
+      <div id={SETTINGS_CONTENT_ID} className="flex-1 min-w-0 overflow-y-auto">
+        {children}
+      </div>
     </div>
   );
 }

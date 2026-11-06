@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { ComponentType, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -294,6 +295,97 @@ describe("portal submission route", () => {
         .getAllByRole("status")
         .some((node) => node.textContent === "portal:requestPage.replySent"),
     ).toBe(true);
+  });
+
+  it("asks before withdrawing and sends nothing when the customer cancels", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue(submission);
+    mocks.withdraw.mockReset().mockResolvedValue({});
+    renderSubmission();
+    const trigger = await screen.findByRole("button", {
+      name: "Withdraw request",
+    });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Withdraw this request?");
+    expect(dialog).toHaveTextContent("You cannot undo this");
+    expect(mocks.withdraw).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(mocks.withdraw).not.toHaveBeenCalled();
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it("withdraws only on confirmation, keeps the dialog while sending and then focuses the heading", async () => {
+    let finish: (value: unknown) => void = () => {};
+    mocks.withdraw.mockReset().mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    mocks.getSubmission
+      .mockReset()
+      .mockResolvedValueOnce(submission)
+      // Once withdrawn, the request can no longer be withdrawn.
+      .mockResolvedValue({
+        ...submission,
+        canWithdraw: false,
+        submission: { ...submission.submission, state: "withdrawn" },
+      });
+    renderSubmission();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Withdraw request" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    const confirm = within(dialog).getByRole("button", {
+      name: "Withdraw request",
+    });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(mocks.withdraw).toHaveBeenCalledTimes(1));
+    expect(mocks.withdraw).toHaveBeenCalledWith("SUB-7");
+    // While the withdrawal is sent the dialog stays, both buttons are disabled.
+    expect(
+      within(dialog).getByRole("button", { name: "Withdrawing…" }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    ).toBeDisabled();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    finish({});
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(
+      screen.queryByRole("button", { name: "Withdraw request" }),
+    ).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { level: 1 }),
+      ),
+    );
+    expect(
+      screen
+        .getAllByRole("status")
+        .some((node) => node.textContent === "SUB-7 was withdrawn."),
+    ).toBe(true);
+  });
+
+  it("closes the confirmation and shows the error when withdrawing fails", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue(submission);
+    mocks.withdraw.mockReset().mockRejectedValue(new Error("conflict"));
+    renderSubmission();
+    const trigger = await screen.findByRole("button", {
+      name: "Withdraw request",
+    });
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Withdraw request" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(
+      screen.getByText("This request could not be loaded or updated."),
+    ).toBeVisible();
+    expect(trigger).toBeEnabled();
   });
 
   it("shows a severity only once the team has the request, never 'Not set' for the customer's own choice", async () => {

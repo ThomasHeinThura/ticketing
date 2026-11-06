@@ -34397,6 +34397,7 @@
 			"apps/web/src/components/task/relations-section.tsx::RelationsSection::Collapsible[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[1]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[1]/div[1]::text-muted-foreground#0",
@@ -39401,6 +39402,19 @@
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
 				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/team/members-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/members.tsx:RouteComponent",
+					"jsx:WorkspaceLayout[0]/MembersTable[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/team/members-table.tsx"
 			},
@@ -46036,6 +46050,7 @@
 			"apps/web/src/components/task/relations-section.tsx::RelationsSection::Collapsible[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[1]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[1]/div[1]::text-muted-foreground#0",
@@ -51041,6 +51056,19 @@
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
 				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/team/members-table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/members.tsx:RouteComponent",
+					"jsx:WorkspaceLayout[0]/MembersTable[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
+				],
+				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/team/members-table.tsx"
 			},
@@ -58506,7 +58534,7 @@
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]::text-muted-foreground#0",
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
-			"apps/web/src/components/settings/settings-shell.tsx::SettingsShell::div[0]/div[0]/div[0]/div[0]/div[0]/ChevronLeft[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/settings-shell.tsx::SettingsShell::div[0]/div[0]/header[0]/div[0]/div[0]/ChevronLeft[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/teams/team-detail.tsx::RosterCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/teams/team-detail.tsx::TeamSettingsCard::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/teams/team-detail.tsx::TeamSettingsCard::Card[0]/CardContent[0]/form[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
@@ -61861,9 +61889,9 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/settings/settings-shell.tsx:SettingsShell",
-					"jsx:div[0]/div[0]/div[0]/div[0]/div[0]/ChevronLeft[0]>bg-card"
+					"jsx:div[0]/div[0]/header[0]/div[0]/div[0]/ChevronLeft[0]>bg-card"
 				],
-				"id": "apps/web/src/components/settings/settings-shell.tsx::SettingsShell::div[0]/div[0]/div[0]/div[0]/div[0]/ChevronLeft[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/settings/settings-shell.tsx::SettingsShell::div[0]/div[0]/header[0]/div[0]/div[0]/ChevronLeft[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/settings/settings-shell.tsx"
 			},
@@ -64278,7 +64306,7 @@
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]::text-muted-foreground#0",
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]::text-muted-foreground#0",
-			"apps/web/src/components/settings/settings-shell.tsx::SettingsShell::div[0]/div[0]/div[0]/div[0]/div[0]/ChevronLeft[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/settings-shell.tsx::SettingsShell::div[0]/div[0]/header[0]/div[0]/div[0]/ChevronLeft[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/teams/team-detail.tsx::RosterCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/teams/team-detail.tsx::TeamSettingsCard::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/teams/team-detail.tsx::TeamSettingsCard::Card[0]/CardContent[0]/form[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
@@ -67633,9 +67661,9 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/settings/settings-shell.tsx:SettingsShell",
-					"jsx:div[0]/div[0]/div[0]/div[0]/div[0]/ChevronLeft[0]>bg-card"
+					"jsx:div[0]/div[0]/header[0]/div[0]/div[0]/ChevronLeft[0]>bg-card"
 				],
-				"id": "apps/web/src/components/settings/settings-shell.tsx::SettingsShell::div[0]/div[0]/div[0]/div[0]/div[0]/ChevronLeft[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/settings/settings-shell.tsx::SettingsShell::div[0]/div[0]/header[0]/div[0]/div[0]/ChevronLeft[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/settings/settings-shell.tsx"
 			},
@@ -92058,6 +92086,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/portal/submissions/$ref.tsx:PortalSubmissionContent",
+					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
+				],
+				"id": "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert-dialog.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/automation/automation-dry-run-dialog.tsx:AutomationDryRunDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -97627,6 +97666,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx:RouteComponent",
+					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
+				],
+				"id": "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert-dialog.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/submissions/$ref.tsx:PortalSubmissionContent",
 					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
 				],
 				"id": "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",

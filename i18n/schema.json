@@ -12751,6 +12751,9 @@
 						},
 						"roleUpdateError": {
 							"type": "string"
+						},
+						"joinedOn": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12772,7 +12775,8 @@
 						"cancelInviteSuccess",
 						"cancelInviteError",
 						"roleUpdateSuccess",
-						"roleUpdateError"
+						"roleUpdateError",
+						"joinedOn"
 					]
 				}
 			},
@@ -16427,6 +16431,25 @@
 						},
 						"openSentRequest": {
 							"type": "string"
+						},
+						"withdrawConfirm": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"done": {
+									"type": "string"
+								},
+								"pending": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description", "done", "pending"]
 						}
 					},
 					"required": [
@@ -16461,7 +16484,8 @@
 						"sla",
 						"systemReasons",
 						"filesNotAttached",
-						"openSentRequest"
+						"openSentRequest",
+						"withdrawConfirm"
 					]
 				},
 				"orientation": {
@@ -17190,9 +17214,6 @@
 								"placeholder": {
 									"type": "string"
 								},
-								"dialogPlaceholder": {
-									"type": "string"
-								},
 								"hint": {
 									"type": "string"
 								},
@@ -17231,7 +17252,6 @@
 							"required": [
 								"label",
 								"placeholder",
-								"dialogPlaceholder",
 								"hint",
 								"empty",
 								"searching",

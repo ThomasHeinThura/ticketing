@@ -358,6 +358,49 @@ describe("S3DraftPanel", () => {
       expect(saveButton()).toBeDisabled();
     });
   });
+  describe("number fields", () => {
+    it("keeps a cleared number field empty so typing does not prepend 0", async () => {
+      setup();
+      const ttl = await screen.findByLabelText("draft.presignTtlSeconds");
+      fireEvent.change(ttl, { target: { value: "" } });
+      expect(ttl).toHaveValue(null);
+      expect((ttl as HTMLInputElement).value).toBe("");
+      fireEvent.change(ttl, { target: { value: "123" } });
+      expect(ttl).toHaveValue(123);
+      await factor();
+      fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+      await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+      expect(mocks.save.mock.calls[0][0].config.presignTtlSeconds).toBe(123);
+    });
+    it("restores the last value on blur and never sends 0 for a blank field", async () => {
+      setup();
+      const bytes = await screen.findByLabelText("draft.maxImageUploadBytes");
+      fireEvent.change(bytes, { target: { value: "" } });
+      fireEvent.blur(bytes);
+      expect(bytes).toHaveValue(10485760);
+      fireEvent.change(bytes, { target: { value: "" } });
+      await factor();
+      fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+      await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+      expect(mocks.save.mock.calls[0][0].config.maxImageUploadBytes).toBe(
+        10485760,
+      );
+    });
+    it("does not keep a fragment when a field is cleared one key at a time", async () => {
+      setup();
+      const bytes = await screen.findByLabelText("draft.maxImageUploadBytes");
+      for (const value of ["1048576", "104", "1", ""])
+        fireEvent.change(bytes, { target: { value } });
+      fireEvent.blur(bytes);
+      expect(bytes).toHaveValue(10485760);
+      await factor();
+      fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+      await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+      expect(mocks.save.mock.calls[0][0].config.maxImageUploadBytes).toBe(
+        10485760,
+      );
+    });
+  });
   describe("rate limiting", () => {
     it("shows the wait from Retry-After and lets the user retry the test", async () => {
       mocks.test.mockRejectedValueOnce(

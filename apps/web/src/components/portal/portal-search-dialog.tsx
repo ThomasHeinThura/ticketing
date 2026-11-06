@@ -15,7 +15,14 @@ import {
   CommandSeparator,
 } from "@taskdesk/ui";
 import { BookOpen, FileText, LayoutList, Search } from "lucide-react";
-import { Fragment, type RefObject, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type RefObject,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { getPortalCatalogue } from "@/fetchers/intake";
 import { getPortalKb } from "@/fetchers/kb/portal";
 import { getPortalCases } from "@/fetchers/portal/cases";
@@ -82,6 +89,7 @@ export default function PortalSearchDialog({
   const { t } = usePortalTranslation("portal");
   const navigate = useNavigate();
   const navigatedRef = useRef(false);
+  const descriptionId = useId();
   const [query, setQuery] = useState(initialQuery);
   useEffect(() => {
     if (open) setQuery(initialQuery);
@@ -224,7 +232,9 @@ export default function PortalSearchDialog({
         <Command items={groups} filter={null}>
           <CommandInput
             aria-label={t("shell.search.label")}
-            placeholder={t("shell.search.dialogPlaceholder")}
+            // The short trigger text fits a 390 px phone; the full scope is the description.
+            aria-describedby={descriptionId}
+            placeholder={t("shell.search.placeholder")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -285,6 +295,9 @@ export default function PortalSearchDialog({
                 </Fragment>
               )}
             </CommandList>
+            <p id={descriptionId} className="sr-only">
+              {t("shell.search.hint")}
+            </p>
             <p role="status" className="sr-only">
               {searching ? t("shell.search.searching") : ""}
             </p>

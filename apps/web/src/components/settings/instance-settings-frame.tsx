@@ -25,6 +25,7 @@ import {
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsSidebar from "@/components/SettingsSidebar";
+import { SETTINGS_CONTENT_ID } from "@/components/settings/settings-content-id";
 import { cn } from "@/lib/cn";
 import { routes } from "@/lib/routes";
 export function InstanceSettingsFrame({ children }: { children: ReactNode }) {
@@ -154,7 +155,10 @@ export function InstanceSettingsFrame({ children }: { children: ReactNode }) {
           </SidebarGroup>
         </nav>
       </SettingsSidebar>
-      {children}
+      {/* A flex row, so each page stays a flex item and lays out exactly as before. */}
+      <div id={SETTINGS_CONTENT_ID} className="flex min-w-0 flex-1">
+        {children}
+      </div>
     </div>
   );
 }
