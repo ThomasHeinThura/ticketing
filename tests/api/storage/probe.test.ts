@@ -13,9 +13,6 @@ function memoryAdapter(overrides: Partial<StorageProbeAdapter> = {}) {
       object = Buffer.from(bytes);
     }),
     read: vi.fn(async () => Buffer.from(object ?? "")),
-    delete: vi.fn(async () => {
-      object = undefined;
-    }),
     ...overrides,
   };
   return {
@@ -41,7 +38,6 @@ describe("storage probe orchestration", () => {
       durationMs: 37,
     });
     expect(storage.getObject()).toBeDefined();
-    expect(storage.adapter.delete).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -71,7 +67,6 @@ describe("storage probe orchestration", () => {
       });
       expect(JSON.stringify(result)).not.toContain("secret key");
       expect(storage.getObject()?.toString()).toBe("replacement");
-      expect(storage.adapter.delete).not.toHaveBeenCalled();
     },
   );
 
@@ -95,7 +90,6 @@ describe("storage probe orchestration", () => {
         diagnosticObjectMayRemain,
       });
       expect(JSON.stringify(result)).not.toContain("secret key");
-      expect(storage.adapter.delete).not.toHaveBeenCalled();
     },
   );
 
@@ -117,7 +111,6 @@ describe("storage probe orchestration", () => {
     });
     expect(storage.getObject()).toBeDefined();
     expect(storage.adapter.read).not.toHaveBeenCalled();
-    expect(storage.adapter.delete).not.toHaveBeenCalled();
   });
 
   it.each(["resolve", "reject"] as const)(
@@ -146,7 +139,6 @@ describe("storage probe orchestration", () => {
         finish();
         await vi.advanceTimersByTimeAsync(0);
         expect(storage.getObject()?.toString()).toBe("replacement");
-        expect(storage.adapter.delete).not.toHaveBeenCalled();
       } finally {
         vi.useRealTimers();
       }
@@ -171,7 +163,6 @@ describe("storage probe orchestration", () => {
         durationMs: 15_000,
       });
       expect(storage.getObject()).toBeDefined();
-      expect(storage.adapter.delete).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }

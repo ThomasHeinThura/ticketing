@@ -1064,17 +1064,6 @@ export async function readStorageProbeObject(
   return bytes;
 }
 
-/** Filesystem unlink has no OS cancellation primitive; callers must mark an aborted wait unknown. */
-export async function deleteStorageProbeObject(
-  key: string,
-  signal: AbortSignal,
-): Promise<void> {
-  assertStorageProbeKey(key);
-  if (signal.aborted) throw signal.reason;
-  await deleteObject(key);
-  if (signal.aborted) throw signal.reason;
-}
-
 /**
  * Issue #28 (attachments), B2 security-review fix (2026-09-27): moves the object from its
  * pending (presigned-writable) key to a final key nothing was ever presigned to write to.

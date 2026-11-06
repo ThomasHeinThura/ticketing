@@ -3,7 +3,6 @@ import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { StorageProbeCollisionError } from "../../../apps/api/src/storage/probe-error";
 import {
-  deleteStorageProbeObject,
   readStorageProbeObject,
   writeStorageProbeObject,
 } from "../../../apps/api/src/storage/s3";
@@ -80,7 +79,7 @@ describe("S3 storage probe adapter", () => {
     }
   });
 
-  it("uses the reserved prefixed key and verifies/deletes bytes via the S3 SDK", async () => {
+  it("uses the reserved prefixed key and verifies bytes and retains the object", async () => {
     const key = "taskdesk-storage-probe-e21a9b3f-8a77-42be-9864-63d35c925735";
     const payload = Buffer.from("test");
     const controller = new AbortController();
@@ -88,10 +87,9 @@ describe("S3 storage probe adapter", () => {
     await expect(
       readStorageProbeObject(key, payload.byteLength, controller.signal),
     ).resolves.toEqual(payload);
-    await deleteStorageProbeObject(key, controller.signal);
 
-    expect(object).toBeUndefined();
-    expect(methods).toEqual(["PUT", "HEAD", "GET", "DELETE"]);
+    expect(object).toEqual(payload);
+    expect(methods).toEqual(["PUT", "HEAD", "GET"]);
     expect(conditionalPuts).toEqual(["*"]);
   });
 

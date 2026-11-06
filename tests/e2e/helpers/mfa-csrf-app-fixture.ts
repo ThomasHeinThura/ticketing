@@ -66,6 +66,31 @@ class LoopbackPostgreSqlContainer extends PostgreSqlContainer {
   }
 }
 
+/**
+ * Defence in depth only. Docker assigns a fresh host port to a new container, so it cannot be
+ * the native live server. The real protection is the fresh Testcontainers database, bound to
+ * loopback, with a `_test`-suffixed name and explicit database URL environment variables.
+ */
+export function isDisposableLoopbackBinding(
+  requestedBindings: DockerPortBinding[],
+  activeBindings: DockerPortBinding[],
+  mappedPort: number,
+  host: string,
+): boolean {
+  const active = activeBindings[0];
+  return !(
+    requestedBindings.length !== 1 ||
+    requestedBindings[0]?.HostIp !== "127.0.0.1" ||
+    activeBindings.length !== 1 ||
+    active?.HostIp !== "127.0.0.1" ||
+    !/^\d+$/u.test(active.HostPort) ||
+    active.HostPort === "0" ||
+    active.HostPort === "62870" ||
+    Number(active.HostPort) !== mappedPort ||
+    !new Set(["127.0.0.1", "localhost"]).has(host)
+  );
+}
+
 async function assertPostgreSqlLoopbackBinding(
   container: PostgreSqlContainerInstance,
 ) {
@@ -76,20 +101,13 @@ async function assertPostgreSqlLoopbackBinding(
   const inspection = await new Docker()
     .getContainer(container.getId())
     .inspect();
-  const requestedBindings =
-    inspection.HostConfig?.PortBindings?.["5432/tcp"] ?? [];
-  const activeBindings = inspection.NetworkSettings?.Ports?.["5432/tcp"] ?? [];
-  const active = activeBindings[0];
   if (
-    requestedBindings.length !== 1 ||
-    requestedBindings[0]?.HostIp !== "127.0.0.1" ||
-    activeBindings.length !== 1 ||
-    active?.HostIp !== "127.0.0.1" ||
-    !/^\d+$/u.test(active.HostPort) ||
-    active.HostPort === "0" ||
-    active.HostPort === "62870" ||
-    Number(active.HostPort) !== container.getMappedPort(5432) ||
-    !new Set(["127.0.0.1", "localhost"]).has(container.getHost())
+    !isDisposableLoopbackBinding(
+      inspection.HostConfig?.PortBindings?.["5432/tcp"] ?? [],
+      inspection.NetworkSettings?.Ports?.["5432/tcp"] ?? [],
+      container.getMappedPort(5432),
+      container.getHost(),
+    )
   ) {
     throw new Error(
       "Disposable PostgreSQL must have exactly one dynamically assigned loopback-only host binding",

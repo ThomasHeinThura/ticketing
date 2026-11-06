@@ -3590,6 +3590,10 @@ Thomas approved both changes on 5 November 2026:
   when exact-object deletion cannot be guaranteed. The current adapters delete by
   key only, so probes perform bounded write/read checks without deletion; they must
   preserve failure/timeout information and disclose possible residue separately.
+  `taskdesk-storage-probe-*` objects at the storage root are therefore kept on
+  purpose and never deleted by key; the probe adapters have no delete operation.
+  Any future cleanup must go through pending actions with audit. An audit row for
+  probes is a follow-up, not yet implemented.
 - Saving and testing S3 configuration require separate one-use, operation-bound
   step-up proofs tied to the selected configuration revision, destination and
   credential changes. This is approval to implement those operations, not evidence

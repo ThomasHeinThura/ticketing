@@ -57,7 +57,6 @@ export type StorageProbeAdapter = {
   driver: StorageDriverName;
   write(key: string, bytes: Uint8Array, signal: AbortSignal): Promise<void>;
   read(key: string, maxBytes: number, signal: AbortSignal): Promise<Buffer>;
-  delete(key: string, signal: AbortSignal): Promise<void>;
 };
 
 export type StorageBackendStatus = {
@@ -76,14 +75,12 @@ export function getStorageProbeAdapter(): StorageProbeAdapter {
       driver: selected,
       write: s3Driver.writeStorageProbeObject,
       read: s3Driver.readStorageProbeObject,
-      delete: s3Driver.deleteStorageProbeObject,
     };
   }
   return {
     driver: selected,
     write: filesystemDriver.writeStorageProbeObject,
     read: filesystemDriver.readStorageProbeObject,
-    delete: filesystemDriver.deleteStorageProbeObject,
   };
 }
 
