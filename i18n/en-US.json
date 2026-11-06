@@ -6434,6 +6434,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Save team notification preferences",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

@@ -1,3 +1,4 @@
+import { loadLocale, supportedLocales } from "@i18n/resources";
 import {
   cleanup,
   fireEvent,
@@ -19,9 +20,24 @@ const mocks = vi.hoisted(() => ({
   },
   invalidate: vi.fn(),
 }));
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
+vi.mock("react-i18next", async () => {
+  const { default: english } = await import("@i18n/en-US.json");
+  const { createInstance } = await import("i18next");
+  const i18n = createInstance();
+  await i18n.init({
+    lng: "en-US",
+    fallbackLng: false,
+    resources: {
+      "en-US": { notificationProvider: english.notificationProvider },
+    },
+    defaultNS: "notificationProvider",
+  });
+  return {
+    useTranslation: () => ({
+      t: (key: string) => (key === "teamNotification.save" ? i18n.t(key) : key),
+    }),
+  };
+});
 vi.mock(
   "@/hooks/queries/notification-preferences/use-get-notification-preferences",
   () => ({
@@ -157,7 +173,9 @@ describe("email preference landing", () => {
     fireEvent.mouseUp(hourly);
     fireEvent.click(hourly);
     fireEvent.click(
-      screen.getByRole("button", { name: "teamNotification.save" }),
+      screen.getByRole("button", {
+        name: "Save team notification preferences",
+      }),
     );
     await waitFor(() =>
       expect(mocks.saveTeamNotification).toHaveBeenCalledWith({
@@ -173,5 +191,17 @@ describe("email preference landing", () => {
     expect(screen.getByText("mention.unsupported")).toBeInTheDocument();
     expect(mocks.save).not.toHaveBeenCalled();
     expect(document.activeElement).not.toHaveClass("ring-ring");
+  });
+});
+
+describe("team notification save label", () => {
+  it.each(supportedLocales)("exists in the %s resource", async (locale) => {
+    const resource = (await loadLocale(locale)) as {
+      notificationProvider?: { teamNotification?: { save?: unknown } };
+    };
+    const label = resource.notificationProvider?.teamNotification?.save;
+    expect(typeof label).toBe("string");
+    expect(label).not.toBe("");
+    expect(label).not.toBe("teamNotification.save");
   });
 });

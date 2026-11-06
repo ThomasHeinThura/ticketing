@@ -5849,6 +5849,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Salva le preferenze delle notifiche del team",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},
