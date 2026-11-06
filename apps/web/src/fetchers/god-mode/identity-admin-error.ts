@@ -32,17 +32,21 @@ export class IdentityAdminError extends HttpError {
   readonly detail: string;
   /** The current parent version a 409 reports, when it reports one. */
   readonly currentVersion: number | null;
+  /** Whole seconds a 429 asks the caller to wait (`Retry-After`), when it says so. */
+  readonly retryAfterSeconds: number | null;
 
   constructor(
     status: number,
     message: string,
     detail: string,
     currentVersion: number | null,
+    retryAfterSeconds: number | null = null,
   ) {
     super(status, message);
     this.name = "IdentityAdminError";
     this.detail = detail;
     this.currentVersion = currentVersion;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 
   get kind(): IdentityAdminFailureKind {
@@ -71,6 +75,14 @@ function classifyStatus(
   return "unknown";
 }
 
+/** `Retry-After` as delta-seconds only (an HTTP date is ignored); bounded to one day. */
+function retryAfterSeconds(response: Response): number | null {
+  const value = response.headers.get("Retry-After")?.trim() ?? "";
+  if (!/^\d{1,6}$/u.test(value)) return null;
+  const seconds = Number(value);
+  return seconds > 0 ? Math.min(seconds, 86_400) : null;
+}
+
 export async function identityAdminFailure(
   response: Response,
   message: string,
@@ -96,6 +108,7 @@ export async function identityAdminFailure(
     message,
     detail,
     currentVersion,
+    response.status === 429 ? retryAfterSeconds(response) : null,
   );
 }
 

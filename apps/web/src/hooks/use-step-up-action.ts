@@ -18,6 +18,8 @@ export type StepUpFailure = {
   kind: IdentityAdminFailureKind | "factor_required";
   /** The current version a 409 reports; only a number, never configuration. */
   currentVersion: number | null;
+  /** Seconds a rate-limited answer asks the caller to wait, when it says so. */
+  retryAfterSeconds?: number | null;
 };
 
 export type StepUpResult<T> = { ok: true; value: T } | { ok: false };
@@ -103,6 +105,10 @@ export function useStepUpAction() {
           kind: identityAdminFailureKind(error),
           currentVersion:
             error instanceof IdentityAdminError ? error.currentVersion : null,
+          retryAfterSeconds:
+            error instanceof IdentityAdminError
+              ? error.retryAfterSeconds
+              : null,
         });
       return { ok: false };
     } finally {

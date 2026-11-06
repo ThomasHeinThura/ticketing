@@ -69,4 +69,27 @@ describe("identity administration failures", () => {
       (await json(409, { currentVersion: "9" })).currentVersion,
     ).toBeNull();
   });
+
+  it("reads Retry-After seconds from a 429 and ignores anything else", async () => {
+    const limited = (retryAfter?: string, status = 429) =>
+      identityAdminFailure(
+        new Response("{}", {
+          status,
+          headers:
+            retryAfter === undefined ? {} : { "Retry-After": retryAfter },
+        }),
+        "failed",
+      );
+    const first = await limited("30");
+    expect(first.kind).toBe("rate_limited");
+    expect(first.retryAfterSeconds).toBe(30);
+    expect((await limited("999999")).retryAfterSeconds).toBe(86_400);
+    expect((await limited("0")).retryAfterSeconds).toBeNull();
+    expect((await limited("-5")).retryAfterSeconds).toBeNull();
+    expect(
+      (await limited("Wed, 21 Oct 2026 07:28:00 GMT")).retryAfterSeconds,
+    ).toBeNull();
+    expect((await limited()).retryAfterSeconds).toBeNull();
+    expect((await limited("30", 503)).retryAfterSeconds).toBeNull();
+  });
 });
