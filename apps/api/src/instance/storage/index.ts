@@ -13,6 +13,8 @@ import { requireSessionOnly } from "../../utils/require-session-only";
 import { requireCurrentInstanceAdmin } from "../require-instance-admin";
 import { runStorageProbe } from "./probe";
 import { storageProbeLimiter } from "./probe-limiter";
+import { storageProbeResponseSchema } from "./probe-schema";
+import s3DraftRoutes from "./s3-draft";
 
 const errorSchema = z.object({ message: z.string() });
 const usageResponseSchema = z.object({
@@ -51,20 +53,6 @@ const usageResponseSchema = z.object({
     }),
   }),
 });
-const probeResponseSchema = z.object({
-  status: z.enum([
-    "verified",
-    "write_failed",
-    "read_failed",
-    "content_mismatch",
-    "timed_out",
-    "cleanup_failed",
-    "cleanup_indeterminate",
-  ]),
-  cleanup: z.enum(["confirmed", "failed", "indeterminate", "not_attempted"]),
-  diagnosticObjectMayRemain: z.boolean(),
-  durationMs: z.number().int().nonnegative(),
-});
 
 const getRoute = createRoute({
   method: "get",
@@ -95,7 +83,10 @@ const probeRoute = createRoute({
     "Writes fixed nonsecret bytes to a generated reserved key on the bootstrap-selected driver and verifies them. Cleanup is not attempted because the adapters cannot delete by immutable object identity; a small diagnostic object may remain outside attachment metadata totals. No object identifiers are returned.",
   middleware: [requireSessionOnly()] as const,
   responses: {
-    200: jsonResponse("Bounded storage probe outcome", probeResponseSchema),
+    200: jsonResponse(
+      "Bounded storage probe outcome",
+      storageProbeResponseSchema,
+    ),
     403: jsonResponse("Forbidden", errorSchema),
     429: jsonResponse("Storage probe is temporarily rate limited", errorSchema),
     503: jsonResponse("Storage probe unavailable", errorSchema),
@@ -210,6 +201,7 @@ const router = apiRouter()
     } finally {
       lease.release();
     }
-  });
+  })
+  .route("/", s3DraftRoutes);
 
 export default router;

@@ -5,6 +5,17 @@ import type db from "../database";
 import { localAuthMethodsBody } from "../instance/auth-local-methods-schema";
 import { z } from "../openapi";
 import {
+  canonicalS3DraftRequest,
+  STORAGE_CONFIG_SAVE_OPERATION,
+  STORAGE_CONFIG_SAVE_ROUTE,
+  STORAGE_CONFIG_TEST_OPERATION,
+  STORAGE_CONFIG_TEST_ROUTE,
+} from "../storage/s3-draft-binding";
+import {
+  type S3DraftWrite,
+  s3DraftWriteSchema,
+} from "../storage/s3-draft-schema";
+import {
   assertCallerHasCapability,
   capabilityCredential,
 } from "../utils/require-workspace-capability";
@@ -167,6 +178,8 @@ const shapes = {
   [AUDIT_EXPORT_OPERATION]: auditExportBody.shape,
   // The whole desired state: a proof minted for one combination cannot be spent on another.
   [AUTH_LOCAL_METHODS_UPDATE_OPERATION]: localAuthMethodsBody.shape,
+  [STORAGE_CONFIG_SAVE_OPERATION]: s3DraftWriteSchema.shape,
+  [STORAGE_CONFIG_TEST_OPERATION]: s3DraftWriteSchema.shape,
 } as const;
 
 export type ExtOperation = keyof typeof shapes;
@@ -250,7 +263,9 @@ export type ExtInput =
     } & z.input<typeof auditExportBody>)
   | ({
       operation: typeof AUTH_LOCAL_METHODS_UPDATE_OPERATION;
-    } & z.infer<typeof localAuthMethodsBody>);
+    } & z.infer<typeof localAuthMethodsBody>)
+  | ({ operation: typeof STORAGE_CONFIG_SAVE_OPERATION } & S3DraftWrite)
+  | ({ operation: typeof STORAGE_CONFIG_TEST_OPERATION } & S3DraftWrite);
 
 const sortedUnique = (values: readonly string[]) => [...new Set(values)].sort();
 
@@ -574,6 +589,23 @@ function binding(input: ExtInput): {
           auditExportRequest(input),
         ),
       };
+    case STORAGE_CONFIG_SAVE_OPERATION:
+    case STORAGE_CONFIG_TEST_OPERATION: {
+      const route =
+        input.operation === STORAGE_CONFIG_SAVE_OPERATION
+          ? STORAGE_CONFIG_SAVE_ROUTE
+          : STORAGE_CONFIG_TEST_ROUTE;
+      return {
+        operation: input.operation,
+        route,
+        body: canonicalOperationBody(
+          input.operation,
+          route,
+          1,
+          canonicalS3DraftRequest(input),
+        ),
+      };
+    }
     case AUTH_LOCAL_METHODS_UPDATE_OPERATION:
       return {
         operation: input.operation,
@@ -711,7 +743,9 @@ export async function extAuthority(
     input.operation === WEBHOOK_ROTATE_ALL_OPERATION ||
     input.operation === ORGANISATION_RESTORE_OPERATION ||
     input.operation === AUDIT_EXPORT_OPERATION ||
-    input.operation === AUTH_LOCAL_METHODS_UPDATE_OPERATION
+    input.operation === AUTH_LOCAL_METHODS_UPDATE_OPERATION ||
+    input.operation === STORAGE_CONFIG_SAVE_OPERATION ||
+    input.operation === STORAGE_CONFIG_TEST_OPERATION
   )
     return isCurrentInstanceAdminForStepUp(userId, executor);
   try {
