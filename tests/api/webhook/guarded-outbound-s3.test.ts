@@ -128,7 +128,10 @@ describe("guarded strict outbound transport", () => {
     const { spy } = mockTransport(https);
     const variants = [
       { origin: "http://storage.example.test:8443" },
-      { origin: "https://127.0.0.1:8443" },
+      {
+        origin: "https://127.0.0.1:8443",
+        headers: { ...strict.headers, host: "127.0.0.1:8443" },
+      },
       { origin: "https://user:password@storage.example.test:8443" },
       { origin: "https://storage.example.test:8443/path" },
       { headers: { ...strict.headers, host: "storage.example.test" } },
@@ -151,7 +154,7 @@ describe("guarded strict outbound transport", () => {
     ];
     await expect(
       sendGuardedOutboundRequest({ ...strict, resolver: mixed }),
-    ).rejects.toThrow();
+    ).rejects.toThrow("non-routable address");
     expect(spy).not.toHaveBeenCalled();
     const resolver = vi
       .fn<AddressResolver>()
@@ -189,7 +192,7 @@ describe("guarded strict outbound transport", () => {
       signal: abort.signal,
     });
     abort.abort();
-    await expect(pending).rejects.toThrow();
+    await expect(pending).rejects.toThrow("outbound_request_aborted");
     expect(spy).not.toHaveBeenCalled();
   });
 
@@ -287,7 +290,7 @@ describe("bundled storage address rule", () => {
     const { spy } = mockTransport(http);
     await expect(
       sendGuardedOutboundRequest({ ...bundled, resolver: resolving(address) }),
-    ).rejects.toThrow();
+    ).rejects.toThrow("non-routable address");
     expect(spy).not.toHaveBeenCalled();
   });
 
@@ -300,7 +303,7 @@ describe("bundled storage address rule", () => {
           ...bundled,
           resolver: resolving(address, 6),
         }),
-      ).rejects.toThrow();
+      ).rejects.toThrow("non-routable address");
       expect(spy).not.toHaveBeenCalled();
     },
   );
@@ -351,6 +354,11 @@ describe("bundled storage address rule", () => {
     expect(isForbiddenBundledAddress("fd00:ec2:0:0:0:0:0:254")).toBe(true);
     expect(isForbiddenBundledAddress("::ffff:169.254.169.254")).toBe(true);
     expect(isForbiddenBundledAddress("not-an-ip")).toBe(true);
+    expect(isForbiddenBundledAddress("::ffff:7f00:1")).toBe(true);
+    expect(isForbiddenBundledAddress("::ffff:a9fe:a9fe")).toBe(true);
+    expect(isForbiddenBundledAddress("::ffff:a00:5")).toBe(true);
+    expect(isForbiddenBundledAddress("fe80::1%eth0")).toBe(true);
+    expect(isForbiddenBundledAddress("fd00::1%25eth0")).toBe(true);
   });
 
   it("leaves strict-public-https unchanged: a private answer is still refused", async () => {
@@ -360,7 +368,7 @@ describe("bundled storage address rule", () => {
         ...strict,
         resolver: resolving("10.0.0.5"),
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow("non-routable address");
     expect(spy).not.toHaveBeenCalled();
   });
 });
