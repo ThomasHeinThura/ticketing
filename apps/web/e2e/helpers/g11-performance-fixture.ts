@@ -941,7 +941,16 @@ export async function installPerformanceApiFixture(
         path === "/api/features/resolved" ||
         path === `/api/workspaces/${WORKSPACE_ID}/features/resolved`
       )
-        return json({ features: DEFAULT_RESOLVED_FEATURES });
+        // Triage needs `feature.intake` on as well as intake:triage; a fresh deployment has it off.
+        return json({
+          features: triageCapability
+            ? DEFAULT_RESOLVED_FEATURES.map((feature) =>
+                feature.key === "feature.intake"
+                  ? { ...feature, enabled: true }
+                  : feature,
+              )
+            : DEFAULT_RESOLVED_FEATURES,
+        });
       if (path === "/api/notification/inbox")
         return json({
           data: [],
