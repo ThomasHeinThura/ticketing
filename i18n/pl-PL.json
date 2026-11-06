@@ -2758,6 +2758,7 @@
 			}
 		},
 		"boardSearchPlaceholder": "Szukaj {{term_work_item_other}}...",
+		"boardSearchActive": "Wyszukiwanie aktywne",
 		"bulk": {
 			"actions": "Akcje",
 			"addLabel": "Dodaj etykietę",

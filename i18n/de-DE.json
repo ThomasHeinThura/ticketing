@@ -2489,6 +2489,7 @@
 			"urgent": "Dringend"
 		},
 		"boardSearchPlaceholder": "Tickets suchen...",
+		"boardSearchActive": "Suche aktiv",
 		"view": {
 			"board": "Board",
 			"list": "Liste"
