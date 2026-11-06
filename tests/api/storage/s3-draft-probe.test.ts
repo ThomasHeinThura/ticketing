@@ -348,7 +348,7 @@ describe("inactive S3 draft probe", () => {
       ).toBe(true);
       expect(
         recomputeS3Signature(
-          { ...call, path: call.path.replace("%20", "%21") },
+          { ...call, path: call.path.replaceAll("%20", "%21") },
           config.secretAccessKey,
         ) !== signature,
       ).toBe(true);
