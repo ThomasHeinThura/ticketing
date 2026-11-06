@@ -17,6 +17,9 @@ COPY --chown=taskdesk:taskdesk NOTICE LICENSE THIRD-PARTY-NOTICES.md /app/
 COPY --chown=taskdesk:taskdesk deploy/entrypoint.sh /app/entrypoint.sh
 COPY --chown=taskdesk:taskdesk deploy/healthcheck.mjs /app/healthcheck.mjs
 RUN chmod 0555 /app/entrypoint.sh
+# A new attachments volume copies this directory's owner, as in the release image: without it
+# the volume root is root-owned and the storage probe reports the directory as unavailable.
+RUN mkdir -p /app/data/attachments && chown -R taskdesk:taskdesk /app/data
 USER taskdesk
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
   CMD ["node", "/app/healthcheck.mjs"]
