@@ -2498,6 +2498,7 @@
 			"urgent": "Urgente"
 		},
 		"boardSearchPlaceholder": "Rechercher des tickets...",
+		"boardSearchActive": "Recherche active",
 		"view": {
 			"board": "Tableau",
 			"list": "Liste"
@@ -5848,6 +5849,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Enregistrer les préférences de notification de l’équipe",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

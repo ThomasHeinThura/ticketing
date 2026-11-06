@@ -273,8 +273,8 @@ export const platformPolicies = {
       "short-lived, key-scoped signed token minted by GET /api/attachments/{id} after " +
       "its own policy check already ran",
   },
-  // CP-19 (3 November 2026): portal-bound siblings, portal host only: the upload for work-item
-  // attachment objects, the download for work-item and submission attachment objects. Above the session guard like the two routes above (a direct PUT / redirect
+  // CP-19: portal-bound siblings, portal host only, for work-item and submission attachment
+  // objects. Above the session guard like the two routes above (a direct PUT / redirect
   // target, no CSRF header); the handler itself requires the portal session's customer person
   // to equal the person the signed token binds, after the portal own_request / own_submission
   // route that minted it ran its own policy check.

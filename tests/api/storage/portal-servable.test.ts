@@ -13,12 +13,13 @@ import {
 } from "../../../apps/api/src/storage/filesystem";
 import {
   isPortalStorageRequest,
+  createPortalAttachmentUploadUrl as mintPortalUpload,
   portalCanDownloadObject,
 } from "../../../apps/api/src/storage/portal-servable";
 
 /**
  * CP-19 (3 November 2026): portal-bound signed links on the filesystem driver, for work-item
- * uploads and for every portal download (work-item and submission files). The token binds key,
+ * uploads and every portal download (work-item and submission files). The token binds key,
  * person, size ceiling (upload) and expiry, and never accepts an agent token; the portal host
  * admits each route only for its own key shape and never admits the unbound generic download.
  */
@@ -180,6 +181,51 @@ describe("portal-bound filesystem links (CP-19)", () => {
     ).rejects.toThrow(StoragePathError);
   });
 
+  it("binds submission uploads to their person, key, size and expiry", async () => {
+    const put = query(
+      createPortalAttachmentUploadUrl(
+        SUBMISSION_KEY,
+        "application/pdf",
+        4,
+        "person-a",
+        "https://portal.example.test/api",
+      ).uploadUrl,
+    );
+    const write = (
+      overrides: Partial<Record<string, string>> = {},
+      content = "1234",
+    ) =>
+      writePortalAttachmentUploadedObject({
+        key: put.key ?? "",
+        maxBytes: put.maxBytes ?? "",
+        expires: put.expires ?? "",
+        token: put.token ?? "",
+        personId: "person-a",
+        body: body(content),
+        ...overrides,
+      });
+    await expect(write({ personId: "person-b" })).rejects.toThrow(
+      StoragePathError,
+    );
+    await expect(write({ key: SUBMISSION_FINAL_KEY })).rejects.toThrow(
+      StoragePathError,
+    );
+    await expect(write({ maxBytes: "100" })).rejects.toThrow(StoragePathError);
+    await expect(write({}, "12345")).rejects.toThrow(StoragePathError);
+    const agent = query(
+      createAttachmentUploadUrl(SUBMISSION_KEY, "application/pdf", 4).uploadUrl,
+    );
+    await expect(
+      write({ token: agent.token ?? "", expires: agent.expires ?? "" }),
+    ).rejects.toThrow(StoragePathError);
+    await write();
+    expect(await readFile(path.join(root, SUBMISSION_KEY), "utf8")).toBe(
+      "1234",
+    );
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 10 * 60 * 1000);
+    await expect(write()).rejects.toThrow("Upload URL has expired.");
+  });
+
   it("binds a submission file's download to the person it was minted for", async () => {
     await mkdir(path.dirname(path.join(root, SUBMISSION_FINAL_KEY)), {
       recursive: true,
@@ -224,14 +270,14 @@ describe("portal-bound filesystem links (CP-19)", () => {
   });
 
   it("admits each portal-host route only for its own key shape", () => {
-    // The generic signed upload: pending submission keys only.
+    // Generic uploads are never accepted on the portal host.
     expect(
       isPortalStorageRequest(
         "PUT",
         "/api/storage/filesystem-attachment-upload",
         SUBMISSION_KEY,
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isPortalStorageRequest(
         "PUT",
@@ -250,7 +296,7 @@ describe("portal-bound filesystem links (CP-19)", () => {
           ),
           `${method} ${key}`,
         ).toBe(false);
-    // The portal-bound upload: pending work-item keys only, never a finalized key.
+    // The portal-bound upload accepts pending work-item and submission keys only.
     expect(
       isPortalStorageRequest(
         "PUT",
@@ -270,6 +316,34 @@ describe("portal-bound filesystem links (CP-19)", () => {
         "PUT",
         "/api/storage/portal-attachment-upload",
         SUBMISSION_KEY,
+      ),
+    ).toBe(true);
+    expect(
+      isPortalStorageRequest(
+        "PUT",
+        "/api/storage/portal-attachment-upload",
+        SUBMISSION_KEY.replace("form.pdf", "form..final.pdf"),
+      ),
+    ).toBe(true);
+    expect(
+      isPortalStorageRequest(
+        "PUT",
+        "/api/storage/portal-attachment-upload",
+        SUBMISSION_KEY.replace("form.pdf", ".."),
+      ),
+    ).toBe(false);
+    expect(
+      isPortalStorageRequest(
+        "PUT",
+        "/api/storage/portal-attachment-upload",
+        SUBMISSION_FINAL_KEY,
+      ),
+    ).toBe(false);
+    expect(
+      isPortalStorageRequest(
+        "PUT",
+        "/api/storage/portal-attachment-upload",
+        "workspace/ws1/other/file.pdf",
       ),
     ).toBe(false);
     // The portal-bound download: work-item and submission keys, pending or final.
@@ -306,5 +380,27 @@ describe("portal-bound filesystem links (CP-19)", () => {
     expect(portalCanDownloadObject("workspace/ws1/other/thing.pdf")).toBe(
       false,
     );
+  });
+
+  it("never falls back to a generic filesystem upload for an invalid portal key", async () => {
+    vi.stubEnv("TASKDESK_STORAGE_DRIVER", "filesystem");
+    try {
+      for (const objectKey of [
+        SUBMISSION_FINAL_KEY,
+        "workspace/ws1/other/file.pdf",
+      ])
+        await expect(
+          mintPortalUpload({
+            objectKey,
+            contentType: "application/pdf",
+            maxBytes: 1024,
+            personId: "person-a",
+            apiBaseUrl: "http://portal.localhost/api",
+            declaredSize: 4,
+          }),
+        ).rejects.toThrow("Invalid portal attachment upload key.");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

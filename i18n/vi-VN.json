@@ -2480,6 +2480,7 @@
 			"urgent": "Khẩn cấp"
 		},
 		"boardSearchPlaceholder": "Tìm phiếu...",
+		"boardSearchActive": "Tìm kiếm đang hoạt động",
 		"view": {
 			"board": "Bảng",
 			"list": "Danh sách"
@@ -5803,6 +5804,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Lưu tùy chọn thông báo của nhóm",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

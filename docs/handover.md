@@ -4,7 +4,7 @@ Read [AGENTS.md](../AGENTS.md), [status](status.md), [roadmap](roadmap.md) and [
 
 ## Who works on version 2
 
-From 4 Nov Thomas hands version 2 back to **Codex**. Claude stops after this release. Codex owns `main`, the worktrees it creates and the release chain. Model tiers and review rules are in AGENTS.md.
+From 4 Nov Thomas hands version 2 back to **Codex**. Codex owns the release chain and works in the main checkout without creating worktrees. Model tiers and review rules are in AGENTS.md.
 
 ## Goal
 
@@ -12,8 +12,14 @@ From 4 Nov Thomas hands version 2 back to **Codex**. Claude stops after this rel
 
 ## State now
 
-- `main` `2dc5b75` is deployed on **local SIT (Docker Desktop)** and **Technexus**. Signed digest: `sha256:e56bca9bc5b9…`. Smoke results: local SIT 46/46; Technexus signed-in 108/110. The 2 expected Technexus misses are the instance-admin accounts, which have no workspace by design.
-- Technexus migrations are at 217, with row counts unchanged across every deploy. Each deploy took a backup first: `backups/pre-<sha>-<timestamp>` on the host.
+- **6 Nov, running versions:** local SIT (compose project `taskdesk-codex-testing`) runs `main` 8ee0d63e3; Technexus runs e08c7063a. The only difference is #1046 (calendar search announcement). Technexus is healthy: signed-in smoke 108/110, with the two expected instance-admin misses.
+- **5 Nov release:** `e08c7063ae9a384252066407193662bca8740c24` is accepted on local SIT and Technexus, with signed index `sha256:d34875df206d7c0b3acad20d8ee37911e740fc093df077aa120f4d776c931989`. Release run 41989194302 passed both jobs; source provenance and cosign signature were verified. Release-path fixes #1055 and #1057 shipped; #1056 is closed. This does not complete fresh-customer installation acceptance.
+- **Local SIT:** 68/68 smoke checks passed across six roles and both HTTPS hosts; journal 217 and eight attachment hashes were verified. The quiesced backup contained 184 tables and 48,279 rows. A new QA workspace, project and lead/viewer accounts were created through product APIs; the original four credential entries were preserved and setup did not change existing workspace/project grants. A private operator hit a name-shadowing `TypeError` after the signed helper verified the new app, leaving the lock held. Independent read-only acceptance verified the same candidate, backup, HBA, configuration and counts before unlock; no second migration or restore ran. Superseded legacy local deployments remain stopped with their volumes preserved.
+- **Technexus:** the quiesced backup contained 184 tables, 69,976 rows and four files. Initial post-deploy counts were identical. The new image is healthy; normal macOS TLS checks on both hosts passed before and after smoke. Signed-in smoke was 108/110, with two expected empty-workspace instance-admin misses and all 54 browser checks passing; the lock was released.
+- **Queued fixes, 6 Nov reality:** #1046 is merged (8ee0d63e3). #1047–#1054 are open drafts that have not merged, so none is released: #1048 (portal submission upload binding), #1052 (storage probe retention, conflicts with `main`), #1053 (S3 configuration drafts, about 37.8k lines, stacked on #1052) and #1054 (stacked on #1053). Each is merged only after a fresh rebase on `main`, green required checks and Thomas's approval. The 4 Nov list above is the order they were opened, not what shipped.
+- **Storage:** filesystem is active. SeaweedFS is approved as a provider, but #1052 and #1053 remain inactive configuration work; no bytes have been cut over.
+- **Audit scope:** 30 Technexus owner desktop-dark rows were reviewed observationally and 24 screenshots independently inspected: 17 observations, four redirects, two design observations, one runtime observation and six fixture blocks. Focused security checks resolved the observed 403 as expected and isolated the Inbox result to a Chrome focus boundary; neither confirmed a medium bug. Open findings: agent not-found heading/recovery (#1059), keyboard-clear focus (#1060) and mobile Calendar toolbar overflow (#1061). The latter two predate #1046. The 154-row route inventory is statically reconciled, not fully browser-verified; calendar source checks do not complete it.
+- **Dependencies:** the audit reports three advisories, comprising one low and three moderate instances, with no high or critical findings. Production low `deepmerge` remains #909; development upgrade #1058 awaits approval for new transitive packages. No dependency was changed.
 - UAT items U-1 to U-15 in the [roadmap](roadmap.md) are done and live:
   - Overview tab;
   - portal redesign: dashboard, cases, Projects and Project Details, Announcements;
@@ -44,7 +50,7 @@ All are recorded in [design-and-decisions](technical/design-and-decisions.md).
 ## Release chain (every merge)
 
 1. Merge to `main` → `release.yml` builds, Trivy-scans (HIGH/CRITICAL with a fix block publication), generates SBOMs, signs and publishes. Verify with `gh attestation verify oci://ghcr.io/thomasheinthura/taskdesk@<digest> --owner ThomasHeinThura --signer-workflow ThomasHeinThura/ticketing/.github/workflows/release.yml`.
-2. **Local SIT:** set `TASKDESK_IMAGE_TAG` and `TASKDESK_IMAGE_DIGEST` in `.taskdesk-claude-v2/.env`, then run `scripts/deploy.sh local` and `node scripts/sit/release-smoke.mjs`.
+2. **Local SIT:** use only `deploy/compose.testing.yml`. Set `SIT_COMPOSE_ENV` and `SIT_PRIVATE_DIR` to the private canonical configuration, with `SIT_IMAGE` pinned to the verified release digest and `TASKDESK_IMAGE_TAG` set to its signed release tag. `scripts/deploy.sh local` verifies both the release attestation and cosign signature, requires the initialized canonical database/cache and copied attachment volume, runs migrations, starts the application/proxy and probes readiness; it never imports data or seeds accounts. Run `node scripts/sit/release-smoke.mjs` afterwards. Before the first transition from a legacy deployment, back up its database, files and private configuration; verify the restored copy and file hashes, preserve the old volumes, and switch the proxy only after internal readiness. The old local invocation would reseed accounts and must not be used.
 3. **Technexus:** take a `pg_dump -Fc` backup and verify it with `pg_restore --list`; back up the volume and `.env`, and record the counts. Then set the tag and digest, migrate, and run `up -d --wait`. Wait for both hosts' `/api/public/health/ready` to return 200 before checking anything; there is a startup window of about a minute. Run the signed-in smoke with the Technexus credentials file. **Once UAT users are on Technexus, every deploy asks Thomas first.**
 4. Any failure stops the release. To roll back, restore the previous `.env`. If the migration count changed, also restore the database.
 
@@ -53,7 +59,7 @@ All are recorded in [design-and-decisions](technical/design-and-decisions.md).
 - **Re-audit lows.** Each fix PR (#1033–#1043) lists its remaining low findings under "How it was checked". Known ones:
   - Submission form-field uploads still use the generic signed PUT: bound to key and size, not to a person.
   - On S3, portal downloads stay bucket-presigned (documented in AT-5).
-  - Between `md` and `lg`, the collapsed calendar search does not tell screen readers that a search is active.
+  - Between `md` and `lg`, the collapsed calendar search does not tell screen readers that a search is active; the current fix is under CI review.
 - **Product follow-ups.**
   - Portal read-only Page view.
   - Upload files as Documents entries.

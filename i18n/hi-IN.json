@@ -2489,6 +2489,7 @@
 			"urgent": "अत्यावश्यक"
 		},
 		"boardSearchPlaceholder": "टिकट खोजें...",
+		"boardSearchActive": "खोज सक्रिय है",
 		"view": {
 			"board": "बोर्ड",
 			"list": "सूची"
@@ -5824,6 +5825,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "टीम सूचना प्राथमिकताएँ सहेजें",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

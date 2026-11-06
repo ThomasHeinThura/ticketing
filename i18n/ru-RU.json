@@ -2515,6 +2515,7 @@
 			"urgent": "Срочный"
 		},
 		"boardSearchPlaceholder": "Поиск {{term_work_item_other}}...",
+		"boardSearchActive": "Поиск активен",
 		"view": {
 			"board": "Доска",
 			"list": "Список"
@@ -5928,6 +5929,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Сохранить настройки уведомлений команды",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

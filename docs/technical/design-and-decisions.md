@@ -3545,12 +3545,12 @@ Each link is signed with a key derived from `TASKDESK_AUTH_SECRET` (nothing new 
 - for an upload, the size ceiling;
 - an expiry, five minutes after minting (the existing filesystem link lifetime).
 
-The route answers only on the portal host, and the portal session must belong to that same person. A link cannot be replayed for another key, by another person or after expiry. An agent-signed link for a work-item key is refused on the portal host. Agent-host behaviour is unchanged. On S3 the links point at the bucket.
+The route answers only on the portal host, and the portal session must belong to that same person. A link cannot be replayed for another key, by another person or after expiry. An agent-signed link for a work-item key is refused on the portal host. Staff work-item uploads and downloads retain their agent-host routes. On S3 the links point at the bucket.
 
 **Submission files are bound too (CP-19, AT-5; Thomas approved 3 November 2026).** A portal download of a submission's own file (a form-field file the customer attached before acceptance) uses the same person-bound `GET /api/storage/portal-download` link, minted only by the portal `own_submission` download route after its own check. No portal download is a bearer link any more:
 - The generic `GET /api/storage/filesystem-download` is refused on the portal host for every key, so an older unbound link for a submission file stops working there.
 - Staff keep downloading submission files through the agent host's generic signed route, unchanged.
-- Uploads are unchanged: a submission form-field file still uploads through the generic signed `PUT /api/storage/filesystem-attachment-upload`, bound to the key, size ceiling and expiry.
+- **Superseded 4 November 2026:** submission form-field uploads now use the person-bound portal PUT. Old generic submission-upload links are refused on both hosts; staff work-item uploads remain on the generic agent route.
 - On S3 the portal still gets the bucket's five-minute presigned GET, bound to the key and expiry only.
 
 **Requester field (A-03).** Staff can set a work item's requester to a customer, in the work-item detail and in the create dialog. The rules:

@@ -2489,6 +2489,7 @@
 			"urgent": "Итен"
 		},
 		"boardSearchPlaceholder": "Пребарај тикети...",
+		"boardSearchActive": "Пребарувањето е активно",
 		"view": {
 			"board": "Табла",
 			"list": "Листа"
@@ -5824,6 +5825,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Зачувај ги поставките за тимски известувања",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

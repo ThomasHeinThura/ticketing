@@ -236,22 +236,20 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   `/api/public/health/ready`. Those existing health handlers remain independent of which
   origin received the request. Once the two-instance identity boundary is configured, the
   portal host admits only its exact Better Auth sign-in/session/OIDC endpoints and the
-  registered `kind: portal` API policies. The agent API stays unreachable there, with one narrow exception: the signed filesystem-driver
-  route `PUT /api/storage/filesystem-attachment-upload` is admitted on the portal host only when
-  the signed `key` is a pending portal submission attachment object
-  (`workspace/<id>/submission/<id>/attachment/<id>/<file>`), because presign mints the URL on the
-  requesting origin; the HMAC token still binds the exact key, size ceiling and expiry. A
-  work-item attachment object (`workspace/<id>/work-item/<id>/attachment/...`) is uploaded on the
-  portal host only by `PUT /api/storage/portal-attachment-upload`. Every portal download, of a
+  registered `kind: portal` API policies. The agent API stays unreachable there. Pending
+  submission and work-item attachment objects are uploaded on the filesystem driver only by
+  `PUT /api/storage/portal-attachment-upload`, using a link bound to the requesting customer
+  (Thomas, 4 November 2026). The generic filesystem attachment PUT is refused on the portal
+  host; old generic submission-upload links are also refused on the agent host. Every portal download, of a
   submission or a work-item attachment object, pending or final, goes only through
   `GET /api/storage/portal-download` (work-item files and submission files, both 3 November 2026).
   Only the portal `own_request` / `own_submission` routes mint those links, after their own check.
   Their token has its own key derivation and binds the key, the customer person, the size ceiling
   (upload) and a five-minute expiry, and the portal session must be that person. The generic
   `GET /api/storage/filesystem-download` is refused on the portal host for every key, so an
-  unbound download link never works there; agent-signed upload links for work-item keys stay
-  denied there too, and the agent host does not serve the portal routes. Staff keep the generic
-  signed routes on the agent host. Every
+  unbound download link never works there, and the agent host does not serve the portal routes.
+  Staff keep the generic signed routes for work-item uploads and for work-item and submission
+  downloads on the agent host. Every
   websocket upgrade on the portal host remains denied until its own reviewed policy exists.
   A syntactically valid unknown Host is accepted only for these exact `GET`/`HEAD` health
   requests, preserving loopback Docker and deploy readiness probes; malformed, missing,

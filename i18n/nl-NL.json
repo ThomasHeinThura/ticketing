@@ -2489,6 +2489,7 @@
 			"urgent": "Urgent"
 		},
 		"boardSearchPlaceholder": "Tickets zoeken...",
+		"boardSearchActive": "Zoeken actief",
 		"view": {
 			"board": "Bord",
 			"list": "Lijst"
@@ -5824,6 +5825,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Voorkeuren voor teammeldingen opslaan",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

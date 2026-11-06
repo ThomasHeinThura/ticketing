@@ -35,6 +35,12 @@ set -Eeuo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Local SIT has its own fail-closed release path; do not load or generate root secrets.
+if [ "${1:-}" = local ]; then
+  shift
+  exec node "$REPO_ROOT/deploy/local-release.mjs" "$@"
+fi
+
 ENV_FILE="$REPO_ROOT/.env"
 ENV_EXAMPLE="$REPO_ROOT/deploy/.env.example"
 CERT_DIR="$REPO_ROOT/deploy/local/certs"

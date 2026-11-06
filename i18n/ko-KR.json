@@ -2480,6 +2480,7 @@
 			"urgent": "긴급"
 		},
 		"boardSearchPlaceholder": "티켓 검색...",
+		"boardSearchActive": "검색 활성화됨",
 		"view": {
 			"board": "보드",
 			"list": "목록"
@@ -5803,6 +5804,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "팀 알림 환경설정 저장",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

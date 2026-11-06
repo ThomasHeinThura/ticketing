@@ -14,6 +14,7 @@ import {
   createAttachmentDownloadUrl,
   createAttachmentUploadUrl,
   createPortalAttachmentDownloadUrl,
+  createPortalAttachmentUploadUrl,
 } from "../../apps/api/src/storage/filesystem";
 
 // Unit tests run without a database; the portal host is on unless a flag row turns it off.
@@ -41,7 +42,7 @@ const OTHER_SUBMISSION_KEY =
   "workspace/ws1/submission/sub2/attachment/att2/other.pdf";
 const WORK_ITEM_KEY = "workspace/ws1/work-item/wi1/attachment/att3/agent.pdf";
 
-describe("portal host storage for submission attachments: generic signed upload, person-bound download only (CP-19)", () => {
+describe("portal host storage for submission attachments: person-bound upload and download (CP-19)", () => {
   let root: string;
   let previousRoot: string | undefined;
 
@@ -77,12 +78,20 @@ describe("portal host storage for submission attachments: generic signed upload,
 
   it("uploads a portal submission attachment through the portal origin and downloads it only through a person-bound link", async () => {
     const { app } = createApp();
-    const upload = createAttachmentUploadUrl(
+    const upload = createPortalAttachmentUploadUrl(
+      SUBMISSION_KEY,
+      "application/pdf",
+      1024,
+      "person-a",
+      `${PORTAL}/api`,
+    );
+    const generic = createAttachmentUploadUrl(
       SUBMISSION_KEY,
       "application/pdf",
       1024,
       `${PORTAL}/api`,
     );
+    expect((await put(app, generic.uploadUrl)).status).toBe(404);
     const stored = await put(app, upload.uploadUrl);
     expect(stored.status).toBe(204);
     expect(readFileSync(join(root, SUBMISSION_KEY), "utf8")).toBe("hello");
@@ -122,12 +131,21 @@ describe("portal host storage for submission attachments: generic signed upload,
 
   it("keeps the token binding: another key, a larger body and a bad token are refused", async () => {
     const { app } = createApp();
-    const upload = createAttachmentUploadUrl(
+    const upload = createPortalAttachmentUploadUrl(
       SUBMISSION_KEY,
       "application/pdf",
       4,
+      "person-a",
       `${PORTAL}/api`,
     );
+    try {
+      sessionPerson.id = "person-b";
+      expect((await put(app, upload.uploadUrl)).status).toBe(400);
+      sessionPerson.id = null;
+      expect((await put(app, upload.uploadUrl)).status).toBe(401);
+    } finally {
+      sessionPerson.id = "person-a";
+    }
     const swapped = new URL(upload.uploadUrl);
     swapped.searchParams.set("key", OTHER_SUBMISSION_KEY);
     expect((await put(app, swapped.toString())).status).toBe(400);
@@ -255,10 +273,11 @@ describe("portal host storage for submission attachments: generic signed upload,
       expect((await download(app, key)).status, key).toBe(404);
     }
     // A finalized key is never admitted for upload on the portal host.
-    const upload = createAttachmentUploadUrl(
+    const upload = createPortalAttachmentUploadUrl(
       FINAL_KEY,
       "application/pdf",
       1024,
+      "person-a",
       `${PORTAL}/api`,
     );
     expect((await put(app, upload.uploadUrl)).status).toBe(404);
@@ -299,6 +318,18 @@ describe("portal host storage for submission attachments: generic signed upload,
     );
   });
 
+  it("rejects old generic submission uploads with consecutive dots on the agent host", async () => {
+    const { app } = createApp();
+    const oldKey = SUBMISSION_KEY.replace("form.pdf", "form..final.pdf");
+    const old = createAttachmentUploadUrl(
+      oldKey,
+      "application/pdf",
+      1024,
+      `${AGENT}/api`,
+    );
+    expect((await put(app, old.uploadUrl, "localhost:5173")).status).toBe(400);
+  });
+
   it("uploads the way the portal page does (plain fetch, File body, image/png) once a storage root exists", async () => {
     const { app } = createApp();
     const png = new Uint8Array([
@@ -306,10 +337,11 @@ describe("portal host storage for submission attachments: generic signed upload,
     ]);
     const file = new File([png], "evidence.png", { type: "image/png" });
     const key = "workspace/ws1/submission/sub1/attachment/att9/evidence.png";
-    const signed = createAttachmentUploadUrl(
+    const signed = createPortalAttachmentUploadUrl(
       key,
       file.type,
       1_000_000,
+      "person-a",
       `${PORTAL}/api`,
     );
     const clientPut = () =>
