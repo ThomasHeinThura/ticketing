@@ -21,6 +21,7 @@ import {
   type PortalSignInStage,
   parsePortalSignInSearch,
   routes,
+  safePortalRedirect,
 } from "@/lib/routes";
 import { signInRefusalKey } from "@/lib/sign-in-refusal";
 
@@ -58,16 +59,19 @@ function PortalSignIn() {
     queryFn: getPortalAuthMethods,
     staleTime: 60_000,
   });
+  // Checked again where it is used, so no route or router change can let an unchecked value
+  // through: only a same-origin portal path is ever a destination.
+  const safeRedirect = safePortalRedirect(search.redirect);
   // The invitation and the page to return to survive every stage change.
   const carriedSearch = useMemo(
     () => ({
       ...(search.invitationId ? { invitationId: search.invitationId } : {}),
-      ...(search.redirect ? { redirect: search.redirect } : {}),
+      ...(safeRedirect ? { redirect: safeRedirect } : {}),
     }),
-    [search.invitationId, search.redirect],
+    [search.invitationId, safeRedirect],
   );
   // After sign-in: the requested portal page, else the Dashboard.
-  const returnTo = search.redirect ?? routes.portalHome.path;
+  const returnTo = safeRedirect ?? routes.portalHome.path;
   const [stage, setStage] = useState<PortalSignInStage>(search.stage);
   const [factor, setFactor] = useState(search.factor);
   const [email, setEmail] = useState(readStoredEmail);

@@ -1,3 +1,9 @@
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
 import { generatedRouteMetadata } from "./generated-route-metadata";
 import { projectViewRoutes } from "./project-view-routes";
@@ -628,9 +634,45 @@ describe("canonical intake URLs", () => {
       undefined,
     ])
       expect(safePortalRedirect(unsafe)).toBeUndefined();
-    expect(
-      parsePortalSignInSearch({ redirect: "//evil.example" }),
-    ).not.toHaveProperty("redirect");
+    // A rejected value is an explicit `undefined`, not a missing key: TanStack Router merges a
+    // child's validated search over the portal root's raw query, so a missing key would let the
+    // raw value back in.
+    const rejected = parsePortalSignInSearch({
+      redirect: "//evil.example",
+      invitationId: "../x",
+    });
+    expect(rejected).toHaveProperty("redirect", undefined);
+    expect(rejected).toHaveProperty("invitationId", undefined);
+  });
+
+  it("keeps an unsafe portal sign-in redirect out of the router's merged search", async () => {
+    const root = createRootRoute();
+    const signIn = createRoute({
+      getParentRoute: () => root,
+      path: "/sign-in",
+      validateSearch: parsePortalSignInSearch,
+    });
+    for (const unsafe of [
+      "https://evil.example/",
+      "/agent/inbox",
+      "/\\evil.example",
+    ]) {
+      const router = createRouter({
+        routeTree: root.addChildren([signIn]),
+        history: createMemoryHistory({
+          initialEntries: [
+            `/sign-in?redirect=${encodeURIComponent(unsafe)}&invitationId=..%2Fx`,
+          ],
+        }),
+      });
+      await router.load();
+      const match = router.state.matches.find(
+        (candidate) => candidate.routeId === "/sign-in",
+      );
+      expect(match?.search).toMatchObject({ stage: "email" });
+      expect(match?.search.redirect).toBeUndefined();
+      expect(match?.search.invitationId).toBeUndefined();
+    }
   });
 
   it("preserves in-progress whitespace in catalogue search URLs", () => {

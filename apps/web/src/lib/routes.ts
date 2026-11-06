@@ -1163,14 +1163,19 @@ export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
   const stage = ["email", "password", "factor", "otp"].find(
     (candidate) => candidate === value.stage,
   ) as PortalSignInStage | undefined;
+  // `invitationId` and `redirect` are always present, as `undefined` when rejected. TanStack
+  // Router merges a child's validated search over its parent's, and the portal root keeps the raw
+  // query: leaving a rejected key out would let the raw value (for example an external
+  // `redirect`) reach `Route.useSearch()` unvalidated.
   return {
     stage: stage ?? "email",
     factor: value.factor === "backup" ? "backup" : "totp",
-    ...(typeof value.invitationId === "string" &&
-    /^[A-Za-z0-9_-]{1,128}$/.test(value.invitationId)
-      ? { invitationId: value.invitationId }
-      : {}),
-    ...(redirect ? { redirect } : {}),
+    invitationId:
+      typeof value.invitationId === "string" &&
+      /^[A-Za-z0-9_-]{1,128}$/.test(value.invitationId)
+        ? value.invitationId
+        : undefined,
+    redirect,
   };
 }
 
