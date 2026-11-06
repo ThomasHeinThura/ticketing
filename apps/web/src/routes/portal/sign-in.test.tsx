@@ -204,6 +204,41 @@ describe("portal sign-in", () => {
     expect(mocks.navigate).not.toHaveBeenCalledWith({ href: "/" });
   });
 
+  it("returns to the Dashboard when the router hands over an unsafe redirect", async () => {
+    // The portal root keeps the raw query, so the page re-checks the value it is given.
+    for (const unsafe of ["https://evil.example/", "/agent/inbox"]) {
+      mocks.navigate.mockClear();
+      mocks.search = {
+        stage: "password",
+        factor: "totp",
+        invitationId: undefined,
+        redirect: unsafe,
+      };
+      window.sessionStorage.setItem(
+        "taskdesk:portal-sign-in-email",
+        "customer@example.test",
+      );
+      mocks.signIn.mockResolvedValue({ data: { token: "opaque" } });
+      mocks.getSession.mockResolvedValue({
+        data: { session: { id: "session" } },
+      });
+      const view = renderSignIn();
+      fireEvent.change(await screen.findByLabelText("auth:forms.password"), {
+        target: { value: "valid-password" },
+      });
+      fireEvent.submit(
+        screen
+          .getByLabelText("auth:forms.password")
+          .closest("form") as HTMLFormElement,
+      );
+      await waitFor(() =>
+        expect(mocks.navigate).toHaveBeenCalledWith({ href: "/" }),
+      );
+      expect(mocks.navigate).not.toHaveBeenCalledWith({ href: unsafe });
+      view.unmount();
+    }
+  });
+
   it("sends a magic link back to the requested page, else to the Dashboard", async () => {
     mocks.authMethods.mockResolvedValue({
       password: false,

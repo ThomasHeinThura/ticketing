@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import PageTitle from "@/components/page-title";
 import { authClient } from "@/lib/auth-client";
+import { getSafeRedirectPath } from "@/lib/safe-redirect";
 import { signInRefusalKey } from "@/lib/sign-in-refusal";
 import { toast } from "@/lib/toast";
 import { AuthLayout } from "../../../components/auth/layout";
@@ -58,12 +59,7 @@ function VerifyOtp() {
     defaultValues: { otp: "" },
   });
 
-  const safeRedirect = useMemo(() => {
-    if (redirect?.startsWith("/") && !redirect.includes("//")) {
-      return redirect;
-    }
-    return undefined;
-  }, [redirect]);
+  const safeRedirect = useMemo(() => getSafeRedirectPath(redirect), [redirect]);
 
   const signInPath = useMemo(() => {
     if (!redirect) {

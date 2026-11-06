@@ -1038,13 +1038,26 @@ export function safePortalRedirect(value: unknown): string | undefined {
   }
   if (url.origin !== PORTAL_REDIRECT_BASE) return undefined;
   const { pathname } = url;
-  // Sign-in itself and the agent app's paths are never a portal destination.
+  // Sign-in itself and the agent app's paths are never a portal destination. The router decodes
+  // the path and matches case-insensitively when it navigates, so compare the decoded, lower-case
+  // path with repeated and trailing slashes collapsed (`/%61gent/x`, `/SIGN-IN`, `/auth` and
+  // `/portal//sign-in` are all blocked).
+  let comparable: string;
+  try {
+    comparable = decodeURIComponent(pathname)
+      .toLowerCase()
+      .replace(/\/{2,}/gu, "/")
+      .replace(/\/+$/u, "");
+  } catch {
+    return undefined;
+  }
   if (
-    pathname === "/sign-in" ||
-    pathname === "/portal/sign-in" ||
-    pathname === "/agent" ||
-    pathname.startsWith("/agent/") ||
-    pathname.startsWith("/auth/")
+    comparable === "/sign-in" ||
+    comparable === "/portal/sign-in" ||
+    comparable === "/agent" ||
+    comparable.startsWith("/agent/") ||
+    comparable === "/auth" ||
+    comparable.startsWith("/auth/")
   )
     return undefined;
   const result = `${pathname}${url.search}`;
@@ -1163,14 +1176,19 @@ export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
   const stage = ["email", "password", "factor", "otp"].find(
     (candidate) => candidate === value.stage,
   ) as PortalSignInStage | undefined;
+  // `invitationId` and `redirect` are always present, as `undefined` when rejected. TanStack
+  // Router merges a child's validated search over its parent's, and the portal root keeps the raw
+  // query: leaving a rejected key out would let the raw value (for example an external
+  // `redirect`) reach `Route.useSearch()` unvalidated.
   return {
     stage: stage ?? "email",
     factor: value.factor === "backup" ? "backup" : "totp",
-    ...(typeof value.invitationId === "string" &&
-    /^[A-Za-z0-9_-]{1,128}$/.test(value.invitationId)
-      ? { invitationId: value.invitationId }
-      : {}),
-    ...(redirect ? { redirect } : {}),
+    invitationId:
+      typeof value.invitationId === "string" &&
+      /^[A-Za-z0-9_-]{1,128}$/.test(value.invitationId)
+        ? value.invitationId
+        : undefined,
+    redirect,
   };
 }
 
