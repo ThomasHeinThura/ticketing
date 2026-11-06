@@ -5804,6 +5804,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "팀 알림 환경설정 저장",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

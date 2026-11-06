@@ -5873,6 +5873,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Зберегти налаштування сповіщень команди",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

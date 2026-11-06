@@ -5825,6 +5825,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Ekip bildirimi tercihlerini kaydet",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

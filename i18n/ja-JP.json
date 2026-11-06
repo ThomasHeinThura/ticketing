@@ -5804,6 +5804,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "チーム通知の設定を保存",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

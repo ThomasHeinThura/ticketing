@@ -5929,6 +5929,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Сохранить настройки уведомлений команды",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

@@ -5804,6 +5804,7 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
+			"save": "Simpan preferensi notifikasi tim",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},
