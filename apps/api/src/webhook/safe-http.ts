@@ -341,7 +341,11 @@ function errorLabel(error: unknown): string {
   if (typeof webhookCode === "string") return webhookCode;
   if (error instanceof Error) {
     const code = (error as NodeJS.ErrnoException).code;
-    if (error.message === "webhook_timeout") return "timeout";
+    if (
+      error.message === "outbound_timeout" ||
+      error.message === "webhook_timeout"
+    )
+      return "timeout";
     if (typeof code === "string" && /^[A-Z0-9_]{1,40}$/.test(code)) {
       if (code === "ENOTFOUND") return "unresolvable";
       return code.toLowerCase();
@@ -407,7 +411,7 @@ function performGuardedRequest(
     const onAbort = () => fail(new Error("outbound_request_aborted"));
     const deadline = setTimeout(() => {
       if (!completePartial) {
-        fail(new Error("webhook_timeout"));
+        fail(new Error("outbound_timeout"));
         return;
       }
       // Truncate mode, headers received: a slow body ends the delivery with the real status.
