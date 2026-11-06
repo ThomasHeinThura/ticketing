@@ -146,6 +146,18 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
     consumer: "consumePendingActionProof",
   },
   // God Mode
+  "PUT /api/instance/storage/s3-draft": {
+    kind: "operation",
+    operation: "storage_config_save",
+    handler: "instance/storage/s3-draft.ts",
+    consumer: "runWithStepUp",
+  },
+  "POST /api/instance/storage/s3-draft/test": {
+    kind: "operation",
+    operation: "storage_config_test",
+    handler: "instance/storage/s3-draft.ts",
+    consumer: "runWithStepUp",
+  },
   "DELETE /api/instance/identity-connections/{id}": {
     kind: "pending_action",
     handler: "pending-action/identity-connection-deletion-target.ts",

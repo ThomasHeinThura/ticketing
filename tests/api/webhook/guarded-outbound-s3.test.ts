@@ -447,6 +447,6 @@ describe("webhook wrapper on the shared mocked transport", () => {
     mockTransport(https, { chunks: [Buffer.from("par")], hang: true });
     await expect(
       sendGuardedOutboundRequest({ ...strict, timeoutMs: 30 }),
-    ).rejects.toThrow("webhook_timeout");
+    ).rejects.toThrow("outbound_timeout");
   });
 });
