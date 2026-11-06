@@ -423,9 +423,19 @@
 								},
 								"unknown": {
 									"type": "string"
+								},
+								"chunkLoad": {
+									"type": "string"
 								}
 							},
-							"required": ["cors", "network", "auth", "server", "unknown"]
+							"required": [
+								"cors",
+								"network",
+								"auth",
+								"server",
+								"unknown",
+								"chunkLoad"
+							]
 						},
 						"troubleshootingSteps": {
 							"type": "object",
@@ -20470,6 +20480,19 @@
 				},
 				"loadError": {
 					"type": "string"
+				},
+				"featureOff": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						}
+					},
+					"required": ["title", "description"]
 				}
 			},
 			"required": [
@@ -20527,7 +20550,8 @@
 				"errors",
 				"noAccessTitle",
 				"noAccessDescription",
-				"loadError"
+				"loadError",
+				"featureOff"
 			]
 		},
 		"requestTypes": {
@@ -30895,6 +30919,32 @@
 						"suggestionsTitle",
 						"suggestionsDescription"
 					]
+				},
+				"featureOff": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						}
+					},
+					"required": ["title", "description"]
+				},
+				"featureState": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						}
+					},
+					"required": ["loadErrorTitle", "loadErrorDescription"]
 				}
 			},
 			"required": [
@@ -30912,7 +30962,9 @@
 				"editor",
 				"conflict",
 				"triage",
-				"portal"
+				"portal",
+				"featureOff",
+				"featureState"
 			]
 		},
 		"serviceManagement": {

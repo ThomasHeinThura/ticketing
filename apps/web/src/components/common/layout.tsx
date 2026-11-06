@@ -4,17 +4,24 @@ import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { cn } from "@/lib/cn";
+import { importWithRetry } from "@/lib/lazy-retry";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 // The sidebar (workspace switcher, navigation, projects, notifications) loads beside the
 // page instead of in front of it, so a page's own content is never held behind the
 // sidebar's code (G11 work-list LCP).
+// A failed download is tried again, and a final failure is not kept, so the next call (a
+// later page, or the reload the error screen offers) imports it afresh.
 let sidebarModule:
   | Promise<typeof import("@/components/app-sidebar")>
   | undefined;
-function loadSidebarModule() {
+export function loadSidebarModule() {
   if (!sidebarModule) {
-    sidebarModule = import("@/components/app-sidebar");
+    const pending = importWithRetry(() => import("@/components/app-sidebar"));
+    sidebarModule = pending;
+    pending.catch(() => {
+      if (sidebarModule === pending) sidebarModule = undefined;
+    });
     // The sidebar's last readiness boundary is its lazy project navigation.
     // Download it alongside the sidebar after primary content, rather than
     // starting a second network wave only once the sidebar has rendered.

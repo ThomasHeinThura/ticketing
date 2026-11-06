@@ -151,6 +151,8 @@ describe("Work items route for a missing or out-of-reach Project", () => {
 
     const denial = await screen.findByTestId("project-not-found");
     expect(denial).toHaveTextContent(NOT_FOUND);
+    // The denial is the primary content, so the sidebar and selector need not wait.
+    expect(denial).toHaveAttribute("data-primary-content-ready", "true");
     expect(
       within(denial).getByRole("link", { name: "Back to Projects" }),
     ).toHaveAttribute("href", "/agent");

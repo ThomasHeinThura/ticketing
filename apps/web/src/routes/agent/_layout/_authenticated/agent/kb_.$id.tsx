@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { KbArticleView } from "@/components/kb/agent/kb-article-view";
+import { KbFeatureGate } from "@/components/kb/agent/kb-feature-gate";
 import { parseKbArticleSearch } from "@/lib/routes";
 
 /** `docs/screens.md` "Article view" (P5): the article, its version history and its feedback. */
@@ -13,10 +14,14 @@ function KbArticleRoute() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   return (
-    <KbArticleView
-      id={id}
-      search={search}
-      onSearchChange={(next) => void navigate({ search: next, replace: true })}
-    />
+    <KbFeatureGate>
+      <KbArticleView
+        id={id}
+        search={search}
+        onSearchChange={(next) =>
+          void navigate({ search: next, replace: true })
+        }
+      />
+    </KbFeatureGate>
   );
 }

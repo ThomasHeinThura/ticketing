@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { KbArticleEditor } from "@/components/kb/agent/kb-article-editor";
+import { KbFeatureGate } from "@/components/kb/agent/kb-feature-gate";
 import { parseKbEditorSearch } from "@/lib/routes";
 
 /** `docs/screens.md` "Article editor" (P5): Kaneo's rich-text editor with a customer preview. */
@@ -15,10 +16,14 @@ function KbArticleEditRoute() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   return (
-    <KbArticleEditor
-      id={id}
-      search={search}
-      onSearchChange={(next) => void navigate({ search: next, replace: true })}
-    />
+    <KbFeatureGate>
+      <KbArticleEditor
+        id={id}
+        search={search}
+        onSearchChange={(next) =>
+          void navigate({ search: next, replace: true })
+        }
+      />
+    </KbFeatureGate>
   );
 }

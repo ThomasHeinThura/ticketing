@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { parseApiError } from "./error-handler";
 
 describe("parseApiError", () => {
+  it("treats a failed lazy chunk as a reloadable load failure, not a CORS error", () => {
+    const result = parseApiError(
+      new TypeError(
+        "Failed to fetch dynamically imported module: https://ticketing.localhost/assets/x.js",
+      ),
+    );
+    expect(result.type).toBe("network");
+    expect(result.message).toBe("common:error.messages.chunkLoad");
+    expect(parseApiError(new TypeError("Failed to fetch")).type).toBe("cors");
+  });
+
   it("returns a generic message key for unknown Error instances instead of leaking error.message", () => {
     const internalMessage =
       "Cannot read properties of undefined (reading 'id') at TaskList";

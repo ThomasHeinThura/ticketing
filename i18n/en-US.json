@@ -105,7 +105,8 @@
 				"network": "Network error. Please check your internet connection and try again.",
 				"auth": "Authentication failed. Please sign in again.",
 				"server": "Server error. Please try again later.",
-				"unknown": "An unexpected error occurred."
+				"unknown": "An unexpected error occurred.",
+				"chunkLoad": "Part of this page didn't load, possibly because TaskDesk was updated. Select Try again to reload the page."
 			},
 			"troubleshootingSteps": {
 				"cors": {
@@ -4941,7 +4942,11 @@
 		},
 		"noAccessTitle": "You cannot triage {{term_submission_other}}",
 		"noAccessDescription": "Triage needs the intake triage permission. Ask a workspace admin if you need it.",
-		"loadError": "The {{term_submission_other}} could not be loaded."
+		"loadError": "The {{term_submission_other}} could not be loaded.",
+		"featureOff": {
+			"title": "Intake is off for this workspace",
+			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on."
+		}
 	},
 	"requestTypes": {
 		"title": "{{term_request_one}} types",
@@ -7478,6 +7483,14 @@
 			"feedbackError": "Your answer could not be sent. Try again.",
 			"suggestionsTitle": "This might help",
 			"suggestionsDescription": "Articles that match what you wrote. They open in a new tab and your request stays as it is."
+		},
+		"featureOff": {
+			"title": "Knowledge base is off for this workspace",
+			"description": "A workspace admin can switch on the knowledge base in the workspace's feature settings. Existing articles are kept and come back when it is switched on."
+		},
+		"featureState": {
+			"loadErrorTitle": "Could not check the knowledge base",
+			"loadErrorDescription": "Whether the knowledge base is on could not be loaded. Try again."
 		}
 	},
 	"serviceManagement": {
