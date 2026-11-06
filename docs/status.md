@@ -1,8 +1,61 @@
-# Current status — 31 October 2026, evening
+# Current status
 
-**Goal: UAT launch on Friday 6 November 2026 on the Technexus hosts.** Claude is the only version 2 implementer from 30 Oct; Codex works on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
+**5 Nov release:** `e08c7063ae9a384252066407193662bca8740c24` is accepted on
+local SIT and Technexus with signed index `sha256:d34875df206d7c0b3acad20d8ee37911e740fc093df077aa120f4d776c931989`.
+Release run 41989194302 passed both jobs; source provenance and cosign were
+verified. Release-path fixes #1055 and #1057 shipped, and #1056 is closed.
 
-- **Deployed:** `main` cbd076c (signed digest `sha256:aa96614708b2…`, attestation verified).
+Local smoke passed 68/68 across six roles and both HTTPS hosts; journal 217 and
+eight attachment hashes were verified. The quiesced backup contained 184 tables
+and 48,279 rows. The QA workspace, project and lead/viewer accounts were created
+through product APIs; the original four credential entries were preserved, and setup did not change
+existing workspace or project grants. A private operator hit a name-shadowing
+`TypeError` after the signed helper verified the new app. Independent read-only
+acceptance checked that same candidate, backup, HBA, configuration and counts,
+then released the held lock; no second migration or data restore ran.
+
+The Technexus quiesced backup contained 184 tables, 69,976 rows and four files;
+initial post-deploy counts were identical. The new image is healthy, both hosts
+passed normal macOS TLS checks before and after smoke, and signed-in smoke was
+108/110 with two expected instance-admin misses and all 54 browser checks
+passing. The operator lock was released.
+
+G11 remains report-only; G13, bundle budgets and the other 17 required checks
+remain in force. Calendar source head `6bfdd0a6` passed all 17 required checks
+and all six hosted G13 cases. Earlier calibration failures left G13 unmeasured
+on those runs; no budget or calibration changed.
+G11 remained failed on that head: LCP 3,180.5 ms, board render 542.4 ms and the
+board-drag CSRF-request assertion (no drag p95 result). Local source-built production
+browser checks passed 30 role/width/theme cases and 12 supplemental cases with
+real persisted API data. The supplement verified no-match filtering, restoration,
+keyboard clearing, tablet reopen-empty and settled screenshots; independent
+Terra review found no introduced defect. These are bounded source checks, not
+a release or a complete product audit.
+
+The Technexus browser audit covered 30 owner desktop-dark rows, with 24 screenshots
+independently inspected: 17 observations, four redirects, two design observations,
+one runtime observation and six fixture blocks. A 403 was expected and the Inbox
+result was a Chrome focus boundary, so neither is a confirmed medium bug. The
+agent not-found heading/recovery gap is open as #1059. Keyboard clearing loses
+search-field focus (#1060); the mobile Calendar toolbar requires horizontal
+scrolling of the work area when selection controls are present (#1061). Both
+predate the calendar description fix and remain open. The 154-row route
+inventory is static: 68 canonical, 47 fixtures, 15 redirects, seven stale and
+17 context-dependent; it is not full browser verification.
+
+Filesystem storage remains active; approved SeaweedFS configuration work #1052
+and #1053 is inactive and no bytes were cut over. The dependency audit found
+three advisories: one low and three moderate instances, with no high or critical
+findings. Production `deepmerge` remains #909; development upgrade #1058 needs
+approval for new transitive packages. No dependency changed.
+
+Codex owns version 2 from 4 Nov; the current release chain is in [handover](handover.md).
+
+## Historical checkpoint — 31 October 2026, evening
+
+**Goal at this checkpoint: UAT launch on Friday 6 November 2026 on Technexus.** Claude was the version 2 implementer from 30 Oct; Codex worked on version 1. Plan: [roadmap](roadmap.md) (UAT week plan, U-1…U-10). Decisions and release chain: [handover](handover.md).
+
+- **Deployed at this checkpoint:** `main` cbd076c (signed digest `sha256:aa96614708b2…`, attestation verified).
   - **Local SIT (Docker Desktop):** wiped and reinstalled with the SIT seed. Smoke 43/43.
   - **Technexus:** wiped (backup first) and reinstalled through first-run setup and the UAT seed (`uat-ws`, Northwind Service Desk: owner, admin, lead, two agents, viewer, customers at Contoso and Fabrikam, two instance admins). Signed-in smoke 108/110; the two misses are the instance admins, who belong to no workspace by design.
 - **Workaround on Technexus:** customer password sign-in was enabled with a direct database row, because no God Mode setting exists (A-14, fix U-6).
