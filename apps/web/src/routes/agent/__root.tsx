@@ -1,9 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { ToastProvider } from "@taskdesk/ui";
-import { ErrorDisplay } from "@/components/errors/error-display";
 import { whenAllNamespacesLoaded } from "@/lib/i18n";
 import { WORK_LIST_PATH_PATTERN } from "@/lib/i18n/work-route-namespaces";
+import { AgentRouteError } from "@/lib/lazy-retry-error";
 import type { User } from "@/types/user";
 
 export const Route = createRootRouteWithContext<{
@@ -25,18 +25,8 @@ export const Route = createRootRouteWithContext<{
   // nothing, leaving the user on a blank page with no way back. This root
   // errorComponent is the last-resort catch-all so any such throw shows a
   // real, recoverable error screen instead.
-  errorComponent: RootErrorComponent,
+  errorComponent: AgentRouteError,
 });
-
-function RootErrorComponent({
-  error,
-  reset,
-}: {
-  error: unknown;
-  reset: () => void;
-}) {
-  return <ErrorDisplay error={error} onRetry={reset} />;
-}
 
 function RootComponent() {
   return (

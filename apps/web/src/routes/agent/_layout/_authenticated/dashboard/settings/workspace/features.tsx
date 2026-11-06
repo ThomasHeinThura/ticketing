@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { FeatureFlagsPanel } from "@/components/settings/feature-flags-panel";
+import {
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 
 export const Route = createFileRoute(
@@ -11,7 +15,9 @@ export const Route = createFileRoute(
 function WorkspaceFeatures() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
-  if (!workspace) return null;
+  const access = useSettingsAccess((permission) =>
+    permission.canManageWorkspaceSettings(),
+  );
   return (
     <>
       <PageTitle title={t("settings:workspaceFeatures.pageTitle")} />
@@ -24,9 +30,14 @@ function WorkspaceFeatures() {
             {t("settings:workspaceFeatures.subtitle")}
           </p>
         </div>
-        <FeatureFlagsPanel
-          target={{ level: "workspace", workspaceId: workspace.id }}
-        />
+        {/* `GET /api/workspaces/{id}/features` needs `workspace:manage_settings`. */}
+        <SettingsAccessGate access={access}>
+          {workspace ? (
+            <FeatureFlagsPanel
+              target={{ level: "workspace", workspaceId: workspace.id }}
+            />
+          ) : null}
+        </SettingsAccessGate>
       </div>
     </>
   );

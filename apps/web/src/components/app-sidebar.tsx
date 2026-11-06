@@ -10,7 +10,7 @@ import {
   useSidebar,
 } from "@taskdesk/ui";
 import type * as React from "react";
-import { lazy, Suspense, useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { NavMain } from "@/components/nav-main";
 import { ThemeToggleDropdown } from "@/components/theme-toggle-dropdown";
@@ -18,10 +18,12 @@ import { VersionDisplay } from "@/components/version-display";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { shortcuts } from "@/constants/shortcuts";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { resettableLazy } from "@/lib/lazy-retry";
 import { markSidebarShown } from "@/lib/sidebar-shown";
 import Search from "./search";
 
-const NavProjects = lazy(() =>
+// Replaced after a failed import, so a later render imports the project list afresh.
+const NavProjects = resettableLazy(() =>
   import("@/components/nav-projects").then((module) => ({
     default: module.NavProjects,
   })),
@@ -83,7 +85,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
             </SidebarGroup>
           }
         >
-          <NavProjects />
+          <NavProjects.Component />
           <SidebarShown />
         </Suspense>
       </SidebarContent>

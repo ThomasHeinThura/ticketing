@@ -1,6 +1,5 @@
 import {
   createFileRoute,
-  ErrorComponent,
   type ErrorComponentProps,
   Outlet,
   redirect,
@@ -21,6 +20,7 @@ import {
 } from "@/lib/agent-session";
 import { isGodModePath } from "@/lib/god-mode-paths";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
+import { AgentRouteError } from "@/lib/lazy-retry-error";
 
 export { SESSION_RETRY_DELAYS_MS } from "@/lib/agent-session";
 
@@ -39,11 +39,16 @@ function readFactorStatus(): Promise<Response | null> {
   }).catch(() => null);
 }
 
-function SessionRouteError({ error }: ErrorComponentProps) {
+/**
+ * Every agent page's errors land here (no route below sets its own error component). A session
+ * outage, a failed code chunk and any other error each get a styled screen with a working retry,
+ * never the router's unstyled default.
+ */
+function SessionRouteError({ error, reset }: ErrorComponentProps) {
   const { t } = useTranslation();
   const router = useRouter();
   if (!(error instanceof SessionUnavailableError)) {
-    return <ErrorComponent error={error} />;
+    return <AgentRouteError error={error} reset={reset} />;
   }
   return (
     <div

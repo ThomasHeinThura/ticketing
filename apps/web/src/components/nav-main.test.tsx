@@ -322,6 +322,7 @@ describe("NavMain highlight follows the router", () => {
   it("moves the highlight when the route changes, without any other re-render", async () => {
     mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
       { key: "feature.knowledge_base", enabled: true },
+      { key: "feature.intake", enabled: true },
     ]);
     renderNav();
     mocks.paint.resolve();
@@ -350,22 +351,50 @@ describe("NavMain highlight follows the router", () => {
 });
 
 describe("NavMain Triage entry (A-04)", () => {
-  it("shows Triage only to people who hold intake:triage", () => {
+  beforeEach(() => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
+      { key: "feature.intake", enabled: true },
+    ]);
+  });
+
+  it("shows Triage only to people who hold intake:triage", async () => {
     const holder = renderNav();
-    expect(screen.getByRole("button", { name: "Triage" })).toBeInTheDocument();
+    mocks.paint.resolve();
+    expect(
+      await screen.findByRole("button", { name: "Triage" }),
+    ).toBeInTheDocument();
     holder.unmount();
 
     mocks.triage = false;
     renderNav();
+    mocks.paint.resolve();
+    await waitFor(() =>
+      expect(mocks.getWorkspaceResolvedFeatures).toHaveBeenCalled(),
+    );
     expect(screen.queryByRole("button", { name: "Triage" })).toBeNull();
     expect(screen.getByRole("button", { name: "My work" })).toBeInTheDocument();
+  });
+
+  it("hides Triage while feature.intake is off, even for a triager", async () => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
+      { key: "feature.intake", enabled: false },
+      { key: "feature.knowledge_base", enabled: true },
+    ]);
+    renderNav();
+    mocks.paint.resolve();
+    await screen.findByRole("button", { name: "Knowledge base" });
+    expect(screen.queryByRole("button", { name: "Triage" })).toBeNull();
   });
 });
 
 describe("NavMain preloads on intent (S7b)", () => {
-  it("preloads an entry's route on hover and on keyboard focus, and still navigates on click", () => {
+  it("preloads an entry's route on hover and on keyboard focus, and still navigates on click", async () => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
+      { key: "feature.intake", enabled: true },
+    ]);
     renderNav();
-    const triage = screen.getByRole("button", { name: "Triage" });
+    mocks.paint.resolve();
+    const triage = await screen.findByRole("button", { name: "Triage" });
     fireEvent.mouseEnter(triage);
     expect(mocks.preloadRoute).toHaveBeenCalledWith({
       to: "/agent/triage",
@@ -394,8 +423,12 @@ describe("NavMain preloads on intent (S7b)", () => {
 
   it("ignores a failed preload; the click still loads the route", async () => {
     mocks.preloadRoute.mockRejectedValue(new Error("chunk failed"));
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
+      { key: "feature.intake", enabled: true },
+    ]);
     renderNav();
-    fireEvent.mouseEnter(screen.getByRole("button", { name: "Triage" }));
+    mocks.paint.resolve();
+    fireEvent.mouseEnter(await screen.findByRole("button", { name: "Triage" }));
     await Promise.resolve();
     fireEvent.click(screen.getByRole("button", { name: "Triage" }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent/triage" });

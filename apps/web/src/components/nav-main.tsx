@@ -85,7 +85,8 @@ export function NavMain() {
   // follows the strict `logTime` capability.
   const { canLogTime, canTriageIntake } = useWorkspacePermission();
   // Triage needs intake:triage (permissions.md); members and viewers would only meet a 403 (A-04).
-  const triageOn = canTriageIntake();
+  // `feature.intake` off (the default): the entry is gone, as every intake read answers 404.
+  const triageOn = canTriageIntake() && features.isOn("feature.intake");
   const timeTrackingOn = features.isOn("feature.time_tracking") && canLogTime();
   // `feature.reports` off: the Reports and Dashboard entries are gone (P5 reports).
   const reportsOn = features.isOn("feature.reports");

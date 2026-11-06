@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { KbFeatureGate } from "@/components/kb/agent/kb-feature-gate";
 import { KbList } from "@/components/kb/agent/kb-list";
 import { parseKbListSearch } from "@/lib/routes";
 
@@ -12,9 +13,13 @@ function KbRoute() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   return (
-    <KbList
-      search={search}
-      onSearchChange={(next) => void navigate({ search: next, replace: true })}
-    />
+    <KbFeatureGate>
+      <KbList
+        search={search}
+        onSearchChange={(next) =>
+          void navigate({ search: next, replace: true })
+        }
+      />
+    </KbFeatureGate>
   );
 }

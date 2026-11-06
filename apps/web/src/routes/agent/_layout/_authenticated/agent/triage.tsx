@@ -30,6 +30,7 @@ import {
 } from "@/components/intake/triage-filter-menu";
 import PageTitle from "@/components/page-title";
 import { getRequestTypes, getSubmissions } from "@/fetchers/intake";
+import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
@@ -57,6 +58,11 @@ function IntakeRoute() {
   // A-04: triage needs intake:triage. Without it nothing is fetched (the API answers 403) and
   // the page says so once the capability read settles.
   const canTriage = permissions.canTriageIntake();
+  // `feature.intake` is off by default. While it is off every intake read answers 404, so
+  // nothing is fetched and the page shows the calm off state instead of load errors.
+  const features = useWorkspaceFeatures(workspace.data?.id);
+  const intakeOn = features.isOn("feature.intake");
+  const canRead = canTriage && intakeOn;
   const {
     state,
     ref,
@@ -109,7 +115,7 @@ function IntakeRoute() {
   const requestTypeList = useQuery({
     queryKey: ["request-types", workspace.data?.id],
     queryFn: () => getRequestTypes(workspace.data?.id ?? ""),
-    enabled: Boolean(workspace.data?.id) && canTriage,
+    enabled: Boolean(workspace.data?.id) && canRead,
   });
   const requestTypeRefs = (
     requestTypeList.data as unknown as
@@ -132,7 +138,7 @@ function IntakeRoute() {
     queryKey: ["intake", workspace.data?.id, state, cursor, server],
     queryFn: () =>
       getSubmissions(workspace.data?.id ?? "", state, cursor, server),
-    enabled: Boolean(workspace.data?.id) && canTriage && !pending && !queuePair,
+    enabled: Boolean(workspace.data?.id) && canRead && !pending && !queuePair,
   });
   const rows = (queue.data?.submissions ?? []) as StaffSubmissionQueueRow[];
   const requestTypeOptions = (
@@ -156,6 +162,43 @@ function IntakeRoute() {
     void navigate({ search: searchWith({ ...patch, cursor: undefined }) });
   const deniedByServer =
     queue.error instanceof HttpError && queue.error.status === 403;
+  if (workspace.data?.id && !intakeOn)
+    return (
+      <div className="flex h-full w-full min-w-0 flex-col">
+        <PageTitle title={t("title")} />
+        <Layout.Header className="items-center justify-between">
+          <h1 className="px-2 font-medium text-sm">{t("title")}</h1>
+        </Layout.Header>
+        <Layout.Content className="overflow-y-auto">
+          <div className="flex flex-col gap-3 px-4 py-3">
+            {features.isLoading ? (
+              <p role="status">{t("loading")}</p>
+            ) : features.isError ? (
+              // A failed read is not "off": offer Retry instead of the off notice.
+              <Alert variant="error" role="alert">
+                <AlertDescription>{t("loadError")}</AlertDescription>
+                <Button
+                  variant="outline"
+                  onClick={() => void features.refetch()}
+                >
+                  {t("retry", { defaultValue: "Retry" })}
+                </Button>
+              </Alert>
+            ) : (
+              // The same empty state as the other switched-off features (`FeatureOff`).
+              <Empty data-testid="feature-off-intake">
+                <EmptyHeader>
+                  <EmptyTitle>{t("featureOff.title")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("featureOff.description")}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </div>
+        </Layout.Content>
+      </div>
+    );
   if (workspace.data?.id && (!canTriage || deniedByServer))
     return (
       <div className="flex h-full w-full min-w-0 flex-col">

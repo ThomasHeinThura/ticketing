@@ -85,7 +85,8 @@
 				"cors": "Unable to connect to the server. This might be due to CORS configuration issues.",
 				"network": "Network error. Please check your internet connection and try again.",
 				"server": "Server error. Please try again later.",
-				"unknown": "An unexpected error occurred."
+				"unknown": "An unexpected error occurred.",
+				"chunkLoad": "Part of this page didn't load, possibly because TaskDesk was updated. Select Try again to reload the page."
 			},
 			"troubleshootingSteps": {
 				"cors": {
@@ -5041,7 +5042,11 @@
 		},
 		"loadError": "The {{term_submission_other}} could not be loaded.",
 		"noAccessDescription": "Triage needs the intake triage permission. Ask a workspace admin if you need it.",
-		"noAccessTitle": "You cannot triage {{term_submission_other}}"
+		"noAccessTitle": "You cannot triage {{term_submission_other}}",
+		"featureOff": {
+			"title": "Intake is off for this workspace",
+			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on."
+		}
 	},
 	"requestTypes": {
 		"addField": "Add field",
@@ -7630,6 +7635,14 @@
 		"visibility": {
 			"customers": "Customers",
 			"staff": "Staff only"
+		},
+		"featureOff": {
+			"title": "Knowledge base is off for this workspace",
+			"description": "A workspace admin can switch on the knowledge base in the workspace's feature settings. Existing articles are kept and come back when it is switched on."
+		},
+		"featureState": {
+			"loadErrorTitle": "Could not check the knowledge base",
+			"loadErrorDescription": "Whether the knowledge base is on could not be loaded. Try again."
 		}
 	},
 	"serviceManagement": {

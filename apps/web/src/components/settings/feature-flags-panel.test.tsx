@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   save: vi.fn(),
   error: null as unknown,
   query: { isError: false, error: null as unknown },
+  invalidateQueries: vi.fn(),
+  setQueryData: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -50,18 +52,24 @@ vi.mock("@tanstack/react-query", () => ({
     refetch: vi.fn(),
   }),
   useQueryClient: () => ({
-    setQueryData: vi.fn(),
-    invalidateQueries: vi.fn(),
+    setQueryData: mocks.setQueryData,
+    invalidateQueries: mocks.invalidateQueries,
   }),
   useMutation: ({
     mutationFn,
+    onSuccess,
   }: {
     mutationFn: (value: unknown) => Promise<unknown>;
+    onSuccess?: (data: unknown) => void;
   }) => ({
     isPending: false,
     isError: mocks.error !== null,
     error: mocks.error,
-    mutate: (value: unknown) => void mutationFn(value),
+    mutate: (value: unknown) =>
+      void mutationFn(value).then(
+        (data) => onSuccess?.(data),
+        () => {},
+      ),
   }),
 }));
 
@@ -85,9 +93,51 @@ beforeEach(() => {
   mocks.error = null;
   mocks.query = { isError: false, error: null };
   mocks.save.mockReset().mockResolvedValue([]);
+  mocks.invalidateQueries.mockReset();
+  mocks.setQueryData.mockReset();
 });
 
 describe("FeatureFlagsPanel", () => {
+  it.each([
+    { level: "instance" },
+    { level: "workspace", workspaceId: "workspace-1" },
+    { level: "project", projectId: "project-1" },
+  ] as const)(
+    "refreshes the effective feature reads after a $level change",
+    async (target) => {
+      mocks.rows = [row({ key: "feature.knowledge_base", version: 2 })];
+      const saved = [row({ key: "feature.knowledge_base", enabled: true })];
+      mocks.save.mockResolvedValue(saved);
+      render(<FeatureFlagsPanel target={target} />);
+      const switches = screen.getAllByRole("switch");
+      fireEvent.click(switches[switches.length - 1] as HTMLElement);
+      await waitFor(() =>
+        expect(mocks.invalidateQueries).toHaveBeenCalledTimes(2),
+      );
+      expect(mocks.setQueryData).toHaveBeenCalledWith(
+        ["feature-flags", target],
+        saved,
+      );
+      // The workspace's resolved values (navigation, KB, Triage) and every project's (Pages).
+      expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ["features"],
+      });
+      expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ["agile", "features"],
+      });
+    },
+  );
+
+  it("does not refresh the effective feature reads when a change fails", async () => {
+    mocks.rows = [row({ key: "feature.knowledge_base", version: 2 })];
+    mocks.save.mockRejectedValue(new Error("boom"));
+    render(<FeatureFlagsPanel target={{ level: "instance" }} />);
+    const switches = screen.getAllByRole("switch");
+    fireEvent.click(switches[switches.length - 1] as HTMLElement);
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.invalidateQueries).not.toHaveBeenCalled();
+  });
+
   it("instance level toggles a flag and its lock with the row version", async () => {
     mocks.rows = [row({ key: "feature.cycles", version: 4 })];
     render(<FeatureFlagsPanel target={{ level: "instance" }} />);

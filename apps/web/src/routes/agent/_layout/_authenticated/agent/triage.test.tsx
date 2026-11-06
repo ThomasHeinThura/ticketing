@@ -18,6 +18,10 @@ const mocks = vi.hoisted(() => ({
   search: { state: "new" } as IntakeQueueSearch,
   canTriage: true,
   checkingPermissions: false,
+  intakeOn: true,
+  featuresLoading: false,
+  featuresError: false,
+  refetchFeatures: vi.fn(),
   queuePanelProps: undefined as Record<string, unknown> | undefined,
   queuePickerProps: undefined as Record<string, unknown> | undefined,
   workItemTypes: [] as Array<{ id: string; name: string }>,
@@ -70,6 +74,14 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     canTriageIntake: () => mocks.canTriage,
     canShareSavedViews: () => false,
     isCheckingPermissions: mocks.checkingPermissions,
+  }),
+}));
+vi.mock("@/hooks/queries/feature-flag/use-workspace-features", () => ({
+  default: () => ({
+    isOn: (key: string) => key === "feature.intake" && mocks.intakeOn,
+    isLoading: mocks.featuresLoading,
+    isError: mocks.featuresError,
+    refetch: mocks.refetchFeatures,
   }),
 }));
 vi.mock("@/components/intake/queue-picker", () => ({
@@ -167,6 +179,10 @@ describe("intake triage route", () => {
     mocks.search = { state: "new" };
     mocks.canTriage = true;
     mocks.checkingPermissions = false;
+    mocks.intakeOn = true;
+    mocks.featuresLoading = false;
+    mocks.featuresError = false;
+    mocks.refetchFeatures.mockReset();
     mocks.queuePanelProps = undefined;
     mocks.queuePickerProps = undefined;
     mocks.workItemTypes = [];
@@ -196,6 +212,53 @@ describe("intake triage route", () => {
   });
 
   afterEach(() => cleanup());
+
+  it("shows the Intake-off state and fetches nothing when feature.intake is off", async () => {
+    mocks.intakeOn = false;
+    renderTriage();
+    expect(screen.getByTestId("feature-off-intake")).toBeInTheDocument();
+    expect(screen.getByText("featureOff.title")).toBeInTheDocument();
+    expect(screen.getByText("featureOff.description")).toBeInTheDocument();
+    await act(async () => {});
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.getSubmissions).not.toHaveBeenCalled();
+    expect(mocks.getRequestTypes).not.toHaveBeenCalled();
+    expect(mocks.queuePickerProps).toBeUndefined();
+  });
+
+  it("offers Retry, not the Intake-off state, when the feature read fails", async () => {
+    mocks.intakeOn = false;
+    mocks.featuresError = true;
+    renderTriage();
+    expect(screen.queryByTestId("feature-off-intake")).toBeNull();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("The submissions could not be loaded.");
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    expect(mocks.refetchFeatures).toHaveBeenCalledTimes(1);
+    await act(async () => {});
+    expect(mocks.getSubmissions).not.toHaveBeenCalled();
+  });
+
+  it("waits for the resolved features before fetching the queue", async () => {
+    mocks.intakeOn = false;
+    mocks.featuresLoading = true;
+    renderTriage();
+    expect(screen.getByRole("status")).toHaveTextContent("loading");
+    expect(screen.queryByTestId("feature-off-intake")).toBeNull();
+    await act(async () => {});
+    expect(mocks.getSubmissions).not.toHaveBeenCalled();
+    expect(mocks.getRequestTypes).not.toHaveBeenCalled();
+  });
+
+  it("shows the Intake-off state even with a saved queue or submission in the URL", async () => {
+    mocks.intakeOn = false;
+    mocks.search = { queue: "queue-pair-17", ref: "SUB-7" };
+    renderTriage();
+    expect(screen.getByTestId("feature-off-intake")).toBeInTheDocument();
+    await act(async () => {});
+    expect(screen.queryByTestId("saved-queue-panel")).toBeNull();
+    expect(mocks.getSubmission).not.toHaveBeenCalled();
+  });
 
   it("opens a saved pair without injecting the ordinary new-state filter or clearing stored queries", async () => {
     mocks.search = { queue: "queue-pair-17" };
