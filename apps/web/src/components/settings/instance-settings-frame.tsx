@@ -155,7 +155,8 @@ export function InstanceSettingsFrame({ children }: { children: ReactNode }) {
           </SidebarGroup>
         </nav>
       </SettingsSidebar>
-      <div id={SETTINGS_CONTENT_ID} className="min-w-0 flex-1">
+      {/* A flex row, so each page stays a flex item and lays out exactly as before. */}
+      <div id={SETTINGS_CONTENT_ID} className="flex min-w-0 flex-1">
         {children}
       </div>
     </div>
