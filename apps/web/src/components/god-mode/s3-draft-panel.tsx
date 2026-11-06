@@ -156,12 +156,28 @@ function S3DraftForm({
   const credentialsValid =
     (effectiveAccessMode !== "replace" || !!trimmedAccess) &&
     (effectiveSecretMode !== "replace" || !!trimmedSecret);
+  /**
+   * The config with each number field's text applied when it parses. A blank or unparsable field
+   * keeps its last committed value, so a half-cleared field never sends a fragment such as "3".
+   */
+  function committedConfig(): S3DraftConfig {
+    const next = { ...config };
+    for (const [field, raw] of Object.entries(numberDrafts) as [
+      NumericField,
+      string,
+    ][]) {
+      const parsed = parseNumber(raw);
+      if (parsed !== null) next[field] = parsed;
+    }
+    return next;
+  }
   function snapshot(): S3DraftRequest {
-    const { endpoint, ...rest } = config;
+    const committed = committedConfig();
+    const { endpoint, ...rest } = committed;
     const request: S3DraftRequest = {
       version: base.version,
       config:
-        config.connector === "external"
+        committed.connector === "external"
           ? { ...rest, endpoint }
           : { ...rest, forcePathStyle: true },
     };
@@ -309,14 +325,18 @@ function S3DraftForm({
                     patch({ [field]: raw });
                     return;
                   }
+                  // The text is committed on blur (or used by Save/Test), not while typing,
+                  // so clearing "300" one key at a time never leaves "3" behind.
                   setNumberDrafts((current) => ({ ...current, [field]: raw }));
-                  const parsed = parseNumber(raw);
-                  if (parsed !== null) patch({ [field]: parsed });
                 }}
                 onBlur={() => {
-                  // Leaving the field shows the last value that parsed; blank text never becomes 0.
-                  if (isNumericField(field))
-                    setNumberDrafts(({ [field]: _left, ...rest }) => rest);
+                  if (!isNumericField(field)) return;
+                  // A value that parses is committed; blank or unparsable text restores the
+                  // last committed value. It never becomes 0.
+                  const raw = numberDrafts[field];
+                  const parsed = raw === undefined ? null : parseNumber(raw);
+                  if (parsed !== null) patch({ [field]: parsed });
+                  setNumberDrafts(({ [field]: _left, ...rest }) => rest);
                 }}
               />
             </div>

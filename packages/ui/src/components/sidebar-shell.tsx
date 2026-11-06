@@ -58,8 +58,11 @@ function SkipToMainLink({
       data-slot="skip-link"
       href={`#${targetId}`}
       onClick={(event) => {
+        const document = event.currentTarget.ownerDocument;
+        // Fall back to the shell's `main` when a page has no element with `targetId`.
         const target =
-          event.currentTarget.ownerDocument.getElementById(targetId);
+          document.getElementById(targetId) ??
+          document.getElementById(SIDEBAR_MAIN_ID);
         if (!target) return;
         event.preventDefault();
         if (!target.hasAttribute("tabindex")) {

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { ActionTooltip } from "@/components/common/action-tooltip";
 import PageTitle from "@/components/page-title";
 import { SettingsSidebarProvider } from "@/components/SettingsSidebar";
+import { SETTINGS_CONTENT_ID } from "@/components/settings/settings-content-id";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { isGodModePath } from "@/lib/god-mode-paths";
@@ -77,8 +78,12 @@ export function SettingsShell({
 
   return (
     <>
-      {/* WCAG 2.4.1 bypass block: the agent shell's skip link, first in Tab order, to `main`. */}
-      <SkipToMainLink label={t("common:a11y.skipToContent")} />
+      {/* WCAG 2.4.1 bypass block: the first Tab stop skips the back button and the settings
+          menu to the page content column (each settings frame marks it; else `main`). */}
+      <SkipToMainLink
+        label={t("common:a11y.skipToContent")}
+        targetId={SETTINGS_CONTENT_ID}
+      />
       <PageTitle title={title} />
 
       <div className="flex h-full w-full flex-col bg-sidebar p-2 sm:p-4">

@@ -135,7 +135,9 @@ describe("SettingsShell landmarks (a11y #11, #13)", () => {
     });
     const mains = screen.getAllByRole("main");
     expect(mains).toHaveLength(1);
-    expect(skipLink).toHaveAttribute("href", `#${mains[0]?.id}`);
+    // It targets the frame's content column past the settings menu; this test's frame has
+    // none, so the click falls back to the shell's one main.
+    expect(skipLink).toHaveAttribute("href", "#settings-content");
     expect(mains[0]).toHaveTextContent("Settings content");
 
     // First Tab stop: nothing focusable precedes the skip link.

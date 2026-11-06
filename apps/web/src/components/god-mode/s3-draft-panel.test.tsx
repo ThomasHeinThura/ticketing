@@ -386,6 +386,20 @@ describe("S3DraftPanel", () => {
         10485760,
       );
     });
+    it("does not keep a fragment when a field is cleared one key at a time", async () => {
+      setup();
+      const bytes = await screen.findByLabelText("draft.maxImageUploadBytes");
+      for (const value of ["1048576", "104", "1", ""])
+        fireEvent.change(bytes, { target: { value } });
+      fireEvent.blur(bytes);
+      expect(bytes).toHaveValue(10485760);
+      await factor();
+      fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+      await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+      expect(mocks.save.mock.calls[0][0].config.maxImageUploadBytes).toBe(
+        10485760,
+      );
+    });
   });
   describe("rate limiting", () => {
     it("shows the wait from Retry-After and lets the user retry the test", async () => {

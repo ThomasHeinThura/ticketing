@@ -467,7 +467,12 @@ function PortalSubmissionContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setWithdrawConfirmOpen(true)}
+                    onClick={() => {
+                      // The page instance is reused across requests: a withdrawal on an earlier
+                      // request must not send focus to the heading when this dialog is cancelled.
+                      withdrawnRef.current = false;
+                      setWithdrawConfirmOpen(true);
+                    }}
                     disabled={withdraw.isPending}
                   >
                     {t("portal:intake.withdraw", {

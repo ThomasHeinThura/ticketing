@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import SettingsSidebar from "@/components/SettingsSidebar";
+import { SETTINGS_CONTENT_ID } from "@/components/settings/settings-content-id";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
 
@@ -136,7 +137,9 @@ export function AccountSettingsFrame({ children }: { children: ReactNode }) {
         </div>
       </SettingsSidebar>
 
-      <div className="flex-1 min-w-0 overflow-y-auto">{children}</div>
+      <div id={SETTINGS_CONTENT_ID} className="flex-1 min-w-0 overflow-y-auto">
+        {children}
+      </div>
     </div>
   );
 }
