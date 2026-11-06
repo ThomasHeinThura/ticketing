@@ -40,6 +40,7 @@ import { invalidateFeatureFlagCache } from "../../apps/api/src/feature-flag/enfo
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import {
   createAttachmentDownloadUrl,
+  createAttachmentUploadUrl as createGenericAttachmentUploadUrl,
   putAttachmentObject,
 } from "../../apps/api/src/storage/filesystem";
 import {
@@ -1340,6 +1341,175 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
       },
     );
     expect(early.status).toBe(400);
+  });
+
+  it("binds an open submission's filesystem upload to its customer and refuses old bearer links", async () => {
+    const s = await seed();
+    const optional = await evidenceRequestType(s, false);
+    const created = await portalRequest(
+      s.contoso,
+      s.alice,
+      "/api/portal/submissions",
+      {
+        method: "POST",
+        body: { key: optional.key, formData: { summary: "Logs" } },
+      },
+    );
+    expect(created.status, await created.clone().text()).toBe(200);
+    const { ref } = (await created.json()) as { ref: string };
+    const base = `/api/portal/submissions/${ref}`;
+    const presign = await portalRequest(
+      s.contoso,
+      s.alice,
+      `${base}/attachments/presign`,
+      {
+        method: "POST",
+        body: {
+          filename: "logs..final.pdf",
+          contentType: "application/pdf",
+          size: PDF_BYTES.length,
+          fieldKey: "evidence",
+        },
+      },
+    );
+    expect(presign.status, await presign.clone().text()).toBe(200);
+    const signed = (await presign.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+    const url = new URL(signed.uploadUrl);
+    expect(url.host).toBe(PORTAL_HOST);
+    expect(url.pathname).toBe("/api/storage/portal-attachment-upload");
+    const key = await objectKeyOf(signed.attachmentId);
+    expect(key).toMatch(
+      /^workspace\/[^/]+\/submission\/[^/]+\/attachment\/[^/]+\/[^/]+$/u,
+    );
+
+    const upload = (target: string, who: Customer = s.alice) => {
+      mockAuthenticatedSession(who.user, { portal: "customer" });
+      return portalHostStorage(s.contoso, target, {
+        method: "PUT",
+        headers: signed.uploadHeaders,
+        body: PDF_BYTES,
+      });
+    };
+    for (const who of [s.bob, s.frank])
+      expect((await upload(signed.uploadUrl, who)).status).toBe(400);
+    mockAnonymousSession();
+    expect(
+      (
+        await portalHostStorage(s.contoso, signed.uploadUrl, {
+          method: "PUT",
+          headers: signed.uploadHeaders,
+          body: PDF_BYTES,
+        })
+      ).status,
+    ).toBe(401);
+    mockAuthenticatedSession(s.contoso.requester.user, { portal: "agent" });
+    expect(
+      (
+        await portalHostStorage(s.contoso, signed.uploadUrl, {
+          method: "PUT",
+          headers: signed.uploadHeaders,
+          body: PDF_BYTES,
+        })
+      ).status,
+    ).toBe(401);
+
+    expect((await afterExpiry(() => upload(signed.uploadUrl))).status).toBe(
+      400,
+    );
+    for (const [name, value] of [
+      ["key", key.replace(signed.attachmentId, "other-attachment")],
+      ["maxBytes", "1"],
+      ["token", "x".repeat(43)],
+    ] as const)
+      expect(
+        (await upload(withParam(signed.uploadUrl, name, value))).status,
+        name,
+      ).toBe(400);
+
+    const old = createGenericAttachmentUploadUrl(
+      key,
+      "application/pdf",
+      25 * 1024 * 1024,
+      `http://${PORTAL_HOST}/api`,
+    );
+    expect((await upload(old.uploadUrl)).status).toBe(404);
+    const oldPath = new URL(old.uploadUrl);
+    const oldOnAgent = await s.contoso.app.request(
+      `${oldPath.pathname}${oldPath.search}`,
+      {
+        method: "PUT",
+        headers: old.headers,
+        body: new Uint8Array(PDF_BYTES),
+      },
+    );
+    expect(oldOnAgent.status).toBe(400);
+    const portalOnAgent = await s.contoso.app.request(
+      `${url.pathname}${url.search}`,
+      {
+        method: "PUT",
+        headers: signed.uploadHeaders,
+        body: new Uint8Array(PDF_BYTES),
+      },
+    );
+    expect(portalOnAgent.status).toBe(404);
+
+    expect((await upload(signed.uploadUrl)).status).toBe(204);
+    const complete = await portalRequest(
+      s.contoso,
+      s.alice,
+      `${base}/attachments/${signed.attachmentId}/complete`,
+      { method: "POST" },
+    );
+    expect(complete.status, await complete.clone().text()).toBe(200);
+    const downloaded = await portalDownloadBytes(
+      s.contoso,
+      s.alice,
+      `${base}/attachments/${signed.attachmentId}`,
+    );
+    expect(downloaded.body.equals(PDF_BYTES)).toBe(true);
+  });
+
+  it("keeps open submission uploads on the S3 presign path", async () => {
+    const s = await seed();
+    const optional = await evidenceRequestType(s, false);
+    const created = await portalRequest(
+      s.contoso,
+      s.alice,
+      "/api/portal/submissions",
+      {
+        method: "POST",
+        body: { key: optional.key, formData: { summary: "Logs" } },
+      },
+    );
+    expect(created.status).toBe(200);
+    const { ref } = (await created.json()) as { ref: string };
+    const host = useS3Driver();
+    const presign = await portalRequest(
+      s.contoso,
+      s.alice,
+      `/api/portal/submissions/${ref}/attachments/presign`,
+      {
+        method: "POST",
+        body: {
+          filename: "logs.pdf",
+          contentType: "application/pdf",
+          size: PDF_BYTES.length,
+          fieldKey: "evidence",
+        },
+      },
+    );
+    expect(presign.status, await presign.clone().text()).toBe(200);
+    const { uploadUrl } = (await presign.json()) as { uploadUrl: string };
+    const signed = new URL(uploadUrl);
+    expect(signed.host).toBe(host);
+    expect(signed.searchParams.get("X-Amz-Signature")).toBeTruthy();
+    expect(signed.searchParams.get("X-Amz-SignedHeaders")).toContain(
+      "content-length",
+    );
   });
 
   it("binds a submission's own file download to the requester and refuses every other reader and unbound link (CP-19, AT-5)", async () => {
