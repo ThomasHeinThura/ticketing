@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), probe: vi.fn() }));
 
@@ -47,7 +48,8 @@ beforeEach(() => {
   mocks.get.mockReset().mockResolvedValue(sample);
   mocks.probe.mockReset().mockResolvedValue({
     status: "verified",
-    cleanup: "confirmed",
+    cleanup: "not_attempted",
+    diagnosticObjectMayRemain: true,
     durationMs: 42,
   });
 });
@@ -71,6 +73,7 @@ describe("StorageUsagePanel", () => {
     expect(await screen.findByText("backendTitle")).toBeInTheDocument();
     expect(screen.getByText("drivers.filesystem")).toBeInTheDocument();
     expect(screen.getByText("connectivityDescription")).toBeInTheDocument();
+    expect(screen.getByText("probeRetentionNotice")).toBeInTheDocument();
     expect(screen.getByText("physicalUsageUnavailable")).toBeInTheDocument();
     expect(screen.getByText("states.ready")).toBeInTheDocument();
     expect(screen.getByText("2.0 KB")).toBeInTheDocument();
@@ -83,6 +86,71 @@ describe("StorageUsagePanel", () => {
       await screen.findByText("probeStatuses.verified"),
     ).toBeInTheDocument();
     expect(mocks.probe).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(/duration/)).toBeInTheDocument();
+    expect(screen.getByText(/cleanup.not_attempted/)).toHaveTextContent(
+      "probeObjectMayRemain",
+    );
+    expect(
+      screen.getByText("probeStatuses.verified").closest('[role="alert"]'),
+    ).toHaveClass("border-warning/32");
+  });
+
+  it("reports legacy confirmed cleanup as successful", async () => {
+    mocks.probe.mockResolvedValue({
+      status: "verified",
+      cleanup: "confirmed",
+      durationMs: 42,
+    });
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: "runProbe" }));
+    expect(
+      (await screen.findByText("probeStatuses.verified")).closest(
+        '[role="alert"]',
+      ),
+    ).toHaveClass("border-success/32");
+    expect(screen.getByText(/cleanup.confirmed/)).toBeInTheDocument();
+    expect(screen.queryByText(/probeObjectMayRemain/)).not.toBeInTheDocument();
+  });
+
+  it.each(["write_failed", "read_failed", "content_mismatch", "timed_out"])(
+    "preserves the %s result",
+    async (status) => {
+      mocks.probe.mockResolvedValue({
+        status,
+        cleanup: "not_attempted",
+        diagnosticObjectMayRemain: true,
+        durationMs: 42,
+      });
+      renderPanel();
+      fireEvent.click(await screen.findByRole("button", { name: "runProbe" }));
+      expect(
+        await screen.findByText(`probeStatuses.${status}`),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("disables the probe while pending and shows request failures", async () => {
+    let rejectProbe!: (reason: Error) => void;
+    mocks.probe.mockReturnValue(
+      new Promise((_, reject) => {
+        rejectProbe = reject;
+      }),
+    );
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: "runProbe" }));
+    expect(
+      await screen.findByRole("button", { name: "probing" }),
+    ).toBeDisabled();
+    rejectProbe(new Error("failed"));
+    expect(await screen.findByText("probeRequestFailed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "runProbe" })).toBeEnabled();
+  });
+
+  it("shows the permission denial without exposing the probe", async () => {
+    mocks.get.mockRejectedValue(new HttpError(403, "Forbidden"));
+    renderPanel();
+    expect(await screen.findByText("forbiddenTitle")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "runProbe" }),
+    ).not.toBeInTheDocument();
   });
 });

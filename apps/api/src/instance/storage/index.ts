@@ -62,6 +62,7 @@ const probeResponseSchema = z.object({
     "cleanup_indeterminate",
   ]),
   cleanup: z.enum(["confirmed", "failed", "indeterminate", "not_attempted"]),
+  diagnosticObjectMayRemain: z.boolean(),
   durationMs: z.number().int().nonnegative(),
 });
 
@@ -89,9 +90,9 @@ const probeRoute = createRoute({
   path: "/storage/test",
   operationId: "runInstanceStorageProbe",
   tags: ["Instance"],
-  summary: "Run a bounded storage write/read/delete probe",
+  summary: "Run a bounded storage write/read probe",
   description:
-    "Writes fixed nonsecret bytes to a generated reserved key on one frozen backend selection, verifies them, and attempts to delete that exact key. No object identifiers are returned.",
+    "Writes fixed nonsecret bytes to a generated reserved key on the bootstrap-selected driver and verifies them. Cleanup is not attempted because the adapters cannot delete by immutable object identity; a small diagnostic object may remain outside attachment metadata totals. No object identifiers are returned.",
   middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse("Bounded storage probe outcome", probeResponseSchema),

@@ -107,7 +107,7 @@ export const instancePolicies = {
     },
     elevated: false,
     elevationExemptionReason:
-      "bounded diagnostic on one frozen backend using a server-generated object, fixed nonsecret bytes and exact-object cleanup; no authority or configuration change",
+      "bounded diagnostic on the bootstrap-selected driver using a server-generated key and fixed nonsecret bytes; no deletion, authority or configuration change; a small diagnostic object may remain",
     sessionOnly: true,
   },
   "GET /api/instance/mcp/usage": {

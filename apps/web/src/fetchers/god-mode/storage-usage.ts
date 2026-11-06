@@ -34,6 +34,7 @@ export type StorageProbeResult = {
     | "cleanup_failed"
     | "cleanup_indeterminate";
   cleanup: "confirmed" | "failed" | "indeterminate" | "not_attempted";
+  diagnosticObjectMayRemain?: boolean;
   durationMs: number;
 };
 

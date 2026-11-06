@@ -123,6 +123,9 @@ export function StorageUsagePanel() {
             <AlertTitle>{t("connectivityTitle")}</AlertTitle>
             <AlertDescription>{t("connectivityDescription")}</AlertDescription>
           </Alert>
+          <p className="text-muted-foreground text-sm">
+            {t("probeRetentionNotice")}
+          </p>
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="outline"
@@ -207,13 +210,22 @@ export function StorageUsagePanel() {
 function ProbeOutcome({ result }: { result: StorageProbeResult }) {
   const { t } = useTranslation("godModeStorage");
   return (
-    <Alert variant={result.status === "verified" ? "success" : "warning"}>
+    <Alert
+      variant={
+        result.status === "verified" && result.cleanup === "confirmed"
+          ? "success"
+          : "warning"
+      }
+    >
       <AlertTitle>{t(`probeStatuses.${result.status}`)}</AlertTitle>
       <AlertDescription>
         {t("probeOutcome", {
           cleanup: t(`cleanup.${result.cleanup}`),
           duration: result.durationMs,
         })}
+        {result.diagnosticObjectMayRemain
+          ? ` ${t("probeObjectMayRemain")}`
+          : null}
       </AlertDescription>
     </Alert>
   );

@@ -87812,8 +87812,8 @@
         "tags": [
           "Instance"
         ],
-        "summary": "Run a bounded storage write/read/delete probe",
-        "description": "Writes fixed nonsecret bytes to a generated reserved key on one frozen backend selection, verifies them, and attempts to delete that exact key. No object identifiers are returned.",
+        "summary": "Run a bounded storage write/read probe",
+        "description": "Writes fixed nonsecret bytes to a generated reserved key on the bootstrap-selected driver and verifies them. Cleanup is not attempted because the adapters cannot delete by immutable object identity; a small diagnostic object may remain outside attachment metadata totals. No object identifiers are returned.",
         "responses": {
           "200": {
             "description": "Bounded storage probe outcome",
@@ -87843,6 +87843,9 @@
                         "not_attempted"
                       ]
                     },
+                    "diagnosticObjectMayRemain": {
+                      "type": "boolean"
+                    },
                     "durationMs": {
                       "type": "integer",
                       "minimum": 0
@@ -87851,6 +87854,7 @@
                   "required": [
                     "status",
                     "cleanup",
+                    "diagnosticObjectMayRemain",
                     "durationMs"
                   ]
                 }

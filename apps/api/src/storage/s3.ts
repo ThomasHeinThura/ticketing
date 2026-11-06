@@ -578,20 +578,3 @@ export async function readStorageProbeObject(
   if (signal.aborted) throw signal.reason;
   return Buffer.concat(chunks, length);
 }
-
-/** Delete only the generated reserved probe key, passing cancellation to the S3 SDK request. */
-export async function deleteStorageProbeObject(
-  key: string,
-  signal: AbortSignal,
-): Promise<void> {
-  assertStorageProbeKey(key);
-  if (signal.aborted) throw signal.reason;
-  const config = getStorageConfig();
-  const client = getClient(config);
-  const objectKey = applyKeyPrefix(config.keyPrefix, key);
-  await client.send(
-    new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey }),
-    { abortSignal: signal },
-  );
-  if (signal.aborted) throw signal.reason;
-}

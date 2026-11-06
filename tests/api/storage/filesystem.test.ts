@@ -20,6 +20,7 @@ import {
   StoragePathError,
   signUploadTokenForTests,
   validateTaskAssetUploadInput,
+  writeStorageProbeObject,
   writeUploadedObject,
 } from "../../../apps/api/src/storage/filesystem";
 
@@ -93,6 +94,18 @@ describe("filesystem storage driver", () => {
       process.env.TASKDESK_AUTH_SECRET = originalAuthSecret;
     }
     await rm(root, { recursive: true, force: true });
+  });
+
+  it("creates probe objects exclusively and preserves a pre-existing object", async () => {
+    const key = "taskdesk-storage-probe-e21a9b3f-8a77-42be-9864-63d35c925735";
+    const signal = new AbortController().signal;
+    await writeStorageProbeObject(key, Buffer.from("diagnostic"), signal);
+    expect(await readFile(path.join(root, key), "utf8")).toBe("diagnostic");
+    await writeFile(path.join(root, key), "replacement");
+    await expect(
+      writeStorageProbeObject(key, Buffer.from("diagnostic"), signal),
+    ).rejects.toMatchObject({ name: "StorageProbeCollisionError" });
+    expect(await readFile(path.join(root, key), "utf8")).toBe("replacement");
   });
 
   it("round-trips a normal upload: presign, write, read, delete", async () => {

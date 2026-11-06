@@ -462,7 +462,6 @@ async function writeStreamToFile(
   webStream: ReadableStream<Uint8Array>,
   destPath: string,
   maxBytes: number,
-  options: { signal?: AbortSignal; exclusivePublish?: boolean } = {},
 ): Promise<void> {
   let total = 0;
   const limiter = new Transform({
@@ -490,7 +489,6 @@ async function writeStreamToFile(
   const tempPath = `${destPath}.upload-${crypto.randomBytes(16).toString("hex")}.tmp`;
 
   let fileHandle: FileHandle | undefined;
-  let exclusivelyPublished = false;
   try {
     fileHandle = await fsp.open(
       tempPath,
@@ -503,38 +501,13 @@ async function writeStreamToFile(
       0o640,
     );
     const writeStream = fileHandle.createWriteStream();
-    if (options.signal) {
-      await pipeline(nodeStream, limiter, writeStream, {
-        signal: options.signal,
-      });
-    } else {
-      await pipeline(nodeStream, limiter, writeStream);
-    }
+    await pipeline(nodeStream, limiter, writeStream);
     await fileHandle.close();
     fileHandle = undefined;
-    if (options.signal?.aborted) throw options.signal.reason;
-    if (options.exclusivePublish) {
-      // Probe keys are random and reserved, but exclusive linking also guarantees that a
-      // collision can never replace an object that was already present at the destination.
-      try {
-        await fsp.link(tempPath, destPath);
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === "EEXIST")
-          throw new StorageProbeCollisionError();
-        throw error;
-      }
-      exclusivelyPublished = true;
-      await fsp.unlink(tempPath);
-    } else {
-      // Same filesystem/root, so this is a plain atomic rename, not a copy — see the
-      // ponytail note on `finalizeAttachmentObject` below.
-      await fsp.rename(tempPath, destPath);
-    }
-    if (options.signal?.aborted) throw options.signal.reason;
+    // Same filesystem/root, so this is an atomic rename.
+    await fsp.rename(tempPath, destPath);
   } catch (error) {
     await fsp.unlink(tempPath).catch(() => {});
-    if (options.exclusivePublish && exclusivelyPublished)
-      await fsp.unlink(destPath).catch(() => {});
     if ((error as NodeJS.ErrnoException)?.code === "ELOOP") {
       throw new StoragePathError(
         "Storage path escapes the storage root via a symlink.",
@@ -1044,13 +1017,29 @@ export async function writeStorageProbeObject(
   const config = await getCanonicalFilesystemConfig();
   const candidate = resolveWithinRoot(config.root, key);
   await assertNoSymlinkEscape(path.dirname(candidate), config.root);
-  const stream = Readable.toWeb(
-    Readable.from([Buffer.from(bytes)]),
-  ) as unknown as ReadableStream<Uint8Array>;
-  await writeStreamToFile(stream, candidate, bytes.byteLength, {
-    signal,
-    exclusivePublish: true,
-  });
+  if (signal.aborted) throw signal.reason;
+  let handle: FileHandle;
+  try {
+    handle = await fsp.open(
+      candidate,
+      fs.constants.O_WRONLY |
+        fs.constants.O_CREAT |
+        fs.constants.O_EXCL |
+        fs.constants.O_NOFOLLOW,
+      0o640,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST")
+      throw new StorageProbeCollisionError();
+    throw error;
+  }
+  try {
+    if (signal.aborted) throw signal.reason;
+    await handle.writeFile(bytes, { signal });
+    if (signal.aborted) throw signal.reason;
+  } finally {
+    await handle.close();
+  }
 }
 
 /** Read at most `maxBytes` from an owned probe object, with an abortable file stream. */
@@ -1073,17 +1062,6 @@ export async function readStorageProbeObject(
   if (bytes.byteLength > maxBytes)
     throw new StoragePathError("Storage probe object size is invalid.");
   return bytes;
-}
-
-/** Filesystem unlink has no OS cancellation primitive; callers must mark an aborted wait unknown. */
-export async function deleteStorageProbeObject(
-  key: string,
-  signal: AbortSignal,
-): Promise<void> {
-  assertStorageProbeKey(key);
-  if (signal.aborted) throw signal.reason;
-  await deleteObject(key);
-  if (signal.aborted) throw signal.reason;
 }
 
 /**
