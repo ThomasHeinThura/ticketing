@@ -191,19 +191,6 @@ describe("P0 host and static isolation", () => {
     }
   });
 
-  it("keeps portal extensionless paths and missing assets at 404 without agent fallback", async () => {
-    const { app } = createApp({
-      staticRoot: agentRoot,
-      portalStaticRoot: portalRoot,
-    });
-    const headers = { host: "portal.localhost:5174" };
-    for (const path of ["/portal/not-a-route", "/assets/missing.js"]) {
-      const response = await app.request(path, { headers });
-      expect(response.status).toBe(404);
-      await expect(response.text()).resolves.not.toContain("AGENT ROOT MARKER");
-    }
-  });
-
   it("serves the portal shell for registered portal client routes only (CP-19)", async () => {
     const { app } = createApp({
       staticRoot: agentRoot,
@@ -233,24 +220,112 @@ describe("P0 host and static isolation", () => {
     await expect(agent.text()).resolves.toContain("AGENT ROOT MARKER");
   });
 
-  it("keeps unknown, agent-only, near-miss and asset portal paths at 404", async () => {
+  it("keeps unknown, agent-only and near-miss portal paths at 404 with the portal's branded shell (finding #7)", async () => {
     const { app } = createApp({
       staticRoot: agentRoot,
       portalStaticRoot: portalRoot,
     });
     const headers = { host: "portal.localhost:5174" };
     for (const path of [
+      "/nothing-here",
       "/portal/not-a-route",
       "/inbox",
       "/workspaces/abc/board",
       "/sign-in/extra",
-      "/sign-in/",
+      "/Sign-in",
       "/catalogue/x",
       "/submissions",
       "/submissions/",
       "/submissions/a/b",
+      "/invite/abc/extra",
+    ]) {
+      const response = await app.request(path, { headers });
+      expect(response.status, `GET ${path}`).toBe(404);
+      expect(response.headers.get("content-type"), path).toMatch(
+        /^text\/html/u,
+      );
+      expect(
+        response.headers.get("content-security-policy") ?? "",
+        path,
+      ).toContain("'nonce-");
+      expect(response.headers.get("cache-control"), path).toContain("no-store");
+      const body = await response.text();
+      expect(body, path).toContain("PORTAL ROOT MARKER");
+      expect(body, path).not.toContain("AGENT ROOT MARKER");
+      const head = await app.request(path, { method: "HEAD", headers });
+      expect(head.status, `HEAD ${path}`).toBe(404);
+      expect(await head.text(), `HEAD ${path}`).toBe("");
+    }
+  });
+
+  it("redirects a registered portal route reached with a trailing or doubled slash to its one address", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    const headers = { host: "portal.localhost:5174" };
+    for (const [path, location] of [
+      ["/sign-in/", "/sign-in"],
+      ["/catalogue//", "/catalogue"],
+      ["//requests", "/requests"],
+      ["/requests/ABC-1/", "/requests/ABC-1"],
+      ["/catalogue/?q=vpn", "/catalogue?q=vpn"],
+    ] as const) {
+      const response = await app.request(path, { headers });
+      expect(response.status, path).toBe(308);
+      expect(response.headers.get("location"), path).toBe(location);
+    }
+    // The Location keeps the request's percent-encoding, so decoded control characters or
+    // non-ASCII text never reach the header.
+    for (const [path, location] of [
+      [
+        "/requests/a%0D%0ASet-Cookie:%20x=1/",
+        "/requests/a%0D%0ASet-Cookie:%20x=1",
+      ],
+      ["/requests/a%00b/", "/requests/a%00b"],
+      ["/requests/%C3%A9/", "/requests/%C3%A9"],
+    ] as const) {
+      const response = await app.request(path, { headers });
+      expect(response.status, path).toBe(308);
+      expect(response.headers.get("location"), path).toBe(location);
+      expect(response.headers.get("set-cookie"), path).toBeNull();
+    }
+    // A slash form of an unregistered path is not redirected: it stays the branded 404.
+    const unknown = await app.request("/submissions/", { headers });
+    expect(unknown.status).toBe(404);
+    // A collapsed path never becomes another origin.
+    const protocolRelative = await app.request("//evil.example/", { headers });
+    expect(protocolRelative.headers.get("location")).toBeNull();
+  });
+
+  it("keeps a range request for an unknown portal path at a plain 404", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    for (const range of ["bytes=0-", "bytes=0-40", "bytes=99999-"]) {
+      const response = await app.request("/nothing-here", {
+        headers: { host: "portal.localhost:5174", range },
+      });
+      expect(response.status, range).toBe(404);
+      expect(response.headers.get("content-range"), range).toBeNull();
+      expect(await response.text(), range).not.toContain("MARKER");
+    }
+  });
+
+  it("keeps portal asset paths at a plain 404 without any shell", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    const headers = { host: "portal.localhost:5174" };
+    for (const path of [
       "/assets/missing.js",
+      "/assets/only-agent.js",
+      "/assets/missing",
+      "/assets/nested/missing",
       "/sign-in.js",
+      "/nothing-here.html",
     ]) {
       for (const method of ["GET", "HEAD"]) {
         const response = await app.request(path, { method, headers });
@@ -259,6 +334,59 @@ describe("P0 host and static isolation", () => {
           "MARKER",
         );
       }
+    }
+  });
+
+  it("never serves the portal shell for portal API paths or unsafe methods on unknown paths", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    const headers = { host: "portal.localhost:5174" };
+    for (const path of ["/api/nothing-here", "/api/portal/nothing-here"]) {
+      const response = await app.request(path, { headers });
+      expect(response.status, path).toBe(404);
+      expect(response.headers.get("content-type") ?? "", path).not.toMatch(
+        /^text\/html/u,
+      );
+      expect(await response.text(), path).not.toContain("MARKER");
+    }
+    for (const method of ["POST", "PUT", "DELETE", "PATCH"]) {
+      const response = await app.request("/nothing-here", { method, headers });
+      expect(response.status, method).not.toBe(200);
+      expect(await response.text(), method).not.toContain("MARKER");
+    }
+    // The agent host keeps its own SPA fallback for the same path.
+    const agent = await app.request("/nothing-here", {
+      headers: { host: "localhost:5173" },
+    });
+    expect(agent.status).toBe(200);
+    await expect(agent.text()).resolves.toContain("AGENT ROOT MARKER");
+  });
+
+  it("keeps the feature-off status and marker on an unknown portal path", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    const headers = { host: "portal.localhost:5174" };
+    try {
+      for (const [state, marker, status] of [
+        ["off", "disabled", 404],
+        ["unknown", "unavailable", 503],
+      ] as const) {
+        portalFlag.state = state;
+        const page = await app.request("/nothing-here", { headers });
+        expect(page.status, state).toBe(status);
+        const html = await page.text();
+        expect(html, state).toContain("PORTAL ROOT MARKER");
+        expect(html, state).toContain(
+          `<meta name="taskdesk-portal-state" content="${marker}">`,
+        );
+        expect(html, state).not.toContain("AGENT ROOT MARKER");
+      }
+    } finally {
+      portalFlag.state = "on";
     }
   });
 
@@ -279,7 +407,9 @@ describe("P0 host and static isolation", () => {
         headers: { host: "portal.localhost:5174" },
       });
       expect(portal.status, `portal ${path}`).toBe(404);
-      expect(await portal.text(), `portal ${path}`).not.toContain("MARKER");
+      expect(await portal.text(), `portal ${path}`).not.toContain(
+        "AGENT ROOT MARKER",
+      );
       const agent = await app.request(path, {
         headers: { host: "localhost:5173" },
       });

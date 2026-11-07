@@ -3973,7 +3973,9 @@
 		},
 		"notFound": {
 			"title": "Page not found",
-			"description": "This page isn't available. Check the address and try again."
+			"description": "This page isn't available. Check the address and try again.",
+			"backToDashboard": "Back to dashboard",
+			"signIn": "Sign in"
 		},
 		"error": {
 			"title": "Something went wrong",

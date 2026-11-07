@@ -3955,7 +3955,9 @@
 		},
 		"notFound": {
 			"title": "Halaman tidak ditemukan",
-			"description": "Halaman ini tidak tersedia. Periksa alamat lalu coba lagi."
+			"description": "Halaman ini tidak tersedia. Periksa alamat lalu coba lagi.",
+			"backToDashboard": "Back to dashboard",
+			"signIn": "Sign in"
 		},
 		"error": {
 			"title": "Terjadi kesalahan",
