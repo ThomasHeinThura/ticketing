@@ -7440,7 +7440,8 @@ test("agent global search screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
-  // This URL opens kaneo's real page; assert that page's own content.
+  // /agent/search renders Kaneo's workspace search inside the /agent shell (the URL stays on
+  // /agent/search); assert that page's own content.
   await expect(
     page.getByRole("heading", { name: "Start Searching" }),
   ).toBeVisible();
@@ -7625,11 +7626,12 @@ test("workspace settings members screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/dashboard/settings/workspace/members");
   // This URL opens kaneo's real page; assert that page's own content.
-  await expect(page.getByRole("table")).toBeVisible();
-  // Kaneo's members page sits in the app shell, whose sidebar mounts after the page.
+  // Members sit in the workspace settings frame (L-03), which has no app sidebar; wait for
+  // the page's own heading and the loaded members table.
   await expect(
-    page.getByRole("button", { name: "Help Desk", exact: true }),
+    page.getByRole("heading", { level: 1, name: "Members", exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole("table")).toBeVisible();
   await expect(page).toHaveScreenshot("workspace-settings-members.png", {
     animations: "disabled",
     caret: "hide",

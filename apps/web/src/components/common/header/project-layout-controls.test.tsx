@@ -1,5 +1,11 @@
 import { Button } from "@taskdesk/ui";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 import ProjectLayoutControls, {
@@ -363,6 +369,57 @@ describe("ProjectLayoutControls permissions", () => {
     expect(projectViewFromPath("/dashboard/workspace/w/project/p/gantt")).toBe(
       "gantt",
     );
+    expect(projectViewFromPath("/agent/projects/ENG/timeline")).toBe("gantt");
+  });
+
+  it("opens the canonical /agent Timeline and keeps it on project switch", () => {
+    routerState.searchStr = "?q=urgent&item=ENG-7";
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("navigation:projectViews.timeline"),
+      }),
+    );
+    const timelineHref: string =
+      routerState.navigate.mock.calls.at(-1)?.[0].href;
+    const timelineUrl = new URL(timelineHref, "https://ticketing.localhost");
+    expect(timelineUrl.pathname).toBe("/agent/projects/ENG/timeline");
+    expect(timelineUrl.searchParams.get("q")).toBe("urgent");
+    // The schedule views keep the selected item as `taskId`, as Kaneo's Gantt did.
+    expect(timelineUrl.searchParams.get("taskId")).toBe("ENG-7");
+    expect(timelineUrl.searchParams.has("item")).toBe(false);
+
+    routerState.pathname = "/agent/projects/ENG/timeline";
+    cleanup();
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+    expect(
+      screen.getByRole("button", {
+        name: translate("navigation:projectViews.timeline"),
+      }),
+    ).toHaveAttribute("aria-current", "page");
+    fireEvent.click(screen.getByTestId("switch-project"));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/agent/projects/OPS/timeline",
+    });
+  });
+
+  it("falls back to Kaneo's Gantt URL while the project key is unknown", () => {
+    routerState.searchStr = "";
+    render(
+      <ProjectLayoutControls
+        {...props}
+        projectSlug={undefined}
+        showViewSwitcher
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("navigation:projectViews.timeline"),
+      }),
+    );
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      to: "/dashboard/workspace/workspace-1/project/project-1/gantt",
+    });
   });
 });
 

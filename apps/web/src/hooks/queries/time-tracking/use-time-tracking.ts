@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@taskdesk/libs";
-import { getApiUrl } from "@/fetchers/get-api-url";
+import { getResolvedFeatures } from "@/fetchers/agile";
 import {
   getHourlyRates,
   getProjectBudget,
@@ -24,8 +23,6 @@ export const timeKeys = {
     ["time-tracking", "rates", workspaceId] as const,
   budget: (projectId: string) =>
     ["time-tracking", "budget", projectId] as const,
-  features: (projectId: string) =>
-    ["time-tracking", "features", projectId] as const,
 };
 
 /**
@@ -103,24 +100,16 @@ export function useProjectBudget(projectId: string | undefined) {
  * The project's resolved `feature.time_tracking` / `feature.cost_tracking` switches. Both are off
  * by default, so a pending or failed read hides the Time section rather than offering a control
  * the API would answer 409.
+ *
+ * It shares the project's one resolved-switch read with the agile and page switches
+ * (`useAgileFeatures`, `useProjectFeatureState`): the work item detail used to send
+ * `GET /api/features/resolved?project=` twice, once per cache key. Sharing the key also lets the
+ * feature settings panel's `["agile", "features"]` refresh reach these switches.
  */
 export function useTimeTrackingFeatures(projectId: string | undefined) {
   const query = useQuery({
-    queryKey: timeKeys.features(projectId ?? ""),
-    queryFn: async () => {
-      const response = await apiFetch(
-        getApiUrl(
-          `/features/resolved?project=${encodeURIComponent(projectId as string)}`,
-        ),
-        { credentials: "include" },
-      );
-      if (!response.ok) throw new Error("Failed to load the feature switches");
-      return (
-        (await response.json()) as {
-          features: Array<{ key: string; enabled: boolean }>;
-        }
-      ).features;
-    },
+    queryKey: ["agile", "features", projectId],
+    queryFn: () => getResolvedFeatures(projectId as string),
     enabled: Boolean(projectId),
     staleTime: 60_000,
   });

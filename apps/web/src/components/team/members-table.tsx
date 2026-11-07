@@ -198,6 +198,64 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     }
   };
 
+  // One role control per member row. Below sm it is rendered under the name
+  // (like the Joined date) and the Role column is hidden, so a phone row keeps
+  // the name readable instead of giving a whole column to the picker. Only one copy
+  // is displayed at a time; the hidden one is `display: none`, which removes
+  // it from the tab order and the accessibility tree.
+  const renderMemberRole = (member: WorkspaceUser, showRoleSelect: boolean) =>
+    member.role === "owner" ? (
+      <Badge variant="outline" className="gap-1">
+        <ShieldIcon className="size-3" />
+        {t("team:roles.owner", { defaultValue: "Owner" })}
+      </Badge>
+    ) : showRoleSelect ? (
+      <PickerPopover
+        value={member.role}
+        onChange={(value) => {
+          if (value) handleChangeRole(member, value);
+        }}
+        ariaLabel={t(`team:roles.${member.role}`, {
+          defaultValue: capitalize(member.role),
+        })}
+        className="h-8 w-28 sm:w-32"
+        options={[
+          {
+            value: "viewer",
+            label: t("team:roles.viewer", {
+              defaultValue: "Viewer",
+            }),
+          },
+          {
+            value: "member",
+            label: t("team:roles.member", {
+              defaultValue: "Member",
+            }),
+          },
+          {
+            value: "admin",
+            label: t("team:roles.admin", {
+              defaultValue: "Admin",
+            }),
+          },
+          // Owner is intentionally NOT offered here: ownership moves only
+          // through the dedicated transfer-ownership flow in workspace
+          // settings, and the server enforces the same rule
+          // (see update-workspace-member-role.ts).
+          ...customRoles.map((r) => ({
+            value: r.role,
+            label: r.name || capitalize(r.role),
+          })),
+        ]}
+      />
+    ) : (
+      <Badge variant="secondary" className="capitalize">
+        {t(`team:roles.${member.role}`, {
+          defaultValue: capitalize(member.role),
+        })}
+      </Badge>
+    );
+
   return (
     <>
       <Table>
@@ -211,7 +269,9 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                 defaultValue: "Member",
               })}
             </TableHead>
-            <TableHead className="text-foreground font-medium">
+            {/* Below sm the Role column is hidden and the role control moves
+                under the name, so the name keeps the row's width at 390 px. */}
+            <TableHead className="max-sm:hidden text-foreground font-medium">
               {t("team:membersTable.columns.role", { defaultValue: "Role" })}
             </TableHead>
             {/* Below sm the Joined column is hidden and its value is shown
@@ -271,61 +331,14 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                           })}
                         </div>
                       ) : null}
+                      <div className="mt-1.5 sm:hidden">
+                        {renderMemberRole(member, showRoleSelect)}
+                      </div>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="py-3">
-                  {member.role === "owner" ? (
-                    <Badge variant="outline" className="gap-1">
-                      <ShieldIcon className="size-3" />
-                      {t("team:roles.owner", { defaultValue: "Owner" })}
-                    </Badge>
-                  ) : showRoleSelect ? (
-                    <PickerPopover
-                      value={member.role}
-                      onChange={(value) => {
-                        if (value) handleChangeRole(member, value);
-                      }}
-                      ariaLabel={t(`team:roles.${member.role}`, {
-                        defaultValue: capitalize(member.role),
-                      })}
-                      className="h-8 w-28 sm:w-32"
-                      options={[
-                        {
-                          value: "viewer",
-                          label: t("team:roles.viewer", {
-                            defaultValue: "Viewer",
-                          }),
-                        },
-                        {
-                          value: "member",
-                          label: t("team:roles.member", {
-                            defaultValue: "Member",
-                          }),
-                        },
-                        {
-                          value: "admin",
-                          label: t("team:roles.admin", {
-                            defaultValue: "Admin",
-                          }),
-                        },
-                        // Owner is intentionally NOT offered here: ownership moves only
-                        // through the dedicated transfer-ownership flow in workspace
-                        // settings, and the server enforces the same rule
-                        // (see update-workspace-member-role.ts).
-                        ...customRoles.map((r) => ({
-                          value: r.role,
-                          label: r.name || capitalize(r.role),
-                        })),
-                      ]}
-                    />
-                  ) : (
-                    <Badge variant="secondary" className="capitalize">
-                      {t(`team:roles.${member.role}`, {
-                        defaultValue: capitalize(member.role),
-                      })}
-                    </Badge>
-                  )}
+                <TableCell className="max-sm:hidden py-3">
+                  {renderMemberRole(member, showRoleSelect)}
                 </TableCell>
                 <TableCell className="max-sm:hidden py-3 text-sm text-muted-foreground tabular-nums">
                   {member.joinedAt ? formatDateMedium(member.joinedAt) : "–"}
@@ -370,6 +383,13 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             const isExpired = invitation.expiresAt
               ? new Date(invitation.expiresAt).getTime() < Date.now()
               : false;
+            const invitationRole = (
+              <Badge variant="outline" className="capitalize">
+                {t(`team:roles.${invitation.role ?? ""}`, {
+                  defaultValue: capitalize(invitation.role ?? ""),
+                })}
+              </Badge>
+            );
 
             return (
               <TableRow key={`invite-${invitation.id}`}>
@@ -415,15 +435,12 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                             )
                           : "–"}
                       </div>
+                      <div className="mt-1.5 sm:hidden">{invitationRole}</div>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="py-3">
-                  <Badge variant="outline" className="capitalize">
-                    {t(`team:roles.${invitation.role ?? ""}`, {
-                      defaultValue: capitalize(invitation.role ?? ""),
-                    })}
-                  </Badge>
+                <TableCell className="max-sm:hidden py-3">
+                  {invitationRole}
                 </TableCell>
                 <TableCell className="max-sm:hidden py-3 text-sm text-muted-foreground">
                   –

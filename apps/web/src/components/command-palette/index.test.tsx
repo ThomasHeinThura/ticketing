@@ -275,8 +275,7 @@ describe("CommandPalette (#407)", () => {
     fireEvent.click(screen.getByText("navigation:commandPalette.members"));
 
     expect(mocks.navigate).toHaveBeenCalledWith({
-      to: "/dashboard/workspace/$workspaceId/members",
-      params: { workspaceId: "w1" },
+      to: "/dashboard/settings/workspace/members",
     });
   });
 });

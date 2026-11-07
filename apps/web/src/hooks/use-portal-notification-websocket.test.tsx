@@ -113,6 +113,11 @@ describe("portal notification WebSocket", () => {
     const socket = firstSocket();
     act(() => socket.onopen?.());
     expect(invalidate).toHaveBeenCalledTimes(1);
+    // The first open refreshes every inbox read, closing the gap between the page's read and
+    // the subscription.
+    expect(invalidate).toHaveBeenLastCalledWith({
+      queryKey: ["portal", "notifications"],
+    });
     act(() => vi.advanceTimersByTime(90_000));
     expect(invalidate).toHaveBeenCalledTimes(1);
     act(() => socket.onclose?.({ code: 1006 } as CloseEvent));
@@ -122,6 +127,38 @@ describe("portal notification WebSocket", () => {
     expect(invalidate).toHaveBeenLastCalledWith({
       queryKey: ["portal", "notifications"],
     });
+    unmount();
+  });
+
+  it("reads the inbox again on the first open so a notification created before the subscription is not missed", async () => {
+    const { queryClient, wrapper } = setup();
+    let unread = 0;
+    const inboxRead = vi.fn(async () => ({ unreadCount: unread }));
+    const { unmount } = renderHook(() => usePortalNotificationWebSocket(), {
+      wrapper,
+    });
+    // The page reads the inbox while the socket is still connecting.
+    await queryClient.fetchQuery({
+      queryKey: ["portal", "notifications", "all"],
+      queryFn: inboxRead,
+    });
+    // A notification is created before the socket subscribes, so no event is sent for it.
+    unread = 1;
+    act(() => firstSocket().onopen?.());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(
+      queryClient.getQueryState(["portal", "notifications", "all"])
+        ?.isInvalidated,
+    ).toBe(true);
+    await queryClient.fetchQuery({
+      queryKey: ["portal", "notifications", "all"],
+      queryFn: inboxRead,
+    });
+    expect(
+      queryClient.getQueryData(["portal", "notifications", "all"]),
+    ).toEqual({ unreadCount: 1 });
     unmount();
   });
 

@@ -421,6 +421,50 @@ describe("session kept in the query client (S7b, D9)", () => {
     expect(factorCalls()).toBe(1);
   });
 
+  it("shares one factor read between checks that overlap before the first answer (early preload and first load)", async () => {
+    getSession.mockResolvedValue({ data: signedIn("s1"), error: null });
+    // Before this change each overlapping check sent its own read: 2 here.
+    await Promise.all([
+      check("/agent/projects/P/work"),
+      check("/agent/projects/P/work"),
+    ]);
+    expect(factorCalls()).toBe(1);
+    // Once answered and kept, later checks do not ask (D9).
+    await check("/agent/inbox");
+    expect(factorCalls()).toBe(1);
+  });
+
+  it("redirects every overlapping check to enrolment from one shared read, and asks again on the next navigation", async () => {
+    getSession.mockResolvedValue({ data: signedIn("s1"), error: null });
+    vi.mocked(fetch).mockImplementation(async () =>
+      factorResponse({ required: true, enabled: false }),
+    );
+    const results = await Promise.all([
+      settle("/agent/inbox"),
+      settle("/agent/inbox"),
+    ]);
+    for (const { thrown } of results) {
+      expect(redirectTarget(thrown)).toBe(
+        "/dashboard/settings/account/security",
+      );
+    }
+    expect(factorCalls()).toBe(1);
+    // A "required but not enrolled" answer is never kept.
+    await settle("/agent/triage");
+    expect(factorCalls()).toBe(2);
+  });
+
+  it("shares the single 401 re-read between overlapping checks", async () => {
+    getSession.mockResolvedValue({ data: signedIn("s1"), error: null });
+    vi.mocked(fetch)
+      .mockImplementationOnce(async () => new Response(null, { status: 401 }))
+      .mockImplementation(async () =>
+        factorResponse({ required: false, enabled: false }),
+      );
+    await Promise.all([check("/agent/inbox"), check("/agent/inbox")]);
+    expect(factorCalls()).toBe(2);
+  });
+
   it("re-reads the session in the background once it is stale, without delaying the navigation", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const session = signedIn("s1");

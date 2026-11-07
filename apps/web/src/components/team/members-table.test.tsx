@@ -328,6 +328,65 @@ describe("MembersTable narrow widths (finding #4)", () => {
     );
   });
 
+  it("moves the role control under the name below sm and hides the Role column", () => {
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[pendingInvitation]}
+        users={[longMember]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", {
+        name: "team:membersTable.columns.role",
+      }),
+    ).toHaveClass("max-sm:hidden");
+
+    const row = screen.getByText(longMember.name as string).closest("tr");
+    const pickers = within(row as HTMLElement).getAllByRole("button", {
+      name: "team:roles.member",
+    });
+    // One picker per breakpoint: the column copy from sm up, the copy under
+    // the name below sm. Each is display:none on the other side.
+    expect(pickers).toHaveLength(2);
+    const [inName, inColumn] = pickers;
+    expect(inName.closest("td")).toHaveClass("max-w-0");
+    expect(inName.parentElement).toHaveClass("sm:hidden");
+    expect(inColumn.closest("td")).toHaveClass("max-sm:hidden");
+    inName.focus();
+    expect(inName).toHaveFocus();
+
+    const inviteRow = screen.getByText(pendingInvitation.email).closest("tr");
+    const inviteRoles = within(inviteRow as HTMLElement).getAllByText(
+      "team:roles.member",
+    );
+    expect(inviteRoles).toHaveLength(2);
+    expect(inviteRoles[0].parentElement).toHaveClass("sm:hidden");
+    expect(inviteRoles[1].closest("td")).toHaveClass("max-sm:hidden");
+  });
+
+  it("opens the phone role picker with the role options", async () => {
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[] as WorkspaceUserInvitation[]}
+        users={[longMember]}
+      />,
+    );
+
+    const [inName] = screen.getAllByRole("button", {
+      name: "team:roles.member",
+    });
+    fireEvent.click(inName);
+    expect(
+      await screen.findByRole("button", { name: "team:roles.admin" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "team:roles.owner" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps the remove action a named, focusable button in the row", () => {
     render(
       <MembersTable

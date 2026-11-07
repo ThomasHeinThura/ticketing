@@ -68,9 +68,16 @@ vi.mock("@/store/user-preferences", () => ({
     selector: (state: { weekStartsOn: number }) => unknown,
   ) => selector({ weekStartsOn: 0 }),
 }));
+const registeredShortcuts = vi.hoisted(() => ({
+  sequential: {} as Record<string, Record<string, () => void>>,
+}));
 vi.mock("@/hooks/use-keyboard-shortcuts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/hooks/use-keyboard-shortcuts")>()),
-  useRegisterShortcuts: () => undefined,
+  useRegisterShortcuts: (options: {
+    sequentialShortcuts?: Record<string, Record<string, () => void>>;
+  }) => {
+    registeredShortcuts.sequential = options.sequentialShortcuts ?? {};
+  },
 }));
 const viewFeature = vi.hoisted(() => ({
   enabled: true as boolean | undefined,
@@ -187,6 +194,16 @@ beforeEach(() => {
   reschedule.checking = false;
 });
 afterEach(cleanup);
+
+describe("calendar view shortcuts", () => {
+  it("opens the canonical /agent Timeline with the view state from the Timeline shortcut", () => {
+    render(<CalendarRoute />);
+    registeredShortcuts.sequential.v?.g?.();
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/agent/projects/RM/timeline?month=2026-10&q=urgent",
+    });
+  });
+});
 
 describe("calendar feature flag (P4R1-M2)", () => {
   it("shows the feature-off state instead of the view while the flag is off", () => {

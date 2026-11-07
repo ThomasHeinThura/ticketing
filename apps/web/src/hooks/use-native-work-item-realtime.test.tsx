@@ -1253,6 +1253,59 @@ describe("work-item list realtime composition", () => {
     expect(screen.getByTestId("refused-state")).toHaveTextContent("error");
   });
 
+  it("does not re-ask a fresh missing detail when the first connection's topic is denied, and refreshes it after a reconnect", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const missing = vi.fn(async () => {
+      throw new HttpError(404, "Not found");
+    });
+    function MissingDetail() {
+      const detail = useQuery({
+        queryKey: ["work-items", "detail", "WI-404"],
+        queryFn: missing,
+      });
+      useNativeWorkItemRealtime(["work_item:WI-404"]);
+      return <output data-testid="missing-state">{detail.status}</output>;
+    }
+    render(<MissingDetail />, { wrapper: wrapperFor(client) });
+    await waitFor(() =>
+      expect(screen.getByTestId("missing-state")).toHaveTextContent("error"),
+    );
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected the native socket");
+    act(() => socket.open());
+    // The server refuses the topic of an unknown or out-of-reach item key.
+    act(() =>
+      socket.frame({ type: "subscription_denied", topic: "work_item:WI-404" }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(missing).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("missing-state")).toHaveTextContent("error");
+
+    // After a disconnect, the replacement connection refreshes the read, and so does its denial.
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    act(() => socket.close());
+    await new Promise((resolve) => setTimeout(resolve, 550));
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    const reconnected = MockWebSocket.instances[1];
+    if (!reconnected) throw new Error("Expected the reconnected native socket");
+    act(() => reconnected.open());
+    await waitFor(() => expect(missing).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(
+        client.getQueryState(["work-items", "detail", "WI-404"])?.fetchStatus,
+      ).toBe("idle"),
+    );
+    act(() =>
+      reconnected.frame({
+        type: "subscription_denied",
+        topic: "work_item:WI-404",
+      }),
+    );
+    await waitFor(() => expect(missing).toHaveBeenCalledTimes(3));
+  });
+
   it("treats the server's connection-limit close as terminal and does not reconnect", async () => {
     const client = new QueryClient();
     const { result } = renderHook(

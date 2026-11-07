@@ -51,7 +51,10 @@ export function usePortalNotificationWebSocket() {
 
       socket.onopen = () => {
         retriesRef.current = 0;
-        // Recover persisted notifications missed while this socket was disconnected.
+        // Refresh the inbox on every open, the first one included. On the first open this reads
+        // the bell and inbox a second time on purpose: a notification created after the page's
+        // own read but before this socket subscribed sends no event, so only this read finds it.
+        // A reconnect recovers notifications missed while disconnected.
         void queryClient.invalidateQueries({
           queryKey: portalNotificationQueryKey,
         });

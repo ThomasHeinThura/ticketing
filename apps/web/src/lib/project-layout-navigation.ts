@@ -4,6 +4,7 @@ import {
   PROJECT_CALENDAR_PATH,
   PROJECT_GANTT_PATH,
   type ProjectRouteParams,
+  routes,
 } from "@/lib/routes";
 import { translateLegacyProjectView } from "./legacy-project-view";
 import { parseProjectRouterSearch } from "./project-board-search";
@@ -125,6 +126,14 @@ export function buildProjectViewSwitchUrl(
       path = PROJECT_CALENDAR_PATH;
       break;
     case "gantt":
+      // The canonical /agent Timeline when the project key is known; Kaneo's Gantt URL otherwise.
+      if (params.projectKey) {
+        const suffix = query.toString();
+        const timeline = routes.projectTimeline.build({
+          projectKey: params.projectKey,
+        });
+        return suffix ? `${timeline}?${suffix}` : timeline;
+      }
       path = PROJECT_GANTT_PATH;
       break;
     case "list":

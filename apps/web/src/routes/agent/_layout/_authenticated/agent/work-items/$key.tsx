@@ -39,6 +39,25 @@ export const Route = createFileRoute(
   "/_layout/_authenticated/agent/work-items/$key",
 )({
   validateSearch: parseWorkItemDetailSearch,
+  // Opening the detail starts the item read and the detail view's code together, as the route
+  // starts loading, instead of one after the other once the screen has mounted (the item, then
+  // the view's chunk, then the view's own reads). Neither is awaited, so the loading shape still
+  // shows at once (`pendingMs: 0`), and the mount reuses this read (`useGetWorkItem`). Only an
+  // entry starts them: a search change on the page (`stay`) or a hover preload of a link
+  // elsewhere (`preload`) asks nothing; the work list's hover keeps its own prefetch. Both are
+  // imported here on demand, so the route stubs in the entry chunk stay small. A failed chunk is
+  // remembered by `loadWorkItemDetail` and reaches the error screen on render.
+  loader: ({ context, params, cause }) => {
+    if (cause !== "enter") return;
+    void import("@/hooks/queries/work-item/use-get-work-item")
+      .then(({ prefetchWorkItemDetail }) =>
+        prefetchWorkItemDetail(context.queryClient, params.key),
+      )
+      .catch(() => {});
+    void import("@/components/work-item/load-work-item-detail")
+      .then(({ default: load }) => load())
+      .catch(() => {});
+  },
   component: WorkItemDetailRouteComponent,
   pendingComponent: WorkItemDetailLoading,
   pendingMs: 0,

@@ -153,7 +153,8 @@ type CanonicalProjectView =
   | "pages"
   | "prerequisites"
   | "team"
-  | "documents";
+  | "documents"
+  | "timeline";
 
 function CanonicalProjectFrame({
   projectKey,
@@ -163,8 +164,11 @@ function CanonicalProjectFrame({
   view: CanonicalProjectView;
 }) {
   const backlog = view === "backlog";
-  // Every view except the work list and backlog scrolls its own page inside the frame.
-  const agile = view !== "work" && view !== "backlog";
+  // The Timeline keeps Kaneo's Gantt live through the frame, as its old dashboard URL did.
+  const timeline = view === "timeline";
+  // Every view except the work list, backlog and Timeline (which scrolls its own grid)
+  // scrolls its own page inside the frame.
+  const agile = view !== "work" && !backlog && !timeline;
   const { data: workspace } = useActiveWorkspace();
   const { data: projects } = useGetProjects({
     workspaceId: workspace?.id ?? "",
@@ -182,8 +186,16 @@ function CanonicalProjectFrame({
         projectId={project?.id ?? ""}
         workspaceId={project?.workspaceId ?? workspace?.id ?? ""}
         showViewSwitcher={Boolean(project)}
-        activeView={backlog ? "backlog" : view === "work" ? "board" : view}
-        realtimeMode={backlog ? "canonical" : "page"}
+        activeView={
+          backlog
+            ? "backlog"
+            : view === "work"
+              ? "board"
+              : timeline
+                ? "gantt"
+                : view
+        }
+        realtimeMode={backlog || timeline ? "canonical" : "page"}
       >
         {agile ? (
           <div className="h-full overflow-y-auto">
@@ -214,7 +226,7 @@ function AgentRootRoute() {
   // The project Overview (the bare project URL), its tabs, and the P5 agile and pages screens
   // (list and one level of detail) share the frame.
   const projectPath =
-    /^\/agent\/projects\/([^/]+)(?:\/(?:(work|backlog|prerequisites|team|documents)|(cycles|modules|pages)(?:\/[^/]+)?))?\/?$/u.exec(
+    /^\/agent\/projects\/([^/]+)(?:\/(?:(work|backlog|prerequisites|team|documents|timeline)|(cycles|modules|pages)(?:\/[^/]+)?))?\/?$/u.exec(
       location.pathname,
     );
   if (projectPath) {

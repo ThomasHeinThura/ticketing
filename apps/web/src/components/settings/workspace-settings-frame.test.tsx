@@ -77,9 +77,11 @@ describe("WorkspaceSettingsFrame", () => {
     const hrefs = screen
       .getAllByRole("link")
       .map((a) => a.getAttribute("href"));
+    // Every member can open the members list; role changes and removal are gated inside it.
     expect(hrefs).toEqual([
       "/dashboard/settings/workspace/general",
       "/dashboard/settings/workspace/labels",
+      "/dashboard/settings/workspace/members",
     ]);
   });
 
@@ -105,12 +107,13 @@ describe("WorkspaceSettingsFrame", () => {
     expect(hrefs).toContain("/dashboard/settings/workspace/sla-policies");
     expect(hrefs).toContain("/dashboard/settings/workspace/time-activities");
     expect(hrefs).toContain("/dashboard/settings/workspace/rates");
-    // General, labels and the 14 gated entries: roles, canned responses, templates, calendars,
+    // General, labels, members and the 14 gated entries: roles, canned responses, templates, calendars,
     // SLA policies, request types, workflows, teams, time activities, rates, custom fields,
     // customer invitations, automations and webhooks.
     expect(hrefs).toContain("/dashboard/settings/workspace/features");
     expect(hrefs).toContain("/dashboard/settings/workspace/terminology");
-    expect(hrefs).toHaveLength(18);
+    expect(hrefs).toContain("/dashboard/settings/workspace/members");
+    expect(hrefs).toHaveLength(19);
   });
 
   it("gates Roles, Webhooks and Custom fields on the capability their API enforces (M9)", () => {

@@ -565,6 +565,9 @@ function WorkItemListPresentation({
         params: { key },
       })
       .catch(() => {});
+    // A prefetch failure is not shown here: a failed stylesheet is remembered by
+    // loadWorkItemDetail, so opening the detail shows the error screen instead of an
+    // unstyled page.
     void import("@/components/work-item/load-work-item-detail")
       .then(({ default: loadWorkItemDetail }) => loadWorkItemDetail())
       .catch(() => {});

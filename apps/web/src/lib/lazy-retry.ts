@@ -28,11 +28,15 @@ function isModuleImportError(error: unknown): boolean {
   );
 }
 
-export function isChunkLoadError(error: unknown): boolean {
-  if (isModuleImportError(error)) return true;
+/** A stylesheet a chunk needs that failed to load, which importing again cannot repair. */
+function isCssPreloadError(error: unknown): boolean {
   return (
     error instanceof Error && error.message.includes(CSS_PRELOAD_ERROR_MESSAGE)
   );
+}
+
+export function isChunkLoadError(error: unknown): boolean {
+  return isModuleImportError(error) || isCssPreloadError(error);
 }
 
 export const CHUNK_IMPORT_RETRY_DELAYS_MS = [250, 750];
@@ -60,6 +64,32 @@ export async function importWithRetry<T>(
       await wait(delay);
     }
   }
+}
+
+/**
+ * Wraps `load` so it runs once at a time and a failed CSS preload is not forgotten. Vite records
+ * each stylesheet as requested before it loads, so a second import started while the first is
+ * still loading (a route loader and `React.lazy` both asking for the chunk), or started after a
+ * failure (for example during a hover prefetch whose error nobody sees), resolves without waiting
+ * for the stylesheet and the page renders unstyled. So every caller shares one load: while it is
+ * pending and after it succeeds, each call returns the same promise. Once a CSS preload has
+ * failed, every later call rejects with that same error, so the page shows the error screen,
+ * whose Try again reloads the page and requests the stylesheet afresh. After any other failure
+ * the next call loads again, so `importWithRetry` and the error screen can still recover.
+ */
+export function rememberCssPreloadFailure<T>(
+  load: () => Promise<T>,
+): () => Promise<T> {
+  let shared: Promise<T> | undefined;
+  return () => {
+    if (shared) return shared;
+    const attempt = (async () => load())();
+    shared = attempt;
+    attempt.catch((error: unknown) => {
+      if (!isCssPreloadError(error) && shared === attempt) shared = undefined;
+    });
+    return attempt;
+  };
 }
 
 /**

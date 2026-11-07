@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import {
   createFileRoute,
   type ErrorComponentProps,
@@ -32,11 +33,52 @@ export class SessionUnavailableError extends Error {
   }
 }
 
-function readFactorStatus(): Promise<Response | null> {
-  return fetch(getApiUrl("me/security/factors"), {
-    credentials: "include",
-    cache: "no-store",
-  }).catch(() => null);
+type FactorStatus = { required: boolean; enabled: boolean };
+
+/** One factor-status answer: the HTTP status and, on success, the parsed body. `null` = no answer. */
+type FactorRead = { status: number; factor: FactorStatus | null } | null;
+
+async function readFactorStatus(): Promise<FactorRead> {
+  try {
+    const response = await fetch(getApiUrl("me/security/factors"), {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (!response.ok) return { status: response.status, factor: null };
+    return {
+      status: response.status,
+      factor: (await response.json()) as FactorStatus,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The factor reads in flight, per query client and attempt. One page load can run this check
+ * more than once before the first answer arrives (the work list's early `preloadRoute` in
+ * `main.tsx` and the first navigation, or a hover preload and its click); those runs share one
+ * request instead of each asking. An entry lives only while its request is in flight, so no
+ * answer is kept here: a "passed" answer is kept only by `rememberFactorsPassed` (D9), and a
+ * "required but not enrolled" answer is asked again on the next navigation.
+ */
+const factorReadsInFlight = {
+  first: new WeakMap<QueryClient, Promise<FactorRead>>(),
+  retry: new WeakMap<QueryClient, Promise<FactorRead>>(),
+};
+
+function sharedFactorRead(
+  queryClient: QueryClient,
+  attempt: keyof typeof factorReadsInFlight,
+): Promise<FactorRead> {
+  const inFlight = factorReadsInFlight[attempt];
+  const pending = inFlight.get(queryClient);
+  if (pending) return pending;
+  const request = readFactorStatus().finally(() => {
+    if (inFlight.get(queryClient) === request) inFlight.delete(queryClient);
+  });
+  inFlight.set(queryClient, request);
+  return request;
 }
 
 /**
@@ -116,7 +158,7 @@ export const Route = createFileRoute("/_layout/_authenticated")({
     const { queryClient } = context;
     const checkFactors =
       location.pathname !== "/dashboard/settings/account/security";
-    let factorsRequest: Promise<Response | null> | null = null;
+    let factorsRequest: Promise<FactorRead> | null = null;
     // D9: a session identity that already passed the factor check is not asked again on each
     // navigation. A new session (sign-in, rotation, another user) is asked once more, and a
     // "required but not enrolled" answer is never remembered. The API still refuses every
@@ -129,7 +171,7 @@ export const Route = createFileRoute("/_layout/_authenticated")({
       // Start the independent enforcement read alongside session refresh. Its
       // result is consumed only after session resolution, so redirect
       // precedence remains unchanged for logged-out users.
-      factorsRequest = readFactorStatus();
+      factorsRequest = sharedFactorRead(queryClient, "first");
     }
 
     let session: SessionData = null;
@@ -176,18 +218,15 @@ export const Route = createFileRoute("/_layout/_authenticated")({
     if (session && factorsRequest) {
       let enrollmentRequired = false;
       try {
-        let response = await factorsRequest;
+        let answer = await factorsRequest;
         // A session refresh may rotate the cookie after the parallel factor
         // request was sent. Retry once with the now-current cookie before
         // deciding whether enrollment is required.
-        if (response?.status === 401) {
-          response = await readFactorStatus();
+        if (answer?.status === 401) {
+          answer = await sharedFactorRead(queryClient, "retry");
         }
-        if (response?.ok) {
-          const factor = (await response.json()) as {
-            required: boolean;
-            enabled: boolean;
-          };
+        const factor = answer?.factor;
+        if (factor) {
           if (factor.required && !factor.enabled) {
             enrollmentRequired = true;
           } else {

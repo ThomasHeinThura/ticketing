@@ -1904,8 +1904,9 @@ export const routes = {
       return suffix ? `/agent/search?${suffix}` : "/agent/search";
     },
   },
-  // The page behind /agent/search: Kaneo's workspace search screen, now over canonical work
-  // items. `q` and `scope` round-trip through the redirect and the page's own URL state.
+  // Kaneo's workspace search screen for one named workspace, kept so old links still open it.
+  // /agent/search (above) is the canonical address and shows the same search for the active
+  // workspace. `q` and `scope` live in the URL on both.
   workspaceSearch: {
     path: "/dashboard/workspace/$workspaceId/search" as const,
     build: (
@@ -2186,7 +2187,7 @@ export const routes = {
     build: (params: { projectKey: string }) =>
       `/agent/projects/${encodeURIComponent(params.projectKey)}/documents`,
   },
-  /** The existing Kaneo Gantt, gated by `feature.timeline`; this link redirects there. */
+  /** The project Timeline (Kaneo's Gantt) in the canonical project frame, gated by `feature.timeline`; the old dashboard gantt URL renders the same view. */
   projectTimeline: {
     path: "/agent/projects/$projectKey/timeline" as const,
     build: (params: { projectKey: string }) =>

@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   query: {} as Record<string, unknown>,
   titles: [] as string[],
   projectLookups: [] as Array<string | undefined>,
+  prefetchDetail: vi.fn(),
+  loadDetail: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -71,6 +73,7 @@ vi.mock("@/components/page-title", () => ({
 }));
 vi.mock("@/hooks/queries/work-item/use-get-work-item", () => ({
   default: () => mocks.query,
+  prefetchWorkItemDetail: (...args: unknown[]) => mocks.prefetchDetail(...args),
 }));
 vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   default: ({ workspaceId }: { workspaceId: string | undefined }) => {
@@ -81,8 +84,9 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
 // The detail view is covered by its own tests; this stub exposes exactly what the route
 // hands it, and a button that reports access loss the way the real mutations do.
 vi.mock("@/components/work-item/load-work-item-detail", () => ({
-  default: () =>
-    Promise.resolve({
+  default: () => {
+    mocks.loadDetail();
+    return Promise.resolve({
       default: (props: {
         item: { title: string } | undefined;
         project: { name: string } | undefined;
@@ -105,7 +109,8 @@ vi.mock("@/components/work-item/load-work-item-detail", () => ({
           }
         </div>
       ),
-    }),
+    });
+  },
 }));
 
 const item = {
@@ -147,6 +152,46 @@ beforeEach(() => {
 });
 
 afterEach(cleanup);
+
+describe("work-item detail route loading", () => {
+  type LoaderArgs = {
+    context: { queryClient: QueryClient };
+    params: { key: string };
+    cause: "enter" | "stay" | "preload";
+  };
+  const runLoader = (cause: LoaderArgs["cause"]) => {
+    const loader = (
+      Route as unknown as { loader: (args: LoaderArgs) => unknown }
+    ).loader;
+    return loader({
+      context: { queryClient },
+      params: { key: "WLP-7" },
+      cause,
+    });
+  };
+  const settleImports = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  beforeEach(() => {
+    mocks.prefetchDetail.mockReset();
+    mocks.loadDetail.mockReset();
+  });
+
+  it("starts the item read and the detail view's code together on entry, without waiting", async () => {
+    // Nothing is awaited, so the loading shape still shows at once (pendingMs: 0).
+    expect(runLoader("enter")).toBeUndefined();
+    await settleImports();
+    expect(mocks.prefetchDetail).toHaveBeenCalledWith(queryClient, "WLP-7");
+    expect(mocks.loadDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks nothing on a search change or a hover preload of a detail link", async () => {
+    runLoader("stay");
+    runLoader("preload");
+    await settleImports();
+    expect(mocks.prefetchDetail).not.toHaveBeenCalled();
+    expect(mocks.loadDetail).not.toHaveBeenCalled();
+  });
+});
 
 describe("work-item detail route access loss", () => {
   it("shows the item's title and its project while the item is reachable", async () => {

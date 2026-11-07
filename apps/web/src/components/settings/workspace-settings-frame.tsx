@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   Tag,
   Timer,
+  UserCog,
   UserPlus,
   Users,
   Webhook,
@@ -135,6 +136,13 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       url: "/dashboard/settings/workspace/workflows",
       icon: Workflow,
       visible: canWorkflows,
+    },
+    {
+      // Every member can read the list; role changes, removal and invites are gated inside.
+      title: t("navigation:sidebar.members"),
+      url: routes.workspaceMembers.path,
+      icon: UserCog,
+      visible: true,
     },
     {
       title: t("teams:list.title"),
