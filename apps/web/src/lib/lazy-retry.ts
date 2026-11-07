@@ -67,25 +67,28 @@ export async function importWithRetry<T>(
 }
 
 /**
- * Wraps `load` so a failed CSS preload is not forgotten. Vite records each stylesheet as
- * requested before it loads and never requests it again, so after one failure (for example
- * during a hover prefetch whose error nobody sees) a later import resolves without the
- * stylesheet and the page renders unstyled. Once a CSS preload has failed, every later call
- * rejects with that same error, so the page shows the error screen, whose Try again reloads
- * the page and requests the stylesheet afresh.
+ * Wraps `load` so it runs once at a time and a failed CSS preload is not forgotten. Vite records
+ * each stylesheet as requested before it loads, so a second import started while the first is
+ * still loading (a route loader and `React.lazy` both asking for the chunk), or started after a
+ * failure (for example during a hover prefetch whose error nobody sees), resolves without waiting
+ * for the stylesheet and the page renders unstyled. So every caller shares one load: while it is
+ * pending and after it succeeds, each call returns the same promise. Once a CSS preload has
+ * failed, every later call rejects with that same error, so the page shows the error screen,
+ * whose Try again reloads the page and requests the stylesheet afresh. After any other failure
+ * the next call loads again, so `importWithRetry` and the error screen can still recover.
  */
 export function rememberCssPreloadFailure<T>(
   load: () => Promise<T>,
 ): () => Promise<T> {
-  let cssFailure: { error: unknown } | undefined;
-  return async () => {
-    if (cssFailure) throw cssFailure.error;
-    try {
-      return await load();
-    } catch (error) {
-      if (isCssPreloadError(error)) cssFailure = { error };
-      throw error;
-    }
+  let shared: Promise<T> | undefined;
+  return () => {
+    if (shared) return shared;
+    const attempt = (async () => load())();
+    shared = attempt;
+    attempt.catch((error: unknown) => {
+      if (!isCssPreloadError(error) && shared === attempt) shared = undefined;
+    });
+    return attempt;
   };
 }
 

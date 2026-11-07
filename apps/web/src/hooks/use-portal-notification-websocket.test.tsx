@@ -113,10 +113,10 @@ describe("portal notification WebSocket", () => {
     const socket = firstSocket();
     act(() => socket.onopen?.());
     expect(invalidate).toHaveBeenCalledTimes(1);
-    // The first open refreshes only reads served from an old or invalidated cache.
+    // The first open refreshes every inbox read, closing the gap between the page's read and
+    // the subscription.
     expect(invalidate).toHaveBeenLastCalledWith({
       queryKey: ["portal", "notifications"],
-      predicate: expect.any(Function),
     });
     act(() => vi.advanceTimersByTime(90_000));
     expect(invalidate).toHaveBeenCalledTimes(1);
@@ -130,72 +130,35 @@ describe("portal notification WebSocket", () => {
     unmount();
   });
 
-  it("does not ask the page's own inbox reads again when the first connection opens", async () => {
+  it("reads the inbox again on the first open so a notification created before the subscription is not missed", async () => {
     const { queryClient, wrapper } = setup();
-    const inboxRead = vi.fn(async () => ({ unreadCount: 0 }));
-    // The inbox list was read for this visit, after the socket started connecting.
-    vi.setSystemTime(new Date("2026-11-07T00:00:00Z"));
+    let unread = 0;
+    const inboxRead = vi.fn(async () => ({ unreadCount: unread }));
     const { unmount } = renderHook(() => usePortalNotificationWebSocket(), {
       wrapper,
     });
-    vi.setSystemTime(new Date("2026-11-07T00:00:01Z"));
+    // The page reads the inbox while the socket is still connecting.
     await queryClient.fetchQuery({
       queryKey: ["portal", "notifications", "all"],
       queryFn: inboxRead,
     });
-    // A read still in flight when the socket opens is not cancelled and sent again.
-    let finish!: (value: { unreadCount: number }) => void;
-    const bellRead = vi.fn(
-      () =>
-        new Promise<{ unreadCount: number }>((resolve) => {
-          finish = resolve;
-        }),
-    );
-    const bell = queryClient.fetchQuery({
-      queryKey: ["portal", "notifications"],
-      queryFn: bellRead,
-    });
-    const socket = firstSocket();
-    act(() => socket.onopen?.());
-    finish({ unreadCount: 0 });
-    await bell;
+    // A notification is created before the socket subscribes, so no event is sent for it.
+    unread = 1;
+    act(() => firstSocket().onopen?.());
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
-    // Before this change the open refreshed both: 2 inbox reads and 2 bell reads.
-    expect(inboxRead).toHaveBeenCalledTimes(1);
-    expect(bellRead).toHaveBeenCalledTimes(1);
-    unmount();
-  });
-
-  it("refreshes an inbox read served from a cache older than the connection", async () => {
-    const { queryClient, wrapper } = setup();
-    vi.setSystemTime(new Date("2026-11-07T00:00:00Z"));
-    const inboxRead = vi.fn(async () => ({ unreadCount: 0 }));
-    const observer = renderHook(
-      () => {
-        usePortalNotificationWebSocket();
-      },
-      { wrapper },
-    );
-    observer.unmount();
-    await queryClient.fetchQuery({
-      queryKey: ["portal", "notifications", "all"],
-      queryFn: inboxRead,
-    });
-    // The layout mounts again later; its socket opens over the older cached read.
-    vi.setSystemTime(new Date("2026-11-07T00:01:00Z"));
-    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    const { unmount } = renderHook(() => usePortalNotificationWebSocket(), {
-      wrapper,
-    });
-    const socket = MockWebSocket.instances.at(-1);
-    act(() => socket?.onopen?.());
-    expect(invalidate).toHaveBeenCalledTimes(1);
     expect(
       queryClient.getQueryState(["portal", "notifications", "all"])
         ?.isInvalidated,
     ).toBe(true);
+    await queryClient.fetchQuery({
+      queryKey: ["portal", "notifications", "all"],
+      queryFn: inboxRead,
+    });
+    expect(
+      queryClient.getQueryData(["portal", "notifications", "all"]),
+    ).toEqual({ unreadCount: 1 });
     unmount();
   });
 

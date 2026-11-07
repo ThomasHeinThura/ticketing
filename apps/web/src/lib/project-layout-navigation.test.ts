@@ -92,6 +92,34 @@ describe("project layout navigation", () => {
       }
     },
   );
+  it("opens the canonical /agent Timeline for gantt when the project key is known", () => {
+    const url = new URL(
+      buildProjectViewSwitchUrl(
+        "gantt",
+        canonical,
+        "?item=HELP-1&filter=priority%3Ahigh&month=2026-10",
+      ),
+      "https://agent.invalid",
+    );
+    expect(url.pathname).toBe("/agent/projects/HELP/timeline");
+    expect(url.searchParams.get("taskId")).toBe("HELP-1");
+    expect(url.searchParams.get("filter")).toBe("priority:high");
+    expect(url.searchParams.get("month")).toBe("2026-10");
+    expect(buildProjectViewSwitchUrl("gantt", canonical, "")).toBe(
+      "/agent/projects/HELP/timeline",
+    );
+  });
+  it("the Calendar's Timeline shortcut opens the canonical /agent Timeline when the project key is known", () => {
+    const navigate = vi.fn();
+    createProjectViewShortcutHandlers(
+      canonical,
+      "?taskId=HELP-1&month=2026-10",
+      navigate,
+    ).gantt();
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(
+      "/agent/projects/HELP/timeline?taskId=HELP-1&month=2026-10",
+    );
+  });
   it("drops panels scoped to a different selected item without changing filters", () => {
     const query = new URLSearchParams({
       taskId: "HELP-1",

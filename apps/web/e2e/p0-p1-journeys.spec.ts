@@ -246,7 +246,8 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
       ["/agent/settings", /\/dashboard\/settings\/workspace\/general$/],
       ["/agent/settings/labels", /\/dashboard\/settings\/workspace\/labels$/],
       ["/agent/settings/danger", /\/dashboard\/settings\/workspace\/general$/],
-      ["/agent/settings/members", /\/dashboard\/workspace\/[^/]+\/members$/],
+      // Members now live in the workspace settings frame (L-03).
+      ["/agent/settings/members", /\/dashboard\/settings\/workspace\/members$/],
       // L-03: old workspace pages keep their path and search under workspace settings.
       // (Encoded ids are covered by src/lib/legacy-settings-redirect.test.ts.)
       [

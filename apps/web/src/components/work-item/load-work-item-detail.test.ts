@@ -40,4 +40,16 @@ describe("loadWorkItemDetail", () => {
     expect(isChunkLoadError(cssError)).toBe(true);
     expect(importDetail).toHaveBeenCalledTimes(1);
   });
+
+  it("imports the detail once when the route loader and React.lazy both ask for it", async () => {
+    importDetail.mockResolvedValue({ default: () => null });
+    const { default: loadWorkItemDetail } = await import(
+      "./load-work-item-detail"
+    );
+    const fromLoader = loadWorkItemDetail();
+    const fromLazy = loadWorkItemDetail();
+    expect(fromLazy).toBe(fromLoader);
+    await fromLazy;
+    expect(importDetail).toHaveBeenCalledTimes(1);
+  });
 });

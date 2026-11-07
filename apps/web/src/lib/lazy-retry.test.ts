@@ -100,10 +100,88 @@ describe("rememberCssPreloadFailure", () => {
     expect(load).toHaveBeenCalledTimes(3);
   });
 
-  it("passes a successful import through on every call", async () => {
-    const load = vi.fn().mockResolvedValue({ default: "module" });
+  it("keeps a successful import for every later call", async () => {
+    const module = { default: "module" };
+    const load = vi.fn().mockResolvedValue(module);
     const remembered = rememberCssPreloadFailure(load);
+    await expect(remembered()).resolves.toBe(module);
+    await expect(remembered()).resolves.toBe(module);
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives concurrent callers one shared load", async () => {
+    let finish!: (value: { default: string }) => void;
+    const load = vi.fn(
+      () =>
+        new Promise<{ default: string }>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const remembered = rememberCssPreloadFailure(load);
+    // A route loader and React.lazy both ask for the chunk before it has loaded.
+    const fromLoader = remembered();
+    const fromLazy = remembered();
+    expect(fromLazy).toBe(fromLoader);
+    expect(load).toHaveBeenCalledTimes(1);
+    finish({ default: "module" });
+    await expect(fromLoader).resolves.toEqual({ default: "module" });
+    await expect(fromLazy).resolves.toEqual({ default: "module" });
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives concurrent callers the same CSS preload failure, and keeps it", async () => {
+    const error = cssError();
+    let fail!: (reason: unknown) => void;
+    const load = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            fail = reject;
+          }),
+      )
+      .mockResolvedValue({ default: "module" });
+    const remembered = rememberCssPreloadFailure(load);
+    const fromLoader = remembered();
+    const fromLazy = remembered();
+    fail(error);
+    await expect(fromLoader).rejects.toBe(error);
+    await expect(fromLazy).rejects.toBe(error);
+    await expect(remembered()).rejects.toBe(error);
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives concurrent callers the same import failure, then loads again", async () => {
+    const error = chunkError();
+    let fail!: (reason: unknown) => void;
+    const load = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            fail = reject;
+          }),
+      )
+      .mockResolvedValue({ default: "module" });
+    const remembered = rememberCssPreloadFailure(load);
+    const fromLoader = remembered();
+    const fromLazy = remembered();
+    fail(error);
+    await expect(fromLoader).rejects.toBe(error);
+    await expect(fromLazy).rejects.toBe(error);
     await expect(remembered()).resolves.toEqual({ default: "module" });
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("loads again after a load that throws before returning a promise", async () => {
+    const load = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw new Error("sync");
+      })
+      .mockResolvedValue({ default: "module" });
+    const remembered = rememberCssPreloadFailure(load);
+    await expect(remembered()).rejects.toThrow("sync");
     await expect(remembered()).resolves.toEqual({ default: "module" });
     expect(load).toHaveBeenCalledTimes(2);
   });

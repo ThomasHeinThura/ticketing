@@ -320,23 +320,14 @@ export default function ProjectLayoutControls({
     });
   };
   const handleNavigateToGantt = () => {
-    // The view state carries over exactly as it did to Kaneo's Gantt URL; the canonical
-    // `/agent` Timeline takes it when the project key is known.
-    const ganttUrl = buildProjectViewSwitchUrl(
+    // The view state carries over to the canonical `/agent` Timeline when the project key is
+    // known, and to Kaneo's Gantt URL otherwise.
+    const timelineUrl = buildProjectViewSwitchUrl(
       "gantt",
-      { workspaceId, projectId },
+      { workspaceId, projectId, projectKey: projectSlug },
       location.searchStr,
     );
-    if (!projectSlug) {
-      void navigate({ to: ganttUrl });
-      return;
-    }
-    const queryStart = ganttUrl.indexOf("?");
-    void navigate({
-      href: `${routes.projectTimeline.build({ projectKey: projectSlug })}${
-        queryStart === -1 ? "" : ganttUrl.slice(queryStart)
-      }`,
-    });
+    void navigate(projectSlug ? { href: timelineUrl } : { to: timelineUrl });
   };
   const handleProjectSwitch = (nextProjectId: string) => {
     const nextProject = workspaceProjects?.find(

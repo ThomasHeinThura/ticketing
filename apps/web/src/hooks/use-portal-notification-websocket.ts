@@ -1,4 +1,4 @@
-import { type Query, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { getApiUrl, toWebSocketBase } from "@/fetchers/get-api-url";
 import { portalNotificationQueryKey } from "@/lib/portal-notification-query-keys";
@@ -19,26 +19,6 @@ function isNotificationInvalidation(value: unknown): boolean {
   );
 }
 
-/**
- * The first connection follows the page's own inbox reads (the bell's count and the inbox list),
- * so it does not ask them again: refreshing them on open sent every inbox read twice, and a read
- * still in flight was cancelled and sent again. It refreshes only a read that was marked changed
- * (`isInvalidated`) or one made before this connection started (served from cache, for example
- * after the layout remounts). A read in flight, or one that has not run, is left to its own
- * request. A reconnect refreshes every read, to recover notifications missed while disconnected.
- * Same rule as the agent socket (`use-user-websocket.ts`), kept here so the portal bundle does
- * not pull in the agent's auth client.
- */
-function refreshOnFirstConnect(query: Query, connectionStartedAt: number) {
-  const { dataUpdatedAt, errorUpdatedAt, fetchStatus, isInvalidated, status } =
-    query.state;
-  if (fetchStatus === "fetching") return false;
-  // A failed read is always flagged invalidated by TanStack Query, so for it only its age counts.
-  if (isInvalidated && status !== "error") return true;
-  const lastRead = Math.max(dataUpdatedAt, errorUpdatedAt);
-  return lastRead > 0 && lastRead < connectionStartedAt;
-}
-
 /** Customer-layout-only socket; the server sends a payload-free inbox invalidation. */
 export function usePortalNotificationWebSocket() {
   const queryClient = useQueryClient();
@@ -50,10 +30,6 @@ export function usePortalNotificationWebSocket() {
   useEffect(() => {
     let active = true;
     let terminal = false;
-    const connectionStartedAt = Date.now();
-    // Set once a socket has closed: a reconnect refreshes notifications missed while
-    // disconnected; the first open refreshes only an inbox served from an old cache.
-    let hasDisconnected = false;
 
     const clearPing = () => {
       if (pingRef.current !== null) {
@@ -75,15 +51,12 @@ export function usePortalNotificationWebSocket() {
 
       socket.onopen = () => {
         retriesRef.current = 0;
-        // Recover persisted notifications missed while this socket was disconnected.
+        // Refresh the inbox on every open, the first one included. On the first open this reads
+        // the bell and inbox a second time on purpose: a notification created after the page's
+        // own read but before this socket subscribed sends no event, so only this read finds it.
+        // A reconnect recovers notifications missed while disconnected.
         void queryClient.invalidateQueries({
           queryKey: portalNotificationQueryKey,
-          ...(hasDisconnected
-            ? {}
-            : {
-                predicate: (query: Query) =>
-                  refreshOnFirstConnect(query, connectionStartedAt),
-              }),
         });
         clearPing();
         pingRef.current = setInterval(() => {
@@ -109,7 +82,6 @@ export function usePortalNotificationWebSocket() {
       socket.onclose = (event) => {
         clearPing();
         if (wsRef.current === socket) wsRef.current = null;
-        hasDisconnected = true;
         // Authentication/reach rejection and normal closure are terminal. Transient
         // network failures use bounded backoff and stop once the authenticated layout
         // unmounts on sign-out or route protection.
