@@ -55,6 +55,7 @@ import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { authClient } from "@/lib/auth-client";
+import { routes } from "@/lib/routes";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 const SearchCommandMenu = lazy(
@@ -305,11 +306,7 @@ export function CommandPalette({
               defaultValue: "Members",
             }),
             onRun: () => {
-              if (!workspace?.id) return;
-              navigate({
-                to: "/dashboard/workspace/$workspaceId/members",
-                params: { workspaceId: workspace.id },
-              });
+              navigate({ to: routes.workspaceMembers.path });
             },
           },
           {

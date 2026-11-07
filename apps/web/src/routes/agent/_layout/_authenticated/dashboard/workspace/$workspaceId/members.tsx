@@ -1,15 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
-import { UserPlus } from "lucide-react";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
 import PageTitle from "@/components/page-title";
-import InviteTeamMemberModal from "@/components/team/invite-team-member-modal";
-import MembersTable from "@/components/team/members-table";
-import useGetFullWorkspace from "@/hooks/queries/workspace/use-get-full-workspace";
-import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import {
+  WorkspaceMembersContent,
+  WorkspaceMembersInviteButton,
+} from "@/components/team/workspace-members-screen";
+import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { routes } from "@/lib/routes";
 
+// Old link (L-03): members moved to /dashboard/settings/workspace/members. That page shows the
+// active workspace, so only a link to the active workspace redirects there; a link naming
+// another workspace still shows that workspace's members here rather than the wrong list.
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/members",
 )({
@@ -19,10 +22,12 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { t } = useTranslation();
   const { workspaceId } = Route.useParams();
-  const { data: workspace } = useGetFullWorkspace({ workspaceId });
-  const { canInviteUsers } = useWorkspacePermission();
-  const canInvite = Boolean(canInviteUsers());
+  const { data: activeWorkspace, isLoading } = useActiveWorkspace();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+
+  if (isLoading && !activeWorkspace) return null;
+  if (activeWorkspace?.id === workspaceId)
+    return <Navigate to={routes.workspaceMembers.path} replace />;
 
   return (
     <>
@@ -30,29 +35,16 @@ function RouteComponent() {
       <WorkspaceLayout
         title={t("team:members.pageTitle")}
         headerActions={
-          canInvite ? (
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={() => setIsInviteOpen(true)}
-              className="gap-1"
-            >
-              <UserPlus className="w-3 h-3" />
-              {t("team:members.inviteMember")}
-            </Button>
-          ) : null
+          <WorkspaceMembersInviteButton
+            onInvite={() => setIsInviteOpen(true)}
+          />
         }
       >
         <h1 className="sr-only">{t("team:members.pageTitle")}</h1>
-        <MembersTable
+        <WorkspaceMembersContent
           workspaceId={workspaceId}
-          users={workspace?.members ?? []}
-          invitations={workspace?.pendingInvitations ?? []}
-        />
-
-        <InviteTeamMemberModal
-          open={isInviteOpen}
-          onClose={() => setIsInviteOpen(false)}
+          isInviteOpen={isInviteOpen}
+          onInviteClose={() => setIsInviteOpen(false)}
         />
       </WorkspaceLayout>
     </>

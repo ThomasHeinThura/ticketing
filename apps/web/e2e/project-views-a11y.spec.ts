@@ -621,7 +621,8 @@ test("mobile project navigation retains keyboard calendar and Timeline (Gantt) j
   await page
     .getByRole("button", { name: "Timeline", exact: true })
     .press("Enter");
-  await expect(page).toHaveURL(new RegExp(`${PROJECT_VIEW}/gantt`));
+  // Timeline opens in the canonical /agent project frame (the fixture project key is WLP).
+  await expect(page).toHaveURL(/\/agent\/projects\/WLP\/timeline/);
   await expect(
     page.getByRole("heading", { name: "Gantt Timeline" }),
   ).toBeVisible();

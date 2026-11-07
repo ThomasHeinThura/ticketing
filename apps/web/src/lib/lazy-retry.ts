@@ -28,11 +28,15 @@ function isModuleImportError(error: unknown): boolean {
   );
 }
 
-export function isChunkLoadError(error: unknown): boolean {
-  if (isModuleImportError(error)) return true;
+/** A stylesheet a chunk needs that failed to load, which importing again cannot repair. */
+function isCssPreloadError(error: unknown): boolean {
   return (
     error instanceof Error && error.message.includes(CSS_PRELOAD_ERROR_MESSAGE)
   );
+}
+
+export function isChunkLoadError(error: unknown): boolean {
+  return isModuleImportError(error) || isCssPreloadError(error);
 }
 
 export const CHUNK_IMPORT_RETRY_DELAYS_MS = [250, 750];
@@ -60,6 +64,29 @@ export async function importWithRetry<T>(
       await wait(delay);
     }
   }
+}
+
+/**
+ * Wraps `load` so a failed CSS preload is not forgotten. Vite records each stylesheet as
+ * requested before it loads and never requests it again, so after one failure (for example
+ * during a hover prefetch whose error nobody sees) a later import resolves without the
+ * stylesheet and the page renders unstyled. Once a CSS preload has failed, every later call
+ * rejects with that same error, so the page shows the error screen, whose Try again reloads
+ * the page and requests the stylesheet afresh.
+ */
+export function rememberCssPreloadFailure<T>(
+  load: () => Promise<T>,
+): () => Promise<T> {
+  let cssFailure: { error: unknown } | undefined;
+  return async () => {
+    if (cssFailure) throw cssFailure.error;
+    try {
+      return await load();
+    } catch (error) {
+      if (isCssPreloadError(error)) cssFailure = { error };
+      throw error;
+    }
+  };
 }
 
 /**

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { importWithRetry, isChunkLoadError } from "./lazy-retry";
+import {
+  importWithRetry,
+  isChunkLoadError,
+  rememberCssPreloadFailure,
+} from "./lazy-retry";
 
 const chunkError = () =>
   new TypeError(
@@ -60,5 +64,47 @@ describe("importWithRetry", () => {
     const load = vi.fn().mockRejectedValue(new Error("boom"));
     await expect(importWithRetry(load, [0, 0])).rejects.toThrow("boom");
     expect(load).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("rememberCssPreloadFailure", () => {
+  const cssError = () =>
+    new Error("Unable to preload CSS for /assets/editor-styles.css");
+
+  it("keeps rejecting with a failed CSS preload after a later import would resolve", async () => {
+    const error = cssError();
+    const load = vi
+      .fn()
+      .mockRejectedValueOnce(error)
+      .mockResolvedValue({ default: "module" });
+    const remembered = rememberCssPreloadFailure(load);
+    await expect(remembered()).rejects.toBe(error);
+    await expect(remembered()).rejects.toBe(error);
+    await expect(remembered()).rejects.toBe(error);
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(isChunkLoadError(error)).toBe(true);
+  });
+
+  it("imports again after any other failure", async () => {
+    const load = vi
+      .fn()
+      .mockRejectedValueOnce(chunkError())
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValue({ default: "module" });
+    const remembered = rememberCssPreloadFailure(load);
+    await expect(remembered()).rejects.toThrow(
+      "Failed to fetch dynamically imported module",
+    );
+    await expect(remembered()).rejects.toThrow("boom");
+    await expect(remembered()).resolves.toEqual({ default: "module" });
+    expect(load).toHaveBeenCalledTimes(3);
+  });
+
+  it("passes a successful import through on every call", async () => {
+    const load = vi.fn().mockResolvedValue({ default: "module" });
+    const remembered = rememberCssPreloadFailure(load);
+    await expect(remembered()).resolves.toEqual({ default: "module" });
+    await expect(remembered()).resolves.toEqual({ default: "module" });
+    expect(load).toHaveBeenCalledTimes(2);
   });
 });

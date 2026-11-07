@@ -7440,7 +7440,8 @@ test("agent global search screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
-  // This URL opens kaneo's real page; assert that page's own content.
+  // /agent/search renders Kaneo's workspace search inside the /agent shell (the URL stays on
+  // /agent/search); assert that page's own content.
   await expect(
     page.getByRole("heading", { name: "Start Searching" }),
   ).toBeVisible();

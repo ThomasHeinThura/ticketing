@@ -287,9 +287,15 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         if (frame.type === "subscription_denied") {
           hasOutage = true;
           setStatus("unavailable");
+          // The server denies a topic the person cannot reach, for example a direct visit to an
+          // unknown or out-of-reach item key whose 404 was just read. On a first connection only
+          // reads served from an old or invalidated cache are refreshed; after a reconnect,
+          // everything that may have changed while disconnected is.
           void queryClient.invalidateQueries({
             queryKey: ["work-items"],
-            predicate: refreshOnConnect,
+            predicate: hasDisconnected
+              ? refreshOnConnect
+              : firstConnectPredicate,
           });
           return;
         }

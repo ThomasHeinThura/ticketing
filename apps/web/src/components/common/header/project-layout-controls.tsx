@@ -62,6 +62,9 @@ type ProjectView =
 const OVERVIEW_TAB_PATH =
   /^\/agent\/projects\/[^/]+(?:\/(prerequisites|team|documents))?\/?$/u;
 
+/** The canonical project Timeline lives at `/agent/projects/{key}/timeline`. */
+const TIMELINE_PATH = /^\/agent\/projects\/[^/]+\/timeline\/?$/u;
+
 /** The current view from the URL, when the route does not say it. Exported for tests. */
 export function projectViewFromPath(pathname: string): ProjectView {
   const overviewTab = OVERVIEW_TAB_PATH.exec(pathname);
@@ -72,7 +75,8 @@ export function projectViewFromPath(pathname: string): ProjectView {
   if (pathname.includes("/modules")) return "modules";
   if (pathname.includes("/pages")) return "pages";
   if (pathname.includes("/calendar")) return "calendar";
-  if (pathname.includes("/gantt")) return "gantt";
+  if (pathname.includes("/gantt") || TIMELINE_PATH.test(pathname))
+    return "gantt";
   return "board";
 }
 
@@ -316,12 +320,22 @@ export default function ProjectLayoutControls({
     });
   };
   const handleNavigateToGantt = () => {
+    // The view state carries over exactly as it did to Kaneo's Gantt URL; the canonical
+    // `/agent` Timeline takes it when the project key is known.
+    const ganttUrl = buildProjectViewSwitchUrl(
+      "gantt",
+      { workspaceId, projectId },
+      location.searchStr,
+    );
+    if (!projectSlug) {
+      void navigate({ to: ganttUrl });
+      return;
+    }
+    const queryStart = ganttUrl.indexOf("?");
     void navigate({
-      to: buildProjectViewSwitchUrl(
-        "gantt",
-        { workspaceId, projectId },
-        location.searchStr,
-      ),
+      href: `${routes.projectTimeline.build({ projectKey: projectSlug })}${
+        queryStart === -1 ? "" : ganttUrl.slice(queryStart)
+      }`,
     });
   };
   const handleProjectSwitch = (nextProjectId: string) => {
@@ -334,6 +348,12 @@ export default function ProjectLayoutControls({
         href: OVERVIEW_VIEW_ROUTES[
           resolvedView as keyof typeof OVERVIEW_VIEW_ROUTES
         ].build({ projectKey: nextProject.slug }),
+      });
+      return;
+    }
+    if (resolvedView === "gantt") {
+      void navigate({
+        href: routes.projectTimeline.build({ projectKey: nextProject.slug }),
       });
       return;
     }
@@ -364,10 +384,7 @@ export default function ProjectLayoutControls({
       return;
     }
     void navigate({
-      to:
-        resolvedView === "calendar"
-          ? "/dashboard/workspace/$workspaceId/project/$projectId/calendar"
-          : "/dashboard/workspace/$workspaceId/project/$projectId/gantt",
+      to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
       params: { workspaceId, projectId: nextProjectId },
     });
   };

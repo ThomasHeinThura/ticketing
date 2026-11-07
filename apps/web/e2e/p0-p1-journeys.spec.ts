@@ -83,9 +83,14 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
     await expect(page.getByRole("heading", { name: "My work" })).toBeVisible();
     await expect(page).toHaveURL(/\/agent\/my-work\?lens=assigned/);
 
-    // Search is kaneo's workspace search page.
-    await page.goto("/agent/search?q=SSO&scope=work_items");
-    await expect(page).toHaveURL(/\/dashboard\/workspace\/[^/]+\/search/);
+    // Search shows Kaneo's workspace search inside the /agent shell; the URL and q stay put.
+    await page.goto("/agent/search?q=SSO&scope=work-items");
+    await expect(page).toHaveURL(
+      /\/agent\/search\?(?=.*q=SSO)(?=.*scope=work-items)/,
+    );
+    await expect(
+      page.getByPlaceholder(/by key, title, description or comment text/),
+    ).toHaveValue("SSO");
   });
 
   // U-14: on a phone the Inbox filters scroll instead of being cut off, and the project list

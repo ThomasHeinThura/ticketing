@@ -199,8 +199,12 @@ export function NavMain() {
       : []),
     {
       title: t("navigation:sidebar.members"),
-      url: `/dashboard/workspace/${workspace.id}/members`,
-      isActive: path === `/dashboard/workspace/${workspace.id}/members`,
+      // L-03: the canonical members page is in workspace settings; an old per-workspace URL
+      // naming another workspace still renders the old page, so it keeps the highlight too.
+      url: routes.workspaceMembers.path,
+      isActive:
+        path === routes.workspaceMembers.path ||
+        /^\/dashboard\/workspace\/[^/]+\/members$/u.test(path),
       badge: null,
     },
     {
