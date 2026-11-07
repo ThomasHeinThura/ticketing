@@ -258,8 +258,9 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   missing asset is 404; the registered portal client routes (the portal route tree, e.g.
   `/sign-in`, `/catalogue`, `/submissions/:ref`) serve the portal's own `index.html` shell
   for `GET`/`HEAD` so a customer can open, reload or bookmark them; every other
-  extensionless portal path is 404; and it never falls back to agent files or the
-  agent SPA. If the selected output root or its `index.html` is missing, that origin
+  extensionless portal path is 404 and, for `GET`/`HEAD` outside `/api` and `/assets`,
+  carries that same portal shell so the portal shows its branded not-found page (Thomas,
+  7 Nov 2026); and it never falls back to agent files or the agent SPA. If the selected output root or its `index.html` is missing, that origin
   returns 503. The request authority selects one configured origin only after strict
   validation: exactly one raw Host (or a consistent HTTP/2 `:authority` and Host),
   normalized using the configured public scheme and its default port. DNS names are

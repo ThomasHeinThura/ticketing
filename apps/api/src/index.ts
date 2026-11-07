@@ -817,10 +817,37 @@ function registerStaticServing(
     const lastSegment = c.req.path.split("/").pop() ?? "";
     if (lastSegment.includes(".")) return next();
     if (surface === "portal") {
-      // CP-19: only registered portal client routes get the portal shell; never agent files.
-      return isPortalClientRoute(c.req.path)
-        ? serveNoncedIndex()
-        : c.notFound();
+      // CP-19: registered portal client routes get the portal shell (200); never agent files.
+      if (isPortalClientRoute(c.req.path)) return serveNoncedIndex();
+      // A registered route reached with a trailing or doubled slash redirects to its one
+      // address. The client router would otherwise render the real page under a 404 status.
+      const canonicalPath = c.req.path
+        .replace(/\/{2,}/gu, "/")
+        .replace(/\/+$/u, "");
+      if (
+        canonicalPath !== c.req.path &&
+        canonicalPath !== "" &&
+        isPortalClientRoute(canonicalPath)
+      ) {
+        // The Location is built from the still-encoded path, so a decoded control character or
+        // non-ASCII text never reaches the header (that would fail the response with a 500).
+        const requestUrl = new URL(c.req.url);
+        const encodedPath = requestUrl.pathname
+          .replace(/\/{2,}/gu, "/")
+          .replace(/\/+$/u, "");
+        return c.redirect(`${encodedPath}${requestUrl.search}`, 308);
+      }
+      // Finding #7: any other extensionless document path stays 404, but carries the portal's
+      // own nonced shell so the portal app renders its branded not-found page. Asset paths, a
+      // request without a CSP nonce (never a candidate document) and a range request (a static
+      // range answer is 206/416, never the 404 this path needs) keep the plain 404.
+      if (
+        c.req.path.startsWith("/assets/") ||
+        !cspNonceForContext(c) ||
+        c.req.header("range") !== undefined
+      )
+        return c.notFound();
+      return portalNotFoundShell((await serveNoncedIndex()) ?? undefined);
     }
     return serveNoncedIndex();
   };
@@ -864,6 +891,22 @@ function portalFeatureOffResponse(
       headers: { ...headers, "content-type": "text/html; charset=utf-8" },
     },
   );
+}
+
+/**
+ * The portal shell for an unregistered portal path: the same document with status 404.
+ * A shell the feature-off marker already answered (404 or 503) or a missing `index.html`
+ * keeps its own status; only a served 200 shell becomes 404.
+ */
+function portalNotFoundShell(
+  shell: Response | undefined,
+): Response | undefined {
+  if (shell?.status !== 200) return shell;
+  const headers = new Headers(shell.headers);
+  headers.delete("content-length");
+  headers.delete("etag");
+  headers.delete("last-modified");
+  return new Response(shell.body, { status: 404, headers });
 }
 
 /** The `<meta>` the portal app reads to show its feature-off state instead of signing in. */

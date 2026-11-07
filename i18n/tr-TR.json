@@ -3969,7 +3969,9 @@
 		},
 		"notFound": {
 			"title": "Sayfa bulunamadı",
-			"description": "Bu sayfa kullanılamıyor. Adresi kontrol edip tekrar deneyin."
+			"description": "Bu sayfa kullanılamıyor. Adresi kontrol edip tekrar deneyin.",
+			"backToDashboard": "Back to dashboard",
+			"signIn": "Sign in"
 		},
 		"error": {
 			"title": "Bir şeyler ters gitti",

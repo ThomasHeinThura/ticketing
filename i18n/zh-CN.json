@@ -3955,7 +3955,9 @@
 		},
 		"notFound": {
 			"title": "未找到页面",
-			"description": "此页面不可用。请检查地址后重试。"
+			"description": "此页面不可用。请检查地址后重试。",
+			"backToDashboard": "Back to dashboard",
+			"signIn": "Sign in"
 		},
 		"error": {
 			"title": "出现问题",

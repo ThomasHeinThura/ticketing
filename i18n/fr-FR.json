@@ -3983,7 +3983,9 @@
 		},
 		"notFound": {
 			"title": "Page introuvable",
-			"description": "Cette page n’est pas disponible. Vérifiez l’adresse et réessayez."
+			"description": "Cette page n’est pas disponible. Vérifiez l’adresse et réessayez.",
+			"backToDashboard": "Back to dashboard",
+			"signIn": "Sign in"
 		},
 		"error": {
 			"title": "Une erreur est survenue",

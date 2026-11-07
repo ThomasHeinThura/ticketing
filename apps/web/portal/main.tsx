@@ -8,6 +8,9 @@ import "@/index.css";
 const router = createRouter({
   routeTree,
   defaultPreload: "intent",
+  // The server registers portal routes case-sensitively (CP-19): a mis-cased address is a 404
+  // there, so the client shows the not-found page for it too instead of the real page.
+  caseSensitive: true,
 });
 
 const rootElement = document.getElementById("root");

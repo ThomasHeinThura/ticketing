@@ -3955,7 +3955,9 @@
 		},
 		"notFound": {
 			"title": "Không tìm thấy trang",
-			"description": "Trang này không khả dụng. Hãy kiểm tra địa chỉ và thử lại."
+			"description": "Trang này không khả dụng. Hãy kiểm tra địa chỉ và thử lại.",
+			"backToDashboard": "Back to dashboard",
+			"signIn": "Sign in"
 		},
 		"error": {
 			"title": "Đã xảy ra lỗi",

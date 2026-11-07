@@ -16301,9 +16301,15 @@
 						},
 						"description": {
 							"type": "string"
+						},
+						"backToDashboard": {
+							"type": "string"
+						},
+						"signIn": {
+							"type": "string"
 						}
 					},
-					"required": ["title", "description"]
+					"required": ["title", "description", "backToDashboard", "signIn"]
 				},
 				"error": {
 					"type": "object",
