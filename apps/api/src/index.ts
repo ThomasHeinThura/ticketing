@@ -829,8 +829,13 @@ function registerStaticServing(
         canonicalPath !== "" &&
         isPortalClientRoute(canonicalPath)
       ) {
-        const query = new URL(c.req.url).search;
-        return c.redirect(`${canonicalPath}${query}`, 308);
+        // The Location is built from the still-encoded path, so a decoded control character or
+        // non-ASCII text never reaches the header (that would fail the response with a 500).
+        const requestUrl = new URL(c.req.url);
+        const encodedPath = requestUrl.pathname
+          .replace(/\/{2,}/gu, "/")
+          .replace(/\/+$/u, "");
+        return c.redirect(`${encodedPath}${requestUrl.search}`, 308);
       }
       // Finding #7: any other extensionless document path stays 404, but carries the portal's
       // own nonced shell so the portal app renders its branded not-found page. Asset paths, a

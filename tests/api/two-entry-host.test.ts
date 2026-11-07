@@ -275,6 +275,21 @@ describe("P0 host and static isolation", () => {
       expect(response.status, path).toBe(308);
       expect(response.headers.get("location"), path).toBe(location);
     }
+    // The Location keeps the request's percent-encoding, so decoded control characters or
+    // non-ASCII text never reach the header.
+    for (const [path, location] of [
+      [
+        "/requests/a%0D%0ASet-Cookie:%20x=1/",
+        "/requests/a%0D%0ASet-Cookie:%20x=1",
+      ],
+      ["/requests/a%00b/", "/requests/a%00b"],
+      ["/requests/%C3%A9/", "/requests/%C3%A9"],
+    ] as const) {
+      const response = await app.request(path, { headers });
+      expect(response.status, path).toBe(308);
+      expect(response.headers.get("location"), path).toBe(location);
+      expect(response.headers.get("set-cookie"), path).toBeNull();
+    }
     // A slash form of an unregistered path is not redirected: it stays the branded 404.
     const unknown = await app.request("/submissions/", { headers });
     expect(unknown.status).toBe(404);
