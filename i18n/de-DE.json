@@ -3969,7 +3969,9 @@
 		},
 		"notFound": {
 			"title": "Seite nicht gefunden",
-			"description": "Diese Seite ist nicht verfügbar. Prüfen Sie die Adresse und versuchen Sie es erneut."
+			"description": "Diese Seite ist nicht verfügbar. Prüfen Sie die Adresse und versuchen Sie es erneut.",
+			"backToDashboard": "Back to dashboard",
+			"signIn": "Sign in"
 		},
 		"error": {
 			"title": "Ein Fehler ist aufgetreten",

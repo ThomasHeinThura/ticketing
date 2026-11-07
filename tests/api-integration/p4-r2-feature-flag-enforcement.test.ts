@@ -353,10 +353,13 @@ describe("customer portal host (P4R2-L1, P3-R2-03)", () => {
     const api = await portal(app, "/api/public/terminology");
     expect(api.status).toBe(404);
     expect(await api.json()).toEqual({ message: "Not found" });
-    // CP-19 still holds: an unregistered path is a plain 404, never the shell.
+    // CP-19 still holds: an unregistered path stays 404. Finding #7: it carries the portal's own
+    // shell (here with the disabled marker), never agent files.
     const unknown = await portal(app, "/not-a-portal-route");
     expect(unknown.status).toBe(404);
-    expect(await unknown.text()).not.toContain("taskdesk-portal-state");
+    expect(await unknown.text()).toContain(
+      '<meta name="taskdesk-portal-state" content="disabled">',
+    );
     // A project switched on inside an off instance brings the host back.
     const { workspace } = await createSeesAllWorkspaceMember({ role: "owner" });
     const { project } = await createProjectFixture({

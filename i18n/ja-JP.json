@@ -3955,7 +3955,9 @@
 		},
 		"notFound": {
 			"title": "ページが見つかりません",
-			"description": "このページは利用できません。アドレスを確認して、もう一度お試しください。"
+			"description": "このページは利用できません。アドレスを確認して、もう一度お試しください。",
+			"backToDashboard": "Back to dashboard",
+			"signIn": "Sign in"
 		},
 		"error": {
 			"title": "問題が発生しました",

@@ -23,8 +23,8 @@ const PortalFeatureOff = lazy(() =>
 
 // The not-found and error frames are rare too; both load on demand.
 const PortalNotFoundState = lazy(() =>
-  import("@/components/portal/portal-root-states").then((module) => ({
-    default: module.PortalNotFound,
+  import("@/components/portal/portal-not-found").then((module) => ({
+    default: module.PortalNotFoundPage,
   })),
 );
 const PortalErrorState = lazy(() =>
@@ -33,10 +33,16 @@ const PortalErrorState = lazy(() =>
   })),
 );
 
+/**
+ * Finding #7: an unknown portal address (served by the host as 404 with the portal shell). It
+ * renders in the root's outlet, so a signed-in customer keeps the portal layout; without a
+ * session (the invitation frame) it offers sign-in instead of the dashboard.
+ */
 function PortalNotFound() {
+  const { portalUserId } = Route.useRouteContext();
   return (
     <Suspense fallback={null}>
-      <PortalNotFoundState />
+      <PortalNotFoundState signedIn={Boolean(portalUserId)} />
     </Suspense>
   );
 }

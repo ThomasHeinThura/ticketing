@@ -3,8 +3,9 @@
  *
  * The portal host serves its own `index.html` for exactly these client-side routes so a
  * customer can open, reload or bookmark them. Every other extensionless portal path stays
- * 404, and the portal never falls back to agent files. A `$name` segment matches exactly
- * one non-empty path segment.
+ * 404: it carries the same portal shell so the portal app renders its branded not-found page
+ * (asset paths stay a plain 404), and the portal never falls back to agent files. A `$name`
+ * segment matches exactly one non-empty path segment.
  *
  * Single source of truth: `tests/api/two-entry-host.test.ts` asserts this list equals the
  * `fullPaths` of `apps/web/src/routeTree.portal.gen.ts`, so a new portal route cannot be

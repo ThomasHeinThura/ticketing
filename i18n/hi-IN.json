@@ -3969,7 +3969,9 @@
 		},
 		"notFound": {
 			"title": "पृष्ठ नहीं मिला",
-			"description": "यह पृष्ठ उपलब्ध नहीं है। पता जाँचें और फिर प्रयास करें।"
+			"description": "यह पृष्ठ उपलब्ध नहीं है। पता जाँचें और फिर प्रयास करें।",
+			"backToDashboard": "Back to dashboard",
+			"signIn": "Sign in"
 		},
 		"error": {
 			"title": "कुछ गलत हुआ",

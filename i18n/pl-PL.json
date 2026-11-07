@@ -3997,7 +3997,9 @@
 		},
 		"notFound": {
 			"title": "Nie znaleziono strony",
-			"description": "Ta strona jest niedostępna. Sprawdź adres i spróbuj ponownie."
+			"description": "Ta strona jest niedostępna. Sprawdź adres i spróbuj ponownie.",
+			"backToDashboard": "Back to dashboard",
+			"signIn": "Sign in"
 		},
 		"error": {
 			"title": "Coś poszło nie tak",

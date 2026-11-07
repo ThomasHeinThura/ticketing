@@ -817,10 +817,14 @@ function registerStaticServing(
     const lastSegment = c.req.path.split("/").pop() ?? "";
     if (lastSegment.includes(".")) return next();
     if (surface === "portal") {
-      // CP-19: only registered portal client routes get the portal shell; never agent files.
-      return isPortalClientRoute(c.req.path)
-        ? serveNoncedIndex()
-        : c.notFound();
+      // CP-19: registered portal client routes get the portal shell (200); never agent files.
+      if (isPortalClientRoute(c.req.path)) return serveNoncedIndex();
+      // Finding #7: any other extensionless document path stays 404, but carries the portal's
+      // own nonced shell so the portal app renders its branded not-found page. Asset paths and
+      // a request without a CSP nonce (never a candidate document) keep the plain 404.
+      if (c.req.path.startsWith("/assets/") || !cspNonceForContext(c))
+        return c.notFound();
+      return portalNotFoundShell((await serveNoncedIndex()) ?? undefined);
     }
     return serveNoncedIndex();
   };
@@ -864,6 +868,22 @@ function portalFeatureOffResponse(
       headers: { ...headers, "content-type": "text/html; charset=utf-8" },
     },
   );
+}
+
+/**
+ * The portal shell for an unregistered portal path: the same document with status 404.
+ * A shell the feature-off marker already answered (404 or 503) or a missing `index.html`
+ * keeps its own status; only a served 200 shell becomes 404.
+ */
+function portalNotFoundShell(
+  shell: Response | undefined,
+): Response | undefined {
+  if (shell?.status !== 200) return shell;
+  const headers = new Headers(shell.headers);
+  headers.delete("content-length");
+  headers.delete("etag");
+  headers.delete("last-modified");
+  return new Response(shell.body, { status: 404, headers });
 }
 
 /** The `<meta>` the portal app reads to show its feature-off state instead of signing in. */
