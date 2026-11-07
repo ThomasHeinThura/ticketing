@@ -819,10 +819,28 @@ function registerStaticServing(
     if (surface === "portal") {
       // CP-19: registered portal client routes get the portal shell (200); never agent files.
       if (isPortalClientRoute(c.req.path)) return serveNoncedIndex();
+      // A registered route reached with a trailing or doubled slash redirects to its one
+      // address. The client router would otherwise render the real page under a 404 status.
+      const canonicalPath = c.req.path
+        .replace(/\/{2,}/gu, "/")
+        .replace(/\/+$/u, "");
+      if (
+        canonicalPath !== c.req.path &&
+        canonicalPath !== "" &&
+        isPortalClientRoute(canonicalPath)
+      ) {
+        const query = new URL(c.req.url).search;
+        return c.redirect(`${canonicalPath}${query}`, 308);
+      }
       // Finding #7: any other extensionless document path stays 404, but carries the portal's
-      // own nonced shell so the portal app renders its branded not-found page. Asset paths and
-      // a request without a CSP nonce (never a candidate document) keep the plain 404.
-      if (c.req.path.startsWith("/assets/") || !cspNonceForContext(c))
+      // own nonced shell so the portal app renders its branded not-found page. Asset paths, a
+      // request without a CSP nonce (never a candidate document) and a range request (a static
+      // range answer is 206/416, never the 404 this path needs) keep the plain 404.
+      if (
+        c.req.path.startsWith("/assets/") ||
+        !cspNonceForContext(c) ||
+        c.req.header("range") !== undefined
+      )
         return c.notFound();
       return portalNotFoundShell((await serveNoncedIndex()) ?? undefined);
     }

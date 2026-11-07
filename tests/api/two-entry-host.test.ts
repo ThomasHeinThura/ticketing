@@ -232,7 +232,7 @@ describe("P0 host and static isolation", () => {
       "/inbox",
       "/workspaces/abc/board",
       "/sign-in/extra",
-      "/sign-in/",
+      "/Sign-in",
       "/catalogue/x",
       "/submissions",
       "/submissions/",
@@ -255,6 +255,46 @@ describe("P0 host and static isolation", () => {
       const head = await app.request(path, { method: "HEAD", headers });
       expect(head.status, `HEAD ${path}`).toBe(404);
       expect(await head.text(), `HEAD ${path}`).toBe("");
+    }
+  });
+
+  it("redirects a registered portal route reached with a trailing or doubled slash to its one address", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    const headers = { host: "portal.localhost:5174" };
+    for (const [path, location] of [
+      ["/sign-in/", "/sign-in"],
+      ["/catalogue//", "/catalogue"],
+      ["//requests", "/requests"],
+      ["/requests/ABC-1/", "/requests/ABC-1"],
+      ["/catalogue/?q=vpn", "/catalogue?q=vpn"],
+    ] as const) {
+      const response = await app.request(path, { headers });
+      expect(response.status, path).toBe(308);
+      expect(response.headers.get("location"), path).toBe(location);
+    }
+    // A slash form of an unregistered path is not redirected: it stays the branded 404.
+    const unknown = await app.request("/submissions/", { headers });
+    expect(unknown.status).toBe(404);
+    // A collapsed path never becomes another origin.
+    const protocolRelative = await app.request("//evil.example/", { headers });
+    expect(protocolRelative.headers.get("location")).toBeNull();
+  });
+
+  it("keeps a range request for an unknown portal path at a plain 404", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    for (const range of ["bytes=0-", "bytes=0-40", "bytes=99999-"]) {
+      const response = await app.request("/nothing-here", {
+        headers: { host: "portal.localhost:5174", range },
+      });
+      expect(response.status, range).toBe(404);
+      expect(response.headers.get("content-range"), range).toBeNull();
+      expect(await response.text(), range).not.toContain("MARKER");
     }
   });
 
