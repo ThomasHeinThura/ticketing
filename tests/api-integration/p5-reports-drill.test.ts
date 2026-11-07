@@ -81,9 +81,33 @@ async function drill(
   };
 }
 
+/**
+ * Rate or cost exposure in a response, found by field name and value, never by whole-text match:
+ * a generated id or key can contain "9000" by chance, which made the old text search flaky.
+ * Reported: fields named like cost, rateMinor or unpriced; the number 9000; the strings "9000"
+ * and "90.00"; and any string value mentioning "unpriced".
+ */
+function rateExposure(value: unknown, path = "$"): string[] {
+  if (Array.isArray(value))
+    return value.flatMap((item, index) =>
+      rateExposure(item, `${path}[${index}]`),
+    );
+  if (value && typeof value === "object")
+    return Object.entries(value).flatMap(([key, child]) => [
+      ...(/cost|rateMinor|unpriced/i.test(key) ? [`${path}.${key}`] : []),
+      ...rateExposure(child, `${path}.${key}`),
+    ]);
+  if (value === 9000) return [path];
+  if (
+    typeof value === "string" &&
+    (value === "9000" || value === "90.00" || /unpriced/i.test(value))
+  )
+    return [path];
+  return [];
+}
+
 const noRates = (json: string) => {
-  for (const needle of ["9000", "90.00", '"cost"', "rateMinor", "unpriced"])
-    expect(json, `leaked ${needle}`).not.toContain(needle);
+  expect(rateExposure(JSON.parse(json)), "rate or cost exposure").toEqual([]);
 };
 
 describe("work item reports", () => {
