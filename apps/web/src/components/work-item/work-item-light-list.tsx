@@ -72,7 +72,10 @@ function formatDueDate(value: string) {
  * rows below the viewport are a spacer of the virtual window's estimated height. It is a
  * read-only preview: nothing in it is focusable or clickable, and it carries none of the
  * hydrated list's markers (`work-item-list-populated`, `data-task-id`,
- * `data-primary-content-ready`), so readiness checks still wait for the real list.
+ * `data-primary-content-ready`), so readiness checks still wait for the real list. It does not
+ * wait for the web font: drawn in Geist's size-matched fallback (`font-sans-matched`), its rows
+ * keep their size when Geist swaps in, so neither the swap nor the hydrated rows are a larger
+ * paint.
  */
 export default function WorkItemLightList({
   projectId,
@@ -108,7 +111,7 @@ export default function WorkItemLightList({
 
   return (
     <div
-      className="w-full bg-muted/20"
+      className="w-full bg-muted/20 font-sans-matched"
       data-testid="work-item-list-preview"
       aria-busy="true"
     >

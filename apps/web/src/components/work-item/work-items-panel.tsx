@@ -44,44 +44,6 @@ const loadTableModules = () =>
 const tableModulesLoaded = () =>
   isWorkItemListLoaded() && isWorkItemTableLoaded();
 
-/** The preview's row title face (`text-sm`, Geist's latin subset). */
-const PREVIEW_FONT = '400 14px "Geist Variable"';
-const PREVIEW_FONT_SAMPLE = "Seeded";
-const PREVIEW_FONT_TIMEOUT_MS = 1_500;
-
-function previewFontLoaded() {
-  return (
-    typeof document === "undefined" ||
-    !document.fonts ||
-    document.fonts.check(PREVIEW_FONT, PREVIEW_FONT_SAMPLE)
-  );
-}
-
-/**
- * Whether the preview can paint in the web font. The font downloads after the entry has run
- * (the work route's HTML preload, see vite.config.ts) rather than competing with it. Painted
- * in a fallback face, the preview's rows would grow when the font swapped in and again when the
- * hydrated list replaced them, each a new largest paint (G11 work-list LCP). A font that does
- * not arrive within the timeout is not waited for.
- */
-function usePreviewFontReady(active: boolean) {
-  const [ready, setReady] = useState(previewFontLoaded);
-  useEffect(() => {
-    if (!active || ready) return;
-    let current = true;
-    const settle = () => {
-      if (current) setReady(true);
-    };
-    const timer = setTimeout(settle, PREVIEW_FONT_TIMEOUT_MS);
-    document.fonts.load(PREVIEW_FONT, PREVIEW_FONT_SAMPLE).then(settle, settle);
-    return () => {
-      current = false;
-      clearTimeout(timer);
-    };
-  }, [active, ready]);
-  return ready;
-}
-
 /**
  * True from the second animation frame after `active` first holds, that is once what rendered
  * with it has been presented; it then stays true.
@@ -191,8 +153,6 @@ function WorkItemsPanel({
       sort,
       hasPartialFailure: workItemsResult?.hasPartialFailure,
     });
-  const previewFontReady = usePreviewFontReady(previewable);
-  const showPreview = previewable && previewFontReady;
   // The grouped list's own modules (virtual window, drag and drop, menus, hover cards; about
   // 170 KB) are requested once the preview has been presented: requested with the first render,
   // their hundred module requests and evaluation ran on the main thread before the preview's
@@ -200,7 +160,7 @@ function WorkItemsPanel({
   // rows) they are requested at once, or as soon as the rows show that none can paint.
   const previewDecisionPending =
     layout === "list" && sort !== "position" && (isLoading || states.isLoading);
-  const previewPresented = usePresentedOnce(showPreview);
+  const previewPresented = usePresentedOnce(previewable);
   const kaneoListReady = useModuleReady(
     loadWorkItemKaneoList,
     isWorkItemKaneoListLoaded,
@@ -343,7 +303,7 @@ function WorkItemsPanel({
   };
 
   const listFallback =
-    showPreview && workItems && previewStates ? (
+    previewable && workItems && previewStates ? (
       <WorkItemLightList
         projectId={project?.id}
         workItems={workItems}

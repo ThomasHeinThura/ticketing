@@ -112,6 +112,21 @@ describe("WorkItemLightList", () => {
     expect(screen.queryAllByRole("link")).toHaveLength(0);
   });
 
+  it("paints in Geist's size-matched fallback until the web font arrives", () => {
+    // Painted before Geist loads, its rows keep their size when it swaps in, so neither the
+    // swap nor the hydrated list's rows are a larger paint (G11 work-list LCP).
+    render(
+      <WorkItemLightList
+        projectId="project-1"
+        workItems={[item(1, "backlog")]}
+        states={[{ id: "backlog", name: "Backlog", group: "backlog" }]}
+      />,
+    );
+    expect(screen.getByTestId("work-item-list-preview")).toHaveClass(
+      "font-sans-matched",
+    );
+  });
+
   it("keeps a collapsed group's rows hidden", () => {
     preference.collapsed = ["open"];
     render(

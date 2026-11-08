@@ -226,41 +226,21 @@ describe("grouped list first paint (G11 work-list LCP)", () => {
       return { fonts, font };
     }
 
-    it("paints the preview in the web font, so its rows never change size afterwards", async () => {
-      const { fonts, font } = stubFonts();
+    it("paints the preview while the web font still loads, so the font is not on its path", async () => {
+      const { fonts } = stubFonts();
       const { default: WorkItemsPanel } = await import("./work-items-panel");
       render(<WorkItemsPanel {...panelProps({})} />);
-      await flushMicrotasks();
+
+      // Drawn in Geist's size-matched fallback (`WorkItemLightList`), it keeps its size when
+      // the font swaps in.
+      expect(screen.getByTestId("work-item-list-preview")).toBeInTheDocument();
+      expect(fonts.check).not.toHaveBeenCalled();
+      expect(fonts.load).not.toHaveBeenCalled();
+
       await advanceAnimationFrame();
       await advanceAnimationFrame();
       await flushMicrotasks();
-
-      expect(fonts.load).toHaveBeenCalledWith(
-        '400 14px "Geist Variable"',
-        "Seeded",
-      );
-      expect(screen.getByTestId("work-item-list-loading")).toBeInTheDocument();
-      expect(screen.queryByTestId("work-item-list-preview")).toBeNull();
-      // The list's download waits for the preview too, so it does not slow the font.
-      expect(testState.kaneoListImports).toBe(0);
-
-      await act(async () => font.resolve?.());
-      expect(screen.getByTestId("work-item-list-preview")).toBeInTheDocument();
-      expect(testState.kaneoListImports).toBe(0);
-    });
-
-    it("paints the preview without the web font when it does not arrive in time", async () => {
-      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-      stubFonts();
-      const { default: WorkItemsPanel } = await import("./work-items-panel");
-      render(<WorkItemsPanel {...panelProps({})} />);
-      await flushMicrotasks();
-      expect(screen.queryByTestId("work-item-list-preview")).toBeNull();
-
-      await act(async () => {
-        vi.advanceTimersByTime(1_500);
-      });
-      expect(screen.getByTestId("work-item-list-preview")).toBeInTheDocument();
+      expect(testState.kaneoListImports).toBe(1);
     });
   });
 });

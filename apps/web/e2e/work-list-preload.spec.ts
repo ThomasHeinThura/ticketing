@@ -5,9 +5,11 @@ import {
   WORK_LIST_PATH,
 } from "./helpers/g11-performance-fixture";
 
-test("direct work-list visit downloads its parent outlet before the session resolves", async ({
+test("direct work-list visit requests its route chunks once the entry has run, before the session resolves", async ({
   page,
 }) => {
+  // The download that gates the entry is bandwidth-bound on the G11 profile; the route's
+  // chunks beside it delayed the entry by their own transfer time (G11 work-list LCP).
   const manifest = JSON.parse(
     readFileSync(
       new URL("../dist/agent/.vite/manifest.json", import.meta.url),
@@ -52,16 +54,31 @@ test("direct work-list visit downloads its parent outlet before the session reso
     await heldSession;
     await route.fallback();
   });
-  const downloaded = page.waitForResponse(
-    (response) => response.url().endsWith(`/${parent?.file}`) && response.ok(),
-  );
-  const headerDownloaded = page.waitForResponse(
-    (response) => response.url().endsWith(`/${header?.file}`) && response.ok(),
-  );
+  const parentRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith(`/${parent?.file}`))
+      parentRequests.push(request.url());
+  });
   try {
-    // HTML must start the entire frame closure without executing the application.
-    // A lazy import during entry evaluation is too late on a cold network.
     await page.goto(WORK_LIST_PATH, { waitUntil: "commit" });
+    // The HTML's own preloads (entry closure, locale) are all requested by now.
+    await expect(page.locator('link[rel="modulepreload"]')).not.toHaveCount(0);
+    await page.waitForTimeout(500);
+    expect(parentRequests).toEqual([]);
+    await expect(
+      page.locator(`link[rel="modulepreload"][href="/${parent?.file}"]`),
+    ).toHaveCount(0);
+
+    const downloaded = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/${parent?.file}`) && response.ok(),
+    );
+    const headerDownloaded = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/${header?.file}`) && response.ok(),
+    );
+    releaseEntry();
+    // Requested by the HTML's script, not by the router after the session check.
     await Promise.all([downloaded, headerDownloaded]);
     await expect(
       page.locator(`link[rel="modulepreload"][href="/${header?.file}"]`),
@@ -79,11 +96,11 @@ test("direct work-list visit downloads its parent outlet before the session reso
   await expect(page.getByTestId("work-item-list-populated")).toBeVisible();
 });
 
-test("direct work-list visit fetches the web font after the entry runs, not beside its download", async ({
+test("direct work-list visit leaves the web font to the text that first uses it", async ({
   page,
 }) => {
-  // The first-paint closure is bandwidth-bound on the G11 profile; the 29 KB font downloaded
-  // beside it delayed the entry by its own transfer time (G11 work-list LCP).
+  // The preview paints in Geist's size-matched fallback, so the font is off the first paint's
+  // path; preloaded, its 29 KB competed with the entry or the route's chunks (G11 work-list LCP).
   const manifest = JSON.parse(
     readFileSync(
       new URL("../dist/agent/.vite/manifest.json", import.meta.url),
@@ -111,15 +128,15 @@ test("direct work-list visit fetches the web font after the entry runs, not besi
   });
   try {
     await page.goto(WORK_LIST_PATH, { waitUntil: "commit" });
-    // The HTML's own preloads (entry closure, locale, route chunks) are all requested by now.
     await expect(page.locator('link[rel="modulepreload"]')).not.toHaveCount(0);
     await page.waitForTimeout(500);
     expect(fontRequests).toEqual([]);
-    await expect(page.locator('link[rel="preload"][as="font"]')).toHaveCount(0);
   } finally {
     releaseEntry();
   }
-  await expect(page.locator('link[rel="preload"][as="font"]')).toHaveCount(1);
-  await expect.poll(() => fontRequests.length).toBeGreaterThan(0);
+  await expect(page.getByTestId("work-item-list-preview")).toBeVisible();
   await expect(page.getByTestId("work-item-list-populated")).toBeVisible();
+  await expect(page.locator('link[rel="preload"][as="font"]')).toHaveCount(0);
+  // Requested once, by the stylesheet, not twice by a late preload and the stylesheet.
+  await expect.poll(() => fontRequests.length).toBe(1);
 });
