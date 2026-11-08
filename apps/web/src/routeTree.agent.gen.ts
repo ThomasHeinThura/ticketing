@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/agent/__root'
 import { Route as IndexRouteImport } from './routes/agent/index'
 import { Route as LayoutRouteImport } from './routes/agent/_layout'
 import { Route as AuthRouteImport } from './routes/agent/auth'
-import { Route as TestErrorRouteImport } from './routes/agent/test-error'
 import { Route as LayoutAuthenticatedRouteImport } from './routes/agent/_layout/_authenticated'
 import { Route as AgentSignInRouteImport } from './routes/agent/agent/sign-in'
 import { Route as AuthCheckEmailRouteImport } from './routes/agent/auth/check-email'
@@ -173,11 +172,6 @@ const LayoutRoute = LayoutRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestErrorRoute = TestErrorRouteImport.update({
-  id: '/test-error',
-  path: '/test-error',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutAuthenticatedRoute = LayoutAuthenticatedRouteImport.update({
@@ -1126,7 +1120,6 @@ const LayoutAuthenticatedDashboardWorkspaceWorkspaceIdProjectProjectIdTaskTaskId
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
-  '/test-error': typeof TestErrorRoute
   '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
   '/auth/sign-in': typeof AuthSignInRoute
@@ -1277,7 +1270,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
-  '/test-error': typeof TestErrorRoute
   '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
   '/auth/sign-in': typeof AuthSignInRoute
@@ -1424,7 +1416,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
-  '/test-error': typeof TestErrorRoute
   '/_layout/_authenticated': typeof LayoutAuthenticatedRouteWithChildren
   '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
@@ -1578,7 +1569,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/test-error'
     | '/agent/sign-in'
     | '/auth/check-email'
     | '/auth/sign-in'
@@ -1729,7 +1719,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/test-error'
     | '/agent/sign-in'
     | '/auth/check-email'
     | '/auth/sign-in'
@@ -1875,7 +1864,6 @@ export interface FileRouteTypes {
     | '/'
     | '/_layout'
     | '/auth'
-    | '/test-error'
     | '/_layout/_authenticated'
     | '/agent/sign-in'
     | '/auth/check-email'
@@ -2029,7 +2017,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
-  TestErrorRoute: typeof TestErrorRoute
   AgentSignInRoute: typeof AgentSignInRoute
   GodModeSignInRoute: typeof GodModeSignInRoute
   AgentGodModeSplatRoute: typeof AgentGodModeSplatRoute
@@ -2057,13 +2044,6 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-error': {
-      id: '/test-error'
-      path: '/test-error'
-      fullPath: '/test-error'
-      preLoaderRoute: typeof TestErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/_authenticated': {
@@ -3809,7 +3789,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
-  TestErrorRoute: TestErrorRoute,
   AgentSignInRoute: AgentSignInRoute,
   GodModeSignInRoute: GodModeSignInRoute,
   AgentGodModeSplatRoute: AgentGodModeSplatRoute,

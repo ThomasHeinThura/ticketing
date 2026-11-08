@@ -151,7 +151,6 @@ export const generatedRouteMetadata = {
     "/invitations",
     "/onboarding",
     "/profile-setup",
-    "/test-error",
   ],
   portal: [
     // Canonical full paths for this surface.
