@@ -4,6 +4,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  useIsMobile,
 } from "@taskdesk/ui";
 import { LifeBuoy, SearchIcon } from "lucide-react";
 import { type FormEvent, lazy, Suspense, useRef, useState } from "react";
@@ -19,10 +20,15 @@ const PortalProjectSelector = lazy(() => import("./portal-project-selector"));
 // The help results load on first use (G11 portal budget).
 const PortalSearchDialog = lazy(() => import("./portal-search-dialog"));
 
+/** Tailwind's `sm` breakpoint: below it the top bar keeps only icons. */
+const PHONE_BREAKPOINT = 640;
+
 /**
  * The customer top bar (WSO2-style): project scope, search, Get help, theme, inbox and the
  * avatar menu. Search opens the combined help results: articles, request types and the
- * customer's own requests.
+ * customer's own requests. Get help is an outline secondary, so the page's own primary action
+ * (New Request) stays the strongest control (CP-9); on a phone the theme switch moves into the
+ * avatar menu (P6).
  */
 export default function PortalTopbar({ user }: { user: PortalShellUser }) {
   const { t } = usePortalTranslation("portal");
@@ -31,6 +37,7 @@ export default function PortalTopbar({ user }: { user: PortalShellUser }) {
   // Opened once: keeps the dialog mounted so it can animate closed and restore focus.
   const [searchUsed, setSearchUsed] = useState(false);
   const searchFrom = useRef<HTMLElement | null>(null);
+  const phone = useIsMobile(PHONE_BREAKPOINT);
 
   function openSearch(from: HTMLElement | null) {
     searchFrom.current = from;
@@ -85,15 +92,20 @@ export default function PortalTopbar({ user }: { user: PortalShellUser }) {
         </Button>
         <Button
           size="sm"
+          variant="outline"
           className="max-sm:size-9 max-sm:px-0"
           render={<Link to={routes.portalCatalogue.path} />}
         >
           <LifeBuoy className="size-4" aria-hidden="true" />
           <span className="max-sm:sr-only">{t("shell.getHelp")}</span>
         </Button>
-        <ThemeToggleDropdown label={t("shell.theme")} />
+        {phone ? null : (
+          <div className="max-sm:hidden">
+            <ThemeToggleDropdown label={t("shell.theme")} />
+          </div>
+        )}
         <PortalNotificationBell />
-        <PortalUserMenu user={user} />
+        <PortalUserMenu user={user} themeItem={phone === true} />
       </div>
       {searchUsed ? (
         <Suspense fallback={null}>

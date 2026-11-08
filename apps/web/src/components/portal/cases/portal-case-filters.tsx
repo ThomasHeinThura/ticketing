@@ -17,11 +17,25 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Sheet,
+  SheetClose,
+  SheetFooter,
+  SheetHeader,
+  SheetPanel,
+  SheetPopup,
+  SheetTitle,
+  SheetTrigger,
   ToggleGroup,
   ToggleGroupItem,
 } from "@taskdesk/ui";
-import { ArrowUpDown, CalendarRange, ChevronDown, Search } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import {
+  ArrowUpDown,
+  CalendarRange,
+  ChevronDown,
+  ListFilter,
+  Search,
+} from "lucide-react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { DateField } from "@/components/common/date-field";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
@@ -198,15 +212,70 @@ function CaseSearch({
   );
 }
 
+function SortMenu({
+  sort,
+  onChange,
+}: {
+  sort: PortalCaseSort;
+  onChange: (patch: PortalCaseFilterPatch) => void;
+}) {
+  const { t } = usePortalTranslation("portal");
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="outline" size="sm" className="gap-1.5" />}
+      >
+        <ArrowUpDown className="size-3.5" aria-hidden="true" />
+        {t(`cases.sort.${sort}`)}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t("cases.sort.label")}</DropdownMenuLabel>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup
+          value={sort}
+          onValueChange={(value) =>
+            onChange({
+              sort:
+                value === "updated_desc"
+                  ? undefined
+                  : (value as PortalCaseFilterSearch["sort"]),
+            })
+          }
+        >
+          {PORTAL_CASE_SORTS.map((value) => (
+            <DropdownMenuRadioItem key={value} value={value} closeOnClick>
+              {t(`cases.sort.${value}`)}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const CLEARED: PortalCaseFilterPatch = {
+  status: undefined,
+  priority: undefined,
+  q: undefined,
+  from: undefined,
+  to: undefined,
+};
+
 /**
- * The cases toolbar (WSO2-style): My / All toggle, then Status and Severity filter menus, and on
- * the full list a created-date range, sort and search. Every value lives in the URL.
+ * The cases toolbar (WSO2-style): an optional leading control (the request list's view tabs),
+ * the My / All toggle, then Status and Severity filter menus, and on the full list a created-date
+ * range, sort and search. Every value lives in the URL. Below `sm` the full list keeps the view
+ * tabs, My / All and search in view and moves the menus behind one Filter button that opens a
+ * bottom sheet (P5), so the toolbar takes two rows on a phone.
  */
 export function PortalCaseFilters({
   filters,
   onChange,
   statuses = PORTAL_CASE_STATUSES,
   full = false,
+  leading,
 }: {
   filters: PortalCaseFilterSearch;
   onChange: (patch: PortalCaseFilterPatch) => void;
@@ -214,6 +283,8 @@ export function PortalCaseFilters({
   statuses?: readonly string[];
   /** Search, created dates and sort (the request list). */
   full?: boolean;
+  /** Rendered first in the same row, e.g. the request list's view tabs. */
+  leading?: ReactNode;
 }) {
   const { t } = usePortalTranslation("portal");
   const scope = filters.scope ?? "mine";
@@ -225,22 +296,14 @@ export function PortalCaseFilters({
       filters.from ||
       filters.to,
   );
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <ToggleGroup
-        variant="outline"
-        size="sm"
-        aria-label={t("cases.scope.label")}
-        value={[scope]}
-        onValueChange={(next) => {
-          const value = next[0];
-          if (value === "mine" || value === "all")
-            onChange({ scope: value === "all" ? "all" : undefined });
-        }}
-      >
-        <ToggleGroupItem value="mine">{t("cases.scope.mine")}</ToggleGroupItem>
-        <ToggleGroupItem value="all">{t("cases.scope.all")}</ToggleGroupItem>
-      </ToggleGroup>
+  // Filter groups set inside the sheet; search stays outside it and sort is an order, not a filter.
+  const sheetFilterCount = [
+    filters.status,
+    filters.priority,
+    filters.from || filters.to,
+  ].filter(Boolean).length;
+  const menus = (
+    <>
       <FilterMenu
         label={t("cases.columns.status")}
         values={statuses}
@@ -270,60 +333,84 @@ export function PortalCaseFilters({
             to={filters.to}
             onChange={onChange}
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="outline" size="sm" className="gap-1.5" />
-              }
-            >
-              <ArrowUpDown className="size-3.5" aria-hidden="true" />
-              {t(`cases.sort.${sort}`)}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>{t("cases.sort.label")}</DropdownMenuLabel>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuRadioGroup
-                value={sort}
-                onValueChange={(value) =>
-                  onChange({
-                    sort:
-                      value === "updated_desc"
-                        ? undefined
-                        : (value as PortalCaseFilterSearch["sort"]),
-                  })
-                }
-              >
-                {PORTAL_CASE_SORTS.map((value) => (
-                  <DropdownMenuRadioItem key={value} value={value} closeOnClick>
-                    {t(`cases.sort.${value}`)}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <SortMenu sort={sort} onChange={onChange} />
         </>
       ) : null}
-      {hasFilters ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            onChange({
-              status: undefined,
-              priority: undefined,
-              q: undefined,
-              from: undefined,
-              to: undefined,
-            })
-          }
-        >
-          {t("cases.filters.clear")}
-        </Button>
-      ) : null}
+    </>
+  );
+  const clear = hasFilters ? (
+    <Button variant="ghost" size="sm" onClick={() => onChange(CLEARED)}>
+      {t("cases.filters.clear")}
+    </Button>
+  ) : null;
+  return (
+    <div
+      className="flex flex-wrap items-center gap-2"
+      data-slot="portal-case-toolbar"
+    >
+      {leading}
       {full ? (
-        <div className="w-full sm:ms-auto sm:w-auto">
+        <Sheet>
+          <SheetTrigger
+            render={
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 sm:hidden"
+              />
+            }
+          >
+            <ListFilter className="size-3.5" aria-hidden="true" />
+            {t("common:actions.filter")}
+            {sheetFilterCount ? (
+              <Badge variant="secondary" size="sm" className="tabular-nums">
+                {sheetFilterCount}
+              </Badge>
+            ) : null}
+          </SheetTrigger>
+          <SheetPopup side="bottom" closeLabel={t("common:actions.close")}>
+            <SheetHeader>
+              <SheetTitle>{t("common:actions.filter")}</SheetTitle>
+            </SheetHeader>
+            <SheetPanel>
+              <div className="flex flex-wrap items-center gap-2">{menus}</div>
+            </SheetPanel>
+            <SheetFooter variant="bare">
+              {clear}
+              <SheetClose render={<Button size="sm" />}>
+                {t("common:actions.close")}
+              </SheetClose>
+            </SheetFooter>
+          </SheetPopup>
+        </Sheet>
+      ) : null}
+      <ToggleGroup
+        variant="outline"
+        size="sm"
+        aria-label={t("cases.scope.label")}
+        value={[scope]}
+        onValueChange={(next) => {
+          const value = next[0];
+          if (value === "mine" || value === "all")
+            onChange({ scope: value === "all" ? "all" : undefined });
+        }}
+      >
+        <ToggleGroupItem value="mine">{t("cases.scope.mine")}</ToggleGroupItem>
+        <ToggleGroupItem value="all">{t("cases.scope.all")}</ToggleGroupItem>
+      </ToggleGroup>
+      {full ? (
+        <div className="flex flex-wrap items-center gap-2 max-sm:hidden">
+          {menus}
+          {clear}
+        </div>
+      ) : (
+        <>
+          {menus}
+          {clear}
+        </>
+      )}
+      {full ? (
+        <div className="min-w-32 flex-1 sm:ms-auto sm:flex-none">
           <CaseSearch value={filters.q} onChange={(q) => onChange({ q })} />
         </div>
       ) : null}

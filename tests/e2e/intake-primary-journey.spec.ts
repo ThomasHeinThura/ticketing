@@ -752,7 +752,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     });
     await runPhase(phaseJournal, "requester-cases-list", async () => {
       // S4b: the accepted request is in the customer's case list with its customer status,
-      // "Your team" in place of an assignee, and a CSV export for the same filters.
+      // No assignee in the payload, and a CSV export for the same filters.
       const listResponse = apiResponse(
         returnPage,
         "GET",
@@ -770,7 +770,8 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       await expect(
         returnPage.getByRole("link", { name: ref, exact: true }),
       ).toBeVisible();
-      await expect(returnPage.getByText("Your team").first()).toBeVisible();
+      // CP-2: My requests leaves out Created by / Assigned to ("You" / "Your team" on every row).
+      await expect(returnPage.getByText("Your team")).toHaveCount(0);
       const exportHref = await returnPage
         .getByRole("link", { name: "Export CSV", exact: true })
         .getAttribute("href");

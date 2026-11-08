@@ -3956,7 +3956,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Viste"
 		},
 		"approvals": {
 			"title": "Approvals",

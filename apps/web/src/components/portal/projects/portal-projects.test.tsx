@@ -243,6 +243,13 @@ describe("PortalProjectsList", () => {
       counts: { actionRequired: 0, outstanding: 1 },
     }),
   ];
+  // More than five: the type tabs and the search show (CP-11).
+  const many = [
+    ...projects,
+    ...["P1", "P2", "P3", "P4"].map((key) =>
+      option({ key, name: `Other project ${key}` }),
+    ),
+  ];
 
   it("lists key, name, type, status and both counts, linking each project", async () => {
     getPortalProjects.mockResolvedValue({ data: projects });
@@ -260,8 +267,21 @@ describe("PortalProjectsList", () => {
     ).toBeInTheDocument();
   });
 
-  it("filters by the tab and the search in the URL", async () => {
+  it("hides the type tabs and search, and ignores them in the URL, with five or fewer (CP-11)", async () => {
     getPortalProjects.mockResolvedValue({ data: projects });
+    wrap(<PortalProjectsList search={{ tab: "services", q: "zzz" }} />);
+    expect(
+      await screen.findByRole("link", { name: "Contoso rollout" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Managed operations" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByRole("searchbox")).toBeNull();
+  });
+
+  it("filters by the tab and the search in the URL", async () => {
+    getPortalProjects.mockResolvedValue({ data: many });
     const { unmount } = wrap(
       <PortalProjectsList search={{ tab: "services" }} />,
     );
@@ -280,7 +300,7 @@ describe("PortalProjectsList", () => {
   });
 
   it("writes the search to the URL and offers to clear a search with no match", async () => {
-    getPortalProjects.mockResolvedValue({ data: projects });
+    getPortalProjects.mockResolvedValue({ data: many });
     wrap(<PortalProjectsList search={{}} />);
     await screen.findByRole("link", { name: "Contoso rollout" });
     fireEvent.change(

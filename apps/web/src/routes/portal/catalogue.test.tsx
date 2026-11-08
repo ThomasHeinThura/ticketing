@@ -488,6 +488,23 @@ describe("portal catalogue route", () => {
     fetchMock.mockRestore();
   });
 
+  it("searches from a full-width search box and lays request types out as a card grid (CP-3)", async () => {
+    mocks.search = { q: "", key: undefined };
+    renderCatalogue();
+    const card = await screen.findByRole("button", { name: /Access request/u });
+    const search = screen.getByRole("searchbox", { name: "Search requests" });
+    expect(search.closest("[data-slot=input-group]")).toHaveClass("w-full");
+    // No bare "Filter"/"Search" label above the box any more.
+    expect(screen.queryByText("Search", { selector: "label" })).toBeNull();
+    // Each card leads with an icon and ends with a chevron, inside a responsive grid.
+    expect(card.querySelectorAll("svg[aria-hidden=true]")).toHaveLength(2);
+    expect(card.closest("ul")).toHaveClass("@3xl:grid-cols-3");
+    fireEvent.change(search, { target: { value: "vpn" } });
+    expect(mocks.navigate).toHaveBeenLastCalledWith({
+      search: { q: "vpn", key: undefined },
+    });
+  });
+
   it("moves focus to the form heading when a card is opened", async () => {
     mocks.search = { q: "", key: undefined };
     const view = renderCatalogue();

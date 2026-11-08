@@ -289,17 +289,20 @@ async function runJourney(
     ).toHaveCount(0);
     await expectNoSeriousAxeViolations(page);
 
-    // Search and tabs are URL state.
-    await page
-      .getByRole("searchbox", { name: "Search projects" })
-      .fill("no such project");
-    await expect(page).toHaveURL(/q=no\+such\+project|q=no%20such%20project/u);
-    await expect(page.getByText("No matching projects")).toBeVisible();
-    await page.getByRole("button", { name: "Clear search" }).click();
-    await page.getByRole("tab", { name: "Managed services" }).click();
-    await expect(page).toHaveURL(/tab=services/u);
-    await expect(page.getByText("No matching projects")).toBeVisible();
-    await page.getByRole("tab", { name: "All" }).click();
+    // CP-11: with five or fewer items the type tabs and search are hidden, and an old
+    // `?tab=`/`?q=` link does not narrow the list (the tabs and search themselves are covered by
+    // the component tests with a longer list).
+    await expect(page.getByRole("tablist")).toHaveCount(0);
+    await expect(
+      page.getByRole("searchbox", { name: "Search projects" }),
+    ).toHaveCount(0);
+    await page.goto(
+      new URL("/projects?tab=services&q=no+such+project", portal).toString(),
+    );
+    await expect(
+      page.getByRole("row", { name: /Portal rollout/u }),
+    ).toBeVisible();
+    await expect(page.getByText("No matching projects")).toHaveCount(0);
 
     // Project Details.
     const detailResponse = apiResponse(

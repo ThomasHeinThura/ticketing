@@ -202,11 +202,57 @@ describe("portal notification inbox", () => {
     expect(time?.textContent).not.toBe(
       new Date("2026-10-26T10:00:00.000Z").toLocaleString(),
     );
-    // The reference shares the header's description line (no separate, differently padded panel).
-    const description = time?.closest("[data-slot=card-description]");
-    expect(description).toHaveTextContent("notifications.requestReference");
-    expect(document.querySelector("[data-slot=card-panel]")).toBeNull();
+    // The reference and the time share one muted line under the event text (P7).
+    const meta = time?.closest("[data-slot=portal-notification-meta]");
+    expect(meta).toHaveTextContent("notifications.requestReference");
+    expect(meta).toHaveClass("truncate", "text-muted-foreground");
     expect(document.title).toBe("notifications.title · navigation.title");
+  });
+
+  it("renders compact rows: unread dot, whole-row link and an icon read toggle (CP-8, P7)", async () => {
+    mocks.get.mockReset().mockResolvedValue({
+      ...page,
+      data: [
+        page.data[0],
+        {
+          ...page.data[0],
+          id: "notification-9",
+          isRead: true,
+          requestRef: "SUB-9",
+          commentId: null,
+        },
+      ],
+    });
+    renderInbox();
+    const [unreadLink, readLink] = await screen.findAllByRole("link", {
+      name: "notifications.events.comment",
+    });
+    const [unreadRow, readRow] = [
+      unreadLink.closest("li"),
+      readLink.closest("li"),
+    ];
+    // The link's overlay covers the row, so the whole row opens the request.
+    expect(unreadRow).toHaveClass("relative");
+    expect(unreadLink).toHaveClass("after:absolute", "after:inset-0");
+    // Unread: a leading dot and a heavier title; read: neither.
+    expect(
+      unreadRow?.querySelector("[data-slot=portal-notification-dot]"),
+    ).toHaveClass("bg-primary");
+    expect(unreadLink).toHaveClass("font-semibold");
+    expect(
+      readRow?.querySelector("[data-slot=portal-notification-dot]"),
+    ).not.toHaveClass("bg-primary");
+    expect(readLink).not.toHaveClass("font-semibold");
+    // The toggle is an icon button named for what it does, above the overlay.
+    const markRead = screen.getByRole("button", {
+      name: "notifications.markRead",
+    });
+    expect(markRead).toHaveTextContent("");
+    expect(markRead.querySelector("svg")).not.toBeNull();
+    expect(markRead).toHaveClass("relative", "z-10");
+    expect(
+      screen.getByRole("button", { name: "notifications.markUnread" }),
+    ).toHaveTextContent("");
   });
 
   it("uses customer-scoped read controls and sends the selected filter to the API", async () => {

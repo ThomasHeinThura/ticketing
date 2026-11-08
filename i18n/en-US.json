@@ -3942,7 +3942,8 @@
 			"backlogItem": "{{term_request_one}}",
 			"reorder": "Reorder",
 			"backlogPagination": "Backlog pagination",
-			"backlogMore": "Load more"
+			"backlogMore": "Load more",
+			"viewLabel": "Views"
 		},
 		"approvals": {
 			"title": "Approvals",

@@ -7,6 +7,9 @@ import {
   Button,
   Checkbox,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
@@ -14,7 +17,19 @@ import {
   SelectValue,
   Textarea,
 } from "@taskdesk/ui";
-import { Paperclip, X } from "lucide-react";
+import {
+  ChevronRight,
+  CircleHelp,
+  FileText,
+  KeyRound,
+  Laptop,
+  type LucideIcon,
+  Paperclip,
+  SearchIcon,
+  TriangleAlert,
+  Wrench,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DateField } from "@/components/common/date-field";
@@ -52,6 +67,28 @@ type Entry = {
   formSchema: FormSchema;
   version: number;
 };
+
+/**
+ * A request type's card icon (CP-3). The catalogue's `icon` is free text, so it, the group and
+ * the name are matched against a few plain words; anything else gets the generic form icon.
+ */
+const CATALOGUE_ICONS: ReadonlyArray<[RegExp, LucideIcon]> = [
+  [/access|account|login|password|permission/u, KeyRound],
+  [/hardware|laptop|device|equipment|computer/u, Laptop],
+  [/incident|outage|problem|bug|error|issue/u, TriangleAlert],
+  [/change|service|maintenance|install|setup/u, Wrench],
+  [/question|help|how|advice|enquiry|inquiry/u, CircleHelp],
+];
+
+function catalogueIcon(entry: Pick<Entry, "icon" | "group" | "name">) {
+  const words = [entry.icon, entry.group, entry.name]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase();
+  return (
+    CATALOGUE_ICONS.find(([pattern]) => pattern.test(words))?.[1] ?? FileText
+  );
+}
 
 export const Route = createFileRoute("/catalogue")({
   validateSearch: parsePortalCatalogueSearch,
@@ -312,13 +349,16 @@ function PortalCatalogueContent() {
           </Button>
         </Alert>
       )}
-      {/* The filter narrows the list; an open form replaces the list, so it hides with it. */}
+      {/* The search narrows the list; an open form replaces the list, so it hides with it. */}
       {key ? null : (
-        <label className="flex flex-col gap-1" htmlFor="catalogue-search">
-          {t("common:actions.filter", { defaultValue: "Search" })}
-          <Input
+        <InputGroup className="w-full">
+          <InputGroupAddon>
+            <SearchIcon aria-hidden="true" />
+          </InputGroupAddon>
+          <InputGroupInput
             id="catalogue-search"
-            value={q}
+            type="search"
+            value={q ?? ""}
             onChange={(event) =>
               void navigate({
                 search: { q: event.target.value || undefined, key },
@@ -327,8 +367,11 @@ function PortalCatalogueContent() {
             placeholder={t("portal:intake.searchPlaceholder", {
               defaultValue: "Search requests",
             })}
+            aria-label={t("portal:intake.searchPlaceholder", {
+              defaultValue: "Search requests",
+            })}
           />
-        </label>
+        </InputGroup>
       )}
       {primaryLoading && !primaryError ? (
         <p role="status">
@@ -702,7 +745,7 @@ function PortalCatalogueContent() {
           )}
         </section>
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="@container flex flex-col gap-6">
           {entries.length === 0 ? (
             <p>
               {q
@@ -718,32 +761,45 @@ function PortalCatalogueContent() {
             groups.map((group) => (
               <section className="flex flex-col gap-2" key={group}>
                 <h2 className="font-medium text-lg">{group}</h2>
-                <ul className="grid gap-3 sm:grid-cols-2">
+                <ul className="grid gap-3 @xl:grid-cols-2 @3xl:grid-cols-3">
                   {entries
                     .filter((entry) => entry.group === group)
-                    .map((entry) => (
-                      <li key={entry.key} className="min-w-0">
-                        <Button
-                          variant="outline"
-                          className="h-full w-full min-w-0 items-start justify-start whitespace-normal p-4 text-left sm:h-full"
-                          onClick={() => {
-                            focusTarget.current = "form";
-                            void navigate({ search: { q, key: entry.key } });
-                          }}
-                        >
-                          <span className="flex min-w-0 flex-1 flex-col gap-1">
-                            <strong className="block break-words font-medium text-sm">
-                              {entry.name}
-                            </strong>
-                            {entry.description && (
-                              <small className="block break-words text-muted-foreground text-sm">
-                                {entry.description}
-                              </small>
-                            )}
-                          </span>
-                        </Button>
-                      </li>
-                    ))}
+                    .map((entry) => {
+                      const Icon = catalogueIcon(entry);
+                      return (
+                        <li key={entry.key} className="min-w-0">
+                          <Button
+                            variant="outline"
+                            className="h-full w-full min-w-0 items-start justify-start gap-3 whitespace-normal p-4 text-left sm:h-full"
+                            onClick={() => {
+                              focusTarget.current = "form";
+                              void navigate({ search: { q, key: entry.key } });
+                            }}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+                            >
+                              <Icon aria-hidden="true" className="size-4.5" />
+                            </span>
+                            <span className="flex min-w-0 flex-1 flex-col gap-1">
+                              <strong className="block break-words font-medium text-sm">
+                                {entry.name}
+                              </strong>
+                              {entry.description && (
+                                <small className="block break-words text-muted-foreground text-sm">
+                                  {entry.description}
+                                </small>
+                              )}
+                            </span>
+                            <ChevronRight
+                              aria-hidden="true"
+                              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                            />
+                          </Button>
+                        </li>
+                      );
+                    })}
                 </ul>
               </section>
             ))

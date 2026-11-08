@@ -7826,6 +7826,8 @@ test("project settings danger screen @visual", async ({ page }) => {
 
 // These fixtures verify rendering only; live API journeys provide runtime evidence.
 test("portal home screen @visual", async ({ page }) => {
+  // The Updated column is relative to the browser clock: freeze it so the screenshot is stable.
+  await page.clock.setFixedTime(new Date("2026-10-30T12:00:00Z"));
   await installAuthenticatedFixture(page);
   await page.goto("http://127.0.0.1:4179/");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -7856,6 +7858,8 @@ test("portal home screen @visual", async ({ page }) => {
   });
 });
 test("portal requests screen @visual", async ({ page }) => {
+  // The Updated column is relative to the browser clock: freeze it so the screenshot is stable.
+  await page.clock.setFixedTime(new Date("2026-10-30T12:00:00Z"));
   await installAuthenticatedFixture(page);
   await page.goto("http://127.0.0.1:4179/requests");
   await expect(
@@ -9240,6 +9244,8 @@ test("portal announcements screen @visual", async ({ page }) => {
 });
 
 test("portal project detail screen @visual", async ({ page }) => {
+  // The Updated column is relative to the browser clock: freeze it so the screenshot is stable.
+  await page.clock.setFixedTime(new Date("2026-10-30T12:00:00Z"));
   await installAuthenticatedFixture(page);
   await page.goto("http://127.0.0.1:4179/projects/VIS");
   await expect(

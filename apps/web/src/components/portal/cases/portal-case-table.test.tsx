@@ -59,7 +59,7 @@ describe("PortalCaseTable", () => {
     render(
       <PortalCaseTable
         caption="Outstanding requests"
-        columns={["project", "created"]}
+        columns={["project", "created", "people"]}
         cases={[
           base,
           {
@@ -115,7 +115,10 @@ describe("PortalCaseTable", () => {
       "/requests/ACME-3",
     );
     expect(screen.getAllByText("Incident")).toHaveLength(2);
-    expect(screen.getAllByText("Not set")).toHaveLength(2);
+    // CP-2: an unset severity is a muted dash in its column (named for screen readers) and
+    // nothing at all in the narrow details.
+    expect(screen.getAllByText("Not set")).toHaveLength(1);
+    expect(screen.getByText("Not set")).toHaveClass("sr-only");
     expect(screen.getAllByText("Acme Support")).toHaveLength(2);
     expect(table.textContent?.toLowerCase()).not.toContain("assignee");
   });
@@ -124,7 +127,7 @@ describe("PortalCaseTable", () => {
     render(
       <PortalCaseTable
         caption="Outstanding requests"
-        columns={["project", "created"]}
+        columns={["project", "created", "people"]}
         cases={[base]}
       />,
     );
@@ -169,6 +172,48 @@ describe("PortalCaseTable", () => {
       .closest("span.flex");
     expect(narrowFacts?.closest(".\\@2xl\\:hidden")).not.toBeNull();
     expect(within(details).getByText("We need more from you")).toBeVisible();
+  });
+
+  it("leaves out Project, Created by and Assigned to unless the caller asks for them (CP-2)", () => {
+    render(<PortalCaseTable caption="My requests" cases={[base]} />);
+    const table = screen.getByRole("table", { name: "My requests" });
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent),
+    ).toEqual(["Updated", "Details", "Severity", "Status"]);
+    expect(screen.queryByText("Your team")).toBeNull();
+    expect(screen.queryByText("You")).toBeNull();
+    expect(screen.queryByText("Acme Support")).toBeNull();
+  });
+
+  it("shows Updated as relative time with the absolute time in the title (CP-2)", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T09:00:00.000Z"));
+    try {
+      render(<PortalCaseTable caption="Requests" cases={[base]} />);
+      const times = screen.getAllByText("2 days ago");
+      // Once in the Updated column, once in the narrow details.
+      expect(times).toHaveLength(2);
+      for (const time of times) {
+        expect(time.closest("time")).toHaveAttribute(
+          "dateTime",
+          base.updatedAt,
+        );
+        expect(time.closest("time")).toHaveAttribute(
+          "title",
+          new Intl.DateTimeFormat("en-US", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          }).format(new Date(base.updatedAt)),
+        );
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows the service target under the status and in the narrow details (CP-6)", () => {

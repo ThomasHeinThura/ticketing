@@ -42,6 +42,9 @@ import {
 
 type Tab = "all" | "projects" | "services";
 
+/** CP-11: with this many items or fewer the type tabs and search add nothing and stay hidden. */
+const FILTER_THRESHOLD = 5;
+
 function matchesTab(project: PortalProjectOption, tab: Tab) {
   if (tab === "projects") return project.kind === "project";
   if (tab === "services") return project.kind === "managed_service";
@@ -60,7 +63,8 @@ function matchesQuery(project: PortalProjectOption, query: string) {
 /**
  * The organisation's projects and managed services (S4c, WSO2 "Projects" table): tabs by type,
  * a key/name search, and per-project action-required and outstanding counts. Tab and search are
- * URL state (`?tab=`, `?q=`), so the view survives reload, Back and a shared link.
+ * URL state (`?tab=`, `?q=`), so the view survives reload, Back and a shared link. With five or
+ * fewer items both are hidden and ignored (CP-11).
  */
 export function PortalProjectsList({
   search,
@@ -69,9 +73,6 @@ export function PortalProjectsList({
 }) {
   const { t } = usePortalTranslation("portal");
   const navigate = useNavigate();
-  const tab: Tab = search.tab ?? "all";
-  const [draft, setDraft] = useState({ from: search.q, value: search.q ?? "" });
-  const query = draft.from === search.q ? draft.value : (search.q ?? "");
   const projects = useQuery({
     queryKey: portalProjectKeys.list(),
     queryFn: getPortalProjects,
@@ -79,6 +80,16 @@ export function PortalProjectsList({
     refetchOnMount: "always",
   });
   const all = projects.data?.data ?? [];
+  // Hidden controls never filter: an old `?tab=`/`?q=` link must not leave a short list narrowed
+  // with no way to clear it.
+  const filterable = all.length > FILTER_THRESHOLD;
+  const tab: Tab = filterable ? (search.tab ?? "all") : "all";
+  const [draft, setDraft] = useState({ from: search.q, value: search.q ?? "" });
+  const query = filterable
+    ? draft.from === search.q
+      ? draft.value
+      : (search.q ?? "")
+    : "";
   const visible = all.filter(
     (project) =>
       matchesTab(project, tab) && matchesQuery(project, query.trim()),
@@ -108,41 +119,43 @@ export function PortalProjectsList({
         </p>
       </header>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs
-          value={tab}
-          onValueChange={(value) => update({ tab: value as Tab })}
-        >
-          <TabsList
-            aria-label={t("projects.tabs.label")}
-            className="w-max max-w-full overflow-x-auto"
+      {filterable ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Tabs
+            value={tab}
+            onValueChange={(value) => update({ tab: value as Tab })}
           >
-            <TabsTrigger value="all">{t("projects.tabs.all")}</TabsTrigger>
-            <TabsTrigger value="services">
-              {t("projects.tabs.services")}
-            </TabsTrigger>
-            <TabsTrigger value="projects">
-              {t("projects.tabs.projects")}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <InputGroup className="h-8 sm:max-w-72">
-          <InputGroupAddon>
-            <SearchIcon aria-hidden="true" />
-          </InputGroupAddon>
-          <InputGroupInput
-            type="search"
-            size="sm"
-            value={query}
-            onChange={(event) => {
-              setDraft({ from: search.q, value: event.target.value });
-              update({ q: event.target.value });
-            }}
-            placeholder={t("projects.search.placeholder")}
-            aria-label={t("projects.search.label")}
-          />
-        </InputGroup>
-      </div>
+            <TabsList
+              aria-label={t("projects.tabs.label")}
+              className="w-max max-w-full overflow-x-auto"
+            >
+              <TabsTrigger value="all">{t("projects.tabs.all")}</TabsTrigger>
+              <TabsTrigger value="services">
+                {t("projects.tabs.services")}
+              </TabsTrigger>
+              <TabsTrigger value="projects">
+                {t("projects.tabs.projects")}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <InputGroup className="h-8 sm:max-w-72">
+            <InputGroupAddon>
+              <SearchIcon aria-hidden="true" />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              size="sm"
+              value={query}
+              onChange={(event) => {
+                setDraft({ from: search.q, value: event.target.value });
+                update({ q: event.target.value });
+              }}
+              placeholder={t("projects.search.placeholder")}
+              aria-label={t("projects.search.label")}
+            />
+          </InputGroup>
+        </div>
+      ) : null}
 
       {projects.isError ? (
         <Alert variant="error">

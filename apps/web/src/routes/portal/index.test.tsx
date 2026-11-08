@@ -203,8 +203,32 @@ describe("Portal dashboard", () => {
       limit: 10,
     });
     expect(screen.getByText("Printer jammed")).toBeVisible();
-    expect(screen.getByText("Your team")).toBeVisible();
+    // CP-2: My requests leaves out Created by / Assigned to ("You" / "Your team" on every row).
+    expect(screen.queryByText("Your team")).toBeNull();
     expect(screen.getByText(/Showing 1 of 12/)).toBeVisible();
+  });
+
+  it("shows Created by and Assigned to for All requests (CP-2)", () => {
+    state.search = { scope: "all" };
+    const Component = Route as unknown as React.ComponentType;
+    render(<Component />);
+    expect(screen.getByText("Your team")).toBeVisible();
+    expect(screen.getByText("You")).toBeVisible();
+  });
+
+  it("fills the KPI row whether three or four figures show (CP-7)", () => {
+    const Component = Route as unknown as React.ComponentType;
+    const grid = () =>
+      screen
+        .getByRole("region", { name: "Dashboard" })
+        .querySelector("[data-slot=portal-kpi-card]")?.parentElement;
+    const { unmount } = render(<Component />);
+    expect(grid()).toHaveClass("xl:grid-cols-4");
+    unmount();
+    state.home.averageFirstResponse = null;
+    render(<Component />);
+    expect(grid()).toHaveClass("@xl:grid-cols-3");
+    expect(grid()?.className).not.toMatch(/grid-cols-4/);
   });
 
   it("writes the My / All toggle to the URL", () => {

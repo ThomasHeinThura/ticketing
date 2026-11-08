@@ -34,9 +34,15 @@ export function PortalHomeKpis({
   const { t, i18n } = usePortalTranslation("portal");
   const home = usePortalHome(portalUserId, project);
   const figures = home.data;
+  // CP-7: the row fills whichever way it falls; three figures share it in thirds (by the
+  // section's own width, since the portal sidebar takes part of the screen), four in quarters.
+  const grid =
+    figures && !figures.averageFirstResponse
+      ? "grid gap-3 @xl:grid-cols-3"
+      : "grid gap-3 sm:grid-cols-2 xl:grid-cols-4";
 
   return (
-    <section aria-label={label}>
+    <section aria-label={label} className="@container">
       {home.isError ? (
         <Alert variant="error">
           <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
@@ -57,7 +63,7 @@ export function PortalHomeKpis({
           ))}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={grid}>
           <ActionRequiredCard
             cases={figures.actionRequired.cases}
             approvals={figures.actionRequired.approvals}

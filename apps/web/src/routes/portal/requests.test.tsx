@@ -1,9 +1,19 @@
 import { expectNoA11yViolations } from "@taskdesk/ui/test/a11y";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const navigate = vi.hoisted(() => vi.fn());
 const view = vi.hoisted(() => ({ value: undefined as "backlog" | undefined }));
+const scope = vi.hoisted(() => ({ value: undefined as "all" | undefined }));
+const projectsQuery = vi.hoisted(() => ({
+  data: undefined as { data: { key: string }[] } | undefined,
+}));
 const rankBacklog = vi.hoisted(() => vi.fn());
 const fakeSubmissionsQuery = vi.hoisted(() => ({
   data: {
@@ -97,7 +107,8 @@ vi.mock("@tanstack/react-query", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
   return {
     keepPreviousData: (value: unknown) => value,
-    useQuery: () => fakeSubmissionsQuery,
+    useQuery: (options: { queryKey: readonly unknown[] }) =>
+      options.queryKey[1] === "projects" ? projectsQuery : fakeSubmissionsQuery,
     useInfiniteQuery: () => ({
       data: { pages: [fakeBacklogQuery] },
       isLoading: false,
@@ -138,15 +149,23 @@ vi.mock("@tanstack/react-router", async () => {
     createFileRoute: () => (config: { component: React.ComponentType }) =>
       Object.assign(config.component, {
         useRouteContext: () => ({ portalUserId: "customer-a" }),
-        useSearch: () => ({ ...(view.value ? { view: view.value } : {}) }),
+        useSearch: () => ({
+          ...(view.value ? { view: view.value } : {}),
+          ...(scope.value ? { scope: scope.value } : {}),
+        }),
         fullPath: "/requests",
       }),
     useNavigate: () => navigate,
     Link: React.forwardRef<
       HTMLAnchorElement,
-      React.PropsWithChildren<{ to: string }>
-    >(({ children, to }, ref) => (
-      <a href={to} ref={ref}>
+      React.PropsWithChildren<{
+        to: string;
+        params?: unknown;
+        search?: unknown;
+        className?: string;
+      }>
+    >(({ children, to, params: _params, search: _search, ...props }, ref) => (
+      <a href={to} ref={ref} {...props}>
         {children}
       </a>
     )),
@@ -167,6 +186,8 @@ describe("PortalRequestsPage", () => {
   afterEach(() => {
     cleanup();
     view.value = undefined;
+    scope.value = undefined;
+    projectsQuery.data = undefined;
     rankBacklog.mockReset();
     fakeBacklogQuery.items = [...initialBacklogItems];
   });
@@ -186,9 +207,9 @@ describe("PortalRequestsPage", () => {
     // Each badge renders twice: in its column and, for narrow frames, under the title.
     expect(screen.getAllByText("request.priority.value.high")).toHaveLength(2);
     expect(screen.getAllByText("request.status.resolved")).toHaveLength(2);
-    expect(screen.getByText("request.author.you")).toBeTruthy();
-    expect(screen.getByText("Bob Colleague")).toBeTruthy();
-    expect(screen.getAllByText("cases.yourTeam")).toHaveLength(2);
+    // CP-2: under My requests every row is "You" / "Your team", so those columns stay out.
+    expect(screen.queryByText("request.author.you")).toBeNull();
+    expect(screen.queryByText("cases.yourTeam")).toBeNull();
     // D6 / U-12: a request raised by staff opens its own portal page.
     expect(screen.getByRole("link", { name: "CCY-9" })).toHaveAttribute(
       "href",
@@ -198,6 +219,33 @@ describe("PortalRequestsPage", () => {
     expect(screen.getByText("cases.raisedByTeamFor")).toBeTruthy();
     expect(screen.queryByText("cases.raisedByTeam")).toBeNull();
     expect(screen.queryByText(/assignee/i)).toBeNull();
+  });
+
+  it("shows Created by and Assigned to only for All requests (CP-2)", () => {
+    scope.value = "all";
+    const Component = Route as unknown as React.ComponentType;
+    render(<Component />);
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map((cell) => cell.textContent);
+    expect(headers).toContain("cases.columns.createdBy");
+    expect(headers).toContain("cases.columns.assignedTo");
+    expect(screen.getByText("request.author.you")).toBeTruthy();
+    expect(screen.getByText("Bob Colleague")).toBeTruthy();
+    expect(screen.getAllByText("cases.yourTeam")).toHaveLength(2);
+  });
+
+  it("hides the Project column when the customer has one project (CP-2)", () => {
+    const Component = Route as unknown as React.ComponentType;
+    const headers = () =>
+      screen.getAllByRole("columnheader").map((cell) => cell.textContent);
+    projectsQuery.data = { data: [{ key: "CCY" }, { key: "OPS" }] };
+    render(<Component />);
+    expect(headers()).toContain("cases.columns.project");
+    cleanup();
+    projectsQuery.data = { data: [{ key: "CCY" }] };
+    render(<Component />);
+    expect(headers()).not.toContain("cases.columns.project");
   });
 
   it("has no serious or critical axe violations (G4)", async () => {
@@ -225,6 +273,73 @@ describe("PortalRequestsPage", () => {
         .getByRole("link", { name: "requests.newRequest" })
         .querySelector("button"),
     ).toBeNull();
+  });
+
+  it("switches Requests and Backlog with view tabs beside My/All, with one primary action (CP-1, P5)", () => {
+    const Component = Route as unknown as React.ComponentType;
+    render(<Component />);
+
+    const views = screen.getByRole("tablist", { name: "requests.viewLabel" });
+    const requestsTab = screen.getByRole("tab", { name: "cases.listTitle" });
+    const backlogTab = screen.getByRole("tab", { name: "requests.backlog" });
+    expect(views).toContainElement(requestsTab);
+    expect(requestsTab).toHaveAttribute("aria-selected", "true");
+    // The view tabs share one toolbar row with the My / All toggle.
+    const scope = screen.getByRole("group", { name: "cases.scope.label" });
+    expect(views.closest("[data-slot=portal-case-toolbar]")).toBe(
+      scope.closest("[data-slot=portal-case-toolbar]"),
+    );
+    // The old button-links are gone.
+    expect(
+      screen.queryByRole("button", { name: "requests.backlog" }),
+    ).toBeNull();
+
+    fireEvent.click(backlogTab);
+    const call = navigate.mock.calls.at(-1)?.[0] as {
+      search: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(call.search({ project: "CCY", scope: "all", q: "x" })).toEqual({
+      project: "CCY",
+      view: "backlog",
+    });
+
+    // Export is a quiet secondary; New Request is the one primary, icon-only below sm.
+    const exportLink = screen.getByRole("link", { name: "cases.export" });
+    expect(exportLink.className).not.toMatch(/(^|\s)bg-primary(\s|$)/);
+    expect(exportLink.className).toMatch(/(^|\s)hover:bg-accent(\s|$)/);
+    const newRequest = screen.getByRole("link", {
+      name: "requests.newRequest",
+    });
+    expect(newRequest.className).toMatch(/bg-primary/);
+    expect(within(newRequest).getByText("requests.newRequest")).toHaveClass(
+      "max-sm:sr-only",
+    );
+    expect(
+      screen
+        .getAllByRole("link")
+        .filter((link) => /(^|\s)bg-primary(\s|$)/.test(link.className)),
+    ).toHaveLength(1);
+  });
+
+  it("keeps the view tabs in backlog mode and returns to the list with only the project kept", () => {
+    view.value = "backlog";
+    const Component = Route as unknown as React.ComponentType;
+    render(<Component />);
+
+    expect(
+      screen.getByRole("tab", { name: "requests.backlog" }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(
+      screen.queryByRole("group", { name: "cases.scope.label" }),
+    ).toBeNull();
+    expect(screen.queryByRole("link", { name: "cases.export" })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "cases.listTitle" }));
+    const call = navigate.mock.calls.at(-1)?.[0] as {
+      search: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(call.search({ project: "CCY", view: "backlog" })).toEqual({
+      project: "CCY",
+    });
   });
 
   it("shows the accepted backlog only when the URL opts into backlog mode", () => {

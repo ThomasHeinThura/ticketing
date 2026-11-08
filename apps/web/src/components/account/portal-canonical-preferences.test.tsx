@@ -65,6 +65,7 @@ vi.mock("@tanstack/react-query", () => ({
     isError: false,
     mutate: (value: unknown, callbacks: { onSuccess: () => void }) =>
       void mutationFn(value).then(callbacks.onSuccess),
+    mutateAsync: (value: unknown) => mutationFn(value),
   }),
 }));
 vi.mock(
@@ -92,18 +93,60 @@ describe("portal notification preferences", () => {
         name: "portal:account.notifications.comment.enabled",
       }),
     ).not.toBeChecked();
+    // CP-5: one card, one Save, no stray link, the delivery note once.
     expect(
-      screen.getAllByRole("button", {
+      screen.getByRole("button", {
         name: "portal:account.notifications.save",
-      })[1],
+      }),
     ).toBeDisabled();
     expect(mocks.save).not.toHaveBeenCalled();
     expect(document.activeElement).toHaveClass("ring-ring");
     expect(
-      screen.getByRole("link", {
+      screen.queryByRole("link", {
         name: "portal:account.notifications.requestsLink",
       }),
-    ).toHaveAttribute("href", "/requests");
+    ).toBeNull();
+    expect(
+      screen.getAllByText("portal:account.notifications.providerRequired"),
+    ).toHaveLength(1);
+    expect(document.querySelectorAll("[data-slot=card]")).toHaveLength(1);
+  });
+
+  it("saves every changed preference with the one Save and only those (CP-5)", async () => {
+    render(<PortalCanonicalPreferencesPage portalUserId="customer-1" />);
+    const save = screen.getByRole("button", {
+      name: "portal:account.notifications.save",
+    });
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "portal:account.notifications.mention.enabled",
+      }),
+    );
+    expect(save).toBeEnabled();
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(mocks.save).toHaveBeenCalledWith({
+        eventKind: "work_item.mentioned",
+        enabled: false,
+        digest: "off",
+      }),
+    );
+    expect(mocks.save).toHaveBeenCalledTimes(1);
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "portal:account.notifications.comment.enabled",
+      }),
+    );
+    fireEvent.click(save);
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(3));
+    expect(mocks.save).toHaveBeenCalledWith({
+      eventKind: "work_item.commented",
+      enabled: true,
+      digest: "off",
+    });
+    expect(
+      await screen.findByText("portal:account.notifications.saved"),
+    ).toBeVisible();
   });
 
   it("requires an explicit save and permits a digest only for comments", async () => {
@@ -127,9 +170,9 @@ describe("portal notification preferences", () => {
     fireEvent.mouseUp(daily);
     fireEvent.click(daily);
     fireEvent.click(
-      screen.getAllByRole("button", {
+      screen.getByRole("button", {
         name: "portal:account.notifications.save",
-      })[1],
+      }),
     );
     await waitFor(() =>
       expect(mocks.save).toHaveBeenCalledWith({

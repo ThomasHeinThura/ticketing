@@ -9,10 +9,7 @@ import {
   AlertDescription,
   Button,
   Card,
-  CardAction,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  cn,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -20,7 +17,9 @@ import {
   TabsList,
   TabsTrigger,
 } from "@taskdesk/ui";
+import { Check, CircleDot } from "lucide-react";
 import { useState } from "react";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { formatPortalDateTime } from "@/components/portal/portal-format";
 import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
@@ -47,8 +46,12 @@ const eventTranslation: Record<PortalNotificationKind, string> = {
   "approval.withdrawn": "notifications.events.approvalWithdrawn",
 };
 
+/**
+ * The row's link: its `after` overlay covers the whole row, so the row is the click target while
+ * the read toggle sits above it (`relative z-10`). The focus ring is drawn on the row.
+ */
 const linkClassName =
-  "hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring";
+  "min-w-0 break-words outline-none after:absolute after:inset-0 after:rounded-[inherit] hover:underline";
 
 export function PortalNotificationInbox({
   filter: controlledFilter,
@@ -161,23 +164,28 @@ export function PortalNotificationInbox({
         </Empty>
       ) : null}
 
-      <ol className="flex min-w-0 flex-col gap-3">
-        {rows.map((notification) => (
-          <PortalNotificationCard
-            key={notification.id}
-            notification={notification}
-            pending={
-              updateOne.isPending && updateOne.variables?.id === notification.id
-            }
-            onToggleRead={(id) =>
-              updateOne.mutate({ id, unread: notification.isRead })
-            }
-            onOpen={(id) => {
-              if (!notification.isRead) markOpened.mutate(id);
-            }}
-          />
-        ))}
-      </ol>
+      {rows.length > 0 ? (
+        <Card className="overflow-hidden">
+          <ol className="flex min-w-0 flex-col divide-y divide-border">
+            {rows.map((notification) => (
+              <PortalNotificationRow
+                key={notification.id}
+                notification={notification}
+                pending={
+                  updateOne.isPending &&
+                  updateOne.variables?.id === notification.id
+                }
+                onToggleRead={(id) =>
+                  updateOne.mutate({ id, unread: notification.isRead })
+                }
+                onOpen={(id) => {
+                  if (!notification.isRead) markOpened.mutate(id);
+                }}
+              />
+            ))}
+          </ol>
+        </Card>
+      ) : null}
 
       {inbox.hasNextPage ? (
         <Button
@@ -193,7 +201,13 @@ export function PortalNotificationInbox({
   );
 }
 
-function PortalNotificationCard({
+/**
+ * One compact inbox row (CP-8, P7): an unread dot, the event as the row's link (bold while
+ * unread), the request reference and time on one muted line, and the read toggle as a named
+ * icon button. The API carries no request title (it withholds staff-written text), so the
+ * reference identifies the request.
+ */
+function PortalNotificationRow({
   notification,
   pending,
   onToggleRead,
@@ -206,71 +220,85 @@ function PortalNotificationCard({
 }) {
   const { t, i18n } = usePortalTranslation("portal");
   const locale = i18n?.resolvedLanguage || i18n?.language || undefined;
+  const unread = !notification.isRead;
+  const linkClass = cn(linkClassName, unread ? "font-semibold" : "font-normal");
+  const toggleLabel = notification.isRead
+    ? t("notifications.markUnread")
+    : t("notifications.markRead");
   return (
-    <li>
-      <Card
-        className={notification.isRead ? "opacity-85" : "border-primary/40"}
-      >
-        <CardHeader>
-          <div className="min-w-0">
-            <CardTitle className="text-base">
-              {notification.requestRef ? (
-                <Link
-                  to={
-                    notification.targetKind === "request"
-                      ? routes.portalRequest.path
-                      : routes.portalSubmission.path
-                  }
-                  params={{ ref: notification.requestRef }}
-                  hash={
-                    notification.commentId
-                      ? `comment-${notification.commentId}`
-                      : undefined
-                  }
-                  className={linkClassName}
-                  onClick={() => onOpen(notification.id)}
-                >
-                  {t(eventTranslation[notification.kind])}
-                </Link>
-              ) : (
-                // AP-21: an approval event opens the Approvals screen (AP-19).
-                <Link
-                  to="/approvals"
-                  className={linkClassName}
-                  onClick={() => onOpen(notification.id)}
-                >
-                  {t(eventTranslation[notification.kind])}
-                </Link>
-              )}
-            </CardTitle>
-            <CardDescription>
-              {notification.requestRef ? (
-                <>
-                  {t("notifications.requestReference", {
-                    ref: notification.requestRef,
-                  })}
-                  {" · "}
-                </>
-              ) : null}
-              <time dateTime={notification.createdAt}>
-                {formatPortalDateTime(notification.createdAt, locale)}
-              </time>
-            </CardDescription>
-          </div>
-          <CardAction>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={pending}
-              onClick={() => onToggleRead(notification.id)}
+    <li className="relative flex min-w-0 items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/40 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-inset">
+      <span
+        aria-hidden="true"
+        data-slot="portal-notification-dot"
+        className={cn(
+          "size-2 shrink-0 rounded-full",
+          unread ? "bg-primary" : "bg-transparent",
+        )}
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-sm">
+          {notification.requestRef ? (
+            <Link
+              to={
+                notification.targetKind === "request"
+                  ? routes.portalRequest.path
+                  : routes.portalSubmission.path
+              }
+              params={{ ref: notification.requestRef }}
+              hash={
+                notification.commentId
+                  ? `comment-${notification.commentId}`
+                  : undefined
+              }
+              className={linkClass}
+              onClick={() => onOpen(notification.id)}
             >
-              {notification.isRead
-                ? t("notifications.markUnread")
-                : t("notifications.markRead")}
-            </Button>
-          </CardAction>
-        </CardHeader>
-      </Card>
+              {t(eventTranslation[notification.kind])}
+            </Link>
+          ) : (
+            // AP-21: an approval event opens the Approvals screen (AP-19).
+            <Link
+              to="/approvals"
+              className={linkClass}
+              onClick={() => onOpen(notification.id)}
+            >
+              {t(eventTranslation[notification.kind])}
+            </Link>
+          )}
+        </span>
+        <span
+          data-slot="portal-notification-meta"
+          className="truncate text-muted-foreground text-xs"
+        >
+          {notification.requestRef ? (
+            <>
+              {t("notifications.requestReference", {
+                ref: notification.requestRef,
+              })}
+              {" · "}
+            </>
+          ) : null}
+          <time dateTime={notification.createdAt}>
+            {formatPortalDateTime(notification.createdAt, locale)}
+          </time>
+        </span>
+      </div>
+      <ActionTooltip label={toggleLabel}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="relative z-10 shrink-0"
+          aria-label={toggleLabel}
+          disabled={pending}
+          onClick={() => onToggleRead(notification.id)}
+        >
+          {notification.isRead ? (
+            <CircleDot aria-hidden="true" />
+          ) : (
+            <Check aria-hidden="true" />
+          )}
+        </Button>
+      </ActionTooltip>
     </li>
   );
 }

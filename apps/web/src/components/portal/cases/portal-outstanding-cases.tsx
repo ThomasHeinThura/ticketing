@@ -120,6 +120,7 @@ export function PortalOutstandingCases({
         <>
           <PortalCaseTable
             cases={cases.data.cases}
+            columns={scope === "all" ? ["people"] : []}
             caption={t("cases.outstandingTitle")}
           />
           {cases.data.meta.total > cases.data.cases.length ? (

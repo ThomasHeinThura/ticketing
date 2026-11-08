@@ -20,14 +20,9 @@ export function PortalOrientation({ portalUserId }: { portalUserId: string }) {
       <AlertTitle>{t("orientation.title")}</AlertTitle>
       <AlertDescription>
         <p>{t("orientation.body")}</p>
+        {/* Raising a request is the page header's New Request (CP-7); the note only points
+            to where requests are tracked. */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            render={<Link to={routes.portalCatalogue.path} />}
-          >
-            {t("orientation.raise")}
-          </Button>
           <Button
             size="sm"
             variant="outline"
