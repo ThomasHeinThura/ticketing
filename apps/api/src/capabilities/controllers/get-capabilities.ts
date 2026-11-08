@@ -25,6 +25,9 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   exportTasks: boolean;
   setPriorityTasks: boolean;
   manageProjectSettings: boolean;
+  // Strict project:archive (A8-2): what archive, unarchive and restore enforce. A lead holds
+  // project:update but not this.
+  archiveProjects: boolean;
   // Per-area settings capabilities, exactly what each settings API enforces, so navigation and
   // pages follow the server instead of the broader `workspace:manage_settings`.
   manageRoles: boolean;
@@ -65,6 +68,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     exportTasks,
     setPriorityTasks,
     manageProjectSettings,
+    archiveProjects,
     bindProjectOrganisation,
     manageLabels,
     createAttachments,
@@ -111,6 +115,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "work_item:export"),
     hasCanonicalCapability(c, "work_item:set_priority"),
     hasCanonicalCapability(c, "project:manage_settings"),
+    hasCanonicalCapability(c, "project:archive"),
     hasCanonicalCapability(c, "project:create"),
     hasCanonicalCapability(c, "label:manage"),
     hasCanonicalCapability(c, "attachment:create"),
@@ -146,6 +151,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     exportTasks: agentOnly(exportTasks),
     setPriorityTasks: agentOnly(setPriorityTasks),
     manageProjectSettings,
+    archiveProjects,
     manageRoles,
     manageWebhooks,
     manageCustomFields,
@@ -175,6 +181,7 @@ async function hasCanonicalCapability(
     | "work_item:export"
     | "work_item:set_priority"
     | "project:manage_settings"
+    | "project:archive"
     | "project:create"
     | "label:manage"
     | "attachment:create"

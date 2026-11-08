@@ -32,10 +32,12 @@ export default function WorkflowEditor({ projectId }: WorkflowEditorProps) {
   const { data: rules, isLoading: rulesLoading } =
     useGetWorkflowRules(projectId);
   const { mutateAsync: upsertRule } = useUpsertWorkflowRule();
-  // `PUT /api/workflow-rule/{projectId}` needs project:update. Without it the pickers are
-  // shown read-only (and stay disabled while the check runs), so a pick never ends in a 403.
-  const { canUpdateProjects, isCheckingPermissions } = useWorkspacePermission();
-  const canEdit = !isCheckingPermissions && canUpdateProjects();
+  // `PUT /api/workflow-rule/{projectId}` needs project:manage_settings (A8-2). Without it the
+  // pickers are shown read-only (and stay disabled while the check runs), so a pick never ends
+  // in a 403.
+  const { canManageProjectSettings, isCheckingPermissions } =
+    useWorkspacePermission();
+  const canEdit = !isCheckingPermissions && canManageProjectSettings();
 
   if (columnsLoading || rulesLoading) {
     return (

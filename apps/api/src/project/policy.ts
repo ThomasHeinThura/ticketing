@@ -30,25 +30,24 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `project:*` capability name the same authority today; there is no re-keying gap to record
  * here the way there was for `workspace:update` vs the legacy `organization:update`.
  *
- * **There IS a granularity gap, on the mutation routes below `project:update`.** rbac.md
- * defines two narrower Projects-group capabilities the legacy `statement.project` never had a
- * matching action for: `project:archive` ("Archive and restore", implies `project:update`) and
+ * **The narrower Projects-group capabilities are enforced, not aliased (A8-2, Thomas 8 Nov).**
+ * rbac.md defines two capabilities the legacy `statement.project` never had a matching action
+ * for: `project:archive` ("Archive and restore", implies `project:update`) and
  * `project:manage_settings` ("Project states, features, labels, SLA and calendar assignment,
- * automations", implies `project:update`). The runtime enforces only the broader
- * `project:update` on archive/unarchive/reorder — there is no separate archive-specific or
- * settings-specific check anywhere in these controllers. Declaring the narrower target
- * capability here would not close that gap, it would just make the declaration claim a
- * stricter requirement than what the route actually enforces — the same reasoning
- * `workspace/policy.ts` gives for declaring `workspace:update` over a hypothetically "more
- * correct" string. So archive, unarchive and reorder below declare `project:update`, matching
- * the actual `requireWorkspacePermission({ project: ["update"] })` check, and this comment is
- * where the gap is recorded for #7's capability migration rather than pretended away.
- * Exception (#766): `PUT /api/project/{id}` additionally requires the strict canonical
- * `project:manage_settings` (intersected with API-key scope) in the handler when the body
- * sends `defaultCommentVisibility` (CA-2), `kind`, `supportLevel` or `serviceCalendarId`;
- * the declared baseline stays `project:update`, and health stays on `project:update`. (Column
- * and workflow-rule mutations, classified alongside this file, have the same
- * `project:manage_settings` gap for the same textual reason — see those files.)
+ * automations", implies `project:update`). Archive, unarchive and restore declare
+ * `project:archive`, and the column and workflow-rule mutations declare
+ * `project:manage_settings` (see those files). The declaration is what runtime enforces:
+ * `workspaceAccess.fromProject(..., { requireProjectReach: true })` evaluates the REGISTERED
+ * capability for the route against the caller's project authority (`evaluateProjectRead`, the
+ * same check `PUT /api/project/{id}` makes for its sensitive fields), and without
+ * `deferApiKeyCapability` an API key must also carry that capability in its own scope. The
+ * legacy `requireWorkspacePermission({ project: ["update"] })` stays as the baseline every
+ * project write needs. A lead (`project:update` only) is refused; a manager is allowed.
+ * `PUT /api/project/{id}` (#766) keeps `project:update` as its declared baseline and checks
+ * the strict `project:manage_settings` in the handler only when the body sends
+ * `defaultCommentVisibility` (CA-2), `kind`, `supportLevel`, `serviceCalendarId`, `managerId`,
+ * `startDate`, `endDate` or `defaultAssigneeId`, because that check depends on the body;
+ * health and reorder stay on `project:update`.
  *
  * **Scope: the container that genuinely has an id at request time, per rbac.md's own
  * `work_item:create` example (`scope: 'project'` for a work item created inside a project, not
@@ -291,31 +290,28 @@ export const projectPolicies = {
     sessionOnly: true,
   },
 
-  // Archive a project. `requireWorkspacePermission({ project: ["update"] })` runs -- the
-  // legacy statement has no `archive` action, so this is the broader `project:update` check,
-  // not rbac.md's narrower `project:archive`. See the file comment's granularity-gap note.
+  // Archive a project: `project:archive` (A8-2), enforced by the project reach middleware against
+  // this declaration; the legacy `project:update` gate stays as the baseline.
   "PUT /api/project/{id}/archive": {
-    capability: "project:update",
+    capability: "project:archive",
     scope: "project",
     scopeSource: "row",
     reach: "required",
   },
 
-  // Unarchive (restore) a project. Same middleware and same gap as archive above --
-  // rbac.md's `project:archive` capability description is "Archive **and restore**", so
-  // both routes map to the one narrower target capability the runtime does not distinctly
-  // enforce.
+  // Unarchive a project. rbac.md's `project:archive` is "Archive **and restore**", so it uses the
+  // same capability and the same enforcement as archive.
   "PUT /api/project/{id}/unarchive": {
-    capability: "project:update",
+    capability: "project:archive",
     scope: "project",
     scopeSource: "row",
     reach: "required",
   },
 
-  // Restore a soft-deleted project within PR-16's retained recovery window.
-  // This reuses the same project:update authority as archive/unarchive.
+  // Restore a soft-deleted project within PR-16's retained recovery window. Restore is archive
+  // authority ("Archive and restore"), so it declares `project:archive` like unarchive.
   "PUT /api/project/{id}/restore": {
-    capability: "project:update",
+    capability: "project:archive",
     scope: "project",
     scopeSource: "row",
     reach: "required",

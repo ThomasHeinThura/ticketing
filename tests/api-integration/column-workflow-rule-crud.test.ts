@@ -4,20 +4,23 @@
  * tasks, per-project reorder scoping, and the workflow-rule insert-vs-update upsert.
  */
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
-import { mockAuthenticatedSession } from "./helpers/auth";
+import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectManageAccess,
+  grantProjectRole,
+  WORK_ITEM_PROJECT_CAPABILITIES,
 } from "./helpers/fixtures";
 import {
   deleteThroughApproval,
   ensureAgentSession,
 } from "./helpers/pending-deletion";
+import { addMember, makeApiKey } from "./helpers/reach-world";
 
 async function adminWithProject() {
   const member = await createWorkspaceMember({ role: "admin" });
@@ -271,5 +274,127 @@ describe("API integration: workflow-rule CRUD through the repository", () => {
     const gone = await call("DELETE", `/api/workflow-rule/${id}`);
     expect(gone.status).toBe(404);
     await gone.text();
+  });
+});
+
+// A8-2 (D2): archive needs `project:archive`; board columns and workflow rules need
+// `project:manage_settings`. A lead holds `project:update` only, so the broader check that used
+// to guard these routes let a lead archive a project or reshape its board.
+describe("API integration: archive, column and workflow-rule authority (A8-2)", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function world() {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const fixture = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const lead = await addMember(owner.workspace.id, "lead");
+    await grantProjectRole(lead.user.id, fixture.project.id, [
+      ...WORK_ITEM_PROJECT_CAPABILITIES,
+      "project:update",
+    ]);
+    const manager = await addMember(owner.workspace.id, "manager");
+    await grantProjectRole(manager.user.id, fixture.project.id, [
+      ...WORK_ITEM_PROJECT_CAPABILITIES,
+      "project:update",
+      "project:archive",
+      "project:manage_settings",
+    ]);
+    return { ...fixture, lead, manager };
+  }
+
+  const writes = (projectId: string, todoColumnId: string) => [
+    {
+      name: "POST /api/column/{projectId}",
+      run: () => call("POST", `/api/column/${projectId}`, { name: "Blocked" }),
+    },
+    {
+      name: "PUT /api/workflow-rule/{projectId}",
+      run: () =>
+        call("PUT", `/api/workflow-rule/${projectId}`, {
+          integrationType: "github",
+          eventType: "pr_merged",
+          columnId: todoColumnId,
+        }),
+    },
+    {
+      name: "PUT /api/project/{id}/archive",
+      run: () => call("PUT", `/api/project/${projectId}/archive`),
+    },
+  ];
+
+  it("refuses a lead (project:update only) with 403 and writes nothing", async () => {
+    const { project, columns, lead } = await world();
+    mockAuthenticatedSession(lead.user);
+    const columnsBefore = await db
+      .select()
+      .from(schema.columnTable)
+      .where(eq(schema.columnTable.projectId, project.id));
+    for (const write of writes(project.id, columns.todo.id)) {
+      const response = await write.run();
+      expect(response.status, `${write.name}: ${await response.text()}`).toBe(
+        403,
+      );
+    }
+    const columnsAfter = await db
+      .select()
+      .from(schema.columnTable)
+      .where(eq(schema.columnTable.projectId, project.id));
+    expect(columnsAfter).toHaveLength(columnsBefore.length);
+    expect(await db.select().from(schema.workflowRuleTable)).toHaveLength(0);
+    const [row] = await db
+      .select({ archivedAt: schema.projectTable.archivedAt })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+    expect(row?.archivedAt).toBeNull();
+  });
+
+  it("allows a manager (project:archive and project:manage_settings)", async () => {
+    const { project, columns, manager } = await world();
+    mockAuthenticatedSession(manager.user);
+    for (const write of writes(project.id, columns.todo.id)) {
+      const response = await write.run();
+      expect(response.status, `${write.name}: ${await response.text()}`).toBe(
+        200,
+      );
+    }
+    const unarchived = await call(
+      "PUT",
+      `/api/project/${project.id}/unarchive`,
+    );
+    expect(unarchived.status, await unarchived.text()).toBe(200);
+  });
+
+  it("refuses a manager's API key whose scope lacks the strict capability", async () => {
+    const { project, columns, manager } = await world();
+    mockAnonymousSession();
+    const key = await makeApiKey(manager.user.id, {
+      project: ["read", "update"],
+      workspace: ["read"],
+    });
+    const { app } = createApp();
+    const send = (method: string, path: string, body?: unknown) =>
+      app.request(path, {
+        method,
+        headers: { "content-type": "application/json", "x-api-key": key },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    const archive = await send("PUT", `/api/project/${project.id}/archive`);
+    expect(archive.status, await archive.text()).toBe(403);
+    const column = await send("POST", `/api/column/${project.id}`, {
+      name: "Blocked",
+    });
+    expect(column.status, await column.text()).toBe(403);
+    const rule = await send("PUT", `/api/workflow-rule/${project.id}`, {
+      integrationType: "github",
+      eventType: "pr_merged",
+      columnId: columns.todo.id,
+    });
+    expect(rule.status, await rule.text()).toBe(403);
   });
 });

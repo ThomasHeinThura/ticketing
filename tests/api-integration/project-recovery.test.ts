@@ -149,7 +149,7 @@ describe("API integration: soft-deleted project recovery", () => {
     expect(await response.json()).toEqual([]);
   });
 
-  it("masks out-of-reach restore targets and denies an in-reach viewer without project:update", async () => {
+  it("masks out-of-reach restore targets and denies an in-reach viewer without project:archive", async () => {
     const owner = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
