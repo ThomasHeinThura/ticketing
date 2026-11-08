@@ -17967,40 +17967,6 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/team/delete-team-member-modal.tsx",
-		"backdrop": "--color-card",
-		"foregroundClass": "text-foreground",
-		"backgroundClass": {
-			"dark": "hover:bg-accent"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]",
-					"opaque-backdrop:bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
-			}
-		],
-		"backdropLayers": ["bg-card"]
-	},
-	{
-		"fg": "--color-foreground",
-		"bg": "--color-accent",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
 		"usage": "apps/web/src/components/list-view/list-column-section.tsx",
 		"backdrop": "--color-background",
 		"foregroundClass": "text-foreground",
@@ -18289,40 +18255,6 @@
 			}
 		],
 		"backdropLayers": ["bg-background"]
-	},
-	{
-		"fg": "--color-foreground",
-		"bg": "--color-accent",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["light"],
-		"usage": "apps/web/src/components/team/delete-team-member-modal.tsx",
-		"backdrop": "--color-card",
-		"foregroundClass": "text-foreground",
-		"backgroundClass": {
-			"light": "hover:bg-accent"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]",
-					"opaque-backdrop:bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
-			}
-		],
-		"backdropLayers": ["bg-card"]
 	},
 	{
 		"fg": "--color-foreground",
@@ -24889,9 +24821,6 @@
 			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]::text-foreground#0",
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::hover:text-foreground#0",
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-actions.tsx::WorkItemActions::div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
@@ -25193,39 +25122,6 @@
 				"id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]>bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::hover:text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]>bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]/span[0]>bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]/span[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -25369,9 +25265,6 @@
 			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]::text-foreground#0",
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::hover:text-foreground#0",
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-actions.tsx::WorkItemActions::div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
@@ -25673,39 +25566,6 @@
 				"id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]>bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::hover:text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]>bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogTitle[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]/span[0]>bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]/span[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -26457,40 +26317,6 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/team/delete-team-member-modal.tsx",
-		"backdrop": "--color-card",
-		"foregroundClass": "text-foreground",
-		"backgroundClass": {
-			"dark": "bg-muted"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]>bg-muted",
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]",
-					"opaque-backdrop:bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
-			}
-		],
-		"backdropLayers": ["bg-card"]
-	},
-	{
-		"fg": "--color-foreground",
-		"bg": "--color-muted",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
 		"usage": "apps/web/src/components/project/project-timeline.tsx",
 		"backdrop": "--color-background",
 		"foregroundClass": "text-foreground",
@@ -26820,40 +26646,6 @@
 			}
 		],
 		"backdropLayers": ["bg-background"]
-	},
-	{
-		"fg": "--color-foreground",
-		"bg": "--color-muted",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["light"],
-		"usage": "apps/web/src/components/team/delete-team-member-modal.tsx",
-		"backdrop": "--color-card",
-		"foregroundClass": "text-foreground",
-		"backgroundClass": {
-			"light": "bg-muted"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]>bg-muted",
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]",
-					"opaque-backdrop:bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[0]/DialogClose[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
-			}
-		],
-		"backdropLayers": ["bg-card"]
 	},
 	{
 		"fg": "--color-foreground",
@@ -59407,8 +59199,6 @@
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::text-muted-foreground#0",
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/project-budget.tsx::BudgetCard::Card[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/project-budget.tsx::BudgetCard::Card[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/time-tracking/project-budget.tsx::BudgetCard::Card[0]/div[0]/div[0]/p[0]::text-muted-foreground#2",
@@ -62875,28 +62665,6 @@
 				"id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]>bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]>bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -65179,8 +64947,6 @@
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::text-muted-foreground#0",
-			"apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/project-budget.tsx::BudgetCard::Card[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/project-budget.tsx::BudgetCard::Card[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/time-tracking/project-budget.tsx::BudgetCard::Card[0]/div[0]/div[0]/p[0]::text-muted-foreground#2",
@@ -68647,28 +68413,6 @@
 				"id": "apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[1]/CardContent[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/sla-policy/sla-policy-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]>bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[0]/DialogClose[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/delete-team-member-modal.tsx:DeleteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]>bg-card"
-				],
-				"id": "apps/web/src/components/team/delete-team-member-modal.tsx::DeleteTeamMemberModal::Dialog[0]/DialogPopup[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/team/delete-team-member-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
