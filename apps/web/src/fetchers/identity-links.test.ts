@@ -113,6 +113,24 @@ describe("identity link fetchers", () => {
     await expect(getIdentityLinks()).resolves.toBeNull();
   });
 
+  // The API answers plain text; only "Forbidden" means "no linked sign-in". An enrolment
+  // refusal must reach the caller so the recovery flow can run.
+  it("rejects a 403 that is not the plain Forbidden refusal", async () => {
+    mocks.apiFetch.mockResolvedValue(
+      new Response("mfa_enrollment_required", { status: 403 }),
+    );
+
+    await expect(getIdentityLinks()).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("treats a plain-text Forbidden as no linked sign-in", async () => {
+    mocks.apiFetch.mockResolvedValue(
+      new Response("Forbidden", { status: 403 }),
+    );
+
+    await expect(getIdentityLinks()).resolves.toBeNull();
+  });
+
   it.each([401, 404, 500])(
     "still rejects every other refusal of the list (%i)",
     async (status) => {

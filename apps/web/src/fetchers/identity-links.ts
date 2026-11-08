@@ -51,11 +51,24 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
  * (UX-8). Every other refusal still throws.
  */
 export async function getIdentityLinks(): Promise<IdentityLinkList | null> {
+  const response = await apiFetch(getApiUrl(IDENTITY_LINK_BASE), {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (response.status === 403) {
+    // Only the plain "Forbidden" refusal means "this session cannot link identities". Any other
+    // 403 (for example an MFA enrolment refusal) must still reach the caller.
+    const body = await response.text();
+    if (/^\s*Forbidden\s*$|"(?:error|message)"\s*:\s*"Forbidden"/u.test(body))
+      return null;
+    throw new HttpError(403, "Identity link request failed");
+  }
+  if (!response.ok)
+    throw new HttpError(response.status, "Identity link request failed");
   try {
-    return await requestJson<IdentityLinkList>(IDENTITY_LINK_BASE);
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 403) return null;
-    throw error;
+    return (await response.json()) as IdentityLinkList;
+  } catch {
+    throw new HttpError(502, "Identity link response was invalid");
   }
 }
 
