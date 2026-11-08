@@ -78,3 +78,48 @@ test("direct work-list visit downloads its parent outlet before the session reso
   }
   await expect(page.getByTestId("work-item-list-populated")).toBeVisible();
 });
+
+test("direct work-list visit fetches the web font after the entry runs, not beside its download", async ({
+  page,
+}) => {
+  // The first-paint closure is bandwidth-bound on the G11 profile; the 29 KB font downloaded
+  // beside it delayed the entry by its own transfer time (G11 work-list LCP).
+  const manifest = JSON.parse(
+    readFileSync(
+      new URL("../dist/agent/.vite/manifest.json", import.meta.url),
+      "utf8",
+    ),
+  ) as Record<string, { file: string; isEntry?: boolean }>;
+  const entry = Object.values(manifest).find((chunk) => chunk.isEntry);
+  expect(
+    entry,
+    "built agent entry must be represented in the manifest",
+  ).toBeDefined();
+  await installPerformanceApiFixture(page);
+  let releaseEntry: () => void = () => {};
+  const heldEntry = new Promise<void>((resolve) => {
+    releaseEntry = resolve;
+  });
+  await page.route(`**/${entry?.file}`, async (route) => {
+    await heldEntry;
+    await route.continue();
+  });
+  const fontRequests: string[] = [];
+  page.on("request", (request) => {
+    if (/\/geist-latin-wght-normal-[\w-]+\.woff2$/.test(request.url()))
+      fontRequests.push(request.url());
+  });
+  try {
+    await page.goto(WORK_LIST_PATH, { waitUntil: "commit" });
+    // The HTML's own preloads (entry closure, locale, route chunks) are all requested by now.
+    await expect(page.locator('link[rel="modulepreload"]')).not.toHaveCount(0);
+    await page.waitForTimeout(500);
+    expect(fontRequests).toEqual([]);
+    await expect(page.locator('link[rel="preload"][as="font"]')).toHaveCount(0);
+  } finally {
+    releaseEntry();
+  }
+  await expect(page.locator('link[rel="preload"][as="font"]')).toHaveCount(1);
+  await expect.poll(() => fontRequests.length).toBeGreaterThan(0);
+  await expect(page.getByTestId("work-item-list-populated")).toBeVisible();
+});

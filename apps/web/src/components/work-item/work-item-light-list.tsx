@@ -40,10 +40,29 @@ const CATEGORY_ICON: Record<string, typeof Circle> = {
   cancelled: Archive,
 };
 
-const dueDateFormat = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-});
+/**
+ * The hydrated row's due date, date-fns `format(date, "MMM d")` (English month names, local
+ * time). Written out because the page's first `Intl.DateTimeFormat` costs about 22 ms at the
+ * G11 bench's 4x CPU throttle, all of it ahead of the preview's frame (G11 work-list LCP).
+ */
+const SHORT_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+function formatDueDate(value: string) {
+  const date = new Date(value);
+  return `${SHORT_MONTHS[date.getMonth()]} ${date.getDate()}`;
+}
 
 /**
  * The grouped Kaneo list's first viewport, painted from the already-fetched rows while the
@@ -235,7 +254,7 @@ function LightRow({
             ) : (
               <Calendar className="w-3 h-3" />
             )}
-            <span>{dueDateFormat.format(new Date(item.dueDate))}</span>
+            <span>{formatDueDate(item.dueDate)}</span>
           </div>
         ) : null}
         {preferences.showAssignees ? (

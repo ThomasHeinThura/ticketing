@@ -9,6 +9,9 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import loadWorkItemKaneoList, {
+  isWorkItemKaneoListLoaded,
+} from "@/components/work-item/load-work-item-kaneo-list";
 import loadWorkItemList, {
   isWorkItemListLoaded,
 } from "@/components/work-item/load-work-item-list";
@@ -33,15 +36,71 @@ import type {
 const WorkItemListRealtime = lazy(
   () => import("@/components/work-item/work-item-list-realtime"),
 );
-const WorkItemKaneoList = lazy(
-  () => import("@/components/work-item/work-item-kaneo-list"),
-);
+const WorkItemKaneoList = lazy(loadWorkItemKaneoList);
 const WorkItemList = lazy(loadWorkItemList);
 
 const loadTableModules = () =>
   Promise.all([loadWorkItemList(), loadWorkItemTable()]);
 const tableModulesLoaded = () =>
   isWorkItemListLoaded() && isWorkItemTableLoaded();
+
+/** The preview's row title face (`text-sm`, Geist's latin subset). */
+const PREVIEW_FONT = '400 14px "Geist Variable"';
+const PREVIEW_FONT_SAMPLE = "Seeded";
+const PREVIEW_FONT_TIMEOUT_MS = 1_500;
+
+function previewFontLoaded() {
+  return (
+    typeof document === "undefined" ||
+    !document.fonts ||
+    document.fonts.check(PREVIEW_FONT, PREVIEW_FONT_SAMPLE)
+  );
+}
+
+/**
+ * Whether the preview can paint in the web font. The font downloads after the entry has run
+ * (the work route's HTML preload, see vite.config.ts) rather than competing with it. Painted
+ * in a fallback face, the preview's rows would grow when the font swapped in and again when the
+ * hydrated list replaced them, each a new largest paint (G11 work-list LCP). A font that does
+ * not arrive within the timeout is not waited for.
+ */
+function usePreviewFontReady(active: boolean) {
+  const [ready, setReady] = useState(previewFontLoaded);
+  useEffect(() => {
+    if (!active || ready) return;
+    let current = true;
+    const settle = () => {
+      if (current) setReady(true);
+    };
+    const timer = setTimeout(settle, PREVIEW_FONT_TIMEOUT_MS);
+    document.fonts.load(PREVIEW_FONT, PREVIEW_FONT_SAMPLE).then(settle, settle);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [active, ready]);
+  return ready;
+}
+
+/**
+ * True from the second animation frame after `active` first holds, that is once what rendered
+ * with it has been presented; it then stays true.
+ */
+function usePresentedOnce(active: boolean) {
+  const [presented, setPresented] = useState(false);
+  useEffect(() => {
+    if (!active || presented) return;
+    let secondFrame: number | undefined;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => setPresented(true));
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
+    };
+  }, [active, presented]);
+  return presented;
+}
 
 type WorkItemsPanelProps = {
   layout?: "list" | "table";
@@ -121,7 +180,7 @@ function WorkItemsPanel({
   // already-fetched rows while the list's own modules load (see `WorkItemLightList`).
   const states = useGetProjectStates(project?.id, layout === "list");
   const previewStates = states.data;
-  const showPreview =
+  const previewable =
     layout === "list" &&
     !isLoading &&
     !isError &&
@@ -132,6 +191,23 @@ function WorkItemsPanel({
       sort,
       hasPartialFailure: workItemsResult?.hasPartialFailure,
     });
+  const previewFontReady = usePreviewFontReady(previewable);
+  const showPreview = previewable && previewFontReady;
+  // The grouped list's own modules (virtual window, drag and drop, menus, hover cards; about
+  // 170 KB) are requested once the preview has been presented: requested with the first render,
+  // their hundred module requests and evaluation ran on the main thread before the preview's
+  // first frame (G11 work-list LCP). Without a preview (manual order, an error, partial or empty
+  // rows) they are requested at once, or as soon as the rows show that none can paint.
+  const previewDecisionPending =
+    layout === "list" && sort !== "position" && (isLoading || states.isLoading);
+  const previewPresented = usePresentedOnce(showPreview);
+  const kaneoListReady = useModuleReady(
+    loadWorkItemKaneoList,
+    isWorkItemKaneoListLoaded,
+    layout === "list" &&
+      !previewDecisionPending &&
+      (!previewable || previewPresented),
+  );
   // The table mounts with an ordinary update once its module is here, not as a Suspense retry
   // (see `useModuleReady`).
   // The virtualized table is part of that module set: mounted before it, a table of more than
@@ -266,6 +342,17 @@ function WorkItemsPanel({
     onOpenItem,
   };
 
+  const listFallback =
+    showPreview && workItems && previewStates ? (
+      <WorkItemLightList
+        projectId={project?.id}
+        workItems={workItems}
+        states={previewStates}
+      />
+    ) : (
+      <WorkItemListLoading />
+    );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       {project &&
@@ -283,21 +370,16 @@ function WorkItemsPanel({
           </Alert>
         </div>
       ) : null}
-      <Suspense
-        fallback={
-          showPreview && workItems && previewStates ? (
-            <WorkItemLightList
-              projectId={project?.id}
-              workItems={workItems}
-              states={previewStates}
+      <Suspense fallback={listFallback}>
+        {layout === "list" ? (
+          kaneoListReady ? (
+            <WorkItemKaneoList
+              {...listProps}
+              onCreateInState={onCreateInState}
             />
           ) : (
-            <WorkItemListLoading />
+            listFallback
           )
-        }
-      >
-        {layout === "list" ? (
-          <WorkItemKaneoList {...listProps} onCreateInState={onCreateInState} />
         ) : tableModuleReady ? (
           <WorkItemList
             {...listProps}
