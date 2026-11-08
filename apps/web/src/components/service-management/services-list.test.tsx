@@ -13,13 +13,14 @@ const mocks = vi.hoisted(() => ({
   },
   status: { data: undefined as unknown },
   canCreateProjects: true,
+  canManageSettings: false,
   modalProps: vi.fn(),
   servicesWorkspace: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children?: React.ReactNode }) => (
-    <a href="/">{children}</a>
+  Link: ({ to, children }: { to?: string; children?: React.ReactNode }) => (
+    <a href={to ?? "/"}>{children}</a>
   ),
   useNavigate: () => vi.fn(),
 }));
@@ -53,6 +54,7 @@ vi.mock("@/hooks/queries/service-management", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canBindProjectOrganisation: () => mocks.canCreateProjects,
+    canManageWorkspaceSettings: () => mocks.canManageSettings,
   }),
 }));
 vi.mock("@/components/shared/modals/create-project-modal", () => ({
@@ -96,6 +98,7 @@ function setup(
 afterEach(() => {
   cleanup();
   mocks.canCreateProjects = true;
+  mocks.canManageSettings = false;
   mocks.modalProps.mockClear();
 });
 
@@ -186,7 +189,7 @@ describe("ServicesList", () => {
 });
 
 describe("ServicesList with the catalogue off (UAT re-audit)", () => {
-  it("shows the off state once, offers no New Service, search or tabs, and asks for no list", () => {
+  it("shows the off state once, offers no New Service or search, and asks for no list", () => {
     mocks.servicesWorkspace.mockClear();
     setup({}, { enabled: false });
     expect(screen.getAllByTestId("service-catalogue-off")).toHaveLength(1);
@@ -199,6 +202,29 @@ describe("ServicesList with the catalogue off (UAT re-audit)", () => {
     expect(mocks.servicesWorkspace).toHaveBeenCalled();
     for (const [workspaceId] of mocks.servicesWorkspace.mock.calls)
       expect(workspaceId).toBe("");
+  });
+
+  // UX-1a (SR-04): the section tabs stay, the managed-service action into the off feature goes,
+  // and only a settings manager is offered the way to switch the catalogue on.
+  it("keeps the section tabs and hides Create managed service while off", () => {
+    setup({}, { enabled: false });
+    expect(
+      screen.getByRole("navigation", { name: "nav.title" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("create-managed-service")).toBeNull();
+    expect(screen.getByText("disabled.description")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "common:featureOff.turnOn" }),
+    ).toBeNull();
+  });
+
+  it("offers a settings manager Turn on in Features while off", () => {
+    mocks.canManageSettings = true;
+    setup({}, { enabled: false });
+    expect(screen.getByText("disabled.manageDescription")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "common:featureOff.turnOn" }),
+    ).toHaveAttribute("href", "/dashboard/settings/workspace/features");
   });
 
   it("asks for the list once the catalogue is on", () => {

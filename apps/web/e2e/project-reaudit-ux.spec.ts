@@ -320,15 +320,16 @@ for (const scheme of ["light", "dark"] as const) {
       await page.goto("/agent/triage?state=new");
       const table = page.getByRole("table");
       await expect(table).toBeVisible();
-      const title = page.locator("header h1").first();
+      const title = page.getByRole("heading", { level: 1 });
       const content = page.getByTestId("triage-content");
       const [titleBox, contentBox] = await Promise.all([
         title.boundingBox(),
         content.boundingBox(),
       ]);
-      // The content starts at the header's text gutter, not on the panel edge.
+      // UX-1a: the page title sits in the content's 16 px gutter, lined up with the queue, not on
+      // the panel edge.
       expect(
-        Math.abs((contentBox?.x ?? 0) + 16 - (titleBox?.x ?? 0) - 8),
+        Math.abs((contentBox?.x ?? 0) + 16 - (titleBox?.x ?? 0)),
       ).toBeLessThanOrEqual(8);
       const frame = await table.evaluate((element) => {
         const scroller = element.parentElement as HTMLElement;

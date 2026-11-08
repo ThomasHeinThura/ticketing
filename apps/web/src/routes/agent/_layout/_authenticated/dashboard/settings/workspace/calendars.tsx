@@ -43,8 +43,14 @@ export const Route = createFileRoute(
 
 /** P4R2-M1: the list and its detail routes exist only while `feature.sla` is on. */
 function ServiceCalendarsRoute() {
+  const { t } = useTranslation("serviceCalendars");
   return (
-    <WorkspaceFeatureGate feature="feature.sla" off="sla">
+    <WorkspaceFeatureGate
+      feature="feature.sla"
+      off="sla"
+      title={t("list.title")}
+      description={t("list.description")}
+    >
       <ServiceCalendarsRouteContent />
     </WorkspaceFeatureGate>
   );

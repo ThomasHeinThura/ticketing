@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import {
+  Badge,
   Button,
   SidebarGroup,
   SidebarGroupContent,
@@ -61,9 +62,11 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
   const canInvite = canInviteUsers();
   const canRates = canManageRates();
   const canWorkflows = canManageWorkflows();
-  // P4R2-M1: SLA policies and service calendars are `feature.sla` settings; off (or still
-  // loading) they are not offered, like every other flagged area.
+  // P4R2-M1 / UX-1a (SR-05, S2): SLA policies and service calendars are `feature.sla` settings.
+  // While the flags load they are not offered; once known they stay visible to holders of
+  // `sla_policy:manage`, marked Off when the feature is off, so an admin can find them.
   const workspaceFeatures = useWorkspaceFeatures(workspace?.id);
+  const slaKnown = !workspaceFeatures.isLoading;
   const slaOn = workspaceFeatures.isOn("feature.sla");
   // Every entry is shown only to people the server would let into it, using the capability the
   // API of that area enforces: `workspace:manage_roles`, `webhook:manage`, `custom_field:manage`,
@@ -117,13 +120,15 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("serviceCalendars:list.title"),
       url: "/dashboard/settings/workspace/calendars",
       icon: CalendarDays,
-      visible: canCalendars && slaOn,
+      visible: canCalendars && slaKnown,
+      off: !slaOn,
     },
     {
       title: t("slaPolicies:list.title"),
       url: "/dashboard/settings/workspace/sla-policies",
       icon: Timer,
-      visible: canCalendars && slaOn,
+      visible: canCalendars && slaKnown,
+      off: !slaOn,
     },
     {
       title: t("requestTypes:title"),
@@ -237,6 +242,15 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
                       >
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
+                        {"off" in item && item.off ? (
+                          <Badge
+                            variant="outline"
+                            size="sm"
+                            className="ms-auto"
+                          >
+                            {t("featureFlags:stateOff")}
+                          </Badge>
+                        ) : null}
                       </Button>
                     </SidebarMenuItem>
                   ))}

@@ -6,6 +6,28 @@ const state = vi.hoisted(() => ({
   workspaceLoading: false,
   sla: false,
   featuresLoading: false,
+  canManageSettings: false,
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children?: React.ReactNode;
+  }) => (
+    <a {...props} href={to}>
+      {children}
+    </a>
+  ),
+}));
+vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canManageWorkspaceSettings: () => state.canManageSettings,
+  }),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -31,12 +53,18 @@ afterEach(() => {
     workspaceLoading: false,
     sla: false,
     featuresLoading: false,
+    canManageSettings: false,
   });
 });
 
 const renderGate = () =>
   render(
-    <WorkspaceFeatureGate feature="feature.sla" off="sla">
+    <WorkspaceFeatureGate
+      feature="feature.sla"
+      off="sla"
+      title="SLA policies"
+      description="Response and resolution targets."
+    >
       <p>SLA policies list</p>
     </WorkspaceFeatureGate>,
   );
@@ -67,5 +95,32 @@ describe("WorkspaceFeatureGate (P4R2-M1)", () => {
     state.workspaceLoading = true;
     const second = renderGate();
     expect(second.container).toBeEmptyDOMElement();
+  });
+
+  // UX-1a (S2, SR-05): the off page keeps its title and description, and only a settings
+  // manager gets the link to the workspace feature settings.
+  it("keeps the page title and description above the off state", () => {
+    renderGate();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "SLA policies" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Response and resolution targets.")).toBeTruthy();
+  });
+
+  it("asks a non-manager to contact an admin and offers no link", () => {
+    renderGate();
+    expect(screen.getByText("featureOff.sla.description")).toBeTruthy();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("offers a settings manager Turn on in Features", () => {
+    state.canManageSettings = true;
+    renderGate();
+    expect(screen.getByText("featureOff.sla.manageDescription")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: "common:featureOff.turnOn" })
+        .getAttribute("href"),
+    ).toBe("/dashboard/settings/workspace/features");
   });
 });

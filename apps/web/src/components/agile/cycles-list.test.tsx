@@ -19,6 +19,9 @@ vi.mock("react-i18next", async () => ({
   }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("./use-can-manage-project-features", () => ({
+  useCanManageProjectFeatures: () => false,
+}));
 vi.mock("@/fetchers/agile", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/fetchers/agile")>()),
   getCycles: (...args: unknown[]) => mocks.getCycles(...args),

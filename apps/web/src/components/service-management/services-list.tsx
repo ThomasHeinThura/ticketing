@@ -286,8 +286,10 @@ export function ServicesList({ q }: { q?: string }) {
   const [creatingManagedService, setCreatingManagedService] = useState(false);
   // The strict project:create capability, the one `POST /api/project` checks (the legacy
   // `canCreateProjects` flag also admits members, who would only meet a 403).
-  const { canBindProjectOrganisation } = useWorkspacePermission();
-  const canCreateManagedService = canBindProjectOrganisation();
+  const { canBindProjectOrganisation, canManageWorkspaceSettings } =
+    useWorkspacePermission();
+  // UX-1a (SR-04): no entry point into the catalogue while it is off.
+  const canCreateManagedService = canBindProjectOrganisation() && !catalogueOff;
   const [draft, setDraft] = useState(q ?? "");
   const loading = workspaceLoading || status.isLoading || services.isLoading;
   return (
@@ -324,11 +326,11 @@ export function ServicesList({ q }: { q?: string }) {
           ) : null
         }
       >
+        <SectionNav active="services" />
         {catalogueOff ? (
-          <CatalogueOff />
+          <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
         ) : (
           <>
-            <SectionNav active="services" />
             <search>
               <form
                 className="flex max-w-md gap-2"

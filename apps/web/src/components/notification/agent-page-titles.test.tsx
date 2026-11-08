@@ -1,4 +1,4 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import NotificationInbox from "@/components/notification/notification-inbox";
 import MyWork from "@/components/work-item/my-work";
@@ -75,5 +75,31 @@ describe("agent page titles", () => {
   it("titles the Inbox", () => {
     render(<NotificationInbox filter="all" onFilterChange={() => undefined} />);
     expect(document.title).toBe("Inbox · TaskDesk");
+  });
+
+  // UX-1a (DS-01): both pages show their name as a visible page title, not only to screen readers.
+  it.each([
+    [
+      "My work",
+      () => (
+        <MyWork
+          lens="assigned"
+          item={undefined}
+          onLensChange={() => undefined}
+          onItemChange={() => undefined}
+        />
+      ),
+    ],
+    [
+      "Inbox",
+      () => <NotificationInbox filter="all" onFilterChange={() => undefined} />,
+    ],
+  ])("shows %s as the one visible page title", (name, Page) => {
+    render(<Page />);
+    const headings = screen.getAllByRole("heading", { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toHaveTextContent(name);
+    expect(headings[0]).not.toHaveClass("sr-only");
+    expect(headings[0]).toHaveAttribute("data-slot", "page-header-title");
   });
 });

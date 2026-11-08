@@ -38,6 +38,9 @@ vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-one" } }),
 }));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({ canManageWorkspaceSettings: () => false }),
+}));
 vi.mock("@/hooks/use-open-pending-action", () => ({
   useOpenPendingAction: () => mocks.openPendingAction,
 }));

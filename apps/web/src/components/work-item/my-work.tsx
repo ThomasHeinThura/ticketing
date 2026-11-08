@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import {
   Badge,
   Button,
+  PageHeader,
   Table,
   TableBody,
   TableCell,
@@ -56,7 +57,7 @@ export default function MyWork({
   return (
     <div className="flex flex-col gap-4 p-4">
       <PageTitle title={t("navigation:sidebar.myWork")} />
-      <h1 className="sr-only">{t("navigation:sidebar.myWork")}</h1>
+      <PageHeader title={t("navigation:sidebar.myWork")} />
       <Tabs
         value={lens}
         onValueChange={(value) => onLensChange(value as AgentMyWorkLens)}

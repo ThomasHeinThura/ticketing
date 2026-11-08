@@ -17,6 +17,7 @@ import { Route } from "./triage";
 const mocks = vi.hoisted(() => ({
   search: { state: "new" } as IntakeQueueSearch,
   canTriage: true,
+  canManageSettings: false,
   checkingPermissions: false,
   intakeOn: true,
   featuresLoading: false,
@@ -60,10 +61,13 @@ vi.mock("@tanstack/react-router", () => ({
     ...props
   }: {
     to: string;
-    params: { key: string };
+    params?: { key: string };
     children: React.ReactNode;
   }) => (
-    <a {...props} href={to.replace("$key", encodeURIComponent(params.key))}>
+    <a
+      {...props}
+      href={to.replace("$key", encodeURIComponent(params?.key ?? ""))}
+    >
       {children}
     </a>
   ),
@@ -72,6 +76,7 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canTriageIntake: () => mocks.canTriage,
+    canManageWorkspaceSettings: () => mocks.canManageSettings,
     canShareSavedViews: () => false,
     isCheckingPermissions: mocks.checkingPermissions,
   }),
@@ -178,6 +183,7 @@ describe("intake triage route", () => {
   beforeEach(() => {
     mocks.search = { state: "new" };
     mocks.canTriage = true;
+    mocks.canManageSettings = false;
     mocks.checkingPermissions = false;
     mocks.intakeOn = true;
     mocks.featuresLoading = false;
@@ -224,6 +230,51 @@ describe("intake triage route", () => {
     expect(mocks.getSubmissions).not.toHaveBeenCalled();
     expect(mocks.getRequestTypes).not.toHaveBeenCalled();
     expect(mocks.queuePickerProps).toBeUndefined();
+  });
+
+  // UX-1a (DS-01, SR-02): a visible page title on every branch, and the shared feature-off
+  // state offers the Features link only to someone who can switch Intake on.
+  it.each([
+    ["the queue", () => undefined],
+    [
+      "Intake off",
+      () => {
+        mocks.intakeOn = false;
+      },
+    ],
+    [
+      "no access",
+      () => {
+        mocks.canTriage = false;
+      },
+    ],
+  ])("shows the page title as the one h1 on %s", async (_label, arrange) => {
+    arrange();
+    renderTriage();
+    const headings = screen.getAllByRole("heading", { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toHaveTextContent("title");
+    expect(headings[0]).not.toHaveClass("sr-only");
+    expect(screen.getByText("description")).not.toHaveClass("sr-only");
+    await act(async () => {});
+  });
+
+  it("offers Turn on in Features with Intake off only to a settings manager", async () => {
+    mocks.intakeOn = false;
+    renderTriage();
+    expect(screen.getByText("featureOff.description")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+    cleanup();
+
+    mocks.canManageSettings = true;
+    renderTriage();
+    expect(
+      screen.getByText("featureOff.manageDescription"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "common:featureOff.turnOn" }),
+    ).toHaveAttribute("href", "/dashboard/settings/workspace/features");
+    await act(async () => {});
   });
 
   it("offers Retry, not the Intake-off state, when the feature read fails", async () => {

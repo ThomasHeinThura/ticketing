@@ -64,6 +64,7 @@ import {
 } from "@/hooks/queries/service-management";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import {
@@ -602,6 +603,7 @@ export function AnnouncementsList() {
   // With the catalogue off `GET /api/announcements` answers 409: no request, no New button.
   const catalogueOff = status.data?.enabled === false;
   const canManage = status.data?.canManageServices === true && !catalogueOff;
+  const { canManageWorkspaceSettings } = useWorkspacePermission();
   const announcements = useAnnouncements(workspaceId, canManage);
   const [editing, setEditing] = useState<Announcement | "new" | null>(null);
   return (
@@ -623,7 +625,7 @@ export function AnnouncementsList() {
         {status.isLoading || !workspace ? (
           <LoadingRows />
         ) : catalogueOff ? (
-          <CatalogueOff />
+          <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
         ) : !canManage ? (
           <Empty>
             <EmptyHeader>

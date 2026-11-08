@@ -1,4 +1,11 @@
-import { Button, ScrollArea, Tabs, TabsList, TabsTrigger } from "@taskdesk/ui";
+import {
+  Button,
+  PageHeader,
+  ScrollArea,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@taskdesk/ui";
 import { Bell, Mail, MailOpen } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -66,7 +73,7 @@ export default function NotificationInbox({
   return (
     <div className="flex flex-col gap-4 p-4">
       <PageTitle title={t("navigation:sidebar.inbox")} />
-      <h1 className="sr-only">{t("navigation:sidebar.inbox")}</h1>
+      <PageHeader title={t("navigation:sidebar.inbox")} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Tabs
           value={filter}
