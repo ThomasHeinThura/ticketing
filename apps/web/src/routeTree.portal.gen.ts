@@ -15,10 +15,12 @@ import { Route as AnnouncementsRouteImport } from './routes/portal/announcements
 import { Route as ApprovalsRouteImport } from './routes/portal/approvals'
 import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
 import { Route as KbRouteImport } from './routes/portal/kb'
+import { Route as KnowledgeBaseRouteImport } from './routes/portal/knowledge-base'
 import { Route as NotificationsRouteImport } from './routes/portal/notifications'
 import { Route as ProjectsRouteImport } from './routes/portal/projects'
 import { Route as ReleasesRouteImport } from './routes/portal/releases'
 import { Route as RequestsRouteImport } from './routes/portal/requests'
+import { Route as SettingsRouteImport } from './routes/portal/settings'
 import { Route as SignInRouteImport } from './routes/portal/sign-in'
 import { Route as AnnouncementsIdRouteImport } from './routes/portal/announcements_.$id'
 import { Route as InviteIdRouteImport } from './routes/portal/invite/$id'
@@ -60,6 +62,11 @@ const KbRoute = KbRouteImport.update({
   path: '/kb',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KnowledgeBaseRoute = KnowledgeBaseRouteImport.update({
+  id: '/knowledge-base',
+  path: '/knowledge-base',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -78,6 +85,11 @@ const ReleasesRoute = ReleasesRouteImport.update({
 const RequestsRoute = RequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignInRoute = SignInRouteImport.update({
@@ -138,10 +150,12 @@ export interface FileRoutesByFullPath {
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/notifications': typeof NotificationsRoute
   '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
+  '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/announcements/$id': typeof AnnouncementsIdRoute
   '/invite/$id': typeof InviteIdRoute
@@ -160,10 +174,12 @@ export interface FileRoutesByTo {
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/notifications': typeof NotificationsRoute
   '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
+  '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/announcements/$id': typeof AnnouncementsIdRoute
   '/invite/$id': typeof InviteIdRoute
@@ -183,10 +199,12 @@ export interface FileRoutesById {
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
   '/kb': typeof KbRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/notifications': typeof NotificationsRoute
   '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
+  '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/announcements_/$id': typeof AnnouncementsIdRoute
   '/invite/$id': typeof InviteIdRoute
@@ -207,10 +225,12 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/catalogue'
     | '/kb'
+    | '/knowledge-base'
     | '/notifications'
     | '/projects'
     | '/releases'
     | '/requests'
+    | '/settings'
     | '/sign-in'
     | '/announcements/$id'
     | '/invite/$id'
@@ -229,10 +249,12 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/catalogue'
     | '/kb'
+    | '/knowledge-base'
     | '/notifications'
     | '/projects'
     | '/releases'
     | '/requests'
+    | '/settings'
     | '/sign-in'
     | '/announcements/$id'
     | '/invite/$id'
@@ -251,10 +273,12 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/catalogue'
     | '/kb'
+    | '/knowledge-base'
     | '/notifications'
     | '/projects'
     | '/releases'
     | '/requests'
+    | '/settings'
     | '/sign-in'
     | '/announcements_/$id'
     | '/invite/$id'
@@ -274,10 +298,12 @@ export interface RootRouteChildren {
   ApprovalsRoute: typeof ApprovalsRoute
   CatalogueRoute: typeof CatalogueRoute
   KbRoute: typeof KbRoute
+  KnowledgeBaseRoute: typeof KnowledgeBaseRoute
   NotificationsRoute: typeof NotificationsRoute
   ProjectsRoute: typeof ProjectsRoute
   ReleasesRoute: typeof ReleasesRoute
   RequestsRoute: typeof RequestsRoute
+  SettingsRoute: typeof SettingsRoute
   SignInRoute: typeof SignInRoute
   AnnouncementsIdRoute: typeof AnnouncementsIdRoute
   InviteIdRoute: typeof InviteIdRoute
@@ -334,6 +360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KbRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/knowledge-base': {
+      id: '/knowledge-base'
+      path: '/knowledge-base'
+      fullPath: '/knowledge-base'
+      preLoaderRoute: typeof KnowledgeBaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/notifications': {
       id: '/notifications'
       path: '/notifications'
@@ -360,6 +393,13 @@ declare module '@tanstack/react-router' {
       path: '/requests'
       fullPath: '/requests'
       preLoaderRoute: typeof RequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in': {
@@ -442,10 +482,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApprovalsRoute: ApprovalsRoute,
   CatalogueRoute: CatalogueRoute,
   KbRoute: KbRoute,
+  KnowledgeBaseRoute: KnowledgeBaseRoute,
   NotificationsRoute: NotificationsRoute,
   ProjectsRoute: ProjectsRoute,
   ReleasesRoute: ReleasesRoute,
   RequestsRoute: RequestsRoute,
+  SettingsRoute: SettingsRoute,
   SignInRoute: SignInRoute,
   AnnouncementsIdRoute: AnnouncementsIdRoute,
   InviteIdRoute: InviteIdRoute,
