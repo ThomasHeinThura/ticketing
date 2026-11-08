@@ -12,6 +12,8 @@
 #   --profile s3        also run the opt-in SeaweedFS object store
 #   --no-verify         skip the cosign signature check (loud, deliberate)
 #   --no-probe          skip the post-deploy API probe (CI only; never routine)
+#   --seed              run the SIT account seeder (local and sit only). It resets passwords,
+#                       turns off two-factor and deletes sessions, so it is never the default.
 #
 # It is idempotent. It generates any missing secret and never regenerates one
 # that already has a value.
@@ -66,6 +68,7 @@ MODE=""
 PROFILE_S3=0
 VERIFY=1
 PROBE=1
+SEED=0
 ROLLBACK_DIGEST=""
 ROLLBACK_TAG=""
 
@@ -96,6 +99,7 @@ while [ $# -gt 0 ]; do
     --profile=s3) PROFILE_S3=1; shift ;;
     --no-verify) VERIFY=0; shift ;;
     --no-probe) PROBE=0; shift ;;
+    --seed) SEED=1; shift ;;
     *) die "unknown flag '$1'" ;;
   esac
 done
@@ -432,6 +436,10 @@ print_setup_token() {
 
 seed_if_permitted() {
   [ "$MODE" = "local" ] || [ "$MODE" = "sit" ] || return 0
+  if [ "$SEED" -ne 1 ]; then
+    say "not seeding SIT accounts (pass --seed to run the seeder; it resets passwords and sessions)"
+    return 0
+  fi
   say "seeding SIT accounts, catalogue and submissions inside the application container"
   # The seed writes the generated passwords to a new private file; the container's only
   # writable path is its /tmp tmpfs, so the file is copied out (0600, outside the checkout)
