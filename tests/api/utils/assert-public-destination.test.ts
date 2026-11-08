@@ -29,6 +29,38 @@ describe("isDisallowedAddress", () => {
     expect(isDisallowedAddress("100.0.0.1")).toBe(false);
   });
 
+  it.each([
+    "0:0:0:0:0:0:0:1",
+    "0000:0000:0000:0000:0000:0000:0000:0001",
+    "0:0:0:0:0:0:0:0",
+    "0:0:0:0:0:ffff:127.0.0.1",
+    "0:0:0:0:0:ffff:7f00:1",
+    "::ffff:0:7f00:1",
+    "::ffff:169.254.169.254",
+    "0:0:0:0:0:ffff:a9fe:a9fe",
+    "::127.0.0.1",
+    "::7f00:1",
+    "::10.0.0.1",
+    "[0:0:0:0:0:0:0:1]",
+    "FE80::1",
+    "febf::1",
+    "fec0::1",
+    "FD00::1",
+    "fc00::1",
+    "ff02::1",
+    "64:ff9b::7f00:1",
+    "fe80::1%eth0",
+  ])("blocks the IPv6 form %s", (address) => {
+    expect(isDisallowedAddress(address)).toBe(true);
+  });
+
+  it("allows routable IPv6 and mapped routable IPv4", () => {
+    expect(isDisallowedAddress("2606:4700:4700::1111")).toBe(false);
+    expect(isDisallowedAddress("[2001:4860:4860::8888]")).toBe(false);
+    expect(isDisallowedAddress("::ffff:8.8.8.8")).toBe(false);
+    expect(isDisallowedAddress("0:0:0:0:0:ffff:808:808")).toBe(false);
+  });
+
   it("allows a routable address", () => {
     expect(isDisallowedAddress("8.8.8.8")).toBe(false);
     expect(isDisallowedAddress("93.184.216.34")).toBe(false);

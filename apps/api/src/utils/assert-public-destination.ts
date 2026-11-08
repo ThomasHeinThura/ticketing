@@ -26,43 +26,87 @@ function isDisallowedIpv4(ip: string): boolean {
   );
 }
 
-// ::ffff:127.0.0.1 is an IPv4 destination wearing an IPv6 shape, and the URL
-// parser rewrites it to the hex form ::ffff:7f00:1, so both must be unwrapped.
-function mappedIpv4(ip: string): string | null {
-  const dotted = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (dotted?.[1]) return dotted[1];
+// Expands any valid IPv6 text form (compressed, zero-padded, mixed dotted tail)
+// into eight 16-bit groups, so every spelling of one address is classified the
+// same way. Returns null when the text cannot be parsed; callers deny those.
+function ipv6Groups(ip: string): number[] | null {
+  // Zone identifiers (fe80::1%eth0) only make sense for link-local targets.
+  const text = ip.split("%")[0] ?? "";
+  let tail: number[] = [];
+  let head = text;
+  const dotted = text.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/);
+  if (dotted?.[1] !== undefined && dotted[2] !== undefined) {
+    const octets = dotted[2]
+      .split(".")
+      .map((part) => Number.parseInt(part, 10));
+    if (octets.some((octet) => Number.isNaN(octet) || octet > 255)) return null;
+    const [o1, o2, o3, o4] = octets as [number, number, number, number];
+    tail = [(o1 << 8) | o2, (o3 << 8) | o4];
+    head = dotted[1].endsWith("::") ? dotted[1] : dotted[1].slice(0, -1);
+  }
 
-  const hex = ip.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (!hex?.[1] || !hex[2]) return null;
+  const halves = head.split("::");
+  if (halves.length > 2) return null;
+  const toGroups = (part: string): number[] | null => {
+    if (part === "") return [];
+    const groups = part.split(":").map((group) => Number.parseInt(group, 16));
+    return groups.some((group) => Number.isNaN(group) || group > 0xffff)
+      ? null
+      : groups;
+  };
+  const left = toGroups(halves[0] ?? "");
+  const right = halves.length === 2 ? toGroups(halves[1] ?? "") : [];
+  if (left === null || right === null) return null;
 
-  const high = Number.parseInt(hex[1], 16);
-  const low = Number.parseInt(hex[2], 16);
-  return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
+  const known = [...left, ...right, ...tail];
+  if (halves.length === 1) {
+    return known.length === 8 ? known : null;
+  }
+  const missing = 8 - known.length;
+  if (missing < 1) return null;
+  return [...left, ...new Array<number>(missing).fill(0), ...right, ...tail];
+}
+
+function embeddedIpv4(groups: number[]): string {
+  const [g6, g7] = [groups[6] ?? 0, groups[7] ?? 0];
+  return `${g6 >> 8}.${g6 & 0xff}.${g7 >> 8}.${g7 & 0xff}`;
 }
 
 function isDisallowedIpv6(ip: string): boolean {
-  const normalized = ip.toLowerCase();
+  const groups = ipv6Groups(ip.toLowerCase());
+  if (groups === null) return true;
 
-  const mapped = mappedIpv4(normalized);
-  if (mapped) {
-    return isDisallowedIpv4(mapped);
+  const first = groups[0] ?? 0;
+  const leadingZero = groups.slice(0, 5).every((group) => group === 0);
+
+  // ::ffff:0:0/96 (mapped) and ::/96 (deprecated compatible) carry an IPv4
+  // destination. ::/128 and ::1 fall out of the compatible range as 0.0.0.0
+  // and 0.0.0.1, which the IPv4 check refuses.
+  if (leadingZero && (groups[5] === 0xffff || groups[5] === 0)) {
+    return isDisallowedIpv4(embeddedIpv4(groups));
+  }
+
+  // 64:ff9b::/96 (NAT64) and the ::ffff:0:0:0/96 translated range.
+  if (
+    first === 0x64 &&
+    groups[1] === 0xff9b &&
+    groups.slice(2, 6).every((group) => group === 0)
+  ) {
+    return true;
+  }
+  if (
+    groups.slice(0, 4).every((group) => group === 0) &&
+    groups[4] === 0xffff &&
+    groups[5] === 0
+  ) {
+    return isDisallowedIpv4(embeddedIpv4(groups));
   }
 
   return (
-    normalized === "::" ||
-    normalized === "::1" ||
-    normalized.startsWith("fe8") ||
-    normalized.startsWith("fe9") ||
-    normalized.startsWith("fea") ||
-    normalized.startsWith("feb") ||
-    normalized.startsWith("fec") ||
-    normalized.startsWith("fed") ||
-    normalized.startsWith("fee") ||
-    normalized.startsWith("fef") ||
-    normalized.startsWith("ff") ||
-    normalized.startsWith("64:ff9b:") ||
-    normalized.startsWith("fc") ||
-    normalized.startsWith("fd")
+    (first & 0xfe00) === 0xfc00 || // fc00::/7 unique local
+    (first & 0xffc0) === 0xfe80 || // fe80::/10 link local
+    (first & 0xffc0) === 0xfec0 || // fec0::/10 site local
+    (first & 0xff00) === 0xff00 // ff00::/8 multicast
   );
 }
 
