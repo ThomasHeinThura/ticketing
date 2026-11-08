@@ -72,7 +72,7 @@ const states = ["s-1", "s-2", "s-3", "s-4"].map((id, index) => ({
   id,
   name: `State ${index + 1}`,
 }));
-const label = { id: "label-1", name: "Bug", color: "#ff0000" };
+const label = { id: "label-1", name: "Bug", color: "red" };
 const items: WorkItemRow[] = states.flatMap((state, column) =>
   Array.from({ length: 50 }, (_, index) => {
     const number = column * 50 + index + 1;
