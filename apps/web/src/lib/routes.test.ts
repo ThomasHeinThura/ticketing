@@ -422,6 +422,18 @@ describe("G5 route metadata", () => {
     expect(generatedRouteMetadata.portal).toContain("/submissions/$ref");
   });
 
+  it("registers the redirects for addresses that used to dead-end (UX-8)", () => {
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.agentProjectsIndex.path,
+    );
+    expect(generatedRouteMetadata.portal).toContain(
+      routes.portalLegacySettings.path,
+    );
+    expect(generatedRouteMetadata.portal).toContain(
+      routes.portalLegacyKnowledgeBase.path,
+    );
+  });
+
   it("round-trips the portal root URL through its route helper", () => {
     const url = new URL(
       routes.portalHome.build(),

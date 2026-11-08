@@ -58,6 +58,7 @@ import { Route as LayoutAuthenticatedGodModeUsersRouteImport } from './routes/ag
 import { Route as LayoutAuthenticatedGodModeWebhooksRouteImport } from './routes/agent/_layout/_authenticated/god-mode/webhooks'
 import { Route as LayoutAuthenticatedAgentDashboardEditRouteImport } from './routes/agent/_layout/_authenticated/agent/dashboard_.edit'
 import { Route as LayoutAuthenticatedAgentKbIdRouteImport } from './routes/agent/_layout/_authenticated/agent/kb_.$id'
+import { Route as LayoutAuthenticatedAgentProjectsIndexRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/index'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey'
 import { Route as LayoutAuthenticatedAgentReportsKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/reports_.$key'
 import { Route as LayoutAuthenticatedAgentReportsNewRouteImport } from './routes/agent/_layout/_authenticated/agent/reports_.new'
@@ -437,6 +438,12 @@ const LayoutAuthenticatedAgentKbIdRoute =
   LayoutAuthenticatedAgentKbIdRouteImport.update({
     id: '/kb_/$id',
     path: '/kb/$id',
+    getParentRoute: () => LayoutAuthenticatedAgentRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsIndexRoute =
+  LayoutAuthenticatedAgentProjectsIndexRouteImport.update({
+    id: '/projects/',
+    path: '/projects/',
     getParentRoute: () => LayoutAuthenticatedAgentRoute,
   } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeyRoute =
@@ -1175,6 +1182,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/god-mode/authentication/$id': typeof LayoutAuthenticatedGodModeAuthenticationIdRoute
   '/god-mode/imports/$id': typeof LayoutAuthenticatedGodModeImportsIdRoute
+  '/agent/projects/': typeof LayoutAuthenticatedAgentProjectsIndexRoute
   '/agent/settings/': typeof LayoutAuthenticatedAgentSettingsIndexRoute
   '/dashboard/settings/': typeof LayoutAuthenticatedDashboardSettingsIndexRoute
   '/god-mode/organisations/': typeof LayoutAuthenticatedGodModeOrganisationsIndexRoute
@@ -1318,6 +1326,7 @@ export interface FileRoutesByTo {
   '/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/god-mode/authentication/$id': typeof LayoutAuthenticatedGodModeAuthenticationIdRoute
   '/god-mode/imports/$id': typeof LayoutAuthenticatedGodModeImportsIdRoute
+  '/agent/projects': typeof LayoutAuthenticatedAgentProjectsIndexRoute
   '/agent/settings': typeof LayoutAuthenticatedAgentSettingsIndexRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsIndexRoute
   '/god-mode/organisations': typeof LayoutAuthenticatedGodModeOrganisationsIndexRoute
@@ -1470,6 +1479,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/_layout/_authenticated/god-mode/authentication/$id': typeof LayoutAuthenticatedGodModeAuthenticationIdRoute
   '/_layout/_authenticated/god-mode/imports/$id': typeof LayoutAuthenticatedGodModeImportsIdRoute
+  '/_layout/_authenticated/agent/projects/': typeof LayoutAuthenticatedAgentProjectsIndexRoute
   '/_layout/_authenticated/agent/settings/': typeof LayoutAuthenticatedAgentSettingsIndexRoute
   '/_layout/_authenticated/dashboard/settings/': typeof LayoutAuthenticatedDashboardSettingsIndexRoute
   '/_layout/_authenticated/god-mode/organisations/': typeof LayoutAuthenticatedGodModeOrganisationsIndexRoute
@@ -1621,6 +1631,7 @@ export interface FileRouteTypes {
     | '/dashboard/workspace/create'
     | '/god-mode/authentication/$id'
     | '/god-mode/imports/$id'
+    | '/agent/projects/'
     | '/agent/settings/'
     | '/dashboard/settings/'
     | '/god-mode/organisations/'
@@ -1764,6 +1775,7 @@ export interface FileRouteTypes {
     | '/dashboard/workspace/create'
     | '/god-mode/authentication/$id'
     | '/god-mode/imports/$id'
+    | '/agent/projects'
     | '/agent/settings'
     | '/dashboard/settings'
     | '/god-mode/organisations'
@@ -1915,6 +1927,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/dashboard/workspace/create'
     | '/_layout/_authenticated/god-mode/authentication/$id'
     | '/_layout/_authenticated/god-mode/imports/$id'
+    | '/_layout/_authenticated/agent/projects/'
     | '/_layout/_authenticated/agent/settings/'
     | '/_layout/_authenticated/dashboard/settings/'
     | '/_layout/_authenticated/god-mode/organisations/'
@@ -2353,6 +2366,13 @@ declare module '@tanstack/react-router' {
       path: '/kb/$id'
       fullPath: '/agent/kb/$id'
       preLoaderRoute: typeof LayoutAuthenticatedAgentKbIdRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentRoute
+    }
+    '/_layout/_authenticated/agent/projects/': {
+      id: '/_layout/_authenticated/agent/projects/'
+      path: '/projects'
+      fullPath: '/agent/projects/'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsIndexRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentRoute
     }
     '/_layout/_authenticated/agent/projects/$projectKey': {
@@ -3210,6 +3230,7 @@ interface LayoutAuthenticatedAgentRouteChildren {
   LayoutAuthenticatedAgentServiceManagementServicesRoute: typeof LayoutAuthenticatedAgentServiceManagementServicesRouteWithChildren
   LayoutAuthenticatedAgentSettingsSplatRoute: typeof LayoutAuthenticatedAgentSettingsSplatRoute
   LayoutAuthenticatedAgentWorkItemsKeyRoute: typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
+  LayoutAuthenticatedAgentProjectsIndexRoute: typeof LayoutAuthenticatedAgentProjectsIndexRoute
   LayoutAuthenticatedAgentSettingsIndexRoute: typeof LayoutAuthenticatedAgentSettingsIndexRoute
   LayoutAuthenticatedAgentKbIdEditRoute: typeof LayoutAuthenticatedAgentKbIdEditRoute
   LayoutAuthenticatedAgentReportsExportsIdRoute: typeof LayoutAuthenticatedAgentReportsExportsIdRoute
@@ -3250,6 +3271,8 @@ const LayoutAuthenticatedAgentRouteChildren: LayoutAuthenticatedAgentRouteChildr
       LayoutAuthenticatedAgentSettingsSplatRoute,
     LayoutAuthenticatedAgentWorkItemsKeyRoute:
       LayoutAuthenticatedAgentWorkItemsKeyRoute,
+    LayoutAuthenticatedAgentProjectsIndexRoute:
+      LayoutAuthenticatedAgentProjectsIndexRoute,
     LayoutAuthenticatedAgentSettingsIndexRoute:
       LayoutAuthenticatedAgentSettingsIndexRoute,
     LayoutAuthenticatedAgentKbIdEditRoute:
