@@ -812,5 +812,51 @@ describe("session kept in the query client (S7b, D9)", () => {
       await check("/agent/inbox");
       expect(getSessionCalls()).toBe(0);
     });
+
+    // UX-8: a signed-out visit to `/` (→ `/dashboard` → sign-in) sent the factor read and the
+    // browser logged its 401. Once the store has answered "signed out", no factor read is sent.
+    it.each([
+      ["no session", null],
+      ["a 401", { status: 401 }],
+    ])(
+      "sends no factor read when the store already answered %s",
+      async (_label, error) => {
+        stopFollowing = followAgentSession(queryClient, vi.fn());
+        atoms.session.set({
+          data: null,
+          error,
+          isPending: false,
+          isRefetching: false,
+        });
+        getSession.mockResolvedValue({ data: null, error: null });
+
+        const { thrown } = await settle("/dashboard");
+
+        expect(redirectTarget(thrown)).toBe("/auth/sign-in");
+        expect(factorCalls()).toBe(0);
+      },
+    );
+
+    it("still enforces enrolment when the session turns out signed in after the store said signed out", async () => {
+      stopFollowing = followAgentSession(queryClient, vi.fn());
+      atoms.session.set({
+        data: null,
+        error: null,
+        isPending: false,
+        isRefetching: false,
+      });
+      // A sign-in that the store has not picked up yet: the route's own read finds the session.
+      getSession.mockResolvedValue({ data: signedIn("s1"), error: null });
+      vi.mocked(fetch).mockResolvedValue(
+        factorResponse({ required: true, enabled: false }),
+      );
+
+      const { thrown } = await settle("/agent/inbox");
+
+      expect(factorCalls()).toBe(1);
+      expect(redirectTarget(thrown)).toBe(
+        "/dashboard/settings/account/security",
+      );
+    });
   });
 });
