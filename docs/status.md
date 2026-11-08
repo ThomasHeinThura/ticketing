@@ -1,5 +1,31 @@
 # Current status
 
+**7 Nov release:** `1f9d94910da396591ee3cfe431c0a5fdefa8d8af` runs on local SIT and
+Technexus (signed index `sha256:1859abb5d66d98caaac53ce8e57563ca53ff929dc87678720fad260084840ae4`;
+attestation and cosign verified). Local smoke 68/68; Technexus backup
+`pre-1f9d949-20261107T044806Z`, counts unchanged, signed-in smoke 108/110 (the two
+instance-admin misses). It closes the 4 Nov browser matrix; each change was independently
+reviewed and browser-checked on local SIT before Technexus:
+
+- #1068 portal sign-in no longer follows an unsafe `?redirect` (router merged the raw query back).
+- #1069 failed page chunks show a styled error with Try again; Triage, KB, Pages and workspace
+  Features show off/denied states without failing requests; unknown project no longer delays the sidebar.
+- #1070 Members table at 768/390 px, portal search placeholder, Settings/God Mode skip link and
+  landmarks, Organisations headings, S3 number inputs, portal Withdraw confirmation.
+- #1071 testing image creates the attachments directory owned by the app user.
+- #1072 branded portal 404 (status stays 404; CP-19 updated; Opus security review and re-review).
+- #1073 `/agent/search`, `/agent/projects/{key}/timeline` and `/dashboard/settings/workspace/members`
+  stay on their canonical URLs; duplicate requests removed (work item direct open: 26 requests, no
+  exact duplicates); stylesheet prefetch failure shows the error screen; Members readable at 390 px.
+- #1074 reports drill leak check by field, not response text (flake).
+
+Open from this round: a `Range` request on a registered portal route still gets 206 (pre-existing);
+the Members `q` filter is kept in the URL but does not filter; the agent inbox duplicate was not
+reproduced; #1059–#1061 remain open. Thomas's role checks on Technexus (admin, lead, member,
+viewer) are pending.
+
+## Earlier — 5 Nov release
+
 **5 Nov release:** `e08c7063ae9a384252066407193662bca8740c24` is accepted on
 local SIT and Technexus with signed index `sha256:d34875df206d7c0b3acad20d8ee37911e740fc093df077aa120f4d776c931989`.
 Release run 41989194302 passed both jobs; source provenance and cosign were

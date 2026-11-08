@@ -4,7 +4,7 @@ Read [AGENTS.md](../AGENTS.md), [status](status.md), [roadmap](roadmap.md) and [
 
 ## Who works on version 2
 
-From 4 Nov Thomas hands version 2 back to **Codex**. Codex owns the release chain and works in the main checkout without creating worktrees. Model tiers and review rules are in AGENTS.md.
+From 4 Nov Thomas hands version 2 back to **Codex**. Codex owns the release chain and works in the main checkout without creating worktrees. Model tiers and review rules are in AGENTS.md. On 6–7 Nov Claude implemented and released #1062–#1074 at Thomas's direction (see [status](status.md)).
 
 ## Goal
 
@@ -12,12 +12,12 @@ From 4 Nov Thomas hands version 2 back to **Codex**. Codex owns the release chai
 
 ## State now
 
-- **6 Nov, running versions:** local SIT (compose project `taskdesk-codex-testing`) runs `main` 8ee0d63e3; Technexus runs e08c7063a. The only difference is #1046 (calendar search announcement). Technexus is healthy: signed-in smoke 108/110, with the two expected instance-admin misses.
+- **7 Nov, running versions:** local SIT (compose project `taskdesk-codex-testing`) and Technexus both run `main` 1f9d94910 (signed, attested). Technexus signed-in smoke 108/110, with the two expected instance-admin misses. Details in [status](status.md).
 - **5 Nov release:** `e08c7063ae9a384252066407193662bca8740c24` is accepted on local SIT and Technexus, with signed index `sha256:d34875df206d7c0b3acad20d8ee37911e740fc093df077aa120f4d776c931989`. Release run 41989194302 passed both jobs; source provenance and cosign signature were verified. Release-path fixes #1055 and #1057 shipped; #1056 is closed. This does not complete fresh-customer installation acceptance.
 - **Local SIT:** 68/68 smoke checks passed across six roles and both HTTPS hosts; journal 217 and eight attachment hashes were verified. The quiesced backup contained 184 tables and 48,279 rows. A new QA workspace, project and lead/viewer accounts were created through product APIs; the original four credential entries were preserved and setup did not change existing workspace/project grants. A private operator hit a name-shadowing `TypeError` after the signed helper verified the new app, leaving the lock held. Independent read-only acceptance verified the same candidate, backup, HBA, configuration and counts before unlock; no second migration or restore ran. Superseded legacy local deployments remain stopped with their volumes preserved.
 - **Technexus:** the quiesced backup contained 184 tables, 69,976 rows and four files. Initial post-deploy counts were identical. The new image is healthy; normal macOS TLS checks on both hosts passed before and after smoke. Signed-in smoke was 108/110, with two expected empty-workspace instance-admin misses and all 54 browser checks passing; the lock was released.
-- **Queued fixes, 6 Nov reality:** #1046 is merged (8ee0d63e3). #1047–#1054 are open drafts that have not merged, so none is released: #1048 (portal submission upload binding), #1052 (storage probe retention, conflicts with `main`), #1053 (S3 configuration drafts, about 37.8k lines, stacked on #1052) and #1054 (stacked on #1053). Each is merged only after a fresh rebase on `main`, green required checks and Thomas's approval. The 4 Nov list above is the order they were opened, not what shipped.
-- **Storage:** filesystem is active. SeaweedFS is approved as a provider, but #1052 and #1053 remain inactive configuration work; no bytes have been cut over.
+- **Queued fixes:** #1046–#1048, #1050–#1052 are merged and released. #1053 was split into #1063, #1064 and #1066 (merged); #1054 was replaced by #1065 (merged); #1049 is closed.
+- **Storage:** filesystem is active. SeaweedFS is approved as a provider; the S3 configuration draft (#1064, #1066) is saved inactive and no bytes have been cut over.
 - **Audit scope:** 30 Technexus owner desktop-dark rows were reviewed observationally and 24 screenshots independently inspected: 17 observations, four redirects, two design observations, one runtime observation and six fixture blocks. Focused security checks resolved the observed 403 as expected and isolated the Inbox result to a Chrome focus boundary; neither confirmed a medium bug. Open findings: agent not-found heading/recovery (#1059), keyboard-clear focus (#1060) and mobile Calendar toolbar overflow (#1061). The latter two predate #1046. The 154-row route inventory is statically reconciled, not fully browser-verified; calendar source checks do not complete it.
 - **Dependencies:** the audit reports three advisories, comprising one low and three moderate instances, with no high or critical findings. Production low `deepmerge` remains #909; development upgrade #1058 awaits approval for new transitive packages. No dependency was changed.
 - UAT items U-1 to U-15 in the [roadmap](roadmap.md) are done and live:
@@ -65,10 +65,12 @@ All are recorded in [design-and-decisions](technical/design-and-decisions.md).
   - Upload files as Documents entries.
   - Email provider (none for UAT; testers use seeded passwords).
   - Technexus self-registration is open during UAT (A-15, accepted by Thomas).
-- **Earlier backlog.** God Mode completeness (A-29–A-34), the rest of L-04, L-05, L-02, #918/#920, L-06, L-07 and L-11.
+- **7 Nov follow-ups.** `Range` on a registered portal route still answers 206 with the raw file length; Members `q` filter from person search; agent inbox duplicate request not reproduced; #1059–#1061.
+- **Earlier backlog.** God Mode completeness (A-29–A-34), the rest of L-04, L-05, L-02, L-06, L-07 and L-11. The October drafts #918–#920 were closed on 6 Nov (branches kept).
 - **Known flaky tests.**
   - Watch `project-managed-service-persisted` (URL timing) and the API reach-guard hook timeouts under heavy load; rerun before treating either as a regression.
   - Under load, a few web unit files (API-key dialog, role capabilities, command palette, quiet hours) time out and pass alone.
+  - Seen once each on 7 Nov and passed on rerun: `src/lib/i18n/index.group.test.ts` ("does nothing special outside the work list") and the `service-calendar` keyboard e2e.
 
 ## Working notes
 
