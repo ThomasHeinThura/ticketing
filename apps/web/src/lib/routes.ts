@@ -1516,6 +1516,10 @@ export const routes = {
     build: (search: PortalProjectSearch = {}) =>
       `/account${portalProjectQuery(new URLSearchParams(), search)}`,
   },
+  /** UX-8 (CP-12): `/settings`, the sidebar's name for the account page, redirects to `/account`. */
+  portalLegacySettings: { path: "/settings" as const },
+  /** UX-8 (CP-12): `/knowledge-base` redirects to `/kb`. */
+  portalLegacyKnowledgeBase: { path: "/knowledge-base" as const },
   portalApprovals: {
     path: "/approvals" as const,
     build: (search: PortalProjectSearch & { approval?: string } = {}) => {
@@ -1928,6 +1932,8 @@ export const routes = {
     build: (params: { projectKey: string }) =>
       `/agent/projects/${encodeURIComponent(params.projectKey)}`,
   },
+  /** UX-8: the bare `/agent/projects` URL redirects to the projects list ({@link routes.agentHome}). */
+  agentProjectsIndex: { path: "/agent/projects/" as const },
   /** L-03: every old `/agent/settings/*` link (including `/agent/settings`) redirects to its canonical settings page. */
   legacySettings: { path: "/agent/settings/$" as const },
   /** Kaneo workspace settings landing page (L-03); the workspace switcher opens it. */

@@ -1,7 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
-import { StrictMode } from "react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import queryClient from "@/query-client";
@@ -20,6 +20,23 @@ import { initializeNotificationPreferenceHandoff } from "./lib/notification-pref
 import { createRouterParseSearch } from "./lib/project-board-search";
 import { parseWorkItemListSearchFromQueryString } from "./lib/routes";
 import { routeTree } from "./routeTree.agent.gen";
+
+// UX-8: the branded not-found page is fetched only when an unknown address is opened, so it
+// stays out of the entry and the work route's first-paint chunks (G11). A failed chunk reaches
+// the route error component like any other.
+const LazyAgentNotFound = lazy(() =>
+  import("./components/agent-not-found").then((module) => ({
+    default: module.AgentNotFound,
+  })),
+);
+
+function AgentNotFoundPage() {
+  return (
+    <Suspense fallback={null}>
+      <LazyAgentNotFound />
+    </Suspense>
+  );
+}
 
 // Strip signed email fragments synchronously, then finish the bounded cookie
 // handoff before any router or authentication redirect can run.
@@ -57,6 +74,9 @@ function bootstrapApplication() {
     ),
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
+    // UX-8: an unknown address shows the branded page inside whichever shell caught it, never
+    // the router's bare "Not Found" text.
+    defaultNotFoundComponent: AgentNotFoundPage,
     context: {
       user: null,
       queryClient,
