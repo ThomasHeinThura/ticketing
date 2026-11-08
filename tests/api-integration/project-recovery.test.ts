@@ -10,7 +10,9 @@ import {
   createWorkspaceMember,
   grantProjectManageAccess,
   grantProjectRole,
+  WORK_ITEM_PROJECT_CAPABILITIES,
 } from "./helpers/fixtures";
+import { addCanonicalMember } from "./helpers/reach-world";
 
 describe("API integration: soft-deleted project recovery", () => {
   beforeEach(async () => {
@@ -190,5 +192,58 @@ describe("API integration: soft-deleted project recovery", () => {
       where: eq(schema.projectTable.id, project.id),
     });
     expect(saved?.deletedAt).not.toBeNull();
+  });
+
+  // A8-2: restore is archive authority. A lead holds project:update but not project:archive.
+  it("refuses restore to a lead (project:update only) and allows a manager", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const lead = await addCanonicalMember(owner.workspace.id, "lead");
+    await grantProjectRole(lead.user.id, project.id, [
+      ...WORK_ITEM_PROJECT_CAPABILITIES,
+      "project:update",
+    ]);
+    const manager = await addCanonicalMember(owner.workspace.id, "manager");
+    await grantProjectRole(manager.user.id, project.id, [
+      ...WORK_ITEM_PROJECT_CAPABILITIES,
+      "project:update",
+      "project:archive",
+    ]);
+    const deletedAt = new Date();
+    const purgeAfter = new Date(deletedAt.getTime() + 86_400_000);
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt, purgeAfter })
+      .where(eq(schema.projectTable.id, project.id));
+    const { app } = createApp();
+
+    mockAuthenticatedSession(lead.user);
+    const refused = await app.request(`/api/project/${project.id}/restore`, {
+      method: "PUT",
+    });
+    expect(refused.status, await refused.text()).toBe(403);
+    const untouched = await db.query.projectTable.findFirst({
+      where: eq(schema.projectTable.id, project.id),
+    });
+    expect(untouched?.deletedAt?.toISOString()).toBe(deletedAt.toISOString());
+    expect(untouched?.purgeAfter?.toISOString()).toBe(purgeAfter.toISOString());
+    expect(
+      await db.query.auditLogTable.findFirst({
+        where: eq(schema.auditLogTable.action, "project.restored"),
+      }),
+    ).toBeUndefined();
+
+    mockAuthenticatedSession(manager.user);
+    const restored = await app.request(`/api/project/${project.id}/restore`, {
+      method: "PUT",
+    });
+    expect(restored.status, await restored.text()).toBe(200);
+    expect(
+      await db.query.projectTable.findFirst({
+        where: eq(schema.projectTable.id, project.id),
+      }),
+    ).toMatchObject({ deletedAt: null, purgeAfter: null });
   });
 });

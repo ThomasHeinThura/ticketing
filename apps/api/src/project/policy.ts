@@ -330,13 +330,17 @@ export const projectPolicies = {
     reach: "required",
   },
 
-  // **Project reach on every write below (#720).** Each `{id}`/`{projectId}` write now runs
-  // `workspaceAccess.fromProject(..., { requireProjectReach: true, deferApiKeyCapability: true })`
-  // (or the column / workflow-rule equivalents): an out-of-reach project answers the same 404 as a
-  // missing one before the legacy `requireWorkspacePermission` gate, in reach without the declared
-  // capability is 403, and an API key still needs reach with its capability left to the key-aware
-  // gate. `tests/permissions/project-reach-guard.test.ts` enforces this for every project-scoped
-  // route; `PUT /api/project/{id}`'s handler-level `project:manage_settings` check (#726) runs after.
+  // **Project reach on project writes (#720).** Each `{id}`/`{projectId}` write runs
+  // `workspaceAccess.fromProject(..., { requireProjectReach: true })`: an out-of-reach project
+  // answers the same 404 as a missing one before the legacy `requireWorkspacePermission` gate, and
+  // in reach without the declared capability is 403. Writes that also pass
+  // `deferApiKeyCapability: true` (the milestone, prerequisite, stakeholder and document-link
+  // writes below, among others) still need reach for an API key but leave its capability to the
+  // key-aware legacy gate. Archive, unarchive and restore above, and the column and workflow-rule
+  // mutations, do NOT defer (A8-2): an API key must carry the strict `project:archive` /
+  // `project:manage_settings` in its own scope.
+  // `tests/permissions/project-reach-guard.test.ts` enforces reach for every project-scoped route;
+  // `PUT /api/project/{id}`'s handler-level `project:manage_settings` check (#726) runs after.
 
   // ── Issue #25's bounded slice ──────────────────────────────────────────────────────
   // Milestones, prerequisites, stakeholders, document links. All eleven routes below
