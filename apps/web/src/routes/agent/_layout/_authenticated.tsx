@@ -18,6 +18,7 @@ import {
   rememberFactorsPassed,
   resolveAgentSession,
   type SessionData,
+  storeAnsweredSignedOut,
 } from "@/lib/agent-session";
 import { isGodModePath } from "@/lib/god-mode-paths";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
@@ -164,13 +165,16 @@ export const Route = createFileRoute("/_layout/_authenticated")({
     // "required but not enrolled" answer is never remembered. The API still refuses every
     // request from a session that must enrol (`mfa_enrollment_required`); that refusal drops
     // the kept answer and re-runs this check (`recoverFactorEnrollment`).
-    if (
+    const factorsNeeded =
       checkFactors &&
-      !factorsPassed(queryClient, peekAgentSession(queryClient))
-    ) {
-      // Start the independent enforcement read alongside session refresh. Its
-      // result is consumed only after session resolution, so redirect
-      // precedence remains unchanged for logged-out users.
+      !factorsPassed(queryClient, peekAgentSession(queryClient));
+    // Start the independent enforcement read alongside session refresh. Its
+    // result is consumed only after session resolution, so redirect
+    // precedence remains unchanged for logged-out users. UX-8: when the
+    // session store has already answered "signed out", the read would only
+    // earn a 401 (logged by the browser) before the sign-in redirect, so it
+    // waits for the session below instead.
+    if (factorsNeeded && !storeAnsweredSignedOut()) {
       factorsRequest = sharedFactorRead(queryClient, "first");
     }
 
@@ -215,7 +219,10 @@ export const Route = createFileRoute("/_layout/_authenticated")({
     // unsafe request (My work's search, a first edit) does not wait one more round trip for it.
     // Only the first call per page load reads (`@taskdesk/libs`).
     if (session) primeCsrfToken();
-    if (session && factorsRequest) {
+    // Signed in after all (for example a sign-in the store has not picked up yet): enrolment is
+    // still enforced, with the read sent now.
+    if (session && factorsNeeded) {
+      factorsRequest ??= sharedFactorRead(queryClient, "first");
       let enrollmentRequired = false;
       try {
         let answer = await factorsRequest;

@@ -21,7 +21,6 @@ import {
   getIdentityLinks,
   startIdentityLink,
 } from "@/fetchers/identity-links";
-import { HttpError } from "@/lib/http-error";
 
 const linksQueryKey = ["identity-links"] as const;
 
@@ -132,9 +131,13 @@ export function ConnectedAccountsPanel({
         ) : links.isError ? (
           <Alert variant="info">
             <AlertDescription>
-              {links.error instanceof HttpError && links.error.status === 403
-                ? t("auth:accountSecurity.identityLinks.passwordSession")
-                : t("auth:accountSecurity.identityLinks.loadError")}
+              {t("auth:accountSecurity.identityLinks.loadError")}
+            </AlertDescription>
+          </Alert>
+        ) : links.data === null ? (
+          <Alert variant="info">
+            <AlertDescription>
+              {t("auth:accountSecurity.identityLinks.passwordSession")}
             </AlertDescription>
           </Alert>
         ) : (

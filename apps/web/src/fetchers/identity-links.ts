@@ -44,8 +44,32 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
-export async function getIdentityLinks(): Promise<IdentityLinkList> {
-  return requestJson<IdentityLinkList>(IDENTITY_LINK_BASE);
+/**
+ * The current provider and the providers it can link to, or `null` when this session cannot
+ * link identities: the API answers 403 for a session not started through an identity provider
+ * (a password session). That is an expected state the panel explains, not an error to log
+ * (UX-8). Every other refusal still throws.
+ */
+export async function getIdentityLinks(): Promise<IdentityLinkList | null> {
+  const response = await apiFetch(getApiUrl(IDENTITY_LINK_BASE), {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (response.status === 403) {
+    // Only the plain "Forbidden" refusal means "this session cannot link identities". Any other
+    // 403 (for example an MFA enrolment refusal) must still reach the caller.
+    const body = await response.text();
+    if (/^\s*Forbidden\s*$|"(?:error|message)"\s*:\s*"Forbidden"/u.test(body))
+      return null;
+    throw new HttpError(403, "Identity link request failed");
+  }
+  if (!response.ok)
+    throw new HttpError(response.status, "Identity link request failed");
+  try {
+    return (await response.json()) as IdentityLinkList;
+  } catch {
+    throw new HttpError(502, "Identity link response was invalid");
+  }
 }
 
 export async function startIdentityLink(
