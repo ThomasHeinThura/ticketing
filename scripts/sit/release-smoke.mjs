@@ -44,15 +44,20 @@ const { values: opts } = parseArgs({
     // Every account signs in from one IP. Local Traefik limits each IP to a 1000-request burst
     // and better-auth to 100 auth requests per 10 s, so accounts are spaced apart.
     pause: { type: "string", default: "12" },
+    // UI review captures: viewport, theme, account filter and extra routes.
+    width: { type: "string", default: "1440" },
+    height: { type: "string", default: "900" },
+    scheme: { type: "string", default: "dark" },
+    accounts: { type: "string", default: "" },
+    extra: { type: "string", default: "" },
+    "extra-portal": { type: "string", default: "" },
   },
 });
 
 const require = createRequire(
   new URL("../../apps/web/package.json", import.meta.url),
 );
-const onlyAccounts = (process.env.SMOKE_ACCOUNTS ?? "")
-  .split(",")
-  .filter(Boolean);
+const onlyAccounts = opts.accounts.split(",").filter(Boolean);
 const accounts = JSON.parse(
   fs.readFileSync(opts.credentials, "utf8"),
 ).accounts.filter(
@@ -196,10 +201,10 @@ async function browserChecks(browser, account, base, cookies, pages) {
   // *.localhost stacks skip the certificate check.
   const context = await browser.newContext({
     viewport: {
-      width: Number(process.env.SMOKE_WIDTH ?? 1440),
-      height: Number(process.env.SMOKE_HEIGHT ?? 900),
+      width: Number(opts.width),
+      height: Number(opts.height),
     },
-    colorScheme: process.env.SMOKE_SCHEME === "light" ? "light" : "dark",
+    colorScheme: opts.scheme === "light" ? "light" : "dark",
     ignoreHTTPSErrors: host.endsWith(".localhost"),
   });
   await context.addCookies(
@@ -302,15 +307,13 @@ try {
     );
     if (signedIn.status !== 200) continue;
     const pages = await apiChecks(account, base, signedIn.cookies);
-    // Optional broad capture for UI review: SMOKE_EXTRA_PAGES (staff) and
-    // SMOKE_EXTRA_PORTAL_PAGES (customers) are comma-separated routes; {key} is
+    // Optional broad capture for UI review: --extra (staff) and
+    // --extra-portal (customers) are comma-separated routes; {key} is
     // replaced with the first project's key.
     const key =
       pages.join(" ").match(/\/agent\/projects\/([^/]+)\//)?.[1] ?? "";
     const extra = (
-      (isCustomer(account)
-        ? process.env.SMOKE_EXTRA_PORTAL_PAGES
-        : process.env.SMOKE_EXTRA_PAGES) ?? ""
+      (isCustomer(account) ? opts["extra-portal"] : opts.extra) ?? ""
     )
       .split(",")
       .map((route) => route.trim().replaceAll("{key}", key))
