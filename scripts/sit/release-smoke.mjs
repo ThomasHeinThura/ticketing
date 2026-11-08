@@ -50,7 +50,16 @@ const { values: opts } = parseArgs({
 const require = createRequire(
   new URL("../../apps/web/package.json", import.meta.url),
 );
-const accounts = JSON.parse(fs.readFileSync(opts.credentials, "utf8")).accounts;
+const onlyAccounts = (process.env.SMOKE_ACCOUNTS ?? "")
+  .split(",")
+  .filter(Boolean);
+const accounts = JSON.parse(
+  fs.readFileSync(opts.credentials, "utf8"),
+).accounts.filter(
+  (account) =>
+    onlyAccounts.length === 0 ||
+    onlyAccounts.includes(account.email.split("@")[0]),
+);
 fs.mkdirSync(opts.out, { recursive: true, mode: 0o700 });
 
 const results = [];
@@ -186,7 +195,11 @@ async function browserChecks(browser, account, base, cookies, pages) {
   // Local SIT uses a self-signed certificate that Chromium cannot be told to trust; only
   // *.localhost stacks skip the certificate check.
   const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
+    viewport: {
+      width: Number(process.env.SMOKE_WIDTH ?? 1440),
+      height: Number(process.env.SMOKE_HEIGHT ?? 900),
+    },
+    colorScheme: process.env.SMOKE_SCHEME === "light" ? "light" : "dark",
     ignoreHTTPSErrors: host.endsWith(".localhost"),
   });
   await context.addCookies(
@@ -289,6 +302,20 @@ try {
     );
     if (signedIn.status !== 200) continue;
     const pages = await apiChecks(account, base, signedIn.cookies);
+    // Optional broad capture for UI review: SMOKE_EXTRA_PAGES (staff) and
+    // SMOKE_EXTRA_PORTAL_PAGES (customers) are comma-separated routes; {key} is
+    // replaced with the first project's key.
+    const key =
+      pages.join(" ").match(/\/agent\/projects\/([^/]+)\//)?.[1] ?? "";
+    const extra = (
+      (isCustomer(account)
+        ? process.env.SMOKE_EXTRA_PORTAL_PAGES
+        : process.env.SMOKE_EXTRA_PAGES) ?? ""
+    )
+      .split(",")
+      .map((route) => route.trim().replaceAll("{key}", key))
+      .filter(Boolean);
+    pages.push(...extra);
     if (browser)
       await browserChecks(browser, account, base, signedIn.cookies, pages);
   }

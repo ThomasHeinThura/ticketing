@@ -3602,6 +3602,19 @@ Thomas approved both changes on 5 November 2026:
 Neither approval constitutes a merge or deployment approval. Existing tenant,
 session, audit, encryption and secret-redaction boundaries remain required.
 
+## 8 Nov 2026 — Thomas approves the recommended option for the A8 decision rows
+
+Thomas approved the recommendation in [verification and plan](../report/verification-and-plan-2026-11-08.md) for each row below. No row widens a retained contract beyond what is written here.
+
+| Row | Decision |
+| --- | --- |
+| A8-2 | Archive and unarchive require `project:archive`. Board columns and workflow rules require `project:manage_settings`. Leads lose both until a role grants them. |
+| A8-8 | Additive UAT seed data is approved (second Contoso engagement with only agent2, one cycle, module, saved view, custom field, webhook, announcement and report export). No reseed and no edit of existing records. The live KB article "Reset your password" may be reworded so it no longer mentions a Forgot password control. |
+| A8-9 | Enforce Content-Security-Policy. Order: read the collected reports, enforce on local SIT, browser smoke on both hosts, then Technexus with a rollback ready. |
+| A8-11 | Record `deepmerge` (low, production, unreachable, no fix) as an accepted risk. `glob` and `minimatch` (dev/test only) are fixed through upstream upgrades or `pnpm` overrides of existing packages. No new package is added; #1058 stays open until a new transitive package is separately approved. |
+| A8-12 | Interim: the KB article and help text stop promising a reset flow. A customer password reset (email code or magic link) is deferred until an email provider exists; it needs a new decision then. |
+| Merge and deploy | Merge a PR to `main` once all required checks are green, the review in AGENTS.md step 6 has passed and browser evidence is in the PR. Deploy to Technexus only through the release chain in the handover: signed image by digest, backup, counts recorded, local SIT smoke first, rollback ready. Any failure stops the release. Never push to `main`; never weaken a gate. |
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.
