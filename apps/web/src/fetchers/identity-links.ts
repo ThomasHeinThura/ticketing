@@ -44,8 +44,19 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
-export async function getIdentityLinks(): Promise<IdentityLinkList> {
-  return requestJson<IdentityLinkList>(IDENTITY_LINK_BASE);
+/**
+ * The current provider and the providers it can link to, or `null` when this session cannot
+ * link identities: the API answers 403 for a session not started through an identity provider
+ * (a password session). That is an expected state the panel explains, not an error to log
+ * (UX-8). Every other refusal still throws.
+ */
+export async function getIdentityLinks(): Promise<IdentityLinkList | null> {
+  try {
+    return await requestJson<IdentityLinkList>(IDENTITY_LINK_BASE);
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 403) return null;
+    throw error;
+  }
 }
 
 export async function startIdentityLink(

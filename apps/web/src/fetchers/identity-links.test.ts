@@ -103,6 +103,27 @@ describe("identity link fetchers", () => {
     expect(confirmOptions.body).toBeUndefined();
   });
 
+  // UX-8: a password session has no identity connection, so the API refuses the list with 403.
+  // That is the panel's "sign in with your provider" state, not a failure to log.
+  it("answers null when the current session cannot link identities (403)", async () => {
+    mocks.apiFetch.mockResolvedValue(
+      Response.json({ error: "Forbidden" }, { status: 403 }),
+    );
+
+    await expect(getIdentityLinks()).resolves.toBeNull();
+  });
+
+  it.each([401, 404, 500])(
+    "still rejects every other refusal of the list (%i)",
+    async (status) => {
+      mocks.apiFetch.mockResolvedValue(
+        Response.json({ error: "x" }, { status }),
+      );
+
+      await expect(getIdentityLinks()).rejects.toMatchObject({ status });
+    },
+  );
+
   it("rejects malformed intent identifiers before making a request", async () => {
     await expect(getIdentityLinkIntent("too-short")).rejects.toMatchObject({
       status: 400,
