@@ -16,7 +16,7 @@ function useDeleteWorkspaceUser() {
       // (apps/api/src/workspace/index.ts's removeWorkspaceMemberRoute). S5
       // shipped this route as a membership write; S3 repointed role-change
       // and ownership-transfer onto their native routes but never this one,
-      // even though delete-team-member-modal.tsx calls it live.
+      // even though the members table calls it live.
       const response = await client.workspace[":workspaceId"].members[
         ":userId"
       ].$delete({
