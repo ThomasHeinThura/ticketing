@@ -17,6 +17,7 @@ vi.mock("@taskdesk/libs", async (importOriginal) => ({
 
 const server = {
   signedIn: true,
+  sessionStatus: 200,
   session: {
     user: { id: "u1", email: "agent@example.test", name: "Agent" },
     session: {
@@ -41,8 +42,11 @@ function urlOf(input: unknown): string {
 
 const fetchStub = vi.fn(async (input: unknown) => {
   const url = urlOf(input);
-  if (url.includes("/api/auth/get-session"))
+  if (url.includes("/api/auth/get-session")) {
+    if (server.sessionStatus !== 200)
+      return new Response(null, { status: server.sessionStatus });
     return json(server.signedIn ? server.session : null);
+  }
   if (url.includes("/api/auth/sign-out")) {
     server.signedIn = false;
     return json({ success: true });
@@ -68,6 +72,7 @@ describe("agent session with the real Better Auth store (S7b)", () => {
     vi.resetModules();
     fetchStub.mockClear();
     server.signedIn = true;
+    server.sessionStatus = 200;
     // Better Auth captures `fetch` when the client is created, so stub it before importing.
     vi.stubGlobal("fetch", fetchStub);
   });
@@ -117,4 +122,32 @@ describe("agent session with the real Better Auth store (S7b)", () => {
     );
     // Importing the real route module afresh is slow on a loaded runner.
   }, 30_000);
+
+  // The store hint defers the factor read only after a definitive "signed out". Every state in
+  // which nothing is known must keep the old behaviour.
+  it("does not claim signed out before following the store", async () => {
+    const { storeAnsweredSignedOut } = await import("./agent-session");
+    expect(storeAnsweredSignedOut()).toBe(false);
+  });
+
+  it("claims signed out only after the store answered with no session", async () => {
+    server.signedIn = false;
+    const { followAgentSession, storeAnsweredSignedOut } = await import(
+      "./agent-session"
+    );
+    stop = followAgentSession(new QueryClient(), vi.fn());
+    await vi.waitFor(() => expect(storeAnsweredSignedOut()).toBe(true));
+  });
+
+  it("does not claim signed out while the store read is still pending or after a transient failure", async () => {
+    server.sessionStatus = 503;
+    const { followAgentSession, storeAnsweredSignedOut } = await import(
+      "./agent-session"
+    );
+    stop = followAgentSession(new QueryClient(), vi.fn());
+    expect(storeAnsweredSignedOut()).toBe(false);
+    await vi.waitFor(() => expect(calls("/api/auth/get-session")).toBe(1));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(storeAnsweredSignedOut()).toBe(false);
+  });
 });

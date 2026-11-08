@@ -235,6 +235,20 @@ function revalidate(queryClient: QueryClient, cached: SignedInSession) {
   });
 }
 
+/**
+ * Whether Better Auth's session store has already answered "signed out": its read finished with
+ * no session and no transient failure. `false` while the store is unfollowed, still reading, or
+ * failed transiently, since then nothing is known. A hint only, never a sign-in decision: the
+ * route check still reads the session itself.
+ */
+export function storeAnsweredSignedOut(): boolean {
+  const current = followedAtom?.get();
+  if (!current || current.isPending || current.isRefetching || current.data)
+    return false;
+  const error = current.error as { status?: number } | null | undefined;
+  return !error || !isTransientSessionFailure(error);
+}
+
 /** The cached, unexpired session, without reading or revalidating. */
 export function peekAgentSession(
   queryClient: QueryClient,
