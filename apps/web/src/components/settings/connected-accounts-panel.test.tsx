@@ -64,7 +64,8 @@ afterEach(cleanup);
 
 describe("ConnectedAccountsPanel", () => {
   it("explains why a password session cannot link an identity provider", async () => {
-    mocks.list.mockRejectedValue(new HttpError(403, "forbidden"));
+    // The fetcher answers null for the API's 403 (UX-8), so nothing is logged as an error.
+    mocks.list.mockResolvedValue(null);
     renderPanel();
 
     expect(
@@ -77,6 +78,17 @@ describe("ConnectedAccountsPanel", () => {
         name: translate("auth:accountSecurity.identityLinks.linkAction"),
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the load error for a real failure", async () => {
+    mocks.list.mockRejectedValue(new HttpError(500, "boom"));
+    renderPanel();
+
+    expect(
+      await screen.findByText(
+        translate("auth:accountSecurity.identityLinks.loadError"),
+      ),
+    ).toBeInTheDocument();
   });
 
   it("requires explicit confirmation, then clears the intent after the API confirms", async () => {
