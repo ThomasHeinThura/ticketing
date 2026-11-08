@@ -35,6 +35,27 @@ import { SynchronousKeyboardSensor } from "./virtualization/synchronous-keyboard
 
 type Notice = { kind: "status" | "error"; text: string };
 
+// Module constants keep dnd-kit's sensors and activators stable between renders.
+const MOUSE_SENSOR_OPTIONS = { activationConstraint: { distance: 8 } };
+const TOUCH_SENSOR_OPTIONS = {
+  activationConstraint: { delay: 250, tolerance: 10 },
+};
+const KEYBOARD_SENSOR_OPTIONS = {
+  coordinateGetter: sortableKeyboardCoordinatesWithVirtualRows,
+  keyboardCodes: {
+    start: ["Space"],
+    end: ["Space", "Enter"],
+    cancel: ["Escape"],
+  },
+};
+const DROP_ANIMATION: DropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: { active: { opacity: "0.8" } },
+  }),
+  duration: 300,
+  easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+};
+
 /**
  * `VW-13`: on a board grouped by anything but state, a drop sets that field instead of
  * transitioning state. Each write is the one the properties panel and context menu already
@@ -86,26 +107,11 @@ export default function useWorkItemGroupDrag({
   const projectContext = useRef(projectId);
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 10 },
-    }),
-    useSensor(SynchronousKeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinatesWithVirtualRows,
-      keyboardCodes: {
-        start: ["Space"],
-        end: ["Space", "Enter"],
-        cancel: ["Escape"],
-      },
-    }),
+    useSensor(MouseSensor, MOUSE_SENSOR_OPTIONS),
+    useSensor(TouchSensor, TOUCH_SENSOR_OPTIONS),
+    useSensor(SynchronousKeyboardSensor, KEYBOARD_SENSOR_OPTIONS),
   );
-  const dropAnimation: DropAnimation = {
-    sideEffects: defaultDropAnimationSideEffects({
-      styles: { active: { opacity: "0.8" } },
-    }),
-    duration: 300,
-    easing: "cubic-bezier(0.23, 1, 0.32, 1)",
-  };
+  const dropAnimation = DROP_ANIMATION;
 
   useLayoutEffect(() => {
     projectContext.current = projectId;

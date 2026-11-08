@@ -25,10 +25,12 @@ import { Plus } from "lucide-react";
 import {
   type CSSProperties,
   lazy,
+  memo,
   type ReactNode,
   type Ref,
   Suspense,
   useCallback,
+  useMemo,
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -74,6 +76,8 @@ const VirtualizedSortableList = lazy(
 ) as unknown as typeof import("./virtualization/virtualized-sortable-list").default;
 
 type ProjectState = { id: string; name: string; group?: string };
+
+const NO_ITEM_IDS: string[] = [];
 
 function getCombinedSourceProject(
   item: WorkItemRow,
@@ -194,6 +198,18 @@ export default function WorkItemBoard({
     [workItems, states],
   );
   const dndAccessibility = useDndAccessibility(describeDnd);
+  // One stable id array per column: a fresh array gives SortableContext a new context value,
+  // which re-renders every card in the column.
+  const itemIdsByState = useMemo(
+    () =>
+      new Map(
+        [...itemsByState].map(([stateId, stateItems]) => [
+          stateId,
+          stateItems.map((item) => item.id),
+        ]),
+      ),
+    [itemsByState],
+  );
   const [retainFocusId, setRetainFocusId] = useState<string>();
   const onRetainFocus = useCallback(() => setRetainFocusId(undefined), []);
 
@@ -350,7 +366,7 @@ export default function WorkItemBoard({
                     }
                   >
                     <SortableContext
-                      items={stateItems.map((item) => item.id)}
+                      items={itemIdsByState.get(state.id) ?? NO_ITEM_IDS}
                       strategy={verticalListSortingStrategy}
                     >
                       {stateItems.length === 0 ? (
@@ -365,7 +381,7 @@ export default function WorkItemBoard({
                                 <BoardCard
                                   key={item.id}
                                   item={item}
-                                  state={state}
+                                  stateName={state.name}
                                   busy={busy}
                                   canSelect={
                                     combined
@@ -419,7 +435,7 @@ export default function WorkItemBoard({
                               <BoardCard
                                 key={item.id}
                                 item={item}
-                                state={state}
+                                stateName={state.name}
                                 busy={busy}
                                 canSelect={
                                   combined
@@ -463,7 +479,7 @@ export default function WorkItemBoard({
                             <BoardCard
                               key={item.id}
                               item={item}
-                              state={state}
+                              stateName={state.name}
                               busy={busy}
                               canSelect={
                                 combined
@@ -527,10 +543,9 @@ export default function WorkItemBoard({
             <div className="ring-2 ring-ring/35 rounded-lg">
               <BoardCard
                 item={dragged}
-                state={
-                  (states ?? []).find(
-                    (state) => state.id === dragged.stateId,
-                  ) ?? { id: dragged.stateId, name: dragged.stateName }
+                stateName={
+                  states.find((state) => state.id === dragged.stateId)?.name ??
+                  dragged.stateName
                 }
                 busy
                 canSelect={false}
@@ -590,11 +605,14 @@ function BoardColumn({
   );
 }
 
+/** `WorkItemContextMenu` wraps the board, so the card itself opens no menu. */
+function noContextMenu() {}
+
 /** One Kaneo task card for a canonical row; shared with the grouped board (`VW-13`). */
-export function BoardCard({
+export const BoardCard = memo(function BoardCard({
   item,
   sortableId,
-  state,
+  stateName,
   busy,
   canSelect,
   canTransition,
@@ -609,7 +627,7 @@ export function BoardCard({
   item: WorkItemRow;
   /** DnD-only identifier for a card rendered in more than one group. */
   sortableId?: string;
-  state: ProjectState;
+  stateName: string;
   busy: boolean;
   canSelect: boolean;
   canTransition: boolean;
@@ -622,7 +640,7 @@ export function BoardCard({
   sourceProject?: CombinedWorkItemRow["sourceProject"];
 }) {
   const { t } = useTranslation();
-  const displayPreferences = useUserPreferencesStore(
+  const preferences = useUserPreferencesStore(
     useShallow((preferences) => ({
       showAssignees: preferences.showAssignees,
       showPriority: preferences.showPriority,
@@ -633,6 +651,52 @@ export function BoardCard({
     })),
   );
   const actionable = !item.unavailableFields.includes("key");
+  // Stable props let the memoised Kaneo card skip renders that do not change this card.
+  const task = useMemo(
+    () => ({
+      ...workItemKaneoView(item),
+      title: item.unavailableFields.includes("title")
+        ? t("workItems:list.unavailable")
+        : item.title,
+    }),
+    [item, t],
+  );
+  const displayPreferences = useMemo(
+    () => ({
+      ...preferences,
+      showPriority:
+        preferences.showPriority &&
+        !item.unavailableFields.includes("priority"),
+      showDueDates:
+        preferences.showDueDates && !item.unavailableFields.includes("dueDate"),
+      showAssignees:
+        preferences.showAssignees &&
+        !item.unavailableFields.includes("assigneeName"),
+      showTaskNumbers: preferences.showTaskNumbers && actionable,
+    }),
+    [preferences, item.unavailableFields, actionable],
+  );
+  const badges = useMemo(
+    () =>
+      // The SLA and Blocked badges share the card's metadata row, inside its border. The
+      // slot stays empty without either, so a card never gets an empty metadata row.
+      item.sla || (item.blockedByOpenCount ?? 0) > 0 ? (
+        <>
+          {item.sla ? <WorkItemSlaBadge sla={item.sla} /> : null}
+          <WorkItemBlockedBadge blockedByOpenCount={item.blockedByOpenCount} />
+        </>
+      ) : undefined,
+    [item.sla, item.blockedByOpenCount],
+  );
+  const onToggleSelection = useCallback(
+    () => onSelectionChange(item.key, !selected),
+    [onSelectionChange, item.key, selected],
+  );
+  const onOpenTask = useCallback(() => {
+    if (!actionable || overlay) return;
+    if (onOpenItem) onOpenItem(item.key);
+    else window.location.assign(routes.workItemDetail.build({ key: item.key }));
+  }, [actionable, overlay, onOpenItem, item.key]);
   return (
     <li
       ref={virtualItem?.measureRef as Ref<HTMLLIElement> | undefined}
@@ -666,12 +730,7 @@ export function BoardCard({
         </div>
       ) : null}
       <TaskCard
-        task={{
-          ...workItemKaneoView(item),
-          title: item.unavailableFields.includes("title")
-            ? t("workItems:list.unavailable")
-            : item.title,
-        }}
+        task={task}
         sortableId={sortableId}
         disableDragDrop={
           overlay || busy || !actionable || (!canTransition && !canRank)
@@ -687,53 +746,23 @@ export function BoardCard({
           item.stateCategory === "completed" ||
           item.stateCategory === "cancelled"
         }
-        displayPreferences={{
-          ...displayPreferences,
-          showPriority:
-            displayPreferences.showPriority &&
-            !item.unavailableFields.includes("priority"),
-          showDueDates:
-            displayPreferences.showDueDates &&
-            !item.unavailableFields.includes("dueDate"),
-          showAssignees:
-            displayPreferences.showAssignees &&
-            !item.unavailableFields.includes("assigneeName"),
-          showTaskNumbers: displayPreferences.showTaskNumbers && actionable,
-        }}
+        displayPreferences={displayPreferences}
         isSelected={selected}
         isFocused={false}
         selectionEnabled={canSelect && actionable}
-        onToggleSelection={() => onSelectionChange(item.key, !selected)}
-        badges={
-          // The SLA and Blocked badges share the card's metadata row, inside its border. The
-          // slot stays empty without either, so a card never gets an empty metadata row.
-          item.sla || (item.blockedByOpenCount ?? 0) > 0 ? (
-            <>
-              {item.sla ? <WorkItemSlaBadge sla={item.sla} /> : null}
-              <WorkItemBlockedBadge
-                blockedByOpenCount={item.blockedByOpenCount}
-              />
-            </>
-          ) : undefined
-        }
-        onContextMenuTask={() => {}}
+        onToggleSelection={onToggleSelection}
+        badges={badges}
+        onContextMenuTask={noContextMenu}
         openTaskOnLinkClick={Boolean(onOpenItem)}
-        onOpenTask={() => {
-          if (!actionable || overlay) return;
-          if (onOpenItem) onOpenItem(item.key);
-          else
-            window.location.assign(
-              routes.workItemDetail.build({ key: item.key }),
-            );
-        }}
+        onOpenTask={onOpenTask}
         t={t}
       />
       {!actionable || item.unavailableFields.includes("priority") ? (
         <span className="sr-only">{t("workItems:list.unavailable")}</span>
       ) : null}
       <span className="sr-only">
-        {t("workItems:board.currentState", { state: state.name })}
+        {t("workItems:board.currentState", { state: stateName })}
       </span>
     </li>
   );
-}
+});
