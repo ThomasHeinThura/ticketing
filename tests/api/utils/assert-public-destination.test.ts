@@ -50,9 +50,27 @@ describe("isDisallowedAddress", () => {
     "ff02::1",
     "64:ff9b::7f00:1",
     "fe80::1%eth0",
+    "64:ff9b:1::a00:1",
+    "64:ff9b:1:0:0:0:7f00:1",
+    "2002:7f00:1::",
+    "2002:a9fe:a9fe::1",
+    "2001:0:4136:e378:8000:63bf:80ff:fffe",
+    "100::1",
+    "2001:db8::1",
+    "3fff::1",
+    "::8.8.8.8",
+    "::2",
+    "5f00::1",
   ])("blocks the IPv6 form %s", (address) => {
     expect(isDisallowedAddress(address)).toBe(true);
   });
+
+  it.each(["192.0.2.1", "198.51.100.7", "203.0.113.9", "192.88.99.1"])(
+    "blocks the documentation or relay range %s",
+    (address) => {
+      expect(isDisallowedAddress(address)).toBe(true);
+    },
+  );
 
   it("allows routable IPv6 and mapped routable IPv4", () => {
     expect(isDisallowedAddress("2606:4700:4700::1111")).toBe(false);
