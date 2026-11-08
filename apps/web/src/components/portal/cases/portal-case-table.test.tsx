@@ -187,32 +187,23 @@ describe("PortalCaseTable", () => {
     expect(screen.queryByText("Acme Support")).toBeNull();
   });
 
-  it("shows Updated as relative time with the absolute time in the title (CP-2)", () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-10-23T09:00:00.000Z"));
-    try {
-      render(<PortalCaseTable caption="Requests" cases={[base]} />);
-      const times = screen.getAllByText("2 days ago");
-      // Once in the Updated column, once in the narrow details.
-      expect(times).toHaveLength(2);
-      for (const time of times) {
-        expect(time.closest("time")).toHaveAttribute(
-          "dateTime",
-          base.updatedAt,
-        );
-        expect(time.closest("time")).toHaveAttribute(
-          "title",
-          new Intl.DateTimeFormat("en-US", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          }).format(new Date(base.updatedAt)),
-        );
-      }
-    } finally {
-      vi.useRealTimers();
+  it("shows Updated as a compact date with the full time in the title (CP-2)", () => {
+    render(<PortalCaseTable caption="Requests" cases={[base]} />);
+    const times = screen.getAllByText("Oct 21, 2026");
+    // Once in the Updated column, once in the narrow details.
+    expect(times).toHaveLength(2);
+    for (const time of times) {
+      expect(time.closest("time")).toHaveAttribute("dateTime", base.updatedAt);
+      expect(time.closest("time")).toHaveAttribute(
+        "title",
+        new Intl.DateTimeFormat("en-US", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date(base.updatedAt)),
+      );
     }
   });
 

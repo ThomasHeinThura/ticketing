@@ -11,8 +11,8 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import {
+  formatPortalDate,
   formatPortalDateTime,
-  formatPortalRelativeTime,
 } from "@/components/portal/portal-format";
 import { PortalSlaStatus } from "@/components/portal/portal-sla-status";
 import type { PortalCase } from "@/fetchers/portal/cases";
@@ -55,7 +55,7 @@ function formatDate(value: string, locale?: string) {
   }).format(new Date(value));
 }
 
-/** "2 days ago", with the full date and time in the title (the portal's shared formats). */
+/** A compact date, with the full date and time in the title (the portal's shared formats). */
 function PortalCaseUpdated({
   value,
   locale,
@@ -71,13 +71,13 @@ function PortalCaseUpdated({
       title={formatPortalDateTime(value, locale)}
       className={className}
     >
-      {formatPortalRelativeTime(value, locale)}
+      {formatPortalDate(value, locale)}
     </time>
   );
 }
 
 /**
- * The customer's cases as Kaneo's framed table (WSO2-style columns): Updated (relative), Details,
+ * The customer's cases as Kaneo's framed table (WSO2-style columns): Updated (compact date), Details,
  * Severity, Status and, when asked for, Created by and Assigned to, which is always "Your team"
  * (`CP-4`/`CP-5`). The service
  * target (`CP-6`) sits under the status badge, so it shows at every width. Columns follow the
