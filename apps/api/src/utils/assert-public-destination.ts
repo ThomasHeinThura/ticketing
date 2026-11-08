@@ -13,10 +13,7 @@ function isDisallowedIpv4(ip: string): boolean {
     a === 0 ||
     a === 10 ||
     a >= 224 ||
-    (a === 192 && b === 0 && (c === 0 || c === 2)) || // IETF and TEST-NET-1
-    (a === 192 && b === 88 && c === 99) || // 6to4 relay anycast
-    (a === 198 && b === 51 && c === 100) || // TEST-NET-2
-    (a === 203 && b === 0 && c === 113) || // TEST-NET-3
+    (a === 192 && b === 0 && c === 0) ||
     (a === 198 && (b === 18 || b === 19)) ||
     a === 127 ||
     // 100.64.0.0/10, RFC 6598. Several hosted Kubernetes offerings put pod

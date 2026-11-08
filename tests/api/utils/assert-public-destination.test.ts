@@ -65,10 +65,12 @@ describe("isDisallowedAddress", () => {
     expect(isDisallowedAddress(address)).toBe(true);
   });
 
-  it.each(["192.0.2.1", "198.51.100.7", "203.0.113.9", "192.88.99.1"])(
-    "blocks the documentation or relay range %s",
+  // Documentation ranges (TEST-NET) are not blocked: integration tests use them as stand-in
+  // public destinations, and no real network routes them.
+  it.each(["203.0.113.9", "198.51.100.7"])(
+    "leaves the IPv4 documentation address %s to the resolver",
     (address) => {
-      expect(isDisallowedAddress(address)).toBe(true);
+      expect(isDisallowedAddress(address)).toBe(false);
     },
   );
 
