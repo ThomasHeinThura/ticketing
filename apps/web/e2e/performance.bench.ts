@@ -867,9 +867,6 @@ async function collectBoardRender(page: Page) {
 }
 
 async function collectBoardDragFrameP95(page: Page) {
-  await openCanonicalBoard(page);
-  await page.waitForTimeout(400);
-
   // A canonical cross-column drop is a transition (plus a rank next to the drop target when
   // the board is in manual order; rank is exempt from If-Match). Writes are CSRF-protected.
   const movePath = /^\/api\/work-items\/BRD-1\/(transition|rank)$/;
@@ -905,6 +902,11 @@ async function collectBoardDragFrameP95(page: Page) {
         status: response.status(),
       });
   });
+
+  // The session CSRF token is read as soon as the signed-in screen opens, before the drag.
+  // Count issuer requests from the page load so that early read is seen.
+  await openCanonicalBoard(page);
+  await page.waitForTimeout(400);
 
   const source = await page
     .getByText("Seeded board item 1", { exact: true })
