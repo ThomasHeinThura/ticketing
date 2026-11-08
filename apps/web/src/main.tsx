@@ -15,7 +15,6 @@ import { ThemeProvider } from "./components/providers/theme-provider";
 import { UserPreferencesEffects } from "./components/providers/user-preferences-effects";
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { followAgentSession } from "./lib/agent-session";
-import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
 import { initializeNotificationPreferenceHandoff } from "./lib/notification-preference-handoff";
 import { createRouterParseSearch } from "./lib/project-board-search";
@@ -30,10 +29,6 @@ void initializeNotificationPreferenceHandoff().then(
 );
 
 function bootstrapApplication() {
-  // Capture a pricing-page `?checkout=<plan>-<interval>` deep link before the
-  // router runs and strips it across the sign-up → onboarding redirect chain.
-  captureCheckoutIntent();
-
   console.log(`
                      ////////  
               /////  ////////  
