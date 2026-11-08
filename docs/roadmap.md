@@ -41,6 +41,23 @@ The current requirement index has 668 unverified and five partial-local-evidence
 
 **After UAT:** God Mode completeness (A-29–A-34: health checks, branding, general settings, session/password policy, storage, config export), remaining lows, rest of L-04, L-05, L-02, L-06, L-07, L-11 and the full regression suite.
 
+**Audit fixes from 8 Nov (Thomas, 8 Nov).** The Codex and Gemini UAT audits of 8 Nov were independently re-verified; results, evidence and report-accuracy notes are in [verification and plan](report/verification-and-plan-2026-11-08.md). Work top to bottom, one PR per row, through the full test order; Opus/Sol review for A8-1 and A8-2; browser check on local SIT before Technexus. Rows marked **Thomas** wait for his decision.
+
+| # | Item | Done when |
+| --- | --- | --- |
+| A8-1 | **IPv6 private-address guard (D1, medium).** Canonicalise IPv6 before classifying (built-in `net.BlockList`), unwrap embedded IPv4 (`::ffff:0:0/96`, `::/96`), deny unparsable values. | Every expanded and mixed form in the verification blocked by unit tests, including the SMTP connect path |
+| A8-2 | **Project archive, columns and workflow rules permissions (D2, medium). Thomas:** confirm the contract. Archive/unarchive require `project:archive`; board columns and workflow rules require `project:manage_settings`. | Lead denied and manager allowed by permission tests; capabilities and UI gating match |
+| A8-3 | **Request Types and Terminology access gates (D3, D8).** Gate both pages like Features; add a `manageRequestTypes` capability flag. | Lead, member and viewer see "no access" with no failing request; admin unchanged |
+| A8-4 | **Request forms (D4, D5, D9, D10).** Checkbox "Show when" normalised (repairs published versions); only visible answers and files submitted, server strips hidden answers; clear options for Maps to / Show when; editor strings to i18n; number answers sent as numbers. | Domain and component tests for each; portal submission checked on local SIT |
+| A8-5 | **Phone layout and accessibility (D6, D12, D13, D17).** Projects table scroll label and keyboard link per row; God Mode Imports buttons wrap; calendar toolbar fits on phones (#1061); h1 and skip-link gaps after a settled re-check. | axe clean on the touched screens at 390 px; G8 updated for intended changes |
+| A8-6 | **Portal fixes (D11, D14, D15).** Wrong-portal message shows "use the agent sign-in"; Backlog honours the selected project; portal download re-checks reach before streaming. | Component and integration tests; local SIT check |
+| A8-7 | **Mobile Triage error boundary (D18).** Reproduce on local SIT (10 cold loads at 390 px as a member, console and network); handle the failing request in place. | Root cause recorded; e2e for the failure |
+| A8-8 | **UAT seed coverage (G1–G4, D16 text). Thomas:** approve additive seed data on UAT and the live KB article edit. Second Contoso engagement with only agent2; one cycle, module, saved view, custom field, webhook, announcement and report export; per-portal sign-in readiness; a real sign-in test; KB article no longer mentions Forgot password. | Unassigned-project and two-engagement denials testable on UAT; no reseed of existing data |
+| A8-9 | **Enforce Content-Security-Policy (D7). Thomas:** security change on UAT. Read collected reports, enforce on local SIT, browser smoke on both hosts, then Technexus. | No violations in the smoke; enforcing header on both environments |
+| A8-10 | **Docs and local tooling (G5–G7). Thomas:** his report files. Biome ignores ignored local folders; checklist and screens.md notes; host names removed from the 8 Nov reports and the duplicate `report.md` deleted before sharing or committing them. | `pnpm lint:ci` matches CI locally; no host names in committed docs |
+| A8-11 | **Dependencies (G8). Thomas:** dependency changes. Record deepmerge (low, unreachable, no fix) as accepted; glob and minimatch via upstream or overrides. | Decision recorded; audit re-run |
+| A8-12 | **Customer password recovery (D16). Thomas:** product decision — email code / magic link, or a reset flow. | Decision recorded; seed and help text match it |
+
 ## Linear backlog
 
 Phases ended after P6. Work top to bottom; one PR per row (or per coherent sub-slice), each through the full test order in [AGENTS.md](../AGENTS.md) and released on merge. Mark a row done only with green CI, browser evidence and Thomas's merge. Thomas-only rows stay open until he provides the evidence. Linked issues are closed with evidence when the row lands.
