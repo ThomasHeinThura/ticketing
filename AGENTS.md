@@ -37,6 +37,14 @@ Use the tier, not a vendor: any high-tier model may review work written by any o
 
 A reviewer never reviews its own work. Subagents edit only explicitly disjoint paths, one owner per file ([agent-work](docs/agent-work.md)); they never commit, push, merge, deploy, add dependencies or delete data. A subagent's "passed" is evidence to inspect, not acceptance.
 
+Whatever the model, **the human is the final authority**: Thomas's instructions override this file, and he may change any rule at any time.
+
+Every report, PR description and document must be:
+1. concise and clear;
+2. complete;
+3. correct and accurate, with no guesses or invented facts;
+4. plain enough for a human to read.
+
 ## Testing order — all must pass before a PR is ready
 
 1. **Code tests:** `pnpm lint:ci`, `pnpm typecheck`, `pnpm test`, targeted integration tests on a fresh `_test` database, `pnpm test:permissions`, `pnpm check:route-policy`, `pnpm test:contract`, and every gate listed in [testing](docs/testing.md) that the change touches.
@@ -44,7 +52,7 @@ A reviewer never reviews its own work. Subagents edit only explicitly disjoint p
 3. **Design tests:** `pnpm check:ui:raw-elements`, `pnpm check:tokens` (contrast), visual regression (G8, regenerate baselines only for intended changes, in the pinned Playwright container), accessibility (G4), and comparison with original Kaneo `42bb8011`: same components, spacing, typography, motion.
 4. **Browser tests:** open every affected screen in a real browser on local SIT with persisted data: desktop/tablet/mobile, light/dark, each role (owner/admin/lead/member/viewer/customer), keyboard and focus. Record URLs and screenshots in the PR.
 
-Performance budgets (G11/G13) and bundle budgets are gates; diagnose misses in the app, never change thresholds.
+Performance budgets (G11/G13) and bundle budgets must pass (Thomas, 8 Nov): fix misses by making the app faster, never by changing thresholds, calibration or the harness.
 
 ## Product rules
 

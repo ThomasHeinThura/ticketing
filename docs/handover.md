@@ -1,4 +1,4 @@
-# Handover — 4 November 2026 (Claude → Codex)
+# Handover — updated 8 November 2026
 
 Read [AGENTS.md](../AGENTS.md), [status](status.md), [roadmap](roadmap.md) and [testing](testing.md) first. Thomas's current instructions override everything here.
 
@@ -8,7 +8,7 @@ From 4 Nov Thomas hands version 2 back to **Codex**. Codex owns the release chai
 
 ## Goal
 
-**UAT launch on Friday 6 November 2026** on the Technexus hosts. Thomas does the final human verification with the credential files on his Mac (`~/.taskdesk/sit-credentials.json` for local SIT, `~/.taskdesk/uat-credentials-technexus.json` for Technexus). They never go into docs, logs or PRs.
+**UAT is live** on the Technexus hosts (launched 6 Nov 2026). Current work: the 8 Nov audit rows A8-1…A8-12 and C8-1…C8-6 in the [roadmap](roadmap.md); G11 must pass (Thomas, 8 Nov). Thomas does the final human verification with the credential files on his Mac (`~/.taskdesk/sit-credentials.json` for local SIT, `~/.taskdesk/uat-credentials-technexus.json` for Technexus). They never go into docs, logs or PRs.
 
 ## State now
 
@@ -20,7 +20,7 @@ From 4 Nov Thomas hands version 2 back to **Codex**. Codex owns the release chai
 - **Storage:** filesystem is active. SeaweedFS is approved as a provider; the S3 configuration draft (#1064, #1066) is saved inactive and no bytes have been cut over.
 - **Audit scope:** 30 Technexus owner desktop-dark rows were reviewed observationally and 24 screenshots independently inspected: 17 observations, four redirects, two design observations, one runtime observation and six fixture blocks. Focused security checks resolved the observed 403 as expected and isolated the Inbox result to a Chrome focus boundary; neither confirmed a medium bug. Open findings: agent not-found heading/recovery (#1059), keyboard-clear focus (#1060) and mobile Calendar toolbar overflow (#1061). The latter two predate #1046. The 154-row route inventory is statically reconciled, not fully browser-verified; calendar source checks do not complete it.
 - **Dependencies:** the audit reports three advisories, comprising one low and three moderate instances, with no high or critical findings. Production low `deepmerge` remains #909; development upgrade #1058 awaits approval for new transitive packages. No dependency was changed.
-- UAT items U-1 to U-15 in the [roadmap](roadmap.md) are done and live:
+- UAT items U-1 to U-15 in the [roadmap](roadmap.md) are live, except U-10 (Thomas's sign-off) and the role checks, which are pending:
   - Overview tab;
   - portal redesign: dashboard, cases, Projects and Project Details, Announcements;
   - staff-raised tickets with the Requester field;
