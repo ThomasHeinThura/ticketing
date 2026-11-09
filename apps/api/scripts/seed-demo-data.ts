@@ -21,11 +21,19 @@ import {
 import bcrypt from "bcryptjs";
 import { config } from "dotenv-mono";
 import { and, eq, inArray, isNull, not, sql } from "drizzle-orm";
+import type { PoolClient } from "pg";
 import { createApproval } from "../src/approval/service";
 import { appendAuditLog } from "../src/audit/audit-writer";
 import { getStoredAuthPluginConfigRows } from "../src/auth/repository";
+import { createField, createSection } from "../src/custom-field/repository";
 import db, { getDatabasePool, schema } from "../src/database";
+import {
+  customFieldSectionTable,
+  customFieldTable,
+  customFieldValueTable,
+} from "../src/database/migration-schema";
 import { resolveDatabaseConfig } from "../src/database/resolve-database-url";
+import { webhookTable } from "../src/database/schema";
 import {
   cycleScopeEventTable,
   cycleTable,
@@ -33,6 +41,7 @@ import {
 } from "../src/database/schema-p5-agile";
 import { kbArticleTable, kbCategoryTable } from "../src/database/schema-p5-kb";
 import { projectPageTable } from "../src/database/schema-p5-pages";
+import { reportExportTable } from "../src/database/schema-p5-reports";
 import {
   announcementOrganisationTable,
   announcementProjectTable,
@@ -56,10 +65,16 @@ import {
   transitionArticle,
 } from "../src/kb/repository";
 import { lockWorkspaceLabelNames } from "../src/label/repository";
+import { encryptSecret } from "../src/notification-preferences/secrets";
 import { createPage } from "../src/pages/repository";
 import { resolveIdentity } from "../src/permissions/resolve-identity";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
 import { ensureProjectLeadRole } from "../src/project/project-creator-grant";
+import {
+  claimExports,
+  enqueueExport,
+  processExport,
+} from "../src/report/export.service";
 import { scanWorkItemSla } from "../src/scheduler/sla-scan";
 import { seedDefaultCabWorkflowInTransaction } from "../src/service-management/cab-template";
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
@@ -68,6 +83,7 @@ import { seedWorkspaceDefaults } from "../src/utils/seed-workspace-defaults";
 import { recordWorkItemActivity } from "../src/work-item/activity";
 import { assignWorkItem } from "../src/work-item/controllers/assign-work-item";
 import { createComment } from "../src/work-item/controllers/create-comment";
+import { updateWorkItem } from "../src/work-item/controllers/update-work-item";
 import { seedWorkspaceBuiltInRoles } from "../src/workspace/built-in-roles.repository";
 import { syncWorkspaceAdminReach } from "../src/workspace/workspace-admin-reach";
 import {
@@ -109,10 +125,9 @@ import {
  *   nothing;
  * - a `demo-` row (or a reserved email, slug or key) that differs from this fixture is a
  *   conflict: the seed throws before writing;
- * - account checks and the account writes run under one advisory lock in one transaction, so
- *   two concurrent seeds cannot overwrite each other's accounts;
- * - it refuses a database that already holds workspaces outside the demo namespace unless
- *   `--allow-existing-data` is passed, and it never touches the live database name.
+ * - a session advisory lock serialises the complete seed, while a separate transaction lock
+ *   protects account checks and writes;
+ * - it refuses any database containing a workspace other than demo-ws, and never touches the live database name.
  *
  * Feature switches come on through `workspace_feature_flag` rows for `demo-ws` only; instance
  * rows are never written, except the customer password sign-in row that
@@ -131,8 +146,14 @@ const DAY = 86_400_000;
 export const DEMO_FEATURE_FLAGS = UAT_FEATURE_FLAGS;
 
 type Side = "staff" | "customer";
-type WorkspaceRole = "owner" | "admin" | "lead" | "member" | "viewer";
-type ProjectRole = "admin" | "cab" | "agent" | "viewer";
+type WorkspaceRole =
+  | "owner"
+  | "admin"
+  | "manager"
+  | "lead"
+  | "member"
+  | "viewer";
+type ProjectRole = "admin" | "manager" | "cab" | "agent" | "viewer";
 
 /**
  * The persona a reviewer signs in as to see a working day: the workspace admin. It holds
@@ -179,8 +200,17 @@ export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
     roleLabel: "Workspace admin and change approver",
     side: "staff",
     workspaceRole: "admin",
-    // On every project roster so work can be assigned to them (AS-5).
+    // On the service rosters so work can be assigned to them (AS-5).
     projectRole: "admin",
+  }),
+  account({
+    key: "manager",
+    email: `sophie.turner@${DOMAIN}`,
+    name: "Sophie Turner",
+    roleLabel: "Service manager",
+    side: "staff",
+    workspaceRole: "manager",
+    projectRole: "manager",
   }),
   account({
     key: "lead",
@@ -245,6 +275,15 @@ export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
     workspaceRole: null,
     projectRole: null,
   }),
+  account({
+    key: "fabrikam1",
+    email: `amelia.ward@fabrikam.${DOMAIN}`,
+    name: "Amelia Ward",
+    roleLabel: "Customer, Fabrikam Inc",
+    side: "customer",
+    workspaceRole: null,
+    projectRole: null,
+  }),
 ];
 
 const CONTOSO = {
@@ -252,6 +291,13 @@ const CONTOSO = {
   key: "demo-contoso",
   name: "Contoso Ltd",
   domain: [`contoso.${DOMAIN}`],
+} as const;
+
+const FABRIKAM = {
+  id: "demo-org-fabrikam",
+  key: "demo-fabrikam",
+  name: "Fabrikam Inc",
+  domain: [`fabrikam.${DOMAIN}`],
 } as const;
 
 const PROJECT_ROLES: Record<
@@ -265,6 +311,12 @@ const PROJECT_ROLES: Record<
     key: "demo-project-admin",
     name: "Workspace admin",
     capabilities: [...BUILT_IN_ROLES.admin.capabilities],
+  },
+  manager: {
+    id: "demo-role-project-manager",
+    key: "demo-project-manager",
+    name: "Service manager",
+    capabilities: [...BUILT_IN_ROLES.manager.capabilities],
   },
   cab: {
     id: "demo-role-project-cab",
@@ -330,7 +382,7 @@ const SLA_POLICIES = {
 type SlaKey = keyof typeof SLA_POLICIES;
 const SLA_TYPES = ["incident", "service-request", "problem", "change"] as const;
 
-type ProjectKey = "CSD" | "MIG" | "INF";
+type ProjectKey = "CSD" | "MIG" | "INF" | "FAB";
 
 const PROJECTS: Record<
   ProjectKey,
@@ -366,6 +418,16 @@ const PROJECTS: Record<
     kind: "project",
     org: true,
     sla: null,
+  },
+  FAB: {
+    id: "demo-proj-fabrikam",
+    slug: "FAB",
+    name: "Fabrikam Service Desk",
+    description: "Service requests for Fabrikam's office technology.",
+    icon: "Headset",
+    kind: "managed_service",
+    org: true,
+    sla: "business",
   },
   INF: {
     id: "demo-proj-infrastructure",
@@ -738,7 +800,7 @@ const MIG_ITEMS: ItemSpec[] = [
     type: "epic",
     priority: "high",
     state: "in-progress",
-    assignee: "lead",
+    assignee: "agent2",
     due: 21,
     ageHours: 900,
     module: "mail",
@@ -768,7 +830,7 @@ const MIG_ITEMS: ItemSpec[] = [
     type: "story",
     priority: "high",
     state: "done",
-    assignee: "agent1",
+    assignee: "agent2",
     due: -9,
     ageHours: 720,
     resolvedAfterHours: 200,
@@ -785,7 +847,7 @@ const MIG_ITEMS: ItemSpec[] = [
     type: "story",
     priority: "high",
     state: "in-progress",
-    assignee: "agent1",
+    assignee: "agent2",
     due: 3,
     ageHours: 400,
     parent: 1,
@@ -817,7 +879,7 @@ const MIG_ITEMS: ItemSpec[] = [
     type: "task",
     priority: "medium",
     state: "in-progress",
-    assignee: "agent3",
+    assignee: "agent2",
     due: 5,
     ageHours: 300,
     module: "mail",
@@ -831,7 +893,7 @@ const MIG_ITEMS: ItemSpec[] = [
     type: "task",
     priority: "low",
     state: "to-do",
-    assignee: "agent3",
+    assignee: "agent2",
     due: 7,
     ageHours: 280,
     cycle: "s14",
@@ -844,7 +906,7 @@ const MIG_ITEMS: ItemSpec[] = [
     type: "epic",
     priority: "medium",
     state: "backlog",
-    assignee: "lead",
+    assignee: "agent2",
     due: 45,
     ageHours: 880,
     module: "teams",
@@ -872,7 +934,7 @@ const MIG_ITEMS: ItemSpec[] = [
     type: "task",
     priority: "high",
     state: "in-progress",
-    assignee: "admin",
+    assignee: "agent2",
     due: -1,
     ageHours: 200,
     cycle: "s14",
@@ -886,7 +948,7 @@ const MIG_ITEMS: ItemSpec[] = [
     type: "bug",
     priority: "urgent",
     state: "in-progress",
-    assignee: "agent1",
+    assignee: "agent2",
     due: 1,
     ageHours: 30,
     cycle: "s14",
@@ -1033,6 +1095,34 @@ const ITEMS: Record<ProjectKey, ItemSpec[]> = {
   CSD: CSD_ITEMS,
   MIG: MIG_ITEMS,
   INF: INF_ITEMS,
+  FAB: [
+    {
+      n: 1,
+      title: "Set up a laptop for a new starter",
+      type: "service-request",
+      priority: "medium",
+      state: "in-progress",
+      assignee: "admin",
+      requester: "fabrikam1",
+      due: -1,
+      ageHours: 24,
+      description:
+        "Prepare a laptop and access for the new finance team member.",
+    },
+    {
+      n: 2,
+      title: "Restore access to the shared finance folder",
+      type: "incident",
+      priority: "high",
+      state: "to-do",
+      assignee: "agent1",
+      requester: "fabrikam1",
+      due: 1,
+      ageHours: 6,
+      description:
+        "The finance team cannot open its shared folder after a permissions change.",
+    },
+  ],
 };
 
 /** Change windows, in days from today (UTC) and hours of that day. */
@@ -1185,7 +1275,7 @@ const COMMENTS: {
   {
     id: "demo-comment-mig-4-a",
     item: "MIG-4",
-    author: "agent1",
+    author: "agent2",
     visibility: "internal",
     hoursAgo: 10,
     text: "22 of 38 finance mailboxes are synced. The rest finish tonight.",
@@ -1504,11 +1594,8 @@ You can follow progress and reply to the service desk from **My requests**.`,
     title: "Reset your password",
     category: "Accounts and access",
     customerVisible: true,
-    markdown: `Use **Forgot password** on the sign-in page.
-
-- The reset link is valid for one hour.
-- Check your junk folder if the email does not arrive.
-- Contact the service desk if your account is locked.`,
+    markdown:
+      "Contact the service desk for help with your password or a locked account.",
   },
   {
     title: "Connect to the VPN from home",
@@ -1622,7 +1709,6 @@ function conflict(kind: string, key: string): never {
 
 type Args = {
   credentialsFile: string;
-  allowExistingData: boolean;
   enableCustomerPassword: boolean;
 };
 
@@ -1630,6 +1716,10 @@ export function parseDemoArgs(argv: readonly string[]): Args {
   if (!argv.includes("--demo"))
     throw new Error(
       "seed-demo requires --demo and a private --credentials-file destination. It adds a demo workspace; never run it on a live database.",
+    );
+  if (argv.includes("--allow-existing-data"))
+    throw new Error(
+      "--allow-existing-data is no longer supported; the demo seed requires a fresh instance.",
     );
   const index = argv.indexOf("--credentials-file");
   const credentialsFile = index >= 0 ? argv[index + 1] : undefined;
@@ -1639,7 +1729,6 @@ export function parseDemoArgs(argv: readonly string[]): Args {
     );
   return {
     credentialsFile,
-    allowExistingData: argv.includes("--allow-existing-data"),
     enableCustomerPassword: argv.includes("--enable-customer-password"),
   };
 }
@@ -1676,27 +1765,24 @@ export function resolveCredentialsDestination(credentialsFile: string) {
   return destination;
 }
 
-/** Reads an existing private credentials file into the account list; false when absent. */
-function loadExistingCredentials(destination: string): boolean {
+/** Open only a private regular file, without following symlinks or blocking on a FIFO. */
+function openPrivateCredentials(destination: string): number | null {
   const notPrivate = () =>
     new Error(
       "The credentials file must be a private regular file (mode 0600) owned by you.",
     );
   let descriptor: number;
   try {
-    // One handle for the checks and the read: no symlink (O_NOFOLLOW), and no hang on a FIFO
-    // (O_NONBLOCK); fstat then describes exactly the file that is read.
     descriptor = openSync(
       destination,
       constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
     );
   } catch (error) {
     const code = error instanceof Error && "code" in error ? error.code : null;
-    if (code === "ENOENT") return false;
+    if (code === "ENOENT") return null;
     if (code === "ELOOP") throw notPrivate();
     throw error;
   }
-  let parsed: unknown;
   try {
     const info = fstatSync(descriptor);
     if (
@@ -1705,6 +1791,19 @@ function loadExistingCredentials(destination: string): boolean {
       (typeof process.getuid === "function" && info.uid !== process.getuid())
     )
       throw notPrivate();
+    return descriptor;
+  } catch (error) {
+    closeSync(descriptor);
+    throw error;
+  }
+}
+
+/** Reads an existing private credentials file into the account list; false when absent. */
+function loadExistingCredentials(destination: string): boolean {
+  const descriptor = openPrivateCredentials(destination);
+  if (descriptor === null) return false;
+  let parsed: unknown;
+  try {
     parsed = JSON.parse(readFileSync(descriptor, "utf8"));
   } finally {
     closeSync(descriptor);
@@ -1731,6 +1830,52 @@ function loadExistingCredentials(destination: string): boolean {
 
 type Reader = Tx | typeof db;
 
+async function checkInstanceSetup(reader: Reader) {
+  const users = await reader.select().from(schema.userTable);
+  const settings = await reader.select().from(schema.instanceSettingTable);
+  const setting = settings[0];
+  const admins = users.filter((user) => user.role === "admin");
+  const admin = admins[0];
+  const [person] = admin
+    ? await reader
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, admin.id))
+    : [];
+  const [factor] = admin
+    ? await reader
+        .select()
+        .from(schema.twoFactorTable)
+        .where(eq(schema.twoFactorTable.userId, admin.id))
+    : [];
+  if (
+    settings.length !== 1 ||
+    setting?.id !== "singleton" ||
+    !setting.setupCompletedAt ||
+    setting?.setupTokenHash ||
+    setting?.setupTokenExpiresAt ||
+    admins.length !== 1 ||
+    !admin ||
+    admin.banned === true ||
+    admin.isAnonymous === true ||
+    admin.twoFactorEnabled !== true ||
+    factor?.verified !== true ||
+    !person ||
+    person.side !== "staff" ||
+    !person.active ||
+    person.isPlaceholder ||
+    DEMO_ACCOUNTS.some((account) => account.id === admin.id)
+  )
+    throw new Error(
+      "Demo seed refused: complete first-user setup with a verified TOTP staff administrator before seeding. Nothing was changed.",
+    );
+  return {
+    userId: admin.id,
+    personId: person.id,
+    organisationId: person.organisationId,
+  };
+}
+
 /**
  * Account checks: run read-only before anything is written, and again inside the seed
  * transaction after the advisory lock, so a concurrent seed cannot slip in between.
@@ -1749,6 +1894,7 @@ async function checkAccounts(reader: Reader, credentialsLoaded: boolean) {
       conflict("user email", demo.email);
     if (byId.some((row) => row.email !== demo.email)) conflict("user", demo.id);
     if (byId[0]) {
+      if (byId[0].role !== "user") conflict("user role", demo.id);
       if (!credentialsLoaded)
         throw new Error(
           "Demo seed refused: demo accounts already exist. Supply the credentials file written by the first run.",
@@ -1816,39 +1962,92 @@ async function globalCustomerRole(reader: Reader): Promise<string | null> {
  * Read-only checks before anything is written: the live database name, data outside the demo
  * namespace, and every globally unique name this seed claims.
  */
-async function precheck(
-  credentialsLoaded: boolean,
-  allowExistingData: boolean,
+async function assertFreshOrDemoOnly(
+  conn: typeof db | Tx,
+  admin: Awaited<ReturnType<typeof checkInstanceSetup>>,
 ) {
+  const workspaces = await conn
+    .select({ id: schema.workspaceTable.id })
+    .from(schema.workspaceTable);
+  const hasDemo = workspaces.some((row) => row.id === DEMO_WORKSPACE_ID);
+  const users = await conn
+    .select({ id: schema.userTable.id })
+    .from(schema.userTable);
+  const people = await conn
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable);
+  const organisations = await conn
+    .select({
+      id: schema.organisationTable.id,
+      key: schema.organisationTable.key,
+      name: schema.organisationTable.name,
+      isInternal: schema.organisationTable.isInternal,
+    })
+    .from(schema.organisationTable);
+  const allowedUsers = new Set(DEMO_ACCOUNTS.map((account) => account.id));
+  const allowedPeople = new Set(
+    DEMO_ACCOUNTS.map((account) => account.personId),
+  );
+  const foreign =
+    workspaces.some((row) => row.id !== DEMO_WORKSPACE_ID) ||
+    users.some(
+      (row) =>
+        row.id !== admin.userId && (!hasDemo || !allowedUsers.has(row.id)),
+    ) ||
+    people.some(
+      (row) =>
+        row.id !== admin.personId && (!hasDemo || !allowedPeople.has(row.id)),
+    ) ||
+    !organisations.some(
+      (row) =>
+        row.id === admin.organisationId &&
+        row.isInternal &&
+        row.key === "internal" &&
+        row.name === "Internal",
+    ) ||
+    organisations.some(
+      (row) =>
+        !(
+          row.isInternal &&
+          row.key === "internal" &&
+          row.name === "Internal"
+        ) &&
+        !(
+          hasDemo &&
+          ([CONTOSO.id, FABRIKAM.id] as readonly string[]).includes(row.id)
+        ),
+    );
+  if (foreign)
+    throw new Error(
+      "Demo seed refused: the database already holds non-demo data. Nothing was changed.",
+    );
+}
+
+async function precheck(credentialsLoaded: boolean) {
   const [{ name } = { name: "" }] = (
     await db.execute<{ name: string }>(sql`SELECT current_database() AS name`)
   ).rows;
   assertNotLiveDatabase(name);
 
-  const foreign = await db
-    .select({ id: schema.workspaceTable.id })
-    .from(schema.workspaceTable)
-    .where(not(sql`${schema.workspaceTable.id} LIKE 'demo-%'`));
-  if (foreign.length > 0 && !allowExistingData)
-    throw new Error(
-      `Demo seed refused: the database already holds non-demo data (${foreign.length} workspace(s) outside the demo namespace). Pass --allow-existing-data to add the demo workspace beside it. Nothing was changed.`,
-    );
-
+  const admin = await checkInstanceSetup(db);
+  await assertFreshOrDemoOnly(db, admin);
   await checkAccounts(db, credentialsLoaded);
   await globalCustomerRole(db);
 
-  const organisations = await db
-    .select()
-    .from(schema.organisationTable)
-    .where(
-      sql`${schema.organisationTable.id} = ${CONTOSO.id} OR ${schema.organisationTable.key} = ${CONTOSO.key}`,
-    );
-  if (
-    organisations.some(
-      (row) => row.id !== CONTOSO.id || row.key !== CONTOSO.key,
+  for (const organisation of [CONTOSO, FABRIKAM]) {
+    const organisations = await db
+      .select()
+      .from(schema.organisationTable)
+      .where(
+        sql`${schema.organisationTable.id} = ${organisation.id} OR ${schema.organisationTable.key} = ${organisation.key}`,
+      );
+    if (
+      organisations.some(
+        (row) => row.id !== organisation.id || row.key !== organisation.key,
+      )
     )
-  )
-    conflict("organisation", CONTOSO.key);
+      conflict("organisation", organisation.key);
+  }
 
   const workspaces = await db
     .select()
@@ -1936,6 +2135,25 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
     "organisation",
   );
 
+  await ensureById(
+    tx,
+    schema.organisationTable,
+    {
+      id: FABRIKAM.id,
+      key: FABRIKAM.key,
+      name: FABRIKAM.name,
+      isInternal: false,
+      domain: [...FABRIKAM.domain],
+      active: true,
+      portalAccess: true,
+      defaultCustomerVisibility: "organisation",
+      createdAt: now,
+      updatedAt: now,
+    },
+    ["key", "isInternal"],
+    "organisation",
+  );
+
   // Accounts and people: written only when absent.
   const people = new Map<string, string>();
   const users = new Map<string, string>();
@@ -1948,7 +2166,11 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       ? existingUser.id
       : await upsertUserAndPassword(tx, demo, now, "demo");
     const organisationId =
-      demo.side === "customer" ? CONTOSO.id : internalOrg.id;
+      demo.side === "customer"
+        ? demo.key === "fabrikam1"
+          ? FABRIKAM.id
+          : CONTOSO.id
+        : internalOrg.id;
     const [existingPerson] = await tx
       .select()
       .from(schema.personTable)
@@ -2008,14 +2230,19 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
   }
   for (const demo of DEMO_ACCOUNTS.filter((row) => row.side === "customer"))
     if (
-      !(await membershipExists(tx, demo.personId, "organisation", CONTOSO.id))
+      !(await membershipExists(
+        tx,
+        demo.personId,
+        "organisation",
+        demo.key === "fabrikam1" ? FABRIKAM.id : CONTOSO.id,
+      ))
     )
       await upsertScopedMembership(
         tx,
         {
           personId: demo.personId,
           scope: "organisation",
-          scopeId: CONTOSO.id,
+          scopeId: demo.key === "fabrikam1" ? FABRIKAM.id : CONTOSO.id,
           roleId: customerRoleId,
           seesAll: false,
           now,
@@ -2278,7 +2505,11 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       {
         id: project.id,
         workspaceId: DEMO_WORKSPACE_ID,
-        organisationId: project.org ? CONTOSO.id : null,
+        organisationId: project.org
+          ? key === "FAB"
+            ? FABRIKAM.id
+            : CONTOSO.id
+          : null,
         kind: project.kind,
         supportLevel: project.kind === "managed_service" ? "L2" : null,
         serviceCalendarMode:
@@ -2293,7 +2524,7 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
         lastTaskNumber: ITEMS[key].length,
         slaPolicyMode: project.sla ? "override" : "inherit",
         slaPolicyId: project.sla ? SLA_POLICIES[project.sla].id : null,
-        managerId: person("lead"),
+        managerId: person(key === "MIG" ? "agent2" : "lead"),
         startDate: key === "MIG" ? isoDay(-45) : null,
         endDate: key === "MIG" ? isoDay(50) : null,
         createdAt: date(-60),
@@ -2314,7 +2545,12 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       await seedProjectStates(project.id, DEMO_WORKSPACE_ID, tx);
     }
     for (const demo of DEMO_ACCOUNTS) {
-      if (!demo.projectRole) continue;
+      if (
+        !demo.projectRole ||
+        (key === "MIG" && demo.key !== "agent2") ||
+        (demo.key === "manager" && key === "FAB")
+      )
+        continue;
       if (!(await membershipExists(tx, demo.personId, "project", project.id)))
         await upsertScopedMembership(
           tx,
@@ -2404,8 +2640,8 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
         startDate: isoDay(cycle.startDay),
         endDate: isoDay(cycle.endDay),
         completedAt: cycle.done ? dayAt(cycle.endDay + 1, 10) : null,
-        completedBy: cycle.done ? person("lead") : null,
-        createdBy: person("lead"),
+        completedBy: cycle.done ? person("agent2") : null,
+        createdBy: person("agent2"),
         createdAt: dayAt(cycle.startDay - 2, 9),
         updatedAt: dayAt(cycle.startDay - 2, 9),
       },
@@ -2422,10 +2658,10 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
         projectId: mig,
         name: module.name,
         description: module.description,
-        leadId: person("lead"),
+        leadId: person("agent2"),
         state: module.state,
         targetDate: isoDay(module.targetDay),
-        createdBy: person("lead"),
+        createdBy: person("agent2"),
         createdAt: date(-40),
         updatedAt: date(-40),
       },
@@ -2896,13 +3132,14 @@ async function seedKnowledgeBase(seeded: Seeded) {
 }
 
 async function seedPages(seeded: Seeded) {
-  const actor = {
-    userId: seeded.users.get("lead") ?? "",
-    personId: seeded.people.get("lead") ?? "",
-    actorType: "person" as const,
-    apiKeyId: null,
-  };
   for (const page of PAGES) {
+    const actorKey = page.project === "MIG" ? "agent2" : "lead";
+    const actor = {
+      userId: seeded.users.get(actorKey) ?? "",
+      personId: seeded.people.get(actorKey) ?? "",
+      actorType: "person" as const,
+      apiKeyId: null,
+    };
     const projectId = PROJECTS[page.project].id;
     const [existing] = await db
       .select({ id: projectPageTable.id })
@@ -3171,9 +3408,160 @@ async function lockedOffFlags() {
     .map((row) => row.key);
 }
 
+async function seedReviewSurfaces() {
+  const actor = { userId: "demo-user-owner", actorType: "person" as const };
+  const [item] = await db
+    .select()
+    .from(schema.workItemTable)
+    .where(
+      and(
+        eq(schema.workItemTable.workspaceId, DEMO_WORKSPACE_ID),
+        eq(schema.workItemTable.key, "CSD-1"),
+      ),
+    );
+  if (!item) throw new Error("Demo custom field work item is missing.");
+  const [existingSection] = await db
+    .select()
+    .from(customFieldSectionTable)
+    .where(
+      and(
+        eq(customFieldSectionTable.workspaceId, DEMO_WORKSPACE_ID),
+        eq(customFieldSectionTable.name, "Service details"),
+      ),
+    );
+  const section =
+    existingSection ??
+    (await createSection(DEMO_WORKSPACE_ID, "Service details", actor));
+  const [existingField] = await db
+    .select()
+    .from(customFieldTable)
+    .where(
+      and(
+        eq(customFieldTable.workspaceId, DEMO_WORKSPACE_ID),
+        eq(customFieldTable.key, "asset_reference"),
+      ),
+    );
+  const field =
+    existingField ??
+    (await createField({
+      workspaceId: DEMO_WORKSPACE_ID,
+      sectionId: section.id,
+      key: "asset_reference",
+      name: "Asset reference",
+      format: "text",
+      options: [],
+      visibility: [
+        { workItemTypeId: item.typeId, visible: true, required: false },
+      ],
+      actor,
+    }));
+  if (
+    field.sectionId !== section.id ||
+    field.format !== "text" ||
+    field.deletedAt
+  )
+    throw new Error("Demo custom field conflicts with an existing field.");
+  const [value] = await db
+    .select()
+    .from(customFieldValueTable)
+    .where(
+      and(
+        eq(customFieldValueTable.customFieldId, field.id),
+        eq(customFieldValueTable.entityId, item.id),
+      ),
+    );
+  if (!value)
+    await updateWorkItem(
+      item.key,
+      DEMO_WORKSPACE_ID,
+      item.version,
+      actor.userId,
+      "person",
+      { customFields: { asset_reference: "LT-1042" } },
+    );
+
+  const [webhook] = await db
+    .select()
+    .from(webhookTable)
+    .where(eq(webhookTable.id, "demo-webhook-service-events"));
+  if (!webhook) {
+    const secret = encryptSecret(randomBytes(32).toString("base64url"));
+    if (!secret) throw new Error("Demo webhook secret could not be encrypted.");
+    await db.insert(webhookTable).values({
+      id: "demo-webhook-service-events",
+      workspaceId: DEMO_WORKSPACE_ID,
+      name: "Service event example",
+      url: "https://example.invalid/taskdesk-events",
+      secret,
+      events: ["work_item.created"],
+      active: false,
+      createdBy: "demo-person-owner",
+    });
+  }
+
+  const exports = await db
+    .select()
+    .from(reportExportTable)
+    .where(
+      and(
+        eq(reportExportTable.workspaceId, DEMO_WORKSPACE_ID),
+        eq(reportExportTable.personId, "demo-person-owner"),
+        eq(reportExportTable.title, "Demo throughput report"),
+      ),
+    );
+  if (
+    exports.some(
+      (row) =>
+        row.status === "ready" &&
+        (!row.expiresAt || row.expiresAt > new Date()),
+    )
+  )
+    return;
+  // claimExports is a global worker queue. An installation must be quiescent while seeding.
+  const active = await db
+    .select()
+    .from(reportExportTable)
+    .where(inArray(reportExportTable.status, ["queued", "running"]));
+  if (active.length)
+    throw new Error("Demo report export requires a quiescent export queue.");
+  const queued = await enqueueExport({
+    workspaceId: DEMO_WORKSPACE_ID,
+    personId: "demo-person-owner",
+    userId: actor.userId,
+    title: "Demo throughput report",
+    spec: {
+      kind: "report",
+      key: "throughput",
+      window: { window: "30" },
+      filters: {},
+      options: {},
+    },
+    caps: { readAll: true, showRates: false, readAnyTime: false },
+    now: new Date(),
+    audit: async (tx, id) => {
+      await appendAuditLog(tx, {
+        actorId: actor.userId,
+        actorType: "person",
+        workspaceId: DEMO_WORKSPACE_ID,
+        action: "report.export_requested",
+        entityType: "report_export",
+        entityId: id,
+      });
+    },
+  });
+  const claimed = await claimExports(1);
+  if (claimed.length !== 1 || claimed[0]?.id !== queued.id)
+    throw new Error(
+      "Demo report export was claimed by another worker; wait for the queue to settle.",
+    );
+  if ((await processExport(claimed[0])) !== "ready")
+    throw new Error(
+      "Demo report export failed; resolve the failure before retrying.",
+    );
+}
+
 export async function runDemoSeed(argv: readonly string[] = process.argv) {
-  const { credentialsFile, allowExistingData, enableCustomerPassword } =
-    parseDemoArgs(argv);
+  const { credentialsFile, enableCustomerPassword } = parseDemoArgs(argv);
   config();
   let databaseConfig: ReturnType<typeof resolveDatabaseConfig>;
   try {
@@ -3195,16 +3583,32 @@ export async function runDemoSeed(argv: readonly string[] = process.argv) {
     );
   assertNotLiveDatabase(databaseConfig.database);
   const destination = resolveCredentialsDestination(credentialsFile);
-  const credentialsLoaded = loadExistingCredentials(destination);
-  const now = new Date();
+  // Reject an unsafe destination before connecting, then re-open and read it under the lock.
+  const initialDescriptor = openPrivateCredentials(destination);
+  if (initialDescriptor !== null) closeSync(initialDescriptor);
+  const pool = getDatabasePool();
+  let lockClient: PoolClient | undefined;
   try {
-    await precheck(credentialsLoaded, allowExistingData);
+    // Keep a dedicated session for the entire run. A different key from the core transaction
+    // avoids deadlock and ensures a waiting seed reads credentials only after its predecessor.
+    lockClient = await pool.connect();
+    await lockClient.query(
+      "SELECT pg_advisory_lock(hashtext('taskdesk:demo-seed-run'))",
+    );
+    const credentialsLoaded = loadExistingCredentials(destination);
+    const now = new Date();
+    await precheck(credentialsLoaded);
     const seeded = await db.transaction(async (tx) => {
       // Serialise concurrent demo seeds, then repeat the account checks under the lock, so
       // two runs cannot rewrite each other's accounts or password hashes.
       await tx.execute(
         sql`SELECT pg_advisory_xact_lock(hashtext('taskdesk:demo-seed'))`,
       );
+      // Application and reporting writers must be quiesced throughout this seed. The
+      // bootstrap lock alone does not serialize every Better Auth admission or writer.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
+      const admin = await checkInstanceSetup(tx);
+      await assertFreshOrDemoOnly(tx, admin);
       await checkAccounts(tx, credentialsLoaded);
       if (!credentialsLoaded)
         writeFileSync(
@@ -3232,6 +3636,7 @@ export async function runDemoSeed(argv: readonly string[] = process.argv) {
     await seedKnowledgeBase(seeded);
     await seedPages(seeded);
     await seedReviewerInbox(seeded);
+    await seedReviewSurfaces();
     const [{ count } = { count: 0 }] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(schema.workItemTable)
@@ -3247,7 +3652,9 @@ export async function runDemoSeed(argv: readonly string[] = process.argv) {
         `Warning: an instance administrator has locked these features off, so the demo workspace cannot show them: ${locked.join(", ")}.`,
       );
   } finally {
-    await getDatabasePool().end();
+    // Destroying the dedicated connection releases its session lock even after an error.
+    lockClient?.release(true);
+    await pool.end();
   }
 }
 

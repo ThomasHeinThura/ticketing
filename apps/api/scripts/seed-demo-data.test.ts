@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import {
   chmod,
@@ -13,6 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { reaches } from "@taskdesk/permissions";
 import bcrypt from "bcryptjs";
 import { and, eq, inArray, isNotNull, like, sql } from "drizzle-orm";
 import {
@@ -27,9 +29,19 @@ import {
 import { resetTestDatabase } from "../../../tests/api-integration/helpers/database";
 import { getStoredAuthPluginConfigRows } from "../src/auth/repository";
 import db, { getDatabasePool, schema } from "../src/database";
+import {
+  customFieldSectionTable,
+  customFieldTable,
+  customFieldValueTable,
+} from "../src/database/migration-schema";
+import { webhookDeliveryTable, webhookTable } from "../src/database/schema";
 import { cycleTable, moduleTable } from "../src/database/schema-p5-agile";
 import { kbArticleTable } from "../src/database/schema-p5-kb";
 import { projectPageTable } from "../src/database/schema-p5-pages";
+import {
+  reportExportChunkTable,
+  reportExportTable,
+} from "../src/database/schema-p5-reports";
 import {
   announcementTable,
   changeDetailTable,
@@ -40,7 +52,9 @@ import { resolveProjectFeatures } from "../src/feature-flag/repository";
 import { suggestDuplicatesForQueueRows } from "../src/intake/duplicate-suggestions";
 import { snippet } from "../src/kb/logic";
 import getNotificationInbox from "../src/notification/controllers/get-notification-inbox";
+import { decryptSecret } from "../src/notification-preferences/secrets";
 import { snippetOf } from "../src/pages/logic";
+import { resolveIdentity } from "../src/permissions/resolve-identity";
 import { changeCalendar } from "../src/service-management/change-repository";
 import { evaluatePinnedWorkItemSla } from "../src/sla-policy/evaluation";
 import { countSavedView, runSavedView } from "../src/view/controllers/run-view";
@@ -53,6 +67,8 @@ import {
   resolveCredentialsDestination,
 } from "./seed-demo-data";
 import { seed } from "./seed-profile";
+
+process.env.TASKDESK_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 
 const execute = promisify(execFile);
 const apiRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -115,6 +131,41 @@ async function demoProjects() {
     .where(eq(schema.projectTable.workspaceId, DEMO_WORKSPACE_ID));
 }
 
+// Synthetic persisted bootstrap state; product enrollment is exercised separately.
+async function bootstrapFixture() {
+  await db.insert(schema.organisationTable).values({
+    id: "bootstrap-org",
+    key: "internal",
+    name: "Internal",
+    isInternal: true,
+  });
+  await db.insert(schema.userTable).values({
+    id: "bootstrap-admin",
+    name: "Bootstrap admin",
+    email: "bootstrap@example.test",
+    emailVerified: true,
+    role: "admin",
+    twoFactorEnabled: true,
+  });
+  await db.insert(schema.personTable).values({
+    id: "bootstrap-person",
+    userId: "bootstrap-admin",
+    organisationId: "bootstrap-org",
+    side: "staff",
+    displayName: "Bootstrap admin",
+  });
+  await db.insert(schema.twoFactorTable).values({
+    id: "bootstrap-factor",
+    userId: "bootstrap-admin",
+    secret: "test-encrypted-secret",
+    backupCodes: "test-encrypted-codes",
+    verified: true,
+  });
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", setupCompletedAt: new Date() });
+}
+
 describe("demo data seed is opt-in, additive and idempotent", () => {
   let emptySnapshot: Record<string, string[]>;
   let firstRun: Record<string, string[]>;
@@ -123,6 +174,7 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
     // Instance flags stay at their built-in defaults (mostly off), so every feature the
     // demo needs must come on through the seed's own workspace rows.
     await resetTestDatabase({ defaultOffFeatures: false });
+    await bootstrapFixture();
     directory = await mkdtemp(path.join(os.tmpdir(), "taskdesk-demo-seed-"));
     credentials = path.join(directory, "demo.json");
     emptySnapshot = await snapshot();
@@ -160,11 +212,75 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
     expect(await snapshot()).toEqual(emptySnapshot);
   }, 240_000);
 
-  it("seeds a fresh database, never prints a password, and a rerun changes nothing", async () => {
+  it("refuses incomplete bootstrap and extra identities without writing credentials", async () => {
+    const [factor] = await db.select().from(schema.twoFactorTable);
+    const [setting] = await db.select().from(schema.instanceSettingTable);
+    if (!factor || !setting?.setupCompletedAt)
+      throw new Error("bootstrap fixture missing");
+    for (const kind of [
+      "missing-factor",
+      "unverified-factor",
+      "disabled-factor",
+      "missing-marker",
+      "extra-user",
+    ] as const) {
+      if (kind === "missing-factor") await db.delete(schema.twoFactorTable);
+      if (kind === "unverified-factor")
+        await db.update(schema.twoFactorTable).set({ verified: false });
+      if (kind === "disabled-factor")
+        await db.update(schema.userTable).set({ twoFactorEnabled: false });
+      if (kind === "missing-marker")
+        await db
+          .update(schema.instanceSettingTable)
+          .set({ setupCompletedAt: null });
+      if (kind === "extra-user")
+        await db.insert(schema.userTable).values({
+          id: "extra-user",
+          name: "Extra",
+          email: "extra@example.test",
+          emailVerified: true,
+        });
+      const before = await snapshot();
+      await expect(
+        run(["--demo", "--credentials-file", credentials]),
+        kind,
+      ).rejects.toThrow(/Demo seed refused/);
+      expect(await snapshot()).toEqual(before);
+      await expect(stat(credentials)).rejects.toThrow();
+      if (kind === "missing-factor")
+        await db.insert(schema.twoFactorTable).values(factor);
+      if (kind === "unverified-factor")
+        await db.update(schema.twoFactorTable).set({ verified: true });
+      if (kind === "disabled-factor")
+        await db.update(schema.userTable).set({ twoFactorEnabled: true });
+      if (kind === "missing-marker")
+        await db
+          .update(schema.instanceSettingTable)
+          .set({ setupCompletedAt: setting.setupCompletedAt });
+      if (kind === "extra-user")
+        await db
+          .delete(schema.userTable)
+          .where(eq(schema.userTable.id, "extra-user"));
+    }
+    emptySnapshot = await snapshot();
+  }, 240_000);
+
+  it("seeds a bootstrapped database, never prints a password, and a rerun changes nothing", async () => {
     const first = await run(["--demo", "--credentials-file", credentials]);
     expect((await stat(credentials)).mode & 0o077).toBe(0);
     firstRun = await snapshot();
     expect(missingRows(emptySnapshot, firstRun)).toEqual([]);
+    const users = await db
+      .select({ id: schema.userTable.id, role: schema.userTable.role })
+      .from(schema.userTable);
+    expect(users.filter((user) => user.role === "admin")).toEqual([
+      { id: "bootstrap-admin", role: "admin" },
+    ]);
+    expect(users).toHaveLength(12);
+    const [setting] = await db.select().from(schema.instanceSettingTable);
+    expect(setting?.setupCompletedAt).toBeInstanceOf(Date);
+    expect(setting?.setupTokenHash).toBeNull();
+    expect(setting?.setupTokenExpiresAt).toBeNull();
 
     const written = await readFile(credentials, "utf8");
     for (const account of JSON.parse(written).accounts) {
@@ -193,6 +309,172 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
     expect(missingRows(firstRun, secondRun)).toEqual([]);
     expect(secondRun).toEqual(firstRun);
   }, 300_000);
+
+  it("persists a custom field, inactive encrypted webhook, and processed CSV export", async () => {
+    const [section] = await db
+      .select()
+      .from(customFieldSectionTable)
+      .where(
+        and(
+          eq(customFieldSectionTable.workspaceId, DEMO_WORKSPACE_ID),
+          eq(customFieldSectionTable.name, "Service details"),
+        ),
+      );
+    expect(section).toBeDefined();
+    const [field] = await db
+      .select()
+      .from(customFieldTable)
+      .where(
+        and(
+          eq(customFieldTable.workspaceId, DEMO_WORKSPACE_ID),
+          eq(customFieldTable.key, "asset_reference"),
+        ),
+      );
+    expect(field?.sectionId).toBe(section?.id);
+    if (!field) throw new Error("custom field missing");
+    const [item] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(
+        and(
+          eq(schema.workItemTable.workspaceId, DEMO_WORKSPACE_ID),
+          eq(schema.workItemTable.key, "CSD-1"),
+        ),
+      );
+    if (!item) throw new Error("work item missing");
+    const [value] = await db
+      .select()
+      .from(customFieldValueTable)
+      .where(
+        and(
+          eq(customFieldValueTable.customFieldId, field.id),
+          eq(customFieldValueTable.entityId, item.id),
+        ),
+      );
+    expect(value?.value).toBe("LT-1042");
+    const activities = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, item.id));
+    expect(activities.some((row) => row.field === "custom_field")).toBe(true);
+    const [webhook] = await db
+      .select()
+      .from(webhookTable)
+      .where(eq(webhookTable.id, "demo-webhook-service-events"));
+    expect(webhook?.active).toBe(false);
+    expect(webhook?.secret).toMatch(/^enc:v2:/);
+    if (!webhook) throw new Error("webhook missing");
+    expect(decryptSecret(webhook.secret)).toHaveLength(43);
+    expect(
+      await db
+        .select()
+        .from(webhookDeliveryTable)
+        .where(eq(webhookDeliveryTable.webhookId, webhook.id)),
+    ).toHaveLength(0);
+    const [report] = await db
+      .select()
+      .from(reportExportTable)
+      .where(
+        and(
+          eq(reportExportTable.workspaceId, DEMO_WORKSPACE_ID),
+          eq(reportExportTable.title, "Demo throughput report"),
+        ),
+      );
+    expect(report?.status).toBe("ready");
+    expect(report?.filename).toMatch(/\.csv$/);
+    if (!report?.expiresAt || !report.finishedAt)
+      throw new Error("ready export missing");
+    expect(report.expiresAt.getTime() - report.finishedAt.getTime()).toBe(
+      24 * 60 * 60 * 1000,
+    );
+    const chunks = await db
+      .select()
+      .from(reportExportChunkTable)
+      .where(eq(reportExportChunkTable.exportId, report.id))
+      .orderBy(reportExportChunkTable.seq);
+    const csv = chunks.map((chunk) => chunk.content).join("");
+    expect(csv.length).toBeGreaterThan(0);
+    expect(Buffer.byteLength(csv)).toBe(report.byteSize);
+    expect(csv).toContain(",");
+  });
+
+  it("separates customer organisations and limits migration project membership", async () => {
+    const [manager] = await db
+      .select()
+      .from(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.id, "demo-wm-manager"));
+    expect(manager?.role).toBe("manager");
+    const identity = await resolveIdentity({
+      userId: "demo-user-manager",
+      credential: "session",
+    });
+    expect(identity).not.toBeNull();
+    if (!identity) throw new Error("manager identity missing");
+    for (const [projectId, organisationId, allowed] of [
+      ["demo-proj-contoso-desk", "demo-org-contoso", true],
+      ["demo-proj-infrastructure", null, true],
+      ["demo-proj-contoso-m365", "demo-org-contoso", false],
+      ["demo-proj-fabrikam", "demo-org-fabrikam", false],
+    ] as const)
+      expect(
+        reaches(identity, {
+          projectId,
+          organisationId,
+          workspaceId: DEMO_WORKSPACE_ID,
+        }),
+      ).toBe(allowed);
+
+    const [customer] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.id, "demo-person-fabrikam1"));
+    expect(customer?.organisationId).toBe("demo-org-fabrikam");
+    const [project] = await db
+      .select()
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, "demo-proj-fabrikam"));
+    expect(project?.organisationId).toBe("demo-org-fabrikam");
+    const items = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, "demo-proj-fabrikam"));
+    expect(items.length).toBeGreaterThanOrEqual(2);
+    expect(items[0]?.requesterId).toBe("demo-person-fabrikam1");
+    const roster = await db
+      .select()
+      .from(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.scope, "project"),
+          eq(schema.membershipTable.scopeId, "demo-proj-contoso-m365"),
+        ),
+      );
+    expect(roster.map((row) => row.personId)).toEqual(["demo-person-agent2"]);
+    const migrationItems = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, "demo-proj-contoso-m365"));
+    expect(
+      migrationItems.every((item) => item.assigneeId === "demo-person-agent2"),
+    ).toBe(true);
+  });
+
+  it("refuses an older credentials file without changing the seeded database", async () => {
+    const oldFile = path.join(directory, "old-demo.json");
+    const current = JSON.parse(await readFile(credentials, "utf8")) as {
+      accounts: unknown[];
+    };
+    await writeFile(
+      oldFile,
+      JSON.stringify({ accounts: current.accounts.slice(0, 9) }),
+      { mode: 0o600 },
+    );
+    const before = await snapshot();
+    await expect(
+      run(["--demo", "--credentials-file", oldFile]),
+    ).rejects.toThrow(/exactly the 11 demo accounts/);
+    expect(await snapshot()).toEqual(before);
+  }, 180_000);
 
   it("turns every demo feature on for every demo project through workspace flags", async () => {
     const projects = await demoProjects();
@@ -489,6 +771,11 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
       expect(article.state).toBe("published");
     }
 
+    expect(
+      articles.find((article) => article.title === "Reset your password")
+        ?.bodyText,
+    ).not.toMatch(/forgot password/i);
+
     const pages = await db
       .select()
       .from(projectPageTable)
@@ -625,14 +912,14 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
     }
   });
 
-  it("refuses a database with non-demo data unless told otherwise, and then changes nothing", async () => {
+  it("refuses any other workspace even when it has a demo-prefixed id", async () => {
     const [internal] = await db
       .select({ id: schema.organisationTable.id })
       .from(schema.organisationTable)
       .where(eq(schema.organisationTable.key, "internal"));
     if (!internal) throw new Error("internal organisation missing");
     await db.insert(schema.workspaceTable).values({
-      id: "customer-real-workspace",
+      id: "demo-other-workspace",
       organisationId: internal.id,
       name: "Real customer work",
       slug: "real-customer-work",
@@ -644,20 +931,24 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
     ).rejects.toThrow(/non-demo data/);
     expect(await snapshot()).toEqual(before);
 
-    await run([
-      "--demo",
-      "--allow-existing-data",
-      "--credentials-file",
-      credentials,
-    ]);
+    await expect(
+      run([
+        "--demo",
+        "--allow-existing-data",
+        "--credentials-file",
+        credentials,
+      ]),
+    ).rejects.toThrow(/no longer supported/);
     expect(await snapshot()).toEqual(before);
+    await db
+      .delete(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, "demo-other-workspace"));
   }, 240_000);
 
   it("turns customer password sign-in on only with --enable-customer-password, as God Mode's canonical row, once", async () => {
     const before = await snapshot();
     const { stdout } = await run([
       "--demo",
-      "--allow-existing-data",
       "--enable-customer-password",
       "--credentials-file",
       credentials,
@@ -682,7 +973,6 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
 
     const again = await run([
       "--demo",
-      "--allow-existing-data",
       "--enable-customer-password",
       "--credentials-file",
       credentials,
@@ -698,6 +988,7 @@ describe("demo data seed beside existing data", () => {
 
   beforeAll(async () => {
     await resetTestDatabase({ defaultOffFeatures: false });
+    await bootstrapFixture();
     foreignDirectory = await mkdtemp(
       path.join(os.tmpdir(), "taskdesk-demo-seed-existing-"),
     );
@@ -728,36 +1019,18 @@ describe("demo data seed beside existing data", () => {
     await rm(foreignDirectory, { recursive: true, force: true });
   });
 
-  it("refuses on a first run, then adds the demo beside it without changing a row, and a rerun changes nothing", async () => {
+  it("refuses to seed alongside existing workspaces without changing rows or writing credentials", async () => {
     const before = await snapshot();
     await expect(
       run(["--demo", "--credentials-file", foreignCredentials]),
     ).rejects.toThrow(/non-demo data/);
     expect(await snapshot()).toEqual(before);
     await expect(stat(foreignCredentials)).rejects.toThrow();
-
-    await run([
-      "--demo",
-      "--allow-existing-data",
-      "--credentials-file",
-      foreignCredentials,
-    ]);
-    const after = await snapshot();
-    expect(missingRows(before, after)).toEqual([]);
-    expect(
-      (after.work_item?.length ?? 0) - (before.work_item?.length ?? 0),
-    ).toBeGreaterThanOrEqual(20);
-
-    await run([
-      "--demo",
-      "--allow-existing-data",
-      "--credentials-file",
-      foreignCredentials,
-    ]);
-    expect(await snapshot()).toEqual(after);
-  }, 300_000);
+  }, 240_000);
 
   it("never overrides an administrator who turned customer password sign-in off", async () => {
+    await resetTestDatabase({ defaultOffFeatures: false });
+    await bootstrapFixture();
     await db.insert(schema.instancePluginConfigTable).values({
       id: "existing-auth-password-customer",
       pluginId: "auth.password",
@@ -773,7 +1046,6 @@ describe("demo data seed beside existing data", () => {
     const before = await snapshot();
     const { stdout } = await run([
       "--demo",
-      "--allow-existing-data",
       "--enable-customer-password",
       "--credentials-file",
       foreignCredentials,
@@ -781,7 +1053,7 @@ describe("demo data seed beside existing data", () => {
     expect(stdout).toContain(
       "Customer password sign-in was turned off by an administrator",
     );
-    expect(await snapshot()).toEqual(before);
+    expect(missingRows(before, await snapshot())).toEqual([]);
   }, 240_000);
 });
 
@@ -873,6 +1145,7 @@ describe("demo data seed never takes over rows it does not own", () => {
 
   beforeEach(async () => {
     await resetTestDatabase({ defaultOffFeatures: false });
+    await bootstrapFixture();
     scratch = await mkdtemp(path.join(os.tmpdir(), "taskdesk-demo-owned-"));
     file = path.join(scratch, "demo.json");
   }, 180_000);
@@ -884,6 +1157,41 @@ describe("demo data seed never takes over rows it does not own", () => {
   afterAll(async () => {
     await resetTestDatabase();
   });
+
+  it.each(["user", "organisation", "person"])(
+    "refuses workspace-free %s contamination without writes",
+    async (kind) => {
+      if (kind === "user")
+        await db.insert(schema.userTable).values({
+          id: "foreign-user",
+          name: "Foreign",
+          email: "foreign@example.test",
+          emailVerified: true,
+        });
+      if (kind !== "user") {
+        await db.insert(schema.organisationTable).values({
+          id: "foreign-org",
+          key: "foreign",
+          name: "Foreign",
+          isInternal: false,
+        });
+        if (kind === "person")
+          await db.insert(schema.personTable).values({
+            id: "foreign-person",
+            organisationId: "foreign-org",
+            side: "staff",
+            displayName: "Foreign",
+          });
+      }
+      const before = await snapshot();
+      await expect(run(["--demo", "--credentials-file", file])).rejects.toThrow(
+        /non-demo data/,
+      );
+      expect(await snapshot()).toEqual(before);
+      await expect(stat(file)).rejects.toThrow();
+    },
+    180_000,
+  );
 
   async function otherUserAndOrganisation() {
     await db.insert(schema.userTable).values({
@@ -917,9 +1225,9 @@ describe("demo data seed never takes over rows it does not own", () => {
       isEditable: true,
     });
     const before = await snapshot();
-    await expect(
-      run(["--demo", "--allow-existing-data", "--credentials-file", file]),
-    ).rejects.toThrow(/Demo seed refused: the global customer role is missing/);
+    await expect(run(["--demo", "--credentials-file", file])).rejects.toThrow(
+      /Demo seed refused: the global customer role is missing/,
+    );
     expect(await snapshot()).toEqual(before);
     await expect(stat(file)).rejects.toThrow();
   }, 180_000);
@@ -940,34 +1248,151 @@ describe("demo data seed never takes over rows it does not own", () => {
       });
       const before = await snapshot();
       await expect(
-        run(["--demo", "--allow-existing-data", "--credentials-file", file]),
+        run(["--demo", "--credentials-file", file]),
         String(userId),
-      ).rejects.toThrow(new RegExp(`existing person \\(${personId}\\)`));
+      ).rejects.toThrow(/non-demo data/);
       expect(await snapshot()).toEqual(before);
       await expect(stat(file)).rejects.toThrow();
     }
   }, 240_000);
 
   it("never prints a password hash when a database write fails", async () => {
-    await otherUserAndOrganisation();
-    // The id the seed gives the first demo account's password row, held by someone else, so
-    // that insert fails with the new bcrypt hash among the statement's parameters.
-    await db.insert(schema.accountTable).values({
-      id: "demo-cred-demo-user-owner",
-      accountId: "someone-else",
-      providerId: "credential",
-      userId: "someone-else",
-    });
-    const before = await snapshot();
-    const failure = await run(["--demo", "--credentials-file", file]).then(
-      () => null,
-      (error: { stdout: string; stderr: string }) => error,
+    await db.execute(
+      sql`CREATE FUNCTION seed_test_reject_account() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected failure'; END $$`,
     );
-    expect(failure).not.toBeNull();
-    expect(failure?.stderr).not.toMatch(BCRYPT_HASH);
-    expect(failure?.stdout).not.toMatch(BCRYPT_HASH);
-    expect(failure?.stderr).toContain("Demo seed failed");
-    expect(await snapshot()).toEqual(before);
+    await db.execute(
+      sql`CREATE TRIGGER seed_test_reject_account BEFORE INSERT ON account FOR EACH ROW EXECUTE FUNCTION seed_test_reject_account()`,
+    );
+    try {
+      const before = await snapshot();
+      const failure = await run(["--demo", "--credentials-file", file]).then(
+        () => null,
+        (error: { stdout: string; stderr: string }) => error,
+      );
+      expect(failure).not.toBeNull();
+      expect(failure?.stderr).not.toMatch(BCRYPT_HASH);
+      expect(failure?.stdout).not.toMatch(BCRYPT_HASH);
+      expect(failure?.stderr).toContain("Demo seed failed");
+      expect(await snapshot()).toEqual(before);
+    } finally {
+      await db.execute(sql`DROP TRIGGER seed_test_reject_account ON account`);
+      await db.execute(sql`DROP FUNCTION seed_test_reject_account()`);
+    }
+  }, 180_000);
+
+  it("serializes concurrent first runs through the post-core export and preserves credentials", async () => {
+    const client = await getDatabasePool().connect();
+    let first: ReturnType<typeof run> | undefined;
+    let second: ReturnType<typeof run> | undefined;
+    const waitForLocks = async (count: number) => {
+      const deadline = Date.now() + 90_000;
+      while (Date.now() < deadline) {
+        const { rows } = await client.query<{ count: number }>(
+          "SELECT count(*)::int AS count FROM pg_locks WHERE locktype = 'advisory' AND NOT granted",
+        );
+        if ((rows[0]?.count ?? 0) >= count) return;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error(`Expected ${count} waiting advisory locks`);
+    };
+    try {
+      await db.execute(
+        sql`CREATE FUNCTION seed_test_pause_post_core() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(hashtext('taskdesk:test-seed-post-core')); RETURN NEW; END $$`,
+      );
+      await db.execute(
+        sql`CREATE TRIGGER seed_test_pause_post_core BEFORE INSERT ON custom_field_section FOR EACH ROW EXECUTE FUNCTION seed_test_pause_post_core()`,
+      );
+      await client.query(
+        "SELECT pg_advisory_lock(hashtext('taskdesk:test-seed-post-core'))",
+      );
+      first = run(["--demo", "--credentials-file", file]);
+      first.catch(() => {});
+      await waitForLocks(1);
+      const written = await readFile(file, "utf8");
+      const paused = await snapshot();
+      second = run(["--demo", "--credentials-file", file]);
+      second.catch(() => {});
+      await waitForLocks(2);
+      expect(await snapshot()).toEqual(paused);
+      expect(await readFile(file, "utf8")).toBe(written);
+      await client.query(
+        "SELECT pg_advisory_unlock(hashtext('taskdesk:test-seed-post-core'))",
+      );
+      await Promise.all([first, second]);
+      expect(await readFile(file, "utf8")).toBe(written);
+      const exports = await db
+        .select()
+        .from(reportExportTable)
+        .where(
+          and(
+            eq(reportExportTable.workspaceId, DEMO_WORKSPACE_ID),
+            eq(reportExportTable.title, "Demo throughput report"),
+          ),
+        );
+      expect(exports).toHaveLength(1);
+      expect(exports[0]?.status).toBe("ready");
+      const after = await snapshot();
+      await run(["--demo", "--credentials-file", file]);
+      expect(await snapshot()).toEqual(after);
+      expect(await readFile(file, "utf8")).toBe(written);
+    } finally {
+      await client.query(
+        "SELECT pg_advisory_unlock(hashtext('taskdesk:test-seed-post-core'))",
+      );
+      if (first) await first.catch(() => {});
+      if (second) await second.catch(() => {});
+      await db.execute(
+        sql`DROP TRIGGER IF EXISTS seed_test_pause_post_core ON custom_field_section`,
+      );
+      await db.execute(
+        sql`DROP FUNCTION IF EXISTS seed_test_pause_post_core()`,
+      );
+      client.release();
+    }
+  }, 300_000);
+
+  it("rechecks contamination after acquiring the seed lock", async () => {
+    const client = await getDatabasePool().connect();
+    let pending: ReturnType<typeof run> | undefined;
+    try {
+      await client.query(
+        "SELECT pg_advisory_lock(hashtext('taskdesk:demo-seed'))",
+      );
+      pending = run(["--demo", "--credentials-file", file]);
+      pending.catch(() => {});
+      const deadline = Date.now() + 90_000;
+      let waiting = false;
+      while (Date.now() < deadline) {
+        const { rows } = await client.query<{ count: number }>(
+          "SELECT count(*)::int AS count FROM pg_locks WHERE locktype = 'advisory' AND NOT granted",
+        );
+        if ((rows[0]?.count ?? 0) > 0) {
+          waiting = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      expect(waiting).toBe(true);
+      await db.insert(schema.userTable).values({
+        id: "late-foreign-user",
+        name: "Foreign",
+        email: "late@example.test",
+        emailVerified: true,
+      });
+      const before = await snapshot();
+      await client.query(
+        "SELECT pg_advisory_unlock(hashtext('taskdesk:demo-seed'))",
+      );
+      await expect(pending).rejects.toThrow(/non-demo data/);
+      expect(await snapshot()).toEqual(before);
+      await expect(stat(file)).rejects.toThrow();
+    } finally {
+      await client.query(
+        "SELECT pg_advisory_unlock(hashtext('taskdesk:demo-seed'))",
+      );
+      client.release();
+      if (pending) await pending.catch(() => {});
+    }
   }, 180_000);
 
   it("waits for the demo seed lock before checking accounts or writing anything", async () => {

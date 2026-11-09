@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
@@ -7,10 +8,18 @@ const appRoot = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     environment: "node",
+    env: {
+      TASKDESK_AGENT_URL: "http://localhost:1337",
+      TASKDESK_PORTAL_URL: "http://portal.localhost:5174",
+      KANEO_API_URL: "http://localhost:1337",
+      TASKDESK_ENCRYPTION_KEY: randomBytes(32).toString("hex"),
+      TASKDESK_ENCRYPTION_KEY_PREVIOUS: "",
+    },
     include: [
       "scripts/seed-cli.test.ts",
       "scripts/seed-postgres.test.ts",
       "scripts/seed-demo-data.test.ts",
+      "scripts/seed-demo-auth.test.ts",
     ],
     globalSetup: ["scripts/seed-test-global-setup.ts"],
     setupFiles: ["scripts/seed-test-setup.ts"],

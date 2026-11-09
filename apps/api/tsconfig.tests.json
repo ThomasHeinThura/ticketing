@@ -47,6 +47,7 @@
 		"scripts/seed-postgres.test.ts",
 		"scripts/seed-demo-data.ts",
 		"scripts/seed-demo-data.test.ts",
+		"scripts/seed-demo-auth.test.ts",
 		"scripts/seed-test-global-setup.ts",
 		"scripts/seed-test-setup.ts",
 		"vitest.seed.config.ts",
