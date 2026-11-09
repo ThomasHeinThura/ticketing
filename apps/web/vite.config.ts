@@ -276,8 +276,8 @@ function preloadWorkRouteForDirectVisits(): Plugin {
           throw new Error(
             "G11 work-route preload could not resolve the Geist Latin font asset.",
           );
-        // The grouped list waits for the entry's static transfers and locale before requesting
-        // route chunks, avoiding bandwidth contention while allowing them to overlap bootstrap.
+        // The grouped list waits for the stylesheet and locale before requesting route chunks,
+        // then overlaps those requests with the remaining entry transfers and bootstrap.
         // DOMContentLoaded remains the fallback if resource timing is unavailable or incomplete.
         // Nor is the Geist font
         // preloaded there: it is requested when text first lays out in it and is off this path,
@@ -286,20 +286,6 @@ function preloadWorkRouteForDirectVisits(): Plugin {
         // layouts, measured unthrottled from the document's start (G11 board and 500-row renders),
         // keep requesting the route's chunks with the HTML and the font at DOMContentLoaded.
 
-        const entryFiles = new Set<string>();
-        const addEntryChunk = (fileName: string) => {
-          if (entryFiles.has(fileName)) return;
-          entryFiles.add(fileName);
-          const chunk = bundle[fileName];
-          if (chunk?.type === "chunk")
-            for (const imported of chunk.imports) addEntryChunk(imported);
-        };
-        const entries = Object.values(bundle).filter(
-          (item) => item.type === "chunk" && item.isEntry,
-        );
-        if (entries.length !== 1)
-          throw new Error("G11 work-route preload expected one agent entry.");
-        addEntryChunk(entries[0].fileName);
         const stylesheets = [
           ...String(html.source).matchAll(
             /<link\b(?=[^>]*\brel="stylesheet")(?=[^>]*\bhref="([^"]+)")[^>]*>/g,
@@ -310,7 +296,7 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve the entry stylesheet.",
           );
 
-        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${inlineScriptJson([...files].map((file) => `/${file}`))};const locales=${inlineScriptJson(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);const layout=new URLSearchParams(location.search).get("layout");const preloadRoute=()=>{for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}};if(layout==="board"||layout==="table"){preloadRoute();const fontLink=document.createElement("link");fontLink.rel="preload";fontLink.as="font";fontLink.type="font/woff2";fontLink.href=${inlineScriptJson(`/${latinFontAsset.fileName}`)};fontLink.crossOrigin="anonymous";fontLink.fetchPriority="high";document.addEventListener("DOMContentLoaded",()=>document.head.append(fontLink),{once:true})}else{let observer;let started=false;const start=()=>{if(started)return;started=true;observer?.disconnect();preloadRoute()};document.addEventListener("DOMContentLoaded",start,{once:true});try{const pending=new Set([...${inlineScriptJson([...entryFiles].map((file) => `/${file}`).concat(stylesheets))},locales[locale]].map(file=>new URL(file,location.href).href));observer=new PerformanceObserver(list=>{for(const entry of list.getEntries())pending.delete(entry.name);if(pending.size===0)start()});observer.observe({type:"resource",buffered:true})}catch{observer?.disconnect()}}if(layout!=="board")return;for(const file of ${inlineScriptJson([...boardViewFiles].map((file) => `/${file}`))}){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
+        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${inlineScriptJson([...files].map((file) => `/${file}`))};const locales=${inlineScriptJson(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);const layout=new URLSearchParams(location.search).get("layout");const preloadRoute=()=>{for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}};if(layout==="board"||layout==="table"){preloadRoute();const fontLink=document.createElement("link");fontLink.rel="preload";fontLink.as="font";fontLink.type="font/woff2";fontLink.href=${inlineScriptJson(`/${latinFontAsset.fileName}`)};fontLink.crossOrigin="anonymous";fontLink.fetchPriority="high";document.addEventListener("DOMContentLoaded",()=>document.head.append(fontLink),{once:true})}else{let observer;let started=false;const start=()=>{if(started)return;started=true;observer?.disconnect();preloadRoute()};document.addEventListener("DOMContentLoaded",start,{once:true});try{const pending=new Set([...${inlineScriptJson(stylesheets)},locales[locale]].map(file=>new URL(file,location.href).href));observer=new PerformanceObserver(list=>{for(const entry of list.getEntries())pending.delete(entry.name);if(pending.size===0)start()});observer.observe({type:"resource",buffered:true})}catch{observer?.disconnect()}}if(layout!=="board")return;for(const file of ${inlineScriptJson([...boardViewFiles].map((file) => `/${file}`))}){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
         // The legacy project board is the other measured direct-visit screen (G11 board
         // render). Its route chunk is only requested after the session resolves, so start it
         // and the full locale catalog it renders with alongside the entry instead.
