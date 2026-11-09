@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
 import {
   act,
   fireEvent,
@@ -918,7 +922,7 @@ describe("WorkItemProperties", () => {
     expect(mocks.assign).toHaveBeenCalledOnce();
   });
 
-  it("keeps the assigned person after a successful response reaches the detail cache", async () => {
+  it("keeps the confirmed assignee while a subscribed parent catches up", async () => {
     let resolveAssignment!: (value: unknown) => void;
     mocks.assign.mockReturnValue(
       new Promise((resolve) => {
@@ -927,9 +931,37 @@ describe("WorkItemProperties", () => {
     );
     mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
     const original = item();
-    const { client, rerender } = renderProps(
-      <WorkItemProperties item={original} onAccessLost={vi.fn()} />,
-      original,
+    const saved = item({
+      assigneeId: "person-2",
+      assigneeName: "Casey Ray",
+      version: 5,
+    });
+    let serverRow = original;
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    client.setQueryData(["work-items", "detail", original.key], original);
+    function SubscribedParent({ holdProp }: { holdProp: boolean }) {
+      const detail = useQuery({
+        queryKey: ["work-items", "detail", original.key],
+        queryFn: async () => serverRow,
+        initialData: original,
+        staleTime: Number.POSITIVE_INFINITY,
+      });
+      return (
+        <WorkItemProperties
+          item={holdProp ? original : (detail.data ?? original)}
+          onAccessLost={vi.fn()}
+        />
+      );
+    }
+    const { rerender } = render(
+      <QueryClientProvider client={client}>
+        <SubscribedParent holdProp />
+      </QueryClientProvider>,
     );
     fireEvent.click(screen.getByTestId("work-item-assignee-control"));
     fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
@@ -937,6 +969,7 @@ describe("WorkItemProperties", () => {
       "Casey Ray",
     );
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledOnce());
+    serverRow = saved;
     resolveAssignment({ key: original.key, version: 5 });
     await waitFor(() =>
       expect(
@@ -947,16 +980,23 @@ describe("WorkItemProperties", () => {
         version: 5,
       }),
     );
-    const saved = client.getQueryData<WorkItemDetailRow>([
-      "work-items",
-      "detail",
-      original.key,
-    ]);
-    expect(saved).toBeDefined();
-    if (!saved) throw new Error("Expected saved detail");
+    // The query is subscribed, but the parent deliberately holds the old prop
+    // for one render to model batched observer delivery.
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Casey Ray",
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-assignee-control")).toHaveAttribute(
+        "aria-busy",
+        "false",
+      ),
+    );
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Casey Ray",
+    );
     rerender(
       <QueryClientProvider client={client}>
-        <WorkItemProperties item={saved} onAccessLost={vi.fn()} />
+        <SubscribedParent holdProp={false} />
       </QueryClientProvider>,
     );
     await waitFor(() =>
