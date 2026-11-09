@@ -81,6 +81,20 @@ type ProjectState = { id: string; name: string; group?: string };
 
 const NO_ITEM_IDS: string[] = [];
 
+/** One stable preference snapshot per board, shared by its cards and drag overlay. */
+export function useBoardCardPreferences() {
+  return useUserPreferencesStore(
+    useShallow((preferences) => ({
+      showAssignees: preferences.showAssignees,
+      showPriority: preferences.showPriority,
+      showDueDates: preferences.showDueDates,
+      showLabels: preferences.showLabels,
+      showTaskNumbers: preferences.showTaskNumbers,
+      showTaskItemCounts: preferences.showTaskItemCounts,
+    })),
+  );
+}
+
 function getCombinedSourceProject(
   item: WorkItemRow,
 ): CombinedWorkItemRow["sourceProject"] | undefined {
@@ -166,6 +180,7 @@ export default function WorkItemBoard({
 }) {
   const { t } = useTranslation();
   const { t: cardT } = useTranslation(undefined, BOARD_TRANSLATION_OPTIONS);
+  const preferences = useBoardCardPreferences();
   const combined = Boolean(combinedColumns);
   const {
     dragged,
@@ -382,6 +397,7 @@ export default function WorkItemBoard({
                             <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
                               {stateItems.map((item) => (
                                 <BoardCard
+                                  preferences={preferences}
                                   t={cardT}
                                   key={item.id}
                                   item={item}
@@ -437,6 +453,7 @@ export default function WorkItemBoard({
                             onRetainFocus={onRetainFocus}
                             renderItem={(item, virtualItem) => (
                               <BoardCard
+                                preferences={preferences}
                                 t={cardT}
                                 key={item.id}
                                 item={item}
@@ -482,6 +499,7 @@ export default function WorkItemBoard({
                         <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
                           {stateItems.map((item) => (
                             <BoardCard
+                              preferences={preferences}
                               t={cardT}
                               key={item.id}
                               item={item}
@@ -548,6 +566,7 @@ export default function WorkItemBoard({
           <div className="transform rotate-1 scale-[1.03] shadow-lg">
             <div className="ring-2 ring-ring/35 rounded-lg">
               <BoardCard
+                preferences={preferences}
                 t={cardT}
                 item={dragged}
                 stateName={
@@ -617,6 +636,7 @@ function noContextMenu() {}
 
 /** One Kaneo task card for a canonical row; shared with the grouped board (`VW-13`). */
 export const BoardCard = memo(function BoardCard({
+  preferences,
   t,
   item,
   sortableId,
@@ -632,6 +652,7 @@ export const BoardCard = memo(function BoardCard({
   virtualItem,
   sourceProject,
 }: {
+  preferences: ReturnType<typeof useBoardCardPreferences>;
   t: TFunction;
   item: WorkItemRow;
   /** DnD-only identifier for a card rendered in more than one group. */
@@ -648,16 +669,6 @@ export const BoardCard = memo(function BoardCard({
   virtualItem?: VirtualizedSortableItem;
   sourceProject?: CombinedWorkItemRow["sourceProject"];
 }) {
-  const preferences = useUserPreferencesStore(
-    useShallow((preferences) => ({
-      showAssignees: preferences.showAssignees,
-      showPriority: preferences.showPriority,
-      showDueDates: preferences.showDueDates,
-      showLabels: preferences.showLabels,
-      showTaskNumbers: preferences.showTaskNumbers,
-      showTaskItemCounts: preferences.showTaskItemCounts,
-    })),
-  );
   const actionable = !item.unavailableFields.includes("key");
   // Stable props let the memoised Kaneo card skip renders that do not change this card.
   const task = useMemo(

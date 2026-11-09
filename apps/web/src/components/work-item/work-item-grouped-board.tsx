@@ -44,7 +44,7 @@ import {
 } from "@/lib/work-item-board-groups";
 import type { WorkItemRow } from "@/types/work-item";
 import useWorkItemGroupDrag from "./use-work-item-group-drag";
-import { BoardCard } from "./work-item-board";
+import { BoardCard, useBoardCardPreferences } from "./work-item-board";
 import WorkItemBoardSkeleton from "./work-item-board-skeleton";
 import WorkItemContextMenu from "./work-item-context-menu";
 
@@ -117,6 +117,7 @@ export default function WorkItemGroupedBoard({
 }) {
   const { t } = useTranslation();
   const { t: cardT } = useTranslation(undefined, BOARD_TRANSLATION_OPTIONS);
+  const preferences = useBoardCardPreferences();
   // The assignee columns are the project's assignable people, so a person with no card yet is
   // still a drop target. The context menu reads the same query.
   const peopleQuery = useQuery({
@@ -287,6 +288,7 @@ export default function WorkItemGroupedBoard({
             <div className="flex h-full min-w-max gap-4 px-4 py-4 md:px-5">
               {groups.map((group) => (
                 <GroupColumn
+                  preferences={preferences}
                   cardT={cardT}
                   key={group.id}
                   group={group}
@@ -325,6 +327,7 @@ export default function WorkItemGroupedBoard({
           <div className="transform rotate-1 scale-[1.03] shadow-lg">
             <div className="ring-2 ring-ring/35 rounded-lg">
               <BoardCard
+                preferences={preferences}
                 t={cardT}
                 item={drag.dragged}
                 stateName={drag.dragged.stateName}
@@ -371,6 +374,7 @@ function GroupIcon({ group }: { group: WorkItemBoardGroup }) {
 }
 
 function GroupColumn({
+  preferences,
   cardT,
   group,
   name,
@@ -385,6 +389,7 @@ function GroupColumn({
   retainFocusId,
   onRetainFocus,
 }: {
+  preferences: ReturnType<typeof useBoardCardPreferences>;
   cardT: TFunction;
   group: WorkItemBoardGroup;
   name: string;
@@ -474,6 +479,7 @@ function GroupColumn({
                 <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
                   {group.items.map((item) => (
                     <BoardCard
+                      preferences={preferences}
                       t={cardT}
                       key={item.id}
                       item={item}
@@ -502,6 +508,7 @@ function GroupColumn({
                 onRetainFocus={onRetainFocus}
                 renderItem={(item, virtualItem) => (
                   <BoardCard
+                    preferences={preferences}
                     t={cardT}
                     key={item.id}
                     item={item}
@@ -523,6 +530,7 @@ function GroupColumn({
             <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
               {group.items.map((item) => (
                 <BoardCard
+                  preferences={preferences}
                   t={cardT}
                   key={item.id}
                   item={item}
