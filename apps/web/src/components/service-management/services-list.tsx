@@ -29,7 +29,7 @@ import {
   Textarea,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -280,6 +280,7 @@ export function ServicesList({ q }: { q?: string }) {
   // With the catalogue off `GET /api/services` answers 409: ask only once the status says it is on
   // (or could not be read, so a real failure still shows), and show the off state once.
   const catalogueOff = status.data?.enabled === false;
+  const catalogueOn = status.data?.enabled === true;
   const listReady = status.data?.enabled === true || status.isError;
   const services = useServices(listReady ? workspaceId : "", q);
   const [creating, setCreating] = useState(false);
@@ -289,7 +290,13 @@ export function ServicesList({ q }: { q?: string }) {
   const { canBindProjectOrganisation, canManageWorkspaceSettings } =
     useWorkspacePermission();
   // UX-1a (SR-04): no entry point into the catalogue while it is off.
-  const canCreateManagedService = canBindProjectOrganisation() && !catalogueOff;
+  const canCreateManagedService = canBindProjectOrganisation() && catalogueOn;
+  useEffect(() => {
+    if (!catalogueOn) {
+      setCreating(false);
+      setCreatingManagedService(false);
+    }
+  }, [catalogueOn]);
   const [draft, setDraft] = useState(q ?? "");
   const loading = workspaceLoading || status.isLoading || services.isLoading;
   return (
@@ -304,7 +311,7 @@ export function ServicesList({ q }: { q?: string }) {
         description={t("services.list.catalogueDescription")}
         actions={
           canCreateManagedService ||
-          (status.data?.canManageServices && !catalogueOff) ? (
+          (status.data?.canManageServices && catalogueOn) ? (
             <div className="flex flex-wrap items-center gap-2">
               {canCreateManagedService ? (
                 <Button
@@ -316,7 +323,7 @@ export function ServicesList({ q }: { q?: string }) {
                   {t("services.list.createManagedService")}
                 </Button>
               ) : null}
-              {status.data?.canManageServices && !catalogueOff ? (
+              {status.data?.canManageServices && catalogueOn ? (
                 <Button onClick={() => setCreating(true)} disabled={!workspace}>
                   <Plus aria-hidden="true" />
                   {t("services.list.new")}
@@ -412,13 +419,13 @@ export function ServicesList({ q }: { q?: string }) {
           </>
         )}
       </PageFrame>
-      {creating && workspace ? (
+      {creating && workspace && catalogueOn ? (
         <CreateServiceDialog
           workspaceId={workspace.id}
           onClose={() => setCreating(false)}
         />
       ) : null}
-      {creatingManagedService ? (
+      {creatingManagedService && catalogueOn ? (
         <Suspense fallback={null}>
           <CreateProjectModal
             open={creatingManagedService}

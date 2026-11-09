@@ -245,7 +245,7 @@
 			"auditLog": "Audit log"
 		},
 		"featureOff": {
-			"turnOn": "Turn on in Features"
+			"turnOn": "기능에서 켜기"
 		}
 	},
 	"auth": {
@@ -3951,7 +3951,7 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Approval requests from the support team appear here."
+			"emptyDescription": "지원팀의 승인 요청이 여기에 표시됩니다."
 		},
 		"unavailable": {
 			"title": "고객 포털을 사용할 수 없습니다",
@@ -4939,7 +4939,7 @@
 		"featureOff": {
 			"title": "Intake is off for this workspace",
 			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
-			"manageDescription": "Turn on Intake in the workspace feature settings. Existing {{term_submission_other}} come back when it is switched on."
+			"manageDescription": "워크스페이스 기능 설정에서 Intake를 켜세요. 켜면 기존 {{term_submission_other}}이 다시 표시됩니다."
 		}
 	},
 	"requestTypes": {
@@ -7086,7 +7086,7 @@
 			"cycles": {
 				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
 				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
-				"manageDescription": "Turn on {{term_cycle_other}} in this {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} come back when it is switched on."
+				"manageDescription": "이 {{term_project_one}}의 기능 설정에서 {{term_cycle_other}}을 켜세요. 켜면 기존 {{term_cycle_other}}이 다시 표시됩니다."
 			},
 			"estimates": {
 				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
@@ -7095,7 +7095,7 @@
 			"modules": {
 				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
 				"title": "{{term_module_other}} are off for this {{term_project_one}}",
-				"manageDescription": "Turn on {{term_module_other}} in this {{term_project_one}}'s feature settings. Existing {{term_module_other}} come back when it is switched on."
+				"manageDescription": "이 {{term_project_one}}의 기능 설정에서 {{term_module_other}}을 켜세요. 켜면 기존 {{term_module_other}}이 다시 표시됩니다."
 			},
 			"calendar": {
 				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
@@ -7108,13 +7108,13 @@
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
 				"title": "SLAs are off for this workspace",
-				"manageDescription": "Turn on Service levels in the workspace feature settings to use SLA policies and service calendars."
+				"manageDescription": "SLA 정책과 서비스 캘린더를 사용하려면 워크스페이스 기능 설정에서 서비스 수준을 켜세요."
 			},
 			"pages": {
 				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
 				"title": "Pages are off for this {{term_project_one}}"
 			},
-			"openSettings": "Open feature settings"
+			"openSettings": "기능 설정 열기"
 		},
 		"modules": {
 			"create": "Create {{term_module_one}}",
@@ -7555,7 +7555,7 @@
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
 			"title": "{{term_service_one}} catalogue is off",
-			"manageDescription": "Turn on the {{term_service_one}} catalogue in the workspace feature settings."
+			"manageDescription": "워크스페이스 기능 설정에서 {{term_service_one}} 카탈로그를 켜세요."
 		},
 		"freezes": {
 			"affected_other": "{{count}} planned {{term_change_other}} now fall inside this freeze and cannot be approved without an override.",
@@ -8643,7 +8643,7 @@
 			"disabled": {
 				"description": "An administrator can turn this feature on in the workspace feature settings.",
 				"title": "Reports are off",
-				"manageDescription": "Turn on Reports in the workspace feature settings to see reports and dashboards."
+				"manageDescription": "보고서와 대시보드를 보려면 워크스페이스 기능 설정에서 보고서를 켜세요."
 			},
 			"failed": {
 				"description": "Try again in a moment.",

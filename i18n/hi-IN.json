@@ -245,7 +245,7 @@
 			"auditLog": "Audit log"
 		},
 		"featureOff": {
-			"turnOn": "Turn on in Features"
+			"turnOn": "सुविधाओं में चालू करें"
 		}
 	},
 	"auth": {
@@ -3965,7 +3965,7 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Approval requests from the support team appear here."
+			"emptyDescription": "सहायता टीम के अनुमोदन अनुरोध यहाँ दिखाई देते हैं।"
 		},
 		"unavailable": {
 			"title": "ग्राहक पोर्टल उपलब्ध नहीं है",
@@ -4958,7 +4958,7 @@
 		"featureOff": {
 			"title": "Intake is off for this workspace",
 			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
-			"manageDescription": "Turn on Intake in the workspace feature settings. Existing {{term_submission_other}} come back when it is switched on."
+			"manageDescription": "कार्यस्थान की सुविधा सेटिंग में Intake चालू करें। चालू होने पर मौजूदा {{term_submission_other}} फिर दिखाई देंगे।"
 		}
 	},
 	"requestTypes": {
@@ -7121,7 +7121,7 @@
 			"cycles": {
 				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
 				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
-				"manageDescription": "Turn on {{term_cycle_other}} in this {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} come back when it is switched on."
+				"manageDescription": "इस {{term_project_one}} की सुविधा सेटिंग में {{term_cycle_other}} चालू करें। चालू होने पर मौजूदा {{term_cycle_other}} फिर दिखाई देंगे।"
 			},
 			"estimates": {
 				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
@@ -7130,7 +7130,7 @@
 			"modules": {
 				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
 				"title": "{{term_module_other}} are off for this {{term_project_one}}",
-				"manageDescription": "Turn on {{term_module_other}} in this {{term_project_one}}'s feature settings. Existing {{term_module_other}} come back when it is switched on."
+				"manageDescription": "इस {{term_project_one}} की सुविधा सेटिंग में {{term_module_other}} चालू करें। चालू होने पर मौजूदा {{term_module_other}} फिर दिखाई देंगे।"
 			},
 			"calendar": {
 				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
@@ -7143,13 +7143,13 @@
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
 				"title": "SLAs are off for this workspace",
-				"manageDescription": "Turn on Service levels in the workspace feature settings to use SLA policies and service calendars."
+				"manageDescription": "SLA नीतियों और सेवा कैलेंडर का उपयोग करने के लिए कार्यस्थान की सुविधा सेटिंग में सेवा स्तर चालू करें।"
 			},
 			"pages": {
 				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
 				"title": "Pages are off for this {{term_project_one}}"
 			},
-			"openSettings": "Open feature settings"
+			"openSettings": "सुविधा सेटिंग खोलें"
 		},
 		"modules": {
 			"create": "Create {{term_module_one}}",
@@ -7594,7 +7594,7 @@
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
 			"title": "{{term_service_one}} catalogue is off",
-			"manageDescription": "Turn on the {{term_service_one}} catalogue in the workspace feature settings."
+			"manageDescription": "कार्यस्थान की सुविधा सेटिंग में {{term_service_one}} कैटलॉग चालू करें।"
 		},
 		"freezes": {
 			"affected_one": "{{count}} planned {{term_change_one}} now falls inside this freeze and cannot be approved without an override.",
@@ -8699,7 +8699,7 @@
 			"disabled": {
 				"description": "An administrator can turn this feature on in the workspace feature settings.",
 				"title": "Reports are off",
-				"manageDescription": "Turn on Reports in the workspace feature settings to see reports and dashboards."
+				"manageDescription": "रिपोर्ट और डैशबोर्ड देखने के लिए कार्यस्थान की सुविधा सेटिंग में रिपोर्ट चालू करें।"
 			},
 			"failed": {
 				"description": "Try again in a moment.",

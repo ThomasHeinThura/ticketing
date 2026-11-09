@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
     error: null as unknown,
     refetch: vi.fn(),
   },
-  status: { data: undefined as unknown },
+  status: { data: undefined as unknown, isLoading: false, isError: false },
   canCreateProjects: true,
   canManageSettings: false,
   modalProps: vi.fn(),
@@ -88,11 +88,17 @@ function setup(
     canManageReleases: false,
     ...status,
   };
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <ServicesList />
-    </QueryClientProvider>,
-  );
+  mocks.status.isLoading = false;
+  mocks.status.isError = false;
+  const client = new QueryClient();
+  return {
+    client,
+    ...render(
+      <QueryClientProvider client={client}>
+        <ServicesList />
+      </QueryClientProvider>,
+    ),
+  };
 }
 
 afterEach(() => {
@@ -185,6 +191,56 @@ describe("ServicesList", () => {
         name: "services.list.createManagedService",
       }),
     ).toBeNull();
+  });
+
+  it("offers no create action while catalogue status is unresolved or resolves off", () => {
+    mocks.status.data = undefined;
+    mocks.status.isLoading = true;
+    const client = new QueryClient();
+    const view = render(
+      <QueryClientProvider client={client}>
+        <ServicesList />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("create-managed-service")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /services.list.new/u }),
+    ).toBeNull();
+
+    mocks.status.data = { enabled: false, canManageServices: true };
+    mocks.status.isLoading = false;
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <ServicesList />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("create-managed-service")).toBeNull();
+    expect(screen.getByTestId("service-catalogue-off")).toBeInTheDocument();
+  });
+
+  it("closes a managed-service dialog when the catalogue switches off", async () => {
+    const { client, rerender } = setup({ data: [service()] });
+    fireEvent.click(screen.getByTestId("create-managed-service"));
+    expect(
+      await screen.findByTestId("create-project-modal"),
+    ).toBeInTheDocument();
+
+    mocks.status.data = { enabled: false, canManageServices: true };
+    rerender(
+      <QueryClientProvider client={client}>
+        <ServicesList />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("create-project-modal")).toBeNull();
+    expect(screen.queryByTestId("create-managed-service")).toBeNull();
+
+    mocks.status.data = { enabled: true, canManageServices: true };
+    rerender(
+      <QueryClientProvider client={client}>
+        <ServicesList />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("create-project-modal")).toBeNull();
   });
 });
 

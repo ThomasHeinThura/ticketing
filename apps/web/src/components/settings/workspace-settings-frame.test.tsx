@@ -185,38 +185,20 @@ describe("WorkspaceSettingsFrame", () => {
     );
   });
 
-  // UX-1a (SR-05, S2) replaces P4R2-M1's hiding: with feature.sla off the two entries stay
-  // visible to holders of sla_policy:manage, marked Off, so an admin can find and switch them on.
-  it("keeps Service calendars and SLA policies visible with an Off badge while feature.sla is off", () => {
+  it("hides Service calendars and SLA policies while feature.sla is off (P4R2-M1)", () => {
     permissions.settings = true;
     permissions.calendars = true;
     workspaceFeatureState.sla = false;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
-    for (const href of [
-      "/dashboard/settings/workspace/sla-policies",
-      "/dashboard/settings/workspace/calendars",
-    ]) {
-      const link = screen
-        .getAllByRole("link")
-        .find((a) => a.getAttribute("href") === href);
-      expect(link).toBeTruthy();
-      expect(
-        within(link as HTMLElement).getByText("featureFlags:stateOff"),
-      ).toBeTruthy();
-    }
-    const requestTypes = screen
+    const hrefs = screen
       .getAllByRole("link")
-      .find(
-        (a) =>
-          a.getAttribute("href") ===
-          "/dashboard/settings/workspace/request-types",
-      );
-    expect(
-      within(requestTypes as HTMLElement).queryByText("featureFlags:stateOff"),
-    ).toBeNull();
+      .map((a) => a.getAttribute("href"));
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/sla-policies");
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/calendars");
+    expect(hrefs).toContain("/dashboard/settings/workspace/request-types");
   });
 
-  it("shows the SLA entries without a badge when feature.sla is on", () => {
+  it("shows the SLA entries when feature.sla is on", () => {
     permissions.calendars = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     const hrefs = screen
@@ -224,7 +206,6 @@ describe("WorkspaceSettingsFrame", () => {
       .map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("/dashboard/settings/workspace/sla-policies");
     expect(hrefs).toContain("/dashboard/settings/workspace/calendars");
-    expect(screen.queryByText("featureFlags:stateOff")).toBeNull();
   });
 
   it("hides the SLA entries while the flags load, and from people without sla_policy:manage", () => {

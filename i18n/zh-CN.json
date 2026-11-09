@@ -245,7 +245,7 @@
 			"auditLog": "Audit log"
 		},
 		"featureOff": {
-			"turnOn": "Turn on in Features"
+			"turnOn": "在功能中启用"
 		}
 	},
 	"auth": {
@@ -3951,7 +3951,7 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Approval requests from the support team appear here."
+			"emptyDescription": "支持团队的审批请求会显示在这里。"
 		},
 		"unavailable": {
 			"title": "客户门户暂不可用",
@@ -4939,7 +4939,7 @@
 		"featureOff": {
 			"title": "Intake is off for this workspace",
 			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
-			"manageDescription": "Turn on Intake in the workspace feature settings. Existing {{term_submission_other}} come back when it is switched on."
+			"manageDescription": "在工作区功能设置中启用 Intake。启用后，现有的{{term_submission_other}}将重新显示。"
 		}
 	},
 	"requestTypes": {
@@ -7086,7 +7086,7 @@
 			"cycles": {
 				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
 				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
-				"manageDescription": "Turn on {{term_cycle_other}} in this {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} come back when it is switched on."
+				"manageDescription": "在此{{term_project_one}}的功能设置中启用{{term_cycle_other}}。启用后，现有的{{term_cycle_other}}将重新显示。"
 			},
 			"estimates": {
 				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
@@ -7095,7 +7095,7 @@
 			"modules": {
 				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
 				"title": "{{term_module_other}} are off for this {{term_project_one}}",
-				"manageDescription": "Turn on {{term_module_other}} in this {{term_project_one}}'s feature settings. Existing {{term_module_other}} come back when it is switched on."
+				"manageDescription": "在此{{term_project_one}}的功能设置中启用{{term_module_other}}。启用后，现有的{{term_module_other}}将重新显示。"
 			},
 			"calendar": {
 				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
@@ -7108,13 +7108,13 @@
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
 				"title": "SLAs are off for this workspace",
-				"manageDescription": "Turn on Service levels in the workspace feature settings to use SLA policies and service calendars."
+				"manageDescription": "在工作区功能设置中启用服务级别，以使用 SLA 策略和服务日历。"
 			},
 			"pages": {
 				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
 				"title": "Pages are off for this {{term_project_one}}"
 			},
-			"openSettings": "Open feature settings"
+			"openSettings": "打开功能设置"
 		},
 		"modules": {
 			"create": "Create {{term_module_one}}",
@@ -7555,7 +7555,7 @@
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
 			"title": "{{term_service_one}} catalogue is off",
-			"manageDescription": "Turn on the {{term_service_one}} catalogue in the workspace feature settings."
+			"manageDescription": "在工作区功能设置中启用{{term_service_one}}目录。"
 		},
 		"freezes": {
 			"affected_other": "{{count}} planned {{term_change_other}} now fall inside this freeze and cannot be approved without an override.",
@@ -8643,7 +8643,7 @@
 			"disabled": {
 				"description": "An administrator can turn this feature on in the workspace feature settings.",
 				"title": "Reports are off",
-				"manageDescription": "Turn on Reports in the workspace feature settings to see reports and dashboards."
+				"manageDescription": "在工作区功能设置中启用报告，以查看报告和仪表板。"
 			},
 			"failed": {
 				"description": "Try again in a moment.",

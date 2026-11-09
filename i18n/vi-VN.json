@@ -245,7 +245,7 @@
 			"auditLog": "Audit log"
 		},
 		"featureOff": {
-			"turnOn": "Turn on in Features"
+			"turnOn": "Bật trong Tính năng"
 		}
 	},
 	"auth": {
@@ -3951,7 +3951,7 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Approval requests from the support team appear here."
+			"emptyDescription": "Các yêu cầu phê duyệt từ nhóm hỗ trợ sẽ xuất hiện tại đây."
 		},
 		"unavailable": {
 			"title": "Cổng thông tin khách hàng không khả dụng",
@@ -4939,7 +4939,7 @@
 		"featureOff": {
 			"title": "Intake is off for this workspace",
 			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
-			"manageDescription": "Turn on Intake in the workspace feature settings. Existing {{term_submission_other}} come back when it is switched on."
+			"manageDescription": "Bật Intake trong phần cài đặt tính năng của không gian làm việc. Các {{term_submission_other}} hiện có sẽ xuất hiện lại khi được bật."
 		}
 	},
 	"requestTypes": {
@@ -7086,7 +7086,7 @@
 			"cycles": {
 				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
 				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
-				"manageDescription": "Turn on {{term_cycle_other}} in this {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} come back when it is switched on."
+				"manageDescription": "Bật {{term_cycle_other}} trong phần cài đặt tính năng của {{term_project_one}} này. Các {{term_cycle_other}} hiện có sẽ xuất hiện lại khi được bật."
 			},
 			"estimates": {
 				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
@@ -7095,7 +7095,7 @@
 			"modules": {
 				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
 				"title": "{{term_module_other}} are off for this {{term_project_one}}",
-				"manageDescription": "Turn on {{term_module_other}} in this {{term_project_one}}'s feature settings. Existing {{term_module_other}} come back when it is switched on."
+				"manageDescription": "Bật {{term_module_other}} trong phần cài đặt tính năng của {{term_project_one}} này. Các {{term_module_other}} hiện có sẽ xuất hiện lại khi được bật."
 			},
 			"calendar": {
 				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
@@ -7108,13 +7108,13 @@
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
 				"title": "SLAs are off for this workspace",
-				"manageDescription": "Turn on Service levels in the workspace feature settings to use SLA policies and service calendars."
+				"manageDescription": "Bật mức dịch vụ trong phần cài đặt tính năng của không gian làm việc để sử dụng chính sách SLA và lịch dịch vụ."
 			},
 			"pages": {
 				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
 				"title": "Pages are off for this {{term_project_one}}"
 			},
-			"openSettings": "Open feature settings"
+			"openSettings": "Mở cài đặt tính năng"
 		},
 		"modules": {
 			"create": "Create {{term_module_one}}",
@@ -7555,7 +7555,7 @@
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
 			"title": "{{term_service_one}} catalogue is off",
-			"manageDescription": "Turn on the {{term_service_one}} catalogue in the workspace feature settings."
+			"manageDescription": "Bật danh mục {{term_service_one}} trong phần cài đặt tính năng của không gian làm việc."
 		},
 		"freezes": {
 			"affected_other": "{{count}} planned {{term_change_other}} now fall inside this freeze and cannot be approved without an override.",
@@ -8643,7 +8643,7 @@
 			"disabled": {
 				"description": "An administrator can turn this feature on in the workspace feature settings.",
 				"title": "Reports are off",
-				"manageDescription": "Turn on Reports in the workspace feature settings to see reports and dashboards."
+				"manageDescription": "Bật Báo cáo trong phần cài đặt tính năng của không gian làm việc để xem báo cáo và bảng điều khiển."
 			},
 			"failed": {
 				"description": "Try again in a moment.",
