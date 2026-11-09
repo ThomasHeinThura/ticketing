@@ -29,7 +29,7 @@ import { nextClientIp } from "./helpers/organization-http";
  * for the specified replacement this file proves is actually in place.
  */
 
-const bootstrapPassword = "Pw-Test-bootstrap-2026!";
+const bootstrapPassword = `Pw-${randomUUID()}!`;
 const apiRequire = createRequire(
   new URL("../../apps/api/package.json", import.meta.url),
 );
