@@ -166,6 +166,8 @@ const CLOCK_MARKS = new Set([
   "palette-start",
   "palette-paint",
   "board-paint",
+  "route-start",
+  "route-paint",
 ]);
 
 function safeTimelineAsset(value: string) {
@@ -778,7 +780,6 @@ async function withDiagnosticProfile(
   const traceProfileState = createTraceProfileState();
   const profileIngestionCounts = new Map<string, number>();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
-  let timelineOverflow = false;
   cdp.on("Tracing.dataCollected", ({ value }) => {
     for (const event of value ?? []) {
       if (event.name === "Profile" || event.name === "ProfileChunk") {
@@ -853,10 +854,6 @@ async function withDiagnosticProfile(
       }
       const sanitized = sanitizeTimelineEvent(event);
       if (!sanitized) continue;
-      if (timelineEvents.length >= 20_000) {
-        timelineOverflow = true;
-        continue;
-      }
       timelineEvents.push(sanitized);
     }
   });
@@ -875,6 +872,8 @@ async function withDiagnosticProfile(
       "palette-start",
       "palette-paint",
       "board-paint",
+      "route-start",
+      "route-paint",
     ]);
     const marks: Array<{
       name: string;
@@ -918,6 +917,8 @@ async function withDiagnosticProfile(
         ["paletteStart", "", "palette-start"],
         ["palettePaint", "paletteStart", "palette-paint"],
         ["boardPaint", "documentStart", "board-paint"],
+        ["routeStart", "", "route-start"],
+        ["routePaint", "routeStart", "route-paint"],
       ] as const) {
         const descriptor = Object.getOwnPropertyDescriptor(metrics, key);
         if (!descriptor || !("value" in descriptor))
@@ -1008,16 +1009,18 @@ async function withDiagnosticProfile(
         ).__g11DiagnosticClockMarks ?? [],
     );
     const afterMetrics = await performanceMetricSnapshot(cdp);
-    const tracingComplete = new Promise<void>((resolve) =>
-      cdp.once("Tracing.tracingComplete", () => resolve()),
+    const tracingComplete = new Promise<boolean>((resolve) =>
+      cdp.once("Tracing.tracingComplete", ({ dataLossOccurred }) =>
+        resolve(dataLossOccurred === true),
+      ),
     );
     await cdp.send("Tracing.end");
-    await tracingComplete;
+    const dataLossOccurred = await tracingComplete;
     console.info(`G11 profile ingestion shapes: ${name}`, [
       ...profileIngestionCounts,
     ]);
-    if (timelineOverflow)
-      throw new Error(`The ${name} browser timeline exceeded its event bound.`);
+    if (dataLossOccurred)
+      throw new Error(`The ${name} browser trace reported data loss.`);
     browserPerformance = {
       metrics: metricDeltas(beforeMetrics, afterMetrics),
       timelineEvents,
@@ -1525,6 +1528,15 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   };
   await mkdir(RESULT_DIR, { recursive: true });
   const serialized = `${JSON.stringify(result, null, 2)}\n`;
+  // Playwright clears its configured output directory at the start of each run.
+  // Stage this run's initial evidence there for the later route test, including
+  // when Playwright replaces the worker after an assertion failure.
+  await mkdir(test.info().project.outputDir, { recursive: true });
+  await writeFile(
+    path.join(test.info().project.outputDir, "initial-page-for-route.json"),
+    serialized,
+    { mode: 0o600 },
+  );
   await writeFile(
     path.join(RESULT_DIR, "initial-page-profile.json"),
     serialized,
@@ -1553,6 +1565,205 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     ),
     "The diagnostic must retain all observed requests without truncation.",
   ).toBe(true);
+});
+
+// Capture navigation and readiness in the same trace as the canonical route click,
+// so startup work still running at click time remains visible.
+test("diagnostic: source-bound work-list to detail route profile", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const capture = await withDiagnosticProfile(
+    browser,
+    "work-list startup and detail route click-to-paint",
+    true,
+    async () => {},
+    async (page) => {
+      await page.goto(WORK_LIST_PATH);
+      const list = page.locator("div[data-testid=work-item-list-populated]");
+      await expect(list).toBeVisible({ timeout: 30_000 });
+      await expect(
+        page.locator("table[data-testid=work-item-list-populated]"),
+      ).toHaveCount(0, { timeout: 30_000 });
+      await expect(
+        list.getByRole("button", { name: "Backlog 500", exact: true }),
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(
+        list.locator("[data-virtual-item-id] [data-task-id]").first(),
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(
+        list
+          .locator("[data-virtual-item-id]")
+          .first()
+          .getByTestId("work-item-inline-assignee"),
+      ).toBeVisible({ timeout: 30_000 });
+      await list
+        .locator(`a[href="/agent/work-items/${WORK_ITEM_KEY}"]`)
+        .click();
+      await expect(
+        page.locator(
+          '[data-testid="work-item-detail-loading"], [data-testid="work-item-detail"]',
+        ),
+      ).toBeVisible({ timeout: 15_000 });
+      await page.waitForFunction(
+        () =>
+          (window as Window & { __g11Metrics?: { routePaint: number } })
+            .__g11Metrics?.routePaint > 0,
+        undefined,
+        { timeout: 15_000 },
+      );
+      await expect(page.getByTestId("work-item-detail")).toBeVisible({
+        timeout: 15_000,
+      });
+      return page.evaluate(() => {
+        const metrics = (
+          window as Window & {
+            __g11Metrics?: {
+              documentStart: number;
+              routeStart: number;
+              routePaint: number;
+            };
+          }
+        ).__g11Metrics;
+        if (
+          !metrics ||
+          metrics.documentStart <= 0 ||
+          metrics.routeStart <= 0 ||
+          metrics.routePaint <= 0
+        )
+          throw new Error("The canonical route paint boundary is incomplete.");
+        return {
+          startMark: "document-start",
+          endMark: "route-paint",
+          startPerformanceNowMs: metrics.documentStart,
+          endPerformanceNowMs: metrics.routeStart + metrics.routePaint,
+          source:
+            "canonical documentStart through routeStart plus routePaint recorder fields (ms)",
+        };
+      });
+    },
+  );
+  const assetNames = new Set(
+    capture.traceCpuProfiles.flatMap((profile) =>
+      [...profile.nodes.values()]
+        .map((node) => node.callFrame?.url)
+        .filter(
+          (url): url is string =>
+            typeof url === "string" && url.startsWith(`${ORIGIN}/assets/`),
+        )
+        .map(safeAssetName),
+    ),
+  );
+  const build = await getBuildIdentity(assetNames);
+  const artifact = createRawCaptureArtifact(capture, 1, build);
+  await mkdir(RESULT_DIR, { recursive: true });
+  const outputPath = path.join(
+    RESULT_DIR,
+    "work-list-detail-route-profile.json",
+  );
+  const persistRoute = async (route: unknown) => {
+    let initial: Record<string, unknown> | undefined;
+    try {
+      initial = JSON.parse(
+        await readFile(
+          path.join(
+            test.info().project.outputDir,
+            "initial-page-for-route.json",
+          ),
+          "utf8",
+        ),
+      ) as Record<string, unknown>;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    const serialized = `${JSON.stringify(
+      initial
+        ? { ...initial, workListDetailRoute: route }
+        : { diagnosticOnly: true, workListDetailRoute: route },
+      null,
+      2,
+    )}\n`;
+    await writeFile(
+      path.join(RESULT_DIR, "initial-page-profile.json"),
+      serialized,
+      {
+        mode: 0o600,
+      },
+    );
+  };
+  // Preserve raw sanitized evidence even if clock alignment fails.
+  await writeFile(outputPath, `${JSON.stringify(artifact, null, 2)}\n`, {
+    mode: 0o600,
+  });
+  await persistRoute(artifact);
+  const routeStart = capture.clockMarks.find(
+    (mark) => mark.name === "route-start",
+  );
+  if (!routeStart || !capture.boundary)
+    throw new Error("The route click marker is missing.");
+  const intervals = [
+    {
+      ...capture.boundary,
+      endMark: "route-start",
+      endPerformanceNowMs: routeStart.boundaryPerformanceNowMs,
+      source: "documentStart through canonical routeStart",
+    },
+    {
+      ...capture.boundary,
+      startMark: "route-start",
+      startPerformanceNowMs: routeStart.boundaryPerformanceNowMs,
+      source: "canonical routeStart through routeStart plus routePaint",
+    },
+  ].map((boundary) => {
+    const alignment = alignBoundaryToTrace({ ...capture, boundary });
+    if (!alignment) throw new Error("The route clock alignment is missing.");
+    const profiles = capture.traceCpuProfiles
+      .map((profile) =>
+        sanitizeTraceCpuProfile(
+          profile,
+          alignment.startTraceMicroseconds,
+          alignment.endTraceMicroseconds,
+        ),
+      )
+      .filter((profile) => profile !== undefined);
+    const coverage = summarizeProfileCoverage(
+      profiles.flatMap((profile) =>
+        profile.samples.map((sample) => ({
+          start: sample.startMicroseconds,
+          end: sample.startMicroseconds + sample.durationMicroseconds,
+        })),
+      ),
+      alignment.startTraceMicroseconds,
+      alignment.endTraceMicroseconds,
+    );
+    return {
+      boundary,
+      clockAlignment: alignment,
+      cpuSampleCoverage: coverage,
+      topInclusiveCpuFrames: inclusiveTraceFrames(profiles),
+      traceCpuProfiles: profiles,
+      timelineEvents: clipTimelineEvents(
+        capture.browserPerformance.timelineEvents,
+        alignment.startTraceMicroseconds,
+        alignment.endTraceMicroseconds,
+      ),
+    };
+  });
+  const serialized = `${JSON.stringify({ ...artifact, intervals }, null, 2)}\n`;
+  await writeFile(outputPath, serialized, { mode: 0o600 });
+  await persistRoute({ ...artifact, intervals });
+  await test.info().attach("g11-work-list-detail-route-profile.json", {
+    body: serialized,
+    contentType: "application/json",
+  });
+  expect(
+    intervals.every((interval) => interval.topInclusiveCpuFrames.length > 0),
+    "Both route intervals must contain sampled app JavaScript frames.",
+  ).toBe(true);
+  expect(
+    capture.network.truncated || capture.network.droppedCount > 0,
+    "The route capture must retain all observed requests.",
+  ).toBe(false);
 });
 
 // Keep this independent of the initial-page captures: a failure in another
