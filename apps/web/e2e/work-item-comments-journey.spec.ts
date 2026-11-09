@@ -217,6 +217,9 @@ async function setupWorkItem(
   page: Page,
   origin: string,
 ): Promise<WorkItemSetup> {
+  // Stop dashboard requests before obtaining a token in the shared cookie jar.
+  // A concurrent issuer response can otherwise replace the matching CSRF cookie.
+  await page.goto("about:blank");
   const headers = await csrfHeaders(page, origin);
   const workspacesResponse = await page.request.get(
     new URL("/api/workspace", origin).toString(),
