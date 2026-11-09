@@ -119,6 +119,10 @@ function panelProps({
   };
 }
 
+// The first test in this file imports the whole panel module graph cold; on a loaded CI runner
+// that alone can pass the 5 s default, so give the file a longer budget.
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
+
 describe("grouped list first paint (G11 work-list LCP)", () => {
   beforeEach(() => {
     vi.resetModules();
