@@ -53,10 +53,7 @@ const createColumnRoute = createRoute({
   description:
     "Add a column to the end of a project's board. The slug is derived from the name.",
   middleware: [
-    workspaceAccess.fromProject("projectId", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -69,7 +66,7 @@ const createColumnRoute = createRoute({
   responses: {
     200: jsonResponse("The created column", columnSchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing project:update permission"),
+    403: errorResponse("Missing project:manage_settings capability"),
     // #202: `create-column.ts` rejects a soft-deleted project via
     // `getProjectWorkspaceId`, the same helper `getColumns`/`reorderColumns` use --
     // missed by this PR's own sweep, same reasoning as those two routes' 404.
@@ -87,10 +84,7 @@ const reorderColumnsRoute = createRoute({
   description:
     "Set new positions for a project's columns and return the whole board in its new order.",
   middleware: [
-    workspaceAccess.fromProject("projectId", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -105,7 +99,7 @@ const reorderColumnsRoute = createRoute({
     400: errorResponse(
       "A column does not belong to this project, or the project id is unknown/unreachable",
     ),
-    403: errorResponse("Missing project:update permission"),
+    403: errorResponse("Missing project:manage_settings capability"),
     // #202: newly reachable -- a soft-deleted project's board is frozen.
     404: errorResponse("Project not found"),
   },
@@ -120,10 +114,7 @@ const updateColumnRoute = createRoute({
   description:
     "Update a column. Omitted fields are left unchanged; icon and color accept null to clear them.",
   middleware: [
-    workspaceAccess.fromColumn("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
+    workspaceAccess.fromColumn("id", { requireProjectReach: true }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -136,7 +127,7 @@ const updateColumnRoute = createRoute({
   responses: {
     200: jsonResponse("The updated column", columnSchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing project:update permission"),
+    403: errorResponse("Missing project:manage_settings capability"),
     404: errorResponse("Column not found"),
   },
 });
@@ -150,10 +141,7 @@ const deleteColumnRoute = createRoute({
   description:
     "Request deletion of an empty column (202 pending action; executed on the requester's approval). A column holding tasks is refused, at request and again at approval, until they are moved or deleted.",
   middleware: [
-    workspaceAccess.fromColumn("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
+    workspaceAccess.fromColumn("id", { requireProjectReach: true }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: columnParam },
@@ -163,7 +151,7 @@ const deleteColumnRoute = createRoute({
       registeredDeletionRequestSchema,
     ),
     400: errorResponse("id must not contain a NUL (\\u0000) byte"),
-    403: errorResponse("Missing project:update permission"),
+    403: errorResponse("Missing project:manage_settings capability"),
     404: errorResponse("Column not found"),
     409: errorResponse(
       "The column still contains tasks, or an equivalent deletion is already pending",

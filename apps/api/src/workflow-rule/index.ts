@@ -47,10 +47,7 @@ const upsertWorkflowRuleRoute = createRoute({
   description:
     "Create a workflow rule, or update the target column of the existing rule for the same integration and event.",
   middleware: [
-    workspaceAccess.fromProject("projectId", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
@@ -63,7 +60,7 @@ const upsertWorkflowRuleRoute = createRoute({
   responses: {
     200: jsonResponse("The created or updated rule", workflowRuleRowSchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing project:update permission"),
+    403: errorResponse("Missing project:manage_settings capability"),
     // #202: newly reachable -- a soft-deleted project's automation is frozen. As on
     // the list route above, a nonexistent project still answers 400, not 404.
     404: errorResponse("Project not found"),
@@ -80,10 +77,7 @@ const deleteWorkflowRuleRoute = createRoute({
     "Delete a workflow rule. Returns the rule that was removed. Browser session only; API and MCP keys are refused (403 session_required). A rule is a column-routing setting with no history of its own, so it is not a pending-action target.",
   middleware: [
     requireSessionOnly(),
-    workspaceAccess.fromWorkflowRule("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
+    workspaceAccess.fromWorkflowRule("id", { requireProjectReach: true }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: workflowRuleParam },
@@ -92,7 +86,7 @@ const deleteWorkflowRuleRoute = createRoute({
     400: errorResponse("id must not contain a NUL (\\u0000) byte"),
     401: errorResponse("Not authenticated"),
     403: errorResponse(
-      "A browser session is required, or missing project:update permission",
+      "A browser session is required, or missing project:manage_settings capability",
     ),
     404: errorResponse("Workflow rule not found"),
   },

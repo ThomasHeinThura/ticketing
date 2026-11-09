@@ -350,9 +350,15 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
   });
   const project = (detail ?? listed) as ProjectDetail | undefined;
   const projectId = project?.id ?? "";
-  const { canUpdateProjects, canManageProjectSettings, canCreateTasks } =
-    useWorkspacePermission();
+  const {
+    canUpdateProjects,
+    canManageProjectSettings,
+    canCreateTasks,
+    canArchiveProjects,
+  } = useWorkspacePermission();
   const canUpdate = canUpdateProjects();
+  // Archive needs the strict project:archive (A8-2); project update alone is not enough.
+  const canArchive = canArchiveProjects();
   const canManage = canManageProjectSettings();
   const canCreate = canCreateTasks();
   const [editingSummary, setEditingSummary] = useState(false);
@@ -472,7 +478,7 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
             </span>
           </div>
         </div>
-        {canUpdate || canCreate ? (
+        {canUpdate || canCreate || canArchive ? (
           <div
             className="flex flex-wrap items-center gap-2"
             data-testid="project-overview-actions"
@@ -501,7 +507,7 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
                 {t("header.newItem")}
               </Button>
             ) : null}
-            {canUpdate && !data.archived ? (
+            {canArchive && !data.archived ? (
               <Menu>
                 <MenuTrigger
                   render={
