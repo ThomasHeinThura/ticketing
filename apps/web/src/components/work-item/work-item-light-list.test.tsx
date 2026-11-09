@@ -1,4 +1,5 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
+import { format } from "date-fns";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemRow } from "@/types/work-item";
 import WorkItemLightList, {
@@ -111,6 +112,21 @@ describe("WorkItemLightList", () => {
     expect(screen.queryAllByRole("link")).toHaveLength(0);
   });
 
+  it("paints in Geist's size-matched fallback until the web font arrives", () => {
+    // Painted before Geist loads, its rows keep their size when it swaps in, so neither the
+    // swap nor the hydrated list's rows are a larger paint (G11 work-list LCP).
+    render(
+      <WorkItemLightList
+        projectId="project-1"
+        workItems={[item(1, "backlog")]}
+        states={[{ id: "backlog", name: "Backlog", group: "backlog" }]}
+      />,
+    );
+    expect(screen.getByTestId("work-item-list-preview")).toHaveClass(
+      "font-sans-matched",
+    );
+  });
+
   it("keeps a collapsed group's rows hidden", () => {
     preference.collapsed = ["open"];
     render(
@@ -123,6 +139,52 @@ describe("WorkItemLightList", () => {
 
     expect(screen.queryByText("Title 1")).not.toBeInTheDocument();
     expect(screen.getByText("Title 2")).toBeInTheDocument();
+  });
+
+  it("writes due dates as the hydrated row does (date-fns `MMM d`)", () => {
+    const dueDates = [
+      "2026-01-01T12:00:00Z",
+      "2026-09-09T12:00:00Z",
+      "2026-12-31T12:00:00Z",
+    ];
+    render(
+      <WorkItemLightList
+        projectId="project-1"
+        workItems={dueDates.map((dueDate, index) => ({
+          ...item(index + 1, "open"),
+          dueDate,
+        }))}
+        states={states}
+      />,
+    );
+
+    for (const dueDate of dueDates)
+      expect(
+        screen.getByText(format(new Date(dueDate), "MMM d")),
+      ).toBeInTheDocument();
+  });
+
+  it("creates no Intl.DateTimeFormat on its first paint", async () => {
+    // The first one a page creates costs about 22 ms at the G11 bench's 4x CPU throttle, all
+    // of it before the preview's frame (G11 work-list LCP).
+    vi.resetModules();
+    const dateTimeFormat = vi.spyOn(Intl, "DateTimeFormat");
+    try {
+      const { default: FreshLightList } = await import(
+        "./work-item-light-list"
+      );
+      render(
+        <FreshLightList
+          projectId="project-1"
+          workItems={[{ ...item(1, "open"), dueDate: "2026-11-09T12:00:00Z" }]}
+          states={states}
+        />,
+      );
+      expect(screen.getByText("Nov 9")).toBeInTheDocument();
+      expect(dateTimeFormat).not.toHaveBeenCalled();
+    } finally {
+      dateTimeFormat.mockRestore();
+    }
   });
 });
 

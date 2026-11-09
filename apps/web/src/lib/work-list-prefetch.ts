@@ -23,6 +23,9 @@ import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
  * screen reads these entries rather than fetching again, and permission checks stay with the
  * API. `ensure*` never refetches cached data, so re-entering the route costs nothing. Errors are
  * left to the hooks, which surface them in the screen.
+ *
+ * Returns a promise that settles (never rejects) once the reads are cached or have failed, or
+ * nothing when it reads nothing; the route's first paint can wait on it (`work-list-first-paint`).
  */
 export function prefetchWorkListData(
   queryClient: QueryClient,
@@ -35,13 +38,13 @@ export function prefetchWorkListData(
     projectKey: string;
     search: WorkItemWorkSearch;
   },
-) {
+): Promise<void> | undefined {
   const workspaceId = getActiveOrganizationId(session);
   if (!workspaceId) return;
   // The table reads the same first page; the grouped list and the board also need the states.
   const board = search.layout === "board" ? boardRead(search) : undefined;
   if (search.layout !== "list" && search.layout !== "table" && !board) return;
-  void (async () => {
+  return (async () => {
     const [workspaces, projects] = await Promise.all([
       queryClient.ensureQueryData({
         queryKey: ["workspaces"],
@@ -99,7 +102,10 @@ export function prefetchWorkListData(
         }),
       );
     await Promise.all(reads);
-  })().catch(() => undefined);
+  })().then(
+    () => undefined,
+    () => undefined,
+  );
 }
 
 /** `useGetBoardWorkItems`'s page size: the board's first page holds up to 200 cards. */

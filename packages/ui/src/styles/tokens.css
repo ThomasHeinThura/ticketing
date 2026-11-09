@@ -24,3 +24,36 @@
     monospace;
   --radius: 0.625rem;
 }
+
+/*
+ * TaskDesk addition (not from kaneo): --font-sans with Geist's size-matched fallback (below)
+ * ahead of the system faces, so text painted before the web font arrives keeps its size when
+ * Geist swaps in.
+ */
+:root {
+  --font-sans-matched:
+    "Geist Variable",
+    "Geist Fallback",
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
+
+/*
+ * Arial (Liberation Sans, its metric twin, on Linux) drawn at Geist Variable's width and line
+ * metrics. Measured in Chromium: Geist's ascent 1005 and descent 295 per 1000 units, no line gap,
+ * Latin text about 1.9 % wider than Arial. size-adjust rounds that up so text in this face is
+ * never narrower than in Geist; the overrides are scaled by size-adjust, so the used ascent and
+ * descent equal Geist's. Used where a first paint must not wait for the web font
+ * (the work list's preview, G11 work-list LCP).
+ */
+@font-face {
+  font-family: "Geist Fallback";
+  font-style: normal;
+  font-weight: 400;
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("LiberationSans");
+  size-adjust: 102.5%;
+  ascent-override: 98.05%;
+  descent-override: 28.78%;
+  line-gap-override: 0%;
+}

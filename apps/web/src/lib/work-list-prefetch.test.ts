@@ -206,4 +206,49 @@ describe("prefetchWorkListData", () => {
     expect(mocks.getWorkItems).not.toHaveBeenCalled();
     expect(mocks.getProjectStates).toHaveBeenCalledOnce();
   });
+
+  it("returns a promise that settles once the list's reads are cached, even when one fails", async () => {
+    const queryClient = new QueryClient();
+    let resolveItems: (value: typeof page) => void = () => {};
+    mocks.getWorkItems.mockReturnValue(
+      new Promise((resolve) => {
+        resolveItems = resolve;
+      }),
+    );
+    const reads = prefetchWorkListData(queryClient, {
+      session,
+      projectKey: "WLP",
+      search: listSearch,
+    });
+    expect(reads).toBeInstanceOf(Promise);
+    let settled = false;
+    void reads?.then(() => {
+      settled = true;
+    });
+    await settle();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(settled).toBe(false);
+
+    resolveItems(page);
+    await vi.waitFor(() => expect(settled).toBe(true));
+
+    mocks.getWorkspaces.mockRejectedValue(new Error("offline"));
+    await expect(
+      prefetchWorkListData(new QueryClient(), {
+        session,
+        projectKey: "WLP",
+        search: listSearch,
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("returns nothing when it reads nothing", () => {
+    expect(
+      prefetchWorkListData(new QueryClient(), {
+        session: null,
+        projectKey: "WLP",
+        search: listSearch,
+      }),
+    ).toBeUndefined();
+  });
 });
