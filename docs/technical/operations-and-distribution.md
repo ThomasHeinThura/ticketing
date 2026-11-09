@@ -598,6 +598,15 @@ validates in P7.
 scripts/deploy.sh upgrade            # verify the cosign signature → pull → up -d --wait
 ```
 
+For a signed SIT release, use `scripts/deploy.sh upgrade --target sit` and, if needed,
+`scripts/deploy.sh rollback <previous-digest> <release-tag> --target sit`. The default
+release target remains production. SIT release commands require signature verification
+and the post-deploy readiness probe; `--no-verify` and `--no-probe` are rejected. They
+also require `deploy/compose.sit.yml` in the deployment directory. Installer-created
+production directories omit this overlay, so supply the matching release's overlay before
+using the SIT target. Technexus deployment still requires Thomas's approval and the
+backup and verification steps in the release procedure.
+
 **The signature check is the point.** The stack table promises the image is verified against
 its cosign signature before start, and [ci-cd.md](ci-gates.md) signs it
 against an exact workflow identity; a bare `docker compose pull` verifies nothing and
