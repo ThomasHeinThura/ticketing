@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { and, eq, inArray, isNotNull, like, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { resetTestDatabase } from "../../../tests/api-integration/helpers/database";
+import { getStoredAuthPluginConfigRows } from "../src/auth/repository";
 import db, { schema } from "../src/database";
 import { cycleTable, moduleTable } from "../src/database/schema-p5-agile";
 import { kbArticleTable } from "../src/database/schema-p5-kb";
@@ -19,10 +20,19 @@ import {
 } from "../src/database/schema-p5-service";
 import { resolveProjectFeatures } from "../src/feature-flag/repository";
 import { suggestDuplicatesForQueueRows } from "../src/intake/duplicate-suggestions";
+import { snippet } from "../src/kb/logic";
+import getNotificationInbox from "../src/notification/controllers/get-notification-inbox";
+import { snippetOf } from "../src/pages/logic";
 import { changeCalendar } from "../src/service-management/change-repository";
 import { evaluatePinnedWorkItemSla } from "../src/sla-policy/evaluation";
+import { countSavedView, runSavedView } from "../src/view/controllers/run-view";
 import { validateWorkItemSearchQuery } from "../src/work-item/search/query";
-import { DEMO_FEATURE_FLAGS, DEMO_WORKSPACE_ID } from "./seed-demo-data";
+import { searchWorkItems } from "../src/work-item/search/repository";
+import {
+  DEMO_FEATURE_FLAGS,
+  DEMO_REVIEWER_KEY,
+  DEMO_WORKSPACE_ID,
+} from "./seed-demo-data";
 import { seed } from "./seed-profile";
 
 const execute = promisify(execFile);
@@ -142,6 +152,11 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
       expect(first.stdout).not.toContain(account.password);
       expect(first.stderr).not.toContain(account.password);
     }
+    // Customer password sign-in is off on a fresh instance: the seed says how to turn it on
+    // and, without --enable-customer-password, writes no instance row.
+    expect(first.stdout).toContain("Customer password sign-in is off");
+    expect(first.stdout).toContain("--enable-customer-password");
+    expect(await getStoredAuthPluginConfigRows()).toEqual([]);
     const { stdout, stderr } = await run([
       "--demo",
       "--credentials-file",
@@ -422,8 +437,28 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
       .from(schema.savedViewTable)
       .where(eq(schema.savedViewTable.workspaceId, DEMO_WORKSPACE_ID));
     expect(views.length).toBeGreaterThanOrEqual(2);
-    for (const view of views)
-      expect(() => validateWorkItemSearchQuery(view.query)).not.toThrow();
+    // Every view runs and counts through the API's own executor, as its owner sees it
+    // (GET /api/views/{id} results and /count); a stored shape the API refuses answers 422.
+    for (const view of views) {
+      const [owner] = await db
+        .select({ userId: schema.personTable.userId })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.id, view.createdBy));
+      if (!owner?.userId) throw new Error(`view ${view.id} has no owner user`);
+      const caller = {
+        id: view.id,
+        personId: view.createdBy,
+        userId: owner.userId,
+      };
+      const counted = await countSavedView(caller).catch((error: unknown) => {
+        throw new Error(`${view.name} does not count: ${String(error)}`);
+      });
+      expect(counted.count, view.name).toBeGreaterThanOrEqual(0);
+      await expect(
+        runSavedView({ ...caller, limit: 10 }),
+        view.name,
+      ).resolves.toBeDefined();
+    }
 
     const articles = await db
       .select()
@@ -440,6 +475,135 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
       .from(projectPageTable)
       .where(eq(projectPageTable.workspaceId, DEMO_WORKSPACE_ID));
     expect(pages.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("starts KB article and page bodies below the title, so list excerpts do not repeat it", async () => {
+    const firstNode = (body: unknown) =>
+      ((body as { content?: { type: string; attrs?: { level?: number } }[] })
+        .content ?? [])[0];
+    const articles = await db
+      .select()
+      .from(kbArticleTable)
+      .where(eq(kbArticleTable.workspaceId, DEMO_WORKSPACE_ID));
+    const pages = await db
+      .select()
+      .from(projectPageTable)
+      .where(eq(projectPageTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(articles.length + pages.length).toBeGreaterThanOrEqual(7);
+    for (const [title, body, excerpt] of [
+      ...articles.map(
+        (row) => [row.title, row.body, snippet(row.bodyText)] as const,
+      ),
+      ...pages.map(
+        (row) => [row.title, row.body, snippetOf(row.bodyText)] as const,
+      ),
+    ]) {
+      expect(excerpt.toLowerCase(), title).not.toMatch(
+        new RegExp(
+          `^${title.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+        ),
+      );
+      // Sections (h2 and below) stay; a top-level heading repeating the title does not.
+      const first = firstNode(body);
+      expect(first?.type === "heading" && first.attrs?.level === 1, title).toBe(
+        false,
+      );
+    }
+  });
+
+  it("gives the workspace admin assigned work in several states and an inbox written by the product", async () => {
+    const personId = `demo-person-${DEMO_REVIEWER_KEY}`;
+    const userId = `demo-user-${DEMO_REVIEWER_KEY}`;
+    const assigned = await db
+      .select({
+        key: schema.workItemTable.key,
+        dueDate: schema.workItemTable.dueDate,
+        group: schema.stateTemplateTable.group,
+      })
+      .from(schema.workItemTable)
+      .innerJoin(
+        schema.stateTable,
+        eq(schema.stateTable.id, schema.workItemTable.stateId),
+      )
+      .innerJoin(
+        schema.stateTemplateTable,
+        eq(schema.stateTemplateTable.id, schema.stateTable.stateTemplateId),
+      )
+      .where(
+        and(
+          eq(schema.workItemTable.workspaceId, DEMO_WORKSPACE_ID),
+          eq(schema.workItemTable.assigneeId, personId),
+        ),
+      );
+    expect(assigned.length).toBeGreaterThanOrEqual(4);
+    expect(assigned.length).toBeLessThanOrEqual(6);
+    expect(
+      new Set(assigned.map((row) => row.group)).size,
+    ).toBeGreaterThanOrEqual(3);
+    const now = new Date();
+    const today = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+    );
+    const open = assigned.filter(
+      (row) => row.group !== "completed" && row.group !== "cancelled",
+    );
+    expect(
+      open.some((row) => row.dueDate && row.dueDate.getTime() < today),
+      "one open item is overdue",
+    ).toBe(true);
+    expect(
+      open.some(
+        (row) =>
+          row.dueDate &&
+          row.dueDate.getTime() >= today &&
+          row.dueDate.getTime() < today + 86_400_000,
+      ),
+      "one open item is due today",
+    ).toBe(true);
+
+    // My work: the same assignee search the agent app runs, through the caller's reach.
+    const mine = await searchWorkItems({
+      userId,
+      workspaceId: DEMO_WORKSPACE_ID,
+      query: validateWorkItemSearchQuery({
+        entity: "work_item",
+        filter: { field: "assignee", op: "eq", value: "@me" },
+      }),
+      limit: 50,
+    });
+    expect(mine.data.map((row) => row.key).sort()).toEqual(
+      assigned.map((row) => row.key).sort(),
+    );
+
+    // Inbox: read back through the inbox handler, which re-checks reach and eligibility.
+    const inbox = await getNotificationInbox({
+      userId,
+      credentialCanReadTask: true,
+      filter: "all",
+      limit: 50,
+    });
+    const kinds = inbox.data.map((row) => row.kind);
+    expect(inbox.data.length).toBeGreaterThanOrEqual(3);
+    expect(inbox.data.length).toBeLessThanOrEqual(5);
+    for (const kind of [
+      "work_item.assigned",
+      "work_item.mentioned",
+      "sla.at_risk",
+      "approval.requested",
+    ])
+      expect(kinds, kind).toContain(kind);
+    expect(inbox.unreadCount).toBe(inbox.data.length);
+    for (const filter of ["mentions", "assignments"] as const) {
+      const filtered = await getNotificationInbox({
+        userId,
+        credentialCanReadTask: true,
+        filter,
+        limit: 50,
+      });
+      expect(filtered.data.length, filter).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("refuses a database with non-demo data unless told otherwise, and then changes nothing", async () => {
@@ -468,6 +632,44 @@ describe("demo data seed is opt-in, additive and idempotent", () => {
       credentials,
     ]);
     expect(await snapshot()).toEqual(before);
+  }, 240_000);
+
+  it("turns customer password sign-in on only with --enable-customer-password, as God Mode's canonical row, once", async () => {
+    const before = await snapshot();
+    const { stdout } = await run([
+      "--demo",
+      "--allow-existing-data",
+      "--enable-customer-password",
+      "--credentials-file",
+      credentials,
+    ]);
+    expect(stdout).toContain("Customer password sign-in turned on");
+    const rows = await db
+      .select()
+      .from(schema.instancePluginConfigTable)
+      .where(eq(schema.instancePluginConfigTable.pluginId, "auth.password"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      pluginId: "auth.password",
+      instanceKey: "customer",
+      portalScope: "customer",
+      scope: "instance",
+      workspaceId: null,
+      enabled: true,
+      configVersion: 1,
+    });
+    const after = await snapshot();
+    expect(missingRows(before, after)).toEqual([]);
+
+    const again = await run([
+      "--demo",
+      "--allow-existing-data",
+      "--enable-customer-password",
+      "--credentials-file",
+      credentials,
+    ]);
+    expect(again.stdout).toContain("Customer password sign-in is already on");
+    expect(await snapshot()).toEqual(after);
   }, 240_000);
 });
 
@@ -535,4 +737,31 @@ describe("demo data seed beside existing data", () => {
     ]);
     expect(await snapshot()).toEqual(after);
   }, 300_000);
+
+  it("never overrides an administrator who turned customer password sign-in off", async () => {
+    await db.insert(schema.instancePluginConfigTable).values({
+      id: "existing-auth-password-customer",
+      pluginId: "auth.password",
+      instanceKey: "customer",
+      displayName: "Password (customer)",
+      enabled: false,
+      config: {},
+      scope: "instance",
+      workspaceId: null,
+      portalScope: "customer",
+      configVersion: 3,
+    });
+    const before = await snapshot();
+    const { stdout } = await run([
+      "--demo",
+      "--allow-existing-data",
+      "--enable-customer-password",
+      "--credentials-file",
+      foreignCredentials,
+    ]);
+    expect(stdout).toContain(
+      "Customer password sign-in was turned off by an administrator",
+    );
+    expect(await snapshot()).toEqual(before);
+  }, 240_000);
 });

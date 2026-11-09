@@ -12,7 +12,10 @@ import {
 } from "@taskdesk/permissions";
 import bcrypt from "bcryptjs";
 import { config } from "dotenv-mono";
-import { and, eq, isNull, not, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, not, sql } from "drizzle-orm";
+import { createApproval } from "../src/approval/service";
+import { appendAuditLog } from "../src/audit/audit-writer";
+import { getStoredAuthPluginConfigRows } from "../src/auth/repository";
 import db, { getDatabasePool, schema } from "../src/database";
 import { resolveDatabaseConfig } from "../src/database/resolve-database-url";
 import {
@@ -46,13 +49,17 @@ import {
 } from "../src/kb/repository";
 import { lockWorkspaceLabelNames } from "../src/label/repository";
 import { createPage } from "../src/pages/repository";
+import { resolveIdentity } from "../src/permissions/resolve-identity";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
 import { ensureProjectLeadRole } from "../src/project/project-creator-grant";
+import { scanWorkItemSla } from "../src/scheduler/sla-scan";
 import { seedDefaultCabWorkflowInTransaction } from "../src/service-management/cab-template";
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
 import { seedProjectStates } from "../src/utils/seed-project-states";
 import { seedWorkspaceDefaults } from "../src/utils/seed-workspace-defaults";
 import { recordWorkItemActivity } from "../src/work-item/activity";
+import { assignWorkItem } from "../src/work-item/controllers/assign-work-item";
+import { createComment } from "../src/work-item/controllers/create-comment";
 import { seedWorkspaceBuiltInRoles } from "../src/workspace/built-in-roles.repository";
 import { syncWorkspaceAdminReach } from "../src/workspace/workspace-admin-reach";
 import {
@@ -78,8 +85,9 @@ import {
  * STRICTLY ADDITIVE:
  *
  * - every row it writes directly has a `demo-` id; rows written by domain helpers (state
- *   templates, request types, submissions, KB, Pages) carry generated ids but live only inside
- *   `demo-ws` or its projects;
+ *   templates, request types, submissions, KB, Pages, and the reviewer's assignment, comment,
+ *   SLA scan, approval and their notifications, audit and outbox rows) carry generated ids but
+ *   belong to `demo-ws`, its projects or its people;
  * - it never updates or deletes a row it did not create, and on a rerun it writes nothing;
  * - a `demo-` row (or a reserved email, slug or key) that differs from this fixture is a
  *   conflict: the seed throws before writing;
@@ -87,8 +95,9 @@ import {
  *   `--allow-existing-data` is passed, and it never touches the live database name.
  *
  * Feature switches come on through `workspace_feature_flag` rows for `demo-ws` only; instance
- * rows are never written. Sign-in details go to a private file outside the checkout and are
- * never printed.
+ * rows are never written, except the customer password sign-in row that
+ * `--enable-customer-password` adds when no such row exists. Sign-in details go to a private
+ * file outside the checkout and are never printed.
  */
 
 export const DEMO_WORKSPACE_ID = "demo-ws";
@@ -103,7 +112,13 @@ export const DEMO_FEATURE_FLAGS = UAT_FEATURE_FLAGS;
 
 type Side = "staff" | "customer";
 type WorkspaceRole = "owner" | "admin" | "lead" | "member" | "viewer";
-type ProjectRole = "cab" | "agent" | "viewer";
+type ProjectRole = "admin" | "cab" | "agent" | "viewer";
+
+/**
+ * The persona a reviewer signs in as to see a working day: the workspace admin. It holds
+ * assigned work (My work) and an inbox written by the product's own producers.
+ */
+export const DEMO_REVIEWER_KEY = "admin";
 
 export type DemoAccount = SeedAccount & {
   key: string;
@@ -141,10 +156,11 @@ export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
     key: "admin",
     email: `daniel.okafor@${DOMAIN}`,
     name: "Daniel Okafor",
-    roleLabel: "Workspace admin",
+    roleLabel: "Workspace admin and change approver",
     side: "staff",
     workspaceRole: "admin",
-    projectRole: null,
+    // On every project roster so work can be assigned to them (AS-5).
+    projectRole: "admin",
   }),
   account({
     key: "lead",
@@ -222,6 +238,14 @@ const PROJECT_ROLES: Record<
   ProjectRole,
   { id: string; key: string; name: string; capabilities: string[] }
 > = {
+  // A project role overrides the workspace role on that project (rbac.md, "scopes narrow"),
+  // so the admin's roster role carries the admin capability set and narrows nothing.
+  admin: {
+    id: "demo-role-project-admin",
+    key: "demo-project-admin",
+    name: "Workspace admin",
+    capabilities: [...BUILT_IN_ROLES.admin.capabilities],
+  },
   cab: {
     id: "demo-role-project-cab",
     key: "demo-project-cab",
@@ -490,7 +514,7 @@ const CSD_ITEMS: ItemSpec[] = [
     type: "service-request",
     priority: "low",
     state: "done",
-    assignee: "agent2",
+    assignee: "admin",
     requester: "contoso2",
     due: -10,
     ageHours: 336,
@@ -507,6 +531,7 @@ const CSD_ITEMS: ItemSpec[] = [
     type: "incident",
     priority: "medium",
     state: "backlog",
+    // Assigned to the admin after seeding, through the assignment service (inbox row).
     assignee: null,
     requester: "contoso1",
     due: 9,
@@ -827,8 +852,8 @@ const MIG_ITEMS: ItemSpec[] = [
     type: "task",
     priority: "high",
     state: "in-progress",
-    assignee: "lead",
-    due: 2,
+    assignee: "admin",
+    due: -1,
     ageHours: 200,
     cycle: "s14",
     labels: ["Licensing"],
@@ -858,7 +883,7 @@ const INF_ITEMS: ItemSpec[] = [
     type: "incident",
     priority: "urgent",
     state: "in-progress",
-    assignee: "agent1",
+    assignee: "admin",
     due: 0,
     // 198 of 240 minutes used: at risk on the 24x7 policy.
     ageHours: 3.3,
@@ -961,7 +986,7 @@ const INF_ITEMS: ItemSpec[] = [
     type: "task",
     priority: "medium",
     state: "to-do",
-    assignee: "lead",
+    assignee: "admin",
     due: 14,
     ageHours: 150,
     labels: ["Security", "Access"],
@@ -1376,7 +1401,7 @@ const SAVED_VIEWS: {
     query: {
       entity: "work_item",
       filter: { field: "priority", op: "in", value: ["urgent", "high"] },
-      sort: [{ field: "dueDate", order: "asc" }],
+      sort: [{ field: "dueDate", direction: "asc" }],
     },
   },
   {
@@ -1405,7 +1430,7 @@ const SAVED_VIEWS: {
     query: {
       entity: "work_item",
       filter: { field: "dueDate", op: "lte", value: "7d" },
-      sort: [{ field: "priority", order: "desc" }],
+      sort: [{ field: "priority", direction: "desc" }],
     },
   },
 ];
@@ -1447,9 +1472,7 @@ const KB_ARTICLES: {
     title: "How to raise a request in the customer portal",
     category: "Getting started",
     customerVisible: true,
-    markdown: `# Raising a request
-
-Use the customer portal to ask for help. Choose the form that fits best.
+    markdown: `Use the customer portal to ask for help. Choose the form that fits best.
 
 1. Sign in to the customer portal.
 2. Choose a form, for example **Report a problem** or **Access request**.
@@ -1461,9 +1484,7 @@ You can follow progress and reply to the service desk from **My requests**.`,
     title: "Reset your password",
     category: "Accounts and access",
     customerVisible: true,
-    markdown: `# Reset your password
-
-Use **Forgot password** on the sign-in page.
+    markdown: `Use **Forgot password** on the sign-in page.
 
 - The reset link is valid for one hour.
 - Check your junk folder if the email does not arrive.
@@ -1473,9 +1494,7 @@ Use **Forgot password** on the sign-in page.
     title: "Connect to the VPN from home",
     category: "Troubleshooting",
     customerVisible: true,
-    markdown: `# Connect to the VPN
-
-1. Open the VPN client from the system tray.
+    markdown: `1. Open the VPN client from the system tray.
 2. Choose the **Head office** profile and select **Connect**.
 3. Approve the sign-in request on your phone.
 
@@ -1489,9 +1508,7 @@ Use **Forgot password** on the sign-in page.
     title: "What our priority levels mean",
     category: "Getting started",
     customerVisible: true,
-    markdown: `# Priority levels
-
-- **Urgent**: you cannot work and there is no workaround. First response within 1 business hour.
+    markdown: `- **Urgent**: you cannot work and there is no workaround. First response within 1 business hour.
 - **High**: work is badly affected. First response within 4 business hours.
 - **Medium**: work is affected but you can continue. First response within 1 business day.
 - **Low**: questions and small requests. First response within 2 business days.`,
@@ -1500,9 +1517,7 @@ Use **Forgot password** on the sign-in page.
     title: "Set up multi-factor sign-in on a new phone",
     category: "Accounts and access",
     customerVisible: true,
-    markdown: `# Multi-factor sign-in on a new phone
-
-1. Install the authenticator app on the new phone.
+    markdown: `1. Install the authenticator app on the new phone.
 2. Sign in at the security info page from a computer.
 3. Choose **Add sign-in method** and scan the QR code.
 
@@ -1512,9 +1527,7 @@ If you no longer have the old phone, raise an **Access request** and we will res
     title: "Triage checklist for new requests",
     category: "Troubleshooting",
     customerVisible: false,
-    markdown: `# Triage checklist (staff only)
-
-1. Check the requester's organisation and the request type.
+    markdown: `1. Check the requester's organisation and the request type.
 2. Look for duplicates before accepting.
 3. Set the priority from the impact the customer selected.
 4. Accept into the right project and assign an agent.`,
@@ -1525,9 +1538,7 @@ const PAGES: { project: ProjectKey; title: string; markdown: string }[] = [
   {
     project: "CSD",
     title: "Contoso service desk handbook",
-    markdown: `# Contoso service desk handbook
-
-Contoso Ltd is supported Monday to Friday, 9:00 to 17:30 UK time, excluding UK bank holidays.
+    markdown: `Contoso Ltd is supported Monday to Friday, 9:00 to 17:30 UK time, excluding UK bank holidays.
 
 ## Contacts
 
@@ -1541,7 +1552,7 @@ Response and resolution targets follow the **Contoso support SLA**.`,
   {
     project: "MIG",
     title: "Migration plan and wave schedule",
-    markdown: `# Migration plan
+    markdown: `Contoso moves to Microsoft 365 in three mailbox waves, then Teams and SharePoint.
 
 ## Waves
 
@@ -1557,9 +1568,7 @@ Response and resolution targets follow the **Contoso support SLA**.`,
   {
     project: "INF",
     title: "Major incident runbook",
-    markdown: `# Major incident runbook
-
-Use this when a service is down for more than one customer.
+    markdown: `Use this when a service is down for more than one customer.
 
 1. Open an urgent incident and assign the on-call engineer.
 2. Tell the delivery lead and post a status update every 30 minutes.
@@ -1569,9 +1578,7 @@ Use this when a service is down for more than one customer.
   {
     project: "INF",
     title: "Change window guidelines",
-    markdown: `# Change windows
-
-- Standard window: weekdays from 18:00, weekends any time.
+    markdown: `- Standard window: weekdays from 18:00, weekends any time.
 - No changes to finance systems during the month-end freeze.
 - Every change names its rollback before approval.`,
   },
@@ -1593,7 +1600,11 @@ function conflict(kind: string, key: string): never {
   return fixtureConflict(kind, key, SEED);
 }
 
-type Args = { credentialsFile: string; allowExistingData: boolean };
+type Args = {
+  credentialsFile: string;
+  allowExistingData: boolean;
+  enableCustomerPassword: boolean;
+};
 
 export function parseDemoArgs(argv: readonly string[]): Args {
   if (!argv.includes("--demo"))
@@ -1609,6 +1620,7 @@ export function parseDemoArgs(argv: readonly string[]): Args {
   return {
     credentialsFile,
     allowExistingData: argv.includes("--allow-existing-data"),
+    enableCustomerPassword: argv.includes("--enable-customer-password"),
   };
 }
 
@@ -2821,6 +2833,235 @@ async function seedPages(seeded: Seeded) {
   }
 }
 
+/**
+ * The reviewer's inbox (DEMO_REVIEWER_KEY), written by the product's own services so every row
+ * is one the inbox can render and re-check: an assignment, a mention, an SLA warning and a CAB
+ * approval request. Each step runs only while its own result is absent, so a rerun writes
+ * nothing, and none is acted by the reviewer (fan-out never notifies the actor).
+ */
+async function seedReviewerInbox(seeded: Seeded) {
+  const person = (key: string) => {
+    const id = seeded.people.get(key);
+    if (!id) throw new Error(`Missing demo person ${key}`);
+    return id;
+  };
+  const user = (key: string) => {
+    const id = seeded.users.get(key);
+    if (!id) throw new Error(`Missing demo user ${key}`);
+    return id;
+  };
+  const reviewer = person(DEMO_REVIEWER_KEY);
+  const workItem = async (ref: `${ProjectKey}-${number}`) => {
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, itemId(ref)));
+    if (!row) throw new Error(`Missing demo work item ${ref}`);
+    return row;
+  };
+
+  // Assignment: the lead assigns the unassigned printer incident (AS-16).
+  const printer = await workItem("CSD-5");
+  if (printer.assigneeId === null)
+    await assignWorkItem(
+      printer.key,
+      DEMO_WORKSPACE_ID,
+      user("lead"),
+      "person",
+      person("lead"),
+      { assigneeId: reviewer, expectedCurrentAssigneeId: null },
+    );
+
+  // Mention: the lead asks the reviewer about the finance upgrade inside the freeze.
+  const upgrade = await workItem("CSD-14");
+  const fixtureComments = COMMENTS.map((comment) => comment.id);
+  const [mentioned] = await db
+    .select({ id: schema.commentTable.id })
+    .from(schema.commentTable)
+    .where(
+      and(
+        eq(schema.commentTable.workItemId, upgrade.id),
+        eq(schema.commentTable.authorId, person("lead")),
+        not(inArray(schema.commentTable.id, fixtureComments)),
+      ),
+    )
+    .limit(1);
+  if (!mentioned)
+    await createComment(upgrade.id, DEMO_WORKSPACE_ID, user("lead"), "person", {
+      visibility: "internal",
+      body: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "taskdeskMention",
+                attrs: {
+                  id: reviewer,
+                  label: DEMO_ACCOUNTS.find(
+                    (row) => row.key === DEMO_REVIEWER_KEY,
+                  )?.name,
+                },
+              },
+              {
+                type: "text",
+                text: " Contoso finance agreed to the Tuesday after the freeze. Can you confirm the new window before I tell them?",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+  // SLA warning: one scan of the reviewer's 24x7 backup incident (about 82% of its resolution
+  // target used), exactly as the scheduler's scan writes it. A business-hours item would
+  // depend on the time of day the seed runs.
+  const backup = await workItem("INF-1");
+  const [scanned] = await db
+    .select({ metric: schema.workItemSlaCacheTable.metric })
+    .from(schema.workItemSlaCacheTable)
+    .where(eq(schema.workItemSlaCacheTable.workItemId, backup.id))
+    .limit(1);
+  if (!scanned) await scanWorkItemSla(backup.id);
+
+  // Approval request: the agent asks the reviewer, a CAB member, to approve the conditional
+  // access change. A customer-visible item: the inbox reads an approval row on a private item
+  // only for its requester and participants.
+  const change = await workItem("CSD-15");
+  const [requested] = await db
+    .select({ id: schema.approvalTable.id })
+    .from(schema.approvalTable)
+    .where(eq(schema.approvalTable.workItemId, change.id))
+    .limit(1);
+  if (!requested) {
+    const [type] = await db
+      .select({
+        workflowId: schema.workItemTypeTable.workflowId,
+        stateTemplateId: schema.stateTable.stateTemplateId,
+      })
+      .from(schema.workItemTypeTable)
+      .innerJoin(schema.stateTable, eq(schema.stateTable.id, change.stateId))
+      .where(eq(schema.workItemTypeTable.id, change.typeId));
+    const [workflow] = type?.workflowId
+      ? await db
+          .select({ versionId: schema.workflowTable.activeVersionId })
+          .from(schema.workflowTable)
+          .where(eq(schema.workflowTable.id, type.workflowId))
+      : [];
+    const gates = workflow?.versionId
+      ? await db
+          .select({
+            id: schema.workflowTransitionTable.id,
+            from: schema.workflowTransitionTable.fromStateTemplateId,
+          })
+          .from(schema.workflowTransitionTable)
+          .where(
+            and(
+              eq(schema.workflowTransitionTable.versionId, workflow.versionId),
+              eq(schema.workflowTransitionTable.requiresCab, true),
+            ),
+          )
+      : [];
+    const gate =
+      gates.find((row) => row.from === type?.stateTemplateId) ??
+      gates.find((row) => row.from === null);
+    if (!gate) throw new Error("Demo change workflow has no CAB transition.");
+    const identity = await resolveIdentity({
+      userId: user("agent1"),
+      credential: "session",
+    });
+    if (!identity) throw new Error("Demo agent identity is missing.");
+    await createApproval({
+      targetKey: change.key,
+      identity,
+      actorType: "person",
+      transitionId: gate.id,
+      kind: "cab",
+      approverId: reviewer,
+    });
+  }
+}
+
+const CUSTOMER_PASSWORD_STEP =
+  "God Mode > Authentication > Customers > Password (asks you to confirm your identity)";
+
+/**
+ * Customer password sign-in is an instance setting that is off by default, so demo customers
+ * cannot sign in on a fresh instance. Without `--enable-customer-password` this only reports.
+ * With it, and only while NO password row covers the customer portal, it writes the same
+ * canonical row God Mode writes (`instance/auth-local-methods.ts`) under the same lock, with a
+ * system audit entry; running servers pick it up through the 10-second auth poller. A row that
+ * exists, on or off, is an administrator's decision and is never changed.
+ */
+async function customerPasswordSignIn(enable: boolean): Promise<string | null> {
+  const covering = (
+    rows: Awaited<ReturnType<typeof getStoredAuthPluginConfigRows>>,
+  ) =>
+    rows.filter(
+      (row) =>
+        row.pluginId === "auth.password" &&
+        (row.portalScope === "both" || row.portalScope === "customer"),
+    );
+  const stored = covering(await getStoredAuthPluginConfigRows());
+  // The runtime's rule (`resolveStoredLocalAuthProviders`): any enabled instance row covering
+  // the customer portal turns it on.
+  if (stored.some((row) => row.enabled && row.scope === "instance"))
+    return enable ? "Customer password sign-in is already on." : null;
+  if (stored.length > 0)
+    return `Customer password sign-in was turned off by an administrator; the seed leaves it off. Demo customers can sign in once it is turned on in ${CUSTOMER_PASSWORD_STEP}.`;
+  if (!enable)
+    return `Customer password sign-in is off on this instance, so the demo customers cannot sign in to the portal yet. Turn it on in ${CUSTOMER_PASSWORD_STEP}, or rerun this seed with --enable-customer-password.`;
+
+  const written = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext('taskdesk:auth-local-methods'), 0)`,
+    );
+    const [existing] = await tx
+      .select({ id: schema.instancePluginConfigTable.id })
+      .from(schema.instancePluginConfigTable)
+      .where(
+        and(
+          eq(schema.instancePluginConfigTable.pluginId, "auth.password"),
+          sql`${schema.instancePluginConfigTable.portalScope} IN ('both', 'customer')`,
+        ),
+      )
+      .limit(1);
+    if (existing) return false;
+    await tx.insert(schema.instancePluginConfigTable).values({
+      id: "demo-auth-password-customer",
+      pluginId: "auth.password",
+      instanceKey: "customer",
+      displayName: "Password (customer)",
+      enabled: true,
+      config: {},
+      scope: "instance",
+      workspaceId: null,
+      portalScope: "customer",
+      configVersion: 1,
+      updatedBy: null,
+    });
+    await appendAuditLog(tx, {
+      action: "plugin.changed",
+      actorId: null,
+      actorType: "system",
+      workspaceId: null,
+      entityType: "instance_plugin_config",
+      entityId: "auth.local-methods",
+      after: {
+        pluginIds: ["auth.password"],
+        changedKeys: ["customer.password"],
+        retiredRows: 0,
+        origin: "demo-seed",
+      },
+    });
+    return true;
+  });
+  return written
+    ? "Customer password sign-in turned on for the customer portal (one instance setting, audited). A running server picks it up within about 10 seconds."
+    : "Customer password sign-in was changed by someone else while the seed ran; the seed left it as it is.";
+}
+
 /** Flags an instance administrator has locked off: workspace rows cannot turn them on. */
 async function lockedOffFlags() {
   const rows = await db
@@ -2841,7 +3082,8 @@ async function lockedOffFlags() {
 }
 
 export async function runDemoSeed(argv: readonly string[] = process.argv) {
-  const { credentialsFile, allowExistingData } = parseDemoArgs(argv);
+  const { credentialsFile, allowExistingData, enableCustomerPassword } =
+    parseDemoArgs(argv);
   config();
   let databaseConfig: ReturnType<typeof resolveDatabaseConfig>;
   try {
@@ -2891,6 +3133,7 @@ export async function runDemoSeed(argv: readonly string[] = process.argv) {
     const accepted = await seedIntake(seeded);
     await seedKnowledgeBase(seeded);
     await seedPages(seeded);
+    await seedReviewerInbox(seeded);
     const [{ count } = { count: 0 }] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(schema.workItemTable)
@@ -2898,6 +3141,8 @@ export async function runDemoSeed(argv: readonly string[] = process.argv) {
     console.log(
       `Demo seed complete: workspace ${DEMO_WORKSPACE_ID} (Litware Managed IT), ${DEMO_ACCOUNTS.length} accounts, ${count} work items (${accepted} accepted this run). Sign-in details are in the private file you supplied.`,
     );
+    const customerSignIn = await customerPasswordSignIn(enableCustomerPassword);
+    if (customerSignIn) console.log(customerSignIn);
     const locked = await lockedOffFlags();
     if (locked.length)
       console.warn(
