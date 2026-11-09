@@ -90,6 +90,39 @@ export async function addMember(workspaceId: string, role: string) {
   return { user, personId: person.id };
 }
 
+/**
+ * A `manager` or `lead` member as production creates one: canonical `role` rows only, no legacy
+ * `workspace_role` statement row. `addMember` seeds an empty legacy row, which makes the legacy
+ * `requireWorkspacePermission` gate refuse every write before any capability check runs.
+ */
+export async function addCanonicalMember(
+  workspaceId: string,
+  role: "manager" | "lead",
+) {
+  const userId = `user-${randomUUID()}`;
+  const user = requireRow(
+    await db
+      .insert(schema.userTable)
+      .values({
+        id: userId,
+        email: `${userId}@example.com`,
+        emailVerified: true,
+        name: `canonical ${role}`,
+      })
+      .returning(),
+    "addCanonicalMember",
+  );
+  await prepareAuthenticatedApiFixture(user.id);
+  await db.insert(schema.workspaceUserTable).values({
+    workspaceId,
+    userId: user.id,
+    role,
+    joinedAt: new Date(),
+  });
+  await seedWorkspaceBuiltInRoles(db, workspaceId);
+  return { user };
+}
+
 export async function makeState(
   workspaceId: string,
   projectId: string,

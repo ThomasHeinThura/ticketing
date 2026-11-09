@@ -1389,7 +1389,7 @@
 			"githubHint": "GitHub 이벤트가 발생하면 연결된 작업을 컬럼으로 이동합니다.",
 			"giteaHeading": "Gitea",
 			"giteaHint": "Gitea 웹훅 이벤트가 발생하면 연결된 작업을 컬럼으로 이동합니다.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "컬럼 선택...",
 			"toastUpdated": "워크플로 규칙이 업데이트되었습니다",
 			"toastError": "규칙 업데이트에 실패했습니다",

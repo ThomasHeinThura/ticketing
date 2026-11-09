@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   mutate: vi.fn(),
   projects: [] as Array<Record<string, unknown>>,
+  canArchive: true,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -54,6 +55,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canCreateProjects: () => true,
     canUpdateProjects: () => true,
+    canArchiveProjects: () => mocks.canArchive,
   }),
 }));
 vi.mock("@/hooks/use-keyboard-shortcuts", () => ({
@@ -65,6 +67,7 @@ vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 afterEach(() => {
   cleanup();
   mocks.projects = [];
+  mocks.canArchive = true;
   vi.clearAllMocks();
 });
 
@@ -194,6 +197,21 @@ describe("ProjectsPage recovery mode", () => {
       }),
     );
     expect(onRecoveryModeChange).toHaveBeenCalledWith(false);
+  });
+
+  it("offers no restore to a caller without project:archive, even with project update (A8-2)", async () => {
+    mocks.projects = [deletedProject];
+    mocks.canArchive = false;
+    render(
+      <ProjectsPage
+        workspaceId="workspace-1"
+        recoveryMode
+        onRecoveryModeChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Old project")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Restore" })).toBeNull();
   });
 
   it("offers recovery from the active list", async () => {

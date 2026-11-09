@@ -1389,7 +1389,7 @@
 			"githubHint": "Коли відбувається подія GitHub, переміщувати пов'язане {{term_work_item_one}} до колонки.",
 			"giteaHeading": "Gitea",
 			"giteaHint": "Коли відбувається подія вебхука Gitea, переміщувати пов'язане {{term_work_item_one}} до колонки.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "Обрати колонку...",
 			"toastUpdated": "Правило робочого процесу оновлено",
 			"toastError": "Не вдалося оновити правило",

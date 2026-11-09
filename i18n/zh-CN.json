@@ -1554,7 +1554,7 @@
 			"githubHint": "当 GitHub 事件发生时，将关联{{term_work_item_one}}移动到指定列。",
 			"giteaHeading": "Gitea",
 			"giteaHint": "当 Gitea Webhook 事件发生时，将关联{{term_work_item_one}}移动到指定列。",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "选择列…",
 			"toastUpdated": "工作流规则已更新",
 			"toastError": "更新规则失败",

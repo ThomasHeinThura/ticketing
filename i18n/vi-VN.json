@@ -1554,7 +1554,7 @@
 			"githubHint": "Khi một sự kiện GitHub xảy ra, di chuyển công việc liên kết đến một cột.",
 			"giteaHeading": "Gitea",
 			"giteaHint": "Khi một sự kiện webhook Gitea xảy ra, di chuyển công việc liên kết đến một cột.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "Chọn cột...",
 			"toastUpdated": "Đã cập nhật quy tắc quy trình làm việc",
 			"toastError": "Không thể cập nhật quy tắc",

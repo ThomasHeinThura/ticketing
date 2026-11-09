@@ -1389,7 +1389,7 @@
 			"githubHint": "Lorsqu'un événement GitHub se produit, déplacez la {{term_work_item_one}} liée vers une colonne.",
 			"giteaHeading": "Gitea",
 			"giteaHint": "Lorsqu'un événement Gitea se produit, déplacez la {{term_work_item_one}} liée vers une colonne.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "Sélectionner une colonne...",
 			"toastUpdated": "Règle de workflow mise à jour",
 			"toastError": "Échec de la mise à jour de la règle",
