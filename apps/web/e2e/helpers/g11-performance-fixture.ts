@@ -977,10 +977,19 @@ export async function installPerformanceApiFixture(
       // Sections of the work-item detail (page and side pane) for a seeded item
       // with no relations, files, activity, approvals or children yet.
       const detailRead = path.match(
-        /^\/api\/work-items\/(WLP-(\d+))\/([a-z-]+(?:\/[a-z-]+)?)$/,
+        /^\/api\/work-items\/((WLP|BRD)-(\d+))\/([a-z-]+(?:\/[a-z-]+)?)$/,
       );
       if (detailRead) {
-        const [, , number, section] = detailRead;
+        const [, key, prefix, number, section] = detailRead;
+        const parent =
+          prefix === "BRD" && boardProject
+            ? boardItems.get(key)
+            : prefix === "WLP"
+              ? makeWorkItem(Number(number))
+              : undefined;
+        if (!parent || deletedBoardKeys.has(key))
+          return json({ message: "No such work item" }, 404);
+        if (section === "labels") return json([]);
         if (section === "relations") return json({ data: [], hiddenCount: 0 });
         if (section === "attachments") return json([]);
         if (section === "activity")
@@ -1001,7 +1010,7 @@ export async function installPerformanceApiFixture(
           });
         if (section === "children")
           return json({
-            parent: makeWorkItem(Number(number)),
+            parent,
             ancestors: [],
             data: [],
             page: { nextCursor: null, hasMore: false },
