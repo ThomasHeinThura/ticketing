@@ -22,6 +22,8 @@ export function settingsScopeFromPath(pathname: string): SettingsScope {
   return "workspace";
 }
 
+const SETTINGS_MENU_SHEET_BREAKPOINT = 1024;
+
 const scopeTitleKeys: Record<SettingsScope, string> = {
   account: "settings:account",
   workspace: "navigation:page.settingsWorkspaceTab",
@@ -41,7 +43,8 @@ export function SettingsShell({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useIsMobile();
+  // Matches SettingsSidebar: below lg the settings menu is a sheet, not a column (UX-10).
+  const isMobile = useIsMobile(SETTINGS_MENU_SHEET_BREAKPOINT);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const { data: workspace } = useActiveWorkspace();
   const resolvedScope = scope ?? settingsScopeFromPath(location.pathname);
@@ -96,7 +99,7 @@ export function SettingsShell({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className="shrink-0 md:hidden"
+                  className="shrink-0 lg:hidden"
                   aria-label="Open settings menu"
                   onClick={() => setSettingsMenuOpen(true)}
                 >
@@ -104,7 +107,7 @@ export function SettingsShell({
                 </Button>
               </ActionTooltip>
 
-              <div className="flex items-center gap-1 md:hidden">
+              <div className="flex items-center gap-1 lg:hidden">
                 <ChevronLeft className="size-4 text-muted-foreground" />
                 <p className="text-lg font-semibold">{title}</p>
               </div>
@@ -113,7 +116,7 @@ export function SettingsShell({
                 variant="ghost"
                 size="sm"
                 disabled={!workspace?.id}
-                className="hidden md:inline-flex"
+                className="hidden lg:inline-flex"
                 onClick={() => {
                   if (!workspace?.id) return;
                   if (backToProject) navigate({ href: backToProject });
@@ -129,7 +132,7 @@ export function SettingsShell({
 
             {/* The settings area's name, not the page's heading: each settings page renders its
                 own h1, so the page has exactly one (axe page-has-heading-one). */}
-            <p className="mt-4 hidden pl-1 text-2xl font-semibold md:block">
+            <p className="mt-4 hidden pl-1 text-2xl font-semibold lg:block">
               {title}
             </p>
           </header>
