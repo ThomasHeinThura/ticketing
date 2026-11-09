@@ -241,12 +241,17 @@ for (const [role, flags] of ROLES)
       role === "viewer" ? 0 : 1,
     );
     // The agent pane scrolls inside itself: bring the save card (or the no-save notice) on screen.
-    await (role === "viewer"
-      ? page.getByText("Your role can run reports but not save them.", {
-          exact: true,
-        })
-      : page.getByRole("button", { name: "Save report" })
-    ).scrollIntoViewIfNeeded();
+    const saveState =
+      role === "viewer"
+        ? page.getByTestId("report-builder-read-only")
+        : page.getByRole("button", { name: "Save report" });
+    await expect(saveState).toBeVisible();
+    if (role === "viewer") {
+      await expect(saveState).toHaveText(
+        "Your role can run reports but not save them.",
+      );
+    }
+    await saveState.scrollIntoViewIfNeeded();
     await shot(page, `report-builder-${role}-dark`);
     expect(asked).toEqual([]);
     expect(forbidden).toEqual([]);

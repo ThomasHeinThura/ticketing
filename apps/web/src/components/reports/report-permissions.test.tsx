@@ -12,6 +12,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   caps: {} as Record<string, boolean>,
   checking: false,
+  permissionsFetching: false,
+  permissionsError: false,
+  permissionsFetchStatus: "idle" as "idle" | "fetching" | "paused",
+  memberFetching: false,
+  memberFetchStatus: "idle" as "idle" | "fetching" | "paused",
+  memberError: false,
+  member: { role: "member" } as { role: string } | null | undefined,
+  workspaceLoading: false,
+  memberLoading: false,
+  workspace: { id: "workspace-1" } as { id: string } | undefined,
   features: [{ key: "feature.reports", enabled: true }] as Array<{
     key: string;
     enabled: boolean;
@@ -43,11 +53,22 @@ vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
   default: () => ({ user: { id: "user-1" } }),
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "workspace-1" } }),
+  default: () => ({ data: state.workspace, isLoading: state.workspaceLoading }),
+}));
+vi.mock("@/hooks/queries/workspace-users/use-active-workspace-user", () => ({
+  useGetActiveWorkspaceUser: () => ({
+    data: state.member,
+    isFetching: state.memberFetching || state.memberLoading,
+    fetchStatus: state.memberFetchStatus,
+    isError: state.memberError,
+  }),
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     isCheckingPermissions: state.checking,
+    isRefetchingPermissions: state.permissionsFetching,
+    isPermissionError: state.permissionsError,
+    permissionFetchStatus: state.permissionsFetchStatus,
     canCreateSavedViews: () => state.caps.createSavedViews === true,
     canShareSavedViews: () => state.caps.shareSavedViews === true,
     canManageWorkspaceSettings: () =>
@@ -110,12 +131,174 @@ const LEAD = { createSavedViews: true, shareSavedViews: true };
 beforeEach(() => {
   state.caps = {};
   state.checking = false;
+  state.permissionsFetching = false;
+  state.permissionsError = false;
+  state.permissionsFetchStatus = "idle";
+  state.memberFetching = false;
+  state.memberFetchStatus = "idle";
+  state.memberError = false;
+  state.member = { role: "member" };
+  state.workspaceLoading = false;
+  state.memberLoading = false;
+  state.workspace = { id: "workspace-1" };
   state.features = [{ key: "feature.reports", enabled: true }];
   for (const fn of Object.values(calls)) fn.mockClear();
 });
 afterEach(cleanup);
 
 describe("report builder save row (saved_view:create)", () => {
+  it.each([
+    ["viewer", VIEWER],
+    ["member", MEMBER],
+  ])(
+    "waits for workspace, membership and capabilities for a %s",
+    async (role, caps) => {
+      state.workspace = undefined;
+      state.workspaceLoading = true;
+      state.memberLoading = true;
+      const { rerender } = render(withClient(<ReportBuilder search={{}} />));
+      await screen.findByText("reports:builder.title");
+      const expectUnresolved = () => {
+        expect(screen.queryByTestId("report-builder-read-only")).toBeNull();
+        expect(
+          screen.queryByRole("button", { name: "reports:builder.save" }),
+        ).toBeNull();
+      };
+      expectUnresolved();
+      state.workspace = { id: "workspace-1" };
+      state.workspaceLoading = false;
+      rerender(withClient(<ReportBuilder search={{}} />));
+      expectUnresolved();
+      state.memberLoading = false;
+      state.checking = true;
+      rerender(withClient(<ReportBuilder search={{}} />));
+      expectUnresolved();
+      state.caps = caps;
+      state.checking = false;
+      rerender(withClient(<ReportBuilder search={{}} />));
+      if (role === "member") {
+        expect(
+          await screen.findByRole("button", { name: "reports:builder.save" }),
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId("report-builder-read-only")).toBeNull();
+      } else {
+        expect(
+          await screen.findByTestId("report-builder-read-only"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "reports:builder.save" }),
+        ).toBeNull();
+      }
+    },
+  );
+
+  it("denies saving when the membership read resolves without a member", async () => {
+    state.member = undefined;
+    state.memberLoading = true;
+    const { rerender } = render(withClient(<ReportBuilder search={{}} />));
+    await screen.findByText("reports:builder.title");
+    expect(screen.queryByTestId("report-builder-read-only")).toBeNull();
+    state.memberLoading = false;
+    state.member = null;
+    state.caps = MEMBER;
+    rerender(withClient(<ReportBuilder search={{}} />));
+    expect(
+      await screen.findByTestId("report-builder-read-only"),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["member", MEMBER, VIEWER],
+    ["viewer", VIEWER, MEMBER],
+  ])(
+    "hides stale %s decisions during membership and capability refetch",
+    async (_role, oldCaps, newCaps) => {
+      state.caps = oldCaps;
+      const { rerender } = render(withClient(<ReportBuilder search={{}} />));
+      await screen.findByText("reports:builder.title");
+      if (oldCaps === MEMBER) {
+        expect(
+          screen.getByRole("button", { name: "reports:builder.save" }),
+        ).toBeInTheDocument();
+      } else {
+        expect(
+          screen.getByTestId("report-builder-read-only"),
+        ).toBeInTheDocument();
+      }
+      const expectHidden = () => {
+        expect(screen.queryByTestId("report-builder-read-only")).toBeNull();
+        expect(
+          screen.queryByRole("button", { name: "reports:builder.save" }),
+        ).toBeNull();
+      };
+      state.memberFetching = true;
+      rerender(withClient(<ReportBuilder search={{}} />));
+      expectHidden();
+      state.memberFetching = false;
+      state.memberFetchStatus = "paused";
+      rerender(withClient(<ReportBuilder search={{}} />));
+      expectHidden();
+      state.memberFetchStatus = "idle";
+      state.permissionsFetching = true;
+      rerender(withClient(<ReportBuilder search={{}} />));
+      expectHidden();
+      state.caps = newCaps;
+      state.permissionsFetching = false;
+      rerender(withClient(<ReportBuilder search={{}} />));
+      if (newCaps === MEMBER) {
+        expect(
+          screen.getByRole("button", { name: "reports:builder.save" }),
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId("report-builder-read-only")).toBeNull();
+      } else {
+        expect(
+          screen.getByTestId("report-builder-read-only"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "reports:builder.save" }),
+        ).toBeNull();
+      }
+    },
+  );
+
+  it.each(["error", "paused"] as const)(
+    "hides cached capability decisions when refetch is %s",
+    async (condition) => {
+      state.caps = MEMBER;
+      const { rerender } = render(withClient(<ReportBuilder search={{}} />));
+      await screen.findByRole("button", { name: "reports:builder.save" });
+      if (condition === "error") state.permissionsError = true;
+      else state.permissionsFetchStatus = "paused";
+      rerender(withClient(<ReportBuilder search={{}} />));
+      expect(
+        screen.queryByRole("button", { name: "reports:builder.save" }),
+      ).toBeNull();
+      expect(screen.queryByTestId("report-builder-read-only")).toBeNull();
+      if (condition === "error")
+        expect(
+          screen.getByTestId("report-builder-permission-error"),
+        ).toBeInTheDocument();
+      state.permissionsError = false;
+      state.permissionsFetchStatus = "idle";
+      state.caps = VIEWER;
+      rerender(withClient(<ReportBuilder search={{}} />));
+      expect(
+        screen.getByTestId("report-builder-read-only"),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("does not claim a role denial when membership fails, including with cached membership", async () => {
+    state.caps = MEMBER;
+    state.memberError = true;
+    render(withClient(<ReportBuilder search={{}} />));
+    await screen.findByText("reports:builder.title");
+    expect(screen.queryByTestId("report-builder-read-only")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "reports:builder.save" }),
+    ).toBeNull();
+  });
+
   it("never offers a viewer a save: it says so instead", async () => {
     state.caps = VIEWER;
     render(withClient(<ReportBuilder search={{}} />));
