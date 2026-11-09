@@ -40,6 +40,7 @@ import { ColumnShell } from "@/components/kanban-board/column/column-shell";
 import TaskCard from "@/components/kanban-board/task-card";
 import { useDndAccessibility } from "@/hooks/use-dnd-accessibility";
 import { getColumnIcon } from "@/lib/column";
+import { BOARD_TRANSLATION_OPTIONS } from "@/lib/i18n/work-route-namespaces";
 import {
   routes,
   type WorkItemSortDirection,
@@ -639,7 +640,7 @@ export const BoardCard = memo(function BoardCard({
   virtualItem?: VirtualizedSortableItem;
   sourceProject?: CombinedWorkItemRow["sourceProject"];
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(undefined, BOARD_TRANSLATION_OPTIONS);
   const preferences = useUserPreferencesStore(
     useShallow((preferences) => ({
       showAssignees: preferences.showAssignees,

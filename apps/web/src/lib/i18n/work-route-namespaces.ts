@@ -5,6 +5,16 @@
  * route and missing from this list would render as its raw key until the second group lands,
  * so `work-route-namespaces.test.ts` pins the contents against the catalog.
  */
+import type { ReactOptions } from "i18next";
+
+export const BOARD_TRANSLATIONS_ADDED = "boardTranslationsAdded";
+
+// The hook accepts ReactOptions at runtime, although its public type omits store binding.
+export const BOARD_TRANSLATION_OPTIONS = {
+  bindI18n: `languageChanged ${BOARD_TRANSLATIONS_ADDED}`,
+  bindI18nStore: false,
+} satisfies ReactOptions;
+
 export const WORK_ROUTE_I18N_NAMESPACES = [
   "common",
   "navigation",

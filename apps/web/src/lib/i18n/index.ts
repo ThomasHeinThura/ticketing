@@ -12,9 +12,21 @@ import { initReactI18next } from "react-i18next";
 import { afterFirstPaint } from "./after-first-paint";
 import slimGroupLoaders from "./group-loaders-slim";
 import {
+  BOARD_TRANSLATIONS_ADDED,
   WORK_LIST_PATH_PATTERN,
   WORK_ROUTE_I18N_NAMESPACES,
 } from "./work-route-namespaces";
+
+// Board cards use these namespaces, including terminology injected by the agent translator.
+// react-i18next otherwise invalidates every card for every unrelated deferred namespace.
+const boardNamespaces = new Set(["common", "tasks", "workItems", "term"]);
+
+export function bindBoardTranslationEvents(instance: I18nInstance) {
+  instance.store.on("added", (language: string, namespace: string) => {
+    if (boardNamespaces.has(namespace))
+      instance.emit(BOARD_TRANSLATIONS_ADDED, language, namespace);
+  });
+}
 
 function getLanguageCode(locale: string) {
   return locale.toLowerCase().split("-")[0];
@@ -235,6 +247,8 @@ export async function createScopedI18n(
       },
     });
 
+  bindBoardTranslationEvents(scopedI18n);
+
   if (useNamespaceGroups && !initialNamespacesOverride) {
     const instances = scopedGroupInstances.get(locale) ?? new Set();
     instances.add(scopedI18n);
@@ -283,6 +297,9 @@ void i18n
       skipOnVariables: true,
     },
   })
-  .then(() => preloadNamespaces(initialLocale));
+  .then(() => {
+    bindBoardTranslationEvents(i18n);
+    return preloadNamespaces(initialLocale);
+  });
 
 export { i18n };

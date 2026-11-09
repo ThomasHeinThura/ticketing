@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
@@ -844,6 +850,9 @@ describe("WorkItemProperties", () => {
     fireEvent.click(screen.getByRole("button", { name: /Riley Fox/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
     expect(mocks.assign).not.toHaveBeenCalled();
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Riley",
+    );
     expect(
       screen.getByText("workItems:journey.confirmReassignDescription"),
     ).toBeInTheDocument();
@@ -873,6 +882,220 @@ describe("WorkItemProperties", () => {
         assigneeId: "person-2",
         expectedCurrentAssigneeId: null,
       }),
+    );
+  });
+
+  it("shows the pending assignee without changing the cache and rolls back on conflict", async () => {
+    let rejectAssignment!: (error: Error) => void;
+    mocks.assign.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectAssignment = reject;
+      }),
+    );
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    const original = item();
+    const { client } = renderProps(
+      <WorkItemProperties item={original} onAccessLost={vi.fn()} />,
+      original,
+    );
+    const trigger = screen.getByTestId("work-item-assignee-control");
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    expect(trigger).toHaveTextContent("Casey Ray");
+    expect(trigger).toHaveAttribute("aria-busy", "true");
+    expect(client.getQueryData(["work-items", "detail", original.key])).toEqual(
+      original,
+    );
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledOnce());
+    rejectAssignment(new HttpError(409, "conflict"));
+    await waitFor(() =>
+      expect(trigger).toHaveTextContent("workItems:detail.unassigned"),
+    );
+    expect(trigger).toHaveAttribute("aria-busy", "false");
+    expect(
+      await screen.findByText("workItems:journey.assignmentConflict"),
+    ).toBeInTheDocument();
+    expect(mocks.assign).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the assigned person after a successful response reaches the detail cache", async () => {
+    let resolveAssignment!: (value: unknown) => void;
+    mocks.assign.mockReturnValue(
+      new Promise((resolve) => {
+        resolveAssignment = resolve;
+      }),
+    );
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    const original = item();
+    const { client, rerender } = renderProps(
+      <WorkItemProperties item={original} onAccessLost={vi.fn()} />,
+      original,
+    );
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Casey Ray",
+    );
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledOnce());
+    resolveAssignment({ key: original.key, version: 5 });
+    await waitFor(() =>
+      expect(
+        client.getQueryData(["work-items", "detail", original.key]),
+      ).toMatchObject({
+        assigneeId: "person-2",
+        assigneeName: "Casey Ray",
+        version: 5,
+      }),
+    );
+    const saved = client.getQueryData<WorkItemDetailRow>([
+      "work-items",
+      "detail",
+      original.key,
+    ]);
+    expect(saved).toBeDefined();
+    if (!saved) throw new Error("Expected saved detail");
+    rerender(
+      <QueryClientProvider client={client}>
+        <WorkItemProperties item={saved} onAccessLost={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-assignee-control")).toHaveAttribute(
+        "aria-busy",
+        "false",
+      ),
+    );
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Casey Ray",
+    );
+  });
+
+  it("rolls back a pending unassignment on an ordinary error", async () => {
+    let rejectUnassignment!: (error: Error) => void;
+    mocks.unassign.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectUnassignment = reject;
+      }),
+    );
+    renderProps(
+      <WorkItemProperties
+        item={item({ assigneeId: "person-1", assigneeName: "Riley Fox" })}
+        onAccessLost={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByTestId("work-item-assignee-control");
+    fireEvent.click(trigger);
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "workItems:detail.unassigned",
+      }),
+    );
+    expect(trigger).toHaveTextContent("workItems:detail.unassigned");
+    expect(trigger).toHaveAttribute("aria-busy", "true");
+    await waitFor(() => expect(mocks.unassign).toHaveBeenCalledOnce());
+    rejectUnassignment(new HttpError(500, "failed"));
+    await waitFor(() => expect(trigger).toHaveTextContent("Riley Fox"));
+    expect(trigger).toHaveAttribute("aria-busy", "false");
+    expect(
+      await screen.findByText("workItems:journey.unassignmentError"),
+    ).toBeVisible();
+  });
+
+  it("reports access lost and clears the pending display on assignment 404", async () => {
+    let rejectAssignment!: (error: Error) => void;
+    mocks.assign.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectAssignment = reject;
+      }),
+    );
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    const onAccessLost = vi.fn();
+    renderProps(
+      <WorkItemProperties item={item()} onAccessLost={onAccessLost} />,
+    );
+    const trigger = screen.getByTestId("work-item-assignee-control");
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledOnce());
+    rejectAssignment(new HttpError(404, "gone"));
+    await waitFor(() => expect(onAccessLost).toHaveBeenCalled());
+    expect(trigger).toHaveTextContent("workItems:detail.unassigned");
+    expect(trigger).toHaveAttribute("aria-busy", "false");
+  });
+
+  it("shows the latest holder after a conflicting assignment", async () => {
+    let rejectAssignment!: (error: Error) => void;
+    mocks.assign.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectAssignment = reject;
+      }),
+    );
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    const { client, rerender } = renderProps(
+      <WorkItemProperties item={item()} onAccessLost={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledOnce());
+    const winner = item({
+      assigneeId: "person-3",
+      assigneeName: "Jordan Lee",
+      version: 5,
+    });
+    rerender(
+      <QueryClientProvider client={client}>
+        <WorkItemProperties item={winner} onAccessLost={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    rejectAssignment(new HttpError(409, "conflict"));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("work-item-assignee-control"),
+      ).toHaveTextContent("Jordan Lee"),
+    );
+    expect(
+      await screen.findByText("workItems:journey.assignmentConflict"),
+    ).toBeVisible();
+  });
+
+  it("does not carry a pending assignment into another item", async () => {
+    let resolveAssignment!: (value: unknown) => void;
+    mocks.assign.mockReturnValue(
+      new Promise((resolve) => {
+        resolveAssignment = resolve;
+      }),
+    );
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    const { client, rerender } = renderProps(
+      <WorkItemProperties item={item()} onAccessLost={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledOnce());
+    rerender(
+      <QueryClientProvider client={client}>
+        <WorkItemProperties
+          item={item({
+            key: "OTHER-1",
+            assigneeId: "person-3",
+            assigneeName: "Jordan Lee",
+          })}
+          onAccessLost={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Jordan Lee",
+    );
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
+    await act(async () => {
+      resolveAssignment({ key: "HELP-7", version: 5 });
+    });
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Jordan Lee",
     );
   });
 

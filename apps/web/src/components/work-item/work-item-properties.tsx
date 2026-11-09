@@ -576,6 +576,10 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
   // `AS-3`: taking work already held by someone else needs an explicit second step.
   const [confirmFor, setConfirmFor] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [pendingAssignment, setPendingAssignment] = useState<{
+    key: string;
+    person: { personId: string; name: string | null } | null;
+  } | null>(null);
   // A confirmation was for the holder the screen showed; if the holder moves, it lapses.
   const [seenHolder, setSeenHolder] = useState(item.assigneeId);
   if (seenHolder !== item.assigneeId) {
@@ -615,6 +619,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       return result;
     },
     onSuccess: async (_result, { person }) => {
+      setPendingAssignment(null);
       setOpen(false);
       setConfirmFor(null);
       setError("");
@@ -628,6 +633,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       await refresh();
     },
     onError: async (mutationError, { person }) => {
+      setPendingAssignment(null);
       setConfirmFor(null);
       if (isWorkItemAccessLost(mutationError)) {
         onAccessLost();
@@ -650,8 +656,13 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     item.projectId,
   );
   // `AS-8`: "Jane Smith (inactive)" / "(no longer on this project)".
-  const name =
-    item.assigneeId === null
+  const pending =
+    pendingAssignment?.key === item.key ? pendingAssignment : null;
+  const name = pending
+    ? pending.person
+      ? (pending.person.name ?? t("workItems:journey.unnamedPerson"))
+      : null
+    : item.assigneeId === null
       ? null
       : assigneeDisplayText(resolveAssigneeDisplay(item), {
           unassigned: t("workItems:detail.unassigned"),
@@ -665,11 +676,12 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       size="sm"
       {...propertyTriggerProps(canEdit, compact)}
       data-testid="work-item-assignee-control"
+      aria-busy={Boolean(pending)}
     >
       {name ? (
         <Avatar className="h-[16px] w-[16px]">
           <AvatarFallback className="text-[8px]">
-            {getInitials(item.assigneeName ?? name)}
+            {getInitials(pending ? name : (item.assigneeName ?? name))}
           </AvatarFallback>
         </Avatar>
       ) : null}
@@ -703,6 +715,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     )
       return;
     dispatching.current = true;
+    setPendingAssignment({ key: item.key, person });
     assign.mutate(
       { person, holder: item.assigneeId },
       {
