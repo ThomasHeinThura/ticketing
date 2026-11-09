@@ -4,6 +4,13 @@
  *
  *   pnpm sit:smoke                                   local SIT, ~/.taskdesk/sit-credentials.json
  *   pnpm sit:smoke -- --agent https://… --portal https://… --credentials <file> --out <dir>
+ *   pnpm sit:smoke -- --scheme light --width 390 --height 844 --accounts owner,megan.hall
+ *
+ * UI review captures: --scheme light|dark|system sets the app theme through its stored
+ * preference (localStorage `user-preferences`, the zustand store the theme provider reads) and
+ * the browser colour scheme, and adds the scheme to each screenshot name. --accounts limits the
+ * run to those email local parts; --extra / --extra-portal add comma-separated staff / portal
+ * routes ({key} becomes the first project's key).
  *
  * Read-only: it signs in with each account in the credentials file and reads, never writes.
  * For every account it checks the API (session, workspaces, projects, work items, KB, portal
@@ -44,13 +51,45 @@ const { values: opts } = parseArgs({
     // Every account signs in from one IP. Local Traefik limits each IP to a 1000-request burst
     // and better-auth to 100 auth requests per 10 s, so accounts are spaced apart.
     pause: { type: "string", default: "12" },
+    // UI review captures: viewport, theme, account filter and extra routes.
+    width: { type: "string", default: "1440" },
+    height: { type: "string", default: "900" },
+    scheme: { type: "string" },
+    accounts: { type: "string", default: "" },
+    extra: { type: "string", default: "" },
+    "extra-portal": { type: "string", default: "" },
   },
 });
+
+const SCHEMES = ["light", "dark", "system"];
+if (opts.scheme !== undefined && !SCHEMES.includes(opts.scheme)) {
+  console.error(`--scheme must be one of ${SCHEMES.join(", ")}`);
+  process.exit(2);
+}
+/** The portal's own routes (apps/web/src/lib/routes.ts), served at the portal host root. */
+const PORTAL_PAGES = [
+  "/",
+  "/requests",
+  "/catalogue",
+  "/approvals",
+  "/announcements",
+  "/kb",
+  "/projects",
+  "/notifications",
+  "/account",
+];
 
 const require = createRequire(
   new URL("../../apps/web/package.json", import.meta.url),
 );
-const accounts = JSON.parse(fs.readFileSync(opts.credentials, "utf8")).accounts;
+const onlyAccounts = opts.accounts.split(",").filter(Boolean);
+const accounts = JSON.parse(
+  fs.readFileSync(opts.credentials, "utf8"),
+).accounts.filter(
+  (account) =>
+    onlyAccounts.length === 0 ||
+    onlyAccounts.includes(account.email.split("@")[0]),
+);
 fs.mkdirSync(opts.out, { recursive: true, mode: 0o700 });
 
 const results = [];
@@ -127,7 +166,7 @@ async function apiChecks(account, base, cookies) {
       requests.status === 200,
       String(requests.status),
     );
-    return ["/", "/catalogue", "/requests", "/account"];
+    return [...PORTAL_PAGES];
   }
   const workspaces = await getJson(base, cookies, "/api/workspace");
   check(
@@ -180,15 +219,45 @@ async function apiChecks(account, base, cookies) {
   return pages;
 }
 
+/**
+ * Runs in the page before any app script: writes the theme into the persisted user-preferences
+ * store (zustand `persist`, key `user-preferences`, `{ state, version }`) and keeps every other
+ * stored preference. The theme provider reads that store, so the app renders in this theme.
+ */
+function applyStoredTheme(theme) {
+  try {
+    const key = "user-preferences";
+    const stored = JSON.parse(window.localStorage.getItem(key) ?? "null");
+    const state =
+      stored && typeof stored.state === "object" && stored.state
+        ? stored.state
+        : {};
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({
+        state: { ...state, theme },
+        version: typeof stored?.version === "number" ? stored.version : 0,
+      }),
+    );
+  } catch {
+    // Storage can be unavailable (opaque origins); the colour scheme still applies.
+  }
+}
+
 async function browserChecks(browser, account, base, cookies, pages) {
   const name = who(account);
   const host = new URL(base).hostname;
   // Local SIT uses a self-signed certificate that Chromium cannot be told to trust; only
   // *.localhost stacks skip the certificate check.
   const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
+    viewport: { width: Number(opts.width), height: Number(opts.height) },
+    // "system" follows the emulated browser scheme, which Playwright leaves at light.
+    ...(opts.scheme === "light" || opts.scheme === "dark"
+      ? { colorScheme: opts.scheme }
+      : {}),
     ignoreHTTPSErrors: host.endsWith(".localhost"),
   });
+  if (opts.scheme) await context.addInitScript(applyStoredTheme, opts.scheme);
   await context.addCookies(
     cookies.map((pair) => {
       const index = pair.indexOf("=");
@@ -242,7 +311,7 @@ async function browserChecks(browser, account, base, cookies, pages) {
       .catch(() => 0);
     const file = path.join(
       opts.out,
-      `${name}${route.replace(/[^a-z0-9]+/gi, "_")}.png`,
+      `${name}${opts.scheme ? `_${opts.scheme}` : ""}${route.replace(/[^a-z0-9]+/gi, "_")}.png`,
     );
     await page.screenshot({ path: file, fullPage: false }).catch(() => {});
     const ok =
@@ -289,6 +358,14 @@ try {
     );
     if (signedIn.status !== 200) continue;
     const pages = await apiChecks(account, base, signedIn.cookies);
+    // Optional broad capture for UI review: {key} is the first project's key.
+    const key =
+      pages.join(" ").match(/\/agent\/projects\/([^/]+)\//)?.[1] ?? "";
+    const extra = (isCustomer(account) ? opts["extra-portal"] : opts.extra)
+      .split(",")
+      .map((route) => route.trim().replaceAll("{key}", key))
+      .filter(Boolean);
+    pages.push(...extra);
     if (browser)
       await browserChecks(browser, account, base, signedIn.cookies, pages);
   }

@@ -1,0 +1,538 @@
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import { and, eq, inArray, isNotNull, like, sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { resetTestDatabase } from "../../../tests/api-integration/helpers/database";
+import db, { schema } from "../src/database";
+import { cycleTable, moduleTable } from "../src/database/schema-p5-agile";
+import { kbArticleTable } from "../src/database/schema-p5-kb";
+import { projectPageTable } from "../src/database/schema-p5-pages";
+import {
+  announcementTable,
+  changeDetailTable,
+  changeFreezeTable,
+  serviceTable,
+} from "../src/database/schema-p5-service";
+import { resolveProjectFeatures } from "../src/feature-flag/repository";
+import { suggestDuplicatesForQueueRows } from "../src/intake/duplicate-suggestions";
+import { changeCalendar } from "../src/service-management/change-repository";
+import { evaluatePinnedWorkItemSla } from "../src/sla-policy/evaluation";
+import { validateWorkItemSearchQuery } from "../src/work-item/search/query";
+import { DEMO_FEATURE_FLAGS, DEMO_WORKSPACE_ID } from "./seed-demo-data";
+import { seed } from "./seed-profile";
+
+const execute = promisify(execFile);
+const apiRoot = fileURLToPath(new URL("../", import.meta.url));
+const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
+
+let directory: string;
+let credentials: string;
+
+/**
+ * Runs the CLI in a child process that inherits this environment (the disposable database).
+ * `overrides` are `NAME=value` pairs applied through env(1), so this file reads no variables.
+ */
+function run(args: string[], overrides: string[] = []) {
+  return execute(
+    "env",
+    [...overrides, "pnpm", "exec", "tsx", "scripts/seed-demo.mjs", ...args],
+    { cwd: apiRoot, timeout: 180_000 },
+  );
+}
+
+/** Every public table as a sorted multiset of its rows, so any write anywhere is visible. */
+async function snapshot() {
+  const tables = (
+    await db.execute<{ name: string }>(
+      sql`SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`,
+    )
+  ).rows.map((row) => row.name);
+  const result: Record<string, string[]> = {};
+  for (const table of tables) {
+    const rows = await db.execute<{ row: string }>(
+      sql`SELECT row_to_json(t)::text AS row FROM ${sql.identifier(table)} t`,
+    );
+    result[table] = rows.rows.map((row) => row.row).sort();
+  }
+  return result;
+}
+
+function missingRows(
+  before: Record<string, string[]>,
+  after: Record<string, string[]>,
+) {
+  const missing: string[] = [];
+  for (const [table, rows] of Object.entries(before)) {
+    const remaining = new Map<string, number>();
+    for (const row of after[table] ?? [])
+      remaining.set(row, (remaining.get(row) ?? 0) + 1);
+    for (const row of rows) {
+      const count = remaining.get(row) ?? 0;
+      if (count === 0) missing.push(`${table}: ${row.slice(0, 200)}`);
+      else remaining.set(row, count - 1);
+    }
+  }
+  return missing;
+}
+
+async function demoProjects() {
+  return db
+    .select()
+    .from(schema.projectTable)
+    .where(eq(schema.projectTable.workspaceId, DEMO_WORKSPACE_ID));
+}
+
+describe("demo data seed is opt-in, additive and idempotent", () => {
+  let emptySnapshot: Record<string, string[]>;
+  let firstRun: Record<string, string[]>;
+
+  beforeAll(async () => {
+    // Instance flags stay at their built-in defaults (mostly off), so every feature the
+    // demo needs must come on through the seed's own workspace rows.
+    await resetTestDatabase({ defaultOffFeatures: false });
+    directory = await mkdtemp(path.join(os.tmpdir(), "taskdesk-demo-seed-"));
+    credentials = path.join(directory, "demo.json");
+    emptySnapshot = await snapshot();
+  }, 180_000);
+
+  afterAll(async () => {
+    await resetTestDatabase();
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  it("refuses without --demo, on the live database name, and for a credentials file inside the repository", async () => {
+    await expect(run(["--credentials-file", credentials])).rejects.toThrow(
+      /requires --demo/,
+    );
+    await expect(
+      run(
+        ["--demo", "--credentials-file", credentials],
+        // A closed port: the guard must refuse before any connection is attempted.
+        [
+          "TASKDESK_DATABASE_URL=postgresql://nobody:nothing@127.0.0.1:9/taskdesk_browser_journey_1022_test",
+        ],
+      ),
+    ).rejects.toThrow(/live database and must never be seeded/);
+    await expect(
+      run([
+        "--demo",
+        "--credentials-file",
+        path.join(repoRoot, "demo-credentials.json"),
+      ]),
+    ).rejects.toThrow(/outside the source checkout/);
+    await expect(stat(credentials)).rejects.toThrow();
+    await expect(
+      stat(path.join(repoRoot, "demo-credentials.json")),
+    ).rejects.toThrow();
+    expect(await snapshot()).toEqual(emptySnapshot);
+  }, 240_000);
+
+  it("seeds a fresh database, never prints a password, and a rerun changes nothing", async () => {
+    const first = await run(["--demo", "--credentials-file", credentials]);
+    expect((await stat(credentials)).mode & 0o077).toBe(0);
+    firstRun = await snapshot();
+    expect(missingRows(emptySnapshot, firstRun)).toEqual([]);
+
+    const written = await readFile(credentials, "utf8");
+    for (const account of JSON.parse(written).accounts) {
+      expect(first.stdout).not.toContain(account.password);
+      expect(first.stderr).not.toContain(account.password);
+    }
+    const { stdout, stderr } = await run([
+      "--demo",
+      "--credentials-file",
+      credentials,
+    ]);
+    for (const account of JSON.parse(written).accounts) {
+      expect(stdout).not.toContain(account.password);
+      expect(stderr).not.toContain(account.password);
+    }
+    expect(stdout).toContain(
+      `Demo seed complete: workspace ${DEMO_WORKSPACE_ID}`,
+    );
+    expect(await readFile(credentials, "utf8")).toBe(written);
+    const secondRun = await snapshot();
+    expect(missingRows(firstRun, secondRun)).toEqual([]);
+    expect(secondRun).toEqual(firstRun);
+  }, 300_000);
+
+  it("turns every demo feature on for every demo project through workspace flags", async () => {
+    const projects = await demoProjects();
+    expect(projects.length).toBeGreaterThanOrEqual(3);
+    for (const required of [
+      "feature.reports",
+      "feature.service_catalogue",
+      "feature.sla",
+      "feature.cycles",
+      "feature.modules",
+      "feature.calendar",
+      "feature.timeline",
+      "feature.knowledge_base",
+      "feature.pages",
+    ])
+      expect(DEMO_FEATURE_FLAGS).toContain(required);
+    for (const project of projects) {
+      const resolved = await resolveProjectFeatures(
+        project.id,
+        DEMO_WORKSPACE_ID,
+      );
+      for (const flag of DEMO_FEATURE_FLAGS)
+        expect(
+          resolved.find((row) => row.key === flag),
+          `${project.slug} ${flag}`,
+        ).toMatchObject({ enabled: true });
+    }
+    // Feature rows are workspace rows; instance rows are never written.
+    const instanceRows = await db
+      .select()
+      .from(schema.instanceFeatureFlagTable);
+    expect(instanceRows).toEqual([]);
+  });
+
+  it("creates realistic work: items, labels, assignees, a second Contoso engagement", async () => {
+    const items = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(items.length).toBeGreaterThanOrEqual(20);
+    expect(items.length).toBeLessThanOrEqual(40);
+    // Items accepted from triage keep the priority the form gave them, possibly none.
+    expect(new Set(items.flatMap((item) => item.priority ?? []))).toEqual(
+      new Set(["low", "medium", "high", "urgent"]),
+    );
+    expect(
+      new Set(items.flatMap((item) => item.assigneeId ?? [])).size,
+    ).toBeGreaterThanOrEqual(3);
+    expect(items.filter((item) => item.dueDate).length).toBeGreaterThan(15);
+    const states = await db
+      .select({ group: schema.stateTemplateTable.group })
+      .from(schema.workItemTable)
+      .innerJoin(
+        schema.stateTable,
+        eq(schema.stateTable.id, schema.workItemTable.stateId),
+      )
+      .innerJoin(
+        schema.stateTemplateTable,
+        eq(schema.stateTemplateTable.id, schema.stateTable.stateTemplateId),
+      )
+      .where(eq(schema.workItemTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(new Set(states.map((row) => row.group)).size).toBeGreaterThanOrEqual(
+      4,
+    );
+    const labelled = await db
+      .select({ id: schema.workItemLabelTable.workItemId })
+      .from(schema.workItemLabelTable)
+      .where(
+        inArray(
+          schema.workItemLabelTable.workItemId,
+          items.map((item) => item.id),
+        ),
+      );
+    expect(labelled.length).toBeGreaterThanOrEqual(10);
+
+    // Plain names and titles: no test leftovers, no role text in display names (PH-11).
+    for (const item of items)
+      expect(item.title).not.toMatch(/\[audit\]|\btest\b|^x y$/i);
+    const people = await db
+      .select({ name: schema.personTable.displayName })
+      .from(schema.personTable)
+      .where(like(schema.personTable.id, "demo-%"));
+    expect(people.length).toBeGreaterThanOrEqual(8);
+    for (const person of people) expect(person.name).not.toMatch(/[()]/);
+
+    const projects = await demoProjects();
+    const contoso = projects.filter(
+      (project) => project.organisationId === "demo-org-contoso",
+    );
+    expect(contoso.length).toBe(2);
+    expect(contoso.map((project) => project.kind).sort()).toEqual([
+      "managed_service",
+      "project",
+    ]);
+  });
+
+  it("has two SLA policies on a business-hours calendar with breached and at-risk items", async () => {
+    const policies = await db
+      .select()
+      .from(schema.slaPolicyTable)
+      .where(
+        and(
+          eq(schema.slaPolicyTable.workspaceId, DEMO_WORKSPACE_ID),
+          isNotNull(schema.slaPolicyTable.activeVersionId),
+        ),
+      );
+    expect(policies).toHaveLength(2);
+    const calendars = await db
+      .select()
+      .from(schema.serviceCalendarTable)
+      .where(eq(schema.serviceCalendarTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(
+      calendars.some(
+        (calendar) =>
+          Object.keys(calendar.windows as Record<string, unknown>).length === 5,
+      ),
+    ).toBe(true);
+
+    const pinned = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(
+        and(
+          eq(schema.workItemTable.workspaceId, DEMO_WORKSPACE_ID),
+          isNotNull(schema.workItemTable.slaPolicyVersionId),
+        ),
+      );
+    const states = new Set<string>();
+    const now = new Date();
+    for (const item of pinned) {
+      const metrics = await evaluatePinnedWorkItemSla({
+        policyVersionId: item.slaPolicyVersionId,
+        workspaceId: item.workspaceId,
+        workItemTypeId: item.typeId,
+        priority: item.priority,
+        facts: {
+          startedAt: item.slaStartedAt ?? item.createdAt,
+          firstResponseAt: item.firstResponseAt,
+          resolvedAt: item.resolvedAt,
+          pauses: [],
+        },
+        now,
+      });
+      for (const metric of metrics) states.add(metric.state);
+    }
+    expect(states).toContain("breached");
+    expect(states).toContain("at_risk");
+    expect(states).toContain("ok");
+  });
+
+  it("has a service catalogue, a month of changes with a freeze and a conflict, and announcements", async () => {
+    const services = await db
+      .select()
+      .from(serviceTable)
+      .where(eq(serviceTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(services.length).toBeGreaterThanOrEqual(4);
+    expect(services.length).toBeLessThanOrEqual(6);
+
+    const freezes = await db
+      .select()
+      .from(changeFreezeTable)
+      .where(eq(changeFreezeTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(freezes.length).toBeGreaterThanOrEqual(1);
+
+    const changes = await db
+      .select()
+      .from(changeDetailTable)
+      .where(eq(changeDetailTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(changes.length).toBeGreaterThanOrEqual(5);
+
+    const now = new Date();
+    const calendar = await changeCalendar({
+      workspaceId: DEMO_WORKSPACE_ID,
+      from: new Date(now.getTime() - 14 * 86_400_000),
+      to: new Date(now.getTime() + 31 * 86_400_000),
+      reachableProjectIds: (await demoProjects()).map((project) => project.id),
+      now,
+    });
+    expect(calendar.changes.length).toBeGreaterThanOrEqual(5);
+    expect(calendar.conflicts.length).toBeGreaterThanOrEqual(1);
+    expect(calendar.changes.some((change) => change.frozen)).toBe(true);
+    expect(calendar.freezes.length).toBeGreaterThanOrEqual(1);
+
+    const announcements = await db
+      .select()
+      .from(announcementTable)
+      .where(
+        and(
+          eq(announcementTable.workspaceId, DEMO_WORKSPACE_ID),
+          isNotNull(announcementTable.publishedAt),
+        ),
+      );
+    expect(announcements).toHaveLength(2);
+  });
+
+  it("plans a cycle and a module with items", async () => {
+    const cycles = await db
+      .select()
+      .from(cycleTable)
+      .where(eq(cycleTable.workspaceId, DEMO_WORKSPACE_ID));
+    const modules = await db
+      .select()
+      .from(moduleTable)
+      .where(eq(moduleTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(cycles.length).toBeGreaterThanOrEqual(1);
+    expect(modules.length).toBeGreaterThanOrEqual(1);
+    const inCycle = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(
+        inArray(
+          schema.workItemTable.cycleId,
+          cycles.map((cycle) => cycle.id),
+        ),
+      );
+    const inModule = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(
+        inArray(
+          schema.workItemTable.moduleId,
+          modules.map((module) => module.id),
+        ),
+      );
+    expect(inCycle.length).toBeGreaterThanOrEqual(4);
+    expect(inModule.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("has triage submissions including a suspected duplicate, saved views, KB articles and pages", async () => {
+    const waiting = await db
+      .select({
+        number: schema.submissionTable.number,
+        summary: sql<string>`${schema.submissionTable.formData}->>'summary'`,
+        organisationId: schema.submissionTable.organisationId,
+      })
+      .from(schema.submissionTable)
+      .innerJoin(
+        schema.requestTypeTable,
+        eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+      )
+      .where(
+        and(
+          eq(schema.requestTypeTable.workspaceId, DEMO_WORKSPACE_ID),
+          eq(schema.submissionTable.state, "new"),
+        ),
+      );
+    expect(waiting.length).toBeGreaterThanOrEqual(2);
+    const suggestions = await suggestDuplicatesForQueueRows(
+      DEMO_WORKSPACE_ID,
+      waiting.map((row) => ({
+        ref: String(row.number),
+        summary: row.summary,
+        organisationId: row.organisationId ?? "",
+      })),
+      (await demoProjects()).map((project) => project.id),
+    );
+    expect(suggestions.size).toBeGreaterThanOrEqual(1);
+
+    const views = await db
+      .select()
+      .from(schema.savedViewTable)
+      .where(eq(schema.savedViewTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(views.length).toBeGreaterThanOrEqual(2);
+    for (const view of views)
+      expect(() => validateWorkItemSearchQuery(view.query)).not.toThrow();
+
+    const articles = await db
+      .select()
+      .from(kbArticleTable)
+      .where(eq(kbArticleTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(articles.length).toBeGreaterThanOrEqual(4);
+    for (const article of articles) {
+      expect(article.title).not.toMatch(/\[|audit|\btest\b/i);
+      expect(article.state).toBe("published");
+    }
+
+    const pages = await db
+      .select()
+      .from(projectPageTable)
+      .where(eq(projectPageTable.workspaceId, DEMO_WORKSPACE_ID));
+    expect(pages.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("refuses a database with non-demo data unless told otherwise, and then changes nothing", async () => {
+    const [internal] = await db
+      .select({ id: schema.organisationTable.id })
+      .from(schema.organisationTable)
+      .where(eq(schema.organisationTable.key, "internal"));
+    if (!internal) throw new Error("internal organisation missing");
+    await db.insert(schema.workspaceTable).values({
+      id: "customer-real-workspace",
+      organisationId: internal.id,
+      name: "Real customer work",
+      slug: "real-customer-work",
+      createdAt: new Date(),
+    });
+    const before = await snapshot();
+    await expect(
+      run(["--demo", "--credentials-file", credentials]),
+    ).rejects.toThrow(/non-demo data/);
+    expect(await snapshot()).toEqual(before);
+
+    await run([
+      "--demo",
+      "--allow-existing-data",
+      "--credentials-file",
+      credentials,
+    ]);
+    expect(await snapshot()).toEqual(before);
+  }, 240_000);
+});
+
+describe("demo data seed beside existing data", () => {
+  let foreignDirectory: string;
+  let foreignCredentials: string;
+
+  beforeAll(async () => {
+    await resetTestDatabase({ defaultOffFeatures: false });
+    foreignDirectory = await mkdtemp(
+      path.join(os.tmpdir(), "taskdesk-demo-seed-existing-"),
+    );
+    foreignCredentials = path.join(foreignDirectory, "demo.json");
+    // Someone else's data: the minimal fixture workspace with its project and items, a
+    // signed-up user and a customer organisation of its own.
+    await seed("minimal");
+    await db.insert(schema.userTable).values({
+      id: "existing-instance-admin",
+      name: "Existing admin",
+      email: "existing-admin@example.test",
+      emailVerified: true,
+    });
+    await db.insert(schema.organisationTable).values({
+      id: "existing-org-fabrikam",
+      key: "fabrikam",
+      name: "Fabrikam Inc",
+      isInternal: false,
+      domain: ["fabrikam.example.test"],
+      active: true,
+      portalAccess: true,
+      defaultCustomerVisibility: "organisation",
+    });
+  }, 180_000);
+
+  afterAll(async () => {
+    await resetTestDatabase();
+    await rm(foreignDirectory, { recursive: true, force: true });
+  });
+
+  it("refuses on a first run, then adds the demo beside it without changing a row, and a rerun changes nothing", async () => {
+    const before = await snapshot();
+    await expect(
+      run(["--demo", "--credentials-file", foreignCredentials]),
+    ).rejects.toThrow(/non-demo data/);
+    expect(await snapshot()).toEqual(before);
+    await expect(stat(foreignCredentials)).rejects.toThrow();
+
+    await run([
+      "--demo",
+      "--allow-existing-data",
+      "--credentials-file",
+      foreignCredentials,
+    ]);
+    const after = await snapshot();
+    expect(missingRows(before, after)).toEqual([]);
+    expect(
+      (after.work_item?.length ?? 0) - (before.work_item?.length ?? 0),
+    ).toBeGreaterThanOrEqual(20);
+
+    await run([
+      "--demo",
+      "--allow-existing-data",
+      "--credentials-file",
+      foreignCredentials,
+    ]);
+    expect(await snapshot()).toEqual(after);
+  }, 300_000);
+});

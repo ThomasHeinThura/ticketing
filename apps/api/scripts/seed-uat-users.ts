@@ -1354,9 +1354,13 @@ function paragraphDoc(text: string): DocNode {
   };
 }
 
-function fixtureConflict(kind: string, key: string): never {
+export function fixtureConflict(
+  kind: string,
+  key: string,
+  seedName = "UAT",
+): never {
   throw new Error(
-    `UAT seed refused: an existing ${kind} (${key}) conflicts with the UAT fixture. Nothing was changed by this step.`,
+    `${seedName} seed refused: an existing ${kind} (${key}) conflicts with the ${seedName} fixture. Nothing was changed by this step.`,
   );
 }
 
@@ -1373,12 +1377,13 @@ type IdTable = PgTable & { id: PgColumn };
  * (the fields that make it the same fixture), otherwise the seed refuses. Never updates.
  * Returns true when the row was inserted by this call.
  */
-async function ensureById<T extends IdTable>(
+export async function ensureById<T extends IdTable>(
   tx: Tx,
   table: T,
   values: T["$inferInsert"] & { id: string },
   identity: readonly string[],
   kind: string,
+  seedName = "UAT",
 ): Promise<boolean> {
   const [existing] = (await tx
     .select()
@@ -1388,7 +1393,8 @@ async function ensureById<T extends IdTable>(
   if (existing) {
     const record = values as Record<string, unknown>;
     for (const key of identity)
-      if (!same(existing[key], record[key])) fixtureConflict(kind, values.id);
+      if (!same(existing[key], record[key]))
+        fixtureConflict(kind, values.id, seedName);
     return false;
   }
   await tx.insert(table).values(values as never);
@@ -2290,7 +2296,7 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
   return { people, users, typeIds };
 }
 
-async function membershipExists(
+export async function membershipExists(
   tx: Tx,
   personId: string,
   scope: "organisation" | "workspace" | "project",
