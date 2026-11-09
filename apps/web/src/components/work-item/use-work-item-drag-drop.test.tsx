@@ -188,6 +188,14 @@ beforeEach(() => {
   mocks.transition.mockResolvedValue({});
 });
 afterEach(cleanup);
+it("keeps sensors and the drop animation stable across renders and drag start", () => {
+  const hook = mount();
+  const { sensors, dropAnimation } = hook.result.current;
+  hook.rerender(options());
+  start(hook);
+  expect(hook.result.current.sensors).toBe(sensors);
+  expect(hook.result.current.dropAnimation).toBe(dropAnimation);
+});
 it("does not POST an old project's offer after the route changes while reading it", async () => {
   let resolve!: (value: unknown) => void;
   mocks.offers.mockImplementation(
