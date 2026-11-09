@@ -1,7 +1,16 @@
 # Current status
 
-**7 Nov release:** `1f9d94910da396591ee3cfe431c0a5fdefa8d8af` runs on local SIT and
-Technexus (signed index `sha256:1859abb5d66d98caaac53ce8e57563ca53ff929dc87678720fad260084840ae4`;
+**9 Nov release and clean-environment checkpoint.** Thomas approved [#1092](https://github.com/ThomasHeinThura/ticketing/pull/1092); it merged as `9affab43db3cbc0b75dddc4207d1cbda4699361f`. [Release run 42640150202](https://github.com/ThomasHeinThura/ticketing/actions/runs/42640150202) built, scanned, signed and published index `sha256:b41de7fad755e713bf1290de1c8b8e66bdbe911ba4f35fdae790fb15db61ff8e`; attestation and cosign verification passed. The change adds explicit signed SIT target selection for upgrade and rollback. Its 25 non-G11 checks passed, including all 17 branch-required contexts; report-only G11 stopped on unstable host calibration before app metrics.
+
+- **Local SIT:** a quiesced backup passed hashes and an isolated restore of all 183 tables and 1,313 rows. The signed #1092 image is healthy on the single testing Compose deployment, both HTTPS readiness probes returned 200, and the six-role signed-in smoke passed 65/65 using the live private proxy certificate. Existing user, workspace and project counts matched the backup; no account seeder ran. The portal observational sweep matched 42 role/width/theme cells, with zero failed and 12 unestablished. It found a staff-raised case attribution ambiguity and a mobile Projects table scroll cue gap. These observations do not establish the full browser, interaction or permission matrix.
+- **Technexus UAT:** still runs the earlier signed `1f9d94910` image and existing data. No UAT app or data reset/deploy occurred. A prior backup passed an isolated restore, but data changed afterward; a fresh quiesced backup and isolated restore are required immediately before the approved clean replacement. The #1092 signed upgrade helper and cosign are prepared, not executed on UAT.
+- **Clean reset blocker:** the current first-user path marks setup complete before verified TOTP, contrary to the retained bootstrap contract. A separate auth fix is under implementation and real-PostgreSQL testing. Do not reset UAT until it passes independent review, browser checks, required CI, Thomas's merge approval and a signed release. Use the existing private credentials file and verified backup plan; do not use #1089 to rewrite existing records without its separate decision.
+- **Open evidence:** draft #1091 now passes the 200-card board metric (413.8 ms) but LCP still misses (2637.6 ms); draft #1093 has 25 non-G11 checks green but its first real-SIT browser attempt did not reach the Reports builder because `feature.reports` is off in the local fixture. G11 remains report-only in both PRs. The full 154-row route and role audit is unfinished; a bounded agent sweep matched 48 of 120 cells, observed nine with unexpected populated data, and left 63 unestablished. A Sol review found the audit harness unsafe to run broadly until its origin, side-effect and evidence accounting gaps are repaired.
+
+## Historical releases
+
+**7 Nov release:** `1f9d94910da396591ee3cfe431c0a5fdefa8d8af` ran on local SIT and
+continues on Technexus (signed index `sha256:1859abb5d66d98caaac53ce8e57563ca53ff929dc87678720fad260084840ae4`;
 attestation and cosign verified). Local smoke 68/68; Technexus backup
 `pre-1f9d949-20261107T044806Z`, counts unchanged, signed-in smoke 108/110 (the two
 instance-admin misses). It closes the 4 Nov browser matrix; each change was independently

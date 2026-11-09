@@ -1,18 +1,26 @@
-# Handover — 4 November 2026 (Claude → Codex)
+# Handover — 9 November 2026
 
 Read [AGENTS.md](../AGENTS.md), [status](status.md), [roadmap](roadmap.md) and [testing](testing.md) first. Thomas's current instructions override everything here.
 
 ## Who works on version 2
 
-From 4 Nov Thomas hands version 2 back to **Codex**. Codex owns the release chain and works in the main checkout without creating worktrees. Model tiers and review rules are in AGENTS.md. On 6–7 Nov Claude implemented and released #1062–#1074 at Thomas's direction (see [status](status.md)).
+Codex coordinates version 2. Independent Orca child worktrees hold draft work; the main checkout remains on the G11 branch. Claude workers reached their weekly limit, so current implementation and review use the middle and high tiers in AGENTS.md. Keep file ownership separate and use the Orca task results as evidence, not acceptance.
 
 ## Goal
 
-**UAT launch on Friday 6 November 2026** on the Technexus hosts. Thomas does the final human verification with the credential files on his Mac (`~/.taskdesk/sit-credentials.json` for local SIT, `~/.taskdesk/uat-credentials-technexus.json` for Technexus). They never go into docs, logs or PRs.
+Complete the full audit, repair the remaining defects and qualify a clean seeded local SIT and Technexus UAT. Thomas approved replacing both environments after verified backups, confirmed no active testers, and directed use of the existing private credentials files. Credentials never enter docs, logs or PRs. Each later merge still needs his explicit approval.
 
 ## State now
 
-- **7 Nov, running versions:** local SIT (compose project `taskdesk-codex-testing`) and Technexus both run `main` 1f9d94910 (signed, attested). Technexus signed-in smoke 108/110, with the two expected instance-admin misses. Details in [status](status.md).
+- **9 Nov release:** Thomas approved and merged #1092 as `9affab43db3cbc0b75dddc4207d1cbda4699361f`. The release workflow passed, and index `sha256:b41de7fad755e713bf1290de1c8b8e66bdbe911ba4f35fdae790fb15db61ff8e` passed attestation and cosign verification. The release adds `upgrade --target sit` and matching rollback targeting. All 17 branch-required checks passed; G11 was report-only and stopped before app metrics on unstable calibration.
+- **Local SIT:** a quiesced backup passed hashes and a full isolated restore (183 tables, 1,313 rows). The new signed image is healthy and six-role smoke passed 65/65; no account seeder ran. A bounded portal browser sweep matched 42 cells, with 12 unestablished. This is an upgrade of the existing data, not the requested clean reinstall.
+- **Technexus UAT:** still runs the previous signed `1f9d94910` image and existing data. No UAT app/data reset or deploy has occurred. Re-capture a quiesced backup and prove an isolated restore immediately before replacement; the older verified backup is no longer a current snapshot.
+- **Clean cutover blocker:** main completes first-user setup before verified TOTP, contrary to the retained bootstrap contract. The separate bootstrap fix is undergoing independent Sol review, broader gates and browser acceptance. Do not reset either environment until that fix is merged with Thomas's approval and a signed release is available. Use the private ten-account UAT seed subset and the separate first-admin account; do not invoke #1089's existing-data rewrite without its own decision.
+- **Drafts:** #1091 improves board render to 413.8 ms but LCP remains 2637.6 ms against 2500; #1093 has 25 non-G11 checks green, including all 17 required contexts, but still needs real SIT browser evidence. The full 154-row audit is open. An independent Sol review found the browser harness needed origin, side-effect and accounting safeguards before a broad run.
+- **Portal decision pending:** staff-raised cases show an ambiguous "Created by" value under the retained requester contract. Thomas has been asked to choose the presentation correction. The mobile Projects scroll cue is also open.
+
+## Historical context
+
 - **5 Nov release:** `e08c7063ae9a384252066407193662bca8740c24` is accepted on local SIT and Technexus, with signed index `sha256:d34875df206d7c0b3acad20d8ee37911e740fc093df077aa120f4d776c931989`. Release run 41989194302 passed both jobs; source provenance and cosign signature were verified. Release-path fixes #1055 and #1057 shipped; #1056 is closed. This does not complete fresh-customer installation acceptance.
 - **Local SIT:** 68/68 smoke checks passed across six roles and both HTTPS hosts; journal 217 and eight attachment hashes were verified. The quiesced backup contained 184 tables and 48,279 rows. A new QA workspace, project and lead/viewer accounts were created through product APIs; the original four credential entries were preserved and setup did not change existing workspace/project grants. A private operator hit a name-shadowing `TypeError` after the signed helper verified the new app, leaving the lock held. Independent read-only acceptance verified the same candidate, backup, HBA, configuration and counts before unlock; no second migration or restore ran. Superseded legacy local deployments remain stopped with their volumes preserved.
 - **Technexus:** the quiesced backup contained 184 tables, 69,976 rows and four files. Initial post-deploy counts were identical. The new image is healthy; normal macOS TLS checks on both hosts passed before and after smoke. Signed-in smoke was 108/110, with two expected empty-workspace instance-admin misses and all 54 browser checks passing; the lock was released.
@@ -47,12 +55,12 @@ All are recorded in [design-and-decisions](technical/design-and-decisions.md).
 - **Managed-service create.** It asks for a service calendar when none resolves (#1041).
 - **Documents edits.** Documents entries have a PATCH edit route (#1029).
 
-## Release chain (every merge)
+## Release and cutover chain
 
 1. Merge to `main` → `release.yml` builds, Trivy-scans (HIGH/CRITICAL with a fix block publication), generates SBOMs, signs and publishes. Verify with `gh attestation verify oci://ghcr.io/thomasheinthura/taskdesk@<digest> --owner ThomasHeinThura --signer-workflow ThomasHeinThura/ticketing/.github/workflows/release.yml`.
-2. **Local SIT:** use only `deploy/compose.testing.yml`. Set `SIT_COMPOSE_ENV` and `SIT_PRIVATE_DIR` to the private canonical configuration, with `SIT_IMAGE` pinned to the verified release digest and `TASKDESK_IMAGE_TAG` set to its signed release tag. `scripts/deploy.sh local` verifies both the release attestation and cosign signature, requires the initialized canonical database/cache and copied attachment volume, runs migrations, starts the application/proxy and probes readiness; it never imports data or seeds accounts. Run `node scripts/sit/release-smoke.mjs` afterwards. Before the first transition from a legacy deployment, back up its database, files and private configuration; verify the restored copy and file hashes, preserve the old volumes, and switch the proxy only after internal readiness. The old local invocation would reseed accounts and must not be used.
-3. **Technexus:** take a `pg_dump -Fc` backup and verify it with `pg_restore --list`; back up the volume and `.env`, and record the counts. Then set the tag and digest, migrate, and run `up -d --wait`. Wait for both hosts' `/api/public/health/ready` to return 200 before checking anything; there is a startup window of about a minute. Run the signed-in smoke with the Technexus credentials file. **Once UAT users are on Technexus, every deploy asks Thomas first.**
-4. Any failure stops the release. To roll back, restore the previous `.env`. If the migration count changed, also restore the database.
+2. **Local SIT upgrade:** use only `deploy/compose.testing.yml`. Set `SIT_COMPOSE_ENV` and `SIT_PRIVATE_DIR` to the private canonical configuration, with `SIT_IMAGE` pinned to the verified release digest and `TASKDESK_IMAGE_TAG` set to its signed release tag. `scripts/deploy.sh local` verifies both the release attestation and cosign signature, requires the initialized canonical database/cache and copied attachment volume, runs migrations, starts the application/proxy and probes readiness; it never imports data or seeds accounts. Run `node scripts/sit/release-smoke.mjs` afterwards. For a clean install, bootstrap and seed on fresh volumes after the separate auth fix is qualified. Preserve the old backup and volumes until acceptance.
+3. **Technexus:** Thomas has authorized the clean SIT/UAT replacement after verified backups and confirmed there are no active testers. For the cutover, take a fresh quiesced database, file and private-config backup; verify hashes, counts and a full isolated restore. Record the running digest and its signed release tag. Use the signed release helper with `upgrade --target sit` for the SIT overlay and keep `rollback <digest> <signed-tag> --target sit` ready. Verify health, HTTPS, separate sessions, signed-in smoke and browser journeys on both hosts. Later merges and Technexus deploys need their own approval under AGENTS.md.
+4. Any failure stops the cutover. Re-pin the previous verified digest through the matching target and preserve the new diagnostics. If schema incompatibility prevents image rollback, restore the verified backup under the recovery runbook.
 
 ## Open after UAT (ordered)
 
@@ -74,7 +82,7 @@ All are recorded in [design-and-decisions](technical/design-and-decisions.md).
 
 ## Working notes
 
-- **No worktrees (Thomas, 4 Nov).** Do not create git worktrees or worktree branches. Work in the main checkout (`Ticketing.v2`): one feature branch per PR, cut from an up-to-date `main` (`git switch -c fix/… origin/main`). Commit, push, open the PR, merge, then switch back to `main` and delete the merged local branch. Subagents work in the same checkout on disjoint files and never commit.
+- **Orca child worktrees (Thomas, 9 Nov).** The current coordinator uses separate Orca child worktrees for disjoint PRs. Keep one owner per file, inspect dirty files before staging, and leave subagents' commits, pushes and merges to the coordinator. The 4 Nov no-worktree instruction is superseded for this work.
 - **G8.** Regenerate baselines from the CI `playwright-visual` artifact, `<name>-actual.png` → `apps/web/e2e/visual.spec.ts-snapshots/<name>-linux.png`. Look at every image first. `check:visual-scope` allows only `toBeVisible` assertions with literal values.
 - **Merge conflicts.** In `i18n/*.json`, merge three-way and keep both sides' keys. For `i18n/schema.json`, `pairs.json` and `openapi.json`, take main's copy and regenerate it (`pnpm i18n:schema`, `node scripts/ci/refresh-contrast-manifest.mjs --write` + biome format, `pnpm openapi:write`).
 - **check:env.** It rejects test-only environment reads; write evidence screenshots with `test.info().outputPath`.
@@ -86,4 +94,4 @@ All are recorded in [design-and-decisions](technical/design-and-decisions.md).
 - Weaken, skip or exempt a check, or change budgets, thresholds or calibration. G11 stays report-only.
 - Write hosts, keys, credentials, cookies or database URLs into docs, logs or PRs.
 - Remove a container except by exact id; never prune.
-- Wipe or reseed Technexus, or edit Thomas's own records there ("test projects", the YOMA MS service), without asking.
+- Replace SIT/UAT data only under Thomas's current clean-start authorization, after a fresh verified backup and isolated restore. Preserve the old stack and its recovery copy; never use #1089's existing-data rewrite as an implicit part of this reset.
