@@ -180,8 +180,13 @@ function FeatureRowItem({
               {t("lockedByInstance")}
             </Badge>
           ) : null}
-          {/* S11: inheriting is the default, so only an override is badged; its reset sits
-              beside the badge as a quiet icon button instead of next to the switch. */}
+          {level !== "instance" && !overridden && !lockedBelow ? (
+            <Badge variant="secondary" size="sm">
+              {t("inheritedFrom", {
+                source: t(`sources.${row.inherited?.source ?? "default"}`),
+              })}
+            </Badge>
+          ) : null}
           {overridden && !lockedBelow ? (
             <>
               <Badge variant="outline" size="sm">

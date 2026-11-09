@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -49,6 +50,8 @@ const preferences = {
     },
   ],
 };
+let currentPreferences: Record<string, unknown> = preferences;
+let currentWorkspaces: Array<{ id: string; name: string }> = [];
 
 const canonical = vi.hoisted(() => ({
   handoff: vi.fn(),
@@ -63,15 +66,14 @@ vi.mock(
 );
 
 function renderSettings() {
-  return render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
-      <NotificationPreferencesSettings />
-    </QueryClientProvider>,
-  );
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(<NotificationPreferencesSettings />, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
 }
 
 vi.mock("react-i18next", () => ({
@@ -82,14 +84,17 @@ vi.mock(
   "@/hooks/queries/notification-preferences/use-get-notification-preferences",
   () => ({
     default: () => ({
-      data: preferences,
+      data: currentPreferences,
       isLoading: false,
     }),
   }),
 );
 
 vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
-  default: () => ({ data: [] }),
+  default: () => ({ data: currentWorkspaces }),
+}));
+vi.mock("@/hooks/queries/project/use-get-projects", () => ({
+  default: () => ({ data: [{ id: "project-one", name: "Project One" }] }),
 }));
 
 vi.mock(
@@ -108,6 +113,8 @@ describe("NotificationPreferencesSettings", () => {
   afterEach(cleanup);
 
   beforeEach(() => {
+    currentPreferences = preferences;
+    currentWorkspaces = [];
     updatePreferences.mockReset();
     updatePreferences.mockResolvedValue(undefined);
     canonical.handoff.mockReset();
@@ -167,6 +174,201 @@ describe("NotificationPreferencesSettings", () => {
     fireEvent.click(toggle);
     await waitFor(() => expect(updatePreferences).toHaveBeenCalled());
     await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "true"));
+  });
+
+  it("serializes overlapping event changes, including repeated changes to one switch", async () => {
+    let finishFirst!: () => void;
+    const firstWrite = new Promise<void>((resolve) => {
+      finishFirst = resolve;
+    });
+    updatePreferences.mockReturnValueOnce(firstWrite);
+    renderSettings();
+    const assignment = screen.getByRole("switch", {
+      name: "settings:notificationsPage.eventTaskAssignments",
+    });
+    const comments = screen.getByRole("switch", {
+      name: "settings:notificationsPage.eventComments",
+    });
+    fireEvent.click(assignment);
+    fireEvent.click(comments);
+    fireEvent.click(assignment);
+    await waitFor(() => expect(updatePreferences).toHaveBeenCalledTimes(1));
+    expect(assignment).toHaveAttribute("aria-checked", "true");
+    expect(comments).toHaveAttribute("aria-checked", "false");
+    await act(async () => finishFirst());
+    await waitFor(() => expect(updatePreferences).toHaveBeenCalledTimes(3));
+    expect(updatePreferences.mock.calls.map(([input]) => input)).toEqual([
+      { taskAssignmentEnabled: false },
+      { taskCommentEnabled: false },
+      { taskAssignmentEnabled: true },
+    ]);
+  });
+
+  it("keeps a newer switch choice when an earlier queued save fails", async () => {
+    let failFirst!: (reason: Error) => void;
+    updatePreferences.mockReturnValueOnce(
+      new Promise<void>((_, reject) => {
+        failFirst = reject;
+      }),
+    );
+    renderSettings();
+    const assignment = screen.getByRole("switch", {
+      name: "settings:notificationsPage.eventTaskAssignments",
+    });
+    fireEvent.click(assignment);
+    fireEvent.click(assignment);
+    await waitFor(() => expect(updatePreferences).toHaveBeenCalledTimes(1));
+    await act(async () => failFirst(new Error("offline")));
+    await waitFor(() => expect(updatePreferences).toHaveBeenCalledTimes(2));
+    expect(assignment).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("rolls back to the confirmed value if both queued choices fail", async () => {
+    let failFirst!: (reason: Error) => void;
+    updatePreferences
+      .mockReturnValueOnce(
+        new Promise<void>((_, reject) => {
+          failFirst = reject;
+        }),
+      )
+      .mockRejectedValueOnce(new Error("offline"));
+    renderSettings();
+    const assignment = screen.getByRole("switch", {
+      name: "settings:notificationsPage.eventTaskAssignments",
+    });
+    fireEvent.click(assignment);
+    fireEvent.click(assignment);
+    await waitFor(() => expect(updatePreferences).toHaveBeenCalledTimes(1));
+    await act(async () => failFirst(new Error("offline")));
+    await waitFor(() => expect(updatePreferences).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(assignment).toHaveAttribute("aria-checked", "true"),
+    );
+  });
+
+  it("preserves unrelated unsaved drafts when an autosave refetches preferences", async () => {
+    const view = renderSettings();
+    const lead = screen.getByLabelText(
+      "settings:notificationsPage.reminderLeadTimeLabel",
+    );
+    const ntfyUrl = screen.getByPlaceholderText(
+      "settings:notificationsPage.ntfyServerPlaceholder",
+    );
+    const ntfyToken = screen.getByPlaceholderText(
+      "settings:notificationsPage.ntfyTokenPlaceholder",
+    );
+    const gotifyToken = screen.getByPlaceholderText(
+      "settings:notificationsPage.gotifyTokenPlaceholder",
+    );
+    const webhookSecret = screen.getByPlaceholderText(
+      "settings:notificationsPage.webhookSecretPlaceholder",
+    );
+    fireEvent.change(lead, { target: { value: "2" } });
+    fireEvent.change(ntfyUrl, { target: { value: "https://example.test" } });
+    fireEvent.change(ntfyToken, { target: { value: "ntfy draft" } });
+    fireEvent.change(gotifyToken, { target: { value: "gotify draft" } });
+    fireEvent.change(webhookSecret, { target: { value: "webhook draft" } });
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "settings:notificationsPage.eventComments",
+      }),
+    );
+    await waitFor(() =>
+      expect(updatePreferences).toHaveBeenCalledWith({
+        taskCommentEnabled: false,
+      }),
+    );
+    currentPreferences = { ...preferences, taskCommentEnabled: false };
+    view.rerender(<NotificationPreferencesSettings />);
+    await waitFor(() => expect(lead).toHaveValue("2"));
+    expect(ntfyUrl).toHaveValue("https://example.test");
+    expect(ntfyToken).toHaveValue("ntfy draft");
+    expect(gotifyToken).toHaveValue("gotify draft");
+    expect(webhookSecret).toHaveValue("webhook draft");
+    expect(
+      screen.getByRole("switch", {
+        name: "settings:notificationsPage.eventComments",
+      }),
+    ).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("keeps an unsaved workspace rule draft through an unrelated event refetch", async () => {
+    currentWorkspaces = [{ id: "workspace-one", name: "Workspace One" }];
+    const rule = {
+      workspaceId: "workspace-one",
+      isActive: true,
+      emailEnabled: false,
+      ntfyEnabled: false,
+      gotifyEnabled: false,
+      webhookEnabled: false,
+      projectMode: "all" as const,
+      selectedProjectIds: [],
+    };
+    currentPreferences = {
+      ...preferences,
+      emailEnabled: true,
+      workspaces: [rule],
+    };
+    const view = renderSettings();
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "settings:notificationsPage.workspaceCardLabelEmail",
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("radio", {
+        name: /settings:notificationsPage.selectedProjects/,
+      }),
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Project One" }));
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "settings:notificationsPage.eventComments",
+      }),
+    );
+    await waitFor(() =>
+      expect(updatePreferences).toHaveBeenCalledWith({
+        taskCommentEnabled: false,
+      }),
+    );
+    currentPreferences = {
+      ...preferences,
+      emailEnabled: true,
+      taskCommentEnabled: false,
+      workspaces: [{ ...rule, selectedProjectIds: [] }],
+    };
+    view.rerender(<NotificationPreferencesSettings />);
+    expect(
+      screen.getByRole("switch", {
+        name: "settings:notificationsPage.workspaceCardLabelEmail",
+      }),
+    ).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("checkbox", { name: "Project One" }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("does not clear a newer secret entered while its previous value is saving", async () => {
+    let finish!: () => void;
+    updatePreferences.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    renderSettings();
+    const token = screen.getByPlaceholderText(
+      "settings:notificationsPage.ntfyTokenPlaceholder",
+    );
+    fireEvent.change(token, { target: { value: "first secret" } });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings:notificationsPage.connectNtfy",
+      }),
+    );
+    await waitFor(() => expect(updatePreferences).toHaveBeenCalledTimes(1));
+    fireEvent.change(token, { target: { value: "new draft" } });
+    await act(async () => finish());
+    expect(token).toHaveValue("new draft");
   });
 
   it("offers a save for the reminder lead time only once it changed", async () => {

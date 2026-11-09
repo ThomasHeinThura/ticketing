@@ -208,6 +208,7 @@ function WorkspaceRuleCard({
       rule,
     }),
   );
+  const previousRule = React.useRef<WorkspaceRuleState | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const { data: projects } = useGetProjects({
@@ -219,15 +220,57 @@ function WorkspaceRuleCard({
   });
 
   React.useEffect(() => {
-    setState(
-      createWorkspaceRuleState({
-        hasEmailChannel,
-        hasGotifyChannel,
-        hasNtfyChannel,
-        hasWebhookChannel,
-        rule,
-      }),
-    );
+    const next = createWorkspaceRuleState({
+      hasEmailChannel,
+      hasGotifyChannel,
+      hasNtfyChannel,
+      hasWebhookChannel,
+      rule,
+    });
+    const previous = previousRule.current;
+    setState((current) => {
+      if (!previous) return next;
+      const keepDirty = <T,>(value: T, old: T, incoming: T) =>
+        Object.is(value, old) ? incoming : value;
+      const projectsUnchanged =
+        current.selectedProjectIds.length ===
+          previous.selectedProjectIds.length &&
+        current.selectedProjectIds.every(
+          (id, index) => id === previous.selectedProjectIds[index],
+        );
+      return {
+        isActive: keepDirty(current.isActive, previous.isActive, next.isActive),
+        emailEnabled: keepDirty(
+          current.emailEnabled,
+          previous.emailEnabled,
+          next.emailEnabled,
+        ),
+        ntfyEnabled: keepDirty(
+          current.ntfyEnabled,
+          previous.ntfyEnabled,
+          next.ntfyEnabled,
+        ),
+        gotifyEnabled: keepDirty(
+          current.gotifyEnabled,
+          previous.gotifyEnabled,
+          next.gotifyEnabled,
+        ),
+        webhookEnabled: keepDirty(
+          current.webhookEnabled,
+          previous.webhookEnabled,
+          next.webhookEnabled,
+        ),
+        projectMode: keepDirty(
+          current.projectMode,
+          previous.projectMode,
+          next.projectMode,
+        ),
+        selectedProjectIds: projectsUnchanged
+          ? next.selectedProjectIds
+          : current.selectedProjectIds,
+      };
+    });
+    previousRule.current = next;
   }, [
     hasEmailChannel,
     hasGotifyChannel,
@@ -567,8 +610,19 @@ export function NotificationPreferencesSettings() {
   const { t } = useTranslation();
   const { data: preferences, isLoading } = useGetNotificationPreferences();
   const { data: workspacesData } = useGetWorkspaces();
-  const { mutateAsync: updatePreferences, isPending: isSavingPreferences } =
+  const { mutateAsync: writePreferences, isPending: isSavingPreferences } =
     useUpdateNotificationPreferences();
+  // Legacy preference updates read and write the same row on the server. Serialize every
+  // write from this screen so two independent controls cannot overwrite one another.
+  const writeQueue = React.useRef<Promise<unknown>>(Promise.resolve());
+  const updatePreferences = React.useCallback(
+    (input: Parameters<typeof writePreferences>[0]) => {
+      const result = writeQueue.current.then(() => writePreferences(input));
+      writeQueue.current = result.catch(() => undefined);
+      return result;
+    },
+    [writePreferences],
+  );
   const { mutateAsync: upsertWorkspaceRule } =
     useUpsertNotificationWorkspaceRule();
   const { mutateAsync: deleteWorkspaceRule } =
@@ -595,10 +649,17 @@ export function NotificationPreferencesSettings() {
       dueDateReminderLeadAmount: 1,
       dueDateReminderLeadUnit: "days",
     });
+  const previousPrefs = React.useRef<{
+    global: GlobalChannelPrefsState;
+    event: NotificationEventPrefsState;
+  } | null>(null);
+  const pendingSwitches = React.useRef<Record<string, number>>({});
+  const switchVersions = React.useRef<Record<string, number>>({});
+  const confirmedSwitches = React.useRef<Record<string, boolean>>({});
 
   React.useEffect(() => {
     if (!preferences) return;
-    setGlobalPrefs({
+    const nextGlobal: GlobalChannelPrefsState = {
       emailEnabled: preferences.emailEnabled,
       ntfy: {
         enabled: preferences.ntfyEnabled,
@@ -616,9 +677,9 @@ export function NotificationPreferencesSettings() {
         url: preferences.webhookUrl ?? "",
         secret: "",
       },
-    });
+    };
     const leadMinutes = preferences.dueDateReminderLeadTimeMinutes;
-    setEventPrefs({
+    const nextEvent: NotificationEventPrefsState = {
       taskAssignmentEnabled: preferences.taskAssignmentEnabled,
       taskCommentEnabled: preferences.taskCommentEnabled,
       taskStatusChangeEnabled: preferences.taskStatusChangeEnabled,
@@ -635,7 +696,109 @@ export function NotificationPreferencesSettings() {
             ),
             dueDateReminderLeadUnit: "hours" as const,
           }),
-    });
+    };
+    for (const [key, value] of Object.entries({
+      emailEnabled: nextGlobal.emailEnabled,
+      taskAssignmentEnabled: nextEvent.taskAssignmentEnabled,
+      taskCommentEnabled: nextEvent.taskCommentEnabled,
+      taskStatusChangeEnabled: nextEvent.taskStatusChangeEnabled,
+      dueDateReminderEnabled: nextEvent.dueDateReminderEnabled,
+    })) {
+      if (!pendingSwitches.current[key]) confirmedSwitches.current[key] = value;
+    }
+    const previous = previousPrefs.current;
+    if (!previous) {
+      setGlobalPrefs(nextGlobal);
+      setEventPrefs(nextEvent);
+    } else {
+      // A refetch after any save must not discard unsaved edits in other cards.
+      // Secrets are write-only and have no server value to merge.
+      const keepDirty = <T,>(current: T, old: T, next: T) =>
+        Object.is(current, old) ? next : current;
+      setGlobalPrefs((current) => ({
+        emailEnabled: pendingSwitches.current.emailEnabled
+          ? current.emailEnabled
+          : keepDirty(
+              current.emailEnabled,
+              previous.global.emailEnabled,
+              nextGlobal.emailEnabled,
+            ),
+        ntfy: {
+          enabled: keepDirty(
+            current.ntfy.enabled,
+            previous.global.ntfy.enabled,
+            nextGlobal.ntfy.enabled,
+          ),
+          serverUrl: keepDirty(
+            current.ntfy.serverUrl,
+            previous.global.ntfy.serverUrl,
+            nextGlobal.ntfy.serverUrl,
+          ),
+          topic: keepDirty(
+            current.ntfy.topic,
+            previous.global.ntfy.topic,
+            nextGlobal.ntfy.topic,
+          ),
+          token: current.ntfy.token,
+        },
+        gotify: {
+          enabled: keepDirty(
+            current.gotify.enabled,
+            previous.global.gotify.enabled,
+            nextGlobal.gotify.enabled,
+          ),
+          serverUrl: keepDirty(
+            current.gotify.serverUrl,
+            previous.global.gotify.serverUrl,
+            nextGlobal.gotify.serverUrl,
+          ),
+          token: current.gotify.token,
+        },
+        webhook: {
+          enabled: keepDirty(
+            current.webhook.enabled,
+            previous.global.webhook.enabled,
+            nextGlobal.webhook.enabled,
+          ),
+          url: keepDirty(
+            current.webhook.url,
+            previous.global.webhook.url,
+            nextGlobal.webhook.url,
+          ),
+          secret: current.webhook.secret,
+        },
+      }));
+      setEventPrefs((current) => {
+        const mergeSwitch = (
+          key:
+            | "taskAssignmentEnabled"
+            | "taskCommentEnabled"
+            | "taskStatusChangeEnabled"
+            | "dueDateReminderEnabled",
+        ) =>
+          pendingSwitches.current[key]
+            ? current[key]
+            : keepDirty(current[key], previous.event[key], nextEvent[key]);
+        const leadDirty =
+          current.dueDateReminderLeadAmount !==
+            previous.event.dueDateReminderLeadAmount ||
+          current.dueDateReminderLeadUnit !==
+            previous.event.dueDateReminderLeadUnit;
+        return {
+          taskAssignmentEnabled: mergeSwitch("taskAssignmentEnabled"),
+          taskCommentEnabled: mergeSwitch("taskCommentEnabled"),
+          taskStatusChangeEnabled: mergeSwitch("taskStatusChangeEnabled"),
+          dueDateReminderEnabled: mergeSwitch("dueDateReminderEnabled"),
+          dueDateReminderLeadAmount: leadDirty
+            ? current.dueDateReminderLeadAmount
+            : nextEvent.dueDateReminderLeadAmount,
+          dueDateReminderLeadUnit: leadDirty
+            ? current.dueDateReminderLeadUnit
+            : nextEvent.dueDateReminderLeadUnit,
+        };
+      });
+    }
+    previousPrefs.current = { global: nextGlobal, event: nextEvent };
   }, [preferences]);
 
   const leadTimeMax = eventPrefs.dueDateReminderLeadUnit === "days" ? 30 : 720;
@@ -661,20 +824,43 @@ export function NotificationPreferencesSettings() {
       | "dueDateReminderEnabled",
     checked: boolean,
   ) => {
+    const version = (switchVersions.current[key] ?? 0) + 1;
+    switchVersions.current[key] = version;
+    pendingSwitches.current[key] = (pendingSwitches.current[key] ?? 0) + 1;
     setEventPrefs((current) => ({ ...current, [key]: checked }));
     try {
       await updatePreferences({ [key]: checked });
+      confirmedSwitches.current[key] = checked;
     } catch {
-      setEventPrefs((current) => ({ ...current, [key]: !checked }));
+      if (switchVersions.current[key] === version) {
+        setEventPrefs((current) => ({
+          ...current,
+          [key]: confirmedSwitches.current[key],
+        }));
+      }
+    } finally {
+      pendingSwitches.current[key] -= 1;
     }
   };
 
   const saveEmailChannel = async (checked: boolean) => {
+    const key = "emailEnabled";
+    const version = (switchVersions.current[key] ?? 0) + 1;
+    switchVersions.current[key] = version;
+    pendingSwitches.current[key] = (pendingSwitches.current[key] ?? 0) + 1;
     setGlobalPrefs((prev) => ({ ...prev, emailEnabled: checked }));
     try {
       await updatePreferences({ emailEnabled: checked });
+      confirmedSwitches.current[key] = checked;
     } catch {
-      setGlobalPrefs((prev) => ({ ...prev, emailEnabled: !checked }));
+      if (switchVersions.current[key] === version) {
+        setGlobalPrefs((prev) => ({
+          ...prev,
+          emailEnabled: confirmedSwitches.current[key],
+        }));
+      }
+    } finally {
+      pendingSwitches.current[key] -= 1;
     }
   };
 
@@ -888,16 +1074,18 @@ export function NotificationPreferencesSettings() {
             <Button
               disabled={isSavingPreferences}
               onClick={async () => {
+                const token = globalPrefs.gotify.token;
                 await updatePreferences({
                   gotifyEnabled: globalPrefs.gotify.enabled,
                   gotifyServerUrl: globalPrefs.gotify.serverUrl,
-                  gotifyToken: globalPrefs.gotify.token.trim()
-                    ? globalPrefs.gotify.token
-                    : undefined,
+                  gotifyToken: token.trim() ? token : undefined,
                 });
                 setGlobalPrefs((prev) => ({
                   ...prev,
-                  gotify: { ...prev.gotify, token: "" },
+                  gotify: {
+                    ...prev.gotify,
+                    token: prev.gotify.token === token ? "" : prev.gotify.token,
+                  },
                 }));
               }}
               type="button"
@@ -1016,17 +1204,19 @@ export function NotificationPreferencesSettings() {
             <Button
               disabled={isSavingPreferences}
               onClick={async () => {
+                const token = globalPrefs.ntfy.token;
                 await updatePreferences({
                   ntfyEnabled: globalPrefs.ntfy.enabled,
                   ntfyServerUrl: globalPrefs.ntfy.serverUrl,
                   ntfyTopic: globalPrefs.ntfy.topic,
-                  ntfyToken: globalPrefs.ntfy.token.trim()
-                    ? globalPrefs.ntfy.token
-                    : undefined,
+                  ntfyToken: token.trim() ? token : undefined,
                 });
                 setGlobalPrefs((prev) => ({
                   ...prev,
-                  ntfy: { ...prev.ntfy, token: "" },
+                  ntfy: {
+                    ...prev.ntfy,
+                    token: prev.ntfy.token === token ? "" : prev.ntfy.token,
+                  },
                 }));
               }}
               type="button"
@@ -1161,16 +1351,19 @@ export function NotificationPreferencesSettings() {
             <Button
               disabled={isSavingPreferences}
               onClick={async () => {
+                const secret = globalPrefs.webhook.secret;
                 await updatePreferences({
                   webhookEnabled: globalPrefs.webhook.enabled,
                   webhookUrl: globalPrefs.webhook.url,
-                  webhookSecret: globalPrefs.webhook.secret.trim()
-                    ? globalPrefs.webhook.secret
-                    : undefined,
+                  webhookSecret: secret.trim() ? secret : undefined,
                 });
                 setGlobalPrefs((prev) => ({
                   ...prev,
-                  webhook: { ...prev.webhook, secret: "" },
+                  webhook: {
+                    ...prev.webhook,
+                    secret:
+                      prev.webhook.secret === secret ? "" : prev.webhook.secret,
+                  },
                 }));
               }}
               type="button"

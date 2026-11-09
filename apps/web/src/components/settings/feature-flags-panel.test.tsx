@@ -156,7 +156,7 @@ describe("FeatureFlagsPanel", () => {
     ]);
   });
 
-  it("shows no badge or reset for an inherited value, the default (S11)", () => {
+  it("shows where an inherited value comes from and offers no reset when inherited", () => {
     mocks.rows = [
       row({
         key: "feature.sla",
@@ -169,7 +169,24 @@ describe("FeatureFlagsPanel", () => {
     render(
       <FeatureFlagsPanel target={{ level: "workspace", workspaceId: "w1" }} />,
     );
-    expect(screen.queryByText("inheritedFrom:sources.instance")).toBeNull();
+    expect(screen.getByText("inheritedFrom:sources.instance")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "useInherited" })).toBeNull();
+  });
+
+  it("identifies a workspace-inherited project feature", () => {
+    mocks.rows = [
+      row({
+        key: "feature.sla",
+        enabled: true,
+        source: "workspace",
+        override: null,
+        inherited: { enabled: true, source: "workspace" },
+      }),
+    ];
+    render(
+      <FeatureFlagsPanel target={{ level: "project", projectId: "p1" }} />,
+    );
+    expect(screen.getByText("inheritedFrom:sources.workspace")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "useInherited" })).toBeNull();
   });
 

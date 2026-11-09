@@ -171,7 +171,7 @@ test.describe("settings forms show persisted values on direct load", () => {
     await expect(page.locator('input[name="name"]')).toHaveValue(
       "Persisted Workspace",
     );
-    await expect(page.locator('input[name="description"]')).toHaveValue(
+    await expect(page.locator('textarea[name="description"]')).toHaveValue(
       "Persisted workspace description",
     );
   });

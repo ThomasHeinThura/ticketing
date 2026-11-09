@@ -1,5 +1,6 @@
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import db from "../database";
+import { type Executor, executorOrDefault } from "../database/executor";
 import {
   projectTable,
   userNotificationPreferenceTable,
@@ -42,8 +43,22 @@ export async function listSelectedProjects(
     );
 }
 
-export async function findNotificationPreference(userId: string) {
-  return await db.query.userNotificationPreferenceTable.findFirst({
+export async function lockNotificationPreferenceWrite(
+  executor: Executor,
+  userId: string,
+) {
+  await executor.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtextextended(${`notification-preferences:${userId}`}, 0))`,
+  );
+}
+
+export async function findNotificationPreference(
+  userId: string,
+  executor?: Executor,
+) {
+  return await executorOrDefault(
+    executor,
+  ).query.userNotificationPreferenceTable.findFirst({
     where: eq(userNotificationPreferenceTable.userId, userId),
   });
 }
@@ -87,8 +102,9 @@ export async function updateNotificationPreference(
   userId: string,
   data: typeof userNotificationPreferenceTable.$inferInsert,
   updatedAt: Date,
+  executor?: Executor,
 ) {
-  await db
+  await executorOrDefault(executor)
     .update(userNotificationPreferenceTable)
     .set({
       ...data,
@@ -99,16 +115,20 @@ export async function updateNotificationPreference(
 
 export async function insertNotificationPreference(
   data: typeof userNotificationPreferenceTable.$inferInsert,
+  executor?: Executor,
 ) {
-  await db.insert(userNotificationPreferenceTable).values(data);
+  await executorOrDefault(executor)
+    .insert(userNotificationPreferenceTable)
+    .values(data);
 }
 
 export async function updateActiveWorkspaceRules(
   userId: string,
   updates: Partial<typeof userNotificationWorkspaceRuleTable.$inferInsert>,
   updatedAt: Date,
+  executor?: Executor,
 ) {
-  await db
+  await executorOrDefault(executor)
     .update(userNotificationWorkspaceRuleTable)
     .set({
       ...updates,
@@ -128,8 +148,14 @@ export async function updateActiveWorkspaceRules(
     );
 }
 
-export async function findWorkspaceRule(userId: string, workspaceId: string) {
-  return await db.query.userNotificationWorkspaceRuleTable.findFirst({
+export async function findWorkspaceRule(
+  userId: string,
+  workspaceId: string,
+  executor?: Executor,
+) {
+  return await executorOrDefault(
+    executor,
+  ).query.userNotificationWorkspaceRuleTable.findFirst({
     where: and(
       eq(userNotificationWorkspaceRuleTable.userId, userId),
       eq(userNotificationWorkspaceRuleTable.workspaceId, workspaceId),
@@ -149,8 +175,9 @@ export async function updateWorkspaceRule(
     | "projectMode"
   >,
   updatedAt: Date,
+  executor?: Executor,
 ) {
-  await db
+  await executorOrDefault(executor)
     .update(userNotificationWorkspaceRuleTable)
     .set({
       isActive: input.isActive,
@@ -176,8 +203,9 @@ export async function insertWorkspaceRule(
     | "webhookEnabled"
     | "projectMode"
   >,
+  executor?: Executor,
 ) {
-  const [createdRule] = await db
+  const [createdRule] = await executorOrDefault(executor)
     .insert(userNotificationWorkspaceRuleTable)
     .values({
       userId,
@@ -193,8 +221,11 @@ export async function insertWorkspaceRule(
   return createdRule?.id;
 }
 
-export async function deleteWorkspaceProjectsForRule(workspaceRuleId: string) {
-  await db
+export async function deleteWorkspaceProjectsForRule(
+  workspaceRuleId: string,
+  executor?: Executor,
+) {
+  await executorOrDefault(executor)
     .delete(userNotificationWorkspaceProjectTable)
     .where(
       eq(
@@ -208,14 +239,17 @@ export async function insertWorkspaceRuleProjects(
   workspaceId: string,
   workspaceRuleId: string,
   projectIds: string[],
+  executor?: Executor,
 ) {
-  await db.insert(userNotificationWorkspaceProjectTable).values(
-    projectIds.map((projectId) => ({
-      workspaceId,
-      workspaceRuleId,
-      projectId,
-    })),
-  );
+  await executorOrDefault(executor)
+    .insert(userNotificationWorkspaceProjectTable)
+    .values(
+      projectIds.map((projectId) => ({
+        workspaceId,
+        workspaceRuleId,
+        projectId,
+      })),
+    );
 }
 
 export async function deleteWorkspaceRuleById(ruleId: string) {
