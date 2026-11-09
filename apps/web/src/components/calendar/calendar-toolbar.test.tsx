@@ -73,4 +73,25 @@ describe("CalendarToolbar range (VW-25)", () => {
       "23",
     );
   });
+
+  it("uses a page heading by default and permits a section heading for an existing page", () => {
+    renderToolbar("month");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "tasks:calendar.title",
+    );
+    cleanup();
+    render(
+      <CalendarToolbar
+        headingLevel={2}
+        visibleMonth={anchor}
+        onPreviousMonth={vi.fn()}
+        onNextMonth={vi.fn()}
+        onToday={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "tasks:calendar.title",
+    );
+  });
 });
