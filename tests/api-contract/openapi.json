@@ -227,6 +227,10 @@
           "manageProjectSettings": {
             "type": "boolean"
           },
+          "archiveProjects": {
+            "type": "boolean",
+            "description": "Strict project:archive; gates Archive, Unarchive and Restore of a project. Absent means denied."
+          },
           "manageRoles": {
             "type": "boolean",
             "description": "Strict workspace:manage_roles; gates the Roles settings entry. Absent means denied."
@@ -11341,7 +11345,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing project:update permission",
+            "description": "Missing project:archive capability",
             "content": {
               "text/plain": {
                 "schema": {
@@ -11406,7 +11410,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing project:update permission",
+            "description": "Missing project:archive capability",
             "content": {
               "text/plain": {
                 "schema": {
@@ -11471,7 +11475,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing project:update permission",
+            "description": "Missing project:archive capability",
             "content": {
               "text/plain": {
                 "schema": {
@@ -17442,7 +17446,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing project:update permission",
+            "description": "Missing project:manage_settings capability",
             "content": {
               "text/plain": {
                 "schema": {
@@ -17554,7 +17558,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing project:update permission",
+            "description": "Missing project:manage_settings capability",
             "content": {
               "text/plain": {
                 "schema": {
@@ -17649,7 +17653,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing project:update permission",
+            "description": "Missing project:manage_settings capability",
             "content": {
               "text/plain": {
                 "schema": {
@@ -17749,7 +17753,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing project:update permission",
+            "description": "Missing project:manage_settings capability",
             "content": {
               "text/plain": {
                 "schema": {
@@ -32074,7 +32078,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing project:update permission",
+            "description": "Missing project:manage_settings capability",
             "content": {
               "text/plain": {
                 "schema": {
@@ -32146,7 +32150,7 @@
             }
           },
           "403": {
-            "description": "A browser session is required, or missing project:update permission",
+            "description": "A browser session is required, or missing project:manage_settings capability",
             "content": {
               "text/plain": {
                 "schema": {

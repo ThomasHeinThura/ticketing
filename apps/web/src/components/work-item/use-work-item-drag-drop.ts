@@ -41,6 +41,29 @@ import {
 export type WorkItemDragState = { id: string; name: string; group?: string };
 type Notice = { kind: "status" | "error"; text: string };
 
+// Module constants keep dnd-kit's sensors and activators stable between renders; inline
+// options would hand every sortable new listeners on each board render.
+const MOUSE_SENSOR_OPTIONS = { activationConstraint: { distance: 8 } };
+const TOUCH_SENSOR_OPTIONS = {
+  board: { activationConstraint: { delay: 250, tolerance: 10 } },
+  list: { activationConstraint: { delay: 200, tolerance: 8 } },
+};
+const KEYBOARD_SENSOR_OPTIONS = {
+  coordinateGetter: sortableKeyboardCoordinatesWithVirtualRows,
+  keyboardCodes: {
+    start: ["Space"],
+    end: ["Space", "Enter"],
+    cancel: ["Escape"],
+  },
+};
+const DROP_ANIMATION: DropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: { active: { opacity: "0.8" } },
+  }),
+  duration: 300,
+  easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+};
+
 function isCombinedWorkItemRow(item: WorkItemRow): item is CombinedWorkItemRow {
   const row = item as CombinedWorkItemRow;
   return (
@@ -88,29 +111,11 @@ export default function useWorkItemDragDrop({
       ? VisibleTargetKeyboardSensor
       : SynchronousKeyboardSensor;
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: surface === "list" ? 200 : 250,
-        tolerance: surface === "list" ? 8 : 10,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinatesWithVirtualRows,
-      keyboardCodes: {
-        start: ["Space"],
-        end: ["Space", "Enter"],
-        cancel: ["Escape"],
-      },
-    }),
+    useSensor(MouseSensor, MOUSE_SENSOR_OPTIONS),
+    useSensor(TouchSensor, TOUCH_SENSOR_OPTIONS[surface]),
+    useSensor(KeyboardSensor, KEYBOARD_SENSOR_OPTIONS),
   );
-  const dropAnimation: DropAnimation = {
-    sideEffects: defaultDropAnimationSideEffects({
-      styles: { active: { opacity: "0.8" } },
-    }),
-    duration: 300,
-    easing: "cubic-bezier(0.23, 1, 0.32, 1)",
-  };
+  const dropAnimation = DROP_ANIMATION;
   const [overStateId, setOverStateId] = useState<string | undefined>();
   const [notice, setNotice] = useState<Notice>();
   const [busy, setBusy] = useState(false);

@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   canUpdate: true,
   canManage: true,
   canCreate: true,
+  canArchive: true,
   closeCreateModal: undefined as undefined | (() => void),
 }));
 
@@ -68,6 +69,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     canUpdateProjects: () => mocks.canUpdate,
     canManageProjectSettings: () => mocks.canManage,
     canCreateTasks: () => mocks.canCreate,
+    canArchiveProjects: () => mocks.canArchive,
   }),
 }));
 const project = {
@@ -173,6 +175,7 @@ beforeEach(() => {
   mocks.canUpdate = true;
   mocks.canManage = true;
   mocks.canCreate = true;
+  mocks.canArchive = true;
   mocks.archiveProject.mockReset();
   mocks.getProjectOverview.mockReset();
   mocks.getProjectContract.mockReset();
@@ -308,6 +311,7 @@ describe("ProjectOverviewPage", () => {
     mocks.canUpdate = false;
     mocks.canManage = false;
     mocks.canCreate = false;
+    mocks.canArchive = false;
     renderPage();
     await screen.findByTestId("project-overview-page");
     await screen.findByText("contract.none");
@@ -371,12 +375,23 @@ describe("ProjectOverviewPage", () => {
   it("offers New item without Archive to a member who may only create", async () => {
     mocks.canUpdate = false;
     mocks.canManage = false;
+    mocks.canArchive = false;
     renderPage();
     expect(
       await screen.findByTestId("project-overview-new-item"),
     ).toBeVisible();
     expect(screen.queryByTestId("project-overview-edit-summary")).toBeNull();
     expect(screen.queryByTestId("project-overview-more")).toBeNull();
+  });
+
+  it("offers no Archive to a caller with project update but not project:archive (a lead, A8-2)", async () => {
+    mocks.canArchive = false;
+    renderPage();
+    expect(
+      await screen.findByTestId("project-overview-edit-summary"),
+    ).toBeVisible();
+    expect(screen.queryByTestId("project-overview-more")).toBeNull();
+    expect(screen.queryByTestId("project-overview-archive")).toBeNull();
   });
 
   it("offers no New item or Archive on an archived project", async () => {
