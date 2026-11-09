@@ -9,6 +9,9 @@
 #   scripts/deploy.sh rollback <digest> <tag> go back to a known-good release
 #
 # Flags:
+#   --target production|sit  select release overlay (upgrade/rollback; default production)
+#                       SIT requires deploy/compose.sit.yml in the deployment directory;
+#                       installer-created production directories may omit this file.
 #   --profile s3        also run the opt-in SeaweedFS object store
 #   --no-verify         skip the cosign signature check (loud, deliberate)
 #   --no-probe          skip the post-deploy API probe (CI only; never routine)
@@ -71,6 +74,8 @@ PROBE=1
 SEED=0
 ROLLBACK_DIGEST=""
 ROLLBACK_TAG=""
+TARGET="production"
+TARGET_SET=0
 
 usage() { sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-1}"; }
 
@@ -95,6 +100,8 @@ esac
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --target) [ $# -ge 2 ] || die "--target needs production or sit"; TARGET="$2"; TARGET_SET=1; shift 2 ;;
+    --target=*) TARGET="${1#*=}"; TARGET_SET=1; shift ;;
     --profile) [ "${2:-}" = "s3" ] || die "--profile takes 's3'"; PROFILE_S3=1; shift 2 ;;
     --profile=s3) PROFILE_S3=1; shift ;;
     --no-verify) VERIFY=0; shift ;;
@@ -103,6 +110,16 @@ while [ $# -gt 0 ]; do
     *) die "unknown flag '$1'" ;;
   esac
 done
+
+if [ "$TARGET_SET" -eq 1 ]; then
+  [[ "$MODE" = upgrade || "$MODE" = rollback ]] || die "--target is only valid for upgrade and rollback"
+fi
+[[ "$TARGET" = production || "$TARGET" = sit ]] || die "--target must be production or sit"
+if [[ "$TARGET" = sit && ( "$MODE" = upgrade || "$MODE" = rollback ) ]]; then
+  [ "$VERIFY" -eq 1 ] || die "--no-verify is not allowed for signed SIT releases"
+  [ "$PROBE" -eq 1 ] || die "--no-probe is not allowed for signed SIT releases"
+  [ -f "$REPO_ROOT/deploy/compose.sit.yml" ] || die "SIT overlay deploy/compose.sit.yml is required for signed SIT releases"
+fi
 
 # ---------------------------------------------------------------------------
 # Compose file selection. No file publishes the application port: the base and
@@ -114,8 +131,10 @@ case "$MODE" in
     COMPOSE_FILES+=(-f deploy/compose.local.yml -f deploy/compose.traefik.yml) ;;
   sit)
     COMPOSE_FILES+=(-f deploy/compose.sit.yml) ;;
-  production|upgrade|rollback)
+  production)
     COMPOSE_FILES+=(-f deploy/compose.prod.yml) ;;
+  upgrade|rollback)
+    if [ "$TARGET" = sit ]; then COMPOSE_FILES+=(-f deploy/compose.sit.yml); else COMPOSE_FILES+=(-f deploy/compose.prod.yml); fi ;;
 esac
 [ "$PROFILE_S3" -eq 1 ] && COMPOSE_FILES+=(--profile s3)
 
@@ -582,7 +601,7 @@ case "$MODE" in
     probe_api
     if [ -n "$CURRENT" ] && [[ "$CURRENT_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
       CURRENT_DIGEST="${CURRENT##*@}"
-      ok "upgraded. Roll back with: scripts/deploy.sh rollback ${CURRENT_DIGEST} ${CURRENT_TAG}"
+      ok "upgraded. Roll back with: scripts/deploy.sh rollback ${CURRENT_DIGEST} ${CURRENT_TAG} --target ${TARGET}"
     else
       ok "upgraded. Previous image digest was ${CURRENT:-unavailable}; confirm its signed image tag before rollback."
     fi
