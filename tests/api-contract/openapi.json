@@ -58428,6 +58428,15 @@
             "required": false,
             "name": "cursor",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "required": false,
+            "name": "project",
+            "in": "query"
           }
         ],
         "responses": {

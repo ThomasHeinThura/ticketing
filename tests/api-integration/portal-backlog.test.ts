@@ -227,6 +227,114 @@ describe("portal organisation backlog", () => {
       sourceRef: `SUB-${Math.min(visibleSubmission.number, duplicateSubmission.number)}`,
     });
     expect(JSON.stringify(page)).not.toContain("Private backlog item");
+
+    const filtered = await portalRequest(
+      tenant,
+      customer,
+      `/api/portal/requests/backlog?project=${tenant.project.slug}`,
+    );
+    expect(filtered.status).toBe(200);
+    expect(
+      ((await filtered.json()) as typeof page).items.map((item) => item.id),
+    ).toEqual([visible.id]);
+    const unknown = await portalRequest(
+      tenant,
+      customer,
+      "/api/portal/requests/backlog?project=UNKNOWN",
+    );
+    expect(unknown.status).toBe(200);
+    expect(((await unknown.json()) as typeof page).items).toEqual([]);
+    const invalid = await portalRequest(
+      tenant,
+      customer,
+      "/api/portal/requests/backlog?project=bad%20key",
+    );
+    expect(invalid.status).toBe(400);
+  });
+
+  it("isolates two projects and rejects a real cursor when switching projects", async () => {
+    const first = await buildTenant("backlog-project-a");
+    const customer = await addCustomer(first);
+    const second = await buildTenant("backlog-project-b");
+    await db
+      .update(schema.workspaceTable)
+      .set({ organisationId: customer.orgId })
+      .where(eq(schema.workspaceTable.id, second.workspaceId));
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: customer.orgId })
+      .where(eq(schema.projectTable.id, second.project.id));
+    const foreign = await buildTenant("backlog-project-foreign");
+    const foreignCustomer = await addCustomer(foreign);
+    await enableIntake(first);
+    await enableIntake(second);
+    await enableIntake(foreign);
+    const firstItems = [first.workItem];
+    for (let index = 0; index < 50; index++)
+      firstItems.push(await createWorkItem(first, `Project A ${index}`));
+    for (const item of firstItems)
+      await createLinkedSubmission(first, {
+        organisationId: customer.orgId,
+        requesterId: customer.person.id,
+        workItemId: item.id,
+      });
+    await createLinkedSubmission(second, {
+      organisationId: customer.orgId,
+      requesterId: customer.person.id,
+      workItemId: second.workItem.id,
+    });
+    await createLinkedSubmission(foreign, {
+      organisationId: foreignCustomer.orgId,
+      requesterId: foreignCustomer.person.id,
+      workItemId: foreign.workItem.id,
+    });
+    const foreignOwnResponse = await portalRequest(
+      foreign,
+      foreignCustomer,
+      `/api/portal/requests/backlog?project=${foreign.project.slug}`,
+    );
+    expect(foreignOwnResponse.status).toBe(200);
+    const foreignOwnPage = (await foreignOwnResponse.json()) as Awaited<
+      ReturnType<typeof listPortalBacklog>
+    >;
+    expect(foreignOwnPage.items.map((item) => item.id)).toEqual([
+      foreign.workItem.id,
+    ]);
+    const read = (project: string, cursor?: string) =>
+      portalRequest(
+        first,
+        customer,
+        `/api/portal/requests/backlog?${new URLSearchParams({ project, ...(cursor ? { cursor } : {}) })}`,
+      );
+    const responseA = await read(first.project.slug);
+    expect(responseA.status).toBe(200);
+    const pageA = (await responseA.json()) as Awaited<
+      ReturnType<typeof listPortalBacklog>
+    >;
+    expect(pageA.items).toHaveLength(50);
+    expect(
+      pageA.items.every((item) => item.projectId === first.project.id),
+    ).toBe(true);
+    const cursor = pageA.page.nextCursor;
+    expect(cursor).toBeTruthy();
+    if (!cursor) throw new Error("Expected a backlog cursor");
+    const secondPage = await read(first.project.slug, cursor);
+    expect(secondPage.status).toBe(200);
+    const pageA2 = (await secondPage.json()) as typeof pageA;
+    expect(pageA2.items).toHaveLength(1);
+    expect(pageA2.items[0]?.projectId).toBe(first.project.id);
+    const responseB = await read(second.project.slug);
+    expect(responseB.status).toBe(200);
+    const pageB = (await responseB.json()) as typeof pageA;
+    expect(pageB.items.map((item) => item.id)).toEqual([second.workItem.id]);
+    expect(
+      pageB.items.every((item) => item.projectId === second.project.id),
+    ).toBe(true);
+    const foreignResponse = await read(foreign.project.slug);
+    expect(foreignResponse.status).toBe(200);
+    expect(((await foreignResponse.json()) as typeof pageA).items).toEqual([]);
+    const switched = await read(second.project.slug, cursor);
+    expect(switched.status).toBe(400);
   });
 
   it("ranks only visible neighbors in the same concrete backlog state", async () => {
@@ -335,7 +443,15 @@ describe("portal organisation backlog", () => {
           eq(schema.workspaceFeatureFlagTable.featureKey, "feature.intake"),
         ),
       );
-    expect((await listPortalBacklog(customer.person.id)).items).toHaveLength(0);
+    expect(
+      (
+        await listPortalBacklog(
+          customer.person.id,
+          undefined,
+          tenant.project.slug,
+        )
+      ).items,
+    ).toHaveLength(0);
     await expect(
       rankPortalBacklog(customer.person.id, {
         key: target.key,
@@ -364,7 +480,15 @@ describe("portal organisation backlog", () => {
           eq(schema.workspaceFeatureFlagTable.featureKey, "feature.intake"),
         ),
       );
-    expect((await listPortalBacklog(customer.person.id)).items).toHaveLength(0);
+    expect(
+      (
+        await listPortalBacklog(
+          customer.person.id,
+          undefined,
+          tenant.project.slug,
+        )
+      ).items,
+    ).toHaveLength(0);
     await expect(
       rankPortalBacklog(customer.person.id, {
         key: target.key,

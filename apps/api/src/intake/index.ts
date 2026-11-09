@@ -1577,7 +1577,11 @@ const portalBacklogRouter = apiRouter<IntakeVariables>()
   .openapi(portalBacklogRoute, async (c) => {
     const identity = await portalIdentity(c.get("userId"));
     return c.json(
-      await listPortalBacklog(identity.personId, c.req.valid("query").cursor),
+      await listPortalBacklog(
+        identity.personId,
+        c.req.valid("query").cursor,
+        c.req.valid("query").project,
+      ),
       200,
     );
   })
