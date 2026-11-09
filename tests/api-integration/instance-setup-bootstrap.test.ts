@@ -1,5 +1,7 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import { count, eq, sql } from "drizzle-orm";
+import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -27,7 +29,65 @@ import { nextClientIp } from "./helpers/organization-http";
  * for the specified replacement this file proves is actually in place.
  */
 
-const throwawayPassword = () => `Pw-${randomUUID()}`;
+const bootstrapPassword =
+  randomBytes(24).toString("hex") + String.fromCharCode(65, 97, 49, 33);
+const apiRequire = createRequire(
+  new URL("../../apps/api/package.json", import.meta.url),
+);
+const { base32 } = apiRequire("@better-auth/utils/base32") as {
+  base32: { decode(value: string): Uint8Array };
+};
+const { createOTP } = apiRequire("@better-auth/utils/otp") as {
+  createOTP(secret: string): { totp(): Promise<string> };
+};
+
+function agentCookie(response: Response): string {
+  const cookie = response.headers
+    .getSetCookie()
+    .find((value) => value.startsWith("__Host-tdk_agent_session="))
+    ?.split(";", 1)[0];
+  if (!cookie) throw new Error("Agent session cookie was not issued");
+  return cookie;
+}
+
+async function verifyFirstAdminTotp(
+  app: ReturnType<typeof createApp>["app"],
+  signup: Response,
+  checkUnverifiedMarker = false,
+) {
+  const cookie = agentCookie(signup);
+  const clientIp = nextClientIp();
+  const enabled = await app.request("/api/auth/two-factor/enable", {
+    method: "POST",
+    headers: {
+      cookie,
+      "content-type": "application/json",
+      "x-forwarded-for": clientIp,
+    },
+    body: JSON.stringify({ password: bootstrapPassword, issuer: "TaskDesk" }),
+  });
+  expect(enabled.status).toBe(200);
+  if (checkUnverifiedMarker) {
+    expect(await isSetupCompleted()).toBe(false);
+  }
+  const enrollment = (await enabled.json()) as { totpURI: string };
+  const secret = new URL(enrollment.totpURI).searchParams.get("secret");
+  if (!secret) throw new Error("TOTP enrollment has no secret");
+  const code = await createOTP(
+    Buffer.from(base32.decode(secret)).toString("utf8"),
+  ).totp();
+  const verified = await app.request("/api/auth/two-factor/verify-totp", {
+    method: "POST",
+    headers: {
+      cookie,
+      "content-type": "application/json",
+      "x-forwarded-for": clientIp,
+    },
+    body: JSON.stringify({ code }),
+  });
+  expect(verified.status).toBe(200);
+  return verified;
+}
 
 async function totalUserCount(): Promise<number> {
   const [row] = await db.select({ value: count() }).from(schema.userTable);
@@ -40,6 +100,26 @@ async function roleOf(userId: string): Promise<string | null> {
     .from(schema.userTable)
     .where(eq(schema.userTable.id, userId));
   return row?.role ?? null;
+}
+
+async function waitForPromotionLockWaiters(
+  client: Client,
+  ownerPid: number,
+  expected: number,
+): Promise<boolean> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    await client.query("SELECT pg_stat_clear_snapshot()");
+    const result = await client.query<{ waiting: number }>(
+      `SELECT count(*)::integer AS waiting FROM pg_stat_activity
+       WHERE datname = current_database() AND wait_event = 'advisory'
+         AND $1 = ANY(pg_blocking_pids(pid))`,
+      [ownerPid],
+    );
+    if ((result.rows[0]?.waiting ?? 0) >= expected) return true;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return false;
 }
 
 function signUp(
@@ -65,7 +145,7 @@ function signUp(
     headers,
     body: JSON.stringify({
       email: overrides.email ?? `bootstrap-${randomUUID()}@example.com`,
-      password: throwawayPassword(),
+      password: bootstrapPassword,
       name: "Bootstrap Candidate",
       ...(overrides.invitationId
         ? { invitationId: overrides.invitationId }
@@ -201,7 +281,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
 
     expect(await roleOf(body.user.id)).toBe("admin");
     expect(await totalUserCount()).toBe(1);
-    expect(await isSetupCompleted()).toBe(true);
+    expect(await isSetupCompleted()).toBe(false);
 
     // The token is consumed: the row's hash/expiry are cleared, so it is
     // no longer sitting there valid-but-unused.
@@ -213,18 +293,11 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
       .from(schema.instanceSettingTable)
       .limit(1);
     expect(setting?.setupTokenHash).toBeNull();
-    expect(setting?.setupCompletedAt).not.toBeNull();
+    expect(setting?.setupCompletedAt).toBeNull();
   });
 
   it("(b) a used token is invalidated at the storage layer -- a second consume attempt fails", async () => {
-    // Precise, direct proof of single-use: exercised at the HTTP level below
-    // too, but registration being open by default there means a SECOND
-    // signup can succeed anyway (as an ordinary, non-admin user) once the
-    // first has landed -- that is a different property (tested as "(c)"
-    // above) and would make this assertion pass for the wrong reason if it
-    // only checked an HTTP status code. Calling the actual consuming
-    // function twice is what proves the token itself, not just the
-    // zero-user window, is single-use.
+    // Directly prove the storage-layer single-use rule.
     const rawToken = (await ensureSetupToken()) as string;
 
     expect(await verifyAndConsumeSetupToken(rawToken)).toBe(true);
@@ -249,10 +322,9 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     expect(await totalUserCount()).toBe(1);
   });
 
-  it("(c) once a user exists, the zero-user bootstrap path is fully inert regardless of any token", async () => {
-    // Seed one ordinary user directly -- no admin, and crucially no trip
-    // through the bootstrap flow at all, so instance_setting still has no
-    // setup_completed_at and a token can still be issued.
+  it("(c) no token is issued and registration stays closed while an uncompleted user exists", async () => {
+    // An anomalous pre-existing user without a completion marker cannot
+    // reopen the first-user slot or receive a new setup token.
     await db.insert(schema.userTable).values({
       id: `seed-${randomUUID()}`,
       email: `seed-${randomUUID()}@example.com`,
@@ -262,22 +334,18 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     expect(await totalUserCount()).toBe(1);
     expect(await isSetupCompleted()).toBe(false);
 
-    const rawToken = (await ensureSetupToken()) as string;
-    expect(rawToken).toEqual(expect.any(String));
+    const rawToken = await ensureSetupToken();
+    expect(rawToken).toBeNull();
 
-    // With registration wide open, presenting the (still objectively valid)
-    // token has NO special effect any more -- it is only meaningful on a
-    // zero-user instance. The new user must NOT be promoted to admin.
+    // With registration wide open, the pending state still refuses signup.
     process.env.DISABLE_REGISTRATION = "false";
     const { app } = createApp();
     const openEmail = `ordinary-${randomUUID()}@example.com`;
     const openResponse = await signUp(app, {
       email: openEmail,
-      setupToken: rawToken,
     });
-    expect(openResponse.status).toBe(200);
-    const openBody = (await openResponse.json()) as { user: { id: string } };
-    expect(await roleOf(openBody.user.id)).not.toBe("admin");
+    expect(openResponse.status).toBe(403);
+    expect(await totalUserCount()).toBe(1);
 
     // And with registration disabled, the very same token does NOT bypass
     // that control the way the zero-user window used to bypass everything.
@@ -285,7 +353,6 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const blockedEmail = `blocked-${randomUUID()}@example.com`;
     const blockedResponse = await signUp(app, {
       email: blockedEmail,
-      setupToken: rawToken,
     });
     expect(blockedResponse.status).toBe(403);
     expect(
@@ -308,7 +375,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as { user: { id: string } };
     expect(await roleOf(body.user.id)).toBe("admin");
-    expect(await isSetupCompleted()).toBe(true);
+    expect(await isSetupCompleted()).toBe(false);
   });
 
   it("(headless) a different address is still refused even when TASKDESK_BOOTSTRAP_ADMIN_EMAIL is set", async () => {
@@ -321,6 +388,355 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
 
     expect(response.status).toBe(403);
     expect(await totalUserCount()).toBe(0);
+  });
+
+  it("serializes distinct token and headless credentials and rolls the loser back", async () => {
+    const token = (await ensureSetupToken()) as string;
+    const headlessEmail = `headless-${randomUUID()}@example.com`;
+    process.env.TASKDESK_BOOTSTRAP_ADMIN_EMAIL = headlessEmail;
+    const { app } = createApp();
+    const tokenEmail = `token-${randomUUID()}@example.com`;
+
+    const responses = await Promise.all([
+      signUp(app, { email: tokenEmail, setupToken: token }),
+      signUp(app, { email: headlessEmail }),
+    ]);
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      200, 403,
+    ]);
+    const users = await db.select().from(schema.userTable);
+    expect(users).toHaveLength(1);
+    expect(users[0]?.role).toBe("admin");
+    expect([tokenEmail, headlessEmail]).toContain(users[0]?.email);
+    expect(await isSetupCompleted()).toBe(false);
+    expect(await ensureSetupToken()).toBeNull();
+
+    // The rejected credential did not leave an ordinary user, account or
+    // staff person behind. Only the admitted administrator has these rows.
+    const accounts = await db.select().from(schema.accountTable);
+    const people = await db.select().from(schema.personTable);
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]?.userId).toBe(users[0]?.id);
+    expect(people).toHaveLength(1);
+    expect(people[0]?.userId).toBe(users[0]?.id);
+  });
+
+  it("headless wins a queued token race and completes only after valid TOTP with policy off", async () => {
+    const token = (await ensureSetupToken()) as string;
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ localFactorPolicy: { mode: "off", requiredRoleId: null } });
+    const headlessEmail = `headless-winner-${randomUUID()}@example.com`;
+    const tokenEmail = `token-loser-${randomUUID()}@example.com`;
+    process.env.TASKDESK_BOOTSTRAP_ADMIN_EMAIL = headlessEmail;
+    const { app } = createApp();
+
+    // Hold the real promotion lock, then observe each signup queue on it.
+    // PostgreSQL grants that advisory lock in waiter order, making the
+    // headless winner deterministic while both requests are in flight.
+    const lockClient = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await lockClient.connect();
+    const requests: Promise<Response>[] = [];
+    let transactionOpen = false;
+    let responses: Response[] = [];
+    try {
+      await lockClient.query("BEGIN");
+      transactionOpen = true;
+      const owner = await lockClient.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid, pg_advisory_xact_lock(2026)",
+      );
+      const ownerPid = owner.rows[0]?.pid;
+      if (ownerPid === undefined)
+        throw new Error("Promotion lock owner missing");
+
+      requests.push(Promise.resolve(signUp(app, { email: headlessEmail })));
+      expect(await waitForPromotionLockWaiters(lockClient, ownerPid, 1)).toBe(
+        true,
+      );
+      requests.push(
+        Promise.resolve(signUp(app, { email: tokenEmail, setupToken: token })),
+      );
+      expect(await waitForPromotionLockWaiters(lockClient, ownerPid, 2)).toBe(
+        true,
+      );
+      await lockClient.query("COMMIT");
+      transactionOpen = false;
+      responses = await Promise.all(requests);
+    } finally {
+      if (transactionOpen) await lockClient.query("ROLLBACK");
+      await Promise.allSettled(requests);
+      await lockClient.end();
+    }
+
+    const [headless, tokenAttempt] = responses;
+    if (!headless || !tokenAttempt)
+      throw new Error("Both bootstrap requests must complete");
+    expect(headless.status).toBe(200);
+    expect(tokenAttempt.status).toBe(403);
+    const [user] = await db.select().from(schema.userTable);
+    expect(user).toMatchObject({ email: headlessEmail, role: "admin" });
+    expect(await db.select().from(schema.userTable)).toHaveLength(1);
+    expect(await db.select().from(schema.accountTable)).toHaveLength(1);
+    expect(await db.select().from(schema.personTable)).toHaveLength(1);
+    expect(await isSetupCompleted()).toBe(false);
+    expect(await ensureSetupToken()).toBeNull();
+    expect(
+      (await signUp(app, { email: tokenEmail, setupToken: token })).status,
+    ).toBe(403);
+
+    const cookie = agentCookie(headless);
+    const factors = await app.request("/api/me/security/factors", {
+      headers: { cookie },
+    });
+    expect(factors.status).toBe(200);
+    expect(await factors.json()).toMatchObject({
+      enabled: false,
+      required: true,
+      policyMode: "off",
+    });
+    const protectedApi = await app.request("/api/instance/users", {
+      headers: { cookie },
+    });
+    expect(protectedApi.status).toBe(403);
+    expect(await protectedApi.text()).toBe("mfa_enrollment_required");
+
+    const clientIp = nextClientIp();
+    const enable = await app.request("/api/auth/two-factor/enable", {
+      method: "POST",
+      headers: {
+        cookie,
+        "content-type": "application/json",
+        "x-forwarded-for": clientIp,
+      },
+      body: JSON.stringify({ password: bootstrapPassword, issuer: "TaskDesk" }),
+    });
+    expect(enable.status).toBe(200);
+    expect(await isSetupCompleted()).toBe(false);
+    const enrollment = (await enable.json()) as { totpURI: string };
+    const secret = new URL(enrollment.totpURI).searchParams.get("secret");
+    if (!secret) throw new Error("TOTP enrollment has no secret");
+    const code = await createOTP(
+      Buffer.from(base32.decode(secret)).toString("utf8"),
+    ).totp();
+    const invalid = await app.request("/api/auth/two-factor/verify-totp", {
+      method: "POST",
+      headers: {
+        cookie,
+        "content-type": "application/json",
+        "x-forwarded-for": clientIp,
+      },
+      body: JSON.stringify({ code: code === "000000" ? "111111" : "000000" }),
+    });
+    expect(invalid.status).toBeGreaterThanOrEqual(400);
+    expect(await isSetupCompleted()).toBe(false);
+
+    const verified = await app.request("/api/auth/two-factor/verify-totp", {
+      method: "POST",
+      headers: {
+        cookie,
+        "content-type": "application/json",
+        "x-forwarded-for": clientIp,
+      },
+      body: JSON.stringify({ code }),
+    });
+    expect(verified.status).toBe(200);
+    expect(await isSetupCompleted()).toBe(true);
+    const [setting] = await db.select().from(schema.instanceSettingTable);
+    expect(setting?.setupTokenHash).toBeNull();
+    expect(setting?.setupTokenExpiresAt).toBeNull();
+    expect(setting?.localFactorPolicy).toEqual({
+      mode: "off",
+      requiredRoleId: null,
+    });
+  });
+
+  it("holds the marker until verified TOTP and restricts the pending admin even with policy off", async () => {
+    const token = (await ensureSetupToken()) as string;
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ localFactorPolicy: { mode: "off", requiredRoleId: null } });
+    const { app } = createApp();
+    const signup = await signUp(app, { setupToken: token });
+    expect(signup.status).toBe(200);
+    const cookie = agentCookie(signup);
+    expect(await isSetupCompleted()).toBe(false);
+    expect(await ensureSetupToken()).toBeNull();
+
+    const factors = await app.request("/api/me/security/factors", {
+      headers: { cookie },
+    });
+    expect(factors.status).toBe(200);
+    expect(await factors.json()).toMatchObject({
+      enabled: false,
+      required: true,
+      policyMode: "off",
+    });
+    const denied = await app.request("/api/instance/users", {
+      headers: { cookie },
+    });
+    expect(denied.status).toBe(403);
+    expect(await denied.text()).toBe("mfa_enrollment_required");
+    const authDenied = await app.request("/api/auth/list-sessions", {
+      headers: { cookie },
+    });
+    expect(authDenied.status).toBe(403);
+    expect(await authDenied.text()).toBe("mfa_enrollment_required");
+
+    const verified = await verifyFirstAdminTotp(app, signup, true);
+    expect(await isSetupCompleted()).toBe(true);
+    const availableAfterVerification = await app.request(
+      "/api/auth/list-sessions",
+      { headers: { cookie: agentCookie(verified) } },
+    );
+    expect(availableAfterVerification.status).toBe(200);
+    const [setting] = await db.select().from(schema.instanceSettingTable);
+    expect(setting?.setupTokenHash).toBeNull();
+    expect(setting?.setupTokenExpiresAt).toBeNull();
+    expect(setting?.localFactorPolicy).toEqual({
+      mode: "off",
+      requiredRoleId: null,
+    });
+  });
+
+  it("keeps the marker unset after a failed TOTP proof", async () => {
+    const token = (await ensureSetupToken()) as string;
+    const { app } = createApp();
+    const signup = await signUp(app, { setupToken: token });
+    expect(signup.status).toBe(200);
+    const cookie = agentCookie(signup);
+    const clientIp = nextClientIp();
+    const enabled = await app.request("/api/auth/two-factor/enable", {
+      method: "POST",
+      headers: {
+        cookie,
+        "content-type": "application/json",
+        "x-forwarded-for": clientIp,
+      },
+      body: JSON.stringify({ password: bootstrapPassword, issuer: "TaskDesk" }),
+    });
+    expect(enabled.status).toBe(200);
+    const invalid = await app.request("/api/auth/two-factor/verify-totp", {
+      method: "POST",
+      headers: {
+        cookie,
+        "content-type": "application/json",
+        "x-forwarded-for": clientIp,
+      },
+      body: JSON.stringify({ code: "000000" }),
+    });
+    expect(invalid.status).toBeGreaterThanOrEqual(400);
+    expect(await isSetupCompleted()).toBe(false);
+  });
+
+  it("keeps an anomalous pending session restricted with an extra user and enabled factor", async () => {
+    const token = (await ensureSetupToken()) as string;
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ localFactorPolicy: { mode: "off", requiredRoleId: null } });
+    const { app } = createApp();
+    const signup = await signUp(app, { setupToken: token });
+    expect(signup.status).toBe(200);
+    const { user } = (await signup.clone().json()) as { user: { id: string } };
+    const cookie = agentCookie(signup);
+    await db.insert(schema.userTable).values({
+      name: "Anomalous second user",
+      email: `anomalous-${randomUUID()}@example.test`,
+    });
+
+    const enable = await app.request("/api/auth/two-factor/enable", {
+      method: "POST",
+      headers: {
+        cookie,
+        "content-type": "application/json",
+        "x-forwarded-for": nextClientIp(),
+      },
+      body: JSON.stringify({ password: bootstrapPassword, issuer: "TaskDesk" }),
+    });
+    expect(enable.status).toBe(200);
+    // Model a stale or anomalous factor flag. An unset completion marker must
+    // remain the access gate regardless of factor status or user count.
+    await db
+      .update(schema.userTable)
+      .set({ twoFactorEnabled: true })
+      .where(eq(schema.userTable.id, user.id));
+    const factors = await app.request("/api/me/security/factors", {
+      headers: { cookie },
+    });
+    expect(factors.status).toBe(200);
+    expect(await factors.json()).toMatchObject({
+      enabled: true,
+      required: true,
+    });
+    const custom = await app.request("/api/instance/users", {
+      headers: { cookie },
+    });
+    expect(custom.status).toBe(403);
+    expect(await custom.text()).toBe("mfa_enrollment_required");
+    const auth = await app.request("/api/auth/list-sessions", {
+      headers: { cookie },
+    });
+    expect(auth.status).toBe(403);
+    expect(await auth.text()).toBe("mfa_enrollment_required");
+    expect(await isSetupCompleted()).toBe(false);
+  });
+
+  it("fails TOTP finalization and rolls back verification if a second user appears", async () => {
+    const token = (await ensureSetupToken()) as string;
+    const { app } = createApp();
+    const signup = await signUp(app, { setupToken: token });
+    expect(signup.status).toBe(200);
+    const { user } = (await signup.clone().json()) as { user: { id: string } };
+    const cookie = agentCookie(signup);
+    const clientIp = nextClientIp();
+    const enable = await app.request("/api/auth/two-factor/enable", {
+      method: "POST",
+      headers: {
+        cookie,
+        "content-type": "application/json",
+        "x-forwarded-for": clientIp,
+      },
+      body: JSON.stringify({ password: bootstrapPassword, issuer: "TaskDesk" }),
+    });
+    expect(enable.status).toBe(200);
+    const enrollment = (await enable.json()) as { totpURI: string };
+    const secret = new URL(enrollment.totpURI).searchParams.get("secret");
+    if (!secret) throw new Error("TOTP enrollment has no secret");
+    const code = await createOTP(
+      Buffer.from(base32.decode(secret)).toString("utf8"),
+    ).totp();
+
+    await db.insert(schema.userTable).values({
+      name: "Anomalous second user",
+      email: `anomalous-${randomUUID()}@example.test`,
+    });
+    const verification = await app.request("/api/auth/two-factor/verify-totp", {
+      method: "POST",
+      headers: {
+        cookie,
+        "content-type": "application/json",
+        "x-forwarded-for": clientIp,
+      },
+      body: JSON.stringify({ code }),
+    });
+    expect(verification.status).toBe(500);
+    expect(await isSetupCompleted()).toBe(false);
+    const [admin] = await db
+      .select({ twoFactorEnabled: schema.userTable.twoFactorEnabled })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, user.id));
+    expect(admin?.twoFactorEnabled).toBe(false);
+    const factors = await db
+      .select({ verified: schema.twoFactorTable.verified })
+      .from(schema.twoFactorTable)
+      .where(eq(schema.twoFactorTable.userId, user.id));
+    expect(factors.some((factor) => factor.verified)).toBe(false);
+    const protectedApi = await app.request("/api/instance/users", {
+      headers: { cookie },
+    });
+    expect(protectedApi.status).toBe(403);
+    expect(await protectedApi.text()).toBe("mfa_enrollment_required");
   });
 
   it("(F4/D2) isBootstrapAdminEmail is not fooled by a Unicode case-folding trick", () => {
@@ -356,6 +772,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const { app } = createApp();
     const firstResponse = await signUp(app, { setupToken: rawToken });
     expect(firstResponse.status).toBe(200);
+    await verifyFirstAdminTotp(app, firstResponse);
     expect(await isSetupCompleted()).toBe(true);
 
     // Deleting the only admin drops the user count back to zero, but the
@@ -381,6 +798,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const { app } = createApp();
     const first = await signUp(app, { setupToken: rawToken });
     expect(first.status).toBe(200);
+    await verifyFirstAdminTotp(app, first);
     expect(await isSetupCompleted()).toBe(true);
 
     await db.delete(schema.userTable);
@@ -414,15 +832,8 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const rawToken = (await ensureSetupToken()) as string;
     const { app } = createApp();
 
-    // Registration is closed so the loser has no fallback path: whichever
-    // racer does not win the single-use token is refused outright, rather
-    // than quietly landing as an ordinary (non-admin) open-registration
-    // signup once the winner's row has committed. That keeps this test's
-    // outcome deterministic regardless of exactly how the two requests
-    // interleave, while still exercising the real concurrency-sensitive
-    // path: the atomic token consumption in `verifyAndConsumeSetupToken`
-    // AND the advisory-locked promotion in auth.ts's `after` hook both run
-    // for real, against a real Postgres, under a genuine race.
+    // Both requests reach the real PostgreSQL admission transaction. Only one
+    // may consume the token, create a user and receive the grant.
     process.env.DISABLE_REGISTRATION = "true";
 
     const emailA = `racer-a-${randomUUID()}@example.com`;
@@ -437,7 +848,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     // Exactly one request wins the single-use token; the other is refused.
     expect(statuses).toEqual([200, 403]);
     expect(await totalUserCount()).toBe(1);
-    expect(await isSetupCompleted()).toBe(true);
+    expect(await isSetupCompleted()).toBe(false);
 
     const [winner] = await db.select().from(schema.userTable).limit(1);
     expect(winner?.role).toBe("admin");
@@ -459,7 +870,7 @@ describe("issue #18: GET /api/instance/status no longer advertises setup state",
     const rawToken = (await ensureSetupToken()) as string;
     const signUpResponse = await signUp(app, { setupToken: rawToken });
     expect(signUpResponse.status).toBe(200);
-    expect(await isSetupCompleted()).toBe(true);
+    expect(await isSetupCompleted()).toBe(false);
 
     const claimedResponse = await app.request("/api/instance/status");
     expect(claimedResponse.status).toBe(200);

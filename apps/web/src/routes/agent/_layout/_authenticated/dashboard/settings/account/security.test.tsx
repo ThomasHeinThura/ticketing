@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import {
   cleanup,
   fireEvent,
@@ -8,6 +9,9 @@ import {
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "./security";
+
+const testPassword =
+  randomBytes(24).toString("hex") + String.fromCharCode(65, 97, 49, 33);
 
 const fixture = vi.hoisted(() => ({
   search: {
@@ -51,7 +55,10 @@ vi.mock("@/lib/auth-client", () => ({
 const SecurityPage = (Route as unknown as { component: ComponentType })
   .component;
 
-function factorStatus(passwordRequiredForEnrollment: boolean) {
+function factorStatus(
+  passwordRequiredForEnrollment: boolean,
+  overrides: { required?: boolean; policyMode?: string } = {},
+) {
   return new Response(
     JSON.stringify({
       enabled: false,
@@ -59,6 +66,7 @@ function factorStatus(passwordRequiredForEnrollment: boolean) {
       passwordRequiredForEnrollment,
       policyMode: "required_staff",
       availableMethods: [],
+      ...overrides,
     }),
     { status: 200, headers: { "content-type": "application/json" } },
   );
@@ -123,15 +131,66 @@ describe("account security factor enrollment", () => {
     });
     expect(start).toBeDisabled();
 
-    fireEvent.change(password, { target: { value: "current-password" } });
+    fireEvent.change(password, { target: { value: testPassword } });
     fireEvent.click(start);
 
     await waitFor(() =>
       expect(fixture.enable).toHaveBeenCalledWith({
-        password: "current-password",
+        password: testPassword,
         issuer: "TaskDesk",
       }),
     );
+  });
+
+  it("allows required bootstrap enrollment when the stored policy is off", async () => {
+    fixture.search.enrollmentRequired = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => factorStatus(true, { policyMode: "off" })),
+    );
+    render(<SecurityPage />);
+
+    expect(
+      await screen.findByText("auth:accountSecurity.required"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("auth:accountSecurity.enrollmentDisabled"),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: testPassword },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.setupButton" }),
+    );
+    await waitFor(() =>
+      expect(fixture.enable).toHaveBeenCalledWith({
+        password: testPassword,
+        issuer: "TaskDesk",
+      }),
+    );
+    expect(
+      await screen.findByText("auth:accountSecurity.scanTitle"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps enrollment disabled when policy is off and enrollment is not required", async () => {
+    fixture.search.enrollmentRequired = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        factorStatus(false, { policyMode: "off", required: false }),
+      ),
+    );
+    render(<SecurityPage />);
+
+    expect(
+      await screen.findByText("auth:accountSecurity.enrollmentDisabled"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "auth:accountSecurity.setupButton",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("clears the callback intent while preserving the TOTP enrollment query", async () => {
