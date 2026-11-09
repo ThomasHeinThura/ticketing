@@ -1,5 +1,13 @@
 import { randomBytes } from "node:crypto";
-import { lstatSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  openSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatSubmissionReference } from "@taskdesk/domain";
@@ -63,7 +71,6 @@ import { createComment } from "../src/work-item/controllers/create-comment";
 import { seedWorkspaceBuiltInRoles } from "../src/workspace/built-in-roles.repository";
 import { syncWorkspaceAdminReach } from "../src/workspace/workspace-admin-reach";
 import {
-  ensureSystemRole,
   type SeedAccount,
   type Tx,
   upsertPerson,
@@ -82,15 +89,28 @@ import {
 /**
  * Demo seed: one workspace, `demo-ws` ("Litware Managed IT"), that makes a fresh instance look
  * like a working service desk for screen reviews and demos. It is opt-in (`--demo`) and
- * STRICTLY ADDITIVE:
+ * additive, with the one exception recorded below:
  *
  * - every row it writes directly has a `demo-` id; rows written by domain helpers (state
  *   templates, request types, submissions, KB, Pages, and the reviewer's assignment, comment,
  *   SLA scan, approval and their notifications, audit and outbox rows) carry generated ids but
  *   belong to `demo-ws`, its projects or its people;
- * - it never updates or deletes a row it did not create, and on a rerun it writes nothing;
+ * - the shared SIT helpers that can update (`upsertUserAndPassword`, `upsertPerson`,
+ *   `upsertScopedMembership`) are called only after a read shows their target row is absent,
+ *   so they insert (`upsertScopedMembership`'s `membership_grant` upsert can still update a
+ *   direct grant that a demo person already holds for that scope); `ensureSystemRole`, which
+ *   rewrites an existing role, is never called;
+ * - the global organisation `customer` role is used as it is when it is a system role,
+ *   inserted when no such role exists, and a non-system role holding that key refuses the seed;
+ * - one exception is not demo-scoped: when it creates `demo-ws`, `seedWorkspaceBuiltInRoles`
+ *   fills any workspace's system `owner`/`admin` role whose capabilities are still empty (the
+ *   migration 0123 placeholders) with the built-in capabilities;
+ * - otherwise it never updates or deletes a row it did not create, and on a rerun it writes
+ *   nothing;
  * - a `demo-` row (or a reserved email, slug or key) that differs from this fixture is a
  *   conflict: the seed throws before writing;
+ * - account checks and the account writes run under one advisory lock in one transaction, so
+ *   two concurrent seeds cannot overwrite each other's accounts;
  * - it refuses a database that already holds workspaces outside the demo namespace unless
  *   `--allow-existing-data` is passed, and it never touches the live database name.
  *
@@ -1631,12 +1651,18 @@ function assertNotLiveDatabase(name: string) {
     );
 }
 
-function resolveCredentialsDestination(credentialsFile: string) {
+/**
+ * The credentials file's real path, refused inside the checkout. `realpathSync.native` returns
+ * the on-disk spelling, so a checkout typed in another letter case on a case-insensitive
+ * filesystem still compares as the checkout (the JS `realpathSync` keeps the typed case).
+ */
+export function resolveCredentialsDestination(credentialsFile: string) {
+  const resolved = path.resolve(credentialsFile);
   const destination = path.join(
-    realpathSync(path.dirname(path.resolve(credentialsFile))),
-    path.basename(credentialsFile),
+    realpathSync.native(path.dirname(resolved)),
+    path.basename(resolved),
   );
-  const repository = realpathSync(
+  const repository = realpathSync.native(
     fileURLToPath(new URL("../../../", import.meta.url)),
   );
   const relative = path.relative(repository, destination);
@@ -1652,18 +1678,36 @@ function resolveCredentialsDestination(credentialsFile: string) {
 
 /** Reads an existing private credentials file into the account list; false when absent. */
 function loadExistingCredentials(destination: string): boolean {
+  const notPrivate = () =>
+    new Error(
+      "The credentials file must be a private regular file (mode 0600) owned by you.",
+    );
+  let descriptor: number;
+  try {
+    // One handle for the checks and the read: no symlink (O_NOFOLLOW), and no hang on a FIFO
+    // (O_NONBLOCK); fstat then describes exactly the file that is read.
+    descriptor = openSync(
+      destination,
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    );
+  } catch (error) {
+    const code = error instanceof Error && "code" in error ? error.code : null;
+    if (code === "ENOENT") return false;
+    if (code === "ELOOP") throw notPrivate();
+    throw error;
+  }
   let parsed: unknown;
   try {
-    const info = lstatSync(destination);
-    if (!info.isFile() || info.isSymbolicLink() || (info.mode & 0o077) !== 0)
-      throw new Error(
-        "The credentials file must be a private regular file (mode 0600).",
-      );
-    parsed = JSON.parse(readFileSync(destination, "utf8"));
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT")
-      return false;
-    throw error;
+    const info = fstatSync(descriptor);
+    if (
+      !info.isFile() ||
+      (info.mode & 0o077) !== 0 ||
+      (typeof process.getuid === "function" && info.uid !== process.getuid())
+    )
+      throw notPrivate();
+    parsed = JSON.parse(readFileSync(descriptor, "utf8"));
+  } finally {
+    closeSync(descriptor);
   }
   const rows = (parsed as { accounts?: unknown }).accounts;
   if (!Array.isArray(rows) || rows.length !== DEMO_ACCOUNTS.length)
@@ -1683,6 +1727,89 @@ function loadExistingCredentials(destination: string): boolean {
     demo.password = matching[0].password;
   }
   return true;
+}
+
+type Reader = Tx | typeof db;
+
+/**
+ * Account checks: run read-only before anything is written, and again inside the seed
+ * transaction after the advisory lock, so a concurrent seed cannot slip in between.
+ */
+async function checkAccounts(reader: Reader, credentialsLoaded: boolean) {
+  for (const demo of DEMO_ACCOUNTS) {
+    const byEmail = await reader
+      .select()
+      .from(schema.userTable)
+      .where(eq(schema.userTable.email, demo.email));
+    const byId = await reader
+      .select()
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, demo.id));
+    if (byEmail.some((row) => row.id !== demo.id))
+      conflict("user email", demo.email);
+    if (byId.some((row) => row.email !== demo.email)) conflict("user", demo.id);
+    if (byId[0]) {
+      if (!credentialsLoaded)
+        throw new Error(
+          "Demo seed refused: demo accounts already exist. Supply the credentials file written by the first run.",
+        );
+      const [credential] = await reader
+        .select({ password: schema.accountTable.password })
+        .from(schema.accountTable)
+        .where(
+          and(
+            eq(schema.accountTable.userId, demo.id),
+            eq(schema.accountTable.providerId, "credential"),
+          ),
+        );
+      if (
+        !credential?.password ||
+        !(await bcrypt.compare(demo.password, credential.password))
+      )
+        throw new Error(
+          "Demo seed refused: the credentials file does not match the existing demo accounts.",
+        );
+    }
+    const [personByUser] = await reader
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, demo.id));
+    if (personByUser && personByUser.id !== demo.personId)
+      conflict("person", demo.personId);
+    // A `demo-person-*` row held by another user (or by none) is never repointed.
+    const [personById] = await reader
+      .select({ userId: schema.personTable.userId })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.id, demo.personId));
+    if (personById && personById.userId !== demo.id)
+      conflict("person", demo.personId);
+  }
+}
+
+const GLOBAL_CUSTOMER_ROLE = BUILT_IN_ROLES.customer;
+
+/**
+ * The global organisation `customer` role: its id when it is a system role, null when no role
+ * holds that key (the seed inserts it), and a refusal when a non-system role holds the key
+ * (`role_scope_workspace_key_unique` allows only one). It is never updated.
+ */
+async function globalCustomerRole(reader: Reader): Promise<string | null> {
+  const [row] = await reader
+    .select({ id: schema.roleTable.id, isSystem: schema.roleTable.isSystem })
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.scope, GLOBAL_CUSTOMER_ROLE.scope),
+        isNull(schema.roleTable.workspaceId),
+        eq(schema.roleTable.key, GLOBAL_CUSTOMER_ROLE.key),
+      ),
+    )
+    .limit(1);
+  if (row && !row.isSystem)
+    throw new Error(
+      `Demo seed refused: the global customer role is missing; a non-system role (${row.id}) holds its key. Nothing was changed.`,
+    );
+  return row?.id ?? null;
 }
 
 /**
@@ -1707,47 +1834,8 @@ async function precheck(
       `Demo seed refused: the database already holds non-demo data (${foreign.length} workspace(s) outside the demo namespace). Pass --allow-existing-data to add the demo workspace beside it. Nothing was changed.`,
     );
 
-  for (const demo of DEMO_ACCOUNTS) {
-    const byEmail = await db
-      .select()
-      .from(schema.userTable)
-      .where(eq(schema.userTable.email, demo.email));
-    const byId = await db
-      .select()
-      .from(schema.userTable)
-      .where(eq(schema.userTable.id, demo.id));
-    if (byEmail.some((row) => row.id !== demo.id))
-      conflict("user email", demo.email);
-    if (byId.some((row) => row.email !== demo.email)) conflict("user", demo.id);
-    if (byId[0]) {
-      if (!credentialsLoaded)
-        throw new Error(
-          "Demo seed refused: demo accounts already exist. Supply the credentials file written by the first run.",
-        );
-      const [credential] = await db
-        .select({ password: schema.accountTable.password })
-        .from(schema.accountTable)
-        .where(
-          and(
-            eq(schema.accountTable.userId, demo.id),
-            eq(schema.accountTable.providerId, "credential"),
-          ),
-        );
-      if (
-        !credential?.password ||
-        !(await bcrypt.compare(demo.password, credential.password))
-      )
-        throw new Error(
-          "Demo seed refused: the credentials file does not match the existing demo accounts.",
-        );
-    }
-    const [personByUser] = await db
-      .select({ id: schema.personTable.id })
-      .from(schema.personTable)
-      .where(eq(schema.personTable.userId, demo.id));
-    if (personByUser && personByUser.id !== demo.personId)
-      conflict("person", demo.personId);
-  }
+  await checkAccounts(db, credentialsLoaded);
+  await globalCustomerRole(db);
 
   const organisations = await db
     .select()
@@ -1897,25 +1985,27 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
   };
 
   // Customers: organisation membership with the global customer role (read, never rewritten).
-  const [customerRole] = await tx
-    .select({ id: schema.roleTable.id })
-    .from(schema.roleTable)
-    .where(
-      and(
-        eq(schema.roleTable.scope, "organisation"),
-        isNull(schema.roleTable.workspaceId),
-        eq(schema.roleTable.key, "customer"),
-        eq(schema.roleTable.isSystem, true),
-      ),
-    )
-    .limit(1);
-  const customerRoleId =
-    customerRole?.id ??
-    (await ensureSystemRole(
-      tx,
-      { roleKey: "customer", workspaceId: null, now },
-      "demo",
-    ));
+  let customerRoleId = await globalCustomerRole(tx);
+  if (!customerRoleId) {
+    // Insert only: the same row the shared SIT helper would insert, never an update.
+    customerRoleId = `demo-role-${GLOBAL_CUSTOMER_ROLE.scope}-global-${GLOBAL_CUSTOMER_ROLE.key}`;
+    await tx.insert(schema.roleTable).values({
+      id: customerRoleId,
+      scope: GLOBAL_CUSTOMER_ROLE.scope,
+      workspaceId: null,
+      key: GLOBAL_CUSTOMER_ROLE.key,
+      name:
+        GLOBAL_CUSTOMER_ROLE.key.charAt(0).toUpperCase() +
+        GLOBAL_CUSTOMER_ROLE.key.slice(1),
+      description: GLOBAL_CUSTOMER_ROLE.intent,
+      rank: GLOBAL_CUSTOMER_ROLE.rank,
+      capabilities: [...GLOBAL_CUSTOMER_ROLE.capabilities],
+      isSystem: true,
+      isEditable: GLOBAL_CUSTOMER_ROLE.isEditable,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
   for (const demo of DEMO_ACCOUNTS.filter((row) => row.side === "customer"))
     if (
       !(await membershipExists(tx, demo.personId, "organisation", CONTOSO.id))
@@ -3109,27 +3199,35 @@ export async function runDemoSeed(argv: readonly string[] = process.argv) {
   const now = new Date();
   try {
     await precheck(credentialsLoaded, allowExistingData);
-    if (!credentialsLoaded)
-      writeFileSync(
-        destination,
-        `${JSON.stringify(
-          {
-            accounts: DEMO_ACCOUNTS.map(
-              ({ email, password, roleLabel, name, side }) => ({
-                email,
-                password,
-                role: roleLabel,
-                name,
-                side,
-              }),
-            ),
-          },
-          null,
-          2,
-        )}\n`,
-        { mode: 0o600, flag: "wx" },
+    const seeded = await db.transaction(async (tx) => {
+      // Serialise concurrent demo seeds, then repeat the account checks under the lock, so
+      // two runs cannot rewrite each other's accounts or password hashes.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext('taskdesk:demo-seed'))`,
       );
-    const seeded = await db.transaction((tx) => seedCore(tx, now));
+      await checkAccounts(tx, credentialsLoaded);
+      if (!credentialsLoaded)
+        writeFileSync(
+          destination,
+          `${JSON.stringify(
+            {
+              accounts: DEMO_ACCOUNTS.map(
+                ({ email, password, roleLabel, name, side }) => ({
+                  email,
+                  password,
+                  role: roleLabel,
+                  name,
+                  side,
+                }),
+              ),
+            },
+            null,
+            2,
+          )}\n`,
+          { mode: 0o600, flag: "wx" },
+        );
+      return seedCore(tx, now);
+    });
     const accepted = await seedIntake(seeded);
     await seedKnowledgeBase(seeded);
     await seedPages(seeded);
@@ -3151,4 +3249,42 @@ export async function runDemoSeed(argv: readonly string[] = process.argv) {
   } finally {
     await getDatabasePool().end();
   }
+}
+
+/**
+ * A printable line for a failed run. A database error (drizzle's `DrizzleQueryError` carries
+ * the statement and its parameters, password hashes included, in `message`, `params` and
+ * `cause`) prints only its SQLSTATE and constraint; any other error prints its own message.
+ */
+export function describeSeedError(error: unknown): string {
+  if (!(error instanceof Error)) return "Demo seed failed.";
+  type PostgresError = {
+    code?: unknown;
+    constraint?: unknown;
+    severity?: unknown;
+  };
+  const isPostgresError = (value: unknown): value is PostgresError =>
+    typeof value === "object" &&
+    value !== null &&
+    "severity" in value &&
+    "code" in value;
+  const cause = (error as { cause?: unknown }).cause;
+  const postgres = isPostgresError(cause)
+    ? cause
+    : isPostgresError(error)
+      ? error
+      : null;
+  if ("query" in error || "params" in error || postgres) {
+    const code =
+      typeof postgres?.code === "string" && /^[0-9A-Z]{5}$/.test(postgres.code)
+        ? postgres.code
+        : "unknown";
+    const constraint =
+      typeof postgres?.constraint === "string" &&
+      /^[a-z0-9_]+$/.test(postgres.constraint)
+        ? `, constraint ${postgres.constraint}`
+        : "";
+    return `Demo seed failed: a database statement failed (SQLSTATE ${code}${constraint}).`;
+  }
+  return error.message;
 }

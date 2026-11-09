@@ -1,14 +1,32 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  chmod,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import bcrypt from "bcryptjs";
 import { and, eq, inArray, isNotNull, like, sql } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 import { resetTestDatabase } from "../../../tests/api-integration/helpers/database";
 import { getStoredAuthPluginConfigRows } from "../src/auth/repository";
-import db, { schema } from "../src/database";
+import db, { getDatabasePool, schema } from "../src/database";
 import { cycleTable, moduleTable } from "../src/database/schema-p5-agile";
 import { kbArticleTable } from "../src/database/schema-p5-kb";
 import { projectPageTable } from "../src/database/schema-p5-pages";
@@ -32,6 +50,7 @@ import {
   DEMO_FEATURE_FLAGS,
   DEMO_REVIEWER_KEY,
   DEMO_WORKSPACE_ID,
+  resolveCredentialsDestination,
 } from "./seed-demo-data";
 import { seed } from "./seed-profile";
 
@@ -764,4 +783,248 @@ describe("demo data seed beside existing data", () => {
     );
     expect(await snapshot()).toEqual(before);
   }, 240_000);
+});
+
+/** The CLI with a closed database port: anything it does before connecting, nothing after. */
+const UNREACHABLE_DATABASE = [
+  "TASKDESK_DATABASE_URL=postgresql://nobody:nothing@127.0.0.1:9/taskdesk_demo_unreachable_test",
+];
+const BCRYPT_HASH = /\$2[aby]\$\d{2}\$/;
+
+function swapCase(text: string) {
+  return [...text]
+    .map((c) => (c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()))
+    .join("");
+}
+
+/**
+ * Whether the volume holding the checkout ignores letter case, found at runtime: a probe file
+ * on that volume is stat'ed under a different case. Never inferred from the platform.
+ */
+function checkoutVolumeIsCaseInsensitive() {
+  const probeDirectory = mkdtempSync(path.join(os.tmpdir(), "taskdesk-case-"));
+  try {
+    if (statSync(probeDirectory).dev !== statSync(repoRoot).dev) return false;
+    const probe = path.join(probeDirectory, "Case-Probe");
+    writeFileSync(probe, "");
+    try {
+      return (
+        statSync(path.join(probeDirectory, swapCase("Case-Probe"))).ino ===
+        statSync(probe).ino
+      );
+    } catch {
+      return false;
+    }
+  } finally {
+    rmSync(probeDirectory, { recursive: true, force: true });
+  }
+}
+const caseInsensitive = checkoutVolumeIsCaseInsensitive();
+const checkoutInOtherCase = path.join(
+  path.dirname(path.resolve(repoRoot)),
+  swapCase(path.basename(path.resolve(repoRoot))),
+);
+
+describe("demo credentials destination", () => {
+  it.skipIf(!caseInsensitive)(
+    "refuses the checkout spelt in another letter case (skipped when the checkout's filesystem is case-sensitive)",
+    async () => {
+      const typed = path.join(checkoutInOtherCase, "demo-credentials.json");
+      const real = path.join(repoRoot, "demo-credentials.json");
+      expect(() => resolveCredentialsDestination(typed)).toThrow(
+        /outside the source checkout/,
+      );
+      await expect(
+        run(["--demo", "--credentials-file", typed], UNREACHABLE_DATABASE),
+      ).rejects.toThrow(/outside the source checkout/);
+      await expect(stat(real)).rejects.toThrow();
+    },
+    120_000,
+  );
+
+  it("refuses a credentials file that is not a private regular file", async () => {
+    const scratch = await mkdtemp(
+      path.join(os.tmpdir(), "taskdesk-demo-cred-"),
+    );
+    try {
+      const open = path.join(scratch, "open.json");
+      await writeFile(open, "{}", { mode: 0o644 });
+      await chmod(open, 0o644);
+      const target = path.join(scratch, "target.json");
+      await writeFile(target, "{}", { mode: 0o600 });
+      const link = path.join(scratch, "link.json");
+      await symlink(target, link);
+      const fifo = path.join(scratch, "fifo.json");
+      await execute("mkfifo", ["-m", "600", fifo]);
+      for (const file of [open, link, fifo])
+        await expect(
+          run(["--demo", "--credentials-file", file], UNREACHABLE_DATABASE),
+          file,
+        ).rejects.toThrow(/private regular file/);
+    } finally {
+      await rm(scratch, { recursive: true, force: true });
+    }
+  }, 180_000);
+});
+
+describe("demo data seed never takes over rows it does not own", () => {
+  let scratch: string;
+  let file: string;
+
+  beforeEach(async () => {
+    await resetTestDatabase({ defaultOffFeatures: false });
+    scratch = await mkdtemp(path.join(os.tmpdir(), "taskdesk-demo-owned-"));
+    file = path.join(scratch, "demo.json");
+  }, 180_000);
+
+  afterEach(async () => {
+    await rm(scratch, { recursive: true, force: true });
+  });
+
+  afterAll(async () => {
+    await resetTestDatabase();
+  });
+
+  async function otherUserAndOrganisation() {
+    await db.insert(schema.userTable).values({
+      id: "someone-else",
+      name: "Someone Else",
+      email: "someone-else@example.test",
+      emailVerified: true,
+    });
+    await db.insert(schema.organisationTable).values({
+      id: "existing-org-fabrikam",
+      key: "fabrikam",
+      name: "Fabrikam Inc",
+      isInternal: false,
+      domain: ["fabrikam.example.test"],
+      active: true,
+      portalAccess: true,
+      defaultCustomerVisibility: "organisation",
+    });
+  }
+
+  it("refuses, and changes nothing, when the global customer role is not a system role", async () => {
+    await db.insert(schema.roleTable).values({
+      id: "existing-customer-role",
+      scope: "organisation",
+      workspaceId: null,
+      key: "customer",
+      name: "Our customers",
+      rank: 5,
+      capabilities: ["custom.capability"],
+      isSystem: false,
+      isEditable: true,
+    });
+    const before = await snapshot();
+    await expect(
+      run(["--demo", "--allow-existing-data", "--credentials-file", file]),
+    ).rejects.toThrow(/Demo seed refused: the global customer role is missing/);
+    expect(await snapshot()).toEqual(before);
+    await expect(stat(file)).rejects.toThrow();
+  }, 180_000);
+
+  it("refuses, and changes nothing, when a demo person id belongs to another user or to none", async () => {
+    await otherUserAndOrganisation();
+    const personId = `demo-person-${DEMO_REVIEWER_KEY}`;
+    for (const userId of ["someone-else", null]) {
+      await db
+        .delete(schema.personTable)
+        .where(eq(schema.personTable.id, personId));
+      await db.insert(schema.personTable).values({
+        id: personId,
+        userId,
+        organisationId: "existing-org-fabrikam",
+        side: "customer",
+        displayName: "Somebody",
+      });
+      const before = await snapshot();
+      await expect(
+        run(["--demo", "--allow-existing-data", "--credentials-file", file]),
+        String(userId),
+      ).rejects.toThrow(new RegExp(`existing person \\(${personId}\\)`));
+      expect(await snapshot()).toEqual(before);
+      await expect(stat(file)).rejects.toThrow();
+    }
+  }, 240_000);
+
+  it("never prints a password hash when a database write fails", async () => {
+    await otherUserAndOrganisation();
+    // The id the seed gives the first demo account's password row, held by someone else, so
+    // that insert fails with the new bcrypt hash among the statement's parameters.
+    await db.insert(schema.accountTable).values({
+      id: "demo-cred-demo-user-owner",
+      accountId: "someone-else",
+      providerId: "credential",
+      userId: "someone-else",
+    });
+    const before = await snapshot();
+    const failure = await run(["--demo", "--credentials-file", file]).then(
+      () => null,
+      (error: { stdout: string; stderr: string }) => error,
+    );
+    expect(failure).not.toBeNull();
+    expect(failure?.stderr).not.toMatch(BCRYPT_HASH);
+    expect(failure?.stdout).not.toMatch(BCRYPT_HASH);
+    expect(failure?.stderr).toContain("Demo seed failed");
+    expect(await snapshot()).toEqual(before);
+  }, 180_000);
+
+  it("waits for the demo seed lock before checking accounts or writing anything", async () => {
+    const client = await getDatabasePool().connect();
+    let settled = false;
+    let run1: Promise<unknown> | undefined;
+    try {
+      await client.query(
+        "SELECT pg_advisory_lock(hashtext('taskdesk:demo-seed'))",
+      );
+      run1 = run(["--demo", "--credentials-file", file]).finally(() => {
+        settled = true;
+      });
+      run1.catch(() => {});
+      let waiting = false;
+      const deadline = Date.now() + 90_000;
+      while (!settled && Date.now() < deadline) {
+        const { rows } = await client.query<{ count: number }>(
+          "SELECT count(*)::int AS count FROM pg_locks WHERE locktype = 'advisory' AND NOT granted",
+        );
+        if ((rows[0]?.count ?? 0) > 0) {
+          waiting = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      expect(waiting, "the seed waits on the demo seed lock").toBe(true);
+      await expect(stat(file)).rejects.toThrow();
+      expect(
+        await db
+          .select({ id: schema.userTable.id })
+          .from(schema.userTable)
+          .where(like(schema.userTable.id, "demo-%")),
+      ).toEqual([]);
+    } finally {
+      await client.query(
+        "SELECT pg_advisory_unlock(hashtext('taskdesk:demo-seed'))",
+      );
+      client.release();
+    }
+    await run1;
+    const written = JSON.parse(await readFile(file, "utf8")) as {
+      accounts: { email: string; password: string }[];
+    };
+    for (const account of written.accounts) {
+      const [row] = await db
+        .select({ password: schema.accountTable.password })
+        .from(schema.accountTable)
+        .innerJoin(
+          schema.userTable,
+          eq(schema.userTable.id, schema.accountTable.userId),
+        )
+        .where(eq(schema.userTable.email, account.email));
+      expect(
+        await bcrypt.compare(account.password, row?.password ?? ""),
+        account.email,
+      ).toBe(true);
+    }
+  }, 300_000);
 });
