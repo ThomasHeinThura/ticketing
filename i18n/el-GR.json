@@ -1396,7 +1396,7 @@
 			},
 			"giteaHeading": "Gitea",
 			"giteaHint": "Όταν συμβαίνει ένα γεγονός webhook του Gitea, μετακινήστε τη συνδεδεμένη {{term_work_item_one}} σε μια στήλη.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules."
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules."
 		},
 		"externalLinks": {
 			"resources": "Πόροι",

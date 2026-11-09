@@ -31,6 +31,9 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   // as CA-2's default comment visibility. Never inferred from `manageProjects`/`updateProjects`,
   // which follow the broader legacy statement (#708).
   manageProjectSettings?: boolean;
+  // Strict project:archive (owner/admin/manager) -- what archive, unarchive and restore
+  // enforce (A8-2). Never inferred from `updateProjects`: a lead holds project:update only.
+  archiveProjects?: boolean;
   // Strict per-area settings capabilities (workspace:manage_roles, webhook:manage,
   // custom_field:manage), exactly what each settings API enforces. Optional so an older server
   // fails closed; never inferred from `manageWorkspaceSettings`.
@@ -183,6 +186,7 @@ export function useWorkspacePermission(
       canExportTasks: () => can.exportTasks === true,
       canSetPriorityTasks: () => can.setPriorityTasks === true,
       canManageProjectSettings: () => can.manageProjectSettings === true,
+      canArchiveProjects: () => can.archiveProjects === true,
       canManageRoles: () => can.manageRoles === true,
       canManageWebhooks: () => can.manageWebhooks === true,
       canManageCustomFields: () => can.manageCustomFields === true,
