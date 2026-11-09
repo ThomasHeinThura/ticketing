@@ -137,8 +137,9 @@ describe("GET /api/capabilities", () => {
     expect(response.status).toBe(403);
   });
 
-  // The three flags below are computed from the STRICT canonical capabilities
-  // (`work_item:transition`, `work_item:rank`, `project:manage_settings`), never from the
+  // The four flags below are computed from the STRICT canonical capabilities
+  // (`work_item:transition`, `work_item:rank`, `project:manage_settings`, `project:archive`
+  // (A8-2: a lead holds project:update but not project:archive)), never from the
   // legacy better-auth statement map (#708: the legacy gate grants more than the matrix).
   // The expectations are written out by hand from rbac.md, not derived from BUILT_IN_ROLES,
   // so a drift in either side fails here.
@@ -149,28 +150,54 @@ describe("GET /api/capabilities", () => {
         transitionTasks: boolean;
         rankTasks: boolean;
         manageProjectSettings: boolean;
+        archiveProjects: boolean;
       },
     ]
   > = [
     [
       "owner",
-      { transitionTasks: true, rankTasks: true, manageProjectSettings: true },
+      {
+        transitionTasks: true,
+        rankTasks: true,
+        manageProjectSettings: true,
+        archiveProjects: true,
+      },
     ],
     [
       "admin",
-      { transitionTasks: true, rankTasks: true, manageProjectSettings: true },
+      {
+        transitionTasks: true,
+        rankTasks: true,
+        manageProjectSettings: true,
+        archiveProjects: true,
+      },
     ],
     [
       "manager",
-      { transitionTasks: true, rankTasks: true, manageProjectSettings: true },
+      {
+        transitionTasks: true,
+        rankTasks: true,
+        manageProjectSettings: true,
+        archiveProjects: true,
+      },
     ],
     [
       "lead",
-      { transitionTasks: true, rankTasks: true, manageProjectSettings: false },
+      {
+        transitionTasks: true,
+        rankTasks: true,
+        manageProjectSettings: false,
+        archiveProjects: false,
+      },
     ],
     [
       "member",
-      { transitionTasks: true, rankTasks: true, manageProjectSettings: false },
+      {
+        transitionTasks: true,
+        rankTasks: true,
+        manageProjectSettings: false,
+        archiveProjects: false,
+      },
     ],
     [
       "viewer",
@@ -178,12 +205,13 @@ describe("GET /api/capabilities", () => {
         transitionTasks: false,
         rankTasks: false,
         manageProjectSettings: false,
+        archiveProjects: false,
       },
     ],
   ];
 
   it.each(STRICT_FLAGS)(
-    "reports transitionTasks, rankTasks and manageProjectSettings strictly for the %s role",
+    "reports transitionTasks, rankTasks, manageProjectSettings and archiveProjects strictly for the %s role",
     async (role, expected) => {
       const actor = await createWorkspaceMember({ role });
       // `createWorkspaceMember` only seeds the viewer/member/admin role rows; the
@@ -211,6 +239,7 @@ describe("GET /api/capabilities", () => {
         transitionTasks: caps.transitionTasks,
         rankTasks: caps.rankTasks,
         manageProjectSettings: caps.manageProjectSettings,
+        archiveProjects: caps.archiveProjects,
       }).toEqual(expected);
     },
   );

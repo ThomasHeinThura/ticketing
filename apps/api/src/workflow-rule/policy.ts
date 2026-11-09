@@ -13,23 +13,14 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * delete is immediate and a workflow rule has no pending-action target, so API and MCP keys are
  * refused (`requireSessionOnly`); GET and PUT stay open to keys as kaneo had them.
  *
- * **Legacy resource key: `"project"`, same as `column/policy.ts`, not a `"workflowRule"`
- * resource of its own.** Both mutation routes run `requireWorkspacePermission({ project:
- * ["update"] })` — the legacy `statement` object never had a distinct action for automations,
- * so `project:update` is the exact runtime check.
- *
- * **Granularity gap, the clearest instance of the pattern in this whole batch.** rbac.md's
- * `project:manage_settings` capability description is "Project states, features, labels, SLA
- * and calendar assignment, **automations**" — automations are named explicitly, and
- * `docs/01-architecture/data-model.md`'s `automation` table (`trigger` an event key from
- * `events.md`, `conditions`, `actions`, `effective_role_id`) is the documented native successor
- * to this router's `workflow_rule` table. The target capability for "who may create, edit or
- * delete a project's workflow rules" is therefore `project:manage_settings`, not the bare
- * `project:update` these routes enforce. Same reasoning as `column/policy.ts`'s note: declaring
- * `project:manage_settings` here would claim a stricter requirement than the runtime actually
- * imposes (`project:manage_settings` implies `project:update`, not the reverse), so
- * `project:update` is declared below, matching enforcement, and this is recorded as a gap for
- * #7 alongside column's.
+ * **Capability: `project:manage_settings` on both mutations (A8-2, Thomas 8 Nov).** rbac.md's
+ * `project:manage_settings` is "Project states, features, labels, SLA and calendar assignment,
+ * **automations**", and `data-model.md`'s `automation` table is the documented native successor
+ * to this router's `workflow_rule` table. The project reach middleware
+ * (`workspaceAccess.fromProject`/`fromWorkflowRule` with `requireProjectReach`) enforces this
+ * declaration against the caller's project authority, and an API key must also carry it in its
+ * scope (no `deferApiKeyCapability`). The legacy `requireWorkspacePermission({ project:
+ * ["update"] })` gate stays as the baseline. A lead (`project:update` only) is refused.
  *
  * **Scope and scopeSource: `scope: 'project'`, `scopeSource: 'row'` throughout.** All three
  * routes address one identifiable project (the two `{projectId}` routes directly; the delete
@@ -52,19 +43,18 @@ export const workflowRulePolicies = {
   },
 
   // Create a rule, or update the target column of the existing rule for the same integration
-  // and event. `requireWorkspacePermission({ project: ["update"] })` runs after
-  // `workspaceAccess.fromProject("projectId")`.
+  // and event.
   "PUT /api/workflow-rule/{projectId}": {
-    capability: "project:update",
+    capability: "project:manage_settings",
     scope: "project",
     scopeSource: "row",
     reach: "required",
   },
 
   // Delete a workflow rule. `workspaceAccess.fromWorkflowRule("id")` resolves the rule's own
-  // project, then `requireWorkspacePermission({ project: ["update"] })` runs.
+  // project.
   "DELETE /api/workflow-rule/{id}": {
-    capability: "project:update",
+    capability: "project:manage_settings",
     sessionOnly: true,
     scope: "project",
     scopeSource: "row",

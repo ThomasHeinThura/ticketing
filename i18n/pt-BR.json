@@ -1553,7 +1553,7 @@
 			"githubHint": "Quando um evento do GitHub ocorrer, mova a {{term_work_item_one}} vinculada para uma coluna.",
 			"giteaHeading": "Gitea",
 			"giteaHint": "Quando um evento de webhook do Gitea ocorrer, mova a {{term_work_item_one}} vinculada para uma coluna.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "Selecionar coluna...",
 			"toastUpdated": "Regra de fluxo de trabalho atualizada",
 			"toastError": "Falha ao atualizar regra",

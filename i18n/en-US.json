@@ -1623,7 +1623,7 @@
 			"githubHint": "When a GitHub event occurs, move the linked {{term_work_item_one}} to a column.",
 			"giteaHeading": "Gitea",
 			"giteaHint": "When a Gitea webhook event occurs, move the linked {{term_work_item_one}} to a column.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "Select column...",
 			"toastUpdated": "Workflow rule updated",
 			"toastError": "Failed to update rule",

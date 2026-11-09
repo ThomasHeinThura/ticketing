@@ -1394,7 +1394,7 @@
 			"githubHint": "Когда происходит событие GitHub, перемещать связанную задачу в колонку.",
 			"giteaHeading": "Gitea",
 			"giteaHint": "Когда происходит событие вебхука Gitea, перемещать связанную задачу в колонку.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "Выберите колонку...",
 			"toastUpdated": "Правило рабочего процесса обновлено",
 			"toastError": "Не удалось обновить правило",

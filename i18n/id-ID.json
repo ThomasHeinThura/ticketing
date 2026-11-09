@@ -1386,7 +1386,7 @@
 			"githubHint": "Saat event GitHub terjadi, pindahkan {{term_work_item_one}} tertaut ke kolom.",
 			"giteaHeading": "Gitea",
 			"giteaHint": "Saat event webhook Gitea terjadi, pindahkan {{term_work_item_one}} tertaut ke kolom.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "Pilih kolom...",
 			"toastUpdated": "Aturan alur kerja diperbarui",
 			"toastError": "Gagal memperbarui aturan",

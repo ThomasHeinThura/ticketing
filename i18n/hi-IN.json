@@ -1552,7 +1552,7 @@
 			"githubHint": "जब GitHub इवेंट होता है, तो लिंक किए गए {{term_work_item_one}} को कॉलम में ले जाएँ।",
 			"giteaHeading": "Gitea",
 			"giteaHint": "जब Gitea वेबहुक इवेंट होता है, तो लिंक किए गए {{term_work_item_one}} को कॉलम में ले जाएँ।",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "कॉलम चुनें...",
 			"toastUpdated": "वर्कफ़्लो नियम अपडेट किया गया",
 			"toastError": "नियम अपडेट करने में विफल",

@@ -146,6 +146,42 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canManageProjectSettings()).toBe(true);
   });
 
+  it("reads archiveProjects strictly: project update alone does not allow archive (A8-2)", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({ updateProjects: true, archiveProjects: false }),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(result.current.canUpdateProjects()).toBe(true);
+    expect(result.current.canArchiveProjects()).toBe(false);
+  });
+
+  it("reports canArchiveProjects when the server grants the strict flag", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap({ archiveProjects: true }),
+    });
+
+    const { result } = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(result.current.canArchiveProjects()).toBe(true);
+  });
+
   it("calls GET /api/capabilities with the active workspace id, once", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,
