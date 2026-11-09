@@ -406,8 +406,9 @@ for (const [viewportName, viewport] of VIEWPORTS)
           }),
       ).toBeVisible();
       await expectSeverityAndStatus(page, viewportName);
-      // CP-4: the assignee is always "Your team" (the column is hidden in a narrow frame).
-      await expect(page.getByText("Your team").first()).toBeAttached();
+      // UX-7: "My Requests" hides the Created by and Assigned to columns (always the caller and
+      // "Your team"); they show under "All Requests".
+      await expect(page.getByText("Your team")).toHaveCount(0);
       await expectTableFitsWithServiceTarget(page);
       expect(await seriousOrCriticalViolations(page)).toEqual([]);
       expect(unmatched).toEqual([]);
@@ -459,11 +460,21 @@ for (const [viewportName, viewport] of VIEWPORTS)
       await expectSeverityAndStatus(page, viewportName);
       await expectTableFitsWithServiceTarget(page);
       if (viewportName.startsWith("laptop"))
-        for (const name of ["Project", "Created", "Assigned to"])
+        // UX-7: Project is hidden when the user has one project (this fixture has one).
+        for (const name of ["Created", "Assigned to"])
           await expect(
             page.getByRole("columnheader", { name, exact: true }),
           ).toBeVisible();
       expect(await seriousOrCriticalViolations(page)).toEqual([]);
+
+      // UX-7: on a phone Status, Severity, Created and Sort sit behind one Filter sheet.
+      if (viewportName === "mobile") {
+        await page.getByRole("button", { name: /^Filter/ }).click();
+        await expect(page.getByRole("dialog")).toBeVisible();
+        expect(await seriousOrCriticalViolations(page)).toEqual([]);
+        expect(unmatched).toEqual([]);
+        return;
+      }
 
       // With the Status filter popover open.
       await page.getByRole("button", { name: /^Status/ }).click();
