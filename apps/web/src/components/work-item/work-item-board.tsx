@@ -21,6 +21,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@taskdesk/ui";
+import type { TFunction } from "i18next";
 import { Plus } from "lucide-react";
 import {
   type CSSProperties,
@@ -164,6 +165,7 @@ export default function WorkItemBoard({
   onOpenItem?: (key: string) => void;
 }) {
   const { t } = useTranslation();
+  const { t: cardT } = useTranslation(undefined, BOARD_TRANSLATION_OPTIONS);
   const combined = Boolean(combinedColumns);
   const {
     dragged,
@@ -380,6 +382,7 @@ export default function WorkItemBoard({
                             <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
                               {stateItems.map((item) => (
                                 <BoardCard
+                                  t={cardT}
                                   key={item.id}
                                   item={item}
                                   stateName={state.name}
@@ -434,6 +437,7 @@ export default function WorkItemBoard({
                             onRetainFocus={onRetainFocus}
                             renderItem={(item, virtualItem) => (
                               <BoardCard
+                                t={cardT}
                                 key={item.id}
                                 item={item}
                                 stateName={state.name}
@@ -478,6 +482,7 @@ export default function WorkItemBoard({
                         <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
                           {stateItems.map((item) => (
                             <BoardCard
+                              t={cardT}
                               key={item.id}
                               item={item}
                               stateName={state.name}
@@ -543,6 +548,7 @@ export default function WorkItemBoard({
           <div className="transform rotate-1 scale-[1.03] shadow-lg">
             <div className="ring-2 ring-ring/35 rounded-lg">
               <BoardCard
+                t={cardT}
                 item={dragged}
                 stateName={
                   states.find((state) => state.id === dragged.stateId)?.name ??
@@ -611,6 +617,7 @@ function noContextMenu() {}
 
 /** One Kaneo task card for a canonical row; shared with the grouped board (`VW-13`). */
 export const BoardCard = memo(function BoardCard({
+  t,
   item,
   sortableId,
   stateName,
@@ -625,6 +632,7 @@ export const BoardCard = memo(function BoardCard({
   virtualItem,
   sourceProject,
 }: {
+  t: TFunction;
   item: WorkItemRow;
   /** DnD-only identifier for a card rendered in more than one group. */
   sortableId?: string;
@@ -640,7 +648,6 @@ export const BoardCard = memo(function BoardCard({
   virtualItem?: VirtualizedSortableItem;
   sourceProject?: CombinedWorkItemRow["sourceProject"];
 }) {
-  const { t } = useTranslation(undefined, BOARD_TRANSLATION_OPTIONS);
   const preferences = useUserPreferencesStore(
     useShallow((preferences) => ({
       showAssignees: preferences.showAssignees,

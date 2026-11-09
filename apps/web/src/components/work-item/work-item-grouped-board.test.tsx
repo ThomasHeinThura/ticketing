@@ -9,8 +9,11 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { createInstance, type i18n } from "i18next";
+import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
+import { bindBoardTranslationEvents } from "@/lib/i18n";
 import {
   boardGroupId,
   boardGroupItemId,
@@ -56,12 +59,22 @@ vi.mock("@/fetchers/work-item/assign-work-item", () => ({
 vi.mock("@/fetchers/work-item/unassign-work-item", () => ({
   default: (...args: unknown[]) => unassignWorkItem(...args),
 }));
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) =>
-      translate(key, options),
-  }),
-}));
+const translationMode = vi.hoisted(() => ({ real: false }));
+vi.mock("react-i18next", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-i18next")>();
+  return {
+    ...actual,
+    useTranslation: (...args: Parameters<typeof actual.useTranslation>) => {
+      const result = actual.useTranslation(...args);
+      return translationMode.real
+        ? result
+        : {
+            t: (key: string, options?: Record<string, unknown>) =>
+              translate(key, options),
+          };
+    },
+  };
+});
 vi.mock("@/lib/i18n/domain", () => ({
   getPriorityLabel: (priority: string) =>
     priority.charAt(0).toUpperCase() + priority.slice(1),
@@ -168,14 +181,14 @@ describe("grouped board collision detection", () => {
 
 type Props = Partial<Parameters<typeof WorkItemGroupedBoard>[0]>;
 
-async function renderBoard(props: Props = {}) {
+async function renderBoard(props: Props = {}, translationInstance?: i18n) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   const invalidate = vi
     .spyOn(client, "invalidateQueries")
     .mockResolvedValue(undefined);
-  render(
+  const content = (
     <QueryClientProvider client={client}>
       <WorkItemGroupedBoard
         projectId="proj_1"
@@ -197,7 +210,14 @@ async function renderBoard(props: Props = {}) {
         onSelectionChange={vi.fn()}
         {...props}
       />
-    </QueryClientProvider>,
+    </QueryClientProvider>
+  );
+  render(
+    translationInstance ? (
+      <I18nextProvider i18n={translationInstance}>{content}</I18nextProvider>
+    ) : (
+      content
+    ),
   );
   if (!props.isLoading && !props.isError)
     await waitFor(() =>
@@ -245,7 +265,10 @@ beforeEach(() => {
   assignWorkItem.mockReset().mockResolvedValue({});
   unassignWorkItem.mockReset().mockResolvedValue({});
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  translationMode.real = false;
+});
 
 describe("WorkItemGroupedBoard (VW-13)", () => {
   it("starts keyboard drags with Space and permits Space or Enter to drop", async () => {
@@ -819,4 +842,57 @@ describe("WorkItemGroupedBoard (VW-13)", () => {
     });
     expect(getAssignablePeople).not.toHaveBeenCalled();
   });
+});
+
+it("updates card labels when translations and language change", async () => {
+  const instance = createInstance();
+  await instance.init({
+    lng: "en",
+    fallbackLng: "en",
+    defaultNS: "common",
+    resources: {
+      en: {
+        common: {},
+        workItems: {
+          list: { unavailable: "Hidden" },
+          bulk: { selectItem: "Select {{key}}" },
+          board: { currentState: "State {{state}}" },
+        },
+      },
+      fr: {
+        common: {},
+        workItems: {
+          list: { unavailable: "Masqué" },
+          bulk: { selectItem: "Choisir {{key}}" },
+          board: { currentState: "État {{state}}" },
+        },
+      },
+    },
+  });
+  bindBoardTranslationEvents(instance);
+  translationMode.real = true;
+  await renderBoard(
+    {
+      canSelect: true,
+      workItems: [item("WLP-1", { unavailableFields: ["title"] })],
+    },
+    instance,
+  );
+  expect(screen.getByRole("checkbox", { name: "Select WLP-1" })).toBeVisible();
+  expect(screen.getAllByText("Hidden").length).toBeGreaterThan(0);
+  act(() =>
+    instance.addResourceBundle(
+      "en",
+      "workItems",
+      { bulk: { selectItem: "Pick {{key}}" } },
+      true,
+      true,
+    ),
+  );
+  expect(screen.getByRole("checkbox", { name: "Pick WLP-1" })).toBeVisible();
+  await act(async () => {
+    await instance.changeLanguage("fr");
+  });
+  expect(screen.getByRole("checkbox", { name: "Choisir WLP-1" })).toBeVisible();
+  expect(screen.getAllByText("Masqué").length).toBeGreaterThan(0);
 });

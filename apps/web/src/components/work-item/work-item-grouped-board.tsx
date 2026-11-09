@@ -21,6 +21,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@taskdesk/ui";
+import type { TFunction } from "i18next";
 import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
@@ -29,6 +30,7 @@ import { getProjectLabels } from "@/fetchers/label/project-labels";
 import getAssignablePeople from "@/fetchers/work-item/get-assignable-people";
 import { useDndAccessibility } from "@/hooks/use-dnd-accessibility";
 import { getInitials } from "@/lib/get-initials";
+import { BOARD_TRANSLATION_OPTIONS } from "@/lib/i18n/work-route-namespaces";
 import { getPriorityIcon } from "@/lib/priority";
 import {
   boardGroupItemId,
@@ -114,6 +116,7 @@ export default function WorkItemGroupedBoard({
   onOpenItem?: (key: string) => void;
 }) {
   const { t } = useTranslation();
+  const { t: cardT } = useTranslation(undefined, BOARD_TRANSLATION_OPTIONS);
   // The assignee columns are the project's assignable people, so a person with no card yet is
   // still a drop target. The context menu reads the same query.
   const peopleQuery = useQuery({
@@ -284,6 +287,7 @@ export default function WorkItemGroupedBoard({
             <div className="flex h-full min-w-max gap-4 px-4 py-4 md:px-5">
               {groups.map((group) => (
                 <GroupColumn
+                  cardT={cardT}
                   key={group.id}
                   group={group}
                   name={drag.groupName(group)}
@@ -321,6 +325,7 @@ export default function WorkItemGroupedBoard({
           <div className="transform rotate-1 scale-[1.03] shadow-lg">
             <div className="ring-2 ring-ring/35 rounded-lg">
               <BoardCard
+                t={cardT}
                 item={drag.dragged}
                 stateName={drag.dragged.stateName}
                 busy
@@ -366,6 +371,7 @@ function GroupIcon({ group }: { group: WorkItemBoardGroup }) {
 }
 
 function GroupColumn({
+  cardT,
   group,
   name,
   disabled,
@@ -379,6 +385,7 @@ function GroupColumn({
   retainFocusId,
   onRetainFocus,
 }: {
+  cardT: TFunction;
   group: WorkItemBoardGroup;
   name: string;
   disabled: boolean;
@@ -467,6 +474,7 @@ function GroupColumn({
                 <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
                   {group.items.map((item) => (
                     <BoardCard
+                      t={cardT}
                       key={item.id}
                       item={item}
                       sortableId={boardGroupItemId(group, item.id)}
@@ -494,6 +502,7 @@ function GroupColumn({
                 onRetainFocus={onRetainFocus}
                 renderItem={(item, virtualItem) => (
                   <BoardCard
+                    t={cardT}
                     key={item.id}
                     item={item}
                     sortableId={boardGroupItemId(group, item.id)}
@@ -514,6 +523,7 @@ function GroupColumn({
             <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
               {group.items.map((item) => (
                 <BoardCard
+                  t={cardT}
                   key={item.id}
                   item={item}
                   sortableId={boardGroupItemId(group, item.id)}

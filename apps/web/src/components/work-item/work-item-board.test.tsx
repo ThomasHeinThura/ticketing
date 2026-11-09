@@ -9,10 +9,13 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { createInstance, type i18n } from "i18next";
 import type { ReactNode } from "react";
+import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
 import { HttpError } from "@/lib/http-error";
+import { bindBoardTranslationEvents } from "@/lib/i18n";
 import { WorkItemTransitionBlockedError } from "@/lib/work-item-transition-reasons";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -109,17 +112,27 @@ vi.mock("@/fetchers/work-item/transition-work-item", () => ({
 vi.mock("@/fetchers/work-item/get-work-item-transitions", () => ({
   default: (...args: unknown[]) => getWorkItemTransitions(...args),
 }));
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) =>
-      translate(
-        typeof options?.count === "number"
-          ? `${key}_${options.count === 1 ? "one" : "other"}`
-          : key,
-        options,
-      ),
-  }),
-}));
+const translationMode = vi.hoisted(() => ({ real: false }));
+vi.mock("react-i18next", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-i18next")>();
+  return {
+    ...actual,
+    useTranslation: (...args: Parameters<typeof actual.useTranslation>) => {
+      const result = actual.useTranslation(...args);
+      return translationMode.real
+        ? result
+        : {
+            t: (key: string, options?: Record<string, unknown>) =>
+              translate(
+                typeof options?.count === "number"
+                  ? `${key}_${options.count === 1 ? "one" : "other"}`
+                  : key,
+                options,
+              ),
+          };
+    },
+  };
+});
 
 const states = [
   { id: "s-open", name: "Open" },
@@ -169,6 +182,7 @@ function board(
   props: BoardProps = {},
   client = new QueryClient(),
   withRouteShortcuts = false,
+  translationInstance?: i18n,
 ) {
   const element = (next: BoardProps = {}): ReactNode => {
     const view = (
@@ -192,7 +206,7 @@ function board(
         {...next}
       />
     );
-    return (
+    const content = (
       <QueryClientProvider client={client}>
         {withRouteShortcuts ? (
           <RouteBulkSelectionShortcuts>{view}</RouteBulkSelectionShortcuts>
@@ -200,6 +214,11 @@ function board(
           view
         )}
       </QueryClientProvider>
+    );
+    return translationInstance ? (
+      <I18nextProvider i18n={translationInstance}>{content}</I18nextProvider>
+    ) : (
+      content
     );
   };
   const view = render(element());
@@ -265,7 +284,10 @@ beforeEach(() => {
   getWorkItemTransitions.mockResolvedValue([]);
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  translationMode.real = false;
+});
 
 describe("WorkItemBoard layout (VW-8)", () => {
   it("renders one column per state in state order, including an empty one", () => {
@@ -1381,4 +1403,61 @@ describe("original card display preferences over persisted projections", () => {
       "/agent/work-items/WLP-1",
     );
   });
+});
+
+it("updates card labels when translations and language change", async () => {
+  const instance = createInstance();
+  await instance.init({
+    lng: "en",
+    fallbackLng: "en",
+    defaultNS: "common",
+    resources: {
+      en: {
+        common: {},
+        workItems: {
+          list: { unavailable: "Hidden" },
+          bulk: { selectItem: "Select {{key}}" },
+          board: { currentState: "State {{state}}" },
+        },
+      },
+      fr: {
+        common: {},
+        workItems: {
+          list: { unavailable: "Masqué" },
+          bulk: { selectItem: "Choisir {{key}}" },
+          board: { currentState: "État {{state}}" },
+        },
+      },
+    },
+  });
+  bindBoardTranslationEvents(instance);
+  translationMode.real = true;
+  board(
+    {
+      canSelect: true,
+      workItems: [
+        item("WLP-1", "s-open", "1", { unavailableFields: ["title"] }),
+      ],
+    },
+    new QueryClient(),
+    false,
+    instance,
+  );
+  expect(screen.getByRole("checkbox", { name: "Select WLP-1" })).toBeVisible();
+  expect(screen.getAllByText("Hidden").length).toBeGreaterThan(0);
+  act(() =>
+    instance.addResourceBundle(
+      "en",
+      "workItems",
+      { bulk: { selectItem: "Pick {{key}}" } },
+      true,
+      true,
+    ),
+  );
+  expect(screen.getByRole("checkbox", { name: "Pick WLP-1" })).toBeVisible();
+  await act(async () => {
+    await instance.changeLanguage("fr");
+  });
+  expect(screen.getByRole("checkbox", { name: "Choisir WLP-1" })).toBeVisible();
+  expect(screen.getAllByText("Masqué").length).toBeGreaterThan(0);
 });
