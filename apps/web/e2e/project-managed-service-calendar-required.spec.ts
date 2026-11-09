@@ -12,6 +12,7 @@ import {
 } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
+import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 // Decision 4 November 2026: when no service calendar resolves for a new managed service,
@@ -172,7 +173,7 @@ test("asks for a service calendar when none resolves, and creates with the chose
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);
     await page.getByRole("button", { name: "Create account" }).click();
-    await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
+    await enrollFirstAdmin(page, origin, password);
     await page
       .getByLabel("Workspace name")
       .fill("Disposable Calendar Workspace");

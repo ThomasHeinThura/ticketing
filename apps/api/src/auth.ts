@@ -1141,8 +1141,11 @@ function createAuth(
         const previousSession = ctx.context.session;
         const completedEnrollment =
           ctx.path === "/two-factor/verify-totp" &&
-          previousSession?.user.twoFactorEnabled !== true &&
-          newSession?.user.twoFactorEnabled === true;
+          previousSession != null &&
+          newSession != null &&
+          previousSession.user.id === newSession.user.id &&
+          previousSession.user.twoFactorEnabled !== true &&
+          newSession.user.twoFactorEnabled === true;
         if (completedEnrollment && newSession) {
           // Better Auth replaces the session used to verify enrollment. Revoke any
           // verified factor gates every device. The shared transaction locks the

@@ -1316,8 +1316,8 @@ describe("God Mode Users API", () => {
       },
     );
 
-    expect(response.status).toBe(409);
-    expect(await response.text()).toContain("Instance setup is incomplete");
+    expect(response.status).toBe(403);
+    expect(await response.text()).toContain("mfa_enrollment_required");
     expect(
       (
         await db

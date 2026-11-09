@@ -110,19 +110,21 @@ function AccountSecurity() {
             {t("auth:accountSecurity.description")}
           </p>
         </header>
-        <ConnectedAccountsPanel
-          intentId={identityLinkIntent}
-          onClearIntent={() =>
-            void navigate({
-              to: routes.accountSecurity.path,
-              search: parseAccountSecuritySearch({
-                ...search,
-                identityLinkIntent: undefined,
-              }),
-              replace: true,
-            })
-          }
-        />
+        {status && (!status.required || status.enabled) ? (
+          <ConnectedAccountsPanel
+            intentId={identityLinkIntent}
+            onClearIntent={() =>
+              void navigate({
+                to: routes.accountSecurity.path,
+                search: parseAccountSecuritySearch({
+                  ...search,
+                  identityLinkIntent: undefined,
+                }),
+                replace: true,
+              })
+            }
+          />
+        ) : null}
         {(enrollmentRequired || status?.required) && !status?.enabled ? (
           <Alert>
             <AlertDescription>

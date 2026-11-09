@@ -19,6 +19,7 @@ const fixture = vi.hoisted(() => ({
     identityLinkIntent: undefined as string | undefined,
   },
   enable: vi.fn(),
+  verifyTotp: vi.fn(),
   navigate: vi.fn(),
 }));
 
@@ -49,7 +50,9 @@ vi.mock("@/fetchers/get-api-url", () => ({
   getApiUrl: (path: string) => `/api/${path}`,
 }));
 vi.mock("@/lib/auth-client", () => ({
-  authClient: { twoFactor: { enable: fixture.enable, verifyTotp: vi.fn() } },
+  authClient: {
+    twoFactor: { enable: fixture.enable, verifyTotp: fixture.verifyTotp },
+  },
 }));
 
 const SecurityPage = (Route as unknown as { component: ComponentType })
@@ -57,7 +60,11 @@ const SecurityPage = (Route as unknown as { component: ComponentType })
 
 function factorStatus(
   passwordRequiredForEnrollment: boolean,
-  overrides: { required?: boolean; policyMode?: string } = {},
+  overrides: {
+    enabled?: boolean;
+    required?: boolean;
+    policyMode?: string;
+  } = {},
 ) {
   return new Response(
     JSON.stringify({
@@ -79,6 +86,7 @@ describe("account security factor enrollment", () => {
       identityLinkIntent: undefined,
     };
     fixture.enable.mockReset();
+    fixture.verifyTotp.mockReset();
     fixture.navigate.mockReset();
     fixture.enable.mockResolvedValue({
       data: {
@@ -88,6 +96,7 @@ describe("account security factor enrollment", () => {
       },
       error: null,
     });
+    fixture.verifyTotp.mockResolvedValue({ data: {}, error: null });
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => factorStatus(false)),
@@ -193,15 +202,55 @@ describe("account security factor enrollment", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("waits to load connected accounts until required enrollment is verified", async () => {
+    let enabled = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => factorStatus(false, { enabled })),
+    );
+    fixture.verifyTotp.mockImplementation(async () => {
+      enabled = true;
+      return { data: {}, error: null };
+    });
+    render(<SecurityPage />);
+
+    expect(
+      await screen.findByText("auth:accountSecurity.required"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Clear connected identity intent" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.setupButton" }),
+    );
+    const code = await screen.findByLabelText("auth:accountSecurity.codeLabel");
+    fireEvent.change(code, { target: { value: "123456" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.verify" }),
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Clear connected identity intent",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("clears the callback intent while preserving the TOTP enrollment query", async () => {
     fixture.search = {
       enrollmentRequired: true,
       identityLinkIntent: "i".repeat(43),
     };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => factorStatus(false, { enabled: true })),
+    );
     render(<SecurityPage />);
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Clear connected identity intent" }),
+      await screen.findByRole("button", {
+        name: "Clear connected identity intent",
+      }),
     );
 
     expect(fixture.navigate).toHaveBeenCalledWith({
