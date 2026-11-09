@@ -268,7 +268,7 @@ test("workflow automation rules are read-only without project:update", async ({
   await page.goto(`/dashboard/settings/projects/${PROJECT_ID}/workflow`);
   await expect(
     page.getByText(
-      "Only people who can update this Project can change automation rules.",
+      "Only people who can manage this Project's settings can change automation rules.",
     ),
   ).toBeVisible();
   const pickers = page.getByRole("combobox", { name: /^(GitHub|Gitea) / });

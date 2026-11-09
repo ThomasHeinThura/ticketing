@@ -1556,7 +1556,7 @@
 			"githubHint": "GitHub イベントが発生したときに、リンクされた{{term_work_item_one}}をカラムに移動します。",
 			"giteaHeading": "Gitea",
 			"giteaHint": "Gitea の Webhook イベントが発生したときに、リンクされた{{term_work_item_one}}をカラムに移動します。",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "カラムを選択...",
 			"toastUpdated": "ワークフロールールを更新しました",
 			"toastError": "ルールの更新に失敗しました",

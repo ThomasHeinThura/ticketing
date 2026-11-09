@@ -1401,7 +1401,7 @@
 			},
 			"giteaHeading": "Gitea",
 			"giteaHint": "Кога ќе се случи Gitea webhook настан, премести ја поврзаната {{term_work_item_one}} во колона.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules."
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules."
 		},
 		"externalLinks": {
 			"resources": "Ресурси",

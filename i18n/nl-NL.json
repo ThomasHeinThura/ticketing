@@ -1169,7 +1169,7 @@
 			},
 			"giteaHeading": "Gitea",
 			"giteaHint": "Wanneer een Gitea-webhookgebeurtenis plaatsvindt, verplaats de gekoppelde {{term_work_item_one}} naar een kolom.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules."
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules."
 		},
 		"externalLinks": {
 			"resources": "Bronnen",

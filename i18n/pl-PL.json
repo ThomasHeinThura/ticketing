@@ -2026,7 +2026,7 @@
 			},
 			"giteaHeading": "Gitea",
 			"giteaHint": "Gdy wystąpi zdarzenie webhooka Gitea, przenieś powiązane {{term_work_item_one}} do kolumny.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"githubHeading": "GitHub",
 			"githubHint": "Gdy wystąpi zdarzenie GitHub, przenieś powiązane {{term_work_item_one}} do kolumny.",
 			"loading": "Ładowanie...",

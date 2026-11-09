@@ -483,6 +483,7 @@ const visualOwnerCapabilities = {
   setPriorityTasks: true,
   bindProjectOrganisation: true,
   manageProjectSettings: true,
+  archiveProjects: true,
   manageRoles: true,
   manageWebhooks: true,
   manageCustomFields: true,

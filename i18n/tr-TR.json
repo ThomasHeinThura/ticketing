@@ -1391,7 +1391,7 @@
 			"githubHint": "Bir GitHub olayı gerçekleştiğinde, bağlı talebi bir sütuna taşıyın.",
 			"giteaHeading": "Gitea",
 			"giteaHint": "Bir Gitea webhook olayı gerçekleştiğinde, bağlı talebi bir sütuna taşıyın.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "Sütun seç...",
 			"toastUpdated": "İş akışı kuralı güncellendi",
 			"toastError": "Kural güncellenemedi",

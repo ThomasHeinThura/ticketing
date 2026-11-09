@@ -1391,7 +1391,7 @@
 			"githubHint": "Wenn ein GitHub-Ereignis eintritt, verschiebe die verknüpfte {{term_work_item_one}} in eine Spalte.",
 			"giteaHeading": "Gitea",
 			"giteaHint": "Wenn ein Gitea-Webhook-Ereignis eintritt, verschiebe die verknüpfte {{term_work_item_one}} in eine Spalte.",
-			"readOnly": "Only people who can update this {{term_project_one}} can change automation rules.",
+			"readOnly": "Only people who can manage this {{term_project_one}}'s settings can change automation rules.",
 			"selectColumnPlaceholder": "Spalte auswählen...",
 			"toastUpdated": "Workflow-Regel aktualisiert",
 			"toastError": "Workflow-Regel konnte nicht aktualisiert werden",

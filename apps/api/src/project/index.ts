@@ -519,17 +519,14 @@ const archiveProjectRoute = createRoute({
   description:
     "Hide a project from the default list without deleting it. Reversible with unarchive.",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse("The archived project", projectSchema),
     400: errorResponse("Malformed project ID (including a NUL byte)"),
-    403: errorResponse("Missing project:update permission"),
+    403: errorResponse("Missing project:archive capability"),
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
     ),
@@ -544,17 +541,14 @@ const unarchiveProjectRoute = createRoute({
   summary: "Unarchive project",
   description: "Return an archived project to the default list.",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse("The restored project", projectSchema),
     400: errorResponse("Malformed project ID (including a NUL byte)"),
-    403: errorResponse("Missing project:update permission"),
+    403: errorResponse("Missing project:archive capability"),
     404: errorResponse(
       "Project doesn't exist or doesn't belong to the specified workspace",
     ),
@@ -572,17 +566,14 @@ const restoreProjectRoute = createRoute({
     "A soft-deleted or archived parent must be restored first. The project's prior " +
     "archive state is preserved.",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
     requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse("The restored project", projectSchema),
     400: errorResponse("Malformed project ID (including a NUL byte)"),
-    403: errorResponse("Missing project:update permission"),
+    403: errorResponse("Missing project:archive capability"),
     404: errorResponse("Project not found or out of reach"),
     409: errorResponse(
       "The 30-day restore window passed or the parent project must be restored first",

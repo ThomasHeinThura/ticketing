@@ -322,10 +322,7 @@ export default function WorkItemGroupedBoard({
             <div className="ring-2 ring-ring/35 rounded-lg">
               <BoardCard
                 item={drag.dragged}
-                state={{
-                  id: drag.dragged.stateId,
-                  name: drag.dragged.stateName,
-                }}
+                stateName={drag.dragged.stateName}
                 busy
                 canSelect={false}
                 canTransition={false}
@@ -401,6 +398,11 @@ function GroupColumn({
     disabled,
     data: { type: "group", group: group.id },
   });
+  // A stable id array keeps SortableContext from re-rendering every card on each board render.
+  const sortableIds = useMemo(
+    () => group.items.map((item) => boardGroupItemId(group, item.id)),
+    [group],
+  );
   const headingId = `work-item-board-group-${group.id}`;
   const selectable = group.items.filter(
     (item) => !item.unavailableFields.includes("key"),
@@ -452,7 +454,7 @@ function GroupColumn({
         }
       >
         <SortableContext
-          items={group.items.map((item) => boardGroupItemId(group, item.id))}
+          items={sortableIds}
           strategy={verticalListSortingStrategy}
         >
           {group.items.length === 0 ? (
@@ -468,7 +470,7 @@ function GroupColumn({
                       key={item.id}
                       item={item}
                       sortableId={boardGroupItemId(group, item.id)}
-                      state={{ id: item.stateId, name: item.stateName }}
+                      stateName={item.stateName}
                       busy={busy}
                       canSelect={canSelect}
                       canTransition={canWrite && group.droppable}
@@ -495,7 +497,7 @@ function GroupColumn({
                     key={item.id}
                     item={item}
                     sortableId={boardGroupItemId(group, item.id)}
-                    state={{ id: item.stateId, name: item.stateName }}
+                    stateName={item.stateName}
                     busy={busy}
                     canSelect={canSelect}
                     canTransition={canWrite && group.droppable}
@@ -515,7 +517,7 @@ function GroupColumn({
                   key={item.id}
                   item={item}
                   sortableId={boardGroupItemId(group, item.id)}
-                  state={{ id: item.stateId, name: item.stateName }}
+                  stateName={item.stateName}
                   busy={busy}
                   canSelect={canSelect}
                   canTransition={canWrite && group.droppable}

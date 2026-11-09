@@ -12,30 +12,17 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * this batch restricted `/api/column/*` to a browser session, and declaring it now would
  * narrow reach relative to what the route has always done.
  *
- * **Legacy resource key: same `"project"` string as `project/policy.ts`, not a `"column"`
- * resource of its own.** Every mutation route below runs
- * `requireWorkspacePermission({ project: ["update"] })` -- `column`'s own controllers never
- * check a distinct `column` permission, because the legacy `statement` object
- * (`legacy-better-auth-access-control.ts`) never had one. `project:update` is therefore both
- * the exact runtime check and the only Projects-group capability with a matching legacy
- * action.
- *
- * **Granularity gap, same shape as `project/policy.ts`'s archive/unarchive note, and arguably
- * sharper here.** rbac.md's `project:manage_settings` capability is described as "**Project
- * states**, features, labels, SLA and calendar assignment, automations" -- and
- * `docs/01-architecture/data-model.md`'s `state` table (project-scoped, `position`-ordered,
- * `is_default`) is the documented NATIVE replacement for exactly what kaneo calls a board
- * `column` (`name`, `icon`, `color`, `isFinal`, `position` -- `apps/api/src/column/
- * schema.ts`). So the capability the target vocabulary actually names for "who may reshape a
- * project's board columns" is `project:manage_settings`, not the bare `project:update` these
- * routes enforce today. Declaring `project:manage_settings` here regardless would overstate
- * what the runtime requires -- `project:manage_settings` implies `project:update` but not the
- * reverse, so a role holding only `project:update` would be denied by the declaration while
- * still being let through by `requireWorkspacePermission`, the same "declaration claims more
- * than enforcement gives" mismatch `project/policy.ts`'s own comment reasons through. Declared
- * `project:update` below, matching enforcement; recorded here as a gap for #7 (re-key the
- * routes to `project:manage_settings`, or teach the migration that "board structure" was
- * always meant to live under project settings, not bare project update).
+ * **Capability: `project:manage_settings` on every mutation (A8-2, Thomas 8 Nov).** rbac.md's
+ * `project:manage_settings` is "**Project states**, features, labels, SLA and calendar
+ * assignment, automations", and `data-model.md`'s project-scoped `state` table is the native
+ * successor to kaneo's board `column` (`name`, `icon`, `color`, `isFinal`, `position`), so
+ * reshaping a project's board is a project setting, not a bare `project:update`. The project
+ * reach middleware (`workspaceAccess.fromProject`/`fromColumn` with `requireProjectReach`)
+ * enforces this declaration against the caller's project authority, and an API key must also
+ * carry it in its scope (no `deferApiKeyCapability`). The legacy
+ * `requireWorkspacePermission({ project: ["update"] })` gate stays as the baseline; the legacy
+ * statement has no `column` resource and no settings action. A lead (`project:update` only) is
+ * refused. Column deletion approval re-checks this same registered capability.
  *
  * **Scope and scopeSource.** All five routes address one identifiable project (never a
  * bare workspace query) -- `scope: 'project'` throughout, matching `project:read`/
@@ -62,38 +49,34 @@ export const columnPolicies = {
     reach: "required",
   },
 
-  // Add a column to a project's board. `requireWorkspacePermission({ project: ["update"] })`
-  // runs after `workspaceAccess.fromProject("projectId")`.
+  // Add a column to a project's board.
   "POST /api/column/{projectId}": {
-    capability: "project:update",
+    capability: "project:manage_settings",
     scope: "project",
     scopeSource: "row",
     reach: "required",
   },
 
   // Update one column's own fields (name/icon/color/isFinal). `workspaceAccess.fromColumn("id")`
-  // resolves the column's own project (and 404s if the column doesn't exist -- #256), then
-  // `requireWorkspacePermission({ project: ["update"] })` runs.
+  // resolves the column's own project (and 404s if the column doesn't exist -- #256).
   "PUT /api/column/{id}": {
-    capability: "project:update",
+    capability: "project:manage_settings",
     scope: "project",
     scopeSource: "row",
     reach: "required",
   },
 
-  // Delete an empty column. Same middleware shape as update.
+  // Delete an empty column (pending action). Same middleware shape as update.
   "DELETE /api/column/{id}": {
-    capability: "project:update",
+    capability: "project:manage_settings",
     scope: "project",
     scopeSource: "row",
     reach: "required",
   },
 
-  // Reposition every column on a project's board in one call.
-  // `workspaceAccess.fromProject("projectId")` then
-  // `requireWorkspacePermission({ project: ["update"] })`, same as create.
+  // Reposition every column on a project's board in one call. Same gate as create.
   "PUT /api/column/reorder/{projectId}": {
-    capability: "project:update",
+    capability: "project:manage_settings",
     scope: "project",
     scopeSource: "row",
     reach: "required",
