@@ -38,7 +38,7 @@ import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
+import { useControlledBulkSelectionKeyboardShortcuts } from "@/hooks/use-controlled-bulk-selection-keyboard-shortcuts";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import {
   parseProjectLayout,
@@ -923,7 +923,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     setSelectionMode(false);
     setSelectedKeys([]);
   }, []);
-  useBulkSelectionKeyboardShortcuts(
+  useControlledBulkSelectionKeyboardShortcuts(
     canBulkAct && !item && !isCreateOpenForProject,
     {
       selectAll: selectLoadedKeys,

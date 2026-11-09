@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useBulkSelectionKeyboardShortcuts } from "@/hooks/use-bulk-selection-keyboard-shortcuts";
+import { useControlledBulkSelectionKeyboardShortcuts } from "@/hooks/use-controlled-bulk-selection-keyboard-shortcuts";
 
 const WorkItemSelectionToggle = lazy(
   () => import("./work-item-selection-toggle"),
@@ -81,7 +81,7 @@ export function useScheduleSelection({
     setSelectedKeys(allKeys.slice(0, MAX_SELECTED));
   }, [allKeys]);
 
-  useBulkSelectionKeyboardShortcuts(canBulkAct && !paneOpen, {
+  useControlledBulkSelectionKeyboardShortcuts(canBulkAct && !paneOpen, {
     selectAll,
     clearSelection: clear,
   });

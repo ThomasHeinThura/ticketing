@@ -2,6 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import { useBulkSelectionKeyboardShortcuts } from "./use-bulk-selection-keyboard-shortcuts";
+import { useControlledBulkSelectionKeyboardShortcuts } from "./use-controlled-bulk-selection-keyboard-shortcuts";
 
 afterEach(() => {
   cleanup();
@@ -54,7 +55,7 @@ describe("board bulk-selection keyboard shortcuts", () => {
   it("leaves Escape available to a focused child input", () => {
     const clearSelection = vi.fn();
     renderHook(() =>
-      useBulkSelectionKeyboardShortcuts(true, {
+      useControlledBulkSelectionKeyboardShortcuts(true, {
         selectAll: vi.fn(),
         clearSelection,
       }),
@@ -97,7 +98,10 @@ describe("controlled canonical loaded-key shortcuts", () => {
     const selectAll = vi.fn();
     const clearSelection = vi.fn();
     renderHook(() =>
-      useBulkSelectionKeyboardShortcuts(true, { selectAll, clearSelection }),
+      useControlledBulkSelectionKeyboardShortcuts(true, {
+        selectAll,
+        clearSelection,
+      }),
     );
     act(() =>
       document.body.dispatchEvent(
@@ -128,7 +132,10 @@ describe("controlled canonical loaded-key shortcuts", () => {
       const selectAll = vi.fn();
       const clearSelection = vi.fn();
       renderHook(() =>
-        useBulkSelectionKeyboardShortcuts(true, { selectAll, clearSelection }),
+        useControlledBulkSelectionKeyboardShortcuts(true, {
+          selectAll,
+          clearSelection,
+        }),
       );
       const target = document.createElement("div");
       target.setAttribute("role", role);
