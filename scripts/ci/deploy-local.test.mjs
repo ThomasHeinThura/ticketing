@@ -238,6 +238,45 @@ const mutates = (calls) =>
   calls.some(
     (c) => c.includes("pull") || c.includes("run") || c.includes("up"),
   );
+const invokesSeeder = ([bin, ...args]) =>
+  path.basename(bin) === "seed" ||
+  args.some(
+    (arg) =>
+      arg === "seed" ||
+      arg === "--seed" ||
+      arg.startsWith("--seed=") ||
+      /^seed:[\w-]+$/.test(arg) ||
+      /(?:^|[\s/'"])(?:seed|seed-[\w-]+)\.(?:[cm]?js|ts)(?=$|[\s'"])/.test(arg),
+  );
+
+test("seeder command check ignores worktree paths but catches seed invocations", () => {
+  assert.equal(
+    invokesSeeder([
+      "docker",
+      "compose",
+      "-f",
+      "/tmp/seed-coverage-review/deploy/compose.testing.yml",
+      "up",
+    ]),
+    false,
+  );
+  for (const call of [
+    ["docker", "compose", "run", "seed"],
+    ["docker", "compose", "run", "--seed"],
+    ["docker", "compose", "run", "--seed=true"],
+    ["node", "apps/api/dist/seed-sit-users.js", "--sit"],
+    ["node", "apps/api/dist/seed-uat-users.js", "--uat"],
+    ["node", "apps/api/dist/seed-demo.js"],
+    ["node", "scripts/seed-uat.mjs"],
+    ["node", "scripts/seed.ts"],
+    ["node", "scripts/seed-audit-users.ts"],
+    ["node", "apps/api/scripts/seed-cli.ts"],
+    ["sh", "-c", "node apps/api/dist/seed-sit-users.js --sit"],
+    ["pnpm", "run", "seed:demo"],
+  ]) {
+    assert.equal(invokesSeeder(call), true);
+  }
+});
 
 test("rejects missing private preflight and all flags before commands", () => {
   for (const flag of [
@@ -356,10 +395,11 @@ test("signed repeat release uses one canonical file, ordered commands and no set
   );
   assert.equal(
     first.some((x) =>
-      /seed| logs |\.env.example|setup|--remove-orphans| down |prune/.test(x),
+      / logs |\.env.example|setup|--remove-orphans| down |prune/.test(x),
     ),
     false,
   );
+  assert.equal(f.calls.slice(0, f.calls.length / 2).some(invokesSeeder), false);
   assert.ok(first.some((x) => x.includes("health/ready")));
   assert.ok(first.some((x) => x.includes(" run -d --no-deps migrate")));
 });
