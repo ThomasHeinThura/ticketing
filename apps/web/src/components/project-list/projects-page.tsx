@@ -195,7 +195,8 @@ export default function ProjectsPage({
     [orderedProjects, kindFilter],
   );
 
-  const { canCreateProjects, canUpdateProjects } = useWorkspacePermission();
+  const { canCreateProjects, canUpdateProjects, canArchiveProjects } =
+    useWorkspacePermission();
   const canCreate = canCreateProjects();
   // Matches the API, which gates /project/reorder on `project: ["update"]`
   // alone — not the create+update+delete bundle. A filtered list holds only part of the
@@ -447,7 +448,7 @@ export default function ProjectsPage({
                       )}
                     </TableCell>
                     <TableCell className="py-3">
-                      {canUpdateProjects() && (
+                      {canArchiveProjects() && (
                         <Button
                           variant="outline"
                           size="xs"

@@ -36,8 +36,9 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
   const { mutateAsync: deleteColumn } = useDeleteColumn();
   const openPendingAction = useOpenPendingAction();
   const { mutateAsync: reorderColumns } = useReorderColumns();
-  const { canManageProjects } = useWorkspacePermission();
-  const canEdit = canManageProjects();
+  // Board columns are a project setting: the column routes enforce project:manage_settings (A8-2).
+  const { canManageProjectSettings } = useWorkspacePermission();
+  const canEdit = canManageProjectSettings();
   const [newColumnName, setNewColumnName] = useState("");
   const [newColumnIcon, setNewColumnIcon] = useState("Circle");
   const [iconPickerColumnId, setIconPickerColumnId] = useState<string | null>(

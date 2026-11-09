@@ -1,8 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { syncWorkspaceAdminReach } from "../../apps/api/src/workspace/workspace-admin-reach";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
@@ -258,6 +259,26 @@ describe("project domain event envelopes", () => {
 
   it("writes project.archived only for the first actual archive transition", async () => {
     const f = await fixture();
+    // Production gives every workspace owner/admin an explicit `sees_all` membership in the
+    // same transaction as the membership write. Without it, creating the project grants this
+    // admin `project-lead`, which overrides the workspace role on that project, and a lead
+    // cannot archive (`project:archive`).
+    await db.transaction((tx) =>
+      syncWorkspaceAdminReach(tx, f.workspace.id, f.user.id),
+    );
+    const [seesAll] = await db
+      .select({ id: schema.membershipTable.id })
+      .from(schema.membershipTable)
+      .where(
+        and(
+          eq(schema.membershipTable.personId, f.person.id),
+          eq(schema.membershipTable.scope, "workspace"),
+          eq(schema.membershipTable.scopeId, f.workspace.id),
+          eq(schema.membershipTable.seesAll, true),
+        ),
+      )
+      .limit(1);
+    expect(seesAll, "admin holds workspace sees_all").toBeDefined();
     const created = await createProjectRequest(
       f.app,
       f.workspace.id,

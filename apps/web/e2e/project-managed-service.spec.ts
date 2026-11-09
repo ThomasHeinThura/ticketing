@@ -64,6 +64,7 @@ const baseDetails = (): Details => ({
 
 const capabilities = (canUpdate: boolean, canManage: boolean) => ({
   manageProjectSettings: canManage,
+  archiveProjects: canManage,
   manageProjects: canUpdate,
   createProjects: canUpdate,
   updateProjects: canUpdate,

@@ -35,6 +35,7 @@ async function capabilities(page: Page, canEdit: boolean) {
         shareSavedViews: false,
         manageWorkspaceSettings: false,
         manageProjectSettings: canEdit,
+        archiveProjects: canEdit,
       }),
     }),
   );

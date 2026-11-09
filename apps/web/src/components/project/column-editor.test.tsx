@@ -22,8 +22,16 @@ vi.mock("@/hooks/queries/column/use-get-columns", () => ({
   useGetColumns: () => ({ data: columns, isLoading: false }),
 }));
 
+const permission = vi.hoisted(() => ({
+  canManageProjects: true,
+  canManageSettings: true,
+}));
+
 vi.mock("@/hooks/use-workspace-permission", () => ({
-  useWorkspacePermission: () => ({ canManageProjects: () => true }),
+  useWorkspacePermission: () => ({
+    canManageProjects: () => permission.canManageProjects,
+    canManageProjectSettings: () => permission.canManageSettings,
+  }),
 }));
 
 vi.mock("@/hooks/mutations/column/use-create-column", () => ({
@@ -79,5 +87,24 @@ describe("ColumnEditor accessibility", () => {
     expect(
       screen.queryByRole("textbox", { name: /Renamed/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("is read-only for a lead with project update but not project:manage_settings (A8-2)", () => {
+    permission.canManageSettings = false;
+    try {
+      render(<ColumnEditor projectId="project-1" />);
+      for (const input of screen.getAllByRole("textbox", {
+        name: "Column name",
+      }))
+        expect(input).toBeDisabled();
+      expect(
+        screen.queryByRole("textbox", { name: "New column name..." }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "Delete column Backlog" }),
+      ).toBeNull();
+    } finally {
+      permission.canManageSettings = true;
+    }
   });
 });

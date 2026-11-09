@@ -42,6 +42,10 @@ export const capabilitiesResponseSchema = z
     exportTasks: z.boolean().optional(),
     setPriorityTasks: z.boolean().optional(),
     manageProjectSettings: z.boolean(),
+    archiveProjects: z.boolean().optional().openapi({
+      description:
+        "Strict project:archive; gates Archive, Unarchive and Restore of a project. Absent means denied.",
+    }),
     manageRoles: z.boolean().optional().openapi({
       description:
         "Strict workspace:manage_roles; gates the Roles settings entry. Absent means denied.",
