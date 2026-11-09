@@ -36,10 +36,10 @@ function ipv6Groups(ip: string): number[] | null {
   let head = text;
   const dotted = text.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/);
   if (dotted?.[1] !== undefined && dotted[2] !== undefined) {
-    const octets = dotted[2]
-      .split(".")
-      .map((part) => Number.parseInt(part, 10));
-    if (octets.some((octet) => Number.isNaN(octet) || octet > 255)) return null;
+    const parts = dotted[2].split(".");
+    if (!parts.every((part) => /^(0|[1-9]\d{0,2})$/.test(part))) return null;
+    const octets = parts.map((part) => Number.parseInt(part, 10));
+    if (octets.some((octet) => octet > 255)) return null;
     const [o1, o2, o3, o4] = octets as [number, number, number, number];
     tail = [(o1 << 8) | o2, (o3 << 8) | o4];
     head = dotted[1].endsWith("::") ? dotted[1] : dotted[1].slice(0, -1);
@@ -49,10 +49,9 @@ function ipv6Groups(ip: string): number[] | null {
   if (halves.length > 2) return null;
   const toGroups = (part: string): number[] | null => {
     if (part === "") return [];
-    const groups = part.split(":").map((group) => Number.parseInt(group, 16));
-    return groups.some((group) => Number.isNaN(group) || group > 0xffff)
-      ? null
-      : groups;
+    const texts = part.split(":");
+    if (!texts.every((group) => /^[0-9a-f]{1,4}$/.test(group))) return null;
+    return texts.map((group) => Number.parseInt(group, 16));
   };
   const left = toGroups(halves[0] ?? "");
   const right = halves.length === 2 ? toGroups(halves[1] ?? "") : [];
@@ -77,22 +76,13 @@ function isDisallowedIpv6(ip: string): boolean {
   if (groups === null) return true;
 
   const first = groups[0] ?? 0;
-  const leadingZero = groups.slice(0, 5).every((group) => group === 0);
+  const second = groups[1] ?? 0;
 
-  // ::ffff:0:0/96 (mapped) and ::/96 (deprecated compatible) carry an IPv4
-  // destination. ::/128 and ::1 fall out of the compatible range as 0.0.0.0
-  // and 0.0.0.1, which the IPv4 check refuses.
-  if (leadingZero && (groups[5] === 0xffff || groups[5] === 0)) {
-    return isDisallowedIpv4(embeddedIpv4(groups));
-  }
-
-  // 64:ff9b::/96 (NAT64) and the ::ffff:0:0:0/96 translated range.
-  if (
-    first === 0x64 &&
-    groups[1] === 0xff9b &&
-    groups.slice(2, 6).every((group) => group === 0)
-  ) {
-    return true;
+  // ::ffff:0:0/96 (mapped) carries an IPv4 destination; so does the
+  // ::ffff:0:0:0/96 translated range. Every other address in ::/96 is
+  // unspecified, loopback or the deprecated compatible form: refuse it.
+  if (groups.slice(0, 5).every((group) => group === 0)) {
+    return groups[5] === 0xffff ? isDisallowedIpv4(embeddedIpv4(groups)) : true;
   }
   if (
     groups.slice(0, 4).every((group) => group === 0) &&
@@ -102,11 +92,16 @@ function isDisallowedIpv6(ip: string): boolean {
     return isDisallowedIpv4(embeddedIpv4(groups));
   }
 
+  // Deny by default: only global unicast 2000::/3 can be a public destination.
+  // That leaves out unique local, link local, site local, multicast, NAT64
+  // (64:ff9b::/32) and the discard prefix.
+  if ((first & 0xe000) !== 0x2000) return true;
+
   return (
-    (first & 0xfe00) === 0xfc00 || // fc00::/7 unique local
-    (first & 0xffc0) === 0xfe80 || // fe80::/10 link local
-    (first & 0xffc0) === 0xfec0 || // fec0::/10 site local
-    (first & 0xff00) === 0xff00 // ff00::/8 multicast
+    (first === 0x2001 && second < 0x200) || // 2001::/23 protocol assignments, Teredo
+    (first === 0x2001 && second === 0xdb8) || // documentation
+    first === 0x2002 || // 6to4 can tunnel to any embedded IPv4
+    (first === 0x3fff && second < 0x1000) // documentation
   );
 }
 

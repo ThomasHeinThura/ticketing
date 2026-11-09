@@ -50,9 +50,29 @@ describe("isDisallowedAddress", () => {
     "ff02::1",
     "64:ff9b::7f00:1",
     "fe80::1%eth0",
+    "64:ff9b:1::a00:1",
+    "64:ff9b:1:0:0:0:7f00:1",
+    "2002:7f00:1::",
+    "2002:a9fe:a9fe::1",
+    "2001:0:4136:e378:8000:63bf:80ff:fffe",
+    "100::1",
+    "2001:db8::1",
+    "3fff::1",
+    "::8.8.8.8",
+    "::2",
+    "5f00::1",
   ])("blocks the IPv6 form %s", (address) => {
     expect(isDisallowedAddress(address)).toBe(true);
   });
+
+  // Documentation ranges (TEST-NET) are not blocked: integration tests use them as stand-in
+  // public destinations, and no real network routes them.
+  it.each(["203.0.113.9", "198.51.100.7"])(
+    "leaves the IPv4 documentation address %s to the resolver",
+    (address) => {
+      expect(isDisallowedAddress(address)).toBe(false);
+    },
+  );
 
   it("allows routable IPv6 and mapped routable IPv4", () => {
     expect(isDisallowedAddress("2606:4700:4700::1111")).toBe(false);
