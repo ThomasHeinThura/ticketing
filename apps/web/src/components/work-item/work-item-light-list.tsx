@@ -40,10 +40,29 @@ const CATEGORY_ICON: Record<string, typeof Circle> = {
   cancelled: Archive,
 };
 
-const dueDateFormat = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-});
+/**
+ * The hydrated row's due date, date-fns `format(date, "MMM d")` (English month names, local
+ * time). Written out because the page's first `Intl.DateTimeFormat` costs about 22 ms at the
+ * G11 bench's 4x CPU throttle, all of it ahead of the preview's frame (G11 work-list LCP).
+ */
+const SHORT_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+function formatDueDate(value: string) {
+  const date = new Date(value);
+  return `${SHORT_MONTHS[date.getMonth()]} ${date.getDate()}`;
+}
 
 /**
  * The grouped Kaneo list's first viewport, painted from the already-fetched rows while the
@@ -53,7 +72,10 @@ const dueDateFormat = new Intl.DateTimeFormat("en-US", {
  * rows below the viewport are a spacer of the virtual window's estimated height. It is a
  * read-only preview: nothing in it is focusable or clickable, and it carries none of the
  * hydrated list's markers (`work-item-list-populated`, `data-task-id`,
- * `data-primary-content-ready`), so readiness checks still wait for the real list.
+ * `data-primary-content-ready`), so readiness checks still wait for the real list. It does not
+ * wait for the web font: drawn in Geist's size-matched fallback (`font-sans-matched`), its rows
+ * keep their size when Geist swaps in, so neither the swap nor the hydrated rows are a larger
+ * paint.
  */
 export default function WorkItemLightList({
   projectId,
@@ -89,7 +111,7 @@ export default function WorkItemLightList({
 
   return (
     <div
-      className="w-full bg-muted/20"
+      className="w-full bg-muted/20 font-sans-matched"
       data-testid="work-item-list-preview"
       aria-busy="true"
     >
@@ -235,7 +257,7 @@ function LightRow({
             ) : (
               <Calendar className="w-3 h-3" />
             )}
-            <span>{dueDateFormat.format(new Date(item.dueDate))}</span>
+            <span>{formatDueDate(item.dueDate)}</span>
           </div>
         ) : null}
         {preferences.showAssignees ? (
