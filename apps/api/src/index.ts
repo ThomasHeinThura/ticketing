@@ -38,6 +38,7 @@ import {
   InactiveFactorIdentityError,
   loadLocalFactorState,
 } from "./auth/local-factor-service";
+import { isIncompleteBootstrapSession } from "./auth/repository";
 import stepUp from "./auth/step-up-api";
 import automation from "./automation";
 import cannedResponse from "./canned-response";
@@ -121,7 +122,7 @@ import hardPurge from "./instance/purge";
 import resetMfa from "./instance/reset-mfa";
 import rotateSecrets from "./instance/secrets/rotate-secrets";
 import instanceSettings from "./instance/settings";
-import { ensureSetupToken } from "./instance/setup-token";
+import { ensureSetupToken, isSetupCompleted } from "./instance/setup-token";
 import instanceStorage from "./instance/storage";
 import users from "./instance/users";
 import intake from "./intake";
@@ -164,6 +165,7 @@ import {
   isCredentialRevocationFailure,
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
+  withFirstUserAdmissionTransaction,
   withTotpSessionEnrollment,
 } from "./pending-action/credential-invalidation";
 // Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
@@ -365,7 +367,10 @@ async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
     }
     throw new HTTPException(503, { message: "factor_policy_unavailable" });
   }
-  if (state.required && !state.enabled) {
+  if (
+    (await isIncompleteBootstrapSession(userId)) ||
+    (state.required && !state.enabled)
+  ) {
     throw new HTTPException(403, { message: "mfa_enrollment_required" });
   }
 }
@@ -542,6 +547,15 @@ async function handleAuthRequest(
   const selected = authForRequest(c);
   if (!portal) throw new HTTPException(403, { message: "Forbidden" });
 
+  // The body-limit middleware counts unknown-length streams only when read.
+  // Read a clone of agent signup before any session or setup-marker query;
+  // the original request remains available to Better Auth unchanged.
+  const agentEmailSignup =
+    portal === "agent" &&
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/sign-up/email";
+  if (agentEmailSignup) await c.req.raw.clone().arrayBuffer();
+
   const session = await selected.api.getSession({
     headers: c.req.raw.headers,
   });
@@ -552,6 +566,24 @@ async function handleAuthRequest(
         !(await hasCustomerPortalIdentity(session.user.id))))
   ) {
     throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
+  if (
+    portal === "agent" &&
+    session?.user.id &&
+    (await isIncompleteBootstrapSession(session.user.id))
+  ) {
+    const enrollmentRoute =
+      (c.req.method === "GET" && c.req.path === "/api/auth/get-session") ||
+      (c.req.method === "POST" &&
+        [
+          "/api/auth/sign-out",
+          "/api/auth/two-factor/enable",
+          "/api/auth/two-factor/verify-totp",
+        ].includes(c.req.path));
+    if (!enrollmentRoute) {
+      throw new HTTPException(403, { message: "mfa_enrollment_required" });
+    }
   }
 
   // GM-9: an impersonation session may not change credentials, factors, keys or the account
@@ -591,6 +623,11 @@ async function handleAuthRequest(
       }
       throw error;
     }
+  }
+  if (agentEmailSignup && !(await isSetupCompleted())) {
+    return withFirstUserAdmissionTransaction(() =>
+      selected.handler(authRequest),
+    );
   }
   if (!mutation) return selected.handler(authRequest);
 

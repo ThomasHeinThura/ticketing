@@ -123,7 +123,7 @@ function AccountSecurity() {
             })
           }
         />
-        {enrollmentRequired && !status?.enabled ? (
+        {(enrollmentRequired || status?.required) && !status?.enabled ? (
           <Alert>
             <AlertDescription>
               {t("auth:accountSecurity.required")}
@@ -196,7 +196,7 @@ function AccountSecurity() {
               </form>
             </CardContent>
           </Card>
-        ) : status?.policyMode === "off" ? (
+        ) : status?.policyMode === "off" && !status.required ? (
           <p className="text-sm text-muted-foreground">
             {t("auth:accountSecurity.enrollmentDisabled")}
           </p>
